@@ -507,6 +507,15 @@ function pg_panel_designer($request, $action)
             ));
             break;
 
+        // "New collection with pages" (includes/fn/collection_pages.php):
+        // the collections there are, which addresses are taken, and one of
+        // the collection, its list page and its detail page made. Design-
+        // level, like adding a page.
+        case 'collection_pages':
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/collection_pages.php');
+            respond(pg_coll_pages_panel($request, $user));
+            break;
+
         // "Page details" of a sketch page in the Prototype view: the menus,
         // or who has an address already. Read-only, design-level like
         // adding a page.

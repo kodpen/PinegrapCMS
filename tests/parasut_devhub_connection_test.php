@@ -177,3 +177,35 @@ function test_parasut_devhub_page_boxes()
 	pg_assert_contains("\$provider['listed'] === false", $screen, 'no row of Account providers');
 	pg_assert_contains('parasut_devhub_after_connect(', $screen, 'the company is read on return');
 }
+
+// A code of the older way pasted while the site is connected through a
+// portal client is refused before it is exchanged: the requests keep going
+// with the portal connection, so the older Connect would report a
+// connection that is not used and move the company number under it.
+function test_parasut_devhub_code_connect_refused_beside_a_portal_connection()
+{
+	pg_assert_same('', parasut_code_connect_refusal(null), 'no portal connection');
+	pg_assert_same('', parasut_code_connect_refusal(array('id' => 0)));
+	pg_assert_contains('Developer Portal', parasut_code_connect_refusal(array('id' => 7, 'status' => 'active')));
+	pg_assert_contains('Developer Portal', parasut_code_connect_refusal(array('id' => 7, 'status' => 'reauth')), 'one to be made again too');
+
+	$connect = parasut_devhub_test_body('includes/fn/parasut.php', 'parasut_connect_with_code');
+	$refused = strpos($connect, 'parasut_code_connect_refusal(parasut_devhub_connection())');
+	pg_assert_true($refused !== false, 'Connect asks');
+	pg_assert_true($refused < strpos($connect, '_parasut_token_exchange('), 'before the code is spent');
+	pg_assert_true($refused < strpos($connect, 'UPDATE config'), 'before anything is saved');
+}
+
+// Connect again keeps the connection's id (one row per site), so what was
+// read for the account before is dropped before the new account is read:
+// when that read fails, the status line does not name the earlier account's
+// e-mail and company.
+function test_parasut_devhub_after_connect_drops_the_earlier_account()
+{
+	$after = parasut_devhub_test_body('includes/fn/parasut.php', 'parasut_devhub_after_connect');
+	$dropped = strpos($after, "pg_connect_service_delete('parasut_devhub')");
+
+	pg_assert_true($dropped !== false, 'the earlier details are dropped');
+	pg_assert_true($dropped < strpos($after, 'pg_connect_access_token('), 'before the token is read');
+	pg_assert_true($dropped < strpos($after, 'parasut_me('), 'before the account is asked');
+}

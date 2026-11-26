@@ -363,6 +363,34 @@ function ws_channel_board_face($person)
 }
 
 /**
+ * How many tasks of a channel the board reads at most.
+ */
+define('WS_CHANNEL_BOARD_READ_LIMIT', 500);
+
+/**
+ * Task briefs with those of a second read added, each task once, in the
+ * order the first read gave and the new ones after it. Pure.
+ *
+ * @param array[] $briefs
+ * @param array[] $more
+ * @return array[]
+ */
+function ws_channel_board_merge_briefs($briefs, $more)
+{
+    $out = array();
+
+    foreach (array_merge(array_values((array) $briefs), array_values((array) $more)) as $brief) {
+        $id = (int) ($brief['id'] ?? 0);
+
+        if (($id > 0) && !isset($out[$id])) {
+            $out[$id] = $brief;
+        }
+    }
+
+    return array_values($out);
+}
+
+/**
  * The channel's tasks as cards, filtered.
  *
  * @param array $viewer
@@ -372,14 +400,24 @@ function ws_channel_board_face($person)
  */
 function ws_channel_board_tasks($viewer, $channel, $options)
 {
-    $briefs = ws_tasks_list($viewer, array(
+    $filters = array(
         'scope'      => 'channel',
         'channel_id' => (int) $channel['id'],
         'status'     => 'all',
         'search'     => (string) ($options['q'] ?? ''),
         'priority'   => (string) ($options['priority'] ?? ''),
-        'limit'      => 500,
-    ));
+        'limit'      => WS_CHANNEL_BOARD_READ_LIMIT,
+    );
+    $briefs = ws_tasks_list($viewer, $filters);
+
+    // The list puts the closed tasks last, by due date, so a full read can
+    // leave out the ones finished lately; those are read on their own.
+    if (count($briefs) >= WS_CHANNEL_BOARD_READ_LIMIT) {
+        $briefs = ws_channel_board_merge_briefs($briefs, ws_tasks_list($viewer, array(
+            'status'        => 'closed',
+            'updated_since' => strtotime('-' . WS_CHANNEL_BOARD_DONE_DAYS . ' days', strtotime(date('Y-m-d') . ' 00:00:00')),
+        ) + $filters));
+    }
 
     if (empty($briefs)) {
         return array();

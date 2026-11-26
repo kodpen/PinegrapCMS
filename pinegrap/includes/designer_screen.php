@@ -474,6 +474,9 @@ function pg_designer_screen_render($ctx)
         // Looks and colour palettes (includes/fn/design_themes.php): every
         // choice with its stylesheet, the saved custom ones included.
         'themes'        => pg_design_theme_catalog() + array('variables' => pg_design_variables_url($style_id)),
+        // The design's stored easing curves (its own variables of kind
+        // curve), offered in every Easing list.
+        'curves'        => pg_design_variables_curves(pg_design_variables_stored($style_id)),
         // Everything the field panel offers, resolved once here rather than
         // duplicated in JavaScript — a second copy of "which contact fields
         // exist" is the copy that drifts.

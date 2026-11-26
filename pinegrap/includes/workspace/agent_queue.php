@@ -766,9 +766,18 @@ function ws_agent_queue_expired_where($now)
 function ws_agent_queue_expire($now = null)
 {
     $now = ($now === null) ? time() : (int) $now;
+    $where = ws_agent_queue_expired_where($now);
 
-    db("UPDATE ws_ai_requests SET status = 'cancelled', error = '" . e(lang('The agent did not take it within a day.')) . "'
-        WHERE " . ws_agent_queue_expired_where($now));
+    foreach ((array) db_items("SELECT id, message_id FROM ws_ai_requests WHERE " . $where . " LIMIT 200") as $row) {
+        db("UPDATE ws_ai_requests SET status = 'cancelled', error = '" . e(lang('The agent did not take it within a day.')) . "'
+            WHERE id = '" . (int) $row['id'] . "' AND " . $where);
+
+        // The open screens redraw the line under the message only when
+        // the message is stamped.
+        if ((mysqli_affected_rows(db::$con) > 0) && ((int) $row['message_id'] > 0)) {
+            ws_message_touch((int) $row['message_id']);
+        }
+    }
 }
 
 /**

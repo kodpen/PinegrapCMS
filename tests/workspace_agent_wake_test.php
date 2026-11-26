@@ -114,6 +114,7 @@ function test_workspace_agent_wake_waiting_where()
 	pg_assert_contains("agent = 'agent:3'", $where);
 	pg_assert_contains('message_id = 0', $where, 'only a schedule\'s wake holds the next one');
 	pg_assert_contains("status IN ('queued', 'sent')", $where, 'a claimed wake does not');
+	pg_assert_contains('task_id = 0', $where, 'a task handed to the agent and waiting holds no wake');
 }
 
 function test_workspace_agent_brief_parts()

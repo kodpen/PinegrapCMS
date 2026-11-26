@@ -462,7 +462,18 @@ function pg_audience_value($token, $background = false)
     $token = strtolower((string) $token);
     $kind = pg_audience_token_kind($token);
 
-    if (($kind === '') || $background) {
+    if ($kind === '') {
+        return '';
+    }
+
+    // A widget of the designer's Preview is drawn for the visitor chosen
+    // there ("Preview as"): its answer, not the operator's request, and
+    // not kept, as the next widget may be drawn for another visitor.
+    if (function_exists('pg_preview_as_current') && pg_preview_as_current()) {
+        return pg_preview_as_audience_value($kind, pg_preview_as_viewer());
+    }
+
+    if ($background) {
         return '';
     }
 

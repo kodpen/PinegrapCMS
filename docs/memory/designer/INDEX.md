@@ -68,6 +68,8 @@
 - collection-history.md: History section of a collection item (C7b, #3099): list, compare with the current values, Load, the save with source restore, what happens to files and signatures
 - collection-inputs.md: Inputs of a collection's fields by kind (C3, C3b, C3c): number, image, reference, product and page controls on the site form and the panel, radios and boxes, image preview, server checks
 - collection-lists.md: Collection fields in lists and feeds (C4a, C4b2, C5a): numeric sort, reference filters printing the label, records referencing the shown record, feed categories by label, images
+- collection-pages-made.md: What "Create" of "New collection with pages" (DO23) makes: one call per thing, the Collections folder closed to visitors, drafts, upload folder, tabs, a stop half way, the closing line
+- collection-pages.md: "New collection with pages" (DO23): the Pages window's last row and palette row, the part 'collection', the two steps, how a field is stored, tests and sizes
 - collection-references.md: A form list or detail element prints a field of the record, product or page a reference points at (__ref binding, spec, one read per form, escaping, what is never read)
 - collection-revisions.md: Collection item revisions (record_revisions, 11.0.123, C7a #3068; History and restore C7b #3099): which items, which writers, what a row holds, the History section, restore, retention, erasure
 - collection-rows-delete-history.md: Collection "Rows" field on delete and in History: a deleted record's rows go with it, the delete confirmations name the count, a loaded revision keeps only rows that exist [decision: here]
@@ -492,6 +494,7 @@
 - designer-options-curve-drawing-curve.md: The easing curve as drawn for DO19 (options-curve.html, boards E1 to E3, Z1): the Easing list, the editor under the row, the graph's limits, stored curves as design variables, keys
 - designer-options-curve-drawing-pages.md: "Page transition" and "Keep across pages" as drawn for DO20 (options-curve.html, boards P1 to P3): the section in Settings, Theme, its rows, what is written and where, the name that joins two elements
 - designer-options-curve-drawing.md: The drawing of the easing curve and "Page transition" (plan designer-options-census, DO19 and DO20): the sheet, its seven boards, which step builds which, what is new, where it differs from the plan
+- designer-options-curve.md: The easing curve as built (DO19): the Easing list with stored curves and "Custom curve…", the editor under the row (part 'curve'), the written forms, stored curves as design variables of kind curve
 - designer-options-effects.md: Filter, Background blur and Blend in Shadow and effect's "More" as built (DO15, #11700): the rows, how a state holds a filter, the glass hint, the slider preview, the part, the cost
 - designer-options-grid-drawing-child.md: A grid box's named areas as drawn for DO6, the rest: the row "Area" on a child of the grid, what the canvas shows, the keys and what is read out, the 240 px panel
 - designer-options-grid-drawing-rules.md: How a grid box's named areas behave as drawn for DO6: when "Areas" is offered, making, naming, refusals, what a change takes with it, screen sizes
@@ -505,6 +508,7 @@
 - designer-options-overview.md: Start file of the designer-options-* files: what the Options panel is, what binds it (plan designer-panels, K1 to K12), its parts by their on-screen label, which file holds what, how a part is added [decision: here]
 - designer-options-panel-names.md: How controls of the visual editor's Options/Appearance panel get their accessible names (one naming pass), keyboard section headers, per-screen-size toggles, Styles inspector names
 - designer-options-panel-search.md: The label filter of the Options panel's search box (filterPropertiesPanel()): what it hides, sections without rows, the No option matches line, Turkish İ and capitals
+- designer-options-pointer.md: Cursor and "Let clicks through" under Shadow and effect's "More" as built (DO17): the rows, what they write, Normal only, the canvas, the part, the cost
 - designer-options-review.md: Options panel "Only what I changed" (DP9, #10699): the switch at the bottom with the count, the list of changed rows of all three tabs, "Reset all" as one undo step
 - designer-options-search.md: Options panel "Search or add an option…" (DP8, #10658): three tabs by label, section, CSS property, class prefix; results with path; Enter opens the row; no result offers the class
 - designer-options-section-cards.md: The Options panel's identity row and section cards (D3, D6–D9, D11): own section first and open, general sections closed with a count and summary, closed bodies not drawn, one source for changed rows [decision: here]

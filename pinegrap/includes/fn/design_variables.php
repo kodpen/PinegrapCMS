@@ -29,7 +29,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 //
 // The model (an array) has: name, look and palette (the choice the defaults
 // were taken from), values (key => value; a colour is array(light, dark)) and
-// custom (the designer's own colours and sizes).
+// custom (the designer's own colours, sizes and easing curves).
 //
 // Every variable writes its own --pg-var-<key> token. A value that differs
 // from the default it was made from also writes the theme tokens it drives
@@ -238,6 +238,11 @@ function pg_design_variables_normalize($model, $defaults)
             $dark = pg_design_variable_value($color, isset($c['dark']) ? $c['dark'] : '');
             $row['light'] = $light;
             $row['dark']  = ($dark === null) ? $light : $dark;
+        } elseif ($row['kind'] === 'curve') {
+            // An easing curve: its four numbers (pg_fx_curve_numbers()).
+            $nums = pg_fx_curve_numbers(isset($c['value']) ? $c['value'] : '');
+            if ($nums === null) continue;
+            $row['value'] = implode(', ', $nums);
         } elseif ($row['kind'] === 'size') {
             $row['value'] = pg_design_variable_value($size, isset($c['value']) ? $c['value'] : '');
             if ($row['value'] === null) continue;
@@ -245,6 +250,24 @@ function pg_design_variables_normalize($model, $defaults)
             continue;
         }
         $out['custom'][] = $row;
+    }
+    return $out;
+}
+
+// The easing curves among a model's own variables, for the editor's
+// Easing lists: array of array(key, name, value) with value "x1, y1, x2,
+// y2". A stored model is read as written, so each row is checked here.
+function pg_design_variables_curves($model)
+{
+    $out = array();
+    $custom = (is_array($model) && isset($model['custom']) && is_array($model['custom'])) ? $model['custom'] : array();
+    foreach ($custom as $c) {
+        if (!is_array($c) || !isset($c['kind'], $c['key'], $c['value']) || $c['kind'] !== 'curve') continue;
+        if (!is_string($c['key']) || !preg_match('/^[a-z0-9][a-z0-9-]{0,29}$/', $c['key'])) continue;
+        $nums = pg_fx_curve_numbers($c['value']);
+        if ($nums === null) continue;
+        $name = isset($c['name']) && is_scalar($c['name']) ? mb_substr(trim((string)$c['name']), 0, 40) : '';
+        $out[] = array('key' => $c['key'], 'name' => $name !== '' ? $name : $c['key'], 'value' => implode(', ', $nums));
     }
     return $out;
 }
@@ -285,6 +308,8 @@ function pg_design_variables_css($model, $defaults)
         if ($c['kind'] === 'color') {
             $light[pg_design_variable_token($c['key'], true)] = $c['light'];
             $dark[pg_design_variable_token($c['key'], true)]  = $c['dark'];
+        } elseif ($c['kind'] === 'curve') {
+            $all[pg_design_variable_token($c['key'], true)] = 'cubic-bezier(' . $c['value'] . ')';
         } else {
             $all[pg_design_variable_token($c['key'], true)] = $c['value'];
         }
@@ -686,6 +711,9 @@ function _pg_design_token_out($kind, $v)
             return ((string)$v === '') ? null : array('$type' => 'number', '$value' => (float)$v + 0);
         case 'weight':
             return ((string)$v === '') ? null : array('$type' => 'fontWeight', '$value' => (int)$v);
+        case 'curve':
+            $nums = pg_fx_curve_numbers((string)$v);
+            return $nums === null ? null : array('$type' => 'cubicBezier', '$value' => array_map('floatval', $nums));
     }
     return null;
 }

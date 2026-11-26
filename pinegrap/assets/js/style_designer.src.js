@@ -26369,10 +26369,7 @@ const StyleDesigner = (function () {
                 '<input type="range" class="form-range-input" min="0" max="1000" step="10" value="' + Math.min(ms, 1000) + '" data-sd-trans="ms-range" aria-label="' + esc(_sdT('Duration')) + '">' +
                 '<div class="input-group input-group-sm"><input type="number" class="form-control form-control-sm" min="0" max="1000" step="10" data-sd-trans="ms" value="' + (t.ms === '' ? '' : t.ms) + '" placeholder="' + look + '">' +
                 '<span class="input-group-text">ms</span></div></div>');
-            var eases = [['', _sdT('Default')], ['ease-out', _sdT('Ease out')], ['ease', _sdT('Ease')], ['ease-in', _sdT('Ease in')],
-                ['ease-in-out', _sdT('Ease in and out')], ['linear', _sdT('Linear')]];
-            if (t.ease && !eases.some(function (e) { return e[0] === t.ease; })) eases.push([t.ease, t.ease]);
-            h += row(_sdT('Easing'), list('ease', eases, t.ease));
+            h += row(_sdT('Easing'), _sdEaseHtml('data-sd-trans="ease"', t.ease, [['', _sdT('Default')]]));
         }
         return h + '</div>';
     }
@@ -26413,6 +26410,141 @@ const StyleDesigner = (function () {
             var k = t && t.getAttribute ? t.getAttribute('data-sd-trans') : null;
             if (!k) return;
             _sdTransSet(k === 'ms-range' ? 'ms' : k, t.value);
+        });
+    }
+
+    // ── Options: the easing curve ──
+    // Every Easing row (Transition here, Interactions in its part) is one
+    // list and the small button "Edit the curve": the list keeps its lines,
+    // then the design's stored curves ("This design's curves") and "Custom
+    // curve…". The editor opens under the row; it is the part 'curve',
+    // loaded on first use. A stored curve is one of the design's own
+    // variables (kind curve), written as its variable with its numbers as
+    // the fallback, so a removed one keeps moving as it did.
+    // The row whose editor is open ('trans:<id>' or 'fx:<id>'): a panel
+    // draw opens it again.
+    var _sdEaseOpenAt = '';
+
+    // The stored curves, [{ key, name, value }]: from the model the
+    // Variables tab holds, else the saved one (sdDesign.curves).
+    function _sdCurves() {
+        var input = document.getElementById('sd-style-variables'), m = null;
+        try { m = input && input.value ? JSON.parse(input.value) : null; } catch (e) { m = null; }
+        var list = m ? m.custom || [] : (_design && _design.curves) || [];
+        return list.filter(function (c) { return (!m || c.kind === 'curve') && _sdCurveNums(String(c.value)); });
+    }
+    function _sdCurveVar(c) {
+        return 'var(--pg-var-c-' + c.key + ', cubic-bezier(' + _sdCurveNums(String(c.value)).join(', ') + '))';
+    }
+    // The stored curve an easing names, or null.
+    function _sdCurveOf(ease) {
+        var m = /^var\(--pg-var-c-([a-z0-9-]+),/.exec(String(ease || ''));
+        return m ? _sdCurves().filter(function (c) { return c.key === m[1]; })[0] || null : null;
+    }
+
+    // The curve's small sign (18 by 14 px), blue for a stored curve.
+    function _sdCurveSign(value, stored) {
+        var p = _sdCurveNums(String(value || ''));
+        if (!p) return '';
+        var X = function (x) { return (2 + Number(x) * 14).toFixed(1); };
+        var Y = function (y) { return (14 - (Number(y) + 0.5) * 7).toFixed(1); };
+        return '<svg class="sd-curve-sign' + (stored ? ' is-stored' : '') + '" width="18" height="14" viewBox="0 0 18 14" aria-hidden="true">' +
+            '<path d="M2 10.5C' + X(p[0]) + ' ' + Y(p[1]) + ' ' + X(p[2]) + ' ' + Y(p[3]) + ' 16 3.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>';
+    }
+
+    // The Easing list and its button. `attr` names the select for its
+    // writer, `cur` the easing written, `first` the lines before the
+    // named ones (Transition's Default).
+    function _sdEaseHtml(attr, cur, first) {
+        cur = _sdEaseClean(cur) || String(cur || '');
+        var lines = (first || []).concat([['ease-out', _sdT('Ease out')], ['ease', _sdT('Ease')], ['ease-in', _sdT('Ease in')],
+            ['ease-in-out', _sdT('Ease in and out')], ['linear', _sdT('Linear')]]);
+        var stored = _sdCurveOf(cur), curves = _sdCurves();
+        var opt = function (v, l, on) { return '<option value="' + esc(v) + '"' + (on ? ' selected' : '') + '>' + esc(l) + '</option>'; };
+        var known = lines.some(function (l) { return l[0] === cur; });
+        var h = lines.map(function (l) { return opt(l[0], l[1], l[0] === cur); }).join('');
+        if (curves.length) {
+            h += '<optgroup label="' + esc(_sdT('This design\'s curves')) + '">' + curves.map(function (c) {
+                return opt(_sdCurveVar(c), c.name, !!stored && stored.key === c.key);
+            }).join('') + '</optgroup>';
+        }
+        if (!known && !stored && cur) h += opt(cur, /cubic-bezier/.test(cur) ? _sdT('Custom curve') : cur, true);
+        h += opt('__curve', _sdT('Custom curve…'), false);
+        var label = stored ? _sdT('Easing, {var}, a stored curve', stored.name) : _sdT('Easing');
+        return '<div class="sd-ease"><select class="form-control form-control-sm" ' + attr + ' aria-label="' + esc(label) + '">' + h + '</select>' +
+            '<button type="button" class="btn btn-sm btn-outline theme-secondary sd-ease-edit" data-sd-ease-edit aria-expanded="false" title="' +
+            esc(_sdT('Edit the curve')) + '" aria-label="' + esc(_sdT('Edit the curve')) + '"><span class="bi bi-bezier2" aria-hidden="true"></span></button></div>';
+    }
+
+    // Binds a drawn Easing list: "Custom curve…" and the button open the
+    // editor; ctx is { at, value, write(easing), play() }. The capture
+    // listener runs before the row's own writer and stops it.
+    function _sdEaseWire(box, ctx) {
+        var wrap = box ? box.querySelector('.sd-ease') : null;
+        if (!wrap) return;
+        var sel = wrap.querySelector('select'), btn = wrap.querySelector('[data-sd-ease-edit]');
+        sel.addEventListener('change', function (e) {
+            if (sel.value !== '__curve') return;
+            e.stopImmediatePropagation();
+            _sdEaseOpen(wrap, ctx, true);
+        }, true);
+        btn.addEventListener('click', function () {
+            if (_sdEaseOpenAt === ctx.at) { _sdPartCall('curve', 'close', []).catch(_sdPartFailed); return; }
+            _sdEaseOpen(wrap, ctx, false);
+        });
+        if (_sdEaseOpenAt === ctx.at) _sdEaseOpen(wrap, ctx, false);
+    }
+
+    // The editor under the row. `custom`: "Custom curve…" was chosen, so
+    // the curve of the moment is written as the element's own.
+    function _sdEaseOpen(wrap, ctx, custom) {
+        _sdEaseOpenAt = ctx.at;
+        var btn = wrap.querySelector('[data-sd-ease-edit]');
+        btn.setAttribute('aria-expanded', 'true');
+        var look = '';
+        try { look = canvasDoc.defaultView.getComputedStyle(canvasDoc.documentElement).getPropertyValue('--pg-ease').trim(); } catch (e) { look = ''; }
+        var host = {
+            at: ctx.at,
+            row: wrap.closest('.sd-prop-row') || wrap,
+            value: _sdEaseClean(ctx.value) || '',
+            look: _sdEaseClean(look) || 'ease-in-out',
+            custom: custom,
+            stored: _sdCurveOf(ctx.value),
+            curves: _sdCurves(),
+            reduced: !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches),
+            write: function (v) { ctx.write(_sdEaseClean(v)); },
+            play: ctx.play,
+            varOf: _sdCurveVar,
+            // Stored curves are the design's variables, which only a full
+            // designer reaches: the parts of condition 'designer' are
+            // handed to them alone (styleguide is one).
+            mayStore: !!(_design && _design.parts && _design.parts.styleguide),
+            store: function (op, c) {
+                return _sdPartCall('variables', 'curve', [_sdVarsHost(null), op, c]);
+            },
+            closed: function () {
+                if (_sdEaseOpenAt === ctx.at) _sdEaseOpenAt = '';
+                if (btn.isConnected) { btn.setAttribute('aria-expanded', 'false'); btn.focus(); }
+            }
+        };
+        _sdPartCall('curve', 'open', [host]).catch(_sdPartFailed);
+    }
+
+    // Transition's Easing: written as the rule's timing function; Play
+    // shows Hover for the transition's time, then Normal again.
+    function _sdTransEaseWire(panel) {
+        var node = _sdStateNode();
+        if (!node || !panel) return;
+        _sdEaseWire(panel.querySelector('[data-sd-trans-box]'), {
+            at: 'trans:' + node._id,
+            value: _sdTransOf(node).ease,
+            write: function (v) { _sdTransSet('ease', v); },
+            play: function () {
+                if (_sdOptState || _sdStatesFor(_sdIdTag(node), node.props.cssClass).indexOf('hover') === -1) return;
+                var t = _sdTransOf(node);
+                _sdStateGo('hover');
+                setTimeout(function () { if (selectedNode === node && _sdOptState === 'hover') _sdStateGo('hover'); }, (t.ms === '' ? _sdTransLookMs() : t.ms) + 600);
+            }
         });
     }
 
@@ -26484,8 +26616,11 @@ const StyleDesigner = (function () {
         var tfRow = function (keys, label, ctrl) {
             return '<div class="sd-prop-row" data-sd-tf-keys="' + keys + '"><label class="sd-prop-label">' + esc(label) + '</label><div class="sd-prop-control">' + ctrl + '</div></div>';
         };
+        // Cursor and "Let clicks through" are Normal's only (_sdPtRowsHtml()).
+        var pt = _sdOptState === '' ? _sdPtOf(node) : null;
         var more = _sdTfMoreOpen || ['skx', 'sky', 'o'].some(function (k) { return v[k] !== '' || inh[k] !== ''; }) ||
-            Object.keys(_SD_EFF_NONE).some(function (k) { return fv[k] !== '' || finh[k] !== ''; });
+            Object.keys(_SD_EFF_NONE).some(function (k) { return fv[k] !== '' || finh[k] !== ''; }) ||
+            !!(pt && (pt.cursor !== '' || pt.through));
         var h = '<div class="sd-tf" data-sd-tf-box>' +
             '<div class="sd-trans-sub">' + esc(_sdT('Transform')) + '</div>' +
             tfRow('tx,ty', _sdT('Move'), '<div class="sd-tf-pair">' + field('tx', 'px', 'X', '0') + field('ty', 'px', 'Y', '0') + '</div>') +
@@ -26506,7 +26641,7 @@ const StyleDesigner = (function () {
             h += tfRow('skx,sky', _sdT('Skew'), '<div class="sd-tf-pair">' + field('skx', '°', 'X', '0') + field('sky', '°', 'Y', '0') + '</div>') +
                 tfRow('o', _sdT('Origin'), '<div class="sd-tf-og' + (v.o === '' ? ' sd-trans-inh' : '') + '"><div class="sd-tf-grid" role="radiogroup" aria-label="' + esc(_sdT('Origin')) + '">' + cells + '</div>' +
                     '<small><b>' + esc(names[o]) + '</b>' + (o % 3) * 50 + '% · ' + Math.floor(o / 3) * 50 + '%</small></div>') +
-                _sdEffRowsHtml(fv, finh);
+                _sdEffRowsHtml(fv, finh) + (pt ? _sdPtRowsHtml(pt) : '');
         }
         h += '<button type="button" class="sd-tf-more" aria-expanded="' + (more ? 'true' : 'false') + '"><i class="bi bi-chevron-' + (more ? 'up' : 'down') + '" aria-hidden="true"></i>' +
             esc(more ? _sdT('Less') : _sdT('More')) + '</button>';
@@ -26517,10 +26652,10 @@ const StyleDesigner = (function () {
     // The same for an effect row (Filter, Background blur, Blend) and a
     // Text effect row (a value of its own reads as set too).
     function _sdTfMark(root) {
-        root.querySelectorAll('[data-sd-tf-keys], [data-sd-fx-keys], [data-sd-tx-keys]').forEach(function (r) {
+        root.querySelectorAll('[data-sd-tf-keys], [data-sd-fx-keys], [data-sd-tx-keys], [data-sd-pt-keys]').forEach(function (r) {
             var lbl = r.querySelector('.sd-prop-label');
-            var kind = r.hasAttribute('data-sd-fx-keys') ? 'fx' : r.hasAttribute('data-sd-tx-keys') ? 'tx' : 'tf';
-            var sel = { fx: 'input[data-sd-fx], select[data-sd-fx]', tx: '[data-sd-tx]', tf: '[data-sd-tf]' }[kind];
+            var kind = r.hasAttribute('data-sd-fx-keys') ? 'fx' : r.hasAttribute('data-sd-tx-keys') ? 'tx' : r.hasAttribute('data-sd-pt-keys') ? 'pt' : 'tf';
+            var sel = { fx: 'input[data-sd-fx], select[data-sd-fx]', tx: '[data-sd-tx]', pt: '[data-sd-pt]', tf: '[data-sd-tf]' }[kind];
             var set = r.querySelector('.sd-tf-og:not(.sd-trans-inh)') ||
                 Array.prototype.some.call(r.querySelectorAll(sel), function (i) { return i.value !== '' || i.getAttribute('placeholder') === _sdT('Your own'); });
             if (!lbl || !set) return;
@@ -26901,6 +27036,72 @@ const StyleDesigner = (function () {
             renderProperties();
             var b = document.querySelector('#sd-properties .sd-tx-more');
             if (b) b.focus();
+        });
+    }
+
+    // ── Options: the pointer (Shadow and effect › More › Pointer) ──
+    // "Cursor" (Pointer, Default, Not allowed) written by the part 'states'
+    // (PGOptionStates.cursorWrite()) on the element's custom style class,
+    // and "Let clicks through", Bootstrap's pe-none class on the element
+    // (a class switch, data-util-toggle). Normal only: a cursor shows while
+    // the pointer is over the element, so a state adds nothing.
+    var _SD_PT_RE = /(?:^|[\s;{])cursor\s*:/;
+
+    // { cursor: a row's key, '' or 'own'; through: pe-none on the element }.
+    function _sdPtOf(node) {
+        var through = String(node.props.cssClass || '').split(/\s+/).indexOf('pe-none') !== -1;
+        var cls = PgCustomStyle.classOf(node.props.cssClass);
+        var text = cls ? _userStylesGet() : '';
+        if (!cls || text.indexOf('.' + cls) === -1 || !_SD_PT_RE.test(text)) return { cursor: '', through: through };
+        if (_sdPartLoaded('states') && window.PGOptionStates) return { cursor: window.PGOptionStates.cursorRead(text, cls), through: through };
+        if (!_sdTfLoading) {
+            _sdTfLoading = true;
+            _sdPartLoad('states').then(function () {
+                _sdTfLoading = false;
+                if (selectedNode === node) renderProperties();
+            }, function () { _sdTfLoading = false; _sdPartFailed(); });
+        }
+        return { cursor: '', through: through };
+    }
+
+    function _sdPtRowsHtml(pt) {
+        var names = [['', _sdT('Auto')], ['pointer', _sdT('Pointer')], ['default', _sdT('Default')], ['not-allowed', _sdT('Not allowed')]];
+        var h = '<div class="sd-trans-sub">' + esc(_sdT('Pointer')) + '</div>' +
+            '<div class="sd-prop-row" data-sd-pt-keys="cursor"><label class="sd-prop-label">' + esc(_sdT('Cursor')) + '</label><div class="sd-prop-control">' +
+            '<select class="form-select form-select-sm' + (pt.cursor === '' ? ' sd-trans-inh' : '') + '" data-sd-pt="cursor" aria-label="' + esc(_sdT('Cursor')) + '">' +
+            (pt.cursor === 'own' ? '<option value="own" selected disabled>' + esc(_sdT('Your own')) + '</option>' : '') +
+            names.map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === pt.cursor ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') +
+            '</select></div></div>' +
+            '<div class="sd-prop-row"><label class="sd-prop-label">' + esc(_sdT('Let clicks through')) + '</label><div class="sd-prop-control">' +
+            swAttr('data-util-toggle="pe-none"', pt.through) + '</div></div>';
+        if (pt.through) {
+            h += '<div class="sd-tf-fx"><i class="bi bi-info-circle" aria-hidden="true"></i><span>' +
+                esc(_sdT('Clicks go to what is behind this element, on the canvas too. Pick it in the Tree to change it.')) + '</span></div>';
+        }
+        return h;
+    }
+
+    // The cursor written as one undo step ('' takes it out).
+    function _sdPtSet(value) {
+        var node = _sdStateNode();
+        if (!node) return;
+        var run = function () {
+            if (selectedNode !== node) return;
+            var S = window.PGOptionStates;
+            _sdStateWrite(function (text, cls) { return S.cursorWrite(text, cls, value); });
+        };
+        if (_sdPartLoaded('states') && window.PGOptionStates) { run(); return; }
+        _sdPartLoad('states').then(run, _sdPartFailed);
+    }
+
+    // Once per panel: Cursor writes on change ("Let clicks through" is a
+    // class switch the panel's class toggles handle).
+    function _sdPtBind(panel) {
+        if (!panel || panel._sdPt || !panel.querySelector('[data-sd-pt]')) return;
+        panel._sdPt = true;
+        panel.addEventListener('change', function (e) {
+            var t = e.target;
+            if (t && t.getAttribute && t.getAttribute('data-sd-pt') === 'cursor') _sdPtSet(t.value);
         });
     }
 
@@ -38518,9 +38719,11 @@ const StyleDesigner = (function () {
         markModifiedProps();
         _sdStateAfter(panel);
         _sdTransBind(panel);
+        _sdTransEaseWire(panel);
         _sdTfBind(panel);
         _sdEffBind(panel);
         _sdTxBind(panel);
+        _sdPtBind(panel);
         var _counts = {};
         panel.querySelectorAll('[data-sd-otab]').forEach(function (pane) { _counts[pane.getAttribute('data-sd-otab')] = _sdSectHeadsFill(pane); });
         Object.keys(_sdOptHeld).forEach(function (t) { _counts[t] = _sdOptHeldCount(_sdOptHeld[t]); });
@@ -58639,10 +58842,12 @@ const StyleDesigner = (function () {
             if (!n) continue;
             var attrs = (n.props && n.props._attrs) || [];
             var seen = {};
-            for (var i = 0; i < attrs.length; i++) {
-                if (!attrs[i] || attrs[i].name !== 'style') continue;
+            // Its style, and an Interactions easing that names a stored curve.
+            var texts = attrs.filter(function (a) { return a && a.name === 'style'; }).map(function (a) { return String(a.value || ''); });
+            if (n.props && n.props._fx && typeof n.props._fx.easing === 'string') texts.push(n.props._fx.easing);
+            for (var i = 0; i < texts.length; i++) {
                 var re = /--pg-var-([a-z0-9][a-z0-9-]*)/g, m;
-                while ((m = re.exec(String(attrs[i].value || '')))) {
+                while ((m = re.exec(texts[i]))) {
                     if (!seen[m[1]]) { seen[m[1]] = 1; out[m[1]] = (out[m[1]] || 0) + 1; }
                 }
             }
@@ -67622,6 +67827,8 @@ const StyleDesigner = (function () {
             if (_fk) { var _fv = {}; _fv[_fk] = ''; _sdEffSet(_fv); }
             return;
         }
+        // The Cursor row: the cursor out.
+        if (kind === 'pt') { _sdPtSet(''); return; }
         // A Text effect row: its value out (Outline: the width takes it out).
         if (kind === 'tx') {
             var _xk = propRow.getAttribute('data-sd-tx-keys');
@@ -78207,6 +78414,39 @@ const StyleDesigner = (function () {
             count: { duration: [100, 5000, 2000], delay: [0, 5000, 0] }
         };
     }
+    // An easing in its written form: a named one, cubic-bezier(x1, y1, x2,
+    // y2) with x1 and x2 from 0 to 1 and y1, y2 held from -0.5 to 1.5, or a
+    // stored curve var(--pg-var-c-<key>, cubic-bezier(...)); '' for
+    // anything else. Twin of pg_fx_easing_clean().
+    function _sdEaseClean(easing) {
+        if (typeof easing !== 'string') return '';
+        var s = easing.trim().toLowerCase(), key = '', m;
+        if (_sdFxSpec().easings.indexOf(s) !== -1) return s;
+        if ((m = /^var\(\s*--pg-var-c-([a-z0-9][a-z0-9-]{0,29})\s*,\s*([\s\S]+)\)$/.exec(s))) { key = m[1]; s = m[2].trim(); }
+        if (!(m = /^cubic-bezier\(([^()]*)\)$/.exec(s))) return '';
+        var p = _sdCurveNums(m[1]);
+        if (!p) return '';
+        var curve = 'cubic-bezier(' + p.join(', ') + ')';
+        return key ? 'var(--pg-var-c-' + key + ', ' + curve + ')' : curve;
+    }
+    // The four numbers of a curve from "x1, y1, x2, y2", each in its
+    // shortest form, or null. Twin of pg_fx_curve_numbers().
+    function _sdCurveNums(text) {
+        var parts = String(text).split(',');
+        if (parts.length !== 4) return null;
+        var out = [];
+        for (var i = 0; i < 4; i++) {
+            var t = parts[i].trim();
+            if (!/^-?(\d{1,3}(\.\d*)?|\.\d+)$/.test(t)) return null;
+            var n = Number(t);
+            if (i % 2 === 0 && (n < 0 || n > 1)) return null;
+            if (i % 2 === 1) n = Math.max(-0.5, Math.min(1.5, n));
+            // PHP's round() rounds halves away from zero.
+            n = (n < 0 ? -Math.round(-n * 1000) : Math.round(n * 1000)) / 1000;
+            out.push(String(n === 0 ? 0 : n));
+        }
+        return out;
+    }
     function _sdFxNormalize(fx) {
         if (!fx || typeof fx !== 'object' || typeof fx.effect !== 'string') return null;
         var spec = _sdFxSpec(), effect = fx.effect.toLowerCase();
@@ -78227,13 +78467,13 @@ const StyleDesigner = (function () {
         if (effect === 'count') { out.duration = num('duration'); out.delay = num('delay'); return out; }
         if (effect === 'chapter') { out.duration = num('duration'); return out; }
         var trigger = typeof fx.trigger === 'string' ? fx.trigger.toLowerCase() : '';
-        var easing = typeof fx.easing === 'string' ? fx.easing.toLowerCase() : '';
+        var easing = _sdEaseClean(fx.easing);
         out.trigger = spec.triggers.indexOf(trigger) !== -1 ? trigger : spec.triggers[0];
         // Reveal is an entrance only.
         if (effect === 'reveal' && (out.trigger === 'hover' || out.trigger === 'click')) out.trigger = spec.triggers[0];
         out.duration = num('duration');
         out.delay = num('delay');
-        out.easing = spec.easings.indexOf(easing) !== -1 ? easing : spec.easings[0];
+        out.easing = easing || spec.easings[0];
         if (['fade', 'zoom-out', 'reveal'].indexOf(effect) === -1) out.distance = num('distance');
         if (out.trigger === 'load' || out.trigger === 'view') out.stagger = num('stagger');
         if (out.trigger === 'view') out.repeat = !!fx.repeat;
@@ -78915,7 +79155,14 @@ const StyleDesigner = (function () {
             // Whether the canvas reads a variables stylesheet: the saved
             // file or one being tried.
             hasCss: function () { return !!(_sdThemeTry.variables || th.variables); },
-            usage: function () { return _sdVarUsage(_pages.map(_pgTreeOf)); }
+            usage: function () {
+                // A stored curve's Transition rules in User Styles count too,
+                // one per rule that names it.
+                var out = _sdVarUsage(_pages.map(_pgTreeOf));
+                var re = /--pg-var-(c-[a-z0-9-]*[a-z0-9])\s*,\s*cubic-bezier/g, m, text = _userStylesGet() || '';
+                while ((m = re.exec(text))) out[m[1]] = (out[m[1]] || 0) + 1;
+                return out;
+            }
         };
     }
 
@@ -87108,10 +87355,70 @@ const StyleDesigner = (function () {
     }
     function _pgPagesButton() { return document.getElementById('sd-tabs-all-btn'); }
 
-    // Opens the Pages window, or closes it when it is open.
-    function _pgPagesOpen() {
+    // Opens the Pages window, or closes it when it is open. `view`
+    // 'collection' opens it on "New collection with pages" (the palette's
+    // row); a click hands an event, which opens the list.
+    function _pgPagesOpen(view) {
         if (_sdComponentOnly()) return;
-        _sdPartCall('pages', 'open', [_pgPagesHost()]).catch(_sdPartFailed);
+        _sdPartCall('pages', 'open', [_pgPagesHost(), view === 'collection' ? view : '']).catch(_sdPartFailed);
+    }
+
+    // What "New collection with pages" (the part 'collection') reads and
+    // calls: the endpoint, the design's addresses and groups, the core's
+    // layouts of a form, a list and a detail, and the tabs it adds. `back`
+    // turns the Pages window back to its list.
+    function _pgCollectionHost(back) {
+        return {
+            back: back,
+            styleId: (_design && _design.styleId) || 0,
+            draft: _pgNewPageDraft(),
+            api: function (op, extra) {
+                var body = { op: op };
+                Object.keys(extra || {}).forEach(function (k) { body[k] = extra[k]; });
+                return _pgApiPost('collection_pages', body);
+            },
+            addresses: function () { return _pages.map(function (p) { return String(p.page_name || '').toLowerCase(); }); },
+            groups: function () { return _pgPagesHost().groups().filter(function (g) { return g.id; }); },
+            config: function (kind) { return _swTypeDefaults({}, kind); },
+            formTree: function (fields, name) { return _ensureMessagesNode(_cfBuildFromFields(fields, 0, name)); },
+            starter: function (kind, fields) { return _buildStarterTree(kind, { formFields: fields }); },
+            node: createNode,
+            // A page made on the server opens as a saved tab of this design,
+            // in the group asked for ({id} or {name} for a new one). Answers
+            // the group's id.
+            add: function (pageId, group) {
+                return _pgApiPost('page_load', { page_id: pageId }).then(function (res) {
+                    if (!res || res.status !== 'success' || !res.page) throw new Error((res && res.message) || 'page_load');
+                    return _pgTabsAddSaved(res.page, group || {});
+                });
+            },
+            open: function (pageId) { var k = 'p' + pageId; if (_pgPageByKey(k) && k !== _activeKey) _pgTabsSwitch(k); },
+            itemUrl: function (pageId) {
+                return (window.OUTPUT_PATH || '/') + (typeof software_directory !== 'undefined' ? software_directory : 'pinegrap') + '/add_submitted_form.php?page_id=' + pageId;
+            }
+        };
+    }
+
+    // A saved page of this design added as a tab at the end of `group`'s
+    // pages ({id}; {name}: a new group so named; else none), unchanged.
+    function _pgTabsAddSaved(sp, group) {
+        var key = 'p' + sp.page_id;
+        var had = _pgPageByKey(key);
+        if (had) return had.tabGroup || '';
+        var p = _pgPageFromRow(sp);
+        p.key = key;
+        p.baseline = _pgBaselineOf(p);
+        var gid = (group.id && _pgTabGroups[group.id]) ? group.id : '';
+        if (!gid && group.name && _pgTabLayoutEditable()) {
+            for (var n = 1; !gid; n++) if (!_pgTabGroups['g' + n]) gid = 'g' + n;
+            _pgTabGroups[gid] = { name: String(group.name), color: _pgTabGroupNextColor() };
+        }
+        var members = gid ? _pgTabGroupMembers(gid) : [];
+        p.tabGroup = gid;
+        if (members.length) _pages.splice(_pages.indexOf(members[members.length - 1]) + 1, 0, p);
+        else _pages.push(p);
+        _pgTabsLayoutChanged();
+        return gid;
     }
 
     // A page's address on the site: the home page's is "/".
@@ -87161,7 +87468,8 @@ const StyleDesigner = (function () {
                         home: !!p.page_home, active: p.key === _activeKey, locked: locked,
                         group: (p.tabGroup && _pgTabGroups[p.tabGroup]) ? p.tabGroup : '',
                         dirty: !!_pgPageDirty(p), draft: !!(_pgDraftsReady() && p.page_draft),
-                        holder: locked ? '' : _pgTabHolder(p), badge: _pgContentChangeBadge(p, true)
+                        holder: locked ? '' : _pgTabHolder(p), badge: _pgContentChangeBadge(p, true),
+                        coll: !!(p.formSettings && parseInt(p.formSettings.collection, 10) === 1)
                     };
                 });
             },
@@ -87189,6 +87497,10 @@ const StyleDesigner = (function () {
             canAdd: function () { return !!document.getElementById('sd-tab-new-page') && !_sdIsContentLevel(); },
             canRename: function () { return !_sdComponentOnly(); },
             canMove: _pgTabLayoutEditable,
+            // "New collection with pages": the window's second view.
+            collection: function (win, back) {
+                _sdPartCall('collection', 'open', [win, _pgCollectionHost(back)]).catch(_sdPartFailed);
+            },
             open: function (key) { if (key !== _activeKey) _pgTabsSwitch(key); },
             add: function () { _pgTabsAddNew(); },
             rename: function (key, val) {
@@ -91520,54 +91832,58 @@ const StyleDesigner = (function () {
         sync();
     }
 
+    // A tab's page from a stored row, as the editor's start and
+    // designer/page_load give it.
+    function _pgPageFromRow(sp) {
+        var p = {
+            key: sp.key, page_id: sp.page_id || 0, page_name: sp.page_name || '',
+            page_folder: sp.page_folder || 0, page_title: sp.page_title || '',
+            page_meta_description: sp.page_meta_description || '',
+            page_meta_tags: sp.page_meta_tags || '', page_custom_jsonld: sp.page_custom_jsonld || '',
+            page_canonical_url: sp.page_canonical_url || '', page_noarchive: sp.page_noarchive ? 1 : 0,
+            page_max_snippet: (sp.page_max_snippet == null) ? '' : String(sp.page_max_snippet),
+            page_search: sp.page_search ? 1 : 0, page_search_keywords: sp.page_search_keywords || '',
+            page_sitemap: sp.page_sitemap ? 1 : 0, page_home: sp.page_home ? 1 : 0,
+            page_noindex: sp.page_noindex ? 1 : 0, page_nofollow: sp.page_nofollow ? 1 : 0,
+            page_draft: sp.page_draft ? 1 : 0,
+            page_publish_at: sp.page_publish_at || '', page_unpublish_at: sp.page_unpublish_at || '',
+            pg_comments: sp.pg_comments ? 1 : 0, pg_comments_label: sp.pg_comments_label || '',
+            pg_comments_allow_new: sp.pg_comments_allow_new ? 1 : 0, pg_comments_rating: sp.pg_comments_rating ? 1 : 0,
+            pg_comments_auto_publish: sp.pg_comments_auto_publish ? 1 : 0, pg_comments_show_date: sp.pg_comments_show_date ? 1 : 0,
+            pg_comments_login: sp.pg_comments_login ? 1 : 0,
+            pg_comments_email_page: sp.pg_comments_email_page || 0, pg_comments_email_subject: sp.pg_comments_email_subject || '',
+            pg_comments_notify_email: sp.pg_comments_notify_email || '',
+            pg_comments_attachments: sp.pg_comments_attachments ? 1 : 0, pg_comments_select_name: sp.pg_comments_select_name ? 1 : 0,
+            pg_comments_message: sp.pg_comments_message || '', pg_comments_closed_message: sp.pg_comments_closed_message || '',
+            pg_comments_watchers_managed: sp.pg_comments_watchers_managed ? 1 : 0,
+            // A page of a classic style just opened in the editor: its
+            // tree is not saved yet, so it starts unsaved.
+            converted: sp.converted ? 1 : 0,
+            tree: sp.tree || null, undoStack: [], redoStack: [], nodeIdCounter: 0,
+            baseline: null, treeLoadWarning: !!sp.treeLoadWarning,
+            // Hash of the stored tree loaded (pg_page_base_hash()).
+            baseHash: sp.baseHash || '',
+            // The page's form-level settings, as stored; written back
+            // with the page. The fields are the widget's controls.
+            formSettings: (sp.formSettings && typeof sp.formSettings === 'object') ? sp.formSettings : {},
+            // The columns marked as written with AI; _pgAiMarksInit()
+            // remembers the text of each.
+            ai_fields: sp.ai_fields || []
+        };
+        _pgAiMarksInit(p, p.ai_fields);
+        if (p.tree) { _sdTreeObjects(p.tree); _normalizeToggleableShowState(p.tree); p.nodeIdCounter = reindex(p.tree); }
+        else p.tree = createDefaultTree();
+        // The address the page is reachable at NOW — a rename in the
+        // tab only takes effect on save.
+        p.savedName = p.page_id > 0 ? p.page_name : '';
+        return p;
+    }
+
     function _pgTabsInit(design) {
         _design = design || null;
         _pages  = [];
         var src = (design && Array.isArray(design.pages)) ? design.pages : [];
-        src.forEach(function (sp) {
-            var p = {
-                key: sp.key, page_id: sp.page_id || 0, page_name: sp.page_name || '',
-                page_folder: sp.page_folder || 0, page_title: sp.page_title || '',
-                page_meta_description: sp.page_meta_description || '',
-                page_meta_tags: sp.page_meta_tags || '', page_custom_jsonld: sp.page_custom_jsonld || '',
-                page_canonical_url: sp.page_canonical_url || '', page_noarchive: sp.page_noarchive ? 1 : 0,
-                page_max_snippet: (sp.page_max_snippet == null) ? '' : String(sp.page_max_snippet),
-                page_search: sp.page_search ? 1 : 0, page_search_keywords: sp.page_search_keywords || '',
-                page_sitemap: sp.page_sitemap ? 1 : 0, page_home: sp.page_home ? 1 : 0,
-                page_noindex: sp.page_noindex ? 1 : 0, page_nofollow: sp.page_nofollow ? 1 : 0,
-                page_draft: sp.page_draft ? 1 : 0,
-                page_publish_at: sp.page_publish_at || '', page_unpublish_at: sp.page_unpublish_at || '',
-                pg_comments: sp.pg_comments ? 1 : 0, pg_comments_label: sp.pg_comments_label || '',
-                pg_comments_allow_new: sp.pg_comments_allow_new ? 1 : 0, pg_comments_rating: sp.pg_comments_rating ? 1 : 0,
-                pg_comments_auto_publish: sp.pg_comments_auto_publish ? 1 : 0, pg_comments_show_date: sp.pg_comments_show_date ? 1 : 0,
-                pg_comments_login: sp.pg_comments_login ? 1 : 0,
-                pg_comments_email_page: sp.pg_comments_email_page || 0, pg_comments_email_subject: sp.pg_comments_email_subject || '',
-                pg_comments_notify_email: sp.pg_comments_notify_email || '',
-                pg_comments_attachments: sp.pg_comments_attachments ? 1 : 0, pg_comments_select_name: sp.pg_comments_select_name ? 1 : 0,
-                pg_comments_message: sp.pg_comments_message || '', pg_comments_closed_message: sp.pg_comments_closed_message || '',
-                pg_comments_watchers_managed: sp.pg_comments_watchers_managed ? 1 : 0,
-                // A page of a classic style just opened in the editor: its
-                // tree is not saved yet, so it starts unsaved.
-                converted: sp.converted ? 1 : 0,
-                tree: sp.tree || null, undoStack: [], redoStack: [], nodeIdCounter: 0,
-                baseline: null, treeLoadWarning: !!sp.treeLoadWarning,
-                // Hash of the stored tree loaded (pg_page_base_hash()).
-                baseHash: sp.baseHash || '',
-                // The page's form-level settings, as stored; written back
-                // with the page. The fields are the widget's controls.
-                formSettings: (sp.formSettings && typeof sp.formSettings === 'object') ? sp.formSettings : {},
-                // The columns marked as written with AI; _pgAiMarksInit()
-                // remembers the text of each.
-                ai_fields: sp.ai_fields || []
-            };
-            _pgAiMarksInit(p, p.ai_fields);
-            if (p.tree) { _sdTreeObjects(p.tree); _normalizeToggleableShowState(p.tree); p.nodeIdCounter = reindex(p.tree); }
-            else p.tree = createDefaultTree();
-            // The address the page is reachable at NOW — a rename in the
-            // tab only takes effect on save.
-            p.savedName = p.page_id > 0 ? p.page_name : '';
-            _pages.push(p);
-        });
+        src.forEach(function (sp) { _pages.push(_pgPageFromRow(sp)); });
         _pgTabsApplyLayout(design && design.tabLayout ? design.tabLayout.layout : null);
         if (!_pages.length) {
             _pages.push({
@@ -92396,6 +92712,7 @@ const StyleDesigner = (function () {
             { id: 'act_preview', label: _sdT('Preview'), icon: 'bi-box-arrow-up-right', hint: 'Ctrl+Alt+P', action: function() { openPreview(); } },
             (_sdStyleGuideReady() ? { id: 'act_style_guide', label: _sdT('Style guide'), icon: 'bi-journal-richtext', hint: _sdT('Preview'), action: function() { _sdStyleGuideOpen(); } } : null),
             { id: 'act_pages', label: _sdT('Pages'), icon: 'bi-files', hint: 'Ctrl+P', action: function() { _pgPagesOpen(); } },
+            (_pgPagesHost().canAdd() ? { id: 'act_new_collection', label: _sdT('New collection with pages'), icon: 'bi-collection', meta: _sdT('Pages'), action: function() { _pgPagesOpen('collection'); } } : null),
             { id: 'act_snapshot', label: _sdT('Take a Snapshot'), icon: 'bi-camera', action: function() { var n = window.prompt(_sdT('Snapshot name:')); if (n && n.trim()) saveSnapshot(n.trim()); } },
             // ── Selection ───────────────────────────────────────────
             { id: 'act_select_body', label: _sdT('Select the Body'), icon: 'bi-filetype-html', action: function() {
@@ -98291,8 +98608,12 @@ const StyleDesigner = (function () {
             _sdCodeTabFind: _sdCodeTabFind,
             _sdCodeTabsRender: _sdCodeTabsRender,
             _sdContentSizingNode: _sdContentSizingNode,
+            _sdCurveNums: _sdCurveNums,
+            _sdCurveSign: _sdCurveSign,
             _sdDecodeEntities: _sdDecodeEntities,
             _sdDocLang: _sdDocLang,
+            _sdEaseHtml: _sdEaseHtml,
+            _sdEaseWire: _sdEaseWire,
             _sdEmitNode: _sdEmitNode,
             _sdFrameRowText: _sdFrameRowText,
             _sdFxAttrs: _sdFxAttrs,

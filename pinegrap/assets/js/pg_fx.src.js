@@ -92,6 +92,7 @@
         'scroll-zoom', 'scroll-fade', 'scroll-rise', 'count', 'autoplay', 'chapter', 'scene'];
     var TRIGGERS = ['view', 'load', 'hover', 'click'];
     var EASINGS  = ['ease-out', 'ease', 'ease-in', 'ease-in-out', 'linear'];
+    var CURVE    = /^(var\(--pg-var-c-[a-z0-9-]+, )?cubic-bezier\([-0-9., ]+\)\)?$/;
     var NUMBERS  = {
         duration: [100, 5000, 600], delay: [0, 5000, 0], stagger: [0, 1000, 0],
         distance: [0, 400, 0], offset: [0, 1000, 0], speed: [5, 100, 20]
@@ -135,7 +136,8 @@
         o.entrance = o.trigger === 'load' || o.trigger === 'view';
         o.duration = num('duration');
         o.delay    = num('delay');
-        o.easing   = EASINGS.indexOf(easing) !== -1 ? easing : EASINGS[0];
+        // A named easing, or a curve as pg_fx_easing_clean() writes it.
+        o.easing   = (EASINGS.indexOf(easing) !== -1 || CURVE.test(easing)) ? easing : EASINGS[0];
         o.stagger  = o.entrance ? num('stagger') : 0;
         var own = OWN_DISTANCE[effect] || [24, 6];
         o.distance = num('distance') || (o.entrance ? own[0] : own[1]);

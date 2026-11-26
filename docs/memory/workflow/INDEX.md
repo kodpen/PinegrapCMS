@@ -31,6 +31,7 @@
 - bug-hunt-areas-3.md: The areas given to a bug hunt from 2026-11-20 on (the own sheet reader and its importers; Incoming e-mail and Mailboxes at phone width), what each fixed, the issues it opened and what it read clean
 - bug-hunt-areas-4.md: Bug hunt areas beside bug-hunt-areas-3: the fifteen panel screens hunted on 2026-11-19 and the two areas given on 2026-11-20 (prototype comments' guest side, picture text translation's server side)
 - bug-hunt-areas-5.md: Bug hunt areas given on the evening of 2026-11-20: order profit and shipping labels (K3), the bookings' visitor side and stock per location (K2); files, what to look at, what is left alone [decision: here]
+- bug-hunt-areas-agent-requests.md: The bug hunt in the agents' request queue and wakes (architect, 2026-11-26, request 3016): what was fixed, what was read clean, what is asked and left [decision: here]
 - bug-hunt-areas-ai-connections.md: The bug hunt in the AI provider connections (agent channel message 10241, area b, #10616): the faults fixed, the issues opened and what was read clean
 - bug-hunt-areas-api-new-routes.md: The bug hunt of the API routes and MCP tools new in 2026.11.0 (VS8, WQ8, LJ6, SJ6, DV6, share links; PR of 2026-11-24): the two queue faults fixed, what was read clean, what was not run [decision: here]
 - bug-hunt-areas-api-shared-layer.md: The bug hunt of the external API's shared layer (fault, manners, response, router, preconditions, idempotency; channel message 10241, area c, PR #10615): three faults fixed, what was read clean
@@ -44,6 +45,7 @@
 - bug-hunt-areas-booking-visitor.md: The bug hunt of bookings on the visitor's side (2026-11-20): the widget's endpoint, the slot engine, hold and confirm, the manage page, the deposit payment; what it fixed and what read clean
 - bug-hunt-areas-calendar-events.md: Bug hunt 29 of calendar events, repeats and the calendar feeds (.ics, Workspace subscription): four faults fixed, what was read clean, what was left
 - bug-hunt-areas-canvas-data-views.md: The bug hunt of the Artifact Canvas data views (DV1-DV6, #11353, 2026-11-24): the four faults fixed, what was read clean, what was not run [decision: here]
+- bug-hunt-areas-channel-board.md: Bug hunt of a channel's Board tab (2026-11-26, PR #11743): who sees and moves a card, the four figures against the lists, moves, the board's rules, the kept view and ?view=board/list
 - bug-hunt-areas-channel-notes-share.md: Bug hunt of channel notes (CN1-CN3) and the share door (SL1-SL6): six faults fixed, what was read clean, what was left
 - bug-hunt-areas-click-scroll-map.md: The bug hunt of the click and scroll map (architect 2026-11-20, channel message 10776): the three faults fixed, what was read clean, what is no fault [decision: here]
 - bug-hunt-areas-comments-reviews.md: Bug hunt 23, page comments and product reviews (2026-11-24): links in a comment's text, a deleted page's comment notifications, the deleted product finding, what read clean
@@ -74,6 +76,7 @@
 - bug-hunt-areas-ops-alerts-once.md: The bug hunt of staff alerts told once (2026-11-24, #11358): pg_ops_alert() and the bell lines on it; the five faults fixed, what was read clean, what was not there yet [decision: here]
 - bug-hunt-areas-order-legal-documents.md: The bug hunt of the order's legal documents (pre-information form, distance sales contract, KVKK copy; #10663, 2026-11-20): the three faults fixed, the issue opened, what was read clean [decision: here]
 - bug-hunt-areas-page-versions-publish.md: The bug hunt of page drafts, scheduled publishing and revisions (2026-11-24, hunt 35): the three faults fixed, the finding left as an issue, what was read clean
+- bug-hunt-areas-parasut-devhub-connect.md: The bug hunt in Paraşüt through a Developer Portal client (agent channel request 3016, 2026-11-26, #11741): the faults fixed, what was read clean and what was left
 - bug-hunt-areas-payment-gateways-callbacks.md: Bug hunt of the payment gateways' return and notify endpoints (area 49, 2026-11-24): repeated messages, a message before the return, amounts; what it fixed and read clean
 - bug-hunt-areas-phone-dark-new-screens.md: Bug hunt 15 (2026-11-24): the 2026.11.0 screens at 390 px and in the dark theme on a sandbox; the five faults fixed in #11382, what read clean, what was not reached
 - bug-hunt-areas-pick-pack.md: The bug hunt of pick and pack (PP1-PP7, 2026-11-24, #11341): six faults fixed, two issues opened for a decision, what was read clean
