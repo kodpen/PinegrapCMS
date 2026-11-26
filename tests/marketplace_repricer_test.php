@@ -235,6 +235,29 @@ function test_marketplace_repricer_ten_percent_a_day()
 	pg_assert_same(9000, mp_repricer_limit(9000, 8500, $day), 'already 10% down: held');
 }
 
+// The price before the pass can sit outside the day's 10% when the site
+// price or the cost moved the rules' price or the floor since the day's
+// first change. The limit then never turns a cut into a deeper cut or a
+// raise into a cut: it only holds the move short.
+function test_marketplace_repricer_limit_never_moves_against_the_strategy()
+{
+	$day = array('changes' => 1, 'base' => 10000, 'raised' => false);
+
+	pg_assert_same(15490, mp_repricer_limit(16000, 15490, $day), 'a cut from over the window goes no deeper than wanted');
+	pg_assert_same(12000, mp_repricer_limit(12000, 13000, $day), 'a raise from over the window is held, not cut');
+	pg_assert_same(8000, mp_repricer_limit(8000, 7000, $day), 'a cut from under the window is held, not raised');
+	pg_assert_same(8500, mp_repricer_limit(8000, 8500, $day), 'a raise from under the window goes');
+
+	// Win after the floor rose to 150.00: the competitor at 155.00, the
+	// listing at 160.00 since the site price went up, the day began at 100.00.
+	$decision = mp_repricer_decide(marketplace_repricer_test_input(array(
+		'buybox_price' => 15500, 'current' => 16000, 'rule_price' => 16000, 'floor' => 15000,
+	)), $day);
+
+	pg_assert_same(15400, $decision['price'], 'one step under the buybox, not under the floor');
+	pg_assert_same(true, $decision['price'] >= 15000, 'never under the floor');
+}
+
 function test_marketplace_repricer_decide_applies_limits_after_the_strategy()
 {
 	$decision = mp_repricer_decide(marketplace_repricer_test_input(array('buybox_price' => 8050)),
