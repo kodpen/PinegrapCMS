@@ -444,6 +444,36 @@ function test_security_scan_round_quarantine_never_goes_through_a_folder_turned_
 	}
 }
 
+function test_security_scan_round_a_second_quarantine_keeps_the_first_copy()
+{
+	$place = 'data/temp/pg_scan_twice_' . getmypid() . '.php';
+	$path = pg_security_place_disk_path($place);
+	$folder = PG_FUNCTIONS_DIR . '/' . PG_SECURITY_QUARANTINE_FOLDER;
+	$made_folder = !is_dir($folder);
+	$row = array('kind' => 'file_php_unknown', 'place' => $place);
+	$name = pg_security_quarantine_name($place);
+
+	file_put_contents($path, 'first');
+	pg_assert_same('', pg_security_quarantine_move($row, 'quarantine'));
+	file_put_contents($path, 'second');
+	pg_assert_same('', pg_security_quarantine_move($row, 'quarantine'), 'the file planted again is moved too');
+	pg_assert_same('second', file_get_contents($folder . '/' . $name));
+
+	$earlier = glob($folder . '/' . substr($name, 0, 40) . '.*.quarantine');
+	pg_assert_same(1, count($earlier), 'the first copy is kept beside it');
+	pg_assert_same('first', file_get_contents($earlier[0]));
+
+	@unlink($earlier[0]);
+	@unlink($folder . '/' . $name);
+	@unlink($path);
+
+	if ($made_folder) {
+		@unlink($folder . '/.htaccess');
+		@unlink($folder . '/index.html');
+		@rmdir($folder);
+	}
+}
+
 function test_security_scan_round_a_cut_walk_resumes_where_it_stopped()
 {
 	$site = _test_scan_round_folder('resume');

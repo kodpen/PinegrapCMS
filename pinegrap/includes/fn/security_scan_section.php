@@ -566,6 +566,20 @@ function pg_security_quarantine_move(array $row, $action)
             return lang('The folder of this file is no longer the folder the scan found it in. Run a scan to update the list.');
         }
 
+        // A file planted again at a place quarantined before: the earlier
+        // copy is kept under a numbered name, not written over.
+        if (file_exists($kept)) {
+            $number = 1;
+
+            while (file_exists(substr($kept, 0, -strlen('.quarantine')) . '.' . $number . '.quarantine')) {
+                $number++;
+            }
+
+            if (!@rename($kept, substr($kept, 0, -strlen('.quarantine')) . '.' . $number . '.quarantine')) {
+                return lang('The file could not be moved. Check the permissions of its folder.');
+            }
+        }
+
         return @rename($path, $kept) ? '' : lang('The file could not be moved. Check the permissions of its folder.');
     }
 
