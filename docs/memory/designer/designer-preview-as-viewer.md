@@ -5,7 +5,7 @@ module: designer_preview_render
 ---
 
 ## What reads the chosen visitor?
-- `pg_preview_as_viewer()` in `designer_preview_render.php`: `{preview, sample, signed_in, id, contact_id, role, member, username, email, first_name, last_name}`. Outside a Preview widget: the request's `USER_` constants. Inside: signed out (nobody), signed in (the sample account, id 0, role 3), member (signed in and a member), first visit and returning (signed out; `returning` true only for Returning, PW2d #11746). Outside, `returning` is the `pg_ret` cookie's answer (`pg_audience_returning()`).
+- `pg_preview_as_viewer()` in `designer_preview_render.php`: `{preview, sample, signed_in, id, contact_id, role, member, username, email, first_name, last_name}`. Outside a Preview widget: the request's `USER_` constants. Inside: signed out (nobody), signed in (the sample account, id 0, role 3), member (signed in and a member), first visit and returning (signed out, `returning` true for Returning only, #11746). Outside, `returning` is the `pg_ret` cookie's.
 - `pg_preview_as_view_access($folder, $grant)` stands for `check_view_access()` in every widget renderer; inside a Preview the rule is `pg_preview_as_view_rule()`: public for all, guest and registration signed in or with `$grant`, membership and private for the member only.
 - `_pg_acct_signed_in()` and `_pg_member_session_signed_in()` (the "already signed in" branch of login, forgot password, sign-up) answer the viewer's `signed_in` in a Preview.
 
