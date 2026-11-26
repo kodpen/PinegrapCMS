@@ -11,13 +11,14 @@ module: api_refusals
 
 ## Where is it?
 - `includes/fn/api_refusals.php`: `pg_api_refusals_sql()` (the one read), `pg_api_refusals_fold()` (ids out of paths, groups added up), `pg_api_refusals_report($routes, $days)`.
-- Panel: the Refused calls card on Application Access (`api_settings.php`), the busiest twenty, below Applications; a guide section links `agent_guide.php?topic=…`.
+- Panel: the Refused calls card on Application Access (`api_settings.php`), the busiest twenty, below Applications; a guide section links `agent_guide.php?topic=…` only when the viewer reads that topic there (`pg_api_refusals_guide_topic()` over the topics `agent_guide.php` lists for them); otherwise it is plain text, since a manager sees designers' `design_*` refusals but gets 404 for the designer topic.
 - API: `GET /reports/api-refusals` (`reports.api_refusals`, scope `system:read`, params `days` 1–30, `limit` 1–200); handler and `ApiRefusalsReport` in `includes/api/resources/system.php`.
 - Tests: `tests/api_refusals_test.php`.
 
 ## How are ids folded out of a path?
 - The logged path is matched against the routes with the router's narrowing (an int placeholder takes digits only, `also_accepts` methods count): `/orders/12` becomes route `orders.get`, path `/orders/{id}`.
 - A path no route takes (wrong address or method) keeps its words and turns each all-digit segment into `{id}`; `route` is null.
+- A tool called over MCP is logged as `/mcp` and the route's path (`pg_mcp_route_run()`): it folds to that route, path `/mcp/orders/{id}`, a row apart from the REST one. Before the bug hunt every MCP refusal had `route` null.
 - The panel folds against `api_schema()` (core routes); the API against `api_all_routes()`, modules included, so a module path folds by digits only on the panel.
 
 ## Why is the read capped?

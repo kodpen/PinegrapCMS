@@ -99,6 +99,24 @@ function test_agent_guide_panel_follows_the_viewers_gates()
 	pg_assert_contains('Keeping a change', $nobody, 'the rules stay');
 }
 
+// The Visual Page Editor opens to designers (roles 0 and 1) only: a viewer
+// the topic tells "a screen not listed here answers Access denied" is not
+// told to work it either.
+function test_agent_guide_panel_editor_section_follows_the_design_gate()
+{
+	$designer = agent_guide_panel_test_text(agent_guide_panel_test_gate(1));
+
+	pg_assert_contains('(#designer)', $designer, 'a designer reads how the editor is worked');
+	pg_assert_contains('design_proposals_create', $designer);
+
+	foreach (array('manager' => agent_guide_panel_test_gate(2), 'user' => agent_guide_panel_test_gate(3, array('folder_edit' => true)), 'nobody' => array()) as $who => $gate) {
+		$text = agent_guide_panel_test_text($gate);
+
+		pg_assert_false(strpos($text, '(#designer)') !== false, $who . ': no editor section');
+		pg_assert_false(strpos($text, 'design_proposals_create') !== false, $who . ': no design tool named');
+	}
+}
+
 function test_agent_guide_panel_user_row_reads_the_rights()
 {
 	$user = pg_agent_guide_panel_user(array(
