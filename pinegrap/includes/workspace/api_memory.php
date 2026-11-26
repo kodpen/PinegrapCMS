@@ -368,7 +368,7 @@ function ws_api_memory_list($params)
 {
     $viewer = ws_api_viewer();
     $channel = ws_api_channel_or_404($viewer, $params['id']);
-    $tag = mb_strtolower(ltrim(trim((string) ($params['tag'] ?? '')), '#'));
+    $tag = ws_memory_tag($params['tag'] ?? '');
     $out = array();
 
     foreach (ws_memory_rows($channel['id'], !empty($params['expired'])) as $row) {
@@ -408,7 +408,7 @@ function ws_api_memory_general_list($params)
 {
     $viewer = ws_api_viewer();
     ws_api_memory_general_or_403($viewer);
-    $tag = mb_strtolower(ltrim(trim((string) ($params['tag'] ?? '')), '#'));
+    $tag = ws_memory_tag($params['tag'] ?? '');
     $project = ws_memory_project($params['project'] ?? '');
     $out = array();
 

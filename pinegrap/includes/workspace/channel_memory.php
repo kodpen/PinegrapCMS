@@ -50,6 +50,19 @@ define('WS_MEMORY_NOTE_BURST', 300);
 define('WS_MEMORY_NOTE_MAX', 3000);
 
 /**
+ * One tag as stored and as a filter compares it: trimmed, without a leading
+ * #, lower case. A dotted capital I is folded to a plain i first: lowered
+ * alone it becomes an i with a combining dot, which no tag may hold. Pure.
+ *
+ * @param mixed $tag
+ * @return string
+ */
+function ws_memory_tag($tag)
+{
+    return mb_strtolower(str_replace("\u{0130}", 'i', ltrim(trim((string) $tag), '#')));
+}
+
+/**
  * An entry's tags as stored: trimmed, lower case, without a leading #,
  * each once, in the order given. Pure.
  *
@@ -65,7 +78,7 @@ function ws_memory_tags($tags)
     $out = array();
 
     foreach ($tags as $tag) {
-        $tag = mb_strtolower(ltrim(trim((string) $tag), '#'));
+        $tag = ws_memory_tag($tag);
 
         if (($tag !== '') && !in_array($tag, $out, true)) {
             $out[] = $tag;

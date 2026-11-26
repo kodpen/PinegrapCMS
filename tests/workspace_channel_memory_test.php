@@ -621,3 +621,16 @@ function test_workspace_memory_general_claude_needs_an_allowed_agent_channel()
 	pg_assert_true(substr_count($api, 'ws_api_memory_general_can($viewer)') >= 2, 'the general list and create, and a general record by id, ask it');
 	pg_assert_true(strpos($api, '!ws_memory_general_can($viewer)') === false, 'no route asks the person\'s rule alone');
 }
+
+// A Turkish tag with a dotted capital I is kept: lowered alone it took a
+// combining dot the tag check refuses, so "İade" could not be saved, and a
+// list filtered by it found nothing.
+function test_workspace_memory_tag_with_dotted_capital_i()
+{
+	pg_assert_same(array('iade', 'kira'), ws_memory_tags("#\u{0130}ade, K\u{0130}RA"));
+	pg_assert_same('iade', ws_memory_tag(" #\u{0130}ade "));
+	pg_assert_same('', ws_memory_entry_problem(array('title' => 'x', 'tags' => ws_memory_tags("\u{0130}ade \u{015E}irket")), 1000));
+
+	$api = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/api_memory.php');
+	pg_assert_same(2, substr_count($api, "\$tag = ws_memory_tag(\$params['tag'] ?? '');"), 'both list filters fold the tag as it is stored');
+}
