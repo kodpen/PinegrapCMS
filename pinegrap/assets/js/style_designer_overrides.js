@@ -173,11 +173,21 @@ StyleDesigner.definePart('overrides', function (K) {
 
     // ── The list of an element's fields ──────────────────────────────────
 
+    // The element of the open list in the component's tree as the editor
+    // has it now: Undo puts a new copy of the tree in place, and a write
+    // into the element as it was would be lost. Null when it is gone.
+    function popNodeNow() {
+        var node = state.popNode, root = compTree(state.popSid);
+        if (!node || !root || node._id == null) return node;
+        state.popNode = findById(root, node._id);
+        return state.popNode;
+    }
+
     // Closes the list. A label typed and not yet left is kept (a click
     // outside, another list opened), since removing its field fires no
     // change; `discard` (Escape) drops it.
     function closePop(discard) {
-        var pop = state.pop, node = state.popNode, sid = state.popSid;
+        var pop = state.pop, node = pop ? popNodeNow() : null, sid = state.popSid;
         state.pop = null;
         state.popNode = null;
         state.opener = null;
@@ -295,15 +305,18 @@ StyleDesigner.definePart('overrides', function (K) {
 
         pop.addEventListener('change', function (e) {
             var t = e.target;
+            if (state.pop !== pop) return;
+            var node = popNodeNow();
+            if (!node) { closePop(true); return; }
             var kind = t.getAttribute('data-co-kind');
             if (kind) {
                 var first = t.checked && !firstSeen();
-                setOpen(state.popNode, state.popSid, kind, t.checked);
+                setOpen(node, state.popSid, kind, t.checked);
                 drawPop(kind, first);
                 return;
             }
             kind = t.getAttribute('data-co-label');
-            if (kind && state.popNode) setLabel(state.popNode, state.popSid, kind, t.value);
+            if (kind) setLabel(node, state.popSid, kind, t.value);
         });
         pop.addEventListener('click', function (e) {
             if (!e.target.closest('[data-co-got]')) return;
