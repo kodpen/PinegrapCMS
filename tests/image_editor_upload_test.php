@@ -143,7 +143,7 @@ function test_image_editor_upload_checks()
 	pg_assert_same('size', pg_image_editor_upload_part_check(10, 0, 0, 5, 4), 'longer than a part');
 	pg_assert_same('size', pg_image_editor_upload_part_check(10, 0, 0, 0, 4), 'an empty part');
 
-	pg_assert_same(array('video' => 'video_upload', 'sound' => 'sound_upload', 'animation' => 'animation'), pg_image_editor_upload_kinds(), 'the kinds and their actions');
+	pg_assert_same(array('video' => 'video_upload', 'sound' => 'sound_upload', 'animation' => 'animation', 'design' => 'design_file'), pg_image_editor_upload_kinds(), 'the kinds and their actions');
 }
 
 // A sound by its bytes, never its name; each kind's format.

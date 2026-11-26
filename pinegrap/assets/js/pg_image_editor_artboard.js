@@ -535,6 +535,40 @@
     // editor gives [label, action] or null.
     Editor.importItems = [];
 
+    // The design file's script (pg_image_editor_design.js), loaded the first
+    // time Import's design item is used: it is not part of the canvas's load.
+    Editor.prototype.designScript = function () {
+        if (this.designImport) {
+            return Promise.resolve();
+        }
+
+        return (X.config().design || []).reduce(function (p, url) {
+            return p.then(function () {
+                return new Promise(function (resolve, reject) {
+                    var tag = document.createElement('script');
+
+                    tag.src = url;
+                    tag.onload = resolve;
+                    tag.onerror = reject;
+                    document.head.appendChild(tag);
+                });
+            });
+        }, Promise.resolve());
+    };
+
+    // Import's "A design file (.pptx)": a page of it as one group.
+    Editor.importItems.push(function () {
+        var self = this;
+
+        return this.importApi() ? [t('designImport'), function () {
+            self.designScript().then(function () {
+                self.designPick();
+            }, function () {
+                self.showMessage(t('designError'), true);
+            });
+        }] : null;
+    });
+
     // A file from this computer or a drop: an SVG becomes one SVG layer
     // (svgImport(), through the sanitizer), a video a video layer
     // (videoImport()), any other picture a picture layer as the Image tool

@@ -5,7 +5,7 @@ module: office_pptx_design
 ---
 
 ## What is it?
-- Since PR #11840 (step DF1 of `plans/artifact-canvas-design-file.md`): `pg_pptx_design_read($path, $limits)` in `includes/fn/office_pptx_design.php` reads a .pptx as a design, without a library, for the Artifact Canvas to open as layers. Pure: no database, nothing written, nothing taken out of the package. Its slides become canvas documents through `pg_pptx_canvas_slide()` (`office-pptx-canvas-mapper.md`); no screen or door uses them yet (DF3, DF4).
+- Since PR #11840 (step DF1 of `plans/artifact-canvas-design-file.md`): `pg_pptx_design_read($path, $limits)` in `includes/fn/office_pptx_design.php` reads a .pptx as a design, without a library, for the Artifact Canvas to open as layers. Pure: no database, nothing written, nothing taken out of the package. Its slides become canvas documents through `pg_pptx_canvas_slide()` (`office-pptx-canvas-mapper.md`); `design_file` opens them (`ui/image-editor-design-file.md`).
 - It opens the package through the preview's gates and finds the slides with `pg_office_pptx_slides()` (`office-files.md`, `office-pptx-preview.md`).
 
 ## What does it give?
@@ -17,7 +17,7 @@ module: office_pptx_design
 ## Which element types?
 - `text`, one per body with any text: `paragraphs` (`text`, a break a new line, empty ones kept; `align`, `level`, `line`/`before`/`after` as `{type: pts|pct, value}` or null), `style` of the first run with text (`font`, `size`, `bold`, `italic`, `underline`, `color`, `spacing`; theme fonts resolved), `simplified` when runs differ (counted), `inset`, `anchor`, `wrap`, `autofit` (shape, text, none).
 - A filled shape with text gives the shape, then the text in its place.
-- `picture`: a `p:pic` or a shape filled with a picture (Canva's form): `part` (resolved part name), `ext`, `crop` (shares cut on each side; negative is room), `opacity` (alphaModFix), `geometry` (its preset, `rect` otherwise). Source and fill rectangles become one crop; the caller reads the part (DF3).
+- `picture`: a `p:pic` or a shape filled with a picture (Canva's form): `part` (resolved part name), `ext`, `crop` (shares cut on each side; negative is room), `opacity` (alphaModFix), `geometry` (its preset, `rect` otherwise). Source and fill rectangles become one crop; `design_file` reads the part.
 - `line`: `line`, `straightConnector1` or any `p:cxnSp`: `x1..y2` from the box's corners, flipped and turned, and `stroke` (`color`, `opacity`, `width` EMU default 12700, `dash`, `head_start`, `head_end`).
 - `shape`: presets the canvas draws (rect, roundRect, ellipse, triangles, diamond, polygons, stars, wedge callouts; a four-point custom path is `rect`): `geometry`, `adjust` (guide name => value), `fill`, `stroke`. Fills and outlines fall back to the shape's style references (fillRef, lnRef idx > 0).
 

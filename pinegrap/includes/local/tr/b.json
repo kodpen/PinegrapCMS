@@ -1584,6 +1584,7 @@
     "Bringing files back is paused.": "Dosyaların geri alınması duraklatıldı.",
     "Bringing files back paused: {var:1} left": "Dosyaları geri getirme duraklatıldı: {var:1} kaldı",
     "Bringing files back: {var:1} left": "Dosyalar geri getiriliyor: {var:1} kaldı",
+    "Bringing in the page and its pictures...": "Sayfa ve resimleri getiriliyor...",
     "Brings \"{var:1}\" up to date": "\"{var:1}\" notunu günceller",
     "Brings in the figures of Google Analytics for the dashboard.": "Pano için Google Analytics verilerini getirir.",
     "Brings in the figures of Google Search Console.": "Google Search Console verilerini getirir.",
