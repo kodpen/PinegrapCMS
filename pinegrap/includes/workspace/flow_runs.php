@@ -2538,6 +2538,27 @@ function ws_flow_step_claim($step)
 }
 
 /**
+ * A ready row as the claim (ws_flow_step_claim()) left it: running, its try
+ * counted, claimed now. A box on its second try knows it is one
+ * (ws_flow_step_task() looks for the first try's task), and a box whose
+ * deadline counts from its claim (the Pinegrap AI and agent boxes) counts
+ * from this one, not from the 0 or the earlier try the row was read with.
+ * Pure.
+ *
+ * @param array $row ws_flow_run_steps row, read while ready
+ * @param int   $now the moment of the claim
+ * @return array
+ */
+function ws_flow_step_claimed($row, $now)
+{
+    $row['status'] = 'running';
+    $row['attempt'] = (int) ($row['attempt'] ?? 0) + 1;
+    $row['claimed_at'] = (int) $now;
+
+    return $row;
+}
+
+/**
  * Marks an open run as running now. A box is settled only after this, so a
  * request that dies between settling a box and writing what comes after it
  * leaves a run that reads running and is touched by nobody: a running run is
@@ -2699,12 +2720,7 @@ function ws_flow_advance($budget = WS_FLOW_BUDGET_TICK, $run_id = 0)
             return ws_flow_step_claim($row);
         },
         function ($row) {
-            // The row as the claim left it: a box on its second try knows it
-            // is one (ws_flow_step_task() looks for the first try's task).
-            $row['status'] = 'running';
-            $row['attempt'] = (int) $row['attempt'] + 1;
-
-            ws_flow_step_run($row);
+            ws_flow_step_run(ws_flow_step_claimed($row, time()));
         },
         $deadline
     );
