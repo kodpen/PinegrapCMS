@@ -79804,7 +79804,7 @@ const StyleDesigner = (function () {
         _sdRecEdit.want = null;
         var raw = _sdPreviewDocHtml();
         var payload = _sdPvAsApply(_sdPreviewWidgetPayload(raw));
-        if (!payload) { _sdShowPreview(_sdPreviewDocHtml(null, raw)); return; }
+        if (!payload) { _sdPvAs.check = false; _sdShowPreview(_sdPreviewDocHtml(null, raw)); return; }
 
         // The window opens now, inside the click - one opened when the
         // widgets arrive would meet the pop-up blocker - and waits for them.
@@ -84660,8 +84660,10 @@ const StyleDesigner = (function () {
     // designer/preview_widgets; an answer whose widgets offer a choice loads
     // the part, which draws the bar into the Preview's document. A page
     // that offers none never loads it. `asked`: a refresh the bar asked for
-    // is on its way.
-    var _sdPvAs = { asked: false, setups: null };
+    // is on its way; `running`: "Check all cases" is drawing its cases (the
+    // live preview waits); `check`: the palette asked for a run before the
+    // Preview had answered.
+    var _sdPvAs = { asked: false, setups: null, running: false, check: false };
 
     // The browser key of the page's choice: the design and the saved page,
     // or the tab before its first save.
@@ -84718,10 +84720,11 @@ const StyleDesigner = (function () {
     // The choice into a preview_widgets body: the page's visitor and case,
     // each widget's own record. The server reads it back against what the
     // page offers (pg_preview_as_choice()). It takes one visitor: one who
-    // is signed in or a member wins over the visit.
-    function _sdPvAsApply(payload) {
+    // is signed in or a member wins over the visit. `given`: a choice of
+    // "Check all cases" in place of the kept one.
+    function _sdPvAsApply(payload, given) {
         if (!payload) return payload;
-        var c = _sdPvAsChoice();
+        var c = given || _sdPvAsChoice();
         payload.preview_as = {
             case: c.case,
             visitor: c.who !== 'signed_out' ? c.who : c.visit,
@@ -84748,8 +84751,60 @@ const StyleDesigner = (function () {
             return !!s.source || (Array.isArray(s.cases) && s.cases.length > 1);
         });
         if (!offers && setups && _sdPvAsAudience()) offers = true;
+        var check = _sdPvAs.check && !!setups;
+        if (setups) _sdPvAs.check = false;
         if (!offers && !_sdPartLoaded('previewas')) return;
-        _sdPartCall('previewas', 'answer', [_sdPreviewWin, setups || null, _sdPvAsAudience()]).catch(_sdPartFailed);
+        _sdPartCall('previewas', 'answer', [_sdPreviewWin, setups || null, _sdPvAsAudience()]).then(function () {
+            if (check) _sdPartApis.previewas.check();
+        }).catch(_sdPartFailed);
+    }
+
+    // Whether the active page holds a system widget, the only thing a case
+    // changes (the command palette's "Check all cases").
+    function _sdPvAsHasWidget() {
+        var found = false;
+        (function walk(n) {
+            if (found || !n || typeof n !== 'object') return;
+            if (Array.isArray(n)) { n.forEach(walk); return; }
+            if (n.type === 'shared_ref' && n.props && (_sharedCache[parseInt(n.props.sharedId, 10)] || {}).system_region_config) { found = true; return; }
+            if (n.children) walk(n.children);
+        })(tree);
+        return found;
+    }
+
+    // "Check all cases" from the command palette: the Preview opens first
+    // when it is closed and the run starts once it has answered.
+    function _sdPvAsCheck() {
+        if (_sdLivePreviewOpen() && _sdPartLoaded('previewas')) {
+            _sdPvAs.check = false;
+            _sdPartApis.previewas.check();
+            return;
+        }
+        _sdPvAs.check = !_sdLivePreviewOpen();
+        if (_sdPvAs.check) openPreview();
+    }
+
+    // One case of "Check all cases" drawn by the server without keeping
+    // it: a promise of {widgets: id => markup, setups, raw}, null when the
+    // server failed or the page has no widget.
+    function _sdPvAsAsk(c) {
+        var raw = _sdPreviewDocHtml();
+        var payload = _sdPvAsApply(_sdPreviewWidgetPayload(raw), c);
+        if (!payload) return Promise.resolve(null);
+        return _pgApiPost('preview_widgets', payload).then(function (res) {
+            return (res && res.status === 'success' && res.html) ? { widgets: res.html, setups: res.setups || {}, raw: raw } : null;
+        }, function () { return null; });
+    }
+
+    // A drawn case into the Preview's own window; false when it is closed.
+    function _sdPvAsShow(html) {
+        if (!_sdLivePreviewOpen()) return false;
+        return !!_sdShowPreview(html, _sdPreviewWin);
+    }
+
+    // A run starts or ends: the live preview waits while it draws.
+    function _sdPvAsRunning(on) {
+        _sdPvAs.running = !!on;
     }
 
     // The records the "Record" chooser lists for widget `sid` whose name
@@ -85018,6 +85073,7 @@ const StyleDesigner = (function () {
         _sdLive.timer = 0;
         if (!_sdLivePreviewOpen()) return;
         if (_sdLive.busy > 0) { _sdLive.again = true; return; }
+        if (_sdPvAs.running) { _sdLive.again = true; return; }
         var raw = _sdPreviewDocHtml();
         var payload = _sdPvAsApply(_sdPreviewWidgetPayload(raw));
         var finish = function (widgetHtml, requested, keep) {
@@ -92807,6 +92863,12 @@ const StyleDesigner = (function () {
                 { id: 'act_phone', label: _sdT('Preview on a phone'), icon: 'bi-phone', action: function () { _sdPhoneOpen(); } });
         }
 
+        // "Check all cases" of the Preview, for a page with a system widget.
+        if (_sdPvAsHasWidget()) {
+            items.splice(items.findIndex(function (it) { return it.id === 'act_preview'; }) + 1, 0,
+                { id: 'act_check_cases', label: _sdT('Check all cases'), icon: 'bi-list-check', meta: _sdT('Preview'), action: function () { _sdPvAsCheck(); } });
+        }
+
         // ── Assets-panel commands (only when the panel is mounted) ──
         if (_assetsApi) {
             items.push({ id: 'act_new_css',  label: _sdT('New CSS File'),  icon: 'bi-filetype-css',
@@ -98788,9 +98850,12 @@ const StyleDesigner = (function () {
             _sdProtoCommentsOpen: _sdProtoCommentsOpen,
             _sdProtoCommentsPane: _sdProtoCommentsPane,
             _sdProtoTabs: _sdProtoTabs,
+            _sdPvAsAsk: _sdPvAsAsk,
             _sdPvAsChoice: _sdPvAsChoice,
             _sdPvAsChoose: _sdPvAsChoose,
             _sdPvAsRecords: _sdPvAsRecords,
+            _sdPvAsRunning: _sdPvAsRunning,
+            _sdPvAsShow: _sdPvAsShow,
             _sdRecEditBar: _sdRecEditBar,
             _sdRecEditHtml: _sdRecEditHtml,
             _sdRecEditMarks: _sdRecEditMarks,
