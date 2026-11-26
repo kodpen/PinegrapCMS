@@ -523,6 +523,38 @@ function _test_scan_round_json(array $state)
 	return pg_security_files_state(json_decode(json_encode($state), true));
 }
 
+function test_security_scan_round_a_folder_that_cannot_be_read_is_kept_out_of_the_close()
+{
+	pg_assert_true(pg_security_place_unread('data/files/a/x.php', array('data/files/a')));
+	pg_assert_false(pg_security_place_unread('data/files/ab/x.php', array('data/files/a')), 'a folder is no prefix of a name');
+	pg_assert_true(pg_security_place_unread('x.php', array('')), 'the software folder unread keeps every place');
+	pg_assert_true(pg_security_place_unread('page:12', array('page')), 'a record type that could not be read');
+	pg_assert_false(pg_security_place_unread('pregion:12', array('page')));
+	pg_assert_false(pg_security_place_unread('x.php', array()));
+
+	$site = _test_scan_round_folder('unread');
+	_test_scan_round_plant($site . '/software', array('a/x.php' => '<?php', 'b.php' => '<?php'));
+	chmod($site . '/software/a', 0);
+	clearstatcache();
+
+	// Only where the folder really cannot be read (not as root).
+	if (@scandir($site . '/software/a') === false) {
+		$walk = pg_security_files_advance(pg_security_files_state(array('baseline' => array())), array('' => $site . '/software'), null, function () {
+			return false;
+		}, function () {
+		});
+		pg_assert_same(array('a'), $walk['state']['unread']);
+	}
+
+	chmod($site . '/software/a', 0755);
+	$walk = pg_security_files_advance(pg_security_files_state(array('baseline' => array())), array('' => $site . '/software', 'data/files' => $site . '/none'), null, function () {
+		return false;
+	}, function () {
+	});
+	pg_assert_same(array(), $walk['state']['unread'], 'a readable folder and an upload folder that is not there');
+	_test_scan_round_remove($site);
+}
+
 function test_security_scan_round_fifty_thousand_files_inside_the_budget()
 {
 	// 10,000 files are walked and the time is scaled to 50,000: the walk is

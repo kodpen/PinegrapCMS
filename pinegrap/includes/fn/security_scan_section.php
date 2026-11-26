@@ -364,22 +364,38 @@ function pg_security_alert_text(array $counts)
 
 /**
  * Mark a finished part's findings that the run did not see as gone (open and
- * ignored ones; pg_security_state_unseen()).
+ * ignored ones; pg_security_state_unseen()), but for those in a part the run
+ * could not read (pg_security_place_unread()): they were not looked at.
  *
  * @param string[] $kinds
  * @param int $started
+ * @param string[] $unread Folder places or record types the run could not read
  * @return void
  */
-function pg_security_scan_close_kinds(array $kinds, $started)
+function pg_security_scan_close_kinds(array $kinds, $started, array $unread = array())
 {
     if (empty($kinds)) {
         return;
     }
 
-    db_q(
-        "UPDATE security_finding SET state = ? WHERE kind IN (" . implode(', ', array_fill(0, count($kinds), '?')) . ") AND state IN (?, ?) AND last_seen < ?",
-        array_merge(array(PG_SECURITY_STATE_GONE), array_values($kinds), array(PG_SECURITY_STATE_OPEN, PG_SECURITY_STATE_IGNORED, (int) $started))
+    $rows = db_items(
+        (string) pg_db_bind(
+            "SELECT id, place FROM security_finding WHERE kind IN (" . implode(', ', array_fill(0, count($kinds), '?')) . ") AND state IN (?, ?) AND last_seen < ?",
+            array_merge(array_values($kinds), array(PG_SECURITY_STATE_OPEN, PG_SECURITY_STATE_IGNORED, (int) $started)),
+            'escape'
+        )
     );
+    $ids = array();
+
+    foreach (is_array($rows) ? $rows : array() as $row) {
+        if (!pg_security_place_unread($row['place'], $unread)) {
+            $ids[] = (int) $row['id'];
+        }
+    }
+
+    foreach (array_chunk($ids, 500) as $chunk) {
+        db_q("UPDATE security_finding SET state = '" . PG_SECURITY_STATE_GONE . "' WHERE id IN (" . implode(', ', $chunk) . ")");
+    }
 }
 
 /**

@@ -184,6 +184,31 @@ function pg_security_place_record($type, $id)
 }
 
 /**
+ * Does a place lie in a part a run could not read: under a folder place the
+ * walk could not list ('' is the whole software folder), or a record of a
+ * type the content pass could not read? Its findings were not looked at, so
+ * the run must not mark them gone.
+ *
+ * @param string $place
+ * @param string[] $unread Folder places and record types
+ * @return bool
+ */
+function pg_security_place_unread($place, array $unread)
+{
+    $place = (string) $place;
+
+    foreach ($unread as $part) {
+        $part = (string) $part;
+
+        if (($part === '') || (strpos($place, $part . '/') === 0) || (strpos($place, $part . ':') === 0)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
  * The fingerprint of a finding: sha1 of its kind and place, so the same rule
  * at the same place is one row however often it is found.
  *

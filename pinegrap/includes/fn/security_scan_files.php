@@ -593,6 +593,7 @@ function pg_security_files_state($stored)
         'reference' => '',
         'baseline' => null,
         'configs' => array(),
+        'unread' => array(),
         'last_finished' => 0,
         'last_files' => 0,
         'last_reference' => '',
@@ -608,6 +609,10 @@ function pg_security_files_state($stored)
 
     if (!is_array($state['configs'])) {
         $state['configs'] = array();
+    }
+
+    if (!is_array($state['unread'])) {
+        $state['unread'] = array();
     }
 
     if (($state['baseline'] !== null) && !is_array($state['baseline'])) {
@@ -773,13 +778,20 @@ function pg_security_place_folder_real($place)
  * @param string $folder Folder on disk
  * @param string $prefix Its place, '' for the software folder
  * @param string $cursor Last place done
+ * @param callable|null $unread Given the place of a folder that is there but cannot be listed
  * @return Generator
  */
-function pg_security_files_walk($folder, $prefix, $cursor)
+function pg_security_files_walk($folder, $prefix, $cursor, $unread = null)
 {
     $names = @scandir($folder);
 
     if (!is_array($names)) {
+        // A folder that is there but cannot be listed was not looked at; an
+        // upload folder that does not exist has nothing in it.
+        if (is_callable($unread) && is_dir($folder)) {
+            $unread($prefix);
+        }
+
         return;
     }
 
@@ -799,7 +811,7 @@ function pg_security_files_walk($folder, $prefix, $cursor)
 
         if (is_dir($path)) {
             if (!pg_security_walk_skipped($place) && !pg_security_folder_done($place, $cursor)) {
-                foreach (pg_security_files_walk($path, $place, $cursor) as $inner_place => $inner_path) {
+                foreach (pg_security_files_walk($path, $place, $cursor, $unread) as $inner_place => $inner_path) {
                     yield $inner_place => $inner_path;
                 }
             }
@@ -922,8 +934,14 @@ function pg_security_files_advance(array $state, array $roots, $places, callable
     $prefixes = array_keys($roots);
     $files = 0;
 
+    $unread = function ($place) use (&$state) {
+        if (!in_array((string) $place, $state['unread'], true)) {
+            $state['unread'][] = (string) $place;
+        }
+    };
+
     for ($root = (int) $state['root']; $root < count($folders); $root++) {
-        foreach (pg_security_files_walk($folders[$root], $prefixes[$root], (string) $state['cursor']) as $place => $path) {
+        foreach (pg_security_files_walk($folders[$root], $prefixes[$root], (string) $state['cursor'], $unread) as $place => $path) {
             if ($stop()) {
                 return array('state' => $state, 'stopped' => true, 'files' => $files);
             }
@@ -981,24 +999,19 @@ function pg_security_finding_record(array $sighting, $now)
 
 /**
  * End a full run: what the run did not see becomes gone (a quarantined
- * finding stays quarantined, pg_security_state_unseen()), and gone rows past
- * their 90 days are removed.
+ * finding stays quarantined, pg_security_state_unseen()), but for the places
+ * under a folder it could not list, and gone rows past their 90 days are
+ * removed.
  *
  * @param int $started When the run started
  * @param string $reference The run's reference source
  * @param int $now
+ * @param string[] $unread Folder places the walk could not list
  * @return void
  */
-function pg_security_files_close($started, $reference, $now)
+function pg_security_files_close($started, $reference, $now, array $unread = array())
 {
-    $kinds = pg_security_files_judged_kinds($reference);
-
-    if (!empty($kinds)) {
-        db_q(
-            "UPDATE security_finding SET state = ? WHERE state IN (?, ?) AND last_seen < ? AND kind IN ('" . implode("', '", array_map('e', $kinds)) . "')",
-            array(PG_SECURITY_STATE_GONE, PG_SECURITY_STATE_OPEN, PG_SECURITY_STATE_IGNORED, (int) $started)
-        );
-    }
+    pg_security_scan_close_kinds(pg_security_files_judged_kinds($reference), (int) $started, $unread);
 
     db_q(
         "DELETE FROM security_finding WHERE state = ? AND last_seen < ?",
@@ -1035,6 +1048,7 @@ function pg_security_files_run($budget)
         $state['cursor'] = '';
         $state['files'] = 0;
         $state['configs'] = array();
+        $state['unread'] = array();
         $state['reference'] = $reference['source'];
     }
 
@@ -1059,7 +1073,7 @@ function pg_security_files_run($budget)
     $result['files'] = $walk['files'];
 
     if (!$stopped) {
-        pg_security_files_close((int) $state['started'], $has_reference ? $state['reference'] : '', $now);
+        pg_security_files_close((int) $state['started'], $has_reference ? $state['reference'] : '', $now, $state['unread']);
 
         // The first finished run sets the baseline; later ones only drop the
         // files that are gone, so a changed file stays reported until a
@@ -1078,6 +1092,7 @@ function pg_security_files_run($budget)
         $state['cursor'] = '';
         $state['files'] = 0;
         $state['configs'] = array();
+        $state['unread'] = array();
         $result['done'] = true;
     }
 
