@@ -5,7 +5,7 @@ priority: 8
 ---
 
 ## What is asked?
-- The Sketch tool was built before its sheet; `plans/designer-drawings.md` makes what its sheet (DD4) differs in one fix step.
+- The Sketch tool was built before its sheet; what its sheet (DD4) differs in is one fix step (`workflow/designer-sheet-rules.md`).
 - The UR3 worker (#11884) found that no box can be made by the keyboard alone, and that the links panel says "Select a page to see its links." while a sketch page is selected.
 
 ## What is drawn?

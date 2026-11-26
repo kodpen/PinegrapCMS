@@ -9,9 +9,9 @@ description: Where a screen's look is designed: in a design session of its own w
 - Since 2026-11-25 no design session runs: it stopped for its account's quota (`coordinator-second-paused.md`). Owner (2026-11-25), asked who draws the waiting sheets: "sen çiz mimar ve tasarımcısın" (`decisions-made-product-110.md`). The architect draws them and settles its own readings of a plan.
 - The architect still writes how each screen is put together, in words, in its plan (`screen-described-in-plan.md`); a part with no model on the Design examples screen it draws as before (`architect-draws-new-part.md`).
 
-## In which order does the architect draw?
-- The sheets of `plans/designer-drawings.md`, then DD22 to DD26 of the Options census (drawn, `designer/options-panel-census.md`); a sheet that holds the most waiting steps comes first. The ten sheets of the levelled features (DD12 to DD21) are drawn.
-- One sheet, one docs-only PR, claimed as its plan says; a green one lands alone.
+## Which sheets are drawn, and how is a new one claimed?
+- Every sheet named so far is drawn: DD1 to DD11 of the designer plans, DD12 to DD21 of the levelled features, DD22 to DD26 of the Options census (`designer/options-panel-census.md`), the home, the editor's frame and the Sketch tool (#11903, the last). The plan that listed them is closed.
+- A new designer plan's screens are drawn before its steps: one sheet, one docs-only PR, claimed under its own plan; a green one lands alone. A sheet that holds the most waiting steps comes first. What a sheet holds and what waits for it: [[designer-sheet-rules]].
 
 ## What does a designer feature's sheet show besides its screen?
 - By `designer/designer-light-and-simple.md`: the menu row the feature is opened from, drawn in its menu as it is today; the start with no choice made; the second level behind "More" where the plan has one; the first-use line with "Got it"; the designer's frame around the new part as it is today; the narrow width.

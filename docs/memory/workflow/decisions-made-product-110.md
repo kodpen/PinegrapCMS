@@ -22,4 +22,4 @@ description: Decisions made, product part 110 (2026-11-25 on): all eleven packag
 
 ## Who draws the designer plans' sheets while no design session runs? (owner, 2026-11-25)
 - The design session stopped on 2026-11-25 for its account's quota (`coordinator-second-paused.md`). Asked whether workers should draw the waiting sheets or the steps should wait for it, he wrote: "sen çiz mimar ve tasarımcısın".
-- So the architect draws them, by the rules of `plans/designer-drawings.md`, with nobody approving a sheet as part 106 says: `design-work-session.md`.
+- So the architect draws them, by the rules of `designer-sheet-rules.md`, with nobody approving a sheet as part 106 says: `design-work-session.md`.

@@ -34,4 +34,4 @@ priority: 8
 - The four start cards leave a home that has a design: "New design" is the one way in. No entry of `workflow/DECISIONS.md` binds them.
 - Narrow, the window's strip of starts leaves for a list: five of the seven starts were off its edge.
 
-Related: docs/memory/designer/designer-home-tidy-drawing.md, docs/memory/designer/new-design-window.md, docs/memory/designer/designer-home-screen.md, docs/memory/plans/designer-drawings.md
+Related: docs/memory/designer/designer-home-tidy-drawing.md, docs/memory/designer/new-design-window.md, docs/memory/designer/designer-home-screen.md, docs/memory/workflow/designer-sheet-rules.md

@@ -8,7 +8,7 @@ description: Hand-over of the architect session of 2026-11-24 to 26, the work in
 - Coordinator k3 was told both lanes (messages 14338 and 14355). Since 2026-11-26 (owner, message 14372) only the architect, the merging session and k3 work: k1 and k2 are out of the agent channel.
 
 ## What is still to do with the sheets?
-- No sheet is left to draw. `plans/designer-drawings.md` is deleted by a docs PR, since its last sheet has landed.
+- No sheet is left to draw and the plan that listed them is closed; what a sheet holds is in `designer-sheet-rules.md`.
 - The owed comparison list of `designer/designer-panels-differences.md`: it needs the studio open on dev beside each drawing, which a cloud session with only an application key cannot do.
 
 ## How is a sheet made?
