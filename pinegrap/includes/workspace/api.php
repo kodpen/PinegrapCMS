@@ -321,6 +321,7 @@ function ws_openapi_objects()
         'WorkspaceMemoryEntry'         => 'ws_api_memory_entry_schema',
         'WorkspaceMemoryWriter'        => 'ws_api_memory_writer_schema',
         'WorkspaceMemoryDeletion'      => 'ws_api_memory_deletion_schema',
+        'WorkspaceMemoryProject'       => 'ws_api_memory_project_schema',
         'WorkspaceShareLink'           => 'ws_api_share_link_schema',
         'WorkspaceShareLinkMade'       => 'ws_api_share_link_made_schema',
         'WorkspaceTaskTime'       => 'ws_api_task_time_schema',
