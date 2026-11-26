@@ -168,7 +168,8 @@
 - office-docx-add-delete.md: Adding a paragraph after another and deleting one in a .docx (office_docx_paragraphs.php, OD3, PR #11811): the bar's buttons, the save entries, the kind a new paragraph takes, the refusals
 - office-docx-controls-numbering.md: Word preview: table rows and cells inside content controls and custom XML, and numId 0 taking a paragraph's (or its style's) numbering off (PR #1119), run properties turned off by w:val
 - office-docx-format.md: Bold, italic and underline on selected text of a .docx paragraph (office_docx_format.php, OD1, PR #11152): the bar, the save entry, runs split and joined, what is kept
-- office-docx-page.md: A Word document drawn as a white sheet and typed where it stands (renderDocument(), OP1): no box, the caret where the click fell, the keys, plain paste, the sheet's CSS
+- office-docx-page-keys.md: Keys of a Word document typed on its sheet (OP2, PR #11940): Enter splits, Backspace and Delete join, selections and arrows cross paragraphs, B/I/U across them
+- office-docx-page.md: A Word document drawn as a white sheet and typed where it stands (renderDocument(), OP1, OP2 PR #11940): one typed sheet, the caret followed, what stays; the keys in office-docx-page-keys.md
 - office-docx-paragraph-kind.md: A .docx paragraph's kind (normal, heading 1-3, bulleted or numbered list) set from the format bar (office_docx_kind.php, OD2): save entry, styles and numbering used or added, refusals
 - office-dom-ceiling.md: How much of a docx or xlsx becomes a libxml tree (office.php, office_edit.php, PR #882): 8 MB a DOM part, a long document read from its beginning, rows and strings node by node
 - office-files-scope.md: How far the own Word and Excel code goes and why: what is edited, what is only shown, what is never built (charts, pivots, layout; formulas beyond the simple ones), the rules every edit keeps [decision: decisions-made-product-115.md, decisions-made-product-79.md]
@@ -181,7 +182,8 @@
 - office-pptx-design-reader.md: The design file reader pg_pptx_design_read() (PR #11840): a .pptx read as slides of placed elements for the Artifact Canvas; units, what each element gives, what is left out and counted, limits
 - office-pptx-preview.md: .pptx as a list of slides in Quick Look, the file window and a channel's Preview (PR #10585): title, text in reading order, pictures, speaker notes; limits, refusals, view only
 - office-save-list.md: One workbook save as an ordered list of changes of every kind (office_edit.php, OF1): steps, one lock and version check, each change on the workbook the one before left, refusals naming their place
-- office-sheet-format-controls.md: The sheet editor's format bar (OE3b) for the selected cells, its colour swatches, one format change a save, and how the preview draws each cell's look and number format [decision: here]
+- office-sheet-change-list.md: The workbook view's one list of waiting changes (pg_office_view.js, OF2): typed cells and format ranges in the order made, any number of ranges, the count on the status line, what still goes alone
+- office-sheet-format-controls.md: The sheet editor's format bar (OE3b) for the selected cells, its colour swatches, ranges waiting with the typed cells, and how each cell's look and number format is drawn [decision: here]
 - office-sheet-format.md: Format of selected cells of an .xlsx (office_format.php, OE3a): the save entry, how new styles are written beside the old ones, the number formats, what is refused and why
 - office-sheet-head-menu.md: The sheet grid's row and column head menu (pg_office_view.js) that inserts above/below, left/right or deletes one row or column: where it opens, what it sends, one change a save
 - office-sheet-rows-columns.md: Insert and delete a row or column of an .xlsx (office_shift.php): the save entry, what moves, what is refused and why, one entry of a save's list

@@ -63,6 +63,7 @@
 - classic-style-folder-pages.md: Save of a converted classic style also converts the pages that take it from their folder (#2411 (c)): the box, which pages, what is written
 - classic-style-import.md: A classic style's code read by the HTML importer (L1): placeholders to region nodes, meta_tags/stylesheet dropped, title and body on the root, site paths kept, what stays text
 - classic-style-to-design.md: A classic style's frame as shared components and page trees (L2, #2370): pg_classic_style_design_open(), now the move run's own function with no button, what Save writes and what stays [decision: decisions-made-product-43.md]
+- code-view-empty-page-typing.md: Typing into the designer's code view on an empty page: the empty body line, the end of the <body> line as page content, and the Edit switch that never drops unapplied text (issue #11944)
 - code-view-tab-search.md: Search in all tabs of the designer's code view (page and file tabs): the bar, PgCodeEditor.findAll(), why the bar does not replace and where file tabs are replaced
 - collection-fields.md: Collection forms and field kinds: columns, where the kind is written and read, kinds per field type, template collections (C6a), the slug kind (C5b)
 - collection-history.md: History section of a collection item (C7b, #3099): list, compare with the current values, Load, the save with source restore, what happens to files and signatures
@@ -619,6 +620,7 @@
 - designer-settings-modal-sizing.md: Designer settings modal size and closing: dialog-xl from 1024px, full screen below, one height capped at 56rem, static backdrop, sizes in style_designer.css, rail becomes a strip under 1024px.
 - designer-shared-marks-drawing.md: The drawing of shared components and system widgets on the canvas, boards Q1 to Q4: nothing at rest, the frame and tag under the pointer and when chosen, the View switch "Shared parts" [decision: decisions-made-product-111.md]
 - designer-side-by-side.md: "Side by side" in the designer's View menu (SS2, SS3): the switch, the row of canvas and two mirrors, its room, the heads, the chosen element followed, a click choosing, Edit at this size [decision: decisions-made-product-108.md]
+- designer-side-panel-drag-width.md: Dragging the Page Design Studio's left or right panel edge writes the panel's own width once a frame and the root --sd-left-width / --sd-right-width once on release (#11949, fixes #11945)
 - designer-size-per-screen.md: A length per screen size (DO2): the size chooser on Size and display and Text, @media rules on the pgs- class, what moves to the base rule, the canvas at the size, the dot
 - designer-sketch-drawing-ai.md: The Sketch tool's two AI actions as drawn (ai-and-picture.html, boards E1 to E3 and E6): the "Describe the page" window, the sketch being drawn, "Write the texts" and its messages
 - designer-sketch-drawing-build-again.md: "Build again" as drawn (build.html, boards B6 to B8): when it asks, the question's rows and "More", boxes left out, a failed or refused build, zoomed out and on a phone [decision: here]
