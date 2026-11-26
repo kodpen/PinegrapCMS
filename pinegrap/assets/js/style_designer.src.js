@@ -80393,8 +80393,10 @@ const StyleDesigner = (function () {
 
     function _sdProtoButtonState() {
         // The canvas's link marks hide while the view is open and are read
-        // again when it closes (an arrow may have changed a link).
+        // again when it closes (an arrow may have changed a link); so do
+        // the selection's spacing bands, which nothing else draws again.
         _sdLinkMarksSoon();
+        _sdBandsSoon();
         var btn = document.getElementById('sd-vb-proto');
         if (!btn) return;
         btn.classList.toggle('active', _sdProto.open);

@@ -203,6 +203,80 @@ function test_canvas_bands_scale_and_nearest_step()
 	pg_assert_same('5', $res[5]['step'], 'above the scale is its top');
 }
 
+// A side with no spacing, or less than a handle, keeps its inner handle a
+// handle's thickness inside the frame, so the outer and inner pills never
+// overlap (#11921): at 50 % a 4 px padding is 2 screen px.
+function test_canvas_bands_inner_handle_clears_the_outer()
+{
+	$res = canvas_bands_test_node('var b = { left: 100, top: 100, right: 300, bottom: 200 };'
+		. ' var L = C.layout(b, { top: 0, right: 0, bottom: 0, left: 0 }, { top: 4, right: 4, bottom: 4, left: 30 }, 0.5, false);'
+		. ' out = { t: L.inner[0].handle, e: L.inner[1].handle, b: L.inner[2].handle, s: L.inner[3].handle, ot: L.outer[0].handle };');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(106, $res['t']['y'], 'top: one handle inside, not at the 2 px edge');
+	pg_assert_false($res['t']['faint'], 'still drawn as set');
+	pg_assert_same(294, $res['e']['x'], 'end: one handle inside');
+	pg_assert_same(194, $res['b']['y'], 'bottom: one handle inside');
+	pg_assert_same(115, $res['s']['x'], 'a wider padding keeps its band edge');
+	pg_assert_same(100, $res['ot']['y'], 'the outer handle stays on the frame');
+}
+
+// A change starts where the band shows it: a scale step when the value is
+// one, an automatic margin as 'auto', any other value as '' (#11921).
+function test_canvas_bands_start_step()
+{
+	$res = canvas_bands_test_node('var sc = C.scale(16); out = [C.startStep(24, sc, false), C.startStep(186, sc, true), C.startStep(12, sc, false), C.startStep(24.3, sc, false), C.startStep(-4, sc, false)];');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array('step' => '4', 'px' => 24), $res[0], 'on the scale');
+	pg_assert_same(array('step' => 'auto', 'px' => 186), $res[1], 'automatic');
+	pg_assert_same(array('step' => '', 'px' => 12), $res[2], 'off the scale');
+	pg_assert_same('4', $res[3]['step'], 'rounding is still the step');
+	pg_assert_same(array('step' => '0', 'px' => 0), $res[4], 'below 0 is 0');
+}
+
+// A drag from an automatic margin of 186 px keeps 'auto' until a scale step
+// is nearer; outwards it stays (#11921).
+function test_canvas_bands_nearest_step_from_auto()
+{
+	$res = canvas_bands_test_node('var sc = C.scale(16), a = { step: "auto", px: 186 };'
+		. ' out = [C.nearestStep(186, sc, a), C.nearestStep(240, sc, a), C.nearestStep(126, sc, a), C.nearestStep(110, sc, a), C.nearestStep(117, sc, { step: "4", px: 24 })];');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array('step' => 'auto', 'px' => 186), $res[0], 'at the start');
+	pg_assert_same('auto', $res[1]['step'], 'outwards it stays');
+	pg_assert_same('auto', $res[2]['step'], '60 px in it stays');
+	pg_assert_same(array('step' => '5', 'px' => 48), $res[3], 'nearer to 48 it takes step 5');
+	pg_assert_same('5', $res[4]['step'], 'a scale step as the start adds nothing');
+}
+
+// The arrows from a start off the scale go to the next scale step that way;
+// none that way keeps it (#11921).
+function test_canvas_bands_key_step_from()
+{
+	$res = canvas_bands_test_node('var sc = C.scale(16), a = { step: "auto", px: 186 }, o = { step: "", px: 12 };'
+		. ' out = [C.keyStepFrom(a, -1, sc), C.keyStepFrom(a, 1, sc), C.keyStepFrom(o, 1, sc), C.keyStepFrom(o, -1, sc), C.keyStepFrom({ step: "3", px: 16 }, 1, sc)];');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array('step' => '5', 'px' => 48), $res[0], 'inwards from auto: step 5');
+	pg_assert_same(array('step' => 'auto', 'px' => 186), $res[1], 'outwards from auto: stays');
+	pg_assert_same(array('step' => '3', 'px' => 16), $res[2], '12 up: 16');
+	pg_assert_same(array('step' => '2', 'px' => 8), $res[3], '12 down: 8');
+	pg_assert_same(array('step' => '4', 'px' => 24), $res[4], 'a scale step steps as before');
+}
+
 // The bands are a part of their own: the modules first, the part last; the
 // core only asks it to draw or hide, handing it a host.
 function test_canvas_bands_are_a_part()

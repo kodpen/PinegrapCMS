@@ -221,7 +221,8 @@ StyleDesigner.definePart('bands', function (K) {
     function _bdLabel(step, px, reach, x, y, match) {
         var said = { tb: _sdT('top and bottom'), se: _sdT('start and end'), all: _sdT('all four sides') }[reach] || '';
         var same = match ? { above: _sdT('the gap above'), below: _sdT('the gap below'), left: _sdT('the gap on the left'), right: _sdT('the gap on the right') }[match.where] : '';
-        S.label.innerHTML = '<b>' + esc(step) + '</b> ' + esc(_sdT('{var} px', Math.round(px))) + (said ? ' · ' + esc(said) : '') +
+        var name = step === 'auto' ? _sdT('auto') : step;
+        S.label.innerHTML = (name ? '<b>' + esc(name) + '</b> ' : '') + esc(_sdT('{var} px', Math.round(px))) + (said ? ' · ' + esc(said) : '') +
             (same ? ' <i>= ' + esc(same) + '</i>' : '');
         _bdLabelAt(x, y);
     }
@@ -235,13 +236,24 @@ StyleDesigner.definePart('bands', function (K) {
         S.label.style.top = at.y + 'px';
     }
 
-    // A change under way on handle `h`: the side, its value when it began,
-    // and the element's inline values to give back.
+    // Whether the element's classes set `side`'s margin to auto for the
+    // screen size the canvas shows (mx-auto, ms-lg-auto…): the browser
+    // reports its width in pixels, which is no step of the scale.
+    function _bdAuto(kind, side) {
+        if (kind !== 'm' || !S.host.classes || S.host.classes.length !== 1) return false;
+        var r = B.read(S.host.classes[0], 'm', C.sizeFor(S.host.width));
+        return !!(r[side] && r[side].value === 'auto');
+    }
+
+    // A change under way on handle `h`: the side, its value when it began
+    // (as the band shows it: an automatic margin or a value off the scale
+    // stays itself until a scale step is nearer), and the element's inline
+    // values to give back.
     function _bdBegin(h, how) {
         var el = S.host.el;
         var kind = h.getAttribute('data-k'), side = h.getAttribute('data-s');
         var cs = el.ownerDocument.defaultView.getComputedStyle(el);
-        var from = C.nearestStep(_bdPx(cs[PROPS[kind] + EDGE_CSS[h.getAttribute('data-e')]]), _bdScale(el));
+        var from = C.startStep(_bdPx(cs[PROPS[kind] + EDGE_CSS[h.getAttribute('data-e')]]), _bdScale(el), _bdAuto(kind, side));
         var keep = {};
         ['top', 'right', 'bottom', 'left'].forEach(function (e) {
             var p = PROPS[kind] + '-' + e;
@@ -285,7 +297,8 @@ StyleDesigner.definePart('bands', function (K) {
         if (S.layer) S.layer.classList.remove('is-live');
         if (S.label) S.label.hidden = true;
         window.removeEventListener('keydown', _bdEsc, true);
-        if (!write || live.step.step === live.from.step && live.reach === 'one' || !S.host || S.host.id !== live.id) {
+        // A start off the scale that was not moved to a step writes nothing.
+        if (!write || live.step.step === '' || live.step.step === live.from.step && live.reach === 'one' || !S.host || S.host.id !== live.id) {
             if (S.host && S.host.el.isConnected) _bdPlace();
             return;
         }
@@ -320,7 +333,7 @@ StyleDesigner.definePart('bands', function (K) {
                 if (S.live !== live) return;
                 var grow = C.growth(live.kind, live.edge, last.clientX - live.x, last.clientY - live.y, k);
                 var raw = live.from.px + grow;
-                var step = C.hold(raw, live.held, C.nearestStep(raw, live.scale), HOLD / k);
+                var step = C.hold(raw, live.held, C.nearestStep(raw, live.scale, live.from), HOLD / k);
                 _bdPreview(live, step, C.reach(live.side, last.shiftKey, last.altKey));
                 var match = _bdGaps(live);
                 _bdLabel(step.step, step.px, live.reach, last.clientX - lr.left, last.clientY - lr.top, match);
@@ -361,9 +374,9 @@ StyleDesigner.definePart('bands', function (K) {
         e.stopPropagation();
         if (live && live.h !== h) _bdEnd(true);
         live = S.live || _bdBegin(h, 'key');
-        var next = C.keyStep(live.step.step, dir, live.scale.length);
-        _bdPreview(live, { step: next, px: live.scale[parseInt(next, 10)] }, C.reach(live.side, e.shiftKey, e.altKey));
-        _bdLabel(next, live.scale[parseInt(next, 10)], live.reach, parseFloat(h.style.left) || 0, parseFloat(h.style.top) || 0, _bdGaps(live));
+        var next = C.keyStepFrom(live.step, dir, live.scale);
+        _bdPreview(live, next, C.reach(live.side, e.shiftKey, e.altKey));
+        _bdLabel(next.step, next.px, live.reach, parseFloat(h.style.left) || 0, parseFloat(h.style.top) || 0, _bdGaps(live));
     }
 
     function _bdBlur(e) {
