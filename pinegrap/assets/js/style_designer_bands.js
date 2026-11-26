@@ -167,6 +167,11 @@ StyleDesigner.definePart('bands', function (K) {
         var host = S.host, g = host.geo(), el = host.el;
         S.g = g;
         if (!g || g.w <= 0 || g.h <= 0 || !el.isConnected) { S.layer.hidden = true; return; }
+        // `g.k` scales the canvas' rectangles; a margin or padding read in
+        // CSS pixels needs `g.z`, which differs where the browser answers
+        // rectangles already zoomed (Chromium at a canvas zoom).
+        var docEl = el.ownerDocument.documentElement;
+        g.z = C.lengthScale(g.k, docEl.getBoundingClientRect().width, docEl.offsetWidth);
         if (S.layer.parentNode !== g.wrapper) g.wrapper.appendChild(S.layer);
         S.layer.hidden = false;
         S.layer.style.left = g.left + 'px';
@@ -179,7 +184,7 @@ StyleDesigner.definePart('bands', function (K) {
         var read = function (p) {
             return { top: _bdPx(cs[p + 'Top']), right: _bdPx(cs[p + 'Right']), bottom: _bdPx(cs[p + 'Bottom']), left: _bdPx(cs[p + 'Left']) };
         };
-        var L = C.layout(b, read('margin'), read('padding'), g.k, _bdRtl(el));
+        var L = C.layout(b, read('margin'), read('padding'), g.z, _bdRtl(el));
         [['m', L.outer], ['p', L.inner]].forEach(function (pair) {
             pair[1].forEach(function (it) {
                 _bdBox(S.bands[pair[0] + it.side], it.band);
@@ -215,7 +220,7 @@ StyleDesigner.definePart('bands', function (K) {
         S.grid.hidden = !(on && live);
         if (S.grid.hidden) return;
         var row = _bdRect(S.host.col.row);
-        C.colGrid(row, COLS, live.gutter * S.g.k).forEach(function (box, i) {
+        C.colGrid(row, COLS, live.gutter * S.g.z).forEach(function (box, i) {
             _bdBox(S.grid.children[i], box);
         });
     }
@@ -323,7 +328,7 @@ StyleDesigner.definePart('bands', function (K) {
         e.preventDefault();
         var h = e.currentTarget;
         var live = _bdBegin(h, 'drag');
-        var k = S.g ? S.g.k : 1;
+        var k = S.g ? S.g.z : 1;
         var lr = S.layer.getBoundingClientRect();
         live.x = e.clientX;
         live.y = e.clientY;
@@ -396,7 +401,7 @@ StyleDesigner.definePart('bands', function (K) {
         if (live.kind === 'm' && S.host && S.host.siblings && S.g) {
             if (!live.sibs) live.sibs = S.host.siblings();
             var others = live.sibs.filter(function (el) { return el.isConnected; }).map(_bdRect);
-            m = C.equalGap(_bdRect(live.el), others, live.edge, S.g.k);
+            m = C.equalGap(_bdRect(live.el), others, live.edge, S.g.z);
         }
         live.held = m ? live.step : null;
         _bdGapsShow(m);
@@ -490,7 +495,7 @@ StyleDesigner.definePart('bands', function (K) {
                 raf = 0;
                 if (S.live !== live || !S.g) return;
                 var x = last.clientX - lr.left;
-                var span = C.colSpan(live.box, x, _bdRect(S.host.col.row), COLS, live.gutter * S.g.k, live.rtl);
+                var span = C.colSpan(live.box, x, _bdRect(S.host.col.row), COLS, live.gutter * S.g.z, live.rtl);
                 if (span && span !== live.span) _bdColPreview(live, span);
                 _bdColLabel(live.span, x, last.clientY - lr.top);
             });

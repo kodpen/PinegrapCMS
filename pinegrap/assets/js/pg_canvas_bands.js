@@ -299,6 +299,16 @@
         return Math.abs(num(raw) - held.px) < Math.abs(num(raw) - nearest.px) + num(extra) ? held : nearest;
     }
 
+    // A CSS length's scale on the layer: `k` scales the canvas' rectangles
+    // (_sdBandsGeo()), and where the browser answers them already zoomed
+    // (Chromium: the <html> box `rectWidth` on screen for `cssWidth` CSS
+    // pixels) a margin or padding read in CSS pixels takes that ratio too.
+    function lengthScale(k, rectWidth, cssWidth) {
+        k = num(k) > 0 ? num(k) : 1;
+        var r = num(rectWidth) / num(cssWidth);
+        return k * (isFinite(r) && r > 0 ? r : 1);
+    }
+
     window.PGCanvasBands = {
         colGrid: colGrid,
         colSpan: colSpan,
@@ -308,6 +318,7 @@
         HANDLE: HANDLE,
         edge: edge,
         layout: layout,
+        lengthScale: lengthScale,
         growth: growth,
         keyStep: keyStep,
         keyStepFrom: keyStepFrom,

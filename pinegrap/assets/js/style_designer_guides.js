@@ -40,7 +40,8 @@ StyleDesigner.definePart('guides', function (K) {
     // inside the frame is turned into the layer's pixels: `k` scales it
     // (the zoom on the canvas' <html> where the rectangle is not zoomed yet,
     // and the Fit scale) and `zoom` turns the layer's pixels back into the
-    // page's CSS pixels for the numbers.
+    // page's CSS pixels for the numbers; `rect` is a rectangle's pixels per
+    // CSS pixel.
     function view(doc) {
         var win = doc && doc.defaultView;
         var frame = win ? win.frameElement : null;
@@ -56,13 +57,11 @@ StyleDesigner.definePart('guides', function (K) {
         var h = Math.min(fr.bottom, ar.top + area.clientTop + area.clientHeight) - top;
         if (w <= 0 || h <= 0) return null;
         var docEl = doc.documentElement;
-        var cssZoom = parseFloat(docEl.style.zoom) || 1;
-        // Browsers that follow the standard CSS zoom answer rectangles
-        // already zoomed: the <html> box is then its client width times the
-        // zoom. Older ones answer the page's pixels and draw the zoom on top.
-        var inPage = Math.abs(docEl.getBoundingClientRect().width - docEl.clientWidth * cssZoom) >= 2;
-        var k = inPage ? cssZoom : 1;
-        if (frame.offsetWidth > 0) k *= fr.width / frame.offsetWidth;
+        // Chromium answers rectangles inside the zoomed canvas already
+        // zoomed, other browsers in the page's pixels: the <html> box's
+        // width on screen against its CSS width tells which (G.zoomScales()).
+        var sc = G.zoomScales(parseFloat(docEl.style.zoom) || 1, frame.offsetWidth > 0 ? fr.width / frame.offsetWidth : 1,
+            docEl.getBoundingClientRect().width, docEl.offsetWidth);
         return {
             host: host,
             left: left - hr.left,
@@ -71,8 +70,9 @@ StyleDesigner.definePart('guides', function (K) {
             height: h,
             ox: fr.left - left,
             oy: fr.top - top,
-            k: k,
-            zoom: k * (inPage ? 1 : cssZoom)
+            k: sc.k,
+            zoom: sc.zoom,
+            rect: sc.rect
         };
     }
 
@@ -336,10 +336,12 @@ StyleDesigner.definePart('guides', function (K) {
             return;
         }
         var page = docEl.getBoundingClientRect();
-        var s = page.width / docEl.clientWidth || 1;
+        // A rectangle's pixels per CSS pixel; the page is as wide as its
+        // <html> box, which a zoom lays out narrower in CSS pixels.
+        var s = v.rect;
         var found = pageGrid(doc);
         var root = parseFloat(doc.defaultView.getComputedStyle(docEl).fontSize) || 16;
-        var g = G.layout({ left: page.left, top: 0, right: page.left + docEl.clientWidth * s, bottom: 1 }, {
+        var g = G.layout({ left: page.left, top: 0, right: page.left + (docEl.offsetWidth || docEl.clientWidth) * s, bottom: 1 }, {
             zoom: s,
             root: root,
             gutter: found ? found.gutter : undefined,
