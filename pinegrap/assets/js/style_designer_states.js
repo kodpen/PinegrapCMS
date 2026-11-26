@@ -181,7 +181,12 @@ StyleDesigner.definePart('states', function (K) {
             // The corners as five rows (the corner box writes classes).
             var rd = card.querySelector('.sd-rd-rows');
             if (rd) rd.hidden = false;
-            card.querySelectorAll('.sd-bg-img-grp, #sd-bcp-row').forEach(dimRow);
+            // The background layers are the same in every state.
+            card.querySelectorAll('[data-sd-bgl-box]').forEach(function (box) {
+                dimRow(box);
+                var note = box.querySelector('.sd-bgl-same');
+                if (note) note.hidden = false;
+            });
             card.querySelectorAll('.sd-prop-row').forEach(function (r) {
                 if (r.closest('.sd-state-off')) return;
                 // Transition is one value for every state: open, its changed

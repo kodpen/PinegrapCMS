@@ -36114,17 +36114,11 @@ const StyleDesigner = (function () {
         });
     }
 
-    // The per-element background controls (inline styles) are not offered
-    // for several elements.
+    // The background layers (inline styles) are not offered for several
+    // elements.
     function _postProcessMultiPanel(nodes, panel) {
-        var bcpRow = panel.querySelector('#sd-bcp-row');
-        if (bcpRow) {
-            var prev = bcpRow.previousElementSibling;
-            if (prev && prev.classList.contains('sd-sp-divider')) prev.style.display = 'none';
-            bcpRow.style.display = 'none';
-        }
-        var bgImgGrp = panel.querySelector('.sd-bg-img-grp');
-        if (bgImgGrp) bgImgGrp.style.display = 'none';
+        var box = panel.querySelector('[data-sd-bgl-box]');
+        if (box) box.style.display = 'none';
     }
 
     // The controls of the several-element panel that write, and what each
@@ -38368,6 +38362,7 @@ const StyleDesigner = (function () {
         _sdFxBind(selectedNode);
         _sdSpBoxBind([selectedNode]);
         _sdFocusBind(selectedNode);
+        _sdBglBind(selectedNode);
         markModifiedProps();
         _sdStateAfter(panel);
         _sdTransBind(panel);
@@ -58746,8 +58741,9 @@ const StyleDesigner = (function () {
         }
         // A video shows its poster in the control: without one, no Focus.
         if (kind === 'video') return String(n.props.tag || '').toLowerCase() === 'video' && !!getNodeAttr(n, 'poster');
+        // One picture alone: several layers share the position list.
         var raw = getAttrStyleProp(n, 'background-image');
-        if (!raw || !/^url\(/i.test(raw)) return false;
+        if (!raw || !/^url\(/i.test(raw) || /\)\s*,/.test(raw)) return false;
         var size = getAttrStyleProp(n, 'background-size').toLowerCase();
         var rep = getAttrStyleProp(n, 'background-repeat').toLowerCase();
         return size === 'cover' || (rep === 'no-repeat' && (size === '' || size === 'auto'));
@@ -58909,6 +58905,37 @@ const StyleDesigner = (function () {
             }
             draw();
         });
+    }
+
+    // ── Background layers (Style › Color and background)
+    // The element's colour, gradient and picture layers as a list: the
+    // part 'bglayers' (pg_bg_layers.js, style_designer_bglayers.js), run
+    // when the element has a background or "Add layer" is pressed. The
+    // core draws the place and the empty list.
+    function _sdBglHas(n) {
+        return !!(getAttrStyleProp(n, 'background-image') || getAttrStyleProp(n, 'background-color') || getAttrStyleProp(n, 'background'));
+    }
+
+    function _sdBglHtml(n) {
+        var empty = _sdBglHas(n) ? '' :
+            '<p class="sd-bgl-none">' + esc(_sdT('No layer. The background colour above shows.')) + '</p>' +
+            '<div class="sd-bgl-foot"><span></span><button type="button" class="btn btn-sm btn-outline theme-secondary" data-sd-bgl-add>' +
+            '<i class="bi bi-plus-lg" aria-hidden="true"></i> ' + esc(_sdT('Add layer')) + '</button></div>';
+        return '<div class="sd-sp-divider"></div><div class="sd-bgl" data-sd-bgl-box>' +
+            '<div class="sd-trans-sub">' + esc(_sdT('Background layers')) + '</div>' +
+            '<div class="sd-bgl-note sd-bgl-same" hidden><i class="bi bi-info-circle" aria-hidden="true"></i><span>' + esc(_sdT('The layers are the same in every state.')) + '</span></div>' +
+            '<div data-sd-bgl>' + empty + '</div></div>';
+    }
+
+    function _sdBglBind(node) {
+        var host = document.querySelector('#sd-properties [data-sd-bgl]');
+        if (!host || !node || selectedNodes.length > 1) return;
+        var draw = function (add) {
+            if (host.isConnected && selectedNode === node) _sdPartCall('bglayers', 'draw', [host, node, add]).catch(_sdPartFailed);
+        };
+        if (_sdBglHas(node)) { draw(false); return; }
+        var btn = host.querySelector('[data-sd-bgl-add]');
+        if (btn) btn.addEventListener('click', function () { draw(true); });
     }
 
     // ── The spacing box (Style › Spacing)
@@ -59566,184 +59593,9 @@ const StyleDesigner = (function () {
         );
 
         // Color and background: text and background colours, opacities and
-        // the custom background image/color/gradient inline style. The
-        // shadow is in Shadow and effect.
-        var _bgImgRaw = getAttrStyleProp(n, 'background-image');
-        var _bgImgUrl = '', _bgGradType = 'none', _bgGradStr = '';
-        if (/^linear-gradient/i.test(_bgImgRaw))      { _bgGradType = 'linear'; _bgGradStr = _bgImgRaw; }
-        else if (/^radial-gradient/i.test(_bgImgRaw)) { _bgGradType = 'radial'; _bgGradStr = _bgImgRaw; }
-        else if (/^url\(/i.test(_bgImgRaw))           { _bgImgUrl = _bgImgRaw.replace(/^url\(['"]?/i, '').replace(/['"]?\)\s*$/i, ''); }
-        else if (_bgImgRaw)                           { _bgImgUrl = _bgImgRaw; }
-
-        // The gradient's remembered settings (props._bgGrad: stops, angle,
-        // shape) are used only while they still build the gradient the style
-        // holds. A gradient typed into, changed in or deleted from the
-        // Attributes panel wins over them: the panel then shows what the
-        // style says, and the remembered settings follow it so the next edit
-        // here starts from the page's gradient rather than from the old one.
-        var _gradSaved   = n.props._bgGrad;
-        var _gradTrusted = !!(_gradSaved && _bgGradType !== 'none' && buildGradientStr(_gradSaved) === _bgGradStr);
-        var _grad = _gradTrusted ? Object.assign({}, _gradSaved) : {};
-        if (_bgGradType !== 'none' && !_gradTrusted) {
-            _grad = parseGradient(_bgGradStr);
-            _grad.type = _bgGradType;
-        }
-        if (!_gradTrusted && (_gradSaved || _bgGradType !== 'none')) {
-            n.props._bgGrad = (_bgGradType !== 'none') ? Object.assign({}, _grad) : null;
-        }
-        _grad.type  = _grad.type  || _bgGradType;
-        _grad.c1    = _grad.c1    || '#667eea';
-        _grad.c2    = _grad.c2    || '#764ba2';
-        _grad.mid   = (_grad.mid  == null) ? 50  : _grad.mid;
-        _grad.angle = (_grad.angle== null) ? 135 : _grad.angle;
-        _grad.shape = _grad.shape || 'circle';
-        _grad.pos   = _grad.pos   || 'center';
-
-        var _bgCol  = getAttrStyleProp(n, 'background-color');
-        var _bgSize = getAttrStyleProp(n, 'background-size');
-        var _bgPos  = getAttrStyleProp(n, 'background-position');
-        var _bgRep  = getAttrStyleProp(n, 'background-repeat');
-        var _bgAtt  = getAttrStyleProp(n, 'background-attachment');
-
-        // ── Compact dropdown color/gradient picker ──
-        var _activeTab  = _grad.type !== 'none' ? _grad.type : 'solid';
-        var _solidColor = _bgCol || '#ffffff';
-        var _bgHasVal   = !!(_bgCol || _grad.type !== 'none');
-        var _swatchStyle = _grad.type !== 'none' ? buildGradientStr(_grad) : (_bgCol || '');
-
-        // Angle direction presets (Unicode arrows + degree value)
-        var _anglePresets = [[0,'↑'],[45,'↗'],[90,'→'],[135,'↘'],[180,'↓'],[225,'↙'],[270,'←'],[315,'↖']];
-        var _angBtns = _anglePresets.map(function(ap) {
-            return '<button type="button" class="sd-bcp-angle-btn' + (Number(_grad.angle) === ap[0] ? ' active' : '') + '" data-bcp-angle="' + ap[0] + '" title="' + ap[0] + 'deg">' + ap[1] + '</button>';
-        }).join('');
-
-        var _posOpts = [['center',_sdT('Center')],['top',_sdT('Top')],['bottom',_sdT('Bottom')],['left',_sdT('Left')],['right',_sdT('Right')],['top left',_sdT('Top Left')],['top right',_sdT('Top Right')],['bottom left',_sdT('Btm Left')],['bottom right',_sdT('Btm Right')]];
-
-        var _popupHtml =
-            '<div class="sd-bcp-popup" id="sd-bcp-popup">' +
-                '<div class="sd-bcp-hdr">' +
-                    '<span>' + esc(_sdT('Background')) + '</span>' +
-                    '<button type="button" class="sd-bcp-hdr-close" id="sd-bcp-close" title="' + esc(_sdT('Close')) + '"><i class="bi bi-x-lg"></i></button>' +
-                '</div>' +
-                '<div class="sd-bcp-popup-inner">' +
-                '<div class="sd-bcp-tabs">' +
-                    '<button class="sd-bcp-tab' + (_activeTab === 'solid'  ? ' active' : '') + '" data-bcp-tab="solid">' + esc(_sdT('Solid')) + '</button>' +
-                    '<button class="sd-bcp-tab' + (_activeTab === 'linear' ? ' active' : '') + '" data-bcp-tab="linear">' + esc(_sdT('Linear')) + '</button>' +
-                    '<button class="sd-bcp-tab' + (_activeTab === 'radial' ? ' active' : '') + '" data-bcp-tab="radial">' + esc(_sdT('Radial')) + '</button>' +
-                '</div>' +
-                // Solid tab
-                '<div class="sd-bcp-body' + (_activeTab === 'solid' ? ' active' : '') + '" data-bcp-body="solid">' +
-                    '<div class="d-flex gap-1 align-items-center mt-1">' +
-                        '<input type="color" class="form-control form-control-color" id="sd-bcp-solid-color" value="' + esc(_solidColor) + '" style="width:2.25rem;height:1.9rem;flex:0 0 auto;padding:.15rem .25rem">' +
-                        '<input type="text" class="form-control form-control-sm" id="sd-bcp-solid-hex" value="' + esc(_bgCol) + '" placeholder="#hex or rgba(...)">' +
-                    '</div>' +
-                '</div>' +
-                // Linear tab
-                '<div class="sd-bcp-body' + (_activeTab === 'linear' ? ' active' : '') + '" data-bcp-body="linear">' +
-                    '<div class="sd-bcp-angles">' + _angBtns +
-                        '<input type="number" class="form-control form-control-sm sd-bcp-angle-inp" id="sd-bcp-lin-angle" value="' + _grad.angle + '" min="0" max="360" title="' + esc(_sdT('Custom angle')) + '">' +
-                    '</div>' +
-                    '<div class="sd-bcp-color-row">' +
-                        '<span class="sd-bcp-clabel">C1</span>' +
-                        '<input type="color" class="form-control form-control-color" id="sd-bcp-lin-c1" value="' + esc(_grad.c1) + '" style="width:2rem;height:1.7rem;flex:0 0 auto;padding:.1rem .15rem">' +
-                        '<span class="sd-bcp-clabel ms-1">C2</span>' +
-                        '<input type="color" class="form-control form-control-color" id="sd-bcp-lin-c2" value="' + esc(_grad.c2) + '" style="width:2rem;height:1.7rem;flex:0 0 auto;padding:.1rem .15rem">' +
-                    '</div>' +
-                    '<div class="sd-bcp-mid-row">' +
-                        '<span class="sd-bcp-clabel">' + esc(_sdT('Mid')) + '</span>' +
-                        '<div class="form-range pg-range-bubble">' +
-                            '<input type="range" class="form-range-input" id="sd-bcp-lin-mid" min="0" max="100" value="' + _grad.mid + '" aria-label="' + esc(_sdT('Mid')) + '">' +
-                        '</div>' +
-                    '</div>' +
-                    '<div class="sd-bcp-preview" id="sd-bcp-lin-prev" style="background:' + buildGradientStr(Object.assign({}, _grad, {type:'linear'})) + '"></div>' +
-                '</div>' +
-                // Radial tab
-                '<div class="sd-bcp-body' + (_activeTab === 'radial' ? ' active' : '') + '" data-bcp-body="radial">' +
-                    '<div class="sd-bcp-opt-row">' +
-                        '<span class="sd-bcp-clabel">' + esc(_sdT('Shape')) + '</span>' +
-                        '<div class="btn-group btn-group-sm">' +
-                            '<button type="button" class="btn btn-outline theme-secondary' + (_grad.shape === 'circle' ? ' active' : '') + '" data-bcp-radial-shape="circle">' + esc(_sdT('Circle')) + '</button>' +
-                            '<button type="button" class="btn btn-outline theme-secondary' + (_grad.shape === 'ellipse' ? ' active' : '') + '" data-bcp-radial-shape="ellipse">' + esc(_sdT('Ellipse')) + '</button>' +
-                        '</div>' +
-                    '</div>' +
-                    '<div class="sd-bcp-opt-row mt-1">' +
-                        '<span class="sd-bcp-clabel">' + esc(_sdT('Pos')) + '</span>' +
-                        '<select class="form-control form-control-sm" id="sd-bcp-rad-pos">' +
-                            _posOpts.map(function(o){ return '<option value="' + o[0] + '"' + (_grad.pos === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') +
-                        '</select>' +
-                    '</div>' +
-                    '<div class="sd-bcp-color-row">' +
-                        '<span class="sd-bcp-clabel">C1</span>' +
-                        '<input type="color" class="form-control form-control-color" id="sd-bcp-rad-c1" value="' + esc(_grad.c1) + '" style="width:2rem;height:1.7rem;flex:0 0 auto;padding:.1rem .15rem">' +
-                        '<span class="sd-bcp-clabel ms-1">C2</span>' +
-                        '<input type="color" class="form-control form-control-color" id="sd-bcp-rad-c2" value="' + esc(_grad.c2) + '" style="width:2rem;height:1.7rem;flex:0 0 auto;padding:.1rem .15rem">' +
-                    '</div>' +
-                    '<div class="sd-bcp-mid-row">' +
-                        '<span class="sd-bcp-clabel">' + esc(_sdT('Mid')) + '</span>' +
-                        '<div class="form-range pg-range-bubble">' +
-                            '<input type="range" class="form-range-input" id="sd-bcp-rad-mid" min="0" max="100" value="' + _grad.mid + '" aria-label="' + esc(_sdT('Mid')) + '">' +
-                        '</div>' +
-                    '</div>' +
-                    '<div class="sd-bcp-preview" id="sd-bcp-rad-prev" style="background:' + buildGradientStr(Object.assign({}, _grad, {type:'radial'})) + '"></div>' +
-                '</div>' +
-                '</div>' +    // closes sd-bcp-popup-inner
-            '</div>';
-
-        var _bgColorRow =
-            '<div class="sd-prop-row" id="sd-bcp-row">' +
-                '<label class="sd-prop-label">' + esc(_sdT('Custom Background Color')) + '</label>' +
-                '<div class="sd-prop-control">' +
-                    '<div class="sd-bcp-wrap">' +
-                        '<div class="sd-bcp-trigger-wrap">' +
-                            '<button type="button" class="sd-bcp-trigger" id="sd-bcp-trigger">' +
-                                '<span class="sd-bcp-swatch" style="' + (_swatchStyle ? 'background:' + _swatchStyle + ';' : '') + '"></span>' +
-                                '<span class="sd-bcp-trigger-label">' + esc(_grad.type !== 'none' ? (_grad.type === 'linear' ? _sdT('Linear Gradient') : _sdT('Radial Gradient')) : (_bgCol || _sdT('None'))) + '</span>' +
-                            '</button>' +
-                            (_bgHasVal ? '<button type="button" class="sd-bcp-clear-btn" id="sd-bcp-clear" title="' + esc(_sdT('Remove')) + '"><i class="bi bi-x-lg"></i></button>' : '') +
-                        '</div>' +
-                        _popupHtml +
-                    '</div>' +
-                '</div>' +
-            '</div>';
-
-        // ── Background group: Bg Color + Bg Image + image settings in a collapsible thin-bordered group ──
-        var _bgGrpSid = 'sdsc-bg-imggrp';
-        var _bgGrpCollapsed = false;
-        try { _bgGrpCollapsed = localStorage.getItem('sd_cs_' + _bgGrpSid) === '1'; } catch(e_) {}
-
-        var _imgGrpBody =
-            row(_sdT('Bg Image'),
-                '<div class="sd-pick-group">' +
-                    '<input type="text" class="form-control form-control-sm" id="sd-bg-img-inp" data-bg-prop="background-image" value="' + esc(_bgImgUrl) + '" placeholder="' + esc(_sdT('Image URL')) + '">' +
-                    '<button class="btn btn-sm btn-outline theme-secondary sd-pick-btn" type="button" onclick="window.sdOpenImagePicker(\'sd-bg-img-inp\')">' + esc(_sdT('Select')) + '</button>' +
-                    '<button class="btn btn-sm btn-outline theme-secondary sd-pick-btn" type="button" title="' + esc(_sdT('Edit in Artifact Canvas')) + '" aria-label="' + esc(_sdT('Edit in Artifact Canvas')) + '" onclick="window.sdOpenImageEditor(\'sd-bg-img-inp\')">' + _sdCanvasIcon() + '</button>' +
-                    (_bgImgUrl ? '<button class="btn btn-sm btn-outline theme-danger sd-pick-btn" type="button" data-bg-clear="background-image" title="' + esc(_sdT('Remove')) + '"><i class="bi bi-x-lg"></i></button>' : '') +
-                '</div>') +
-            row(_sdT('Bg Size'),   '<select class="form-control form-control-sm" data-bg-prop="background-size">' +
-                [['',_sdT('Default')],['cover', _sdT('Cover (background)')],['contain',_sdT('Contain')],['auto',_sdT('Auto')],['100% 100%',_sdT('Stretch')]].map(function(o){ return '<option value="' + o[0] + '"' + (_bgSize===o[0]?' selected':'') + '>' + o[1] + '</option>'; }).join('') + '</select>') +
-            // A picture its box cuts takes the Focus control in place of the
-            // list (_sdFocusTakes()); a pattern or no picture keeps the list.
-            (_sdFocusTakes(n, 'background') ? _sdFocusPlace('background') :
-            row(_sdT('Bg Pos'),    '<select class="form-control form-control-sm" data-bg-prop="background-position">' +
-                [['',_sdT('Default')],['center',_sdT('Center')],['top',_sdT('Top')],['bottom',_sdT('Bottom')],['left',_sdT('Left')],['right',_sdT('Right')],['top left',_sdT('Top Left')],['top right',_sdT('Top Right')],['bottom left',_sdT('Btm Left')],['bottom right',_sdT('Btm Right')]].map(function(o){ return '<option value="' + o[0] + '"' + (_bgPos===o[0]?' selected':'') + '>' + o[1] + '</option>'; }).join('') + '</select>')) +
-            row(_sdT('Bg Repeat'), '<select class="form-control form-control-sm" data-bg-prop="background-repeat">' +
-                [['',_sdT('Default')],['no-repeat',_sdT('No Repeat')],['repeat',_sdT('Repeat')],['repeat-x',_sdT('Repeat X')],['repeat-y',_sdT('Repeat Y')]].map(function(o){ return '<option value="' + o[0] + '"' + (_bgRep===o[0]?' selected':'') + '>' + o[1] + '</option>'; }).join('') + '</select>') +
-            row(_sdT('Bg Attach'), '<select class="form-control form-control-sm" data-bg-prop="background-attachment">' +
-                [['',_sdT('Default')],['scroll',_sdT('Scroll')],['fixed',_sdT('Fixed')],['local',_sdT('Local')]].map(function(o){ return '<option value="' + o[0] + '"' + (_bgAtt===o[0]?' selected':'') + '>' + o[1] + '</option>'; }).join('') + '</select>');
-
-        var bgSection =
-            '<div class="sd-sp-divider"></div>' +
-            _bgColorRow +
-            // Thin-bordered collapsible group for image + image-related properties
-            '<div class="sd-bg-img-grp">' +
-                '<div class="sd-bg-img-grp-hdr sd-sect-hdr' + (_bgGrpCollapsed ? '' : ' sd-sect-open') + '" data-sid="' + _bgGrpSid + '" role="button" tabindex="0" aria-expanded="' + (_bgGrpCollapsed ? 'false' : 'true') + '">' +
-                    '<i class="bi bi-image" style="font-size:.65rem;opacity:.6"></i>' + esc(_sdT(' Bg Image')) + '' +
-                    '<span class="sd-sect-chev bi bi-chevron-right ms-auto"></span>' +
-                '</div>' +
-                '<div class="sd-sect-body sd-bg-img-grp-body"' + (_bgGrpCollapsed ? ' style="display:none"' : '') + '>' +
-                    _imgGrpBody +
-                '</div>' +
-            '</div>';
+        // the background layers (_sdBglHtml()). The shadow is in Shadow and
+        // effect.
+        var bgSection = _sdBglHtml(n);
 
         var colorsHtml = as(_sdT('Color and background'),
             row(_sdT('Text Color'),   colorSelectGroup('text-', tColors), 'color:color') +
@@ -59819,73 +59671,6 @@ const StyleDesigner = (function () {
             type: _sdT('Type'), variant: _sdT('Variant'), bg: _sdT('Background'), theme: _sdT('Theme')
         };
         return esc(Object.prototype.hasOwnProperty.call(names, key) ? names[key] : capFirst(key));
-    }
-
-    // ── Gradient helpers ──
-    // Build a CSS gradient string from a {type, c1, p1, c2, p2, angle, shape, pos} config
-    function buildGradientStr(g) {
-        if (!g || !g.type || g.type === 'none') return '';
-        var c1 = g.c1 || '#667eea';
-        var c2 = g.c2 || '#764ba2';
-        var mid = (g.mid == null ? 50 : Number(g.mid));
-        if (g.type === 'linear') {
-            var angle = (g.angle == null ? 135 : Number(g.angle));
-            if (mid === 50) return 'linear-gradient(' + angle + 'deg, ' + c1 + ', ' + c2 + ')';
-            return 'linear-gradient(' + angle + 'deg, ' + c1 + ', ' + mid + '%, ' + c2 + ')';
-        }
-        var shape = g.shape || 'circle';
-        var pos = g.pos || 'center';
-        if (mid === 50) return 'radial-gradient(' + shape + ' at ' + pos + ', ' + c1 + ', ' + c2 + ')';
-        return 'radial-gradient(' + shape + ' at ' + pos + ', ' + c1 + ', ' + mid + '%, ' + c2 + ')';
-    }
-
-    // Parse a linear/radial gradient string back into a config object.
-    // Best-effort — recovers two color stops + optional midpoint color-hint.
-    function parseGradient(str) {
-        var g = {};
-        if (!str) return g;
-        var lin = str.match(/^linear-gradient\(\s*([\-\d.]+)deg\s*,\s*(.+)\)$/i);
-        if (lin) {
-            g.type = 'linear';
-            g.angle = parseFloat(lin[1]);
-            var stops = _splitTopLevelCommas(lin[2]);
-            // stops: [c1, optional-midpoint-hint, c2] or [c1, c2]
-            var colorStops = stops.filter(function(s){ return !/^\s*[\d.]+%\s*$/.test(s); });
-            var hintStop   = stops.find  ? stops.find(function(s){ return /^\s*([\d.]+)%\s*$/.test(s); }) : null;
-            if (!hintStop) { // IE compat
-                for (var i=0;i<stops.length;i++) { if (/^\s*([\d.]+)%\s*$/.test(stops[i])){ hintStop=stops[i]; break; } }
-            }
-            if (colorStops[0]) { var m1 = colorStops[0].match(/(#[\da-f]+|rgba?\([^)]*\))/i); if (m1) g.c1 = m1[1]; }
-            if (colorStops[1]) { var m2 = colorStops[1].match(/(#[\da-f]+|rgba?\([^)]*\))/i); if (m2) g.c2 = m2[1]; }
-            if (hintStop) { var hm = hintStop.match(/([\d.]+)%/); if (hm) g.mid = parseFloat(hm[1]); }
-            return g;
-        }
-        var rad = str.match(/^radial-gradient\(\s*(circle|ellipse)?\s*(?:at\s+([\w\s]+?))?\s*,\s*(.+)\)$/i);
-        if (rad) {
-            g.type = 'radial';
-            if (rad[1]) g.shape = rad[1];
-            if (rad[2]) g.pos = rad[2].trim();
-            var rstops = _splitTopLevelCommas(rad[3]);
-            var rcolors = rstops.filter(function(s){ return !/^\s*[\d.]+%\s*$/.test(s); });
-            var rhint   = null;
-            for (var ri=0;ri<rstops.length;ri++) { if (/^\s*([\d.]+)%\s*$/.test(rstops[ri])){ rhint=rstops[ri]; break; } }
-            if (rcolors[0]) { var rm1 = rcolors[0].match(/(#[\da-f]+|rgba?\([^)]*\))/i); if (rm1) g.c1 = rm1[1]; }
-            if (rcolors[1]) { var rm2 = rcolors[1].match(/(#[\da-f]+|rgba?\([^)]*\))/i); if (rm2) g.c2 = rm2[1]; }
-            if (rhint) { var rhm = rhint.match(/([\d.]+)%/); if (rhm) g.mid = parseFloat(rhm[1]); }
-        }
-        return g;
-    }
-    function _splitTopLevelCommas(s) {
-        var out = [], buf = '', depth = 0;
-        for (var i = 0; i < s.length; i++) {
-            var ch = s.charAt(i);
-            if (ch === '(') depth++;
-            else if (ch === ')') depth--;
-            if (ch === ',' && depth <= 0) { out.push(buf.trim()); buf = ''; }
-            else buf += ch;
-        }
-        if (buf.trim()) out.push(buf.trim());
-        return out;
     }
 
     // Adds/updates/removes a single CSS property inside a node's _attrs.style entry.
@@ -59987,322 +59772,6 @@ const StyleDesigner = (function () {
     function bindPropEvents() {
         _sdAiAltButton();
         if (!selectedNode) return;
-
-        // ── Background prop selects and inputs ──
-        document.querySelectorAll('#sd-properties [data-bg-prop]').forEach(function(el) {
-            el.addEventListener('change', function() {
-                if (!selectedNode) return;
-                saveState();
-                var prop = this.getAttribute('data-bg-prop');
-                var val  = this.value;
-                // For background-image wrap in url() when it's a plain URL (preserve gradients as-is)
-                if (prop === 'background-image' && val && !/^(linear-gradient|radial-gradient|url\()/i.test(val)) {
-                    val = 'url("' + val + '")';
-                }
-                // Setting an image URL clears the gradient config so the sliders don't lie on re-render
-                if (prop === 'background-image' && selectedNode.props._bgGrad) {
-                    selectedNode.props._bgGrad = null;
-                }
-                setAttrStyleProp(selectedNode, prop, val);
-                renderCanvas();
-                renderProperties();
-                renderAttrsPanel();
-                renderHtmlTree();
-            });
-        });
-        document.querySelectorAll('#sd-properties [data-bg-clear]').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                if (!selectedNode) return;
-                saveState();
-                var prop = this.getAttribute('data-bg-clear');
-                if (prop === 'background-image' && selectedNode.props._bgGrad) {
-                    selectedNode.props._bgGrad = null;
-                }
-                setAttrStyleProp(selectedNode, prop, '');
-                renderCanvas();
-                renderProperties();
-                renderAttrsPanel();
-                renderHtmlTree();
-            });
-        });
-
-        // ── Compact dropdown color/gradient picker (sd-bcp-*) ──
-        (function() {
-            // Remove any body-level popup left over from a previous renderProperties() call
-            var stalePopup = document.getElementById('sd-bcp-popup');
-            if (stalePopup && stalePopup.parentNode === document.body) {
-                document.body.removeChild(stalePopup);
-            }
-            var popup    = document.getElementById('sd-bcp-popup');
-            var trigger  = document.getElementById('sd-bcp-trigger');
-            var clearBtn = document.getElementById('sd-bcp-clear');
-            var closeBtn = document.getElementById('sd-bcp-close');
-            if (!popup || !trigger) return;
-
-            // Header close button
-            if (closeBtn) {
-                closeBtn.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    popup.classList.remove('sd-bcp-open');
-                });
-            }
-
-            // Toggle popup open/close.
-            // The popup uses position:fixed so it escapes panel overflow clipping.
-            // We move it to <body> on first open so even ancestor overflow:hidden can't clip it.
-            trigger.addEventListener('click', function(e) {
-                e.stopPropagation();
-                // Reparent to body once to escape overflow:hidden on the panel
-                if (popup.parentNode !== document.body) {
-                    document.body.appendChild(popup);
-                }
-                var isOpen = popup.classList.toggle('sd-bcp-open');
-                if (isOpen) {
-                    var rect = trigger.getBoundingClientRect();
-                    var popW = 230;
-                    var left = Math.round(rect.left);
-                    var top  = Math.round(rect.bottom + 3);
-                    // Prevent overflow off the right edge
-                    if (left + popW > window.innerWidth - 6) {
-                        left = Math.max(6, window.innerWidth - popW - 6);
-                    }
-                    // Prefer opening below; if not enough room flip above
-                    var spaceBelow = window.innerHeight - rect.bottom;
-                    if (spaceBelow < 380 && rect.top > 380) {
-                        top = Math.round(rect.top - 380);
-                    }
-                    popup.style.left  = left + 'px';
-                    popup.style.top   = top  + 'px';
-                    popup.style.width = popW + 'px';
-                }
-            });
-
-            // Click outside → close. Bound once per document: this block runs
-            // on every panel render, and a per-render listener that unhooks
-            // itself only after its popup was opened and closed piles up for
-            // every popup that is re-rendered before being opened.
-            popup._sdBcpTrigger = trigger;
-            if (!document._sdBcpCloseBound) {
-                document._sdBcpCloseBound = true;
-                document.addEventListener('click', function (e) {
-                    var open = document.getElementById('sd-bcp-popup');
-                    if (!open || !open.classList.contains('sd-bcp-open')) return;
-                    var trg = open._sdBcpTrigger;
-                    if (open.contains(e.target) || (trg && trg.contains(e.target))) return;
-                    open.classList.remove('sd-bcp-open');
-                });
-            }
-
-            // Tab switching
-            popup.querySelectorAll('[data-bcp-tab]').forEach(function(btn) {
-                btn.addEventListener('click', function() {
-                    var tab = this.getAttribute('data-bcp-tab');
-                    popup.querySelectorAll('[data-bcp-tab]').forEach(function(b){ b.classList.remove('active'); });
-                    popup.querySelectorAll('[data-bcp-body]').forEach(function(b){ b.classList.remove('active'); });
-                    this.classList.add('active');
-                    var body = popup.querySelector('[data-bcp-body="' + tab + '"]');
-                    if (body) body.classList.add('active');
-                    // Switching to solid → remove gradient; switching to gradient → set it
-                    if (!selectedNode) return;
-                    // Snapshot before the change, not after: history holds the
-                    // state to come back to.
-                    saveState();
-                    if (tab === 'solid') {
-                        selectedNode.props._bgGrad = null;
-                        setAttrStyleProp(selectedNode, 'background-image', '');
-                        var col = document.getElementById('sd-bcp-solid-color');
-                        if (col && col.value) setAttrStyleProp(selectedNode, 'background-color', col.value);
-                    } else {
-                        var g = selectedNode.props._bgGrad = selectedNode.props._bgGrad || {};
-                        g.type = tab;
-                        g.c1    = g.c1 || '#667eea';
-                        g.c2    = g.c2 || '#764ba2';
-                        g.mid   = (g.mid == null) ? 50 : g.mid;
-                        g.angle = (g.angle == null) ? 135 : g.angle;
-                        g.shape = g.shape || 'circle';
-                        g.pos   = g.pos || 'center';
-                        setAttrStyleProp(selectedNode, 'background-image', buildGradientStr(g));
-                    }
-                    _updateBcpTrigger();
-                    renderCanvas(); renderAttrsPanel(); renderHtmlTree();
-                });
-            });
-
-            // Solid color picker
-            var solidColor = document.getElementById('sd-bcp-solid-color');
-            var solidHex   = document.getElementById('sd-bcp-solid-hex');
-            function applyBgColor(val) {
-                if (!selectedNode || !val) return;
-                saveState();
-                setAttrStyleProp(selectedNode, 'background-color', val);
-                _updateBcpTrigger();
-                renderCanvas(); renderAttrsPanel(); renderHtmlTree();
-            }
-            if (solidColor) {
-                solidColor.addEventListener('input', function() { if (solidHex) solidHex.value = this.value; applyBgColor(this.value); });
-            }
-            if (solidHex) {
-                solidHex.addEventListener('change', function() {
-                    var v = this.value.trim();
-                    if (!v) { setAttrStyleProp(selectedNode, 'background-color', ''); _updateBcpTrigger(); renderCanvas(); renderAttrsPanel(); renderHtmlTree(); return; }
-                    if (solidColor) solidColor.value = (v.match(/^#[0-9a-f]{6}$/i) ? v : solidColor.value);
-                    applyBgColor(v);
-                });
-            }
-
-            // Generic gradient updater
-            function applyGrad() {
-                if (!selectedNode || !selectedNode.props._bgGrad) return;
-                var g = selectedNode.props._bgGrad;
-                var gs = buildGradientStr(g);
-                setAttrStyleProp(selectedNode, 'background-image', gs);
-                // Update preview strips
-                var lp = document.getElementById('sd-bcp-lin-prev');
-                var rp = document.getElementById('sd-bcp-rad-prev');
-                if (lp) lp.style.background = buildGradientStr(Object.assign({}, g, {type:'linear'}));
-                if (rp) rp.style.background = buildGradientStr(Object.assign({}, g, {type:'radial'}));
-                _updateBcpTrigger();
-                renderCanvas(); renderAttrsPanel(); renderHtmlTree();
-            }
-
-            // Linear gradient controls
-            ['sd-bcp-lin-c1','sd-bcp-lin-c2'].forEach(function(id) {
-                var el = document.getElementById(id);
-                if (!el) return;
-                el.addEventListener('input', function() {
-                    if (!selectedNode) return;
-                    // Snapshot BEFORE the change, as every other mutation site
-                    // does: history holds the state to come back to, not the
-                    // one just set. One step per drag, not per colour the
-                    // picker reports on its way there.
-                    saveState(_sdEditRun('grad:' + id));
-                    var g = selectedNode.props._bgGrad = selectedNode.props._bgGrad || {type:'linear'};
-                    g[id === 'sd-bcp-lin-c1' ? 'c1' : 'c2'] = this.value;
-                    applyGrad();
-                });
-            });
-            var linMid = document.getElementById('sd-bcp-lin-mid');
-            if (linMid) {
-                pgUI.range.bubble(linMid.parentNode, _sdPercent);
-                linMid.addEventListener('input', function() {
-                    if (!selectedNode) return;
-                    saveState(_sdEditRun('grad:lin-mid'));
-                    var g = selectedNode.props._bgGrad = selectedNode.props._bgGrad || {type:'linear'};
-                    g.mid = Number(this.value);
-                    applyGrad();
-                });
-            }
-            // Angle presets
-            popup.querySelectorAll('[data-bcp-angle]').forEach(function(btn) {
-                btn.addEventListener('click', function() {
-                    if (!selectedNode) return;
-                    saveState();
-                    var angle = Number(this.getAttribute('data-bcp-angle'));
-                    var g = selectedNode.props._bgGrad = selectedNode.props._bgGrad || {type:'linear'};
-                    g.angle = angle;
-                    popup.querySelectorAll('[data-bcp-angle]').forEach(function(b){ b.classList.remove('active'); });
-                    this.classList.add('active');
-                    var ainp = document.getElementById('sd-bcp-lin-angle');
-                    if (ainp) ainp.value = angle;
-                    applyGrad();
-                });
-            });
-            var linAngle = document.getElementById('sd-bcp-lin-angle');
-            if (linAngle) {
-                linAngle.addEventListener('change', function() {
-                    if (!selectedNode) return;
-                    saveState();
-                    var g = selectedNode.props._bgGrad = selectedNode.props._bgGrad || {type:'linear'};
-                    g.angle = Number(this.value) || 135;
-                    popup.querySelectorAll('[data-bcp-angle]').forEach(function(b){
-                        b.classList.toggle('active', Number(b.getAttribute('data-bcp-angle')) === g.angle);
-                    });
-                    applyGrad();
-                });
-            }
-
-            // Radial gradient controls
-            ['sd-bcp-rad-c1','sd-bcp-rad-c2'].forEach(function(id) {
-                var el = document.getElementById(id);
-                if (!el) return;
-                el.addEventListener('input', function() {
-                    if (!selectedNode) return;
-                    // Snapshot BEFORE the change, as every other mutation site
-                    // does: history holds the state to come back to, not the
-                    // one just set. One step per drag, not per colour the
-                    // picker reports on its way there.
-                    saveState(_sdEditRun('grad:' + id));
-                    var g = selectedNode.props._bgGrad = selectedNode.props._bgGrad || {type:'radial'};
-                    g[id === 'sd-bcp-rad-c1' ? 'c1' : 'c2'] = this.value;
-                    applyGrad();
-                });
-            });
-            var radMid = document.getElementById('sd-bcp-rad-mid');
-            if (radMid) {
-                pgUI.range.bubble(radMid.parentNode, _sdPercent);
-                radMid.addEventListener('input', function() {
-                    if (!selectedNode) return;
-                    saveState(_sdEditRun('grad:rad-mid'));
-                    var g = selectedNode.props._bgGrad = selectedNode.props._bgGrad || {type:'radial'};
-                    g.mid = Number(this.value);
-                    applyGrad();
-                });
-            }
-            popup.querySelectorAll('[data-bcp-radial-shape]').forEach(function(btn) {
-                btn.addEventListener('click', function() {
-                    if (!selectedNode) return;
-                    saveState();
-                    var g = selectedNode.props._bgGrad = selectedNode.props._bgGrad || {type:'radial'};
-                    g.shape = this.getAttribute('data-bcp-radial-shape');
-                    popup.querySelectorAll('[data-bcp-radial-shape]').forEach(function(b){ b.classList.remove('active'); });
-                    this.classList.add('active');
-                    applyGrad();
-                });
-            });
-            var radPos = document.getElementById('sd-bcp-rad-pos');
-            if (radPos) {
-                radPos.addEventListener('change', function() {
-                    if (!selectedNode) return;
-                    saveState();
-                    var g = selectedNode.props._bgGrad = selectedNode.props._bgGrad || {type:'radial'};
-                    g.pos = this.value;
-                    applyGrad();
-                });
-            }
-
-            // Clear all background color + gradient
-            if (clearBtn) {
-                clearBtn.addEventListener('click', function() {
-                    if (!selectedNode) return;
-                    saveState();
-                    selectedNode.props._bgGrad = null;
-                    setAttrStyleProp(selectedNode, 'background-color', '');
-                    setAttrStyleProp(selectedNode, 'background-image', '');
-                    renderCanvas(); renderProperties(); renderAttrsPanel(); renderHtmlTree();
-                });
-            }
-
-            // Updates the trigger button swatch + label to reflect current state
-            function _updateBcpTrigger() {
-                if (!selectedNode) return;
-                var g = selectedNode.props._bgGrad;
-                var col = getAttrStyleProp(selectedNode, 'background-color');
-                var img = getAttrStyleProp(selectedNode, 'background-image');
-                var label, swatch;
-                if (g && g.type !== 'none') {
-                    swatch = buildGradientStr(g);
-                    label  = g.type === 'linear' ? _sdT('Linear Gradient') : _sdT('Radial Gradient');
-                } else if (col) {
-                    swatch = col; label = col;
-                } else {
-                    swatch = ''; label = _sdT('None');
-                }
-                var lbl = document.querySelector('#sd-bcp-trigger .sd-bcp-trigger-label');
-                var sw  = document.querySelector('#sd-bcp-trigger .sd-bcp-swatch');
-                if (lbl) lbl.textContent = label;
-                if (sw)  sw.style.background = swatch;
-            }
-        })();
 
         // ── Collapsible section headers (Options + Appearance sub-sections) ──
         document.querySelectorAll('#sd-properties .sd-sect-hdr').forEach(function(hdr) {
@@ -67317,33 +66786,6 @@ const StyleDesigner = (function () {
             }
         });
 
-        // 9. Background section selects (Bg Size / Pos / Repeat / Attach) — default ''
-        root.querySelectorAll('select[data-bg-prop]').forEach(function(el) {
-            markRow(el, '');
-        });
-
-        // 10. Background color picker row — modified when background-color OR gradient is set
-        var _bcpRow = root.querySelector('#sd-bcp-row');
-        if (_bcpRow && selectedNode) {
-            var _bcpLbl = _bcpRow.querySelector('.sd-prop-label');
-            var _hasBg  = !!(getAttrStyleProp(selectedNode, 'background-color') ||
-                             getAttrStyleProp(selectedNode, 'background-image'));
-            if (_bcpLbl) {
-                if (_hasBg) {
-                    _bcpLbl.classList.add('sd-prop-modified');
-                    _bcpLbl.dataset.resetKind = 'bg-color-all';
-                } else {
-                    _bcpLbl.classList.remove('sd-prop-modified');
-                    delete _bcpLbl.dataset.resetKind;
-                    _bcpLbl.title = '';
-                }
-            }
-        }
-
-        // 11. Image row
-        var _bgImgInp = root.querySelector('#sd-bg-img-inp');
-        if (_bgImgInp) markRow(_bgImgInp, '');
-
         // 12. An Image element's Loading row — default '' (the page decides)
         root.querySelectorAll('select[data-img-loading]').forEach(function(el) {
             markRow(el, '');
@@ -67448,16 +66890,6 @@ const StyleDesigner = (function () {
         if (kind === 'fx') {
             var _fk = propRow.getAttribute('data-sd-fx-keys');
             if (_fk) { var _fv = {}; _fv[_fk] = ''; _sdEffSet(_fv); }
-            return;
-        }
-
-        if (kind === 'bg-color-all') {
-            if (!selectedNode) return;
-            saveState();
-            selectedNode.props._bgGrad = null;
-            setAttrStyleProp(selectedNode, 'background-color', '');
-            setAttrStyleProp(selectedNode, 'background-image', '');
-            renderCanvas(); renderProperties(); renderAttrsPanel(); renderHtmlTree();
             return;
         }
 
@@ -97975,7 +97407,11 @@ const StyleDesigner = (function () {
             _sdContentSizingNode: _sdContentSizingNode,
             _sdDecodeEntities: _sdDecodeEntities,
             _sdDocLang: _sdDocLang,
+            _sdEditRun: _sdEditRun,
             _sdEmitNode: _sdEmitNode,
+            _sdFocusBind: _sdFocusBind,
+            _sdFocusPlace: _sdFocusPlace,
+            _sdFocusTakes: _sdFocusTakes,
             _sdFrameRowText: _sdFrameRowText,
             _sdFxAttrs: _sdFxAttrs,
             _sdFxCanvas: _sdFxCanvas,
@@ -98020,6 +97456,7 @@ const StyleDesigner = (function () {
             _sdRecEditWant: _sdRecEditWant,
             _sdRecOpenAsk: _sdRecOpenAsk,
             _sdRecScreenUrl: _sdRecScreenUrl,
+            _sdRenderNode: _sdRenderNode,
             _sdRetargetLabels: _sdRetargetLabels,
             _sdRevisionFetch: _sdRevisionFetch,
             _sdRevisionLoadRefusal: _sdRevisionLoadRefusal,
@@ -98032,6 +97469,7 @@ const StyleDesigner = (function () {
             _sdSeoCheckBody: _sdSeoCheckBody,
             _sdSmartActiveHost: _sdSmartActiveHost,
             _sdT: _sdT,
+            _sdTfOrigins: _sdTfOrigins,
             _sdThemeFind: _sdThemeFind,
             _sdThemeValue: _sdThemeValue,
             _sdThemes: _sdThemes,
@@ -98053,6 +97491,7 @@ const StyleDesigner = (function () {
             createNode: createNode,
             esc: esc,
             generateHTML: generateHTML,
+            getAttrStyleProp: getAttrStyleProp,
             getNodeExtraStyle: getNodeExtraStyle,
             getNodeLabel: getNodeLabel,
             gid: gid,
@@ -98071,6 +97510,7 @@ const StyleDesigner = (function () {
             scrollCanvasToNode: scrollCanvasToNode,
             scrollTreeToNode: scrollTreeToNode,
             sdToast: sdToast,
+            setAttrStyleProp: setAttrStyleProp,
             showCtxMenu: showCtxMenu,
             swAttr: swAttr,
             validateTree: validateTree,
@@ -98080,6 +97520,7 @@ const StyleDesigner = (function () {
             canvasDoc: { get: function () { return canvasDoc; } },
             design: { get: function () { return _design; } },
             newTabSeq: { get: function () { return _pgNewTabSeq; }, set: function (v) { _pgNewTabSeq = v; } },
+            optState: { get: function () { return _sdOptState; } },
             pages: { get: function () { return _pages; }, set: function (v) { _pages = v; } },
             selectedNode: { get: function () { return selectedNode; }, set: function (v) { selectedNode = v; } },
             selectedNodes: { get: function () { return selectedNodes; }, set: function (v) { selectedNodes = v; } },
