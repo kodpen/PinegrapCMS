@@ -894,18 +894,17 @@ function pg_launch_summary_link()
 }
 
 /**
- * Writes the link's state into the journey's row, read fresh.
+ * Writes the link's state into the journey's row, read fresh, never over
+ * a change another request made meanwhile (pg_launch_journey_row_change()).
  *
  * @param array $link
  * @return bool
  */
 function pg_launch_summary_link_store($link)
 {
-    $current = pg_schema_has('config_text')
-        ? (string) db_value("SELECT value FROM config_text WHERE name = '" . e(PG_LAUNCH_JOURNEY_ROW) . "'")
-        : '';
-
-    return pg_config_text_save(PG_LAUNCH_JOURNEY_ROW, pg_launch_summary_link_change($current, $link));
+    return pg_launch_journey_row_change(function ($current) use ($link) {
+        return pg_launch_summary_link_change($current, $link);
+    });
 }
 
 /**

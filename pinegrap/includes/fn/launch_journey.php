@@ -155,8 +155,9 @@ function pg_launch_journey_hidden_clean($hidden)
 /**
  * Whether one payment way takes real money: 'live', 'test', or 'unknown'
  * when its settings cannot tell. Stripe goes by its keys' prefix (one test
- * key is test), PayTR and PayPal by their own mode, iyzico and the classic
- * gateways by the Ecommerce card's gateway mode. Pure.
+ * key is test; the classic Stripe gateway by its secret key), PayTR, PayPal
+ * and PayPal Express Checkout by their own mode, iyzico and the other
+ * classic gateways by the Ecommerce card's gateway mode. Pure.
  *
  * @param string $driver       a driver key or a classic gateway name
  * @param array  $settings     the driver's settings
@@ -186,7 +187,9 @@ function pg_launch_journey_payment_live($driver, $settings, $gateway_mode)
         return $state;
     }
 
-    if (($driver === 'paytr') || ($driver === 'paypal')) {
+    // PayPal Express Checkout, the classic PayPal way, keeps its own
+    // sandbox switch apart from the card gateway's mode.
+    if (in_array($driver, array('paytr', 'paypal', 'paypal express checkout'), true)) {
         $mode = isset($settings['mode']) ? (string) $settings['mode'] : '';
 
         if ($mode === '') {
@@ -201,6 +204,91 @@ function pg_launch_journey_payment_live($driver, $settings, $gateway_mode)
     }
 
     return ($gateway_mode === 'live') ? 'live' : 'unknown';
+}
+
+/**
+ * A payment way no driver takes, as the payment-live rule reads it: the
+ * card method's classic gateway by its name, PayPal Express Checkout with
+ * its own mode, the classic Stripe gateway with its secret key (a test key
+ * is test, whatever the gateway mode). Pure.
+ *
+ * @param string $method  a built-in payment method
+ * @param string $gateway ECOMMERCE_PAYMENT_GATEWAY
+ * @param array  $legacy  paypal_mode (ECOMMERCE_PAYPAL_EXPRESS_CHECKOUT_MODE),
+ *                        stripe_key (ECOMMERCE_STRIPE_API_KEY)
+ * @return array driver, settings
+ */
+function pg_launch_journey_payment_classic($method, $gateway, $legacy)
+{
+    $legacy = is_array($legacy) ? $legacy : array();
+    $read = function ($name) use ($legacy) {
+        return isset($legacy[$name]) ? (string) $legacy[$name] : '';
+    };
+
+    if ((string) $method === 'PayPal Express Checkout') {
+        return array('driver' => 'PayPal Express Checkout', 'settings' => array('mode' => $read('paypal_mode')));
+    }
+
+    if ((string) $method !== 'Credit/Debit Card') {
+        return array('driver' => (string) $method, 'settings' => array());
+    }
+
+    if ((string) $gateway === 'Stripe') {
+        return array('driver' => 'Stripe', 'settings' => array('secret_key' => $read('stripe_key')));
+    }
+
+    return array('driver' => (string) $gateway, 'settings' => array());
+}
+
+/**
+ * A payment driver's settings as the driver runs on them: the stored values
+ * and secrets, and each declared field's default where nothing was saved
+ * (pg_payment_setting() reads them the same way). Pure.
+ *
+ * @param array $stored pg_payment_settings(): values, secrets
+ * @param array $fields pg_payment_fields(): name, default
+ * @return array name => value
+ */
+function pg_launch_journey_payment_driver_settings($stored, $fields)
+{
+    $settings = array_merge(
+        (isset($stored['values']) && is_array($stored['values'])) ? $stored['values'] : array(),
+        (isset($stored['secrets']) && is_array($stored['secrets'])) ? $stored['secrets'] : array()
+    );
+
+    foreach ((is_array($fields) ? $fields : array()) as $field) {
+        if (isset($field['name']) && !array_key_exists($field['name'], $settings) && isset($field['default']) && ((string) $field['default'] !== '')) {
+            $settings[$field['name']] = (string) $field['default'];
+        }
+    }
+
+    return $settings;
+}
+
+/**
+ * The mail facts of the three records as the mail settings card judged
+ * them. A record the sending service signs for the site (DKIM through a
+ * service's API) is the service's to check, so it is left out rather than
+ * kept as a warning nothing on the site can clear. Pure.
+ *
+ * @param array $health pg_mail_domain_health()
+ * @return array mail_spf, mail_dkim, mail_dmarc
+ */
+function pg_launch_journey_mail_facts($health)
+{
+    $facts = array();
+
+    foreach (array('spf', 'dkim', 'dmarc') as $record) {
+        $line = (is_array($health) && isset($health[$record]) && is_array($health[$record])) ? $health[$record] : array();
+
+        if (isset($line['reason']) && ($line['reason'] === 'service')) {
+            continue;
+        }
+
+        $facts['mail_' . $record] = isset($line['state']) ? (string) $line['state'] : 'unknown';
+    }
+
+    return $facts;
 }
 
 /**
@@ -1007,6 +1095,80 @@ function pg_launch_journey_golive_view($purpose, $facts, $hidden, $token = '')
         'changes' => $changes,
         'left'    => $rows(pg_launch_journey_golive_left($check)),
     );
+}
+
+/**
+ * The one statement "Go live" makes its changes with: maintenance mode off
+ * and the robots text opened, both or neither. Each is guarded by what was
+ * read, so a second press that arrives after the first changes no row.
+ * Pure.
+ *
+ * @param array  $changes     pg_launch_journey_golive_changes()
+ * @param string $robots_text the robots text read
+ * @param string $opened      pg_launch_journey_robots_opened() of it
+ * @param int    $user_id
+ * @return array|null array(sql, params); null when nothing changes
+ */
+function pg_launch_journey_golive_query($changes, $robots_text, $opened, $user_id)
+{
+    $sets = array();
+    $where = array();
+    $set_params = array();
+    $where_params = array();
+
+    if (in_array('maintenance', (array) $changes, true)) {
+        $sets[] = "maintenance_mode = '0'";
+        $where[] = "maintenance_mode <> '0'";
+    }
+
+    if (in_array('robots', (array) $changes, true)) {
+        $sets[] = 'additional_robots_content = ?';
+        $set_params[] = (string) $opened;
+        $where[] = 'additional_robots_content = ?';
+        $where_params[] = (string) $robots_text;
+    }
+
+    if (!$sets) {
+        return null;
+    }
+
+    $sets[] = "last_modified_user_id = '" . (int) $user_id . "'";
+    $sets[] = 'last_modified_timestamp = UNIX_TIMESTAMP()';
+
+    return array('UPDATE config SET ' . implode(', ', $sets) . ' WHERE ' . implode(' AND ', $where), array_merge($set_params, $where_params));
+}
+
+/**
+ * The Site Log lines of a "Go live": one per change this request made, then
+ * the went-live line, with the blockers left named. A press that changed
+ * nothing and found the go-live time already kept writes none. Pure.
+ *
+ * @param array $applied the changes this request made (maintenance, robots)
+ * @param bool  $first   whether this request kept the go-live time
+ * @param array $left    each blocker left as "name (line)"
+ * @return string[]
+ */
+function pg_launch_journey_golive_log($applied, $first, $left)
+{
+    $lines = array();
+
+    if (in_array('maintenance', (array) $applied, true)) {
+        $lines[] = lang('Go live: maintenance mode was switched off.');
+    }
+
+    if (in_array('robots', (array) $applied, true)) {
+        $lines[] = lang('Go live: the robots.txt rule closing the whole site to search engines was removed.');
+    }
+
+    if (!$applied && !$first) {
+        return $lines;
+    }
+
+    $lines[] = $left
+        ? lang(array('string' => 'The site went live with these left to fix: {var:1}', 'vars' => array(implode('; ', $left))))
+        : lang('The site went live.');
+
+    return $lines;
 }
 
 /**
