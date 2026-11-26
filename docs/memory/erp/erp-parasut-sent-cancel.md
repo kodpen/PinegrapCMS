@@ -5,7 +5,7 @@ description: Why Cancel of a Paraşüt e-Fatura handed to GİB is refused from t
 
 ## What does Cancel do for a `sent` e-Fatura?
 - `erp_edoc_parasut_cancellable()` refuses it from the row ("An e-Invoice that has gone to GİB cannot be cancelled…"), also when no status question has read it since the hand-over and its conversion job may have failed. A cancelled order's card offers the return invoice with that reason; the invoice screen hides Cancel.
-- Way out after a failed job: Ask After the Status. `poll` finds no e-document, the row becomes `created`, and Cancel deletes the draft at Paraşüt (erp-parasut-send-failures.md).
+- Way out after a failed job: Ask After the Status. `poll` finds no e-document, the row becomes `created`, and Cancel deletes the draft at Paraşüt (erp-parasut-send-failures.md). Seen live with e-Arşiv on staging (2026-11-27): job error → `created` → Cancel deleted the draft (204). The cancelled row keeps `edoc_kind` `earchive`.
 
 ## Why is Paraşüt not asked at Cancel for such a row?
 - Letting `cancellable()` answer ok for an unread `sent` e-Fatura (after the 15-minute job window) was tried in #1626 and taken out before merge:
@@ -19,7 +19,8 @@ description: Why Cancel of a Paraşüt e-Fatura handed to GİB is refused from t
   - None named: held too, with the same way out (cancel deletes a 404 record as gone).
   - Any other answer (no token, timeout, 5xx, another id): nothing written.
   - A conversion job this question read as failed is the company's own record: freed without another read.
-- Still open: a card re-linked or a product re-synced after the switch lives in the new company and frees the row. Never run live (demo key expired 2026-10-25).
+- Still open: a card re-linked or a product re-synced after the switch lives in the new company and frees the row.
+- Live on staging (2026-11-27): every witness 404 → kept, with the warning; none named → kept; a witness 200 → freed; Cancel then cancelled on the 404.
 
 ## What is still open?
 - A safe version reads the document's state (`active_e_document`, the job) before any cancel and keeps the card's return step for an e-Fatura GİB holds. Candidates: the refusal's reason points to the status question while no status question has read the row; `cancel_invoice()` refuses a 404 on a row that may stand for a GİB document (`sent`, `accepted`, `cancelled`).

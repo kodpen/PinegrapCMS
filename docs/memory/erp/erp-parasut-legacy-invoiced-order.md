@@ -4,16 +4,15 @@ description: ERP send of an order the legacy Create Invoice invoiced at Paraşü
 ---
 
 ## What went wrong? (#1629)
-- The order screen's Create Invoice writes `orders.parasut_invoice_id` (a record id, or the unsure mark `?` after a create with no answer), never `erp_invoices`. Its buttons give way once the ERP and a provider are on (erp-parasut-legacy-order-buttons.md).
-- `send_invoice` read only the order's number, date and shipment document, so such an order's ERP invoice went as a second `sales_invoices`: two invoices and e-documents at GİB for one sale, the receivable doubled, stock out twice.
+- The order screen's Create Invoice writes `orders.parasut_invoice_id` (a record id, or `?` after a create with no answer), never `erp_invoices`. Its buttons give way once the ERP and a provider are on (erp-parasut-legacy-order-buttons.md).
+- `send_invoice` read only the order's number, date and shipment document, so such an order's ERP invoice went as a second `sales_invoices`: two e-documents at GİB for one sale, receivable doubled, stock out twice.
 
 ## What does the send do now?
 - It reads `parasut_invoice_id` with the order row and asks `erp_edoc_parasut_legacy_invoice_check($value, $get, $invoice)` right after the type checks, before the invoice's own refusals and the buyer's card:
   - empty: goes on, nothing read.
   - the unsure mark (`parasut_order_invoice_unsure()`): refused, no request.
   - a record id: `GET sales_invoices/{id}`, judged by `parasut_stored_record_state()` (erp-parasut-legacy-stale-ids.md). 200: refused naming the record. 404 `Record was not found`, `SalesInvoice-<id>`: the send goes on; the id is cleared (`_parasut_order_forget_record()`) once every local refusal has passed, just before the write; the notice then in every outcome. A send refused earlier keeps the id and is silent on it (#2001). Else (no connection or token, 401 `No access to company`, `No route matches.`, 5xx, 429): refused with Paraşüt's words.
-- A refusal leaves the row `error` with no id; each Send reads again.
-- Every send goes through `erp_edoc_invoice_send()`.
+- A refusal leaves the row `error` with no id; each Send (`erp_edoc_invoice_send()`) reads again.
 
 ## What does a refusal tell the operator? (#1682)
 - Unsure mark: no screen clears it while the provider is on, so the refusal names the way out: Provider Off (E-Invoice settings), Create Invoice on the order screen (it finishes the record it finds or writes one, erp-parasut-legacy-invoice.md), provider back on, send again. It goes only if the press left no record.
@@ -21,19 +20,21 @@ description: ERP send of an order the legacy Create Invoice invoiced at Paraşü
 - 200, another total: the record Create Invoice keeps when Paraşüt would not delete it after its total check (`parasut_create_invoice()`): delete it there, never issue it. An order's invoice (`erp_invoice_from_order()`) has the total that check used. No amounts in the text (`erp_money_out_currency()` reads the DB).
 
 ## Why does the send not search for the record itself?
-- The press's search matches what it wrote: the description (`lang('Order')` #number, in the presser's language), buyer card and day. A send that missed it would clear the mark and invoice the sale twice at GİB.
+- The press's search matches what it wrote (description `lang('Order')` #number in the presser's language, buyer card, day); a send that missed it would clear the mark and invoice the sale twice.
 
 ## Why refuse a record Paraşüt holds rather than take it over?
 - Its lines, totals and e-document are the legacy press's; the ERP row's own unsure-mark search takes over only the ERP's tries (erp-parasut-send-failures.md).
 
 ## Why is the reason not on the order card before a send?
-- The card is provider-neutral; a record's state takes a request. After a refused send the card shows "Last answer: …" (`edoc_error`).
+- The card is provider-neutral; a record's state takes a request. After a refused send it shows "Last answer: …" (`edoc_error`).
 
 ## What is still open?
 - A cancelled legacy record answers 200 (`item_type` `cancelled`) and is refused; one with no e-document can be deleted after its cancel (2026-10-24).
 - The reverse (ERP invoice sent, provider off, then Create Invoice) is refused since #1628 (erp-parasut-legacy-order-gates.md).
 - İşbaşı's driver does not read the column.
-- Nothing ran live (demo key expired 2026-10-25); the 404 and 401 bodies are Paraşüt's of 2026-10-24 (#1544).
+
+## How was it checked live? (staging, 2026-11-27)
+- The mark: refused, no request. Same total, then another: one GET each, no POST. Deleted there: the 404 freed the send, cleared the id, with the notice.
 
 ## Tests
-- `tests/erp_edoc_parasut_legacy_invoiced_test.php`: the check per answer and total, the way out's labels against the screens, the send refused on the mark before any request and its own checks, the source order, clear after local refusals.
+- `tests/erp_edoc_parasut_legacy_invoiced_test.php`: the check per answer and total, the way out's labels against the screens, the mark refused before any request and own checks, the source order, clear after local refusals.

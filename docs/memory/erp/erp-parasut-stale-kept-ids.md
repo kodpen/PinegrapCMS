@@ -19,16 +19,17 @@ description: Paraşüt ids Pinegrap sends without a read (product card, default 
 - That 404 wrote nothing, so one resend cannot write a record twice.
 
 ## What is the operator told?
-- `parasut_stale_kept_notice($type, $id, $tried)`: what was forgotten and that Pinegrap tried once more; when `$forget` could not ready the create (buyer card not opened, body not built), that it was not sent again, beside that refusal.
+- `parasut_stale_kept_notice()`: what was forgotten and that Pinegrap tried once more; when `$forget` could not ready the create (buyer card not opened, body not built), that it was not sent again, beside that refusal.
 - Order screen: a warning (`&$notices`). ERP: before the refusal, or in the driver's `message` on success, which `erp_edoc_invoice_send()` appends, also when the hand-over to GİB then fails.
 
 ## Which try is repeated?
 - Create Invoice and the driver: the `POST sales_invoices`. Kept ids are noted before the body is built, so a card the build opens is not one (`parasut_kept_product_cards()`, `erp_edoc_parasut_kept_ids()`).
 - E-Shipment: the whole build (buyer card, warehouse, product cards, stock step, document); the stock step returns its failing `answer`. The card the first try opened is written back into `$order`; an earlier line's inflow is not seeded again (`has_stock_movements`).
 
-## How was it checked live? (demo company, 2026-10-24)
-- The functions called directly; orders 441, 443, product 45; records opened then deleted, warehouse `1` typed. Create Invoice: product card, buyer card, a deleted default refused. E-Shipment: warehouse (inflow, outflow), buyer card. Driver: product card, shipment document, both (second 404 refused), a deleted default refused. Demo back at its baseline.
-- Tests only: the screen's warnings, the service's `message`, and later changes (notice wording, E-Shipment's default refusal, #1543's lookup, the resend's time limit).
+## How was it checked live?
+- Demo company (2026-10-24), functions called on dev orders, records opened then deleted. Create Invoice: product card, buyer card, a deleted default refused. E-Shipment: warehouse (inflow, outflow), buyer card. Driver: product card, shipment document, both (second 404 refused), a deleted default refused.
+- Staging (2026-11-27), driver: a product card deleted there → 404 `Product-<id>`, id forgotten, new card, one sales invoice, the notice.
+- Tests only: the screen's warnings and later changes (E-Shipment's default refusal, #1543's lookup, the resend's time limit).
 
 ## Tests
 - `tests/parasut_stale_product_test.php`: the 404 reading, the decision, the one resend, texts, clears, the kept warehouse, the presses' order (source).

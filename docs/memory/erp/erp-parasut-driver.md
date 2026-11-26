@@ -17,12 +17,9 @@ description: Paraşüt e-document driver (includes/erp/edoc/parasut.php): reques
 - Exemption: one code per document (`vat_exemption_reason_code`); 250/350 need `vat_exemption_reason` in words (the invoice note; refused without).
 - `order_no` is `orders.order_number` (the row id until #912), `order_date` the day; both or none (one alone is refused). Legacy E-Shipment: erp-parasut-shipped-order.md.
 
-## Rate limit and retries?
-- 10 requests per 10 s: `parasut_throttle()` paces each process; `erp_edoc_parasut_request()` retries once after a 429 (next window) or a 401 (new token).
-
-## What did the live API show? (demo company)
-- Seen: a person's TCKN in `tax_number` (201); VAT 0, 1, 10, 20 only (18 → 422); `include`s, `e_invoice_inboxes`, `DELETE sales_invoices/{id}` (204) as documented.
-- Not seen: the demo has no e-document integration (`POST e_archives`, `POST e_invoices` for a registered VKN → 422); job, PDF, e-Arşiv cancel wait for one.
+## What did the live API show?
+- Demo company: a person's TCKN in `tax_number` (201); VAT 0, 1, 10, 20 only (18 → 422); `include`s, `e_invoice_inboxes`, `DELETE sales_invoices/{id}` (204) as documented.
+- Staging (2026-11-27): draft → Hand to GİB (`POST e_archives` 202, a job) → Ask After the Status → Cancel (draft deleted, 204); one-press Send with "Belgeyi aynı adımda GİB'e gönder" on chains the hand-over; VAT 18 refused before any request. Jobs all end in error there (erp-parasut-staging-company.md).
 - A free-text line goes on the default product with its own description.
 - Tevkifat draft (601, 4/10): `vat_withholding_rate` is percent of the VAT (40 on 15.99 → 6.40), `net_total` is after withholding and checked against `grand_total` (#630); poll prints Paraşüt's totals. Open: whether `internet_sale.payment_type` takes `DIGER`.
 - Capabilities: `einvoice`, `earchive`, `accounts` (#711). No `inbox` (v4 has no incoming e-invoices), `ewaybill`, `return`, `ubl`.

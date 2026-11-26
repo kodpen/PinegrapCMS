@@ -13,7 +13,7 @@ module: parasut
 ## Which decisions bind it?
 - Owner (2026-10-21): VAT and withholding per rate group, as Paraşüt takes them (`erp-vat-per-rate-group.md`).
 - Decided #2440-#2442, not built yet (`plans/erp-parasut-open-work.md`, `workflow/decisions-made-schema.md`): a Payment account pick posting the paid moment; a reused buyer card only gets its empty fields filled; a `sent` e-Fatura whose conversion failed keeps refusing Cancel.
-- Live rounds and open items run only in the owner's local session. Never guess an endpoint (`erp-edoc-driver-layer.md`).
+- Live rounds (`erp-parasut-staging-company.md`) and open items run only in the owner's local session. Never guess an endpoint (`erp-edoc-driver-layer.md`).
 
 ## What does a person see, and which file holds it?
 - Paraşüt's page of Connections ("Connect in three steps", Advanced, Disconnect), Default Product/Service ID: `erp-parasut-connect-card.md`; grants, token, owner stamp, refresh: `erp-parasut-connection.md`; a 401 on a cached token: `erp-parasut-legacy-token-401.md`.
@@ -25,10 +25,10 @@ module: parasut
 - E-commerce › "Parasut E-Invoice Inbox": `erp-parasut-legacy-inbox.md`. Orders › Export for Paraşüt: `-legacy-export-text-cells.md`, `-legacy-export-discount.md`.
 
 ## What holds across the cluster?
-- 10 requests per 10 s (`parasut_throttle()`); both paths retry once after a 429 and once after a 401; `erp_edoc_parasut_allow_time()` before a long read. Lists: 25 a page, follow `meta.total_pages`, at most `ERP_EDOC_PARASUT_FIND_PAGES`.
+- 10 requests per 10 s per company and client, shared (`parasut_throttle()` paces one process); both paths retry once after a 429 and once after a 401; `erp_edoc_parasut_allow_time()` before a long read. Lists: 25 a page, follow `meta.total_pages`, at most `ERP_EDOC_PARASUT_FIND_PAGES`.
 - Only a 404 `Record was not found` naming the record's type and id means deleted; 401 `No access to company` or `No route matches.` never clears a kept id.
 - A create with no answer leaves the unsure mark `?`; the next try searches before writing.
 
 ## How is a new part added?
 - New behaviour goes into the driver through `erp_edoc_parasut_request()`, never onto the legacy buttons, whose invoice and shipment code is to be removed (`plans/erp-edocument-leftovers.md`).
-- A new Paraşüt id kept in a column joins the one resend (`parasut_stale_kept_action()`). Tests: named in each file. The demo key expired 2026-10-25: write "unit tests only".
+- A new Paraşüt id kept in a column joins the one resend (`parasut_stale_kept_action()`). Tests: named in each file.

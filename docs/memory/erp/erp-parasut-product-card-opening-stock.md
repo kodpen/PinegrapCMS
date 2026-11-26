@@ -24,4 +24,5 @@ description: The stock a tracked Paraşüt product card opens with: Pinegrap's c
 - A driver invoice whose named shipment document is found deleted (404, sent again with the shipment): a card its first try opened kept the count alone.
 
 ## How was it checked?
-- Unit tests only (`tests/parasut_product_stock_test.php`): the demo key expired on 2026-10-25. Live on 2026-10-24: `initial_stock_count` becomes `stock_count` with no movements; an invoice with the shipment included and the outgoing document take their goods out. A card opened with added units and then its document never ran live.
+- Unit tests (`tests/parasut_product_stock_test.php`). Live on 2026-10-24: `initial_stock_count` becomes `stock_count` with no movements; an invoice with the shipment included and the outgoing document take their goods out.
+- Live on staging (2026-11-27): a card opened by an invoice read `initial_stock_count` 11 for dev stock 10 plus the 1 unit the order took. A card opened and its document then refused was not tried.
