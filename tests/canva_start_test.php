@@ -153,6 +153,38 @@ function test_canva_sketch_of_pages()
 	pg_assert_same(array('', 'pdf', 'notPng', 'tooBig'), $r['refusals'], 'what the browser refuses before sending');
 }
 
+// Files chosen or dropped together come in by their names' number order,
+// as Canva numbers a design's pages (1.png, 2.png, …, 10.png), not in the
+// order the browser lists them; equal names keep their order.
+function test_canva_files_in_page_order()
+{
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+	if ($code !== 0) {
+		return;
+	}
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/designer_canva.js');
+	$script = "var window = {};\n" . $js . "\nvar c = window.sdStartParts.canva;\n"
+		. "var names = function (list) { return c.inPageOrder(list.map(function (n, i) { return { name: n, i: i }; })).map(function (f) { return f.name + '#' + f.i; }); };\n"
+		. "console.log(JSON.stringify([\n"
+		. " names(['1.png', '10.png', '2.png', '3.png']),\n"
+		. " names(['Page 10 - Home.png', 'page 2 - About.png', 'Page 1 - Shop.png']),\n"
+		. " names(['b.png', 'a.png', 'a.png'])\n"
+		. "]));\n";
+	$file = tempnam(sys_get_temp_dir(), 'pgcv') . '.js';
+	file_put_contents($file, $script);
+	$lines = array();
+	@exec('node ' . escapeshellarg($file) . ' 2>&1', $lines, $code);
+	@unlink($file);
+	pg_assert_same(0, $code, 'node ran: ' . implode("\n", $lines));
+	$r = json_decode(implode("\n", $lines), true);
+
+	pg_assert_same(array('1.png#0', '2.png#2', '3.png#3', '10.png#1'), $r[0], 'Canva\'s numbered pages, 10 after 9');
+	pg_assert_same(array('Page 1 - Shop.png#2', 'page 2 - About.png#1', 'Page 10 - Home.png#0'), $r[1], 'numbers inside a name, any case');
+	pg_assert_same(array('a.png#1', 'a.png#2', 'b.png#0'), $r[2], 'equal names keep their order');
+}
+
 // A drop deletes only ids this start stored in this session: an id asked
 // for that the session did not store is never deleted.
 function test_canva_drop_ids()
