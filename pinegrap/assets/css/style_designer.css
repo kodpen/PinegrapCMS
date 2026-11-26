@@ -5017,27 +5017,27 @@ body.sd-resizing * { cursor: col-resize !important; }
 .sd-co-pop {
     position: fixed; z-index: 99999; width: 300px; max-width: calc(100vw - 16px);
     background: var(--sd-raised-bg-2); border: 1px solid var(--sd-panel-border);
-    border-radius: 6px; padding: 10px 12px;
+    border-radius: 12px; padding: 10px 12px;
     box-shadow: 0 6px 22px color-mix(in srgb, var(--sd-shadow) 65%, transparent);
-    font-size: .74rem; color: var(--sd-text);
+    font-size: 12px; line-height: 1.45; color: var(--sd-text);
 }
-.sd-co-ph, .sd-co-sub { margin: 0 0 6px; font-size: .68rem; font-weight: 600; color: var(--sd-label); }
+.sd-co-ph, .sd-co-sub { margin: 0 0 6px; font-size: 11.5px; font-weight: 600; color: var(--sd-label); }
 .sd-co-sub { margin: 8px 0 4px; }
 .sd-co-por { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 32px; }
-.sd-co-por small { display: block; font-size: .66rem; color: var(--sd-text-muted); }
+.sd-co-por small { display: block; font-size: 11.5px; color: var(--sd-text-muted); }
 .sd-co-dis .sd-co-pname { opacity: .6; }
 .sd-co-pol { display: flex; align-items: center; gap: 8px; padding: 0 0 6px 12px; }
-.sd-co-pol > span { flex: 0 0 44px; color: var(--sd-label); font-size: .68rem; }
+.sd-co-pol > span { flex: 0 0 44px; color: var(--sd-label); font-size: 12px; }
 .sd-co-first {
     display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
     margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--sd-panel-border);
-    color: var(--sd-text-muted); font-size: .7rem; line-height: 1.4;
+    color: var(--sd-text-muted); font-size: 11.5px; line-height: 1.45;
 }
-.sd-co-none { margin: 0 0 6px; font-size: .68rem; line-height: 1.4; color: var(--sd-text-muted); }
+.sd-co-none { margin: 0 0 6px; font-size: 11.5px; line-height: 1.45; color: var(--sd-text-muted); }
 .sd-co-rows { margin-bottom: 6px; }
 .sd-co-row {
     display: flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 2px;
-    border-radius: 4px; font-size: .72rem;
+    border-radius: 8px; font-size: 12px;
 }
 .sd-co-row:hover, .sd-co-row:focus-visible { background: rgba(var(--sd-accent-rgb), .08); outline: none; }
 .sd-co-row:focus-visible { box-shadow: inset 0 0 0 2px var(--sd-accent); }
@@ -5046,36 +5046,64 @@ body.sd-resizing * { cursor: col-resize !important; }
 .sd-co-ki { color: var(--sd-label); }
 .sd-co-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
 .sd-co-rename { flex: 1 1 auto; min-width: 0; }
-.sd-co-more { border: 0; background: none; color: var(--sd-label); padding: 2px 4px; border-radius: 3px; cursor: pointer; }
+.sd-co-more {
+    display: inline-flex; align-items: center; justify-content: center; min-width: 24px; min-height: 24px;
+    border: 0; background: none; color: var(--sd-label); padding: 0 4px; border-radius: 7px; cursor: pointer;
+}
 .sd-co-more:hover, .sd-co-more:focus-visible { background: var(--sd-raised-bg-2); color: var(--sd-text); }
 /* "This place": a place's own values of a component's open fields. */
-.sd-co-shown { margin-left: 6px; font-size: .7rem; color: var(--sd-text-muted); }
+.sd-co-shown { margin-left: 6px; font-size: 11.5px; color: var(--sd-text-muted); }
 .sd-co-foot {
     display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;
-    margin-top: 6px; font-size: .68rem; color: var(--sd-text-muted);
+    margin-top: 6px; font-size: 11.5px; line-height: 1.45; color: var(--sd-text-muted);
 }
 .sd-co-partof {
     display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;
-    margin: 8px 10px; font-size: .7rem; color: var(--sd-text-muted);
+    margin: 8px 10px; font-size: 11.5px; line-height: 1.45; color: var(--sd-text-muted);
 }
 .sd-rcol-narrow .sd-co-prow { flex-direction: column; align-items: stretch; }
 .sd-rcol-narrow .sd-co-prow > .sd-prop-control { width: 100%; }
 .sd-rcol-narrow .sd-co-foot { flex-direction: column; align-items: flex-start; }
-.sd-co-result { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: .7rem; }
-.sd-co-result .pg-result-line { flex: 1 1 auto; }
+.sd-co-result { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; padding: 8px 10px; border-radius: 9px; font-size: 11.5px; }
+/* The Result line's words on the chrome's text colour: the panel's own
+   (--pg-fg-2) is a light-theme grey that fades on the dark card. */
+.sd-co-result .pg-result-line { flex: 1 1 auto; min-width: 0; font-size: 11.5px; line-height: 1.45; color: var(--sd-label); }
+/* The place's text is plain text, not code: the panel's type, not the
+   monospace of .sd-prop-control textarea. */
+.sd-co-prow .sd-prop-control textarea { font-family: inherit; font-size: 12px; line-height: 1.45; }
+/* The fields' list hangs on the page's body and the variant's line over
+   the canvas, outside #sd-properties: their field and quiet buttons on the
+   chrome's tokens, never Bootstrap's, which follow the page's (light)
+   theme. The panel's own buttons of this part take the same. */
+.sd-co-pop .form-control {
+    height: 30px; padding: .3rem .6rem; font-size: 12px; line-height: 1.4; border-radius: 9px;
+    color: var(--sd-text); background-color: var(--sd-input-bg); border: 1px solid var(--sd-input-border); box-shadow: none;
+}
+.sd-co-pop .form-control:focus { border-color: var(--sd-accent); box-shadow: var(--sd-focus-ring); }
+.sd-co-pop .btn-outline.theme-secondary, .sd-co-vline .btn-outline.theme-secondary,
+.sd-co-result .btn-outline.theme-secondary, .sd-co-foot .btn-outline.theme-secondary,
+.sd-co-partof .btn-outline.theme-secondary, .sd-co-vars .btn-outline.theme-secondary {
+    height: 26px; padding: 0 10px; font-size: 12px; border-radius: 8px;
+    background: var(--sd-raised-bg-2); color: var(--sd-text); border: 1px solid var(--sd-border-strong);
+}
+.sd-co-pop .btn-outline.theme-secondary:hover, .sd-co-vline .btn-outline.theme-secondary:hover,
+.sd-co-result .btn-outline.theme-secondary:hover, .sd-co-foot .btn-outline.theme-secondary:hover,
+.sd-co-partof .btn-outline.theme-secondary:hover, .sd-co-vars .btn-outline.theme-secondary:hover {
+    background: color-mix(in srgb, var(--sd-text) 8%, var(--sd-raised-bg-2));
+}
 /* Variants: the list in the component's settings, the line over the
    canvas while one is edited, the amber line of a refused change or a
    variant that is gone. */
 .sd-co-vrow { cursor: pointer; }
 .sd-co-tick { width: 13px; flex: 0 0 13px; color: var(--sd-accent); }
-.sd-co-vcount { flex: 0 0 auto; font-size: .66rem; color: var(--sd-text-muted); font-variant-numeric: tabular-nums; }
+.sd-co-vcount { flex: 0 0 auto; font-size: 11.5px; color: var(--sd-text-muted); font-variant-numeric: tabular-nums; }
 .sd-co-vname { padding: 2px 0 2px 8px; }
 .sd-co-vadd { margin-bottom: 8px; }
-.sd-co-vline { flex: 0 0 auto; z-index: 5; background: var(--sd-raised-bg-2); border-bottom: 1px solid rgba(var(--sd-accent-rgb), .35); font-size: .72rem; color: var(--sd-text); }
+.sd-co-vline { flex: 0 0 auto; z-index: 5; background: var(--sd-raised-bg-2); border-bottom: 1px solid rgba(var(--sd-accent-rgb), .35); font-size: 12px; line-height: 1.45; color: var(--sd-text); }
 .sd-co-vline-main { display: flex; align-items: center; gap: 8px; padding: 6px 12px; }
 .sd-co-vline-main > span:nth-child(2) { flex: 1 1 auto; min-width: 0; }
 .sd-co-vline-main > .bi { color: var(--sd-accent); }
-.sd-co-vwarn { display: flex; align-items: flex-start; gap: 8px; padding: 6px 12px; background: var(--sd-warning-soft); color: var(--sd-warning); font-size: .7rem; line-height: 1.4; }
+.sd-co-vwarn { display: flex; align-items: flex-start; gap: 8px; padding: 6px 12px; background: var(--sd-warning-soft); color: var(--sd-warning); font-size: 11.5px; line-height: 1.45; }
 .sd-co-place .sd-co-vwarn { margin-bottom: 6px; border-radius: 4px; padding: 6px 8px; }
 
 /* ========================= SHARED COMPONENTS PALETTE TAB ========================= */

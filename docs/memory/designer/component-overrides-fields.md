@@ -13,7 +13,7 @@ module: component_overrides
 - A switch on writes `{id, kind, label}` into `props._open` (id from `newFieldId()`), appended to the root's `props._openOrder` when one is stored; off removes it. A "Label" field under an open switch; empty goes back to the default.
 - Default label: the element's name; with two fields open both take "name field" ("Button text", "Button link"). Labels still at a default follow when a field opens or closes.
 - First use: one line with "Got it", kept in `localStorage` `sd_co_first_seen`.
-- Up and Down move between switches, Space flips, Tab reaches Label, Enter keeps a label, Escape closes.
+- Up and Down move between switches, Space flips, Tab reaches Label, Enter keeps a label and goes back to its switch, Escape closes and gives the focus back to what opened the list (the element's three-dot button when that was redrawn; #11853).
 
 ## How is a change written?
 - Every write goes through the core's `_sdCoWrite(sid, fn)`: the row's snapshot taken first when none (never after a change), `saveState()` (one undo step; shared trees are in the step), the change, `_sharedDirty[sid]`, `render()`. Nothing is sent: Save sends the component.
@@ -26,6 +26,7 @@ module: component_overrides
 - Under "Can change per place", between "Content editors" and the usage and Detach rows, for a component that is not a system widget, not at content level: one row per open field in `openFields()` order (grip, kind icon, label, three-dot). With none, and the part not loaded, the core prints "No field yet…" without loading it.
 - Drag by the grip or Alt+Up/Alt+Down writes the whole order into the root's `props._openOrder`.
 - Row menu: Rename (in place, Enter keeps, Escape leaves), Show in Overview (selects the node), Close the field: removed with no question, the places' values stay and are ignored (left-overs, `component-overrides-model.md`); a Result line (`.pg-result`) with Undo puts the entry back at its place and order.
+- The menu is reached by the pointer only, so a focused row takes F2 (Rename) and Delete (Close the field); after closing, the focus is on Undo, after Undo on the row (#11853).
 
 ## Tests?
 - `tests/component_overrides_test.php`: the part's field rules and labels in Node with a stub kit; the core's entry points. CO3, #11597.

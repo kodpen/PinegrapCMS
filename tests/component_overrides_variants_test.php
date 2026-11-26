@@ -245,3 +245,38 @@ function test_component_overrides_variants_part()
 		'sd_b' => array('cssClass' => 'btn btn-light'),
 	), $js['after']['kept'], 'the variant keeps what differs, without a node that is gone or a text');
 }
+
+// Escape while a variant is edited: with the editor's menu open (a row's
+// three-dot menu) it closes the menu only; with none open it ends the
+// editing. The menu is #sd-tree-ctx-menu (showCtxMenu()).
+function test_component_overrides_variant_escape_closes_an_open_menu_first()
+{
+	$tree = component_overrides_variants_tree();
+	$code = "var keyHandlers = [], menu = null, menuGone = 0;\n"
+		. "var document = { querySelector: function (s) { return (menu && /#sd-tree-ctx-menu/.test(s)) ? menu : null; },\n"
+		. " getElementById: function (id) { return (menu && id === 'sd-tree-ctx-menu') ? menu : null; },\n"
+		. " addEventListener: function (t, f) { if (t === 'keydown') keyHandlers.push(f); },\n"
+		. " removeEventListener: function (t, f) { keyHandlers = keyHandlers.filter(function (g) { return g !== f; }); } };\n"
+		. "var comp = " . json_encode($tree, JSON_UNESCAPED_UNICODE) . ", depth = 3;\n"
+		. "kit.sharedCache = {7: {tree: comp, name: 'Promo card'}}; kit.selectedNode = comp.children[0]; kit.selectedNodes = [];\n"
+		. "kit._resolveSharedSid = function () { return 7; }; kit.render = function () {}; kit.renderProperties = function () {};\n"
+		. "kit._sdCoWrite = function (sid, fn) { depth++; fn(); };\n"
+		. "kit._sdCoVarCommit = function (sid, d, fn) { fn(); };\n"
+		. "Object.defineProperty(kit, 'undoDepth', { get: function () { return depth; } }); kit.coVar = null;\n"
+		. "var esc = function () { var stopped = false; var e = { key: 'Escape', target: { tagName: 'DIV' }, preventDefault: function () {}, stopPropagation: function () { stopped = true; } };\n"
+		. " keyHandlers.slice().forEach(function (f) { f(e); }); return stopped; };\n"
+		. "part.startVariant(7, 'Dark');\n"
+		. "menu = { remove: function () { menuGone++; menu = null; } };\n"
+		. "out = { stopped: esc() };\n"
+		. "out.withMenu = { editing: !!kit.coVar, menuGone: menuGone };\n"
+		. "esc();\n"
+		. "out.without = { editing: !!kit.coVar };";
+	$js = component_overrides_place_node($code);
+	if ($js === null) {
+		return;
+	}
+
+	pg_assert_true($js['stopped'], 'the key goes no further');
+	pg_assert_same(array('editing' => true, 'menuGone' => 1), $js['withMenu'], 'an open menu is closed and the variant stays edited');
+	pg_assert_same(array('editing' => false), $js['without'], 'with no menu open Escape ends the editing');
+}
