@@ -262,7 +262,9 @@ function pg_delivery_tower_summary_finish($state, $min = PG_DELIVERY_TOWER_MIN_P
             }
         }
         $figures[$carrier]['country'] = _pg_delivery_tower_figure($country, $min);
-        if ($country_marks) {
+        // The country's share needs the country's figure, as a province's
+        // needs its own: one parcel on time is no 100%.
+        if ($country_marks && ($figures[$carrier]['country'] !== null)) {
             $on_time[$carrier]['country'] = _pg_delivery_tower_on_time_count($country_marks);
             if (!isset($on_time[$carrier]['provinces'])) {
                 $on_time[$carrier]['provinces'] = array();
@@ -356,6 +358,7 @@ function pg_delivery_tower_parcel_query($after, $since, $limit)
             shipping_tracking_numbers.number,
             shipping_tracking_numbers.carrier,
             shipping_tracking_numbers.status,
+            shipping_tracking_numbers.status_at,
             shipping_tracking_numbers.source,
             shipping_tracking_numbers.shipped_at,
             shipping_tracking_numbers.delivered_at,
@@ -400,13 +403,16 @@ function pg_delivery_tower_parcel_query($after, $since, $limit)
  * @param array    $settings pg_delivery_tower_settings_clean()
  * @param string[] $tracking the label drivers that follow their parcels
  * @param string   $timezone
+ * @param array    $hand_closed shipment id => kind number => the latest
+ *                              closed_at of a hand close
  * @return array open: list of (shipment_id, order_id, ship_to_id, kind),
  *               close: list of (shipment_id, kind, reason); kinds as
  *               numbers, reason as pg_delivery_tower_pass() gives it
  */
-function pg_delivery_tower_parcel_changes($parcels, $labels, $open, $figures, $now, $settings, $tracking, $timezone = '')
+function pg_delivery_tower_parcel_changes($parcels, $labels, $open, $figures, $now, $settings, $tracking, $timezone = '', $hand_closed = array())
 {
     $codes = pg_delivery_tower_kind_codes();
+    $names = array_flip($codes);
     $changes = array('open' => array(), 'close' => array());
 
     foreach ($parcels as $id => $parcel) {
@@ -419,11 +425,22 @@ function pg_delivery_tower_parcel_changes($parcels, $labels, $open, $figures, $n
             $status = 'delivered';
         }
         $parcel['label_at'] = $label ? (int) $label['created_at'] : 0;
-        $parcel['status_read'] = pg_delivery_tower_status_is_read($parcel['source'], $label && in_array((string) $label['driver'], (array) $tracking, true));
+        // The label path writes its parcel with source carrier itself, so on
+        // a labelled parcel that source says nothing: only a driver that
+        // tracks (or a marketplace) reads its status.
+        $source = ($label && ((string) $parcel['source'] === 'carrier')) ? '' : $parcel['source'];
+        $parcel['status_read'] = pg_delivery_tower_status_is_read($source, $label && in_array((string) $label['driver'], (array) $tracking, true));
         $parcel['status'] = $status;
 
         $found = $status === 'delivered' ? array() : pg_delivery_tower_problems_found($parcel, $figures, $now, $settings, $timezone);
-        $pass = pg_delivery_tower_pass($status, isset($open[$id]) ? $open[$id] : array(), $found);
+        $closed = array();
+        foreach (isset($hand_closed[$id]) ? (array) $hand_closed[$id] : array() as $code => $closed_at) {
+            if (isset($names[(int) $code])) {
+                $closed[$names[(int) $code]] = (int) $closed_at;
+            }
+        }
+        $held = pg_delivery_tower_held_kinds($closed, isset($parcel['status_at']) ? (int) $parcel['status_at'] : 0);
+        $pass = pg_delivery_tower_pass($status, isset($open[$id]) ? $open[$id] : array(), $found, $held);
 
         foreach ($pass['open'] as $kind) {
             $changes['open'][] = array('shipment_id' => (int) $id, 'order_id' => (int) $parcel['order_id'], 'ship_to_id' => (int) $parcel['ship_to_id'], 'kind' => $codes[$kind]);
@@ -637,7 +654,7 @@ function pg_delivery_tower_pass_run($deadline, $now, $figures)
         mysqli_free_result($page);
         if ($parcels) {
             $open_ids = array();
-            $changes = pg_delivery_tower_parcel_changes($parcels, pg_delivery_tower_page_labels($parcels), pg_delivery_tower_page_open(array_keys($parcels), $open_ids), $figures, $now, $settings, $tracking);
+            $changes = pg_delivery_tower_parcel_changes($parcels, pg_delivery_tower_page_labels($parcels), pg_delivery_tower_page_open(array_keys($parcels), $open_ids), $figures, $now, $settings, $tracking, '', pg_delivery_tower_page_hand_closed(array_keys($parcels)));
             if ($changes['open']) {
                 // One statement a page; the unique key skips a kind already
                 // open on a parcel (a run that overlapped this one).
@@ -766,6 +783,26 @@ function pg_delivery_tower_page_open($ids, &$rows = null)
         }
     }
     return $open;
+}
+
+/**
+ * The latest hand close of each kind on each parcel of a page, in one
+ * query: the desk's closes (closed_by > 0), whatever their reason.
+ *
+ * @param int[] $ids
+ * @return array shipment id => kind number => closed_at
+ */
+function pg_delivery_tower_page_hand_closed($ids)
+{
+    $closed = array();
+    $rows = db_items(
+        "SELECT shipment_id, kind, MAX(closed_at) AS closed_at FROM shipment_problems
+        WHERE (closed_by > 0) AND (closed_at > 0) AND (shipment_id IN (" . implode(', ', array_map('intval', $ids)) . "))
+        GROUP BY shipment_id, kind");
+    foreach ((array) $rows as $row) {
+        $closed[(int) $row['shipment_id']][(int) $row['kind']] = (int) $row['closed_at'];
+    }
+    return $closed;
 }
 
 /**
