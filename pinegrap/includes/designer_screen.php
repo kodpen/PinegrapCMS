@@ -2257,8 +2257,8 @@ function pg_designer_start_window($templates, $from_pages)
                . '</button>';
         $panes .= '<section class="sd-ns-pane" role="tabpanel" id="sd-ns-pane-' . $key . '" aria-labelledby="sd-ns-tab-' . $key . '" tabindex="0"'
                 . ' data-go="' . h($k['go']) . '"' . pg_designer_start_part_attrs($key) . ($i === 0 ? '' : ' hidden') . '>'
-                . '<h3 class="pg-sm-heading">' . h(isset($k['heading']) ? $k['heading'] : $k['title']) . '</h3>'
-                . '<p class="pg-sm-desc">' . h($k['line']) . '</p>'
+                . '<div class="pg-sm-heading sd-ns-head"><h3 class="pg-title-section">' . h(isset($k['heading']) ? $k['heading'] : $k['title']) . '</h3>'
+                . '<p class="pg-sm-desc pg-text-2">' . h($k['line']) . '</p></div>'
                 . ($k['disabled'] ? '' : pg_designer_start_pane($k, $templates, $from_pages))
                 . '</section>';
     }

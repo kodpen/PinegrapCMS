@@ -728,6 +728,14 @@ button.sdh-page:hover {
   --bs-dialog-width: min(96vw, 1600px);
 }
 
+/* One height for every start, so the window does not jump up and down as
+   the starts are walked; a longer pane scrolls in the body. */
+@media (min-width: 768px) {
+  #sdStartModal.sd-ns-dialog {
+    height: min(52rem, calc(100dvh - 2 * var(--bs-dialog-margin, 1.75rem)));
+  }
+}
+
 /* The starts on the left (the settings rail's rows), the chosen start's
    pane on the right; the list stays in view while a long pane scrolls. */
 .sd-ns {
@@ -773,8 +781,25 @@ button.sdh-page:hover {
   margin-right: .375rem;
 }
 
+/* The pane's title and line, as a settings pane's head, with the room of
+   the Design examples screen before the start's form. */
+.sd-ns-head {
+  margin-bottom: 1.25rem;
+}
+
+/* The pane is a Tab stop after the list (the tab pattern): it shows it. */
 .sd-ns-pane:focus-visible {
-  outline: none;
+  outline: var(--pg-focus-ring-width) solid var(--pg-primary-ink);
+  outline-offset: var(--pg-focus-ring-offset);
+  border-radius: var(--sdh-radius);
+}
+
+/* A start's own foot keeps its quiet words (the Canva hint, the document's
+   "read on this site" and its Back) at the left and Cancel beside the filled
+   button, as every other start's foot. */
+#sdStartModal .sd-ns-part-foot > .me-auto,
+#sdStartModal .sd-ns-part-foot > .sd-cv-hint {
+  order: -1;
 }
 
 /* The Figma start (pg_designer_figma_pane(), assets/js/designer_figma.js):
@@ -793,8 +818,17 @@ button.sdh-page:hover {
   border-radius: 12px;
 }
 
-.sd-fg-ask {
+.sd-fg-ask,
+.sd-fg > .alert {
   max-width: 560px;
+}
+
+.sd-fg-manage {
+  white-space: nowrap;
+}
+
+.sd-fg-empty .pg-icon-tile {
+  margin-inline: auto;
 }
 
 .sd-fg-empty {

@@ -103,7 +103,6 @@
                     readFile: readFile,
                     sort: texts.sortOn ? sort : null,
                     pickFile: window.pgPicker ? function () { return window.pgPicker.open({kind: 'document', title: texts.manager}); } : null,
-                    cancel: function () { window.pgUI.dialog.hide(win); },
                     build: function (rows, answer) {
                         try {
                             window.sessionStorage.setItem(KEY, JSON.stringify({rows: rows, keep: answer.keep || '', name: answer.name || ''}));

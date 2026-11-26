@@ -978,10 +978,22 @@
             syncGo();
         }
 
+        // On a phone the list stands over the pane: the chosen start's pane
+        // is brought into view, or a tap would seem to do nothing.
+        function showPane(tab) {
+            var list = win.querySelector('.sd-ns-list');
+            var pane = paneOf(tab);
+
+            if (pane && !pane.hidden && list && pane.getBoundingClientRect().top >= list.getBoundingClientRect().bottom) {
+                pane.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+            }
+        }
+
         tabs.forEach(function (tab) {
             tab.addEventListener('click', function () {
                 if (open(tab)) {
                     choose(tab.getAttribute('data-start'), false);
+                    showPane(tab);
                 }
             });
         });
@@ -1131,8 +1143,8 @@
             });
         }
 
-        // A start with its own part (the document start) asks the questions
-        // before the address its own button leads to.
+        // A start with its own part (the document and Canva starts) asks the
+        // questions before the address its own button leads to.
         window.sdStartAsk = askQuestions;
 
         if (go) {
@@ -1151,13 +1163,19 @@
 
         pgUI.dialog.on(win, 'hidden', leaveQuestions);
 
-        // A start's own part (the Canva start) hands its pane over to the
-        // questions the same way.
-        window.sdStartAsk = askQuestions;
-
         pgUI.dialog.on(win, 'show', function (event) {
             var source = event.relatedTarget;
             choose((source && source.dataset && source.dataset.sdStart) || win.dataset.sdStart || 'blank', false);
+        });
+
+        // The keyboard starts on the chosen start, where Up and Down work,
+        // not on the window's Close button.
+        pgUI.dialog.on(win, 'shown', function () {
+            var at = win.querySelector('.sd-ns-item[aria-selected="true"]');
+
+            if (at && win.contains(document.activeElement) && !document.activeElement.closest('.sd-ns-panes')) {
+                at.focus();
+            }
         });
 
         pgUI.dialog.on(win, 'hidden', function () {
