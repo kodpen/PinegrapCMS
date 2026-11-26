@@ -1576,6 +1576,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/bug-hunt-areas-5.md: Bug hunt areas given on the evening of 2026-11-20: order profit and shipping labels (K3), the bookings' visitor side and stock per location (K2); files, what to look at, what is left alone
 - workflow/bug-hunt-areas-agent-requests.md: The bug hunt in the agents' request queue and wakes (architect, 2026-11-26, request 3016): what was fixed, what was read clean, what is asked and left
 - workflow/bug-hunt-areas-api-new-routes.md: The bug hunt of the API routes and MCP tools new in 2026.11.0 (VS8, WQ8, LJ6, SJ6, DV6, share links; PR of 2026-11-24): the two queue faults fixed, what was read clean, what was not run
+- workflow/bug-hunt-areas-application-review.md: Bug hunt of the application review desk (Forms › Application programmes, named by the architect 2026-11-26, request 3016): five faults fixed in #11757, what was read clean, what was left
 - workflow/bug-hunt-areas-backend-sweep.md: The owner's whole-backend sweep of 2026-11-22: how every panel screen was loaded and read, what it found and fixed (#11051), what read clean
 - workflow/bug-hunt-areas-canvas-data-views.md: The bug hunt of the Artifact Canvas data views (DV1-DV6, #11353, 2026-11-24): the four faults fixed, what was read clean, what was not run
 - workflow/bug-hunt-areas-click-scroll-map.md: The bug hunt of the click and scroll map (architect 2026-11-20, channel message 10776): the three faults fixed, what was read clean, what is no fault
@@ -1663,10 +1664,12 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/agent-progress-note.md: An app agent's progress note on a request it holds: the progress route, its refusals and 30 s brake, kept in ai_state, shown with "since HH:MM", cleared on close (AF2 #9782)
 - workspace/agent-questions.md: How an agent asks people: the agent question (a poll an application asks), who answers, how it settles, where it shows, the tool, in whose name an outcome is written
 - workspace/agent-report.md: An agent's report of model, plan usage, context, project and branch (POST /workspace/agent-report, #9322, #10810): what refuses it, the stored object, the card line and its age
+- workspace/agent-request-closed-by-site.md: When the site closes an app agent's request itself: unclaimed for a day (cancelled), claimed and silent for a day (failed)
 - workspace/agent-role.md: An agent's role from a fixed list (ws_agents.role, step 11.0.195, #9302): the list in code, an unknown key as no role, form, Agents card, member list, API; report columns for AP2
 - workspace/agent-shown.md: How a registry agent shows (A4b2): the line under its waking message ("saw it · no answer needed", #8919), its tag and @ picker entry, kept off tasks, its own edits, two applications' lines kept apart
 - workspace/agent-state-marks.md: An agent's state dot and role badge in a channel message and in the @ menu (PF4, PF5): the one .ws-agent-dot colour and shape map, the violet role pill, the 90% usage mark beside its name
 - workspace/agent-tasks.md: A task handed to an app or model agent its channel allows (agent:<id> / model:<id>): the request and its brief, answer, fail, Stop, the drawer and holder tag (AF4a #9792, AF4b #9826)
+- workspace/agent-wakes.md: An app agent's scheduled wakes (every N minutes, once at a time) made by the general job, /wake in a channel, the agent-wake API routes, and the brief an app agent reads (A4b1, #8246)
 - workspace/agent-words-wake.md: An application's API message and an agent's answer wake the agents they name or answer: only a mention or a reply counts, the asking application named, the braked line once an hour
 - workspace/app-agent-own-application.md: Each application agent needs its own application: the Agents card refuses one another app agent works through, as its key resolves to one agent (#9741)
 - workspace/approval-agents.md: Agents asked to approve (AE2 #9567, the form and card AE3 #9586): ws_approval_agents, who may be asked, the by-hand bound, the wake and brief, an agent's answer and its checks, where agents show
