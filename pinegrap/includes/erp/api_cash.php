@@ -437,18 +437,8 @@ function erp_api_cheques_step($params)
             api_fail_validation(lang('Choose an account.'), 'account_id');
         }
 
-        $account = erp_account($to_account);
-
-        if (!is_array($account)) {
-            api_fail_validation(lang('That account could not be found.'), 'account_id');
-        }
-
-        if ((string) $account['status'] !== 'active') {
-            api_fail_validation(lang('That account is not active.'), 'account_id');
-        }
-
-        if ($to_account === (int) $cheque['account_id']) {
-            api_fail_validation(lang('Pass it on to an account other than the one it came from.'), 'account_id');
+        if (($refusal = erp_cheque_endorse_account_refusal(erp_account($to_account), $cheque)) !== '') {
+            api_fail_validation($refusal, 'account_id');
         }
     }
 

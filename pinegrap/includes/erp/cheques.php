@@ -597,6 +597,35 @@ function erp_cheque_bank_till_refusal($till, $cheque, $kept_currency, $bank_curr
 }
 
 /**
+ * Why a cheque or note cannot be passed on to this account, or ''.
+ *
+ * The screen and the API ask the same: the account exists, is active, and is
+ * not the one the cheque came from. Passed back to its own customer, the step
+ * was a payment to them that left the invoices the cheque had closed reading
+ * as paid, which only a bounce opens again.
+ *
+ * @param array|null $account  erp_account() row: id, status
+ * @param array      $cheque   erp_cheques row: account_id
+ * @return string
+ */
+function erp_cheque_endorse_account_refusal($account, $cheque)
+{
+    if (!is_array($account)) {
+        return lang('That account could not be found.');
+    }
+
+    if ((string) ($account['status'] ?? '') !== 'active') {
+        return lang('That account is not active.');
+    }
+
+    if ((int) $account['id'] === (int) ($cheque['account_id'] ?? 0)) {
+        return lang('Pass it on to an account other than the one it came from.');
+    }
+
+    return '';
+}
+
+/**
  * The next step of a cheque or note.
  *
  * @param int    $id
@@ -709,6 +738,11 @@ function erp_cheque_step($id, $step, $options, $user_id)
         if ($to_account <= 0) {
             erp_tx_rollback();
             return $fail(lang('Choose an account.'));
+        }
+
+        if (($step === 'endorse') && (($refusal = erp_cheque_endorse_account_refusal(erp_account($to_account), $cheque)) !== '')) {
+            erp_tx_rollback();
+            return $fail($refusal);
         }
 
         $rate = erp_cheque_till_rate((int) $cheque['portfolio_till_id'], $date);
