@@ -269,16 +269,23 @@ function pg_privacy_link_expires_at($id)
 }
 
 /**
- * Delete the files kept for a request: the old link ends with them.
+ * Delete the files kept for a request: the old link ends with them. A new
+ * link's file can be kept, so the earlier link ends only once the new one
+ * has been sent.
  *
- * @param int $id
+ * @param int    $id
+ * @param string $keep  a file name not to delete, '' for none
  * @return int  files deleted
  */
-function pg_privacy_link_delete($id)
+function pg_privacy_link_delete($id, $keep = '')
 {
     $deleted = 0;
 
     foreach (array_keys(pg_privacy_link_files($id)) as $name) {
+        if (($keep !== '') && ($name === $keep)) {
+            continue;
+        }
+
         $deleted += @unlink(pg_privacy_link_dir() . '/' . $name) ? 1 : 0;
     }
 
@@ -286,18 +293,32 @@ function pg_privacy_link_delete($id)
 }
 
 /**
- * Build the person's export and keep it as a new file for the request, in
- * place of any earlier one. The operator's rule of who may export whom
- * holds.
+ * Delete the file a prepared link was written to, when its e-mail could
+ * not be sent; an earlier link keeps working.
+ *
+ * @param array $prepared  pg_privacy_link_prepare()
+ * @return void
+ */
+function pg_privacy_link_discard(array $prepared)
+{
+    if (pg_privacy_link_file_parse($prepared['name'] ?? '') !== null) {
+        @unlink(pg_privacy_link_dir() . '/' . $prepared['name']);
+    }
+}
+
+/**
+ * Build the person's export and keep it as a new file for the request,
+ * beside any earlier one: the caller deletes that once the new link has
+ * been sent. The operator's rule of who may export whom holds.
  *
  * @param array $request   id, email, contact_id, user_id
  * @param array $operator  role, id
  * @return array  status (ok | empty | not_found | refused | file), url,
- *                expires_at, document
+ *                expires_at, document, name (the file)
  */
 function pg_privacy_link_prepare(array $request, array $operator)
 {
-    $out = array('status' => 'file', 'url' => '', 'expires_at' => 0, 'document' => null);
+    $out = array('status' => 'file', 'url' => '', 'expires_at' => 0, 'document' => null, 'name' => '');
     $built = pg_privacy_export_build(
         array('email' => (string) $request['email'], 'contact_id' => (int) $request['contact_id'], 'user_id' => (int) $request['user_id']),
         $operator,
@@ -326,8 +347,6 @@ function pg_privacy_link_prepare(array $request, array $operator)
         return $out;
     }
 
-    pg_privacy_link_delete($id);
-
     // Written beside it and renamed: a half-written file is never served.
     if ((@file_put_contents($dir . '/' . $name . '.tmp', pg_privacy_export_json($built['document'])) === false) || !@rename($dir . '/' . $name . '.tmp', $dir . '/' . $name)) {
         @unlink($dir . '/' . $name . '.tmp');
@@ -337,7 +356,7 @@ function pg_privacy_link_prepare(array $request, array $operator)
 
     @chmod($dir . '/' . $name, 0600);
 
-    return array('status' => 'ok', 'url' => pg_privacy_link_url($id, $expires_at, $nonce, $signature), 'expires_at' => $expires_at, 'document' => $built['document']);
+    return array('status' => 'ok', 'url' => pg_privacy_link_url($id, $expires_at, $nonce, $signature), 'expires_at' => $expires_at, 'document' => $built['document'], 'name' => $name);
 }
 
 /**
@@ -405,11 +424,13 @@ function pg_privacy_link_resend(array $request, array $operator)
     ));
 
     if (!$sent) {
-        pg_privacy_link_delete((int) $request['id']);
+        pg_privacy_link_discard($prepared);
 
         return 'mail';
     }
 
+    // The new link has gone: the earlier one ends with its file.
+    pg_privacy_link_delete((int) $request['id'], $prepared['name']);
     pg_privacy_link_record($request, $prepared);
 
     return 'ok';

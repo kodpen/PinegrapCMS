@@ -561,7 +561,7 @@ function pg_privacy_request_send(array $request, $text, array $operator, $refuse
 
     if (!$sent) {
         if ($link !== null) {
-            pg_privacy_link_delete((int) $request['id']);
+            pg_privacy_link_discard($link);
         }
 
         return 'mail';
