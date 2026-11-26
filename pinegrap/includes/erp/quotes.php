@@ -461,10 +461,28 @@ function erp_quote_set_status($quote_id, $to, $user_id)
         $valid_sql .= ", expiry_notified_at = 0";
     }
 
-    db("UPDATE erp_quotes SET status = '" . escape($to) . "', invoice_id = IF('" . escape($to) . "' = 'open', 0, invoice_id),
+    // Guarded on the status and invoice the move was judged on: a move read
+    // before the quote became an invoice (the guest link's acceptance, a
+    // button pressed at the same moment) would otherwise write over
+    // 'invoiced' and leave the quote invoiceable a second time. No row moved
+    // means another request got there first; its refusal is read again.
+    $written = db("UPDATE erp_quotes SET status = '" . escape($to) . "', invoice_id = IF('" . escape($to) . "' = 'open', 0, invoice_id),
             decided_by = '" . (($to === 'open') ? 0 : (int) $user_id) . "', decided_at = " . (($to === 'open') ? '0' : 'UNIX_TIMESTAMP()') . $valid_sql . ",
             updated_at = UNIX_TIMESTAMP()
-        WHERE id = '" . (int) $quote['id'] . "'");
+        WHERE id = '" . (int) $quote['id'] . "'
+            AND status = '" . escape((string) $quote['status']) . "'
+            AND invoice_id = '" . (int) $quote['invoice_id'] . "'");
+
+    if ($written === false) {
+        return array('success' => false, 'error' => erp_db_error());
+    }
+
+    if (mysqli_affected_rows(db::$con) !== 1) {
+        $now = erp_quote((int) $quote['id']);
+        $refusal = is_array($now) ? erp_quote_status_refusal($now, $to) : '';
+
+        return array('success' => false, 'error' => ($refusal !== '') ? $refusal : lang('The quote cannot be moved to that status.'));
+    }
 
     $events = array(
         'open' => 'erp.quote.reopened',
