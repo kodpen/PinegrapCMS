@@ -241,14 +241,17 @@ function pg_launch_journey_facts($user, $purpose)
         }
     }
 
-    // Payment: only a shop is asked.
-    if ($shop && (pg_launch_journey_purpose($purpose) === 'shop')) {
-        $facts['payments'] = pg_launch_journey_payment_facts();
+    // Payment: only a shop is asked; the shop switched off takes none.
+    $facts['shop'] = $shop;
+    if (pg_launch_journey_purpose($purpose) === 'shop') {
+        $facts['payments'] = $shop ? pg_launch_journey_payment_facts() : array();
         $facts['gateway_mode'] = defined('ECOMMERCE_PAYMENT_GATEWAY_MODE') ? (string) ECOMMERCE_PAYMENT_GATEWAY_MODE : '';
     }
 
-    // Bookings: someone bookable has weekly hours.
+    // Bookings: a bookable service, and someone bookable with weekly hours.
+    // Before the booking tables exist nothing can be read.
     if ((pg_launch_journey_purpose($purpose) === 'clinic') && pg_booking_ready()) {
+        $facts['booking_setup'] = (bool) db_value("SELECT 1 FROM booking_services LIMIT 1");
         $facts['booking_hours'] = false;
         foreach (db_values("SELECT hours FROM booking_staff") as $hours) {
             if (pg_booking_hours_clean($hours)) {

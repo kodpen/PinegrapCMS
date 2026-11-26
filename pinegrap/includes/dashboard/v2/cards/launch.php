@@ -8,8 +8,8 @@
  * first, with "Do it" opening the screen where the step is done. While no
  * purpose is stored the card asks for one ("What is this site for?").
  *
- * When every step is done or hidden the journey ends by itself: the card is
- * closed and answers denied, which takes it off the dashboard; Site Settings
+ * When every step is done or hidden and the go-live check has no blocker
+ * left the journey ends by itself: the card is closed and answers denied, which takes it off the dashboard; Site Settings
  * › General brings it back.
  *
  * The card's foot, "Ready to go live?", opens the go-live check: "Must be
@@ -105,8 +105,10 @@ function pg_dashboard_v2_card_launch($user, $period, $compare)
     $facts = pg_launch_journey_facts($user, $purpose);
     $card = pg_launch_journey_card($purpose, $facts, $stored['hidden']);
 
-    // Every step done or hidden: the journey ends by itself.
-    if ($card['finished'] && ($stored['purpose'] !== '')) {
+    // Every step done or hidden and nothing left blocking going live: the
+    // journey ends by itself. With maintenance mode on the card stays, so
+    // "Go live" is there to turn it off.
+    if (($stored['purpose'] !== '') && pg_launch_journey_card_closes($purpose, $facts, $stored['hidden'])) {
         pg_launch_journey_store(array('closed' => true));
         return array('status' => 'denied', 'data' => array());
     }

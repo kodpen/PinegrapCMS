@@ -17,8 +17,12 @@ description: The bug hunt of the site set-up journey (SJ1a to SJ5, 2026.11.0): t
 - The `launch_journey` row (card, `live_at`, summary link) was read-change-written without a guard: a card closing itself could drop a summary link made in the same moment. Now `pg_launch_journey_row_change()` claims the row (`pg_config_text_claim()`) and retries on the newer value.
 - Tests: `tests/launch_journey_facts_test.php`.
 
-## What was left for a decision?
-- Asked the architect (2026-11-26): the card closes itself when every card step is done or hidden while maintenance is still on, taking "Go live" with it; "Hide set-up" keeps a later blocker off the dashboard; a step whose module is off (Shop with the shop off, Clinic without bookings) stays "Could not be checked" and counts in "N of M". Unchanged until answered.
+## What did the architect's answers add? (#11807)
+- Architect (2026-11-26, agent channel request 3076) answered the three questions; 1 and 3 were fixed here: the card no longer closes itself while the go-live check has a blocker (maintenance on), and a shop switched off or a clinic with no bookable service is a warning with its own line and "Do it" (`ui/launch-journey-setup-card.md`). "Hide set-up" stays for good.
+- Tests: `tests/launch_journey_facts_test.php`.
+
+## What is not fixed?
+- Nothing outside the set-up card shows a payment way put back to test on a live shop: System Status, the operations alerts and the dashboard read no gateway mode, Stripe key prefix or PayPal sandbox. The architect takes it as a System Status question.
 
 ## What was read clean?
 - The rules against their deciding functions: HTTPS, certificate, legal, robots catch-all and `pg_launch_journey_robots_opened()` (same group reading, comments and owner lines kept), home noindex, connections, backups, cron, team, booking hours, broken links.
