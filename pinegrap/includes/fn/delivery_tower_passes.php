@@ -262,7 +262,9 @@ function pg_delivery_tower_summary_finish($state, $min = PG_DELIVERY_TOWER_MIN_P
             }
         }
         $figures[$carrier]['country'] = _pg_delivery_tower_figure($country, $min);
-        if ($country_marks) {
+        // The country's share needs the country's figure, as a province's
+        // needs its own: one parcel on time is no 100%.
+        if ($country_marks && ($figures[$carrier]['country'] !== null)) {
             $on_time[$carrier]['country'] = _pg_delivery_tower_on_time_count($country_marks);
             if (!isset($on_time[$carrier]['provinces'])) {
                 $on_time[$carrier]['provinces'] = array();

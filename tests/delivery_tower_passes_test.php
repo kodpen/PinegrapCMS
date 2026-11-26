@@ -106,6 +106,24 @@ function test_delivery_tower_summary_across_ticks()
 	pg_assert_same($figure, pg_delivery_tower_figure_for($summary['figures'], 'yurtici', 'istanbul'), 'the pass reads the summary\'s figures as the rules give them');
 }
 
+function test_delivery_tower_summary_on_time_needs_the_minimum()
+{
+	$tz = 'Europe/Istanbul';
+	$state = pg_delivery_tower_summary_state_new(_dt_passes_test_at('2026-11-20 02:00'));
+	$rows = array_merge(
+		_dt_passes_test_delivered('mng', 'Ankara', 1, 1, '2026-11-04'),
+		_dt_passes_test_delivered('yurtici', 'Ankara', 25, 1, '2026-11-02')
+	);
+	foreach ($rows as $i => $row) {
+		$rows[$i]['id'] = $i + 1;
+	}
+	pg_delivery_tower_summary_add($state, $rows, $tz);
+	$summary = pg_delivery_tower_summary_finish($state, PG_DELIVERY_TOWER_MIN_PARCELS);
+	pg_assert_true(!isset($summary['on_time']['mng']['country']), 'one parcel gives no on-time share across the country');
+	pg_assert_same(null, pg_delivery_tower_on_time_share($summary['on_time'], 'mng', 'ankara'), 'so the carrier reads as not measured');
+	pg_assert_same(array('judged' => 25, 'on_time' => 0), $summary['on_time']['yurtici']['country'], 'twenty-five parcels do');
+}
+
 function test_delivery_tower_summary_fits_its_text()
 {
 	$summary = array('at' => 1, 'parcels' => 0, 'figures' => array('ptt' => array('country' => null, 'provinces' => array())), 'on_time' => array());
