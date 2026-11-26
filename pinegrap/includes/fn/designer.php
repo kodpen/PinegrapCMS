@@ -6168,6 +6168,13 @@ function _render_component_html($props, $pad, $kids = '')
             $html .= $pad . pg_language_switcher_placeholder($props) . "\n";
             break;
 
+        case 'markdown':
+            // The text drawn by the Markdown reader (includes/fn/markdown.php):
+            // no HTML the author wrote passes. One string after the indent, so
+            // a code block keeps its lines.
+            $html .= pg_markdown_component_html($props, $pad) . "\n";
+            break;
+
         case 'badge':
             $badge_cls = 'badge bg-' . h(isset($props['bg']) && $props['bg'] !== '' ? $props['bg'] : 'primary')
                 . (!empty($props['rounded']) ? ' rounded-pill' : '')
