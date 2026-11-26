@@ -16,7 +16,7 @@ description: The spacing bands and handles over the designer canvas (CG3 #11568,
 ## What does a change write?
 - What the Spacing box writes: `PGSpacingBox.write()` with `B.sides(side, shift, alt)`, through `_sdSpBoxHost()`'s commit (one `saveState()`, `_sdRenderNode()`), one undo step per drag or key change.
 - For the screen size the canvas shows: `PGCanvasBands.sizeFor(canvas width)` (xs below 576 … xxl from 1400), not the Spacing box's own chooser.
-- The start step is the nearest scale step of the computed value. While dragging, the canvas element carries the value inline with `!important` (utilities are `!important`), taken off before the commit; nothing enters the tree.
+- Start: `designer-canvas-bands-drag-start.md`. While dragging, the canvas element carries the value inline with `!important`, taken off before the commit; nothing enters the tree.
 
 ## How is it built?
 - Pure: `assets/js/pg_canvas_bands.js` (`window.PGCanvasBands`): `layout(box, margin, padding, k, rtl)` bands and handles, `growth()`, `keyStep()`, `reach()`, `labelAt()` (flips at the layer's edge), `sizeFor()`; tests `tests/designer_canvas_bands_test.php`.
