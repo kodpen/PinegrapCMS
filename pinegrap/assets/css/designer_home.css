@@ -544,15 +544,11 @@ button.sdh-page:hover {
   display: none;
 }
 
-/* Folded, the chips stand in one row (assets/js/designer_home.js keeps as
-   many as fit); open, they wrap. */
-.sdh-pages.is-row.is-folded {
-  flex-wrap: nowrap;
-  overflow: hidden;
-}
-
-.sdh-pages.is-row.is-folded > .sdh-page {
-  flex: 0 0 auto;
+/* Folded, the chips stand in --sdh-chip-rows rows (one; two on a phone):
+   assets/js/designer_home.js measures them wrapped and keeps as many as
+   fit, then "+n more"; open, they all wrap. */
+.sdh-pages.is-row {
+  --sdh-chip-rows: 1;
 }
 
 .sdh-pages-toggle[hidden] {
@@ -1394,7 +1390,17 @@ button.sdh-page:hover {
   }
 }
 
-/* Phones: the list over the pane, the body scrolling as one. */
+/* The narrow window's chevrons and its bar back to the list. */
+.sd-ns-chev,
+.sd-ns-back {
+  display: none;
+}
+
+/* Below 768 px the list and the chosen pane are two screens of the one
+   window (assets/js/designer_home.js sets .is-pane): first the starts as
+   one grouped list, a row ending in a chevron and none marked; then the
+   pane under a bar with "All starts", the foot's buttons at full width,
+   the filled one on top. */
 @media (max-width: 767.98px) {
   .sd-ns {
     grid-template-columns: minmax(0, 1fr);
@@ -1411,7 +1417,46 @@ button.sdh-page:hover {
 
   .sd-ns-list {
     border-right: 0;
+  }
+
+  .sd-ns-panes {
+    padding: 0 16px 24px;
+  }
+
+  #sdStartModal:not(.is-pane) .sd-ns-panes,
+  #sdStartModal:not(.is-pane) .dialog-footer,
+  #sdStartModal.is-pane .sd-ns-list {
+    display: none;
+  }
+
+  .sd-ns-chev {
+    display: block;
+    flex: 0 0 auto;
+    margin-left: auto;
+    color: var(--pg-fg-3);
+  }
+
+  .sd-ns-back {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    margin: 0 -16px 20px;
+    padding: 8px 8px;
+    background: var(--pg-bg-body);
     border-bottom: 1px solid var(--pg-border-color);
+  }
+
+  #sdStartModal .dialog-footer {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  #sdStartModal .dialog-footer > *,
+  #sdStartModal .sd-ns-part-foot > * {
+    width: 100%;
+    margin: 0;
+    justify-content: center;
   }
 }
 
@@ -1516,16 +1561,101 @@ button.sdh-page:hover {
   }
 }
 
-/* Phones: the large card's padding and the head's tools at full width;
-   the narrow home of its own is drawn by a later step. */
+/* Phones: one column. The head keeps the title, the count and "New
+   design"; the shared components button is its icon (the words its
+   tooltip), the sentence leaves and the search takes a row of its own. The
+   large card stacks, its pages wrap to two rows and its buttons share the
+   width. The first visit's three cards are rows. */
 @media (max-width: 575.98px) {
+  .sdh-head {
+    flex-wrap: wrap;
+  }
+
+  .sdh-head-text {
+    flex: 1 1 auto;
+  }
+
+  .sdh-head p {
+    display: none;
+  }
+
+  .sdh-head-tools {
+    display: contents;
+  }
+
+  .sdh-search {
+    order: 1;
+    flex: 1 1 100%;
+    width: auto;
+  }
+
+  .sdh-comp-label {
+    display: none;
+  }
+
   .sdh-site {
     padding: 1rem;
   }
 
-  .sdh-head-tools,
-  .sdh-search {
-    width: 100%;
+  .sdh-pages.is-row {
+    --sdh-chip-rows: 2;
+  }
+
+  .sdh-actions > .pg-button:not(.d-none) {
+    flex: 1 1 0;
+    justify-content: center;
+    min-width: max-content;
+  }
+
+  .sdh-first {
+    padding: 2rem 1rem;
+  }
+
+  .sdh-first-starts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sdh-first-start {
+    flex-direction: row;
+    align-items: center;
+  }
+}
+
+/* Below 560 px the other designs are a list: a small preview at the left,
+   then the name with its menu button and the one line. */
+@media (max-width: 559.98px) {
+  .sdh-tiles {
+    gap: .5rem;
+  }
+
+  .sdh-tile {
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  .sdh-tile > .sdh-browser,
+  .sdh-tile > .sdh-nopic {
+    flex: 0 0 5.5rem;
+    align-self: center;
+    margin: .5rem 0 .5rem .5rem;
+    border: 1px solid var(--pg-border-color);
+    border-radius: calc(var(--sdh-radius) - .125rem);
+  }
+
+  .sdh-tile .sdh-browser-bar {
+    display: none;
+  }
+
+  .sdh-tile > .sdh-nopic {
+    gap: .125rem;
+    font-size: .6875rem;
+    text-align: center;
+  }
+
+  .sdh-tile-body {
+    min-width: 0;
+    justify-content: center;
+    padding: .5rem .75rem;
   }
 }
 

@@ -1225,7 +1225,7 @@ function pg_designer_home_head($count, $comp_button, $can_create)
           . '<input type="search" id="sdh-filter" placeholder="' . h(lang('Find a design')) . '" aria-label="' . h(lang('Find a design')) . '" autocomplete="off"></label>'
         : '';
     $new = $can_create
-        ? '<button type="button" class="pg-button pg-button-fill" data-bs-toggle="dialog" data-bs-target="#sdStartModal" data-sd-start="blank"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('New design')) . '</button>'
+        ? '<button type="button" class="pg-button pg-button-fill" data-bs-toggle="dialog" data-bs-target="#sdStartModal" data-sd-start="blank" data-sd-narrow="list"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('New design')) . '</button>'
         : '';
     return '<div class="sdh-head">'
          .     '<div class="sdh-head-text">'
@@ -1234,6 +1234,21 @@ function pg_designer_home_head($count, $comp_button, $can_create)
          .     '</div>'
          .     '<div class="sdh-head-tools">' . $search . $comp_button . $new . '</div>'
          . '</div>';
+}
+
+/**
+ * The head's button to the shared components drawer: the words and the count
+ * in a label span, so narrow the button is its icon and the words its
+ * tooltip (designer_home.css). Pure.
+ *
+ * @param int $total the shared components
+ * @return string
+ */
+function pg_designer_home_comp_button($total)
+{
+    $label = h(lang('Shared components and system widgets'));
+    return '<button type="button" class="pg-button pg-button-ghost sdh-comp" id="sd-comp-open" data-bs-toggle="drawer" data-bs-target="#sd-comp-offcanvas" aria-controls="sd-comp-offcanvas" title="' . $label . '">'
+         . '<i class="bi bi-puzzle" aria-hidden="true"></i><span class="pg-btn-label sdh-comp-label">' . $label . ' <span class="sdh-count" id="sd-comp-total">' . (int)$total . '</span></span></button>';
 }
 
 /**
@@ -1636,7 +1651,7 @@ function pg_designer_components_card($user)
     $comp_total = (int)db_value("SELECT COUNT(*) FROM shared_components");
     if ($comp_total === 0) return $none;
 
-    $comp_button = '<button type="button" class="pg-button pg-button-ghost" id="sd-comp-open" data-bs-toggle="drawer" data-bs-target="#sd-comp-offcanvas" aria-controls="sd-comp-offcanvas"><i class="bi bi-puzzle" aria-hidden="true"></i>' . h(lang('Shared components and system widgets')) . ' <span class="sdh-count" id="sd-comp-total">' . $comp_total . '</span></button>';
+    $comp_button = pg_designer_home_comp_button($comp_total);
 
     $comp_panel = '
         <dialog class="drawer drawer-end" id="sd-comp-offcanvas" aria-labelledby="sd-comp-offcanvas-title">
@@ -2186,6 +2201,7 @@ function pg_designer_start_window($templates, $from_pages)
                . '<span class="pg-icon-tile sd-ns-tile"><i class="bi ' . h($k['icon']) . '" aria-hidden="true"></i></span>'
                . '<span class="sd-ns-text"><span class="sd-ns-title">' . h($k['title']) . '</span>'
                . '<span class="sd-ns-line">' . h($k['disabled'] ? lang('There are no templates.') : $k['line']) . '</span></span>'
+               . '<i class="bi bi-chevron-right sd-ns-chev" aria-hidden="true"></i>'
                . '</button>';
         $panes .= '<section class="sd-ns-pane" role="tabpanel" id="sd-ns-pane-' . $key . '" aria-labelledby="sd-ns-tab-' . $key . '" tabindex="0"'
                 . ' data-go="' . h($k['go']) . '"' . pg_designer_start_part_attrs($key) . ($i === 0 ? '' : ' hidden') . '>'
@@ -2203,7 +2219,7 @@ function pg_designer_start_window($templates, $from_pages)
             </div>
             <div class="dialog-body sd-ns">
                 <div class="sd-ns-list" role="tablist" aria-orientation="vertical" aria-label="' . h(lang('Ways to start')) . '">' . $tabs . '</div>
-                <div class="sd-ns-panes">' . $panes . '</div>
+                <div class="sd-ns-panes"><div class="sd-ns-back"><button type="button" class="pg-button pg-button-sm pg-button-ghost" id="sd-ns-back"><i class="bi bi-chevron-left" aria-hidden="true"></i>' . h(lang('All starts')) . '</button></div>' . $panes . '</div>
             </div>
             <div class="dialog-footer">
                 <span class="sd-ns-count me-auto" aria-live="polite" hidden></span>
@@ -2419,7 +2435,7 @@ function pg_designer_template_gallery($templates, $from_pages)
         $use_href = 'add_system_style.php?start=template&template=' . rawurlencode($s['id']) . $extra;
         $use_now = $use_href . '&look=' . rawurlencode($theme['look']) . '&palette=' . rawurlencode($theme['palette']);
         $cards .=
-            '<div class="col-12 md:col-6 xl:col-4">
+            '<div class="col-6 xl:col-4">
                 <div class="card h-100 overflow-hidden sd-tpl-card" tabindex="0" data-use="' . h($use_now) . '" data-href="' . h($use_href) . '" aria-label="' . h($s['name']) . '"' . $theme_attrs . '>
                     ' . $thumb . '
                     <div class="card-body d-flex flex-column gap-1 p-5">

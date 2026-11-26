@@ -24,7 +24,7 @@ description: The New design window (#sdStartModal): the grouped rail of starts, 
 - The start questions come after a Bootstrap 5 start's own form, before the design opens (`design-variables-questions.md`).
 
 ## Where is the script?
-- `assets/js/designer_home.js`: tab choice, Up/Down/Home/End, the foot's button, `?start=`. On open the chosen start has the focus; on a phone a chosen pane is scrolled into view.
+- `assets/js/designer_home.js`: tab choice, Up/Down/Home/End, the foot's button, `?start=`. On open the chosen start has the focus; below 768 px the window is a list, then the pane (`designer-home-narrow.md`).
 - A start's own foot (`.sd-ns-part-foot`) draws no Cancel: the window's stays beside the filled button, and the part's `.me-auto` words come first. After "Turn into a template" the gallery printed with the page is stale: choosing the Template start reloads `?start=template`.
 
 ## Tests?

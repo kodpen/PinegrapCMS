@@ -241,13 +241,25 @@ function test_designer_start_window_markup()
 		pg_assert_true(strpos($html, 'id="sd-ns-pane-' . $k['key'] . '"') !== false, $k['key'] . ': its pane');
 		pg_assert_true(preg_match('/<button[^>]*' . preg_quote($tab, '/') . '[^>]*>(.*?)<\/button>/s', $html, $m) === 1, $k['key'] . ': its row');
 		pg_assert_false(strpos($m[1], '<svg') !== false, $k['key'] . ': no small drawing in its row');
-		pg_assert_same(1, substr_count($m[1], 'class="bi '), $k['key'] . ': one icon in its row');
+		pg_assert_same(1, substr_count(str_replace('class="bi bi-chevron-right sd-ns-chev"', '', $m[1]), 'class="bi '), $k['key'] . ': one icon in its row');
+		pg_assert_true(preg_match('/<i class="bi bi-chevron-right sd-ns-chev" aria-hidden="true"><\/i>$/', $m[1]) === 1, $k['key'] . ': the row ends in the narrow list\'s chevron');
 		pg_assert_true(strpos($m[1], 'pg-icon-tile sd-ns-tile"><i class="bi ' . $k['icon'] . '"') !== false, $k['key'] . ': the icon as a tile');
 		pg_assert_true(preg_match('/id="sd-ns-pane-' . $k['key'] . '"[^>]*>\s*<div class="sd-ns-head"><span class="pg-icon-tile sd-ns-head-tile"[^>]*><i class="bi ' . $k['icon'] . '"/', $html) === 1, $k['key'] . ': the pane\'s head opens with the same icon');
 	}
 	pg_assert_same(1, preg_match_all('/pg-button-fill" id="sd-ns-go"/', $html), 'one filled button in the foot');
 	pg_assert_same(0, preg_match('/\bbtn btn-/', substr($html, 0, (int) strpos($html, 'id="sd-ns-pane-template"'))), 'look A buttons only');
 	pg_assert_true(strpos($html, 'data-href="add_system_style.php?framework=custom&amp;start=import"') !== false, 'a framework choice carries its address');
+}
+
+// Narrow: the whole screen, the starts as a list, then the chosen pane under
+// a bar with "All starts" that goes back to the list.
+function test_designer_start_window_narrow()
+{
+	$html = pg_designer_start_window(array(), false);
+	pg_assert_true(preg_match('/<dialog class="[^"]*\bmd-down:dialog-fullscreen\b[^"]*"[^>]*id="sdStartModal"/', $html) === 1, 'below 768 px the window is the whole screen');
+	pg_assert_true(preg_match('/<div class="sd-ns-panes"><div class="sd-ns-back"><button type="button" class="[^"]*" id="sd-ns-back"><i class="bi bi-chevron-left" aria-hidden="true"><\/i>' . preg_quote(h(lang('All starts')), '/') . '<\/button><\/div><section class="sd-ns-pane"/', $html) === 1, '"All starts" in a bar over the panes');
+	pg_assert_same(1, substr_count($html, 'id="sd-ns-back"'), 'one "All starts"');
+	pg_assert_same(0, preg_match('/\bbtn btn-/', substr($html, 0, (int) strpos($html, 'id="sd-ns-pane-template"'))), 'look A buttons only');
 }
 
 // "Built on": two cards named as things, a line and three ticks each; the
@@ -330,8 +342,22 @@ function test_designer_home_head_row()
 	pg_assert_false(strpos($first, 'sdh-count') !== false, 'no design: no count');
 	pg_assert_false(strpos($first, h(lang('A design is a set of pages that share stylesheets, scripts, fonts and a theme.'))) !== false, 'the sentence moves into the middle');
 
+	pg_assert_true(preg_match('/<button[^>]*data-sd-start="blank" data-sd-narrow="list"/', $many) === 1, 'narrow, "New design" opens the list of starts');
+
 	$reader = pg_designer_home_head(3, '', false);
 	pg_assert_false(strpos($reader, 'data-sd-start') !== false, 'below designer: no New design');
+}
+
+// The shared components button: its words in a label span, so narrow it is
+// its icon with the words as its tooltip.
+function test_designer_home_comp_button()
+{
+	$label = h(lang('Shared components and system widgets'));
+	$html = pg_designer_home_comp_button(117);
+	pg_assert_true(strpos($html, 'id="sd-comp-open"') !== false && strpos($html, 'data-bs-target="#sd-comp-offcanvas"') !== false, 'it opens the drawer');
+	pg_assert_true(strpos($html, 'class="pg-button pg-button-ghost sdh-comp"') !== false, 'a ghost button');
+	pg_assert_true(strpos($html, ' title="' . $label . '"') !== false, 'the words as its tooltip');
+	pg_assert_true(strpos($html, '<i class="bi bi-puzzle" aria-hidden="true"></i><span class="pg-btn-label sdh-comp-label">' . $label . ' <span class="sdh-count" id="sd-comp-total">117</span></span>') !== false, 'the icon, then the words and the count in the label');
 }
 
 function _test_designer_home_card_row($pages, $drafts)
