@@ -35,6 +35,10 @@ StyleDesigner.definePart('sketchai', function (K) {
     var lines = {};
     var words = {};
     var tok = 0;
+    // Sample texts one section sends: the server keeps no more
+    // (PG_SKETCH_AI_ITEMS in includes/fn/sketch_ai.php), and an answer must
+    // give one text for each sent.
+    var MAX_ITEMS = 24;
 
     // ── Pure ──
 
@@ -58,16 +62,18 @@ StyleDesigner.definePart('sketchai', function (K) {
     }
 
     // The sample texts of a section's tree in their order: headings,
-    // paragraphs and links with words, outside shared components.
+    // paragraphs and links with words, outside shared components; at most
+    // MAX_ITEMS, none the server would read as empty (only Markdown marks,
+    // which pg_sketch_ai_plain() takes out), so the server keeps each one.
     function _saItems(node) {
         var out = [];
         var TYPES = { heading: true, paragraph: true, link: true };
         (function walk(n) {
-            if (!n || n.type === 'shared_ref') return;
+            if (!n || n.type === 'shared_ref' || out.length >= MAX_ITEMS) return;
             var p = n.props || {};
             if (n.type === 'content' && TYPES[p.contentType]) {
                 var text = String(p.text || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#0?39;/g, '\'').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
-                if (text) out.push({ node: n, type: p.contentType, text: text });
+                if (text && text.replace(/(\*\*|__|^#+\s*|`)/g, '').trim()) out.push({ node: n, type: p.contentType, text: text });
             }
             (n.children || []).forEach(walk);
         })(node);
@@ -87,6 +93,13 @@ StyleDesigner.definePart('sketchai', function (K) {
         return out;
     }
 
+    // A failed request's line: the server's reason (the day's drafts used,
+    // asked too quickly) first, unless the line already says it.
+    function _saWhy(res, line) {
+        var why = (res && typeof res.message === 'string') ? res.message.trim() : '';
+        return (!why || line.indexOf(why) === 0) ? line : why + ' ' + line;
+    }
+
     function _saBold(text, name) {
         return esc(text).replace('\u0001', '<strong>' + esc(name) + '</strong>');
     }
@@ -100,9 +113,26 @@ StyleDesigner.definePart('sketchai', function (K) {
         return b;
     }
 
-    function _saLine(frameId, tone, html, act, run) {
-        lines[frameId] = { tone: tone, html: html, act: act, run: run };
+    // `valid` (optional): false once the line no longer holds; it goes then.
+    function _saLine(frameId, tone, html, act, run, valid) {
+        lines[frameId] = { tone: tone, html: html, act: act, run: run, valid: valid || null };
         host.redraw();
+    }
+
+    // "Undo" of the texts written (null when none was): the tab's last
+    // step, so it holds only while the page is as the texts left it; any
+    // later edit is that step instead, and the line goes.
+    function _saUndo(frameId, mine) {
+        if (!mine.stepped) return null;
+        var p = mine.p;
+        var stamp = host.fp(host.treeOf(p));
+        var undo = function () {
+            delete lines[frameId];
+            if (undo.valid()) host.undoPage(p);
+            host.redraw();
+        };
+        undo.valid = function () { return host.fp(host.treeOf(p)) === stamp; };
+        return undo;
     }
 
     // Pinegrap AI was switched off: the actions go, nothing more is sent.
@@ -190,23 +220,24 @@ StyleDesigner.definePart('sketchai', function (K) {
         host.redraw();
         host.announce(_sdT('Drawing the sketch…'));
         var again = function () { _saDraw(frameId, text); };
-        var fail = function () {
+        var fail = function (res) {
             if (draw !== mine) return;
             draw = null;
-            _saLine(frameId, 'rose', esc(_sdT('The sketch could not be drawn. Nothing was changed.')), _sdT('Try again'), again);
-            host.announce(_sdT('The sketch could not be drawn. Nothing was changed.'));
+            var say = _saWhy(res, _sdT('The sketch could not be drawn. Nothing was changed.'));
+            _saLine(frameId, 'rose', esc(say), _sdT('Try again'), again);
+            host.announce(say);
         };
         host.post({ mode: 'describe', words: text }).then(function (res) {
             if (draw !== mine) return;
             if (res && res.off) { _saOff(); return; }
             var page = host.page(frameId);
             var boxes = (res && res.status === 'success' && page) ? _saBoxes(res.boxes, host.limits()) : [];
-            if (!boxes.length) { fail(); return; }
+            if (!boxes.length) { fail(res); return; }
             draw = null;
             host.keep(page, boxes);
             lines[frameId] = { tone: 'teal', html: esc(boxes.length === 1 ? _sdT('Sketch drawn from your words: 1 box.') : _sdT('Sketch drawn from your words: {var:1} boxes.', boxes.length)), act: _sdT('Undo'), run: function () { delete lines[frameId]; host.undoSketch(); }, sig: JSON.stringify(page.boxes) };
             host.redraw();
-        }, fail);
+        }, function () { fail(null); });
     }
 
     // ── Write the texts ──
@@ -229,17 +260,17 @@ StyleDesigner.definePart('sketchai', function (K) {
         delete lines[frameId];
         host.redraw();
         host.announce(_sdT('Writing the texts…'));
-        var finish = function (failed) {
+        var finish = function (failed, res) {
             if (write !== mine) return;
             write = null;
-            var undo = mine.stepped ? function () { delete lines[frameId]; host.undoPage(p); host.redraw(); } : null;
+            var undo = _saUndo(frameId, mine);
             if (failed) {
-                _saLine(frameId, 'rose', esc(_sdT('The texts could not be written. {var:1} sections were written, the rest keep their sample content.', mine.written)), _sdT('Try again'), function () { texts(host, frameId); });
+                _saLine(frameId, 'rose', esc(_saWhy(res, _sdT('The texts could not be written. {var:1} sections were written, the rest keep their sample content.', mine.written))), _sdT('Try again'), function () { texts(host, frameId); });
                 return;
             }
             var html = _saBold(mine.written === 1 ? _sdT('Texts written in 1 section of {var:1}.', '\u0001') : _sdT('Texts written in {var:1} sections of {var:2}.', [mine.written, '\u0001']), name);
             if (mine.left) html += ' ' + esc(mine.left === 1 ? _sdT('1 edited section was left as it is.') : _sdT('{var:1} edited sections were left as they are.', mine.left));
-            _saLine(frameId, 'teal', html, undo ? _sdT('Undo') : '', undo);
+            _saLine(frameId, 'teal', html, undo ? _sdT('Undo') : '', undo, undo ? undo.valid : null);
             host.announce(_sdT('The texts are written.'));
         };
         // The section's node as it is now, while it still holds its sample.
@@ -263,7 +294,7 @@ StyleDesigner.definePart('sketchai', function (K) {
             }).then(function (res) {
                 if (write !== mine) return;
                 if (res && res.off) { _saOff(); return; }
-                if (!res || res.status !== 'success' || !Array.isArray(res.texts) || res.texts.length !== items.length) { finish(true); return; }
+                if (!res || res.status !== 'success' || !Array.isArray(res.texts) || res.texts.length !== items.length) { finish(true, res); return; }
                 // Edited while the model wrote: left as it is.
                 var now = current(id);
                 if (now !== c) { mine.left++; }
@@ -276,7 +307,7 @@ StyleDesigner.definePart('sketchai', function (K) {
                 mine.done++;
                 host.redraw();
                 next(i + 1);
-            }, function () { finish(true); });
+            }, function () { finish(true, null); });
         };
         next(0);
     }
@@ -304,8 +335,11 @@ StyleDesigner.definePart('sketchai', function (K) {
         }
         var line = lines[frameId];
         var page = host.page(frameId);
-        if (line && line.sig && page && JSON.stringify(page.boxes) !== line.sig) { delete lines[frameId]; line = null; }
+        if (line && ((line.sig && page && JSON.stringify(page.boxes) !== line.sig) || (line.valid && !line.valid()))) { delete lines[frameId]; line = null; }
         if (!line || busyText) return;
+        // "Read the picture"'s proposal keeps its foot ("Keep", "Discard");
+        // the line waits under it until the proposal is settled.
+        if (node.querySelector('.sd-sketch-read-foot')) return;
         Array.prototype.forEach.call(node.querySelectorAll('.sd-sketch-foot'), function (el) { el.parentNode.removeChild(el); });
         var foot = host.el('div', 'sd-sketch-foot sd-skb-result');
         foot.setAttribute('role', 'status');
@@ -334,8 +368,8 @@ StyleDesigner.definePart('sketchai', function (K) {
             // An answer still on its way is dropped (write !== mine).
             var mine = write;
             write = null;
-            var undo = mine.stepped ? function () { delete lines[mine.frame]; host.undoPage(mine.p); host.redraw(); } : null;
-            _saLine(mine.frame, 'teal', esc(_sdT('Stopped. {var:1} sections were written.', mine.written)), undo ? _sdT('Undo') : '', undo);
+            var undo = _saUndo(mine.frame, mine);
+            _saLine(mine.frame, 'teal', esc(_sdT('Stopped. {var:1} sections were written.', mine.written)), undo ? _sdT('Undo') : '', undo, undo ? undo.valid : null);
         }
     }
 
@@ -352,6 +386,6 @@ StyleDesigner.definePart('sketchai', function (K) {
         escape: escape,
         stop: stop,
         writing: function (frameId) { return !!(write && write.frame === frameId); },
-        pure: { boxes: _saBoxes, items: _saItems, sections: _saSections }
+        pure: { boxes: _saBoxes, items: _saItems, sections: _saSections, why: _saWhy }
     };
 });
