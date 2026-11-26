@@ -388,6 +388,7 @@
     "If it needs a repair, a courier collects the phone and brings it back, usually within five working days.": "Onarım gerekirse kurye telefonu alır ve genellikle beş iş günü içinde geri getirir.",
     "If it was skipped": "Atlanırsa",
     "If it went well": "Başarılı olursa",
+    "If nobody on your team gave this account its role, lower it, change the passwords of the other staff accounts and look at the Site Log.": "Ekibinizden kimse bu hesaba bu rolü vermediyse rolünü düşürün, diğer personel hesaplarının parolalarını değiştirin ve Site Günlüğü'ne bakın.",
     "If nobody on your team made this account, disable it, change the passwords of the other staff accounts and look at the Site Log.": "Bu hesabı ekibinizden kimse oluşturmadıysa hesabı devre dışı bırakın, diğer personel hesaplarının parolalarını değiştirin ve Site Günlüğü'ne bakın.",
     "If nobody on your team made this key, revoke it on Application Access.": "Bu anahtarı ekibinizden kimse oluşturmadıysa Uygulama Erişimi'nde iptal edin.",
     "If nobody on your team put this file here, quarantine it and change the passwords of the staff and hosting accounts.": "Bu dosyayı ekibinizden kimse koymadıysa karantinaya alın ve personel ile barındırma hesaplarının parolalarını değiştirin.",

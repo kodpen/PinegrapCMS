@@ -3,7 +3,7 @@
  * Pinegrap - Enterprise Website Platform
  *
  * The Security Scan's rules on accounts and settings: a new Administrator or
- * Designer account, a new application key, a core folder anyone on the
+ * Designer account (made, or raised to the role), a new application key, a core folder anyone on the
  * server may write to, risky PHP settings and the PHP security fixes
  * (PHP2Shell) that System Status checks. Each rule turns what it reads into
  * sightings of the finding model (includes/fn/security_scan.php); the scan
@@ -28,6 +28,12 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 // An account or a key is new for this long after it was made. A finding
 // nobody acted on turns gone after it; Ignore keeps it out of the way sooner.
 define('PG_SECURITY_NEW_WINDOW', 30 * 86400);
+
+// The config_text row that keeps the role of every Administrator and
+// Designer and when the scan first saw it: user id => role and since. Ids,
+// roles and times only, no name or address. It lets the scan tell an old
+// account raised to one of the two roles, which user_created cannot show.
+define('PG_SECURITY_STAFF_ROLES_STATE', 'security_scan_staff_roles');
 
 /**
  * The kinds this module reports.
@@ -125,6 +131,111 @@ function pg_security_accounts_sightings(array $users, array $apps, $now)
     }
 
     return $sightings;
+}
+
+/**
+ * The stored staff role map from its config_text value: null when there is
+ * no row yet (the first run), else user id => role (0 or 1) and since.
+ *
+ * @param string $text
+ * @return array|null
+ */
+function pg_security_staff_roles_decode($text)
+{
+    $text = (string) $text;
+
+    if ($text === '') {
+        return null;
+    }
+
+    $stored = json_decode($text, true);
+
+    return is_array($stored) ? $stored : null;
+}
+
+/**
+ * The staff role map as its config_text value; always a JSON object, so an
+ * empty map is still a row and the next run is not taken for the first.
+ *
+ * @param array $map
+ * @return string
+ */
+function pg_security_staff_roles_encode(array $map)
+{
+    return (string) json_encode($map, JSON_FORCE_OBJECT);
+}
+
+/**
+ * Follow the Administrator (0) and Designer (1) roles from one scan to the
+ * next. $users are user rows (user_id, user_role, user_created); rows of
+ * another role are left out. $stored is the map of the last run, or null
+ * before the first one.
+ *
+ * - No stored map: every account is stored with since 0, known and never
+ *   new, so the first scan reports nobody by this rule.
+ * - An id the map does not hold, or a Designer now an Administrator: since
+ *   is now. The same role, or an Administrator lowered to Designer, keeps
+ *   its since. An id no longer of role 0 or 1 is dropped, so a later raise
+ *   is seen again.
+ * - A since inside PG_SECURITY_NEW_WINDOW is a sighting of the account's
+ *   kind at user:<id>, with the time in 'raised', unless user_created
+ *   inside the window already gives the account's sighting.
+ *
+ * @param array $users
+ * @param array|null $stored
+ * @param int $now
+ * @return array sightings (array), map (the map to store)
+ */
+function pg_security_staff_roles_track(array $users, $stored, $now)
+{
+    $now = (int) $now;
+    $first = !is_array($stored);
+    $map = array();
+    $sightings = array();
+
+    foreach ($users as $user) {
+        $role = isset($user['user_role']) ? (string) $user['user_role'] : '';
+        $id = isset($user['user_id']) ? (string) $user['user_id'] : '';
+
+        if ((($role !== '0') && ($role !== '1')) || (preg_match('/^[1-9][0-9]{0,19}$/', $id) !== 1)) {
+            continue;
+        }
+
+        $role = (int) $role;
+        $before = (!$first && isset($stored[$id]) && is_array($stored[$id])) ? $stored[$id] : null;
+
+        if ($first) {
+            $since = 0;
+        } elseif (($before === null) || !isset($before['role'], $before['since'])) {
+            $since = $now;
+        } elseif (((int) $before['role'] === 1) && ($role === 0)) {
+            $since = $now;
+        } else {
+            $since = (int) $before['since'];
+        }
+
+        $map[$id] = array('role' => $role, 'since' => $since);
+
+        $created = isset($user['user_created']) ? (int) $user['user_created'] : 0;
+
+        if (($since <= 0) || ($since < $now - PG_SECURITY_NEW_WINDOW)
+            || (($created > 0) && ($created >= $now - PG_SECURITY_NEW_WINDOW))) {
+            continue;
+        }
+
+        $sighting = pg_security_sighting(
+            ($role === 0) ? 'account_new_admin' : 'account_new_designer',
+            pg_security_place_record('user', $id),
+            ($role === 0) ? PG_SECURITY_SEVERITY_HIGH : PG_SECURITY_SEVERITY_MEDIUM,
+            json_encode(array('raised' => $since))
+        );
+
+        if ($sighting !== null) {
+            $sightings[] = $sighting;
+        }
+    }
+
+    return array('sightings' => $sightings, 'map' => $map);
 }
 
 /**
@@ -257,7 +368,9 @@ function pg_security_settings_env()
 /**
  * Every sighting of this module's rules on this site, for a full scan. The
  * accounts and keys are read without any person's data: role and creation
- * time only, and an application's name.
+ * time only, and an application's name. The site is only read; the staff
+ * role map (PG_SECURITY_STAFF_ROLES_STATE) is the scan's own state and is
+ * saved here, so this runs once per joined run, in its accounts step.
  *
  * @param int $now
  * @return array Sightings
@@ -267,8 +380,16 @@ function pg_security_accounts_scan($now)
     $users = array();
     $apps = array();
 
+    $raised = array();
+
     if (pg_schema_has('user', 'user_created')) {
-        $users = db_items("SELECT user_id, user_role, user_created FROM user WHERE (user_role IN ('0', '1')) AND (user_created >= '" . (int) ((int) $now - PG_SECURITY_NEW_WINDOW) . "')");
+        $users = db_items("SELECT user_id, user_role, user_created FROM user WHERE user_role IN ('0', '1')");
+        $users = is_array($users) ? $users : array();
+
+        // The role map is this rule's own state, kept from run to run.
+        $track = pg_security_staff_roles_track($users, pg_security_staff_roles_decode(pg_config_text(PG_SECURITY_STAFF_ROLES_STATE)), $now);
+        $raised = $track['sightings'];
+        pg_config_text_save(PG_SECURITY_STAFF_ROLES_STATE, pg_security_staff_roles_encode($track['map']));
     }
 
     if (pg_schema_has('api_apps', 'kind')) {
@@ -276,7 +397,8 @@ function pg_security_accounts_scan($now)
     }
 
     return array_merge(
-        pg_security_accounts_sightings(is_array($users) ? $users : array(), is_array($apps) ? $apps : array(), $now),
+        pg_security_accounts_sightings($users, is_array($apps) ? $apps : array(), $now),
+        $raised,
         pg_security_settings_sightings(pg_security_settings_env())
     );
 }
@@ -294,6 +416,14 @@ function pg_security_accounts_reason($kind, $detail)
     $facts = json_decode((string) $detail, true);
     $facts = is_array($facts) ? $facts : array();
     $created = isset($facts['created']) ? date('Y-m-d', (int) $facts['created']) : '';
+
+    if (isset($facts['raised']) && (($kind === 'account_new_admin') || ($kind === 'account_new_designer'))) {
+        $text = ($kind === 'account_new_admin')
+            ? lang('An account became an Administrator; the scan first saw it on {date}.')
+            : lang('An account became a Designer; the scan first saw it on {date}.');
+
+        return str_replace('{date}', date('Y-m-d', (int) $facts['raised']), $text);
+    }
 
     switch ($kind) {
         case 'account_new_admin':
@@ -329,13 +459,21 @@ function pg_security_accounts_reason($kind, $detail)
 
 /**
  * What to do about a finding of this module, in the reader's language. ''
- * for a kind of another module.
+ * for a kind of another module. A staff account raised to its role (detail
+ * 'raised') gets its own advice.
  *
  * @param string $kind
+ * @param string $detail The finding's JSON detail
  * @return string
  */
-function pg_security_accounts_advice($kind)
+function pg_security_accounts_advice($kind, $detail = '')
 {
+    $facts = json_decode((string) $detail, true);
+
+    if (is_array($facts) && isset($facts['raised']) && (($kind === 'account_new_admin') || ($kind === 'account_new_designer'))) {
+        return lang('If nobody on your team gave this account its role, lower it, change the passwords of the other staff accounts and look at the Site Log.');
+    }
+
     switch ($kind) {
         case 'account_new_admin':
         case 'account_new_designer':

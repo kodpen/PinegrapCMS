@@ -10,7 +10,7 @@ module: security_scan_section
 
 ## How does one run go?
 - `pg_security_scan_run($budget)`: files (`pg_security_files_run()`), then stored content (`pg_security_content_pass()` with the cursor kept in the state), then accounts and settings (`pg_security_accounts_scan()`, unseen ones closed to gone). One run at a time by `GET_LOCK('pg_security_scan')`; a second caller answers busy.
-- State: `config_text` row `security_scan` (`pg_security_scan_state()`): started, phase, content cursor, files and records so far, last_finished, last_files, last_records. The file scan keeps its own row `security_scan_files`.
+- State: `config_text` row `security_scan` (`pg_security_scan_state()`): started, phase, content cursor, files and records so far, last_finished, last_files, last_records. The file scan keeps its own row `security_scan_files`, the accounts step its staff role map `security_scan_staff_roles` (`security-scan-accounts-settings.md`).
 - `security_scan_job.php` (daily, heavy lane) and Scan now both call it. Scan now (`api.php` `security_scan_step`, 8 seconds a request) asks again until done, every 3 s while busy; a run finished there calls `pg_cron_ran('security_scan_job')`.
 
 ## What does the list show?
