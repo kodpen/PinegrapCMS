@@ -45,11 +45,14 @@ function settings_maintenance_test_category($key)
 	return substr($source, $start, $end - $start);
 }
 
-// The field names a card file posts.
+// The field names a card file posts, written out or handed to the pane's
+// switch and choice helpers (includes/fn/maintenance_settings_open.php).
 function settings_maintenance_test_names($source)
 {
 	preg_match_all('/\bname="([a-z0-9_]+)(?:\[\])?"/', $source, $match);
-	$names = array_values(array_unique($match[1]));
+	preg_match_all("/pg_maintenance_settings_switch\\('([a-z0-9_]+)'/", $source, $switches);
+	preg_match_all("/pg_maintenance_settings_seg\\(lang\\('[^']*'\\), '([a-z0-9_]+)'/", $source, $segs);
+	$names = array_values(array_unique(array_merge($match[1], $switches[1], $segs[1])));
 	sort($names);
 
 	return $names;

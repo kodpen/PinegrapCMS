@@ -221,7 +221,7 @@ function test_settings_maintenance_fold_pane_draws_the_rows()
 	}
 
 	// The save's marks and buttons stay as they were.
-	foreach (array('name="object_storage_card"', 'name="object_storage_test"', 'name="backup_remote_test"', 'name="sales_watch_card"', 'name="ops_alerts"', 'name="job_dispatch_enabled"') as $mark) {
+	foreach (array('name="object_storage_card"', 'name="object_storage_test"', 'name="backup_remote_test"', 'name="sales_watch_card"', "pg_maintenance_settings_switch('ops_alerts',", 'name="job_dispatch_enabled"') as $mark) {
 		pg_assert_contains($mark, $pane, $mark);
 	}
 }
