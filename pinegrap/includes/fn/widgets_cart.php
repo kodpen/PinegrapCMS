@@ -3719,7 +3719,7 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
         foreach ((array)db_items("SELECT name, code FROM referral_sources ORDER BY sort_order, name") as $_rs) $_eo_referrals[(string)$_rs['name']] = (string)$_rs['code'];
         $_eo_vis_ctx = array(
             'has_gift_card_code'   => defined('ECOMMERCE_GIFT_CARD') && ECOMMERCE_GIFT_CARD == true,
-            'can_update_contact'   => defined('USER_LOGGED_IN') && USER_LOGGED_IN && empty($_SESSION['software']['ghost']),
+            'can_update_contact'   => pg_preview_as_viewer()['signed_in'] && empty($_SESSION['software']['ghost']),
             'has_referral_sources' => (bool)$_eo_referrals,
         ) + $_eo_vis_ctx + pg_eo_layout_flags($items, array(
             'discount' => $discount_cents, 'tax' => $tax_cents, 'shipping' => $ship_cents, 'gift_card' => $gc_disc_cents,

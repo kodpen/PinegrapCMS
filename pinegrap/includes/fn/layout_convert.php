@@ -704,7 +704,7 @@ function _pg_lfc_row_labels(&$nodes, $by_id, $for)
  */
 function pg_layout_convert_types()
 {
-    return array('form item view', 'form list view', 'order form', 'photo gallery', 'catalog', 'catalog detail', 'shopping cart', 'express order', 'billing information', 'shipping address and arrival', 'shipping method', 'order preview', 'view order', 'login', 'forgot password', 'set password', 'change password', 'my account profile', 'email preferences');
+    return array('form item view', 'form list view', 'order form', 'photo gallery', 'catalog', 'catalog detail', 'shopping cart', 'express order', 'billing information', 'shipping address and arrival', 'shipping method', 'order preview', 'view order', 'login', 'forgot password', 'set password', 'change password', 'my account profile', 'email preferences', 'registration entrance', 'membership entrance');
 }
 
 /**
@@ -720,7 +720,9 @@ function pg_layout_convert_types()
  * control's name), 'form:<action>' (the attributes of a <form>: it is
  * bound to that action, or with 'strip' its tags go), 'section:<name>'
  * (the node bound to that section in its place), 'state:<key>' (the page
- * setting's words, pg_layout_convert_state()).
+ * setting's words, pg_layout_convert_state()), 'drop:<code>' (no element:
+ * reported with that code), 'cut:<code>' (the form printing it goes, with
+ * the wrappers around it that hold no other form: reported with that code).
  *
  * 'if': a condition: array('becomes' => 'widget' (the widget draws what it
  * holds: skipped), 'flag' (shown only under the widget's flag 'flag'),
@@ -734,7 +736,9 @@ function pg_layout_convert_types()
  * only, before the bare key. 'flag' may list flags: each nested in the
  * one before. 'section' (a block the widget fills with its own markup:
  * the node bound to that section stands in its place, what the block
- * holds is the widget's; 'wrap' => markup holding it at '%s', 'inner' the
+ * holds is the widget's, unless 'hold' is true: then the block is read and
+ * held inside the section's node, its first submit button bound to the
+ * action 'button' names; 'drop' takes a 'code' to report it with; 'wrap' => markup holding it at '%s', 'inner' the
  * same inside its flags, 'flag' as for 'token'). A 'flag' inside a tag's
  * attributes is dropped, or with 'in_tag' => 'keep' drawn always.
  * 'token' (a block the widget prints whole as the
@@ -856,6 +860,10 @@ function pg_layout_piece_map($type)
         case 'my account profile':
         case 'email preferences':
             return _pg_lc_account_form_map($type, $none);
+
+        case 'registration entrance':
+        case 'membership entrance':
+            return _pg_lc_entrance_map($type, $none);
 
         case 'form item view':
             return array(
@@ -1879,6 +1887,60 @@ function _pg_lc_account_form_map($type, $none)
     return $map;
 }
 
+// The registration and membership entrance pages (registration,
+// membership widgets): the sign-up form is the widget, its <form> tags
+// gone (the widget draws its own, posting to the classic handler, so the
+// controls keep their classic names). The login form beside it is a second
+// form the widget never holds (no form inside a form): it goes with the
+// wrappers that hold nothing else, reported as the Login widget's, and so
+// do its forgot password link and sign-in buttons. The guest block is the
+// registration widget's guest section, read and held: the server gives its
+// button a small form of its own.
+function _pg_lc_entrance_map($type, $none)
+{
+    $flag = function ($f) { return array('becomes' => 'flag', 'flag' => $f); };
+    $login = array('becomes' => 'drop', 'code' => 'login_form');
+    $map = array(
+        'echo' => $none + array(
+            '$login_attributes' => 'form:strip',
+            '$register_attributes' => 'form:strip',
+            '$guest_attributes' => 'form:strip',
+            '$attributes' => 'form:strip',
+            '$login_system' => 'cut:login_form',
+            '$register_system' => 'none',
+            '$guest_system' => 'none',
+            "\$google_signin ?? ''" => 'drop:login_form',
+            'h($opt_in_label)' => 'token:__opt_in_label',
+        ),
+        'if' => array(
+            '$strong_password_help' => array('becomes' => 'section', 'section' => 'password_rules'),
+            // The widget drops the hint box (and a wrapper left empty)
+            // while the site asks for no hint.
+            'PASSWORD_HINT' => array('becomes' => 'keep'),
+            // The box's label holds words of its own: a flag.
+            'REMEMBER_ME' => $flag('shows_remember_me'),
+            '$forgot_password_url' => $login,
+        ),
+        'else' => array(),
+        'loop' => array(),
+        'record' => true,
+    );
+    if ((string)$type === 'membership entrance') {
+        $map['echo']['h(MEMBER_ID_LABEL)'] = 'token:__member_id_label';
+        // The membership entrance asks no CAPTCHA question: given empty.
+        $map['if']['$captcha_question'] = array('becomes' => 'widget');
+        return $map;
+    }
+    $map['if'] += array(
+        '$captcha_question' => array('becomes' => 'section', 'section' => 'captcha'),
+        '$guest' => array('becomes' => 'section', 'section' => 'guest', 'hold' => true, 'button' => 'continue_as_guest'),
+        // The script that opens the register tab after a refused sign-up:
+        // the widget prints its errors where its Messages block stands.
+        '$register_form->check_form_errors()' => array('becomes' => 'widget'),
+    );
+    return $map;
+}
+
 /**
  * A widget starter's row template: what its first loop area holds, or the
  * content of the loop area's one column (the layout's own loop body lays
@@ -2011,9 +2073,15 @@ function pg_layout_convert($type, $code, $ctx = array())
                 }
                 return array('mode' => 'flag', 'key' => $p['key'], 'open' => $open, 'close' => $close);
             case 'section':
+                if ($in_tag()) break;
+                if (!empty($p['hold'])) {
+                    // The block is read and held in the section's node.
+                    return array('mode' => 'keep', 'key' => $p['key'],
+                        'open' => '<pg-section data-section="' . h($p['section']) . '" data-hold="' . h((string)($p['button'] ?? '')) . '">',
+                        'close' => '</pg-section>');
+                }
                 // The section's node is written whole at the start; what
                 // the block holds is the widget's, never read.
-                if ($in_tag()) break;
                 $lead = '<pg-section data-section="' . h($p['section']) . '"></pg-section>';
                 if (isset($p['inner'])) $lead = sprintf((string)$p['inner'], $lead);
                 foreach (array_reverse((array)($p['flag'] ?? array())) as $f) $lead = '<pg-vis data-flag="' . h($f) . '">' . $lead . '</pg-vis>';
@@ -2026,7 +2094,7 @@ function pg_layout_convert($type, $code, $ctx = array())
                 foreach (array_reverse((array)($p['flag'] ?? array())) as $f) $lead = '<pg-vis data-flag="' . h($f) . '">' . $lead . '</pg-vis>';
                 return array('mode' => 'skip', 'key' => $p['key'], 'lead' => $lead);
         }
-        $drop($raw, $at, 'condition');
+        $drop($raw, $at, ($p['becomes'] === 'drop' && isset($p['code'])) ? (string)$p['code'] : 'condition');
         return array('mode' => 'skip', 'key' => $p['key']);
     };
     $write = function ($text) use (&$stack, &$html) {
@@ -2156,6 +2224,7 @@ function pg_layout_convert($type, $code, $ctx = array())
     }
     $nodes = _pg_lfc_parse($html);
     if ($raw) $nodes = _pg_lc_raw($nodes, $raw);
+    if (strpos($html, '<pg-cut') !== false) $nodes = _pg_lc_cut($nodes);
     $row = array_values((array)($ctx['row'] ?? array()));
     $nodes = _pg_lc_finish($nodes, $row, $map);
     foreach ((array)($map['media'] ?? array()) as $token => $flag) $nodes = _pg_lc_media($nodes, $token, $flag);
@@ -2224,6 +2293,7 @@ function pg_layout_dropped_rows($dropped)
             case 'code':      $what = lang(array('string' => 'PHP code {var:1}', 'vars' => array($piece))); break;
             case 'browse':    $what = lang('the browse form'); break;
             case 'recipients': $what = lang('the ship-to heading of each recipient'); break;
+            case 'login_form': $what = lang(array('string' => 'the login form ({var:1}): the Login widget draws it', 'vars' => array($piece))); break;
             default:          $what = $piece;
         }
         $line = (int)($d['line'] ?? 0);
@@ -2259,6 +2329,16 @@ function _pg_lc_echo($src, $echo, $norm, $ctx, $at, $drop)
         if (strpos($v, 'form:') === 0) return ' data-pg-form="' . h(substr($v, 5)) . '"';
         if (strpos($v, 'section:') === 0) return '<pg-section data-section="' . h(substr($v, 8)) . '"></pg-section>';
         if (strpos($v, 'state:') === 0) return h((string)($ctx['state'][substr($v, 6)] ?? ''));
+        if (strpos($v, 'drop:') === 0) {
+            $drop($src, $at, substr($v, 5));
+            return '';
+        }
+        if (strpos($v, 'cut:') === 0) {
+            // Reported here, in line order; the form goes once the markup
+            // is read (_pg_lc_cut()).
+            $drop($src, $at, substr($v, 4));
+            return '<pg-cut></pg-cut>';
+        }
     }
     // Interface words the template prints: the words themselves, which
     // the page's translation reads like any text.
@@ -2363,6 +2443,10 @@ function _pg_lc_finish($nodes, $row, $map = array())
             $out[] = pg_di_mk('loop_area', array('source' => (string)_pg_lfc_attr($n, 'data-source')), $kids);
             continue;
         }
+        if ($tag === 'pg-section' && _pg_lfc_attr($n, 'data-hold') !== null) {
+            $out[] = _pg_lc_held_section($kids, (string)_pg_lfc_attr($n, 'data-section'), (string)_pg_lfc_attr($n, 'data-hold'));
+            continue;
+        }
         if ($tag === 'pg-section') {
             $props = array('tag' => 'div', 'cssClass' => '', '_bindings' => array('section' => (string)_pg_lfc_attr($n, 'data-section')));
             if (_pg_lfc_attr($n, 'data-list') !== null) $props['_list'] = true;
@@ -2410,6 +2494,99 @@ function _pg_lc_finish($nodes, $row, $map = array())
         $out[] = _pg_lc_bind($n, $map);
     }
     return $out;
+}
+
+// A held section's node: the block's one element bound to the section, or
+// a box bound to it holding the block; its first submit button (a button
+// or a submit input) bound to $action.
+function _pg_lc_held_section($kids, $section, $action)
+{
+    $kids = array_values($kids);
+    if ($action !== '') {
+        $done = false;
+        $bind = function (&$nodes) use (&$bind, &$done, $action) {
+            foreach ($nodes as &$n) {
+                if ($done) return;
+                $tag = _pg_lfc_tag($n);
+                $type = strtolower((string)_pg_lfc_attr($n, 'type'));
+                if (($tag === 'button' && $type !== 'button' && $type !== 'reset') || ($tag === 'input' && $type === 'submit')) {
+                    $n['props']['_bindings']['action'] = $action;
+                    $done = true;
+                    return;
+                }
+                if (!empty($n['children'])) $bind($n['children']);
+            }
+            unset($n);
+        };
+        $bind($kids);
+    }
+    if (count($kids) === 1 && _pg_lfc_tag($kids[0]) !== '' && !isset($kids[0]['props']['_bindings']['section'])) {
+        $kids[0]['props']['_bindings']['section'] = $section;
+        return $kids[0];
+    }
+    return pg_di_mk('semantic', array('tag' => 'div', 'cssClass' => '', '_bindings' => array('section' => $section)), $kids);
+}
+
+// The form holding a cut marker (pg-cut) goes, with every wrapper around it
+// that holds no other form (a column, a tab): a second form beside the
+// widget's, which the widget never holds. A marker in no form goes alone.
+function _pg_lc_cut($nodes)
+{
+    $path = _pg_lc_path_to($nodes, 'pg-cut', array());
+    while ($path !== null) {
+        // The form around the marker, then up while the wrapper holds no
+        // other form.
+        $at = null;
+        for ($i = count($path) - 1; $i >= 0; $i--) {
+            if (_pg_lfc_tag(_pg_lc_node_at($nodes, array_slice($path, 0, $i + 1))) === 'form') { $at = $i; break; }
+        }
+        if ($at === null) {
+            $at = count($path) - 1;
+        } else {
+            while ($at > 0 && _pg_lc_forms_in(_pg_lc_node_at($nodes, array_slice($path, 0, $at))) === 1) $at--;
+        }
+        $nodes = _pg_lc_remove_at($nodes, array_slice($path, 0, $at + 1));
+        $path = _pg_lc_path_to($nodes, 'pg-cut', array());
+    }
+    return $nodes;
+}
+
+// The index path to the first node of tag $tag, or null.
+function _pg_lc_path_to($nodes, $tag, $path)
+{
+    foreach (array_values((array)$nodes) as $i => $n) {
+        if (_pg_lfc_tag($n) === $tag) return array_merge($path, array($i));
+        $p = _pg_lc_path_to((array)($n['children'] ?? array()), $tag, array_merge($path, array($i)));
+        if ($p !== null) return $p;
+    }
+    return null;
+}
+
+function _pg_lc_node_at($nodes, $path)
+{
+    $n = array('children' => $nodes);
+    foreach ($path as $i) $n = array_values((array)($n['children'] ?? array()))[$i];
+    return $n;
+}
+
+function _pg_lc_remove_at($nodes, $path)
+{
+    $nodes = array_values((array)$nodes);
+    $i = array_shift($path);
+    if (!$path) {
+        array_splice($nodes, $i, 1);
+        return $nodes;
+    }
+    $nodes[$i]['children'] = _pg_lc_remove_at((array)($nodes[$i]['children'] ?? array()), $path);
+    return $nodes;
+}
+
+// The <form> elements in a node, itself included.
+function _pg_lc_forms_in($n)
+{
+    $count = (_pg_lfc_tag($n) === 'form') ? 1 : 0;
+    foreach ((array)($n['children'] ?? array()) as $c) $count += _pg_lc_forms_in($c);
+    return $count;
 }
 
 // The widget's list node a list's children are, beside a table's heading

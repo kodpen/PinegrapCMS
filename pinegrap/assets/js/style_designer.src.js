@@ -12864,7 +12864,7 @@ const StyleDesigner = (function () {
     // recipient picker is only a marker (_apply_catalog_item_view_bindings()),
     // the watcher list adds its rows before them (widgets_comments.php).
     // Every other section's children give way to what the server draws.
-    var _SD_SECTION_KEEPS_CHILDREN = { recipient_picker: 1, comment_watchers: 1, form_step_nav: 1, password_rules: 1 };
+    var _SD_SECTION_KEEPS_CHILDREN = { recipient_picker: 1, comment_watchers: 1, form_step_nav: 1, password_rules: 1, guest: 1 };
 
     var _SD_CHIP_KINDS = [['data-sd-cond', 'sd-chip-cond'], ['data-sd-off-reason', 'sd-chip-off'], ['data-sd-cf-shown', 'sd-chip-shown']];
     function _sdChipRow(doc, wrapper) {
@@ -26514,16 +26514,18 @@ const StyleDesigner = (function () {
     }
 
     // The changed dot on a Transform row whose own value is set.
-    // The same for an effect row (Filter, Background blur, Blend).
+    // The same for an effect row (Filter, Background blur, Blend) and a
+    // Text effect row (a value of its own reads as set too).
     function _sdTfMark(root) {
-        root.querySelectorAll('[data-sd-tf-keys], [data-sd-fx-keys]').forEach(function (r) {
+        root.querySelectorAll('[data-sd-tf-keys], [data-sd-fx-keys], [data-sd-tx-keys]').forEach(function (r) {
             var lbl = r.querySelector('.sd-prop-label');
-            var fx = r.hasAttribute('data-sd-fx-keys');
+            var kind = r.hasAttribute('data-sd-fx-keys') ? 'fx' : r.hasAttribute('data-sd-tx-keys') ? 'tx' : 'tf';
+            var sel = { fx: 'input[data-sd-fx], select[data-sd-fx]', tx: '[data-sd-tx]', tf: '[data-sd-tf]' }[kind];
             var set = r.querySelector('.sd-tf-og:not(.sd-trans-inh)') ||
-                Array.prototype.some.call(r.querySelectorAll(fx ? 'input[data-sd-fx], select[data-sd-fx]' : '[data-sd-tf]'), function (i) { return i.value !== ''; });
+                Array.prototype.some.call(r.querySelectorAll(sel), function (i) { return i.value !== '' || i.getAttribute('placeholder') === _sdT('Your own'); });
             if (!lbl || !set) return;
             lbl.classList.add('sd-prop-modified');
-            lbl.dataset.resetKind = fx ? 'fx' : 'tf';
+            lbl.dataset.resetKind = kind;
         });
     }
 
@@ -26754,6 +26756,151 @@ const StyleDesigner = (function () {
         });
         panel.addEventListener('focusout', function (e) {
             if (e.target && e.target.hasAttribute && e.target.hasAttribute('data-sd-fx-range')) _sdEffDrop();
+        });
+    }
+
+    // ── Options: the element's text effects (Text › More) ──
+    // "Text shadow", "Letter spacing", "Font family", "Limit to lines",
+    // "Gradient fill" and "Outline" under the Text section's "More". One
+    // value for the element (the Text section takes no state): written by
+    // the part 'states' (PGOptionStates.txWrite()) on the element's custom
+    // style class. Nothing is parsed or loaded while the User Styles hold
+    // none of them for the element.
+    var _SD_TX_NONE = { shadow: '', track: '', font: '', lines: '', grad: '', stroke: '', strokec: '' };
+    var _sdTxMoreOpen = false;
+
+    function _sdTxOf(node) {
+        var cls = PgCustomStyle.classOf(node.props.cssClass);
+        var text = cls ? _userStylesGet() : '';
+        if (!cls || text.indexOf('.' + cls) === -1 ||
+            !/(?:^|[\s;{])(?:text-shadow|letter-spacing|font-family|-webkit-line-clamp|-webkit-text-stroke|-webkit-background-clip|background-clip)\s*:/.test(text)) return _SD_TX_NONE;
+        if (_sdPartLoaded('states') && window.PGOptionStates) return window.PGOptionStates.txRead(text, cls);
+        if (!_sdTfLoading) {
+            _sdTfLoading = true;
+            _sdPartLoad('states').then(function () {
+                _sdTfLoading = false;
+                if (selectedNode === node) renderProperties();
+            }, function () { _sdTfLoading = false; _sdPartFailed(); });
+        }
+        return _SD_TX_NONE;
+    }
+
+    // A design variable as the canvas reads it ('' without one).
+    function _sdTxVar(name) {
+        try {
+            return canvasDoc ? canvasDoc.defaultView.getComputedStyle(canvasDoc.documentElement).getPropertyValue(name).trim() : '';
+        } catch (e) { return ''; }
+    }
+
+    // The first family of a font-family value, without its quotes.
+    function _sdTxFamily(v) {
+        return String(v || '').split(',')[0].replace(/["']/g, '').trim();
+    }
+
+    function _sdTxIsHeading(node) {
+        return (node.type === 'semantic' && /^h[1-6]$/.test(node.props.tag || '')) ||
+            (node.type === 'content' && node.props.contentType === 'heading');
+    }
+
+    // The rows, and the "More" / "Less" row closing the Text section.
+    function _sdTxRowsHtml(node) {
+        var v = _sdTxOf(node);
+        var more = _sdTxMoreOpen || Object.keys(_SD_TX_NONE).some(function (k) { return v[k] !== ''; });
+        var h = '<div class="sd-tf" data-sd-tx-box>';
+        if (more) {
+            var row = function (key, label, ctrl) {
+                return '<div class="sd-prop-row" data-sd-tx-keys="' + key + '"><label class="sd-prop-label">' + esc(label) + '</label><div class="sd-prop-control">' + ctrl + '</div></div>';
+            };
+            var list = function (key, name, opts, cur) {
+                return '<select class="form-select form-select-sm' + (cur === '' ? ' sd-trans-inh' : '') + '" data-sd-tx="' + key + '" aria-label="' + esc(name) + '">' +
+                    (cur === 'own' ? '<option value="own" selected disabled>' + esc(_sdT('Your own')) + '</option>' : '') +
+                    opts.map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === cur ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') +
+                    '</select>';
+            };
+            // A heading starts from the look's tracking, shown in grey.
+            var look = _sdTxIsHeading(node) ? _sdTxVar('--pg-heading-tracking') : '';
+            var lookEm = /^-?(?:\d+\.?\d*|\.\d+)em$/.test(look) ? parseFloat(look) : 0;
+            var track = typeof v.track === 'number' ? v.track : lookEm;
+            var body = _sdTxFamily(_sdTxVar('--pg-font-body'));
+            var head = _sdTxFamily(_sdTxVar('--pg-font-heading')) || body;
+            var colorNames = { primary: _sdT('Primary'), secondary: _sdT('Secondary'), dark: _sdT('Dark'), light: _sdT('Light'), white: _sdT('White'), black: _sdT('Black') };
+            h += '<div class="sd-trans-sub">' + esc(_sdT('Text effect')) + '</div>' +
+                row('shadow', _sdT('Text shadow'), list('shadow', _sdT('Text shadow'),
+                    [['', _sdT('None')], ['soft', _sdT('Soft')], ['medium', _sdT('Medium')], ['strong', _sdT('Strong')], ['glow', _sdT('Glow')]], v.shadow)) +
+                row('track', _sdT('Letter spacing'), '<div class="sd-trans-ms' + (typeof v.track === 'number' ? '' : ' sd-trans-inh') + '">' +
+                    '<input type="range" class="form-range-input" min="-0.1" max="0.5" step="0.01" value="' + Math.min(0.5, Math.max(-0.1, track)) + '" data-sd-tx-range="track" aria-label="' + esc(_sdT('Letter spacing')) + '">' +
+                    '<div class="input-group input-group-sm"><input type="text" inputmode="decimal" class="form-control form-control-sm" data-sd-tx="track" value="' + (typeof v.track === 'number' ? v.track : '') + '"' +
+                    ' placeholder="' + esc(v.track === 'own' ? _sdT('Your own') : String(lookEm)) + '" aria-label="' + esc(_sdT('Letter spacing')) + '"><span class="input-group-text">em</span></div></div>') +
+                row('font', _sdT('Font family'), list('font', _sdT('Font family'),
+                    [['', _sdT('Default')], ['body', body ? _sdT('Body font') + ' · ' + body : _sdT('Body font')], ['heading', head ? _sdT('Heading font') + ' · ' + head : _sdT('Heading font')]], v.font)) +
+                row('lines', _sdT('Limit to lines'), '<div class="input-group input-group-sm' + (v.lines === '' ? ' sd-trans-inh' : '') + '"><input type="text" inputmode="numeric" class="form-control form-control-sm" data-sd-tx="lines" value="' +
+                    (typeof v.lines === 'number' ? v.lines : '') + '" placeholder="' + esc(v.lines === 'own' ? _sdT('Your own') : _sdT('No limit')) + '" aria-label="' + esc(_sdT('Limit to lines')) + '"></div>') +
+                row('grad', _sdT('Gradient fill'), list('grad', _sdT('Gradient fill'),
+                    [['', _sdT('None')], ['primary-info', _sdT('Primary to info')], ['primary-secondary', _sdT('Primary to secondary')],
+                        ['success-info', _sdT('Success to info')], ['warning-danger', _sdT('Warning to danger')]], v.grad));
+            if (v.grad !== '') {
+                h += '<div class="sd-tf-fx"><i class="bi bi-info-circle" aria-hidden="true"></i><span>' +
+                    esc(_sdT('The gradient fills the letters and takes the place of a background picture of the element.')) + '</span></div>';
+            }
+            h += row('stroke', _sdT('Outline'), '<div class="sd-tf-pair">' +
+                '<div class="input-group input-group-sm' + (v.stroke === '' ? ' sd-trans-inh' : '') + '"><input type="text" inputmode="decimal" class="form-control form-control-sm" data-sd-tx="stroke" value="' +
+                    (typeof v.stroke === 'number' ? v.stroke : '') + '" placeholder="' + esc(v.stroke === 'own' ? _sdT('Your own') : '0') + '" aria-label="' + esc(_sdT('Outline width')) + '"><span class="input-group-text">px</span></div>' +
+                list('strokec', _sdT('Outline color'), [['', _sdT('Text color')]].concat(Object.keys(colorNames).map(function (c) { return [c, colorNames[c]]; })), v.strokec) +
+                '</div>');
+        }
+        h += '<button type="button" class="sd-tx-more" aria-expanded="' + (more ? 'true' : 'false') + '"><i class="bi bi-chevron-' + (more ? 'up' : 'down') + '" aria-hidden="true"></i>' +
+            esc(more ? _sdT('Less') : _sdT('More')) + '</button>';
+        return h + '</div>';
+    }
+
+    // One value written as one undo step ('' takes it out), on Normal's rule.
+    function _sdTxSet(key, value) {
+        var node = _sdStateNode();
+        if (!node) return;
+        var run = function () {
+            if (selectedNode !== node) return;
+            var S = window.PGOptionStates;
+            _sdStateWrite(function (text, cls) { return S.txWrite(text, cls, key, value); });
+        };
+        if (_sdPartLoaded('states') && window.PGOptionStates) { run(); return; }
+        _sdPartLoad('states').then(run, _sdPartFailed);
+    }
+
+    // Once per panel: Letter spacing's slider shows its number and the
+    // canvas while dragged (inline, dropped when let go) and writes when
+    // let go; a field or a list writes on change; "More" and "Less".
+    function _sdTxBind(panel) {
+        if (!panel || panel._sdTx || !panel.querySelector('[data-sd-tx-box]')) return;
+        panel._sdTx = true;
+        panel.addEventListener('input', function (e) {
+            var t = e.target;
+            if (!t || !t.getAttribute || t.getAttribute('data-sd-tx-range') !== 'track') return;
+            var box = t.closest('.sd-trans-ms');
+            var num = box ? box.querySelector('[data-sd-tx="track"]') : null;
+            if (num) num.value = t.value;
+            if (box) box.classList.remove('sd-trans-inh');
+            var el = _sdCanvasInnerOf(selectedNode);
+            if (!el || !el.style) return;
+            _sdEffDrop();
+            el.style.setProperty('letter-spacing', t.value + 'em', 'important');
+            _sdEffDragged = { el: el, prop: 'letter-spacing' };
+        });
+        panel.addEventListener('change', function (e) {
+            var t = e.target, k = t && t.getAttribute ? (t.getAttribute('data-sd-tx') || t.getAttribute('data-sd-tx-range')) : null;
+            if (!k) return;
+            _sdEffDrop();
+            _sdTxSet(k, t.value.trim());
+        });
+        panel.addEventListener('focusout', function (e) {
+            if (e.target && e.target.hasAttribute && e.target.hasAttribute('data-sd-tx-range')) _sdEffDrop();
+        });
+        panel.addEventListener('click', function (e) {
+            var t = e.target && e.target.closest ? e.target.closest('.sd-tx-more') : null;
+            if (!t || !panel.contains(t)) return;
+            _sdTxMoreOpen = t.getAttribute('aria-expanded') !== 'true';
+            renderProperties();
+            var b = document.querySelector('#sd-properties .sd-tx-more');
+            if (b) b.focus();
         });
     }
 
@@ -38373,6 +38520,7 @@ const StyleDesigner = (function () {
         _sdTransBind(panel);
         _sdTfBind(panel);
         _sdEffBind(panel);
+        _sdTxBind(panel);
         var _counts = {};
         panel.querySelectorAll('[data-sd-otab]').forEach(function (pane) { _counts[pane.getAttribute('data-sd-otab')] = _sdSectHeadsFill(pane); });
         Object.keys(_sdOptHeld).forEach(function (t) { _counts[t] = _sdOptHeldCount(_sdOptHeld[t]); });
@@ -47581,6 +47729,9 @@ const StyleDesigner = (function () {
             out.push(['password_rules',       _sdT('Strong password rules (hidden when the site setting is off)')]);
             out.push(['google_signup',        _sdT('Sign-up buttons: Google, Microsoft and Apple (only the ones turned on)')]);
             out.push(['login_link',           _sdT('Sign-in link')]);
+            // Its button is bound to "Continue as a Guest"; the site posts
+            // it with a small form of its own, after the sign-up form.
+            out.push(['guest',                _sdT('Continue as a Guest (shown only when the link that brought the visitor allows a guest)')]);
         } else if (type === 'membership') {
             out.push(['password_rules',       _sdT('Strong password rules (hidden when the site setting is off)')]);
             out.push(['google_signup',        _sdT('Sign-up buttons: Google, Microsoft and Apple (only the ones turned on)')]);
@@ -47790,6 +47941,10 @@ const StyleDesigner = (function () {
             note = on.length ? _sdT('Turned on now: {var}', on.join(', ')) : _sdT('No provider is turned on now.');
         } else if (section === 'captcha' && kind === 'registration') {
             return _sdCommentsSectionSample('comment_captcha', doc);
+        } else if (section === 'guest' && kind === 'registration') {
+            // An empty guest section: the site puts its own button in it.
+            html = '<button type="button" class="btn btn-outline-primary pg-guest-button" tabindex="-1">' + esc(_sdT('Continue as a Guest')) + '</button>';
+            note = _sdT('Shown only when the link that brought the visitor allows a guest.');
         } else if (section === 'password_rules' && _sdMemberHasRules(kind)) {
             html = _SD_HTML_PREVIEW_TOKENS.__password_rules();
         } else if (link) {
@@ -51182,6 +51337,12 @@ const StyleDesigner = (function () {
             ['shows_remember_me',        _sdT('The "Remember Me" box is offered')],
             ['has_forgot_password_link', _sdT('A forgot password link is offered')]
         ],
+        registration: [
+            ['shows_remember_me',        _sdT('The "Remember Me" box is offered')]
+        ],
+        membership: [
+            ['shows_remember_me',        _sdT('The "Remember Me" box is offered')]
+        ],
         logout: [
             ['is_signed_in',    _sdT('The visitor is signed in')],
             ['is_signed_out',   _sdT('The visitor is signed out')],
@@ -51624,6 +51785,9 @@ const StyleDesigner = (function () {
             }
             if (region === 'search_results') {
                 aOpts.push(['submit_search',       _sdT('Submit the Search')]);
+            }
+            if (region === 'registration' && (isRealButton || cur.action === 'continue_as_guest')) {
+                aOpts.push(['continue_as_guest',   _sdT('Continue as a Guest (guest section)')]);
             }
             if (region === 'form_item_view') {
                 aOpts.push(['ai_summarize',        _sdT('Summarize with the browser\'s AI (form_item_view)')]);
@@ -53652,7 +53816,10 @@ const StyleDesigner = (function () {
             row(_sdT('Monospace'),    swAttr('data-util-toggle="font-monospace"', hasCls('font-monospace'))) +
             row(_sdT('No Wrap'),      swAttr('data-util-toggle="text-nowrap"', hasCls('text-nowrap'))) +
             row(_sdT('Truncate'),     swAttr('data-util-toggle="text-truncate"', hasCls('text-truncate'))) +
-            row(_sdT('Text Break'),   swAttr('data-util-toggle="text-break"', hasCls('text-break'))),
+            row(_sdT('Text Break'),   swAttr('data-util-toggle="text-break"', hasCls('text-break'))) +
+            // Text shadow, Letter spacing, Font family, the line limit,
+            // Gradient fill and Outline under "More" (_sdTxRowsHtml()).
+            (n === selectedNode && _sdStateNode() ? _sdTxRowsHtml(n) : ''),
             _sdT('Text Options')
         ), 'text');
     }
@@ -59039,6 +59206,11 @@ const StyleDesigner = (function () {
             ratio: function (v) { return _sdRatioCss(v) || ''; },
             ratioOf: function (n) { return _sdAspectOf(n.props, n.type === 'content' && n.props.contentType === 'image'); },
             setSize: _sdSpSizeSet,
+            // A grid child's box, for its "Area" (the part 'grid').
+            parentOf: function (n) {
+                var p = n ? _sdAnyParent(n) : null;
+                return p ? p.parent : null;
+            },
             commit: function (next, changes) {
                 if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
                 if (_sdPanelLockReason(nodes)) return;
@@ -67450,6 +67622,12 @@ const StyleDesigner = (function () {
             if (_fk) { var _fv = {}; _fv[_fk] = ''; _sdEffSet(_fv); }
             return;
         }
+        // A Text effect row: its value out (Outline: the width takes it out).
+        if (kind === 'tx') {
+            var _xk = propRow.getAttribute('data-sd-tx-keys');
+            if (_xk) _sdTxSet(_xk, '');
+            return;
+        }
 
         if (kind === 'bg-color-all') {
             if (!selectedNode) return;
@@ -73410,6 +73588,15 @@ const StyleDesigner = (function () {
                                             customName: _sdT('Registration Button'), _attrs: [{ name: 'type', value: 'submit' }] }),
                                         createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Sign-up Buttons'),
                                             _bindings: { section: 'google_signup' } }),
+                                        // Drawn only when the link allows a guest; the
+                                        // button posts the site's guest form, printed
+                                        // after this form (never inside it).
+                                        createNode('semantic', { tag: 'div', cssClass: 'mt-3', customName: _sdT('Continue as a Guest'),
+                                            _bindings: { section: 'guest' } }, [
+                                            createNode('semantic', { tag: 'button', cssClass: 'btn btn-outline-primary w-100', text: _sdT('Continue as a Guest'),
+                                                customName: _sdT('Guest Button'), _attrs: [{ name: 'type', value: 'submit' }],
+                                                _bindings: { action: 'continue_as_guest' } })
+                                        ]),
                                         createNode('semantic', { tag: 'div', cssClass: 'text-center mt-3 small', customName: _sdT('Links') }, [
                                             createNode('content', { contentType: 'link', text: _sdT('Already have an account? Sign in'), href: '#', cssClass: '',
                                                 _bindings: { href: '__login_url' } })

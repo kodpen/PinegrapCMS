@@ -6,7 +6,7 @@ description: Board F5 of the image focus drawing (2026-11-25): the Focus control
 ## Why a fifth board?
 - Owner (2026-11-25), on the control as built from boards F1 and F2: "mobil tablet vs. için odak önizlemesi var ancak o kadar küçük ki çok kullanışsız. modernize edelim."
 - Beside the whole picture the three frames were 34 to 104 px wide in the drawing and came out about 50 to 70 px in the panel: nobody can judge a cut at that size.
-- Board F5 of `designer/designer-image-focus-drawing/image-focus.html` replaces where the frames stand and how large they are. Everything else of F1 and F2 holds (`designer-image-focus-drawing.md`). Step ON1 of `plans/owner-notes-2026-11-25.md` builds it.
+- Board F5 of `designer/designer-image-focus-drawing/image-focus.html` replaces where the frames stand and how large they are. Everything else of F1 and F2 holds (`designer-image-focus-drawing.md`). Built in #11724.
 
 ## Where do the picture and the frames stand?
 - The whole picture takes the control's whole width, at most 200 px tall; a taller picture is drawn at 200 px, centred. The point is on it as before.

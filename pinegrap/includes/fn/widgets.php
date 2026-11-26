@@ -2192,8 +2192,11 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     $sql_viewer_filter = '';
     if ($viewer_filter) {
         $all_disabled = !$viewer_filter_submitter && !$viewer_filter_watcher && !$viewer_filter_editor;
-        $logged_in    = (defined('USER_LOGGED_IN') && USER_LOGGED_IN === true);
-        if ($all_disabled || !$logged_in) {
+        // The visitor (pg_preview_as_viewer()): the sample account of a
+        // Preview submitted, edits and watches nothing, so it sees no row.
+        $viewer       = pg_preview_as_viewer();
+        $logged_in    = $viewer['signed_in'];
+        if ($all_disabled || !$logged_in || $viewer['sample']) {
             $sql_viewer_filter = ' AND (TRUE = FALSE) ';
         } else {
             // Editor short-circuit: if the viewer can edit the custom form, they
@@ -2214,8 +2217,8 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
 
             if (!$viewer_filter_editor || !$edit_custom_form_access) {
                 $clauses = array();
-                $uid     = defined('USER_ID') ? USER_ID : 0;
-                $umail   = defined('USER_EMAIL_ADDRESS') ? USER_EMAIL_ADDRESS : '';
+                $uid     = $viewer['id'];
+                $umail   = $viewer['email'];
 
                 if ($viewer_filter_submitter) {
                     $clauses[] = "(forms.user_id = '" . e($uid) . "')";
@@ -2658,7 +2661,8 @@ function pg_sw_submitted_form_visible($form, $access_control, $detail_page_id = 
     if (defined('UPDATE_SEARCH_INDEX') && UPDATE_SEARCH_INDEX === true) {
         return $access_control !== 'logged_in' && $access_control !== 'submitter_only';
     }
-    $signed_in = defined('USER_LOGGED_IN') && USER_LOGGED_IN === true;
+    $viewer    = pg_preview_as_viewer();
+    $signed_in = $viewer['signed_in'];
     if ($access_control === 'logged_in') return $signed_in;
     if ($access_control !== 'submitter_only') return true;
 
@@ -2666,15 +2670,16 @@ function pg_sw_submitted_form_visible($form, $access_control, $detail_page_id = 
               && is_array($_SESSION['software']['submitted_form_reference_codes']))
         ? $_SESSION['software']['submitted_form_reference_codes'] : array();
     if (in_array((string)$form['reference_code'], $codes, true)) return true;
-    if (!$signed_in) return false;
+    // The sample account of a Preview submitted and watches nothing.
+    if (!$signed_in || $viewer['sample']) return false;
 
-    $user_id = defined('USER_ID') ? (int)USER_ID : 0;
+    $user_id = $viewer['id'];
     if ($user_id > 0 && ((int)$form['user_id'] === $user_id || (int)$form['form_editor_user_id'] === $user_id)) return true;
 
     $folder = db_value("SELECT page_folder FROM page WHERE page_id = '" . (int)$form['page_id'] . "' LIMIT 1");
     if ($folder !== null && $folder !== '' && check_edit_access($folder)) return true;
 
-    $email = defined('USER_EMAIL_ADDRESS') ? (string)USER_EMAIL_ADDRESS : '';
+    $email = $viewer['email'];
     if ($email === '') return false;
     $submitter_email = db_value(
         "SELECT form_data.data FROM form_data
@@ -3536,7 +3541,7 @@ function pg_sw_route_record_address($page_id, $segment)
         $detail_page = db_item("SELECT page_name, page_folder FROM page WHERE page_id = '" . $detail_page_id . "' LIMIT 1");
         $detail_page_name = is_array($detail_page) ? (string)$detail_page['page_name'] : '';
         if ($detail_page_name === '') continue;
-        if (!check_view_access($detail_page['page_folder'], true)) continue;
+        if (!pg_preview_as_view_access($detail_page['page_folder'], true)) continue;
         // A live name first, then a name a record had before.
         $record = pg_sw_record_by_address($form_page_id, $segment);
         if (!$record && function_exists('pg_record_old_address_record')) {
@@ -3574,7 +3579,7 @@ function pg_sw_route_old_record_address($page_id, $cfg, $form_page_id, $segment)
     if (!pg_sw_form_widget_public($cfg)) return '';
     $page = db_item("SELECT page_name, page_folder FROM page WHERE page_id = '" . (int)$page_id . "' LIMIT 1");
     $page_name = is_array($page) ? (string)$page['page_name'] : '';
-    if ($page_name === '' || !check_view_access($page['page_folder'], true)) return '';
+    if ($page_name === '' || !pg_preview_as_view_access($page['page_folder'], true)) return '';
     if (!pg_sw_record_passes_filters($form_page_id, pg_sw_record_view_filters($cfg), $record['id'], $page_id)) return '';
     return pg_sw_record_url($page_name, $record['reference_code'], $record['address_name'], true, defined('LANGUAGE_PATH') ? LANGUAGE_PATH : null);
 }
@@ -3905,7 +3910,8 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
                 form_fields.type    AS field_type,
                 form_fields.wysiwyg AS field_wysiwyg,
                 form_fields.office_use_only AS field_office_use,
-                form_fields.rss_field AS field_rss,"
+                form_fields.rss_field AS field_rss,
+                form_fields.contact_field AS field_contact,"
                 . (pg_schema_has('form_fields', 'translate_values') ? " form_fields.translate_values AS field_translate," : "") . "
                 files.name          AS file_name
              FROM form_data
@@ -3913,6 +3919,11 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
              LEFT JOIN files       ON form_data.file_id       = files.id
              WHERE form_data.form_id = '" . (int)$form_row['id'] . "'"
         );
+        // A real customer's e-mail, phone and address are masked in a
+        // Preview drawn for a signed-in visitor.
+        if (pg_preview_as_viewer()['signed_in'] && pg_preview_as_viewer()['preview']) {
+            $data_rows = pg_preview_as_mask_rows((array)$data_rows);
+        }
         // The rows of the lists inside the record, drawn by the finish pass;
         // the record is this page's own words ('own').
         pg_sw_list_publish('form_record', $data_rows, array('translate' => !empty($cfg['translate_records']), 'own' => true));
@@ -4339,7 +4350,8 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
     // Links to the other account pages and the order history
     // (widgets_account.php): a link with nowhere to go leaves with its node,
     // the list lands in its section.
-    $logged_in = (defined('USER_LOGGED_IN') && USER_LOGGED_IN === true);
+    $viewer    = pg_preview_as_viewer();
+    $logged_in = $viewer['signed_in'];
     $extras    = _pg_my_account_extras($logged_in, $cfg);
     _pg_member_drop_empty_links($tree_decoded, $extras['links']);
     pg_cf_apply_section_bindings($tree_decoded, $extras['sections']);
@@ -4417,9 +4429,16 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
     }
 
     // ── Fetch logged-in user data (user + contact JOIN) ───────────────────
-    $uid = defined('USER_ID') ? (int)USER_ID : 0;
+    // The sample account of a Preview has no row: its values are the
+    // sample's (pg_preview_as_sample_account()).
+    $uid = $viewer['id'];
     $user_row = null;
-    if ($uid > 0) {
+    if ($viewer['sample']) {
+        $sample   = pg_preview_as_sample_account();
+        $user_row = array('user_id' => 0, 'user_username' => $viewer['username'], 'user_email' => $viewer['email'],
+                          'registered_date_and_time' => '', 'first_name' => $viewer['first_name'],
+                          'last_name' => $viewer['last_name'], 'avatar_image' => '', 'member_id' => $sample['account']['member_id']);
+    } elseif ($uid > 0) {
         $user_row = db_item(
             "SELECT
                 user.user_id,
@@ -4465,16 +4484,16 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
     // own first name is not markup.
     $values = array(
         'account_id'    => $user_row ? (string)$user_row['user_id']       : (string)$uid,
-        'username'      => h($user_row ? (string)$user_row['user_username'] : (string)(defined('USER_USERNAME')      ? USER_USERNAME      : '')),
-        'email_address' => h($user_row ? (string)$user_row['user_email']    : (string)(defined('USER_EMAIL_ADDRESS') ? USER_EMAIL_ADDRESS : '')),
+        'username'      => h($user_row ? (string)$user_row['user_username'] : $viewer['username']),
+        'email_address' => h($user_row ? (string)$user_row['user_email']    : $viewer['email']),
         'full_name'     => h($full_name),
         'first_name'    => h($fn),
         'last_name'     => h($ln),
         'avatar_url'    => h($avatar_url),
         'member_id'     => h(($user_row && !empty($user_row['member_id'])) ? (string)$user_row['member_id'] : ''),
-        'member'        => (defined('USER_MEMBER') && USER_MEMBER === true) ? '1' : '0',
+        'member'        => $viewer['member'] ? '1' : '0',
         // The name to greet the member by: their full name, else their user name.
-        '__display_name' => h($full_name !== '' ? $full_name : ($user_row ? (string)$user_row['user_username'] : (defined('USER_USERNAME') ? (string)USER_USERNAME : ''))),
+        '__display_name' => h($full_name !== '' ? $full_name : ($user_row ? (string)$user_row['user_username'] : $viewer['username'])),
         'not_logged_in' => '',
     ) + $link_values;
     // The member's store credit balance, as the store credit section prints it.
@@ -5131,7 +5150,7 @@ function _render_system_widget_login_form($tree_json, $widget_id, $cfg = array()
 
     // Already signed in: the form would only sign them in again. Editors
     // still see the form in edit mode, so the page can be worked on.
-    if ($mode !== 'edit' && function_exists('pg_session_signed_in') && pg_session_signed_in()) {
+    if ($mode !== 'edit' && _pg_member_session_signed_in()) {
         return _pg_member_render_signed_in($tree, $lf, 'login', $send_to, $page_url,
             array('google_signin', 'forgot_password_link', 'register_link'),
             array('__forgot_password_url', '__register_url', '__google_signin_url'),
@@ -5509,9 +5528,10 @@ function pg_sw_home_style_id()
 function pg_sw_auto_catalog_detail_page()
 {
     static $picked = false;
-    if ($picked !== false) return $picked;
+    // A Preview widget's visitor is not the request's: picked again.
+    if ($picked !== false && !pg_preview_as_viewer()['preview']) return $picked;
     $can_view = function ($folder_id) {
-        if (defined('USER_LOGGED_IN')) return (bool)check_view_access($folder_id, true);
+        if (defined('USER_LOGGED_IN') || pg_preview_as_viewer()['preview']) return pg_preview_as_view_access($folder_id, true);
         return in_array(get_access_control_type($folder_id), array('public', 'guest', 'registration'), true);
     };
     $page = pg_sw_first_viewable_page(pg_sw_widget_pages('catalog_item_view'), $can_view);
@@ -6762,7 +6782,7 @@ function _pg_sw_search_collect_one($query, $cfg, $advanced = null)
     $tr_pages = array();
     if (function_exists('pg_tr_search_pages')) {
         foreach (pg_tr_search_pages($query) as $hit) {
-            if (!check_view_access($hit['folder_id'], true)) continue;
+            if (!pg_preview_as_view_access($hit['folder_id'], true)) continue;
             $tr_pages[] = $page_row($hit['title'], $hit['name'], $hit['excerpt']);
         }
     }
@@ -6774,10 +6794,11 @@ function _pg_sw_search_collect_one($query, $cfg, $advanced = null)
         // A visitor (not a manager or above) searches only the folders they
         // may view — the same narrowing the legacy page applies.
         $sql_folders = '';
-        if (!USER_LOGGED_IN || USER_ROLE == 3) {
+        $viewer = pg_preview_as_viewer();
+        if (!$viewer['signed_in'] || $viewer['role'] == 3) {
             $root    = (int)db_value("SELECT folder_id FROM folder WHERE folder_parent = '0' LIMIT 1");
             $folders = array_merge(array($root), get_child_folders($root, db_items("SELECT folder_id AS id, folder_parent AS parent_folder_id FROM folder")));
-            $folders = array_values(array_filter($folders, function ($f) { return check_view_access($f, true); }));
+            $folders = array_values(array_filter($folders, function ($f) { return pg_preview_as_view_access($f, true); }));
             if (!$folders) return $out;
             $sql_folders = "(search_items.folder_id IN (" . implode(',', array_map('intval', $folders)) . ")) AND ";
         }
@@ -6842,7 +6863,7 @@ function _pg_sw_search_collect_one($query, $cfg, $advanced = null)
          ORDER BY page.page_name ASC", 'id');
     $featured_ids = array();
     foreach ((array)$featured as $id => $item) {
-        if (!check_view_access($item['folder_id'], true)) continue;
+        if (!pg_preview_as_view_access($item['folder_id'], true)) continue;
         $featured_ids[] = (int)$id;
         $out['featured'][] = $page_row($item['title'], $item['name'], $item['description']);
     }
@@ -6853,7 +6874,7 @@ function _pg_sw_search_collect_one($query, $cfg, $advanced = null)
     $info    = array();   // page_id => page row
     $allowed = function ($folder_id) {
         static $seen = array();
-        if (!isset($seen[$folder_id])) $seen[$folder_id] = check_view_access($folder_id, true);
+        if (!isset($seen[$folder_id])) $seen[$folder_id] = pg_preview_as_view_access($folder_id, true);
         return $seen[$folder_id];
     };
     $base_sql = "FROM page LEFT JOIN folder ON page.page_folder = folder.folder_id
@@ -7284,6 +7305,63 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
     return str_replace('<!--pg-loop-slot-->', $loop_rendered, $static_html) . $click_script;
 }
 
+// The guest's way on a registration widget: the section `guest` (drawn
+// only while the request carries allow_guest=true) and the button bound to
+// the action continue_as_guest. Allowed, the section's node stays (its
+// binding spent; an empty one gets the site's button) and every guest
+// button submits the form $form_id, the small guest form printed after the
+// widget's own: nothing nested, and Enter in a sign-up field never presses
+// it. Not allowed, both go. Answers whether the tree holds a guest button.
+function _pg_member_guest_apply(&$tree, $allowed, $form_id)
+{
+    $found = false;
+    $button = '<button type="submit" form="' . h($form_id) . '" class="btn btn-outline-primary pg-guest-button">' . h(lang('Continue as a Guest')) . '</button>';
+    $walk = function (&$node) use (&$walk, &$found, $allowed, $form_id, $button) {
+        if (empty($node['children']) || !is_array($node['children'])) return;
+        $kept = array();
+        foreach ($node['children'] as $child) {
+            if (!is_array($child)) { $kept[] = $child; continue; }
+            $b = (isset($child['props']['_bindings']) && is_array($child['props']['_bindings'])) ? $child['props']['_bindings'] : array();
+            $is_section = (string)($b['section'] ?? '') === 'guest';
+            $is_button = (string)($b['action'] ?? '') === 'continue_as_guest';
+            if (($is_section || $is_button) && !$allowed) continue;
+            if ($is_section) {
+                unset($child['props']['_bindings']['section']);
+                if (!$child['props']['_bindings']) unset($child['props']['_bindings']);
+                if (empty($child['children'])) {
+                    $child['children'] = array(array('type' => 'content',
+                        'props' => array('contentType' => 'custom_html', 'html' => $button), 'children' => array()));
+                    $found = true;
+                }
+            }
+            if ($is_button) {
+                _pg_member_set_attr($child, 'type', 'submit');
+                _pg_member_set_attr($child, 'form', (string)$form_id);
+                $found = true;
+            }
+            $walk($child);
+            $kept[] = $child;
+        }
+        $node['children'] = $kept;
+    };
+    if (is_array($tree)) $walk($tree);
+    return $allowed && $found;
+}
+
+// The small form a guest button submits (registration_entrance.php with
+// continue=true, as the classic guest form posts): the token, where to go
+// on, allow_guest. With $with_button it brings its own button, for a tree
+// that has none (a page moved before the widget had the guest section).
+function _pg_member_guest_form_html($form_id, $action, $send_to, $token_field, $with_button)
+{
+    return '<form id="' . h($form_id) . '" action="' . h($action) . '" method="post" class="pg-guest-form">' . $token_field
+        . '<input type="hidden" name="continue" value="true">'
+        . '<input type="hidden" name="send_to" value="' . h((string)$send_to) . '">'
+        . '<input type="hidden" name="allow_guest" value="true">'
+        . ($with_button ? '<button type="submit" class="btn btn-outline-primary pg-guest-button">' . h(lang('Continue as a Guest')) . '</button>' : '')
+        . '</form>';
+}
+
 // Render a 'registration' system widget.
 //
 // Posts to <software>/registration_entrance.php with register=true - the
@@ -7297,7 +7375,9 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
 // Tokens: ^^__site_name^^, ^^__login_url^^, ^^__google_signup_url^^,
 // ^^__password_rules^^, ^^__opt_in_label^^. Sections: captcha,
 // password_rules, google_signup (every sign-in button that is on),
-// login_link. Errors and the "you are registered" notice: liveform
+// login_link, guest (with allow_guest=true; its button bound to the action
+// continue_as_guest, see _pg_member_guest_apply()). Visibility:
+// shows_remember_me. Errors and the "you are registered" notice: liveform
 // 'register', printed by the Messages node.
 //
 // cfg: redirect_page_id (after sign-up), login_page_id (the "already a
@@ -7338,7 +7418,8 @@ function _render_system_widget_registration($tree_json, $widget_id, $cfg = array
     // Signed in: the form would open a second account. The notice a
     // sign-up just left ("you are registered") prints with it; an editor
     // still sees the form.
-    if ($mode !== 'edit' && function_exists('pg_session_signed_in') && pg_session_signed_in()) {
+    if ($mode !== 'edit' && _pg_member_session_signed_in()) {
+        _pg_member_guest_apply($tree, false, '');
         return _pg_member_render_signed_in($tree, $lf, 'register', $send_to, $page_url,
             array('captcha', 'password_rules', 'google_signup', 'login_link'),
             array('__login_url', '__google_signup_url'),
@@ -7370,6 +7451,15 @@ function _render_system_widget_registration($tree_json, $widget_id, $cfg = array
         _pg_member_drop_control($tree, 'register_remember_me');
         _pg_member_drop_control($tree, 'remember_me');
     }
+    // A converted classic layout shows its remember box (whose label holds
+    // words of its own) under this flag.
+    _eo_apply_visibility_bindings($tree, array('shows_remember_me' => $remember_ok));
+
+    // A guest may go on without an account when the link that brought the
+    // visitor says so (allow_guest=true), as on the classic screen.
+    $guest_ok = (($_GET['allow_guest'] ?? '') === 'true') || (($_POST['allow_guest'] ?? '') === 'true') || $mode === 'edit';
+    $guest_form_id = 'pg-guest-form-' . $widget_id;
+    $guest_button = _pg_member_guest_apply($tree, $guest_ok, $guest_form_id);
 
     $rules_html  = (defined('STRONG_PASSWORD') && STRONG_PASSWORD && function_exists('get_strong_password_requirements'))
         ? '<div class="pg-password-rules small text-muted">' . get_strong_password_requirements() . '</div>' : '';
@@ -7394,7 +7484,7 @@ function _render_system_widget_registration($tree_json, $widget_id, $cfg = array
 
     $rendered = trim(_render_tree_node($tree, 0, 0));
     $lf->remove();
-    $rendered = _pg_member_form_wrap($rendered, $software . '/registration_entrance.php', array(
+    $hidden = array(
         'register'        => 'true',
         'send_to'         => $send_to,
         'return_to'       => $page_url,
@@ -7402,7 +7492,16 @@ function _render_system_widget_registration($tree_json, $widget_id, $cfg = array
         // Which widget drew the form: its tree says which controls fill
         // which address-book columns.
         'pg_widget_id'    => $widget_id,
-    ), 'pg-register-form');
+    );
+    // A refused sign-up keeps the guest's way, as the classic forms do.
+    if ($guest_ok) $hidden['allow_guest'] = 'true';
+    $rendered = _pg_member_form_wrap($rendered, $software . '/registration_entrance.php', $hidden, 'pg-register-form');
+    if ($guest_ok) {
+        // After the widget's form, never inside it.
+        $guest_to = _pg_member_query_path('send_to');
+        $rendered .= _pg_member_guest_form_html($guest_form_id, $software . '/registration_entrance.php',
+            ($guest_to !== '') ? $guest_to : $send_to, get_token_field(), !$guest_button);
+    }
 
     return _pg_member_apply_tokens($rendered, array(
         '__site_name'         => h($site_name),
@@ -7819,7 +7918,9 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // tolerates missing columns / no contact row — so the order view widget
     // never fatals on a vanilla install. The base SELECT below contains
     // ONLY columns guaranteed by the legacy schema (data/backups/*/sql.sql).
-    $current_user_id = defined('USER_ID') ? (int)USER_ID : 0;
+    // The visitor's own orders only: the sample account of a Preview (id 0)
+    // owns none.
+    $current_user_id = pg_preview_as_viewer()['id'];
     $order = db_item(
         "SELECT id, order_number, order_date, status,
                 billing_first_name, billing_last_name, billing_company,
@@ -8868,7 +8969,8 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
 // Tokens: ^^__site_name^^, ^^__member_id_label^^, ^^__login_url^^,
 // ^^__google_signup_url^^, ^^__password_rules^^, ^^__opt_in_label^^.
 // Sections: password_rules, google_signup (every sign-in button that is
-// on), login_link. Errors and the "membership active" notice: liveform
+// on), login_link. Visibility: shows_remember_me. Errors and the
+// "membership active" notice: liveform
 // 'membership_entrance', printed by the Messages node.
 //
 // cfg: redirect_page_id, login_page_id, contact_group_id (the site setting
@@ -8905,7 +9007,7 @@ function _render_system_widget_membership($tree_json, $widget_id, $cfg = array()
 
     // Signed in: the form would open a second account. The notice an
     // activation just left prints with it; an editor still sees the form.
-    if ($mode !== 'edit' && function_exists('pg_session_signed_in') && pg_session_signed_in()) {
+    if ($mode !== 'edit' && _pg_member_session_signed_in()) {
         return _pg_member_render_signed_in($tree, $lf, 'membership_entrance', $send_to, $page_url,
             array('password_rules', 'google_signup', 'login_link'),
             array('__login_url', '__google_signup_url'),
@@ -8955,6 +9057,9 @@ function _render_system_widget_membership($tree_json, $widget_id, $cfg = array()
         _pg_member_drop_control($tree, 'register_remember_me');
         _pg_member_drop_control($tree, 'remember_me');
     }
+    // A converted classic layout's remember box (its label holds words of
+    // its own) is shown under this flag.
+    _eo_apply_visibility_bindings($tree, array('shows_remember_me' => $remember_ok));
 
     $rules_html  = (defined('STRONG_PASSWORD') && STRONG_PASSWORD && function_exists('get_strong_password_requirements'))
         ? '<div class="pg-password-rules small text-muted">' . get_strong_password_requirements() . '</div>' : '';

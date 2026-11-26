@@ -369,10 +369,18 @@ function pg_canva_store_page($file)
         log_activity($stored['message']);
         return $refuse($stored['message']);
     }
+    // The ids this start stored, so a page dropped from the window (the
+    // bin, Cancel, the window's close) can be deleted by id, and only one
+    // this session stored (pg_canva_drop_pages()).
+    if (!isset($_SESSION['pg_canva_pages']) || !is_array($_SESSION['pg_canva_pages'])) {
+        $_SESSION['pg_canva_pages'] = array();
+    }
+    $_SESSION['pg_canva_pages'][] = (int) $stored['file']['id'];
     $page_name = pg_canva_page_name($name);
     return array(
         'status' => 'success',
         'page'   => array(
+            'id'     => (int) $stored['file']['id'],
             'name'   => ($page_name !== '') ? $page_name : lang('Page'),
             'file'   => $name,
             'src'    => PATH . encode_url_path($stored['file']['name']),
@@ -381,4 +389,99 @@ function pg_canva_store_page($file)
             'colors' => pg_canva_measure(FILE_DIRECTORY_PATH . '/' . $stored['file']['name'], $kind, (int) $size[0], (int) $size[1]),
         ),
     );
+}
+
+/**
+ * The ids a drop may delete: those asked for that this session's Canva
+ * start stored itself, each once. Never a file found by name or
+ * description. Pure.
+ *
+ * @param mixed $asked  the ids the window sends
+ * @param array $stored the ids kept in the session (pg_canva_store_page())
+ * @return int[]
+ */
+function pg_canva_drop_ids($asked, $stored)
+{
+    if (!is_array($asked) || !is_array($stored)) {
+        return array();
+    }
+
+    $mine = array();
+
+    foreach ($stored as $id) {
+        if (is_scalar($id) && (int) $id > 0) {
+            $mine[(int) $id] = true;
+        }
+    }
+
+    $out = array();
+
+    foreach ($asked as $id) {
+        if (is_scalar($id) && ctype_digit((string) $id) && isset($mine[(int) $id]) && !in_array((int) $id, $out, true)) {
+            $out[] = (int) $id;
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * Whether a saved page, region, design or shared component names a file:
+ * the file manager's "Where used" sources a sketch picture can reach.
+ *
+ * @param string $name files.name
+ * @return bool
+ */
+function pg_canva_file_in_use($name)
+{
+    $like = "'%" . e(addcslashes((string) $name, '\\%_')) . "%'";
+    $sources = array(
+        'page'              => array('page_tree_json', 'page_tree_code'),
+        'pregion'           => array('pregion_content'),
+        'style'             => array('style_tree_json', 'style_code'),
+        'shared_components' => array('tree_json'),
+    );
+
+    foreach ($sources as $table => $columns) {
+        foreach ($columns as $column) {
+            // A query that fails (a column an older schema lacks) cannot
+            // say the file is free, so the file is kept.
+            $result = @mysqli_query(db::$con, "SELECT 1 FROM " . $table . " WHERE " . $column . " LIKE " . $like . " LIMIT 1");
+
+            if (!$result || mysqli_num_rows($result) > 0) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+/**
+ * The pages a Canva start leaves (designer › canva_drop): the bin of a
+ * page, the cross on an upload that reached the server, Cancel and the
+ * window's close. Deletes the files this session's start stored and no
+ * saved page uses; the rest stay.
+ *
+ * @param mixed $asked the ids the window sends
+ * @return int the number of files deleted
+ */
+function pg_canva_drop_pages($asked)
+{
+    $stored = (isset($_SESSION['pg_canva_pages']) && is_array($_SESSION['pg_canva_pages'])) ? $_SESSION['pg_canva_pages'] : array();
+    $deleted = 0;
+
+    foreach (pg_canva_drop_ids($asked, $stored) as $id) {
+        $file = db_item("SELECT id, name FROM files WHERE id = '" . (int) $id . "' LIMIT 1");
+
+        if ($file && !pg_canva_file_in_use((string) $file['name'])) {
+            require_once(PG_FUNCTIONS_DIR . '/includes/explorer/recycle_bin.php');
+            pg_delete_file_record(array('id' => (int) $file['id'], 'name' => (string) $file['name']));
+            $deleted++;
+        }
+
+        $_SESSION['pg_canva_pages'] = array_values(array_diff(array_map('intval', $_SESSION['pg_canva_pages']), array((int) $id)));
+    }
+
+    return $deleted;
 }
