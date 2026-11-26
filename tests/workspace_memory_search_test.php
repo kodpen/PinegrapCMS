@@ -150,3 +150,41 @@ function test_workspace_memory_search_routes()
 	pg_assert_same('string?', $schema['snippet'] ?? null, 'a hit carries the text around it');
 	pg_assert_same(array('project' => 'string', 'count' => 'integer'), ws_api_memory_project_schema());
 }
+
+// The Memory tab's row line: the first line, or with a search the text
+// around the first word found.
+function test_workspace_memory_panel_line()
+{
+	$text = "Trains land at 08:00.\n" . str_repeat('filler words here ', 20) . 'the hotfix rule waits for nobody. ' . str_repeat('more text ', 20);
+
+	pg_assert_same('Trains land at 08:00.', ws_memory_panel_line($text, array()), 'without a search the first line');
+	pg_assert_same('Trains land at 08:00.', ws_memory_panel_line($text, array('')), 'an empty word is no search');
+
+	$line = ws_memory_panel_line($text, array('HOTFIX'));
+
+	pg_assert_contains('hotfix rule', $line, 'with a search the text around the word, case aside');
+	pg_assert_same('…', mb_substr($line, 0, 1), 'cut at its start');
+	pg_assert_true(mb_strlen($line) <= WS_MEMORY_PANEL_LINE + 2, 'as long as a first line, the ellipses aside');
+	pg_assert_same('Short text.', ws_memory_panel_line("Short\ntext.", array('title-only')), 'a word not in the text gives its start, on one line');
+	pg_assert_same('', ws_memory_panel_line('', array('x')));
+}
+
+// The tab's search goes through the API's word match, both parts, the
+// expired records too.
+function test_workspace_memory_tab_search_wiring()
+{
+	$actions = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
+
+	pg_assert_contains("\$terms = ws_memory_search_terms(\$request['search'] ?? '');", $actions);
+	pg_assert_contains("\$parts[] = ws_memory_panel_part('general', 0, true, false, \$terms);", $actions);
+	pg_assert_contains("ws_memory_can_write(\$viewer, \$channel), \$general, \$terms);", $actions);
+
+	$memory = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/channel_memory.php');
+
+	pg_assert_contains("ws_memory_search_page(\$channel_id, \$terms, array('expired' => true, 'limit' => WS_MEMORY_PANEL_SEARCH))", $memory);
+
+	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_memory.js');
+
+	pg_assert_contains("input.type = 'search';", $script);
+	pg_assert_contains('fields.search = query;', $script, 'the words go to ws_memory_list');
+}

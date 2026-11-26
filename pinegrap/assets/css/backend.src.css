@@ -20019,6 +20019,20 @@ a.ws-chip-message:hover,
 .ws-memory-part > .ws-empty {
   margin: 0 .9rem .9rem;
 }
+/* The search box over both parts; the parts under it keep the gap. */
+.ws-memory-results {
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+}
+.ws-memory-bar .ws-bar-search {
+  min-width: 0;
+  flex: 0 1 18rem;
+}
+.ws-memory-more {
+  padding: .55rem .9rem;
+  border-top: 1px solid var(--pg-border-color);
+}
 .ws-memory-project {
   border-top: 1px solid var(--pg-border-color);
 }

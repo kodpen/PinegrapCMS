@@ -1269,6 +1269,7 @@
     "Only the first 2,000 objects of the bucket were read.": "Kovanın yalnızca ilk 2.000 nesnesi okundu.",
     "Only the first 200 returns are shown. The rest are in your seller panel.": "Yalnızca ilk 200 iade gösteriliyor. Diğerleri satıcı panelinizde.",
     "Only the first files are listed. Search to find the others.": "Yalnız ilk dosyalar listelendi. Diğerlerini bulmak için arayın.",
+    "Only the first matches are shown. Add a word to narrow them.": "Yalnızca ilk eşleşmeler gösteriliyor. Daraltmak için bir sözcük ekleyin.",
     "Only the first of them are listed.": "Yalnızca ilk bulunanlar listelendi.",
     "Only the first rows are shown; the whole file is checked the same way when the import runs.": "Yalnız ilk satırlar gösterilir; içe aktarma çalışırken dosyanın tamamı aynı şekilde denetlenir.",
     "Only the first {1} values are listed.": "Yalnızca ilk {1} değer listelenir.",

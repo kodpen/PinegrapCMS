@@ -8,6 +8,7 @@ description: Memory search (search= on the two memory lists) and GET /workspace/
 - `tag`, `project` and `expired` narrow a search as they narrow the list; the channel list takes `project` too.
 - A hit is the index entry as the list gives it plus `snippet`: 200 characters of the text around the first word, spaces folded, `…` where cut (`ws_memory_search_snippet()`). A word found only in the title or tags gives the text's start.
 - 50 hits a page, pinned first then the newest; `next_cursor` carries the offset and the memory's channel id (0 general), a cursor of another memory answers 400 `invalid_cursor`.
+- The Memory tab's search box asks the same match through `ws_memory_list` (`workspace-memory-tab.md`).
 - Without `search` both routes answer as before: every entry (500 at most), no `snippet`, no paging.
 
 ## How is a word matched?
