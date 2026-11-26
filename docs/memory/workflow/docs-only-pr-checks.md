@@ -15,6 +15,6 @@ description: A pull request whose every changed file is under docs/ runs only th
 - A step added to either job later gets `steps.scope.outputs.docs_only != 'true'` in its `if:` unless a docs-only pull request needs it too.
 
 ## Why?
-- A one-line decision or plan PR ran every job, ten to thirty minutes, before it could land (`plans/plan-state-channel.md`, PS1).
+- A one-line decision or plan PR ran every job, ten to thirty minutes, before it could land ([[plan-step-state]]).
 
 Related: docs/memory/workflow/ci-workflows.md, docs/memory/workflow/merge-train.md
