@@ -5,13 +5,13 @@ module: office_pptx_design
 ---
 
 ## What is it?
-- Since PR #11840 (step DF1 of `plans/artifact-canvas-design-file.md`): `pg_pptx_design_read($path, $limits)` in `includes/fn/office_pptx_design.php` reads a .pptx as a design, without a library, for the Artifact Canvas to open as layers. Pure: no database, nothing written, nothing taken out of the package. No screen or door uses it yet (DF3, DF4).
+- Since PR #11840 (step DF1 of `plans/artifact-canvas-design-file.md`): `pg_pptx_design_read($path, $limits)` in `includes/fn/office_pptx_design.php` reads a .pptx as a design, without a library, for the Artifact Canvas to open as layers. Pure: no database, nothing written, nothing taken out of the package. Its slides become canvas documents through `pg_pptx_canvas_slide()` (`office-pptx-canvas-mapper.md`); no screen or door uses them yet (DF3, DF4).
 - It opens the package through the preview's gates and finds the slides with `pg_office_pptx_slides()` (`office-files.md`, `office-pptx-preview.md`).
 
 ## What does it give?
 - `ok`, `error`, `width` and `height` (the slide size `p:sldSz` in EMU; none written: 9144000 by 6858000), `slides`, `left` (kind => count over the file), `simplified`, `truncated`.
 - A slide: `n`, `hidden`, `background`, `elements` in paint order, `left`, `simplified`. The background is the slide's own `p:bg`, else its layout's, else its master's: `{type: color, color, opacity}`, `{type: picture, part, ext, crop, opacity}` or null.
-- Units stay the file's: places in EMU, text sizes and spacing in hundredths of a point; turning them into pixels is the mapper's (DF2, `plans/artifact-canvas-canva-census.md` gives the sums). Colours are `#rrggbb` and an opacity; theme colours resolve through the master's colour map and theme.
+- Units stay the file's: places in EMU, text sizes and spacing in hundredths of a point; the mapper turns them into pixels (`office-pptx-canvas-mapper.md`). Colours are `#rrggbb` and an opacity; theme colours resolve through the master's colour map and theme.
 - Every element has `type`, `name`, `x`, `y`, `w`, `h`, `rot` (degrees 0-360), `flip_h`, `flip_v`, with its groups resolved: a group scales its children's frame (`chOff`/`chExt`) to its place, mirrors them across its middle, then turns them about it. A placeholder with no place takes its layout's or master's.
 
 ## Which element types?
