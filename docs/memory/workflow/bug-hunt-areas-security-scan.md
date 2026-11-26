@@ -22,7 +22,7 @@ description: The bug hunt in the Security Scan (built in #11425 to #11672, SC1 t
 - The walk: the resume order (segment compare) matches the sorted walk; one run at a time by `GET_LOCK`; Scan now closes the session first, so no visitor or panel page waits on it.
 
 ## What was seen and left?
-- An old account raised to Administrator or Designer is not reported: the rule reads `user_created` only, and no role-change time is kept (a column; asked of the coordinator).
+- An old account raised to Administrator or Designer (or a row with `user_created` 0) is not reported: the rule reads `user_created` only. Architect (2026-11-26, agent channel request 3046): a gap in the rule, to be built as one small task after #11777, with no column. A `config_text` map of staff id to role and since; the first run stores everyone as known; a raise reported for 30 days with detail `raised`. The PR that builds it writes the rule into `waf/security-scan-accounts-settings.md`.
 - A failed accounts query is read as no new account, so a run closes those findings.
 - A quarantined finding whose kept copy was deleted by hand stays quarantined; Restore answers that the copy is missing.
 - A second extension (`x.php.jpg`) is looked for only in the upload folders, not elsewhere in the software folder.
