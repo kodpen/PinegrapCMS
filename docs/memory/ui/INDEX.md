@@ -108,6 +108,7 @@
 - connections-google-translate-page.md: Google Cloud Translation's page on Connections (CX11c): the API key typed there under the Languages and Translation gate; the Translation Engines card shows the connection [decision: here]
 - connections-indexnow-page.md: IndexNow's page on Connections (CX11a): its key typed or generated there under the SEO gate, the key file, Disconnect; the SEO card shows the connection; what of SEO stayed and why
 - connections-lead-keeps-pane.md: A lead from the Site Settings dialog to a Connections service page keeps the pane's unsaved fields and open drawers in sessionStorage and puts them back when the pane comes again (TR3b)
+- connections-list-opens-card.md: The Connections list opens the Site Settings card (or screen) of a service whose page would only show its state; the page's address still answers (TR3d)
 - connections-mailboxes-accounts.md: Accounts that read mailboxes (CX11e): Connect an account for mailboxes on Google's and Microsoft's pages, the return to Site Settings, the card without a Connect button [decision: here]
 - connections-mailchimp-page.md: Mailchimp's page on Connections (EM6): sync switch, key, list, store and limits set there under E-mail › Sending's gate; Campaign mail shows the connection; old anchors open the page [decision: here]
 - connections-mcp-connector-page.md: A ready-made MCP connector's page on Connections (CX11k3): Add, the server's address and sign-in, Connect and Disconnect; Site Settings' MCP servers row keeps the tools and leads there [decision: here]
@@ -708,7 +709,7 @@
 - seo-default-share-image-warning.md: The SEO card's Default Share Image warning names each form once, told apart, without binned forms, five names then a count
 - seo-panel-run-buttons.md: SEO detail panel and SEO card: Refresh score / Analyze HTML run the link step, work on every edit screen, update every score shown; counter measures like the score; missing page is not found
 - server-paged-lists.md: Lists the server searches and pages (list table driver): which moved off DataTables' server paging, what the search box finds (words, labels, Turkish I), the row cells [decision: decisions-made-product-10.md, decisions-made-product-22.md]
-- settings-accounting-open-rows.md: Site Settings › Accounting, the Documents, Sales and Web orders rows drawn open (SA2): pg-switch rows, the three selects turned radio rows with one line each, what each row holds, the radio ids
+- settings-accounting-open-rows.md: Site Settings › Accounting, the ERP rows and the E-Invoice row drawn open (SA2, SA3): pg-switch rows, selects turned radio rows, ticked channels, what each row holds, the radio ids
 - settings-accounting.md: Site Settings › Accounting as folded rows (SA1): Enable the ERP module at the head, the ERP card cut into six rows, each row's line and pill, hidden e-document cards, anchors
 - settings-accounts.md: Site Settings › Accounts and sign-in as folded rows: order, each row's line, Sign-in attempts and Deleting many at once on rows of their own, providers as connect rows, anchors
 - settings-ai-voice-rows.md: Pinegrap AI's and Voice's opened rows in Site Settings › Assistants and agents (AT5): one column, the fold Application, their drawers, what a test pins
@@ -751,6 +752,7 @@
 - settings-mail-sending.md: Site Settings › E-mail › E-mail sending tab (#10404, CX3c #10434, EM1, EM2, EM3, EM6): its folded rows, the save writing config.php then the config row, the test e-mail, old anchors [decision: here]
 - settings-mail.md: Site Settings › E-mail as a whole (plan mail-settings-one, EM1 to EM6): the two tabs, what each holds, the architect's eight answers, the approved drawing, which file holds each part [decision: decisions-made-panel-14.md]
 - settings-maintenance-cron.md: Site Settings › Updates and maintenance, the Scheduled jobs row opened: the general job's command line, one row a job with its switch, a numbered steps drawer a job
+- settings-maintenance-open-rows.md: Updates and maintenance, the rows but Scheduled jobs opened (SM3): pg-switch rows, channel and Sensitivity as pg-seg, group labels, thresholds two a row, Move files, radio ids
 - settings-maintenance.md: Site Settings › Updates and maintenance as folded rows: the eight rows in order, each row's line of state and pill, the Sales watch card of its own, what stayed (ids, names, the save)
 - settings-modal-architecture.md: Site Settings dialog: file map, the 20 categories under 5 headings, where moved cards went, moving a card, adding a category. [decision: decisions-made-product-14.md]
 - settings-modal-autofill-lock.md: Settings dialog autofill prevention: readonly latch/unlatch of text fields, stamped autocomplete attributes, no fake password field in the dialog.
