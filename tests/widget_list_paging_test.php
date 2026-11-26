@@ -236,7 +236,7 @@ function test_search_results_paging_wiring()
 	pg_assert_contains('$page_param = pg_sw_list_page_param($cfg);', $body);
 	pg_assert_contains('$rows  = array_slice($rows, pg_sw_list_offset($cfg));', $body);
 	pg_assert_contains('$paging       = pg_sw_list_paging($page_param, $current_page, $total_pages);', $body);
-	pg_assert_contains(") + \$paging['flags']);", $body);
+	pg_assert_contains('+ pg_sr_layout_flags($query, $total, !empty($found[\'limited\']), $shown) + $paging[\'flags\'];', $body);
 	pg_assert_contains("), array('__result_price')) + \$paging['tokens'];", $body);
 	pg_assert_contains(")) + \$paging['tokens'];", $body);
 	pg_assert_contains('_pg_sw_hidden_query_inputs(array($param, $page_param))', $body);

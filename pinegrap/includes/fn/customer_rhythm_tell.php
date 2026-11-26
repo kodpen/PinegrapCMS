@@ -84,24 +84,29 @@ function pg_customer_rhythm_settings()
 
 /**
  * The products to name in a reorder event, or none (H8): nothing while the
- * brake runs since the last reminder; else each due product whose window
- * opened after that reminder and whose due day is at most the brake's days
- * ago. Pure.
+ * brake runs since the last reminder of this customer, or of their contact
+ * under another customer key; else each due product whose window opened
+ * after this customer's reminder and whose due day is at most the brake's
+ * days ago. Pure.
  *
  * @param array $due          pg_customer_rhythm_due_products()
  * @param int   $reminded_at  the last reminder, 0 for none
  * @param int   $now
  * @param array $settings     pg_customer_rhythm_settings_normalize()
+ * @param int   $contact_reminded_at  the contact's last reminder under any
+ *                                    key, 0 for none
  * @return array  the due products to name
  */
-function pg_customer_rhythm_reorder_pick($due, $reminded_at, $now, $settings)
+function pg_customer_rhythm_reorder_pick($due, $reminded_at, $now, $settings, $contact_reminded_at = 0)
 {
     $reminded_at = (int) $reminded_at;
     $now = (int) $now;
     $brake = (int) $settings['brake_days'] * 86400;
 
-    if (($reminded_at > 0) && (($now - $reminded_at) < $brake)) {
-        return array();
+    foreach (array($reminded_at, (int) $contact_reminded_at) as $last) {
+        if (($last > 0) && (($now - $last) < $brake)) {
+            return array();
+        }
     }
 
     $out = array();
@@ -289,12 +294,24 @@ function pg_customer_rhythm_tell($made, $stored, $settings, $now)
     }
 
     $present = array_flip(array_map('intval', (array) db_values("SELECT id FROM contacts WHERE id IN (" . implode(',', array_keys($contacts)) . ")")));
+
+    // One contact can stand behind several customer keys (orders under an
+    // old and a new address): the brake runs from the contact's last
+    // reminder under any of them.
+    $contact_reminded = array();
+
+    foreach ((array) db_items("SELECT contact_id, MAX(reminded_at) AS reminded_at FROM customer_rhythm WHERE contact_id IN (" . implode(',', array_keys($contacts)) . ") GROUP BY contact_id") as $row) {
+        $contact_reminded[(int) $row['contact_id']] = (int) $row['reminded_at'];
+    }
+
     $moves = array();
     $told = array();
     $held = array();
 
     foreach ($made as $key => $result) {
-        if (!isset($present[(int) $result['row']['contact_id']])) {
+        $contact = (int) $result['row']['contact_id'];
+
+        if (!isset($present[$contact])) {
             continue;
         }
 
@@ -303,11 +320,14 @@ function pg_customer_rhythm_tell($made, $stored, $settings, $now)
         }
 
         $reminded_at = isset($stored[$key]['reminded_at']) ? (int) $stored[$key]['reminded_at'] : 0;
-        $products = pg_customer_rhythm_reorder_pick(isset($result['due']) ? $result['due'] : array(), $reminded_at, $now, $settings);
+        $products = pg_customer_rhythm_reorder_pick(isset($result['due']) ? $result['due'] : array(), $reminded_at, $now, $settings, isset($contact_reminded[$contact]) ? $contact_reminded[$contact] : 0);
 
         if (!$products) {
             continue;
         }
+
+        // A second key of the same contact in this batch waits for the brake.
+        $contact_reminded[$contact] = (int) $now;
 
         if (pg_customer_rhythm_held_back($key, $now, $settings)) {
             $held[] = (string) $key;

@@ -30,7 +30,7 @@ module: designer_preview_render
 - The never-writes assertions of `designer-preview-as-server.md` hold for each visitor.
 
 ## How was it cut?
-- The census reached 13 widget files: PW2c (#11728) took signed in, signed out and member (`designer-preview-as-viewer.md`); PW2d (#11746) took first visit and returning (`designer-preview-as-viewer.md`). PW4 waits for both.
-- A chosen record with a real customer's address, e-mail or phone is masked in a signed-in view, as the plan says; the mask is one function beside the reader.
+- The census reached 13 widget files: PW2c (#11728) took signed in, signed out and member (`designer-preview-as-viewer.md`); PW2d (#11746) took first visit and returning (same file).
+- A chosen record with a real customer's address, e-mail or phone is masked in a signed-in view (`designer-preview-as-rules.md`); the mask is one function beside the reader.
 
 Related: docs/memory/designer/designer-preview-as-readers.md, docs/memory/designer/designer-preview-as-server.md, docs/memory/designer/canvas-sample-account.md

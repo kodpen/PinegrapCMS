@@ -657,6 +657,171 @@ function pg_customer_rhythm_pass_available($ids)
 }
 
 /**
+ * The order lines as the walk keeps them: each line's units less those
+ * given back through a refunded return; a line given back whole is left
+ * out. Pure.
+ *
+ * @param array $rows      list of array(order id, line id, product id, quantity)
+ * @param array $returned  line id => units given back
+ * @return array  order id => list of array(product_id, quantity)
+ */
+function pg_customer_rhythm_items_kept($rows, $returned)
+{
+    $items = array();
+
+    foreach ($rows as $row) {
+        $quantity = (int) $row[3] - (int) (isset($returned[(int) $row[1]]) ? $returned[(int) $row[1]] : 0);
+
+        if (((int) $row[2] > 0) && ($quantity > 0)) {
+            $items[(int) $row[0]][] = array((int) $row[2], $quantity);
+        }
+    }
+
+    return $items;
+}
+
+/**
+ * The units of these orders' lines given back through a return whose money
+ * went back (refunded_at set), as pg_event_tickets_refunded_units() counts
+ * them.
+ *
+ * @param array $order_ids
+ * @return array  line id => units
+ */
+function pg_customer_rhythm_returned_units($order_ids)
+{
+    $units = array();
+
+    if (!$order_ids || !function_exists('pg_returns_ready') || !pg_returns_ready()) {
+        return $units;
+    }
+
+    foreach (array_chunk(array_values(array_unique(array_map('intval', $order_ids))), 1000) as $chunk) {
+        $rows = db_items("SELECT order_return_items.order_item_id, SUM(order_return_items.quantity) AS quantity"
+            . " FROM order_return_items JOIN order_returns ON order_returns.id = order_return_items.return_id"
+            . " WHERE (order_returns.order_id IN (" . implode(',', $chunk) . ")) AND (order_returns.refunded_at > 0)"
+            . " GROUP BY order_return_items.order_item_id");
+
+        foreach ((array) $rows as $row) {
+            $units[(int) $row['order_item_id']] = (int) $row['quantity'];
+        }
+    }
+
+    return $units;
+}
+
+/**
+ * The customers none of whose orders still carries their key: the orders
+ * were deleted, or an erasure put a token in place of the address, after
+ * the walk read them. Pure.
+ *
+ * @param array $ids      customer key => list of order ids the walk read
+ * @param array $current  order id => billing_email_address, contact_id as
+ *                        they are now; an order not there is gone
+ * @return array  the keys gone
+ */
+function pg_customer_rhythm_keys_gone($ids, $current)
+{
+    $gone = array();
+
+    foreach ($ids as $key => $list) {
+        $kept = false;
+
+        foreach ((array) $list as $id) {
+            if (isset($current[(int) $id]) && (pg_customer_value_key($current[(int) $id]) === (string) $key)) {
+                $kept = true;
+                break;
+            }
+        }
+
+        if (!$kept) {
+            $gone[] = (string) $key;
+        }
+    }
+
+    return $gone;
+}
+
+/**
+ * The customers of a write batch whose orders no longer carry their key
+ * (pg_customer_rhythm_keys_gone()), so an erasure made while the pass runs
+ * is not undone by writing the row back. The latest order of each is read
+ * first; only a customer whose latest order changed has the rest read.
+ *
+ * @param array $keys
+ * @param array $state  the walk (c: key => packed orders)
+ * @return array  the keys gone; none when the orders cannot be read
+ */
+function pg_customer_rhythm_pass_gone($keys, $state)
+{
+    $read = function ($ids) {
+        $current = array();
+
+        foreach (array_chunk(array_values(array_unique(array_map('intval', $ids))), 1000) as $chunk) {
+            $result = db_q("SELECT id, billing_email_address, contact_id FROM orders WHERE id IN (" . implode(',', $chunk) . ")");
+
+            if ($result === false) {
+                return null;
+            }
+
+            while ($row = mysqli_fetch_assoc($result)) {
+                $current[(int) $row['id']] = $row;
+            }
+
+            mysqli_free_result($result);
+        }
+
+        return $current;
+    };
+
+    $all = array();
+    $latest = array();
+
+    foreach ($keys as $key) {
+        $all[$key] = array();
+
+        foreach (pg_customer_rhythm_pass_orders(isset($state['c'][$key]) ? $state['c'][$key] : '') as $order) {
+            $all[$key][] = (int) $order['id'];
+        }
+
+        // The walk reads by date, so the last record is the latest order.
+        $latest[$key] = $all[$key] ? array($all[$key][count($all[$key]) - 1]) : array();
+    }
+
+    $ids = array();
+
+    foreach ($latest as $list) {
+        $ids = array_merge($ids, $list);
+    }
+
+    $current = $ids ? $read($ids) : array();
+
+    if ($current === null) {
+        return array();
+    }
+
+    $suspects = array();
+
+    foreach (pg_customer_rhythm_keys_gone($latest, $current) as $key) {
+        $suspects[$key] = $all[$key];
+    }
+
+    if (!$suspects) {
+        return array();
+    }
+
+    $ids = array();
+
+    foreach ($suspects as $list) {
+        $ids = array_merge($ids, $list);
+    }
+
+    $current = $ids ? $read($ids) : array();
+
+    return ($current === null) ? array() : pg_customer_rhythm_keys_gone($suspects, $current);
+}
+
+/**
  * The general job's pass: under one claim of the pass record, walk the
  * orders for at most $budget seconds from where the last run stopped; once
  * the walk is done, work out the store's figures and write the customers'
@@ -747,17 +912,20 @@ function pg_customer_rhythm_job_run($budget = PG_CUSTOMER_RHYTHM_TICK_SECONDS, $
                     $ids[] = (int) $row['id'];
                 }
 
-                $result = db_q("SELECT order_id, product_id, quantity FROM order_items WHERE order_id IN (" . implode(',', $ids) . ") AND (product_id > 0)" . $active);
+                $result = db_q("SELECT order_id, id, product_id, quantity FROM order_items WHERE order_id IN (" . implode(',', $ids) . ") AND (product_id > 0)" . $active);
 
                 if ($result === false) {
                     break;
                 }
 
+                $lines = array();
+
                 while ($item = mysqli_fetch_row($result)) {
-                    $items[(int) $item[0]][] = array((int) $item[1], (int) $item[2]);
+                    $lines[] = $item;
                 }
 
                 mysqli_free_result($result);
+                $items = pg_customer_rhythm_items_kept($lines, pg_customer_rhythm_returned_units($ids));
             }
 
             pg_customer_rhythm_pass_add_rows($state, $rows, $items);
@@ -801,9 +969,14 @@ function pg_customer_rhythm_job_run($budget = PG_CUSTOMER_RHYTHM_TICK_SECONDS, $
             mysqli_free_result($result);
             $rows = array();
             $batch = array();
+            $gone = array_flip(pg_customer_rhythm_pass_gone($keys, $state));
 
             foreach ($keys as $key) {
-                $made = pg_customer_rhythm_pass_row($key, pg_customer_rhythm_pass_orders($state['c'][$key]), pg_customer_rhythm_pass_lines($key, $state['l'][$key]), isset($stored[$key]) ? $stored[$key] : null, $state['store'], $state['available'], $state['started']);
+                if (isset($gone[$key])) {
+                    continue;
+                }
+
+                $made =pg_customer_rhythm_pass_row($key, pg_customer_rhythm_pass_orders($state['c'][$key]), pg_customer_rhythm_pass_lines($key, $state['l'][$key]), isset($stored[$key]) ? $stored[$key] : null, $state['store'], $state['available'], $state['started']);
 
                 if ($made === null) {
                     continue;

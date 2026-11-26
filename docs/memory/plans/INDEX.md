@@ -38,7 +38,6 @@
 - designer-options-census-steps-3.md: Plan designer-options-census, DO21 to DO27 and sheets DD22 to DD26: back to top, scroll progress, scrollspy, scrolled navbar, a collection with its pages, favourites, find and replace, Markdown
 - designer-options-census-steps.md: Plan designer-options-census, DO2 to DO9: a value per screen size, grid columns, rows, spans and areas, the small layout rows (inset presets, layer order, scroll snap, aspect ratio, object fit)
 - designer-options-census.md: Plan (owner 2026-11-24, 2026-11-25): the eleven packages he picked from the Options panel census as DO2 to DO27 in three steps files; how an option enters the panel, the lines, what a step keeps
-- designer-preview-as.md: Plan (owner 2026-11-24): the designer's Preview with a chosen record, visitor and case (empty, long, sold out, error) and "Check all cases"; nothing written by it; steps PW1 to PW5
 - designer-sketch.md: Plan (owner 2026-11-24, before the launch): the Prototype view as a drawing board: a page sketched as boxes is read, built from blocks and filled with the variables; SK1 to SK9
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), the queue worker, incoming e-invoices; where to start

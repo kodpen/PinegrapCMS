@@ -552,13 +552,14 @@
 - designer-preview-as-drawing-bar.md: The "Preview as" bar as drawn (boards P1, P5, P7 of designer-preview-as-drawing): what stands in it, the one line under it, its states, the narrow window, the keyboard
 - designer-preview-as-drawing-check.md: "Check all cases" of the Preview as drawn (boards P6, P7 of designer-preview-as-drawing): where it starts, the run, the list of findings, a row opening its case, the labels
 - designer-preview-as-drawing-choosers.md: The "Record", "Visitor" and "Case" menus of the "Preview as" bar as drawn (boards P2 to P4 of designer-preview-as-drawing): rows, labels, states, what a case sets
-- designer-preview-as-drawing.md: The drawing of the "Preview as" bar (plans/designer-preview-as.md, PW3 and PW4): the sheet, where each part is described, which board belongs to which step
+- designer-preview-as-drawing.md: The drawing of the "Preview as" bar (steps PW3 and PW4, `designer-preview-as-rules.md`): the sheet, where each part is described, which board belongs to which step
 - designer-preview-as-readers.md: What each widget renderer reads of a "Preview as" case (PW2b): Empty, Long, Sold out, Error; the readers, what is not read, the cart write kept out of the Preview
+- designer-preview-as-rules.md: What binds "Preview as" (Record, Visitor, Case, "Check all cases" in the designer's Preview): why it exists, what it may never do, which step built which part (PW1 to PW4) [decision: decisions-made-product-106.md]
 - designer-preview-as-server.md: "Preview as" on the server (PW2): preview_widgets with a choice and a case per widget, the record each pick draws, the preview_records search and rights, the scope that writes nothing
 - designer-preview-as-viewer.md: What PW2c (#11728) built: pg_preview_as_viewer() and its helpers, which renderers read it, the sample account's rows, the mask, what is left to the operator
 - designer-preview-as-visitor.md: How a widget of the Preview is drawn for the chosen visitor (PW2c, architect 2026-11-26): one viewer reader in place of the USER_ constants, the sample account with no row, what is never read [decision: here]
 - designer-preview-menu.md: The designer's Preview menu beside Publish (DP23, D58, #10244; phone row #11578): its five rows and when each shows, the ids it keeps, why Open on Site and View Page left the bars
-- designer-preview-overview.md: Start file for the designer-preview-* files: what the designer's Preview is, which file holds the menu, links, page scripts and each part of "Preview as" (cases, server, renderer readers, drawings)
+- designer-preview-overview.md: Start file for the designer-preview-* files: what the designer's Preview is, which file holds the menu, links, page scripts and each part of "Preview as"
 - designer-preview-page-scripts.md: Platform scripts a designer page gets from its markup (theme switcher, tooltips/popovers, scroller buttons) on the page and in the Preview; one Bootstrap bundle; Preview link guard and dark view.
 - designer-preview-play.md: Links in the designer's Preview (#1867): a page link plays the open tab of that name, unsaved too; others open the site in a new tab; the Hotspots toggle
 - designer-prototype-comments-door.md: Prototype comments (prototype_comments): what a row keeps, the guest's door prototype_comment.php and its gates, the limits, plain text, delete with the design [decision: here]
@@ -712,6 +713,7 @@
 - layout-type-converter-order-form.md: An order form page's layout file into the Order Form widget's design elements (LE7): what each piece becomes, the map options it brought, the new flags and token, the starting-site texts
 - layout-type-converter-order-preview.md: Order preview layout files into the order preview widget (LE9d, #11667): its map, the new flags and tokens, the converter rules it added, differences, starting sites
 - layout-type-converter-photo-gallery.md: A photo gallery page's layout file into the Photo Gallery widget's design elements (LE8a): the two loops as one list by row flags, what each piece becomes, the new flags, the starting-site texts
+- layout-type-converter-search-results.md: A search results page's layout file into the Search Results widget (LE10d, #11764): the three lists as places of one list, row and layout flags, the search box, starting sites
 - layout-type-converter-view-order.md: View order layout files into the order view widget (LE9e, #11688): its map, the widget's new flags and tokens, what is reported, the known differences
 - layout-type-converter.md: A page type's layout file into its widget's design elements (LE6): pg_layout_convert(), the piece map, form list and item view pieces, the dropped list, the run; other types in their own files
 - layout-type-overview.md: Start file for a page type's layout file turned into its widget's design elements (LE6-LE10d): what the converter is, the rules kept, which file holds each type's map [decision: here]

@@ -5,7 +5,7 @@ description: A Workspace call's channel lines (CL7, #11125): started, ended with
 
 ## Which lines does a call write?
 - A new call (not a join of one already on): "@Ada started a voice call." / "… started a video call." (`ws_call_line_post_started()`, from `ws_call_start()`).
-- When it ends: "Voice call ended · 12:05 · @Ada, Guest name, @Ben" (length from its start to its end as 0:42, 12:05, 1:02:09; everyone ever in it once, the starter first, in the order of first join).
+- When it ends: "Voice call ended · 12:05 · @Ada, Guest name, @Ben" (length from its start to its end, a silent call's end being when it was last heard, #11765, as 0:42, 12:05, 1:02:09; everyone ever in it once, the starter first, in the order of first join).
 - In a conversation of two people (not a guest room) where nobody but the starter was ever in the call: "@Ben missed a voice call from @Ada." naming the other person; "@Ben declined a voice call from @Ada." when Ben declined it.
 - A group call nobody joined writes the ended line with the starter alone: no ring, so nobody is named as missing it. A guest room's call is never missed.
 

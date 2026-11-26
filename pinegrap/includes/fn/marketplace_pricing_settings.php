@@ -208,8 +208,10 @@ function mp_pricing_settings_is_default($rules)
 
 /**
  * The figures of an account's rows that move a channel price, keyed by
- * scope: percent, fixed and rounding of every row, and the margin of the
- * account's row (the floor).
+ * scope: percent, fixed and rounding of every row, and on the account's row
+ * the margin (the floor) and whether the robot sends: while it does, its
+ * price goes out in place of the rules' (mp_repricer_send_price()), so
+ * switching it to or from sending moves every price it set.
  *
  * @param array $rules
  * @return array
@@ -224,7 +226,8 @@ function mp_pricing_settings_price_keys($rules)
 
         $keys[$key] = (int) ($rule['percent'] ?? 0) . '|' . (int) ($rule['fixed'] ?? 0) . '|'
             . mp_pricing_rounding($rule['rounding'] ?? 'none')
-            . (($scope === MP_PRICING_SCOPE_ACCOUNT) ? '|' . (int) ($rule['min_margin'] ?? MP_PRICING_DEFAULT_MARGIN) : '');
+            . (($scope === MP_PRICING_SCOPE_ACCOUNT) ? '|' . (int) ($rule['min_margin'] ?? MP_PRICING_DEFAULT_MARGIN)
+                . '|' . (((int) ($rule['robot'] ?? MP_PRICING_ROBOT_OFF) === MP_PRICING_ROBOT_ON) ? 'sends' : 'holds') : '');
     }
 
     ksort($keys);
@@ -344,6 +347,27 @@ function mp_pricing_listing_parse($own_price, $strategy, $provider)
     $answer['own_price'] = $price;
 
     return $answer;
+}
+
+/**
+ * Whether a listing's row save changes the price it sends, so it is queued
+ * again: a typed price set, changed or cleared, or the strategy changed
+ * while the robot holds a price for it (mp_repricer_send_price() sends that
+ * price only on Win and Grow while winning). A strategy changed with no
+ * robot price yet waits for the robot's next pass.
+ *
+ * @param array $before     mp_pricing_product_figures(): own_price, strategy, robot_price
+ * @param int   $own_price  as saved, 0 by the rules
+ * @param int   $strategy   as saved
+ * @return bool
+ */
+function mp_pricing_listing_moves($before, $own_price, $strategy)
+{
+    if ((int) ($before['own_price'] ?? 0) !== (int) $own_price) {
+        return true;
+    }
+
+    return ((int) ($before['strategy'] ?? 0) !== (int) $strategy) && ((int) ($before['robot_price'] ?? 0) > 0);
 }
 
 /* ------------------------------------------------------ readers and writers */

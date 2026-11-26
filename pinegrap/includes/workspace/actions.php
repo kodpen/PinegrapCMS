@@ -5750,6 +5750,13 @@ function ws_handle_action($action, $request)
             $channel = $call ? ws_channel((int) $call['channel_id']) : null;
 
             if (!$channel || !ws_can_read_channel($viewer, $channel)) {
+                // Taken out of a private channel during the call: the
+                // person's place goes with this refusal, so the others stop
+                // connecting to it at once.
+                if ($call && in_array($action, array('ws_call_leave', 'ws_call_signal', 'ws_call_sync'), true)) {
+                    ws_call_leave(ws_call_party_person($viewer, null), (int) $call['id']);
+                }
+
                 return ws_action_error(lang('This call has ended.'));
             }
 

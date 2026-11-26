@@ -300,3 +300,19 @@ function test_customer_rhythm_report_list_row()
 	pg_assert_false(isset($row['cells']['customer']));
 	pg_assert_same(array_keys(pg_customer_rhythm_list_columns(false)), array_keys($row['cells']));
 }
+
+// Orders less than a day apart are one visit and make no gap, so a
+// customer with two orders on one day still has the store's median as
+// their interval, and the card says so.
+function test_customer_rhythm_report_card_two_orders_one_day()
+{
+	$row = array(
+		'stage' => 1, 'interval_days' => 30, 'orders' => 2, 'next_due_at' => 0, 'chance' => 90, 'expected_value' => 1000,
+		'first_order_at' => _crr_test_now() - (5 * 86400), 'last_order_at' => _crr_test_now() - (5 * 86400) + 3600, 'updated_at' => _crr_test_now(),
+	);
+
+	pg_assert_false(pg_customer_rhythm_card_view($row, _crr_test_now())['own'], 'two orders an hour apart: no own interval');
+
+	$row['last_order_at'] = _crr_test_now() - 86400;
+	pg_assert_true(pg_customer_rhythm_card_view($row, _crr_test_now())['own'], 'four days apart: own interval');
+}

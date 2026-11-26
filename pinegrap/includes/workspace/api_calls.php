@@ -45,7 +45,18 @@ function ws_api_channel_call_get($params)
 {
     $viewer = ws_api_viewer();
     $channel = ws_api_channel_or_404($viewer, $params['id']);
-    $call = ws_calls_ready() ? ws_call_live((int) $channel['id']) : null;
+
+    $call = (ws_calls_ready() && ws_calls_live_somewhere()) ? ws_call_live((int) $channel['id']) : null;
+
+    // Calls are cleaned up by the panel's live reads; with no Workspace open
+    // a call whose people all vanished would read as on, so the clean-up
+    // runs here too, as in ws_call_live_part() (at most every
+    // WS_CALL_SWEEP_EVERY seconds, and without a stamp only where a call is
+    // live).
+    if ($call || (ws_calls_ready() && ws_calls_live_somewhere() && ws_calls_stamp_usable())) {
+        ws_calls_sweep();
+        $call = $call ? ws_call_live((int) $channel['id']) : null;
+    }
 
     if (!$call) {
         api_ok(ws_api_call_present(null));
