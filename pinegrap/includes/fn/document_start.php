@@ -23,6 +23,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/document_paragraphs.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/document_sort.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/picker.php');
 
 // The largest file the form takes (the own reader's main part limit).
 define('PG_DOCUMENT_START_MAX_BYTES', 8 * 1024 * 1024);
@@ -79,7 +80,7 @@ function pg_document_start_texts()
         'buildingPage' => lang('Building the page…'),
         'cut' => lang('The first {var:1} paragraphs, about {var:2}%, were read'),
         'pictures' => lang('{var:1} pictures go to the file manager'),
-        'picturesLost' => lang('{var:1} could not be taken (each larger than 2 MB)'),
+        'picturesLost' => lang('{var:1} could not be taken (larger than 2 MB, or of a kind a browser does not show)'),
         'noHeadings' => lang('No headings were found'),
         'noHeadingsText' => lang('The text is one section of the kind Text and can be built as it is.'),
         'tooLong' => lang('The text is longer than 600,000 characters.'),
@@ -144,6 +145,24 @@ function pg_document_start_refusal($name, $size, $read = null)
     }
 
     return null;
+}
+
+/**
+ * The condition a file taken from the file manager must meet to be read:
+ * one the picker's kind 'document' offers (no attachment, nothing in the
+ * Recycle Bin, a .docx, .md or .txt, a granted folder). A file id posted
+ * by hand reaches no team chat or form upload this way. Pure.
+ *
+ * @param int        $file_id
+ * @param int[]      $bin_ids the Recycle Bin and its sub-folders
+ * @param int[]|null $granted the folders a role 3 user may use; null for all
+ * @return string a WHERE condition on `files`
+ */
+function pg_document_start_file_condition($file_id, $bin_ids, $granted)
+{
+    $kinds = pg_picker_kinds();
+
+    return '(' . pg_picker_files_where($kinds['document'], '', $bin_ids, $granted) . ") AND (id = '" . (int) $file_id . "')";
 }
 
 /**

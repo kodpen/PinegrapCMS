@@ -1,6 +1,6 @@
 ---
 name: legacy-overview
-description: Start file for moving classic styles to the visual designer: owner decisions, the Legacy design of a set, which file holds each step (LD, LG1-LG7), the rules kept, what is open
+description: Start file for moving classic styles to the visual designer: owner decisions, the Legacy design of a set, which file holds each step (LD, LG1-LG7, LE1-LE12), the rules kept, what is open
 ---
 
 ## What is it?
@@ -9,7 +9,8 @@ description: Start file for moving classic styles to the visual designer: owner 
 
 ## Which file holds what?
 - The report and its "What stays classic" card: `legacy-to-designer-report.md`. The dry run and the editor steps' server twins: `legacy-to-designer-bulk-run.md`. The run, cursor, lock and kept reports: `legacy-to-designer-run.md`.
-- How a classic style's code becomes a frame: `classic-style-import.md`, `classic-style-to-design.md`, its own CSS/JS files: `classic-style-design-files.md`; classic regions: `classic-regions-in-designer.md`; the canvas preview of a custom layout: `legacy-region-preview.md`.
+- How a classic style's code becomes a frame: `classic-style-import.md`, `classic-style-to-design.md`, its own CSS/JS files: `classic-style-design-files.md`; classic regions: `classic-regions-in-designer.md`; the canvas's picture of every region left: `legacy-region-preview.md`.
+- LE1-LE12, the moved page made editable (one door through the move screen, the run's `page_parts` and `types` steps, layout files into widgets, designs moved earlier, the measure): `legacy-editable-overview.md`.
 - LG1 the theme file (#8694): `legacy-design-theme.md`. LG2 `{path}` in addresses (#8732): `design-asset-path-placeholders.md`. LG3 the `legacy` key and badge (#8757): `legacy-design-framework.md`.
 - LG4 sets in the report and the dry run (#8776): `legacy-set.md`. LG5 the set's run (#8795): `legacy-set-run.md`. LG6 the frame split into parts, page content in the page's tree (#8819): `legacy-frame-split.md`. LG7 Back to classic (#8848): `legacy-to-classic.md`.
 

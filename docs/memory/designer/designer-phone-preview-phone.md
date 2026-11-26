@@ -13,7 +13,7 @@ module: prototype_phone_view
 ## How does it ask, and when does it stop?
 - The inline script asks `pg_proto_phone_watch_query()`'s address (`designer-phone-preview-server.md`) with `since` = the drawn page's `page_timestamp`, read by the viewer. Only while `visibilityState` is not hidden; it waits the answer's `next` (10 s, 30 s after ten quiet minutes); `stop` (an hour after the drawing) shows amber "Paused" with "Update". Coming back to the tab asks at once (not while paused).
 - "Update", or a pull down on the line while paused, draws the page again, which signs a new watch.
-- A failed request: amber "No connection. Trying again…", asked again after the same wait. One ask at a time: a return to the tab while an answer is on its way asks nothing more.
+- A failed request: amber "No connection. Trying again…", asked again after the same wait, 30 s once ten minutes have passed since the drawing; an hour after it the page pauses by itself, as no answer brings the stop. One ask at a time: a return to the tab while an answer is on its way asks nothing more.
 - A 404 (ended, run out, page gone, session changed) draws the page once; the viewer then shows what is left. A 404 on the first ask after such a redraw pauses: no loop when cookies are refused.
 
 ## How is the redraw done?

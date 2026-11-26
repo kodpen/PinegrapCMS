@@ -84,7 +84,9 @@ $doc_path = '';
 $doc_file_id = isset($_POST['file_id']) ? (int) $_POST['file_id'] : 0;
 
 if ($doc_file_id > 0) {
-    $doc_row = db_item("SELECT name FROM files WHERE id = '$doc_file_id' LIMIT 1");
+    $doc_kinds = pg_picker_kinds();
+    $doc_row = db_item("SELECT name FROM files WHERE " . pg_document_start_file_condition($doc_file_id,
+        pg_picker_closed_folder_ids($doc_kinds['document']), pg_picker_granted_folders($user, $doc_kinds['document'])) . " LIMIT 1");
     if (is_array($doc_row) && is_file(FILE_DIRECTORY_PATH . '/' . $doc_row['name'])) {
         $doc_name = (string) $doc_row['name'];
         $doc_path = FILE_DIRECTORY_PATH . '/' . $doc_name;

@@ -176,9 +176,10 @@ function pg_document_docx_blocks(&$state, $container)
     }
 
     foreach ($blocks as $done => $child) {
-        if ($state['stop'] !== '') {
-            return $done / count($blocks);
-        }
+        // The share of a block read when the limit stopped inside it: none
+        // for a paragraph or a table (refused whole), the control's own
+        // share for a content control.
+        $inner = 0.0;
 
         if ($child->localName === 'p') {
             pg_document_docx_paragraph($state, $child);
@@ -203,7 +204,11 @@ function pg_document_docx_blocks(&$state, $container)
 
             pg_document_push($state, array('text' => '', 'style' => 'table', 'rows' => $rows), strlen(implode(' ', array_map('implode', $rows))));
         } else {
-            pg_document_docx_blocks($state, $child);
+            $inner = pg_document_docx_blocks($state, $child);
+        }
+
+        if ($state['stop'] !== '') {
+            return ($done + (($inner < 1.0) ? $inner : 0.0)) / count($blocks);
         }
     }
 
