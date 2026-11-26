@@ -789,7 +789,7 @@
 - migration-carries-designs.md: Migration screen Designs switch (LD4): get_designs via the template export, managed files, install with target ids, skipped bin/drafts/Workspace folders, what stays behind [decision: decisions-made-product-21.md]
 - multi-page-design-model.md: Data model of multi-page visual designer designs (style + page_style, page_tree_json), tree-reading helpers, design-page detection, start screen, recycle bin rules.
 - multi-page-designer-editor.md: Editor screen code, save flow, JSON api.php body, the dirty check and unchanged pages, tab switching/menu/rename DOM rules, toolbar overflow, palette order and designer texts.
-- new-design-window.md: The New design window (#sdStartModal) on the Page Design Studio home: the list of starts, each start's pane, the foot's button, ?start=, and how a later start is added
+- new-design-window.md: The New design window (#sdStartModal): the grouped rail of starts, one icon a start, each pane and its head, the foot's button, ?start=, how a later start is added
 - no-form-in-form.md: No form inside a form in the designer: semantic forms at any depth, widgets the server wraps in a form (_SD_FORM_WIDGET_TYPES), blocks, widgets and components that bring one.
 - no-image-placeholder.md: assets/images/no-image.svg, the fallback for a missing or failed image on the page and the canvas (#9199): an icon without words; its address in data-pg-fallback, never in the onerror code
 - node-text-and-whitespace.md: Designer node props.text: innerHTML (content nodes) vs plain text (semantic nodes), and whitespace-sensitive tags pre/textarea/code in generateHTML().

@@ -178,6 +178,7 @@
 - picture-text-auto-server.md: Translated canvas pictures drawn by the server with nobody there: the job's draw, PHP twins of the language document and fit, what waits for a panel, budget and mark
 - picture-text-fit-correct.md: A picture text corrected by hand for one language (PF3): the layer's corrections field, the save's check, both draws taking it in place of the fit, the mark, the count
 - picture-text-fit-room.md: A translated picture text grows into the free room around it before it shrinks (#11837): M.languageRoom(), languagePlace(), languageFitted(), PHP twins, fixtures, measure
+- picture-text-fit-view.md: The Artifact Canvas's language view (PF4, #11904): "Correct by hand" on a Languages list row, the bar, what can be moved, the corrections written on Done, the queue's Look by hand row opening it
 - picture-text-fit-wrap.md: A translated picture text wider than its room is wrapped between words before it shrinks (PF2): M.languageWrap(), languageWraps(), languageWrapped(), PHP twins, the lines written into the layer's text
 - picture-text-overview.md: Picture text translation as a whole (owner 2026-11-16, #10028 to #10448): what it does, its binding decisions, what it leaves out and why, where each part is [decision: decisions-made-product-113.md, decisions-made-product-63.md, decisions-made-product-64.md]
 - picture-text-translation-doors.md: The file doors of a language's picture: it follows its source on a move, goes with it on a delete, is never swapped while the source is binned, counts in Disk Usage, the daily sweep's catch-up
