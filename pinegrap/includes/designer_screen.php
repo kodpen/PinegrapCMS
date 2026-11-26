@@ -2196,7 +2196,7 @@ function pg_designer_start_window($templates, $from_pages)
                 . '</section>';
     }
     return '
-        <dialog class="dialog dialog-xl pg-dialog-centered dialog-scrollable sd-ns-dialog" id="sdStartModal" aria-labelledby="sdStartModalLabel">
+        <dialog class="dialog dialog-xl md-down:dialog-fullscreen pg-dialog-centered dialog-scrollable sd-ns-dialog" id="sdStartModal" aria-labelledby="sdStartModalLabel">
             <div class="dialog-header">
                 <h2 class="dialog-title fs-lg" id="sdStartModalLabel">' . h(lang('New design')) . '</h2>
                 <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>

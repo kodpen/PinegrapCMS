@@ -751,14 +751,12 @@ button.sdh-page:hover {
 /* ── The New design window ─────────────────────────────────────────────── */
 
 /* A window in the middle of the screen, at most 1120 x 720 px and 24 px
-   from each edge below that, one height whatever the start. */
-#sdStartModal.sd-ns-dialog {
-  --bs-dialog-width: 1120px;
-  --bs-dialog-margin: 24px;
-}
-
+   from each edge below that, one height whatever the start; below 768 px
+   it is the whole screen (md-down:dialog-fullscreen). */
 @media (min-width: 768px) {
   #sdStartModal.sd-ns-dialog {
+    --bs-dialog-width: 1120px;
+    --bs-dialog-margin: 24px;
     height: min(720px, calc(100dvh - 48px));
   }
 }
