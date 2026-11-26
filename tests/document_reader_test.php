@@ -272,3 +272,18 @@ function test_document_reader_fits()
 	pg_assert_same('item', $result[1][count($result[1]) - 1]['items'][0]['type'], 'text keeps the paragraphs');
 	pg_assert_same(array(), $result[2], 'no section fills nothing');
 }
+
+// A contact line that is an address holding a phone or an e-mail is one
+// line: its phone or e-mail is not given again beside it.
+function test_document_reader_contact_line_not_doubled()
+{
+	$result = document_reader_test_read("# Visit\n\nCome by.\n\n## Contact\n\nBağdat Caddesi No: 12, Kadıköy · +90 212 555 12 34\n");
+
+	if ($result === null) {
+		return;
+	}
+
+	$s = $result['sections'][1];
+	pg_assert_same('contact', $s['kind'], 'still read as contact');
+	pg_assert_same(array(array('type' => 'address', 'value' => 'Bağdat Caddesi No: 12, Kadıköy · +90 212 555 12 34')), $s['items'], 'the line once, as written');
+}
