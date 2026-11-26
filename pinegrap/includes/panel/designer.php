@@ -767,6 +767,12 @@ function pg_panel_designer($request, $action)
                 respond(array('status' => 'error', 'message' => lang('SEO scoring is not available on this installation.')));
             }
             $page_id = isset($request['page_id']) ? (int)$request['page_id'] : 0;
+            // The stored findings, link score and speed below are read by
+            // this id: a page the operator may not know is there is refused,
+            // as page_load refuses it.
+            if ($page_id > 0 && pg_designer_page_access($page_id, $user) === 'hidden') {
+                respond(array('status' => 'error', 'message' => lang('Permission denied.')));
+            }
             $folder_id = isset($request['page_folder']) ? (int)$request['page_folder'] : 0;
             $folder = $folder_id > 0 ? db_item("SELECT folder_access_control_type, folder_archived FROM folder WHERE folder_id = '$folder_id' LIMIT 1") : null;
             $row = array(

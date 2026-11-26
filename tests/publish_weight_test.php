@@ -350,3 +350,15 @@ function test_publish_weight_seo_check_wiring()
 	pg_assert_contains('pg_publish_weight_report(', (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/seo_draft.php'), 'on the report');
 	pg_assert_contains("'weight'          => \$weight", $src, 'answered');
 }
+
+// seo_check reads a saved page's stored SEO findings, link score and speed
+// by the id the request names: a content-level operator who may not even
+// know the page is there ('hidden', as page_load refuses it) is refused.
+function test_publish_weight_seo_check_refuses_a_hidden_page()
+{
+	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/panel/designer.php');
+	$start = strpos($src, "case 'seo_check':");
+	$case = substr($src, $start, strpos($src, 'pg_seo_build_context(', $start) - $start);
+
+	pg_assert_contains("pg_designer_page_access(\$page_id, \$user) === 'hidden'", $case, 'checked before any stored row is read');
+}
