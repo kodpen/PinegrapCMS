@@ -297,6 +297,8 @@ const StyleDesigner = (function () {
     var _cmdPaletteEl = null;
     var RECENT_COMPS_KEY = 'pinegrap_designer_recent_components_v1';
     var MAX_RECENT_COMPS = 8;
+    var FAV_COMPS_KEY = 'pinegrap_designer_favourite_components_v1';
+    var MAX_FAV_COMPS = 30;
     var _validationDebounceTimer = null;
     var _validationIssues = [];
     // Canvas-only page options. The meta tags are not here: they are the
@@ -28028,15 +28030,19 @@ const StyleDesigner = (function () {
         compList.innerHTML = _sdPaletteCategoriesHTML(categories);
         if (blockList) blockList.innerHTML = _sdPaletteCategoriesHTML(_sdBlockPaletteGroups());
 
-        // The "recently used" strip at the top of the component palette. It
-        // is drawn first so its rows are wired with everything else; blocks
-        // inserted from the other tab land in this same strip.
+        // The Favourites and "recently used" strips at the top of the
+        // component palette, Favourites first. They are drawn first so their
+        // rows are wired with everything else; blocks inserted or pinned
+        // from the other tab land in these same strips.
         _renderRecentCompSection(compList);
+        _renderFavCompSection(compList);
 
         _sdWirePaletteItems(compList, compList);
         _sdWirePaletteItems(blockList, compList);
         _sdPalTipWire(compList);
         _sdPalTipWire(blockList);
+        _sdFavWire(compList);
+        _sdFavWire(blockList);
 
         _sdWirePaletteSearch(document.getElementById('sd-search'),
                              document.getElementById('sd-search-clear'), compList);
@@ -56035,7 +56041,7 @@ const StyleDesigner = (function () {
                 items.map(function (it) { return _sdPaletteItemHTML(_sdPaletteItem(offer, it, part)); }).join('') + '</div></div>';
         };
         sec.innerHTML = cat(_sdT('Parts of {var}', offer.name), offer.parts, true) + cat(_sdT('Values of {var}', offer.name), offer.values, false);
-        var recent = list.querySelector('#sd-recent-comps-section');
+        var recent = list.querySelector('#sd-recent-comps-section') || list.querySelector('#sd-fav-comps-section');
         list.insertBefore(sec, recent ? recent.nextSibling : list.firstChild);
         _sdWirePaletteItems(sec, list);
     }
@@ -92855,18 +92861,45 @@ const StyleDesigner = (function () {
         try { return JSON.parse(localStorage.getItem(RECENT_COMPS_KEY)) || []; } catch(e) { return []; }
     }
 
+    // The key a palette row is known by in Recently Used and Favourites:
+    // its type and the extra fields that tell rows of one type apart.
+    function _sdPalItemId(type, extra) {
+        extra = extra || {};
+        return type +
+            (extra.componentType ? ':' + extra.componentType : '') +
+            (extra.contentType   ? ':' + extra.contentType   : '') +
+            (extra.regionType    ? ':' + extra.regionType    : '') +
+            (extra.tag           ? ':' + extra.tag           : '');
+    }
+
+    // Whether a palette row may be kept in Recently Used or Favourites. A
+    // widget's part or value is offered only while its widget is selected;
+    // an item of My library may be renamed or deleted: it stays in its own
+    // group.
+    function _sdPalKeepable(type) {
+        return !!type && type !== 'widget_part' && type !== 'library';
+    }
+
+    // The favourites list with the row added at its end, or taken out when
+    // it is there. A full list is answered unchanged; rows without an id
+    // are dropped.
+    function _sdFavToggle(list, item, max) {
+        list = (Array.isArray(list) ? list : []).filter(function (c) { return c && typeof c.id === 'string' && c.id; });
+        if (!item || !item.id) return list;
+        var rest = list.filter(function (c) { return c.id !== item.id; });
+        if (rest.length !== list.length) return rest;
+        if (list.length >= max) return list;
+        return list.concat([item]);
+    }
+
+    function _sdFavHas(list, id) {
+        return (Array.isArray(list) ? list : []).some(function (c) { return c && c.id === id; });
+    }
+
     function _trackRecentComp(type, extra, hintLabel, hintIcon) {
-        // A widget's part or value is offered only while its widget is selected.
-        if (type === 'widget_part') return;
-        // An item of My library may be renamed or deleted: it stays in its
-        // own group.
-        if (type === 'library') return;
+        if (!_sdPalKeepable(type)) return;
         try {
-            var id = type +
-                (extra && extra.componentType ? ':' + extra.componentType : '') +
-                (extra && extra.contentType   ? ':' + extra.contentType   : '') +
-                (extra && extra.regionType    ? ':' + extra.regionType    : '') +
-                (extra && extra.tag           ? ':' + extra.tag           : '');
+            var id = _sdPalItemId(type, extra);
             // Prefer a direct hint from the palette item (covers compound example types like
             // "hero-centered"/"navbar-mega" that aren't registered in COMPONENTS/CONTENT).
             var label = hintLabel || (type.charAt(0).toUpperCase() + type.slice(1));
@@ -92889,6 +92922,99 @@ const StyleDesigner = (function () {
 
     function _clearRecentComps() {
         try { localStorage.removeItem(RECENT_COMPS_KEY); } catch(e) {}
+    }
+
+    // ========================= FAVOURITE COMPS =========================
+    // Kept per browser, across designs, beside Recently Used.
+    function _getFavComps() {
+        try {
+            var list = JSON.parse(localStorage.getItem(FAV_COMPS_KEY));
+            return Array.isArray(list) ? list : [];
+        } catch (e) { return []; }
+    }
+
+    // Pins or unpins the palette row; redraws the Favourites group.
+    function _sdFavToggleRow(row) {
+        if (!row || !_sdPalKeepable(row.dataset.type)) return;
+        var extra = {};
+        try { extra = row.dataset.extra ? JSON.parse(row.dataset.extra) : {}; } catch (e) { extra = {}; }
+        var item = { id: _sdPalItemId(row.dataset.type, extra), label: row.dataset.label || '', icon: row.dataset.icon || '', type: row.dataset.type, extra: extra };
+        var before = _getFavComps(), was = _sdFavHas(before, item.id);
+        var after = _sdFavToggle(before, item, MAX_FAV_COMPS);
+        if (_sdFavHas(after, item.id) === was) {
+            sdToast(_sdT('At most {var} favourites.', MAX_FAV_COMPS), 'warning');
+            return;
+        }
+        try { localStorage.setItem(FAV_COMPS_KEY, JSON.stringify(after)); } catch (e) {}
+        var list = document.getElementById('sd-comp-list');
+        if (list) _renderFavCompSection(list);
+        _sdFavStarSync(row);
+    }
+
+    // One star, moved to the row under the pointer or in focus, so the
+    // lists carry no button per row. F on a focused row does the same.
+    var _sdFavStar = null;
+    function _sdFavStarSync(row) {
+        if (!_sdFavStar || !row) return;
+        var on = _sdFavHas(_getFavComps(), _sdPalItemId(row.dataset.type, row.dataset.extra ? JSON.parse(row.dataset.extra) : {}));
+        var label = on ? _sdT('Remove from Favourites') : _sdT('Add to Favourites');
+        _sdFavStar.className = 'sd-fav-btn' + (on ? ' sd-fav-on' : '');
+        _sdFavStar.setAttribute('aria-pressed', on ? 'true' : 'false');
+        _sdFavStar.title = label + ' (F)';
+        _sdFavStar.setAttribute('aria-label', label);
+        _sdFavStar.firstChild.className = 'bi ' + (on ? 'bi-star-fill' : 'bi-star');
+    }
+
+    // The rows of the Components and Blocks lists that may be pinned.
+    function _sdFavRowOf(el) {
+        var row = el && el.closest ? el.closest('.sd-drag-item') : null;
+        if (!row || !_sdPalKeepable(row.dataset.type) || row.closest('#sd-widget-palette')) return null;
+        return row.closest('#sd-comp-list, #sd-blocks-list') ? row : null;
+    }
+
+    function _sdFavWire(list) {
+        if (!list || list._sdFavWired) return;
+        list._sdFavWired = true;
+        var show = function (e) {
+            var row = _sdFavRowOf(e.target);
+            if (!row || (_sdFavStar && _sdFavStar.parentNode === row)) return;
+            if (!_sdFavStar) {
+                _sdFavStar = document.createElement('button');
+                _sdFavStar.type = 'button';
+                _sdFavStar.tabIndex = -1;
+                _sdFavStar.setAttribute('draggable', 'false');
+                _sdFavStar.innerHTML = '<span aria-hidden="true"></span>';
+                _sdFavStar.addEventListener('click', function (ev) {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    _sdFavToggleRow(_sdFavStar.parentNode);
+                });
+                _sdFavStar.addEventListener('dblclick', function (ev) { ev.stopPropagation(); });
+            }
+            row.appendChild(_sdFavStar);
+            _sdFavStarSync(row);
+        };
+        list.addEventListener('mouseover', show);
+        list.addEventListener('focusin', show);
+    }
+
+    function _renderFavCompSection(compList) {
+        var favs = _sdPalForDesign(_getFavComps());
+        var old = compList.querySelector('#sd-fav-comps-section');
+        if (old) old.remove();
+        if (!favs.length) return;
+
+        var sec = document.createElement('div');
+        sec.id = 'sd-fav-comps-section';
+        sec.className = 'sd-category sd-recent-section sd-fav-section';
+
+        var items = '';
+        favs.forEach(function (it) { items += _sdPaletteItemHTML(it, 'sd-recent-item'); });
+        sec.innerHTML = '<div class="sd-category-header"><button type="button" class="sd-category-toggle" aria-expanded="true"><span class="bi bi-chevron-down"></span>' + esc(_sdT('Favourites')) + '</button>' +
+            '</div><div class="sd-category-items">' + items + '</div>';
+
+        _sdWirePaletteItems(sec, compList);
+        compList.insertBefore(sec, compList.firstChild);
     }
 
     // ── Block families in their own files ───────────────────────────────
@@ -95814,7 +95940,8 @@ const StyleDesigner = (function () {
                 if (typeof removeCanvasDropPadding === 'function') removeCanvasDropPadding();
             });
 
-            el.addEventListener('dblclick', function () {
+            el.addEventListener('dblclick', function (e) {
+                if (e && e.target && e.target.closest && e.target.closest('.sd-fav-btn')) return;
                 var type = this.dataset.type;
                 var extra = this.dataset.extra ? JSON.parse(this.dataset.extra) : {};
                 var hintLabel = this.dataset.label || '';
@@ -95876,6 +96003,12 @@ const StyleDesigner = (function () {
                 return;
             }
             if (e.key === 'Escape') { _sdPalTipHide(); return; }
+            if (String(e.key).toLowerCase() === 'f' && _sdFavRowOf(row)) {
+                e.preventDefault();
+                e.stopPropagation();
+                _sdFavToggleRow(row);
+                return;
+            }
             if (e.key === 'Delete' || e.key === 'Backspace' || String(e.key).toLowerCase() === 'n') e.stopPropagation();
         });
     }
@@ -95989,15 +96122,18 @@ const StyleDesigner = (function () {
         }
     }
 
+    // Recently Used and Favourites are kept per browser, across designs: a
+    // custom design does not offer the Bootstrap items another design put
+    // there.
+    function _sdPalForDesign(list) {
+        if (_sdUsesBootstrap()) return list;
+        return list.filter(function (it) {
+            return ['component', 'container', 'container-fluid', 'row', 'col'].indexOf(it && it.type) === -1;
+        });
+    }
+
     function _renderRecentCompSection(compList) {
-        var recent = _getRecentComps();
-        // The list is kept per browser, across designs: a custom design does
-        // not offer the Bootstrap items another design put there.
-        if (!_sdUsesBootstrap()) {
-            recent = recent.filter(function (it) {
-                return ['component', 'container', 'container-fluid', 'row', 'col'].indexOf(it && it.type) === -1;
-            });
-        }
+        var recent = _sdPalForDesign(_getRecentComps());
         var old = compList.querySelector('#sd-recent-comps-section');
         if (old) old.remove();
         if (!recent.length) return;
@@ -96021,7 +96157,9 @@ const StyleDesigner = (function () {
 
         _sdWirePaletteItems(sec, compList);
 
-        compList.insertBefore(sec, compList.firstChild);
+        // Under Favourites, when there are some.
+        var fav = compList.querySelector('#sd-fav-comps-section');
+        compList.insertBefore(sec, fav ? fav.nextSibling : compList.firstChild);
     }
 
     // ========================= HTML VALIDATION =========================
