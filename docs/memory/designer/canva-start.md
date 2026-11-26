@@ -22,7 +22,7 @@ module: canva_start
 
 ## What does "Create design" do?
 - It writes the pages as the new design's sketch to `localStorage` `pg_proto_sketch_new` (one frame a page, side by side from x 640, each `pic: { src, h }` with h = 480 × height / width, 24 to 20,000) and opens `add_system_style.php?framework=bootstrap5&start=canva` with `&answers={brand, accent}`.
-- `?start=canva` sets `sdDesign.autoSketch`: the editor opens the Prototype view with the Sketch switch on (`_sdSketchStart()`).
+- `?start=canva` sets `sdDesign.autoSketch`: the editor opens the Prototype view zoomed to the first page, Sketch on (`_sdSketchStart()`).
 - "Ask me the questions" hands the pane to DV4 through `window.sdStartAsk(pane, href, start, before)`; `pgStartQuestions.mount()` takes `start` (brand, accent) as its first answers.
 
 ## What happens on the first save?

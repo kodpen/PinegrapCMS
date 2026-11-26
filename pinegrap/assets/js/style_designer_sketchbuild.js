@@ -246,6 +246,8 @@ StyleDesigner.definePart('sketchbuild', function (K) {
             if (text) text.textContent = host.kindLabel(s.kind);
             el.classList.remove('sd-sketch-unread');
             el.classList.add('sd-sketch-kind-' + s.kind);
+            // The box's name as its chip reads, no longer "Not read yet".
+            el.setAttribute('aria-label', host.kindLabel(s.kind) + (b.text ? ': ' + b.text : ''));
             if (s.unsure) {
                 var mark = host.el('span', 'bi bi-question-circle-fill sd-skb-mark');
                 mark.setAttribute('aria-hidden', 'true');
