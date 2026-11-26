@@ -308,3 +308,14 @@ function test_workspace_agent_fail_closes_before_writing()
 	pg_assert_contains("'closed'", (string) substr($fail, (int) $checked, 200));
 	pg_assert_true(strpos($fail, "ws_task_delegation_told(\$row, 'failed')") > $checked, 'the task\'s asker is told once');
 }
+
+// A request the agent never took is cancelled after a day, and its message
+// is stamped, so the line under it changes on the open screens as well.
+function test_workspace_agent_queue_expire_redraws()
+{
+	$expire = workspace_agent_queue_test_source('ws_agent_queue_expire');
+
+	pg_assert_contains('ws_agent_queue_expired_where($now)', $expire);
+	pg_assert_contains('ws_message_touch(', $expire, 'the message is stamped');
+	pg_assert_true(strpos($expire, "status = 'cancelled'") < strpos($expire, 'ws_message_touch('), 'after the cancel');
+}
