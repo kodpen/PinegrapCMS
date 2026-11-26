@@ -463,9 +463,9 @@
 - designer-hide-on-sticky-from.md: Style › Size and display's "Hide on" (Phone, Tablet, Desktop) and "Sticky from" a size (DO3): Bootstrap's d-* and sticky-{size}-top classes, written and read back by pg_size_style.js
 - designer-home-colours.md: Page Design Studio home colours (#3267): neutral greys plus the panel's primary token, the previews keep theirs, status as words and a shaped mark, tooltips
 - designer-home-menu.md: The Page Design Studio home's menu on a design or a page chip: how it opens, its rows in groups without icons, its texts
-- designer-home-narrow.md: The New design window below 768 px (a list, then the pane with "All starts") and the Page Design Studio home on a phone (one column, the other designs as a list)
+- designer-home-narrow.md: The New design window below 768 px (a list, then the pane with "All starts") and the Page Design Studio home on a phone (one column, the other designs as a list) [decision: here]
 - designer-home-pictures.md: The Page Design Studio home's and Choose a Template's pictures: a design's real page, templates' home pages, the theme picker that redraws them, the drawings as the fallback [decision: decisions-made-product-35.md]
-- designer-home-screen.md: Page Design Studio home (view_system_styles.php): the head row, the first visit's three starts, the site's design shown large, tiles, the grouped menu, rename (designer/design_rename)
+- designer-home-screen.md: Page Design Studio home (view_system_styles.php): the head row, the first visit's three starts, the site's design shown large, tiles, the grouped menu, rename (designer/design_rename) [decision: here]
 - designer-home-tidy-drawing.md: Drawing of the New design window and the Page Design Studio home (2026-11-26): which board belongs to which step of designer-home-tidy, and what the sheets fix [decision: here]
 - designer-image-focus-drawing-frames.md: Board F5 of the image focus drawing (2026-11-25): the Focus control's phone, tablet and desktop frames stand under the whole picture, large, with their names; one frame when all three are the same [decision: here]
 - designer-image-focus-drawing.md: The drawing of the image focus (the Focus control and "Set focus"): the sheet, its five boards, what each step builds from it and what the sheet settles
