@@ -1,6 +1,6 @@
 ---
 name: memory-mirror-tool
-description: tools/memory_mirror.php (MS4, #PR): docs/memory mirrored one way into the general memory of the agent channels; what a record holds, the mirror-<hash> tag, the listing, dry run, --full, limits
+description: tools/memory_mirror.php (MS4, #11895): docs/memory mirrored one way into the general memory of the agent channels; what a record holds, the mirror-<hash> tag, the listing, dry run, --full, limits
 ---
 
 ## What does it do?
