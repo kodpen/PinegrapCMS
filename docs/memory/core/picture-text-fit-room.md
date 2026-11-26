@@ -1,6 +1,6 @@
 ---
 name: picture-text-fit-room
-description: A translated picture text grows into the free room around it before it shrinks (#PRNUM): M.languageRoom(), languagePlace(), languageFitted(), PHP twins, fixtures, measure
+description: A translated picture text grows into the free room around it before it shrinks (#11837): M.languageRoom(), languagePlace(), languageFitted(), PHP twins, fixtures, measure
 module: picture_server_draw
 ---
 

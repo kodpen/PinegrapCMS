@@ -16,7 +16,7 @@ priority: 6
 - The fit: `plans/picture-text-fit-rules.md`. The correction by hand and its screens: `plans/picture-text-fit-screens.md`.
 
 ## Which steps? (S under 400, M about 1,000 product lines; tests red first)
-- PF1 (M) The room and the growth, pure, in the model and its PHP twin on shared fixtures: the owner's three cases, a text on each of the four edges, two texts side by side and stacked, a headline over a line, a text on a card, a turned text, a sticker's label.
+- PF1 (M) Done (#11837). The room and the growth, pure, in the model and its PHP twin on shared fixtures: the owner's three cases, a text on each of the four edges, two texts side by side and stacked, a headline over a line, a text on a card, a turned text, a sticker's label.
   - The measure, in the PR: a fixture set of at least twenty layouts, each with translations 1.0, 1.3, 1.6, 2.0 and 2.5 times its source's width; how many end "Look by hand" before and after. A test holds that no text ends smaller than the old rule made it.
 - PF2 (M) after PF1: the wrap in both twins; the stage, the save and the server draw the lines the fit gives; the shrink takes the wrap that needs the least.
 - PF3 (M) after PF2: the correction's model, no screen: the field on a text layer, the document check, the language document and the server's draw taking it in place of the fit, the states, tests.
