@@ -10461,6 +10461,81 @@ const StyleDesigner = (function () {
         list._sdTreeEpoch = _sdEditEpoch;
         return true;
     }
+
+    // A new selection moves the HTML tree's mark; its rows stay as they
+    // are. Drawing every row of a large page again on each click cost some
+    // 300 ms with the bottom panel open. False when the tree must be drawn
+    // whole: the code view, a list drawn for another page or before the
+    // last edit (the epoch), a stale list, a branch whose chevron no longer
+    // matches its node (opened or closed since: the selection's ancestors
+    // are opened on a pick from the canvas), no row for the node.
+    function _sdHtmlTreeSelectInPlace() {
+        if (_sdCodeEnabled()) return false;
+        var panel = document.getElementById('sd-html-tree');
+        if (!panel || panel._sdHtOf !== tree || panel._sdHtEpoch !== _sdEditEpoch || _sdPanelStale.html) return false;
+        if (_sdPanelDefer('html')) return true;
+        var chevs = panel.querySelectorAll('.sd-ht-chev[data-nid]');
+        for (var i = 0; i < chevs.length; i++) {
+            var owner = chevs[i].parentNode && chevs[i].parentNode._sdNode;
+            if (!owner || chevs[i].classList.contains('bi-chevron-down') !== (owner._expanded !== false)) return false;
+        }
+        var isRoot = !!(selectedNode && selectedNode.type === 'root');
+        var rows = [];
+        if (selectedNode && !isRoot) {
+            var found = panel.querySelectorAll('.sd-ht-row[data-nid="' + String(selectedNode._id).replace(/["\\]/g, '\\$&') + '"]');
+            for (var j = 0; j < found.length; j++) {
+                if (!found[j].classList.contains('sd-ht-close-row')) rows.push(found[j]);
+            }
+            if (!rows.length) return false;
+        }
+        if (isRoot) rows = Array.prototype.slice.call(panel.querySelectorAll('[data-ht-root]'));
+        Array.prototype.forEach.call(panel.querySelectorAll('.sd-ht-selected'), function (r) { r.classList.remove('sd-ht-selected'); });
+        rows.forEach(function (r) { r.classList.add('sd-ht-selected'); });
+        if (rows.length && !isRoot && rows[0].scrollIntoView) rows[0].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        return true;
+    }
+
+    // Attributes and Styles after a selection: drawn after the frame that
+    // shows the selection on the canvas, once for the last of several
+    // selections made before it. A pointer or key that reaches one of the
+    // panes first draws them before it is handled, so it never meets the
+    // fields of the element selected before.
+    var _sdSelPanesDue = false, _sdSelPanesGuarded = false;
+
+    function _sdSelPanesSoon() {
+        _sdSelPanesGuard();
+        if (_sdSelPanesDue) return;
+        _sdSelPanesDue = true;
+        var after = function () { setTimeout(_sdSelPanesNow, 0); };
+        if (typeof requestAnimationFrame === 'function') requestAnimationFrame(after); else after();
+    }
+
+    // Draws now what _sdSelPanesSoon() put off.
+    function _sdSelPanesNow() {
+        if (!_sdSelPanesDue) return;
+        _sdSelPanesDue = false;
+        renderAttrsPanel();
+        renderStylesPanel();
+    }
+
+    // The capture listeners that draw a waiting pane before a pointer or
+    // key in it is handled; one that hit a field the draw removed is
+    // dropped.
+    function _sdSelPanesGuard() {
+        if (_sdSelPanesGuarded || !document.addEventListener) return;
+        _sdSelPanesGuarded = true;
+        ['pointerdown', 'mousedown', 'keydown', 'focusin'].forEach(function (type) {
+            document.addEventListener(type, function (e) {
+                var el = e.target;
+                if (!_sdSelPanesDue || !el || !el.closest || !el.closest('#sd-bp-attrs, #sd-bp-styles')) return;
+                _sdSelPanesNow();
+                if (el.isConnected === false) {
+                    if (e.cancelable) e.preventDefault();
+                    e.stopPropagation();
+                }
+            }, true);
+        });
+    }
     // ── end of panels on demand
 
     function render() {
@@ -10778,9 +10853,8 @@ const StyleDesigner = (function () {
         renderProperties();
         renderStatusBar();
         if (!_sdTreeSelectInPlace()) renderTree();
-        renderHtmlTree();
-        renderAttrsPanel();
-        renderStylesPanel();
+        if (!_sdHtmlTreeSelectInPlace()) renderHtmlTree();
+        _sdSelPanesSoon();
         updateCtxBar();
         _sdSharedBaseline();
         _sdGuidesSync();
@@ -32846,6 +32920,8 @@ const StyleDesigner = (function () {
         row.className = 'sd-ht-row sd-ht-locked-row';
         if (opts.onClick) row.classList.add('sd-ht-clickable');
         if (opts.selected) row.classList.add('sd-ht-selected');
+        // The rows a selection of the root marks (_sdHtmlTreeSelectInPlace()).
+        if (opts.root) row.setAttribute('data-ht-root', '1');
         row.style.paddingLeft = (indent * 14 + 4) + 'px';
         var chev = '<span class="sd-ht-chev bi bi-chevron-down" style="cursor:pointer"></span>';
         row.innerHTML = chev + '<span class="bi bi-lock-fill sd-ht-lock-icon"></span>' + openHtml;
@@ -32860,6 +32936,7 @@ const StyleDesigner = (function () {
         closeRow.className = 'sd-ht-row sd-ht-locked-row sd-ht-close-row';
         if (opts.onClick) closeRow.classList.add('sd-ht-clickable');
         if (opts.selected) closeRow.classList.add('sd-ht-selected');
+        if (opts.root) closeRow.setAttribute('data-ht-root', '1');
         closeRow.style.paddingLeft = (indent * 14 + 4) + 'px';
         closeRow.innerHTML = '<span class="sd-ht-chev-ph"></span>' +
             '<span class="bi bi-lock-fill sd-ht-lock-icon"></span>' +
@@ -33310,10 +33387,17 @@ const StyleDesigner = (function () {
     // Renders the HTML tree in the bottom panel — the full page structure
     function renderHtmlTree() {
         // The code view draws the same page as text (_sdCodeRefresh()).
-        if (_sdCodeEnabled()) { _sdCodeRefresh(); return; }
         var panel = document.getElementById('sd-html-tree');
+        if (_sdCodeEnabled()) {
+            if (panel) panel._sdHtOf = null;
+            _sdCodeRefresh();
+            return;
+        }
         if (!panel || _sdPanelDefer('html')) return;
         panel.innerHTML = '';
+        // The rows match the page as it is now (_sdHtmlTreeSelectInPlace()).
+        panel._sdHtOf = tree;
+        panel._sdHtEpoch = _sdEditEpoch;
 
         var frame = _sdPageFrameRows();
         var bodyAttrs = _sdPageBodyAttrs();
@@ -33359,7 +33443,8 @@ const StyleDesigner = (function () {
                             selectedNodes = [];
                             renderSelectionOnly();
                         },
-                        selected: !!(selectedNode && selectedNode.type === 'root')
+                        selected: !!(selectedNode && selectedNode.type === 'root'),
+                        root: true
                     }
                 );
             },
@@ -33372,7 +33457,8 @@ const StyleDesigner = (function () {
                     selectedNodes = [];
                     renderSelectionOnly();
                 },
-                selected: !!(selectedNode && selectedNode.type === 'root')
+                selected: !!(selectedNode && selectedNode.type === 'root'),
+                root: true
             }
         );
         // Scroll HTML tree viewer to the selected node's code line. The id is
@@ -33419,6 +33505,8 @@ const StyleDesigner = (function () {
         line.className = 'sd-ht-row' + (isSelected ? ' sd-ht-selected' : '');
         line.style.paddingLeft = (depth * 14 + 4) + 'px';
         line.dataset.nid = node._id;
+        // Its chevron is checked against the node by _sdHtmlTreeSelectInPlace().
+        line._sdNode = node;
 
         // Chevron
         var chevHtml = '';
@@ -92043,6 +92131,9 @@ const StyleDesigner = (function () {
 
     function openIconModal(inputEl) {
         currentIconInput = inputEl;
+        // The picker (some 2,000 icons) is built the first time it opens,
+        // not when the editor starts.
+        if (!document.getElementById('sdIconModal')) initIconModal();
         var mHtml = document.getElementById('sdIconModal');
         if (window.pgUI) {
             pgUI.dialog.show(mHtml);
@@ -99057,7 +99148,6 @@ const StyleDesigner = (function () {
             initRightPanel();
             initAssetsPanel();
             initBottomPanel();
-            initIconModal();
             initKeyboard();
             initZoomBlock();
             initPanelResizes();
