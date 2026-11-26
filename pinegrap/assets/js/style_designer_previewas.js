@@ -656,10 +656,12 @@ StyleDesigner.definePart('previewas', function (K) {
         } else if (name === 'stop') {
             stop(true);
         } else if (name === 'unlist') {
-            if (running()) stop(false);
+            // Closed while it draws: the page as chosen again.
+            var busy = running();
+            if (busy) stop(false);
             S.run = null;
             clearMarks();
-            render();
+            if (busy) choose(function () {}); else render();
         }
     }
 
@@ -877,6 +879,12 @@ StyleDesigner.definePart('previewas', function (K) {
         next(S.run.token);
     }
 
+    // The document the Preview window holds now (the bar may not be bound
+    // to it yet).
+    function winDoc() {
+        try { return S.win && !S.win.closed ? S.win.document : null; } catch (e) { return null; }
+    }
+
     function docWidth() {
         try { return S.doc ? S.doc.documentElement.clientWidth : 0; } catch (e) { return 0; }
     }
@@ -914,7 +922,7 @@ StyleDesigner.definePart('previewas', function (K) {
             Object.keys(ans.widgets).forEach(function (id) {
                 wrapped[id] = '<!--pg-pva-w:' + id + '-->' + String(ans.widgets[id] == null ? '' : ans.widgets[id]) + '<!--/pg-pva-w-->';
             });
-            var was = S.doc;
+            var was = winDoc();
             if (!K._sdPvAsShow(K._sdPreviewDocHtml(wrapped, ans.raw))) { stop(false); return; }
             loaded(was).then(function (d) {
                 if (S.run !== R || R.token !== token) return;
@@ -938,6 +946,7 @@ StyleDesigner.definePart('previewas', function (K) {
                 if (!d) { resolve(null); return; }
                 var ready = d !== was && String(d.URL || '').indexOf('blob:') === 0 && d.readyState === 'complete';
                 if (!ready && ++tries < 160) { setTimeout(poll, 50); return; }
+                if (d === was || String(d.URL || '').indexOf('blob:') !== 0) { resolve(null); return; }
                 var fonts = (d.fonts && d.fonts.ready) ? d.fonts.ready : Promise.resolve();
                 var t = setTimeout(function () { resolve(d); }, 1500);
                 fonts.then(function () {
@@ -1100,7 +1109,7 @@ StyleDesigner.definePart('previewas', function (K) {
         render();
         K._sdPvAsAsk(c).then(function (ans) {
             if (S.opening !== mine || S.run !== R) return;
-            var was = S.doc;
+            var was = winDoc();
             if (!ans || !K._sdPvAsShow(K._sdPreviewDocHtml(ans.widgets, ans.raw))) { failed(); return; }
             S.setups = ans.setups || S.setups;
             loaded(was).then(function (d) {
