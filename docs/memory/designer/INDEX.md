@@ -506,6 +506,7 @@
 - designer-options-multiple.md: The Options panel with several elements selected (#10468): identity row with the count, tabs by kind, "— Multiple —" per control, the ring dot, the counts, a change written to all as one undo step
 - designer-options-narrow.md: The Options panel under 300 px (drawn at 240, owner 2026-11-17): widths, the identity row, tabs, wrapped labels, stacked rows, quick strip, closed sections, the size chooser, shorter texts [decision: here]
 - designer-options-overview.md: Start file of the designer-options-* files: what the Options panel is, what binds it (plan designer-panels, K1 to K12), its parts by their on-screen label, which file holds what, how a part is added [decision: here]
+- designer-options-page-transition.md: "Page transition" (Settings, Theme) and "Keep across pages" (Interactions) as built in DO20: the page entry in the variables file, the rules, the page-only save, the names
 - designer-options-panel-names.md: How controls of the visual editor's Options/Appearance panel get their accessible names (one naming pass), keyboard section headers, per-screen-size toggles, Styles inspector names
 - designer-options-panel-search.md: The label filter of the Options panel's search box (filterPropertiesPanel()): what it hides, sections without rows, the No option matches line, Turkish İ and capitals
 - designer-options-pointer.md: Cursor and "Let clicks through" under Shadow and effect's "More" as built (DO17): the rows, what they write, Normal only, the canvas, the part, the cost
@@ -824,6 +825,7 @@
 - passkey-widget-list.md: Passkeys in the designed account_security widget (PR #1843, #2279): the list, row tokens, flags, rename/remove, the add form with the e-mailed code, device rows
 - photo-gallery-widget.md: Photo Gallery widget and classic page: folder setting, ?folder_id= and the Recycle Bin, photos and alt, tokens, flags, Where used, what is left out. [decision: decisions-made-widgets.md]
 - preview-as-bar.md: The "Preview as" bar in the Preview window (PW3): the part previewas, the core hooks, the choice kept per page, what each chooser sends, the lines under the bar, the narrow sheet
+- preview-as-check.md: "Check all cases" of the Preview as built (PW4): where it starts, which cases it draws, how each is measured in the Preview's own window, the list, a row opening its case, the core hooks
 - product-name-sku-and-canvas-placeholders.md: Which product token is the SKU and which the store name, their Bind Data labels and canvas samples; the placeholder of a value with no sample; a bound section's canvas name (#4200)
 - product-questions-output.md: Product questions outside the widget: the asker's mail when answered, API kind and answer_of, the Question/Answer JSON-LD on the Product, the templates' questions widget
 - product-questions.md: Product questions on the comments system: kind question/answer and answer_of, the widget Shows choice and its own claim, the answer box, the unanswered filter [decision: decisions-made-product-19.md]

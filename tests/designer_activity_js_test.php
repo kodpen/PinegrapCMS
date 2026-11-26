@@ -202,3 +202,31 @@ function test_designer_activity_js_near_the_end()
 
 	pg_assert_same(array(false, true, true), $res);
 }
+
+// A version whose version before is gone (before_no 0) opens nothing; the
+// left side of Compare is the version before the reader named.
+function test_designer_activity_js_row_opens_only_with_a_version_before()
+{
+	$res = designer_activity_js_test_node('out = [A.opens({ kind: "version", page_id: 4, revision_no: 31, before_no: 0 }),'
+		. ' A.opens({ kind: "version", page_id: 4, revision_no: 31, before_no: 30 }), A.before({ kind: "version", page_id: 4, revision_no: 31, before_no: 30 }),'
+		. ' A.before({ kind: "version", page_id: 4, revision_no: 12 }), A.before({ kind: "version", page_id: 4, revision_no: 31, before_no: 0 })];');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array(false, true, 30, 11, 0), $res);
+}
+
+// The empty states only when nothing older remains: a page that came back
+// empty with more after it is read on, never "Nothing has happened".
+function test_designer_activity_js_blank()
+{
+	$res = designer_activity_js_test_node('out = [A.blank(0, false, false), A.blank(0, false, true), A.blank(0, true, false), A.blank(0, true, true), A.blank(3, false, false)];');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array('none', 'narrowed', '', '', ''), $res);
+}

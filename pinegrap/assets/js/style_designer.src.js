@@ -26430,8 +26430,7 @@ const StyleDesigner = (function () {
     // The stored curves, [{ key, name, value }]: from the model the
     // Variables tab holds, else the saved one (sdDesign.curves).
     function _sdCurves() {
-        var input = document.getElementById('sd-style-variables'), m = null;
-        try { m = input && input.value ? JSON.parse(input.value) : null; } catch (e) { m = null; }
+        var m = _sdVarsInputModel();
         var list = m ? m.custom || [] : (_design && _design.curves) || [];
         return list.filter(function (c) { return (!m || c.kind === 'curve') && _sdCurveNums(String(c.value)); });
     }
@@ -38869,6 +38868,48 @@ const StyleDesigner = (function () {
         return _sdSectKey(sect('bi-stars', _sdT('Interactions'), '<div data-sd-fx-body></div>'), 'interactions');
     }
 
+    // "Keep across pages" under Interactions (the part 'pagetrans'): the
+    // element's custom style body, which holds its view-transition-name,
+    // the classes of every page to list the design's names, and the
+    // writer. null when the element cannot have its own style.
+    function _sdKeepHost(n) {
+        if (typeof PgCustomStyle === 'undefined' || !window.PgUserStyles || _sdCustomStyleOff(n)) return null;
+        var kind = (n.type === 'content' && n.props.contentType) ? n.props.contentType : n.type;
+        kind = { image: 'picture', heading: 'title', paragraph: 'text' }[kind] || kind;
+        var section = '';
+        for (var cur = n, guard = 0; cur && guard < 500 && !section; guard++) {
+            var up = _sdAnyParent(cur);
+            cur = up ? up.parent : null;
+            if (cur && cur.type === 'semantic' && cur.props) section = cur.props.id || '';
+        }
+        var kh = {
+            kind: kind,
+            section: section,
+            inList: _sdFocusInLoop(n),
+            body: function () {
+                var cls = PgCustomStyle.classOf(n.props.cssClass);
+                return cls ? PgCustomStyle.body(_userStylesGet(), cls) : '';
+            },
+            bodyOf: function (cls) { return PgCustomStyle.body(_userStylesGet(), cls); },
+            classes: function () {
+                var out = [];
+                _pgAllPageTrees().forEach(function (pt) {
+                    var here = !pt.page || pt.page.key === _activeKey;
+                    var name = pt.page ? (pt.page.page_name || '') : '';
+                    _frWalk(pt.tree, function (x) {
+                        var cls = x.props ? PgCustomStyle.classOf(x.props.cssClass) : '';
+                        if (cls) out.push({ cls: cls, page: name, here: here });
+                    });
+                });
+                return out;
+            },
+            write: function (body) { _sdWriteCustomStyle(n, body); },
+            design: function () { return _sdPageTransHost(null); }
+        };
+        kh.draw = function (box) { _sdPartCall('pagetrans', 'keep', [box, kh]).catch(_sdPartFailed); };
+        return kh;
+    }
+
     // Fills the section's body once the panel is drawn. A collapsed
     // section waits for its header to open it before the part is loaded
     // for the first time; once the part has run it fills at once. A rule
@@ -38878,7 +38919,7 @@ const StyleDesigner = (function () {
         var body = panel ? panel.querySelector('[data-sd-fx-body]') : null;
         if (!body || !_sdFxTakes(n)) return;
         var fill = function () {
-            _sdPartCall('interactions', 'fill', [body, n]).then(function () {
+            _sdPartCall('interactions', 'fill', [body, n, _sdKeepHost(n)]).then(function () {
                 var srch = document.getElementById('sd-props-search');
                 if (body.isConnected && srch && srch.value.trim()) filterPropertiesPanel(srch.value.toLowerCase().trim());
             }).catch(_sdPartFailed);
@@ -78679,6 +78720,53 @@ const StyleDesigner = (function () {
         document.dispatchEvent(new CustomEvent('pg-design-theme-change'));
     }
 
+    // The hidden input style_variables as posted: the Variables tab's whole
+    // model, or { page_only, page } when only "Page transition" changed
+    // (pg_design_variables_page_only()); null when nothing changed.
+    function _sdVarsInputRaw() {
+        var input = document.getElementById('sd-style-variables');
+        try { return input && input.value ? JSON.parse(input.value) : null; } catch (e) { return null; }
+    }
+    // The Variables tab's model, null while the input holds none.
+    function _sdVarsInputModel() {
+        var m = _sdVarsInputRaw();
+        return (m && !m.page_only) ? m : null;
+    }
+
+    // "Page transition" (Settings, Theme): what the part 'pagetrans' reads
+    // and writes. The saved choice is in the design's variables file; a
+    // change goes into the Variables tab's model when it holds one, else
+    // into a page-only model the save sets on the stored file.
+    function _sdPageTransHost(el) {
+        var th = _sdThemes() || {};
+        return {
+            el: el,
+            url: th.variables || '',
+            posted: function () {
+                var m = _sdVarsInputRaw();
+                return m ? { page: m.page || null } : null;
+            },
+            set: function (page) {
+                var input = document.getElementById('sd-style-variables');
+                if (!input) return;
+                var m = _sdVarsInputModel();
+                if (m) { if (page) m.page = page; else delete m.page; }
+                else m = { page_only: 1, page: page || null };
+                input.value = JSON.stringify(m);
+                document.dispatchEvent(new CustomEvent('pg-design-theme-change'));
+            },
+            easeHtml: _sdEaseHtml,
+            easeWire: _sdEaseWire,
+            easeClean: _sdEaseClean,
+            lookMs: _sdTransLookMs
+        };
+    }
+    function _sdPageTransFill(host) {
+        var el = host ? host.querySelector('[data-sd-pagetrans]') : null;
+        if (!el) return;
+        _sdPartCall('pagetrans', 'fill', [_sdPageTransHost(el)]).catch(_sdPartFailed);
+    }
+
     function _sdThemeFind(kind, key) {
         var th = _sdThemes();
         if (!th || !key) return null;
@@ -79036,10 +79124,14 @@ const StyleDesigner = (function () {
         }
         h += '</div>';
 
+        // ── Page transition: drawn by the part 'pagetrans' ──
+        h += '<div class="sd-th-sec" data-sd-pagetrans></div>';
+
         h += '<p class="sd-th-note"><span class="bi bi-info-circle me-1"></span>' +
              esc(_sdT('The look and the palette apply to every page of the design and never change the pages themselves: switch as often as you like. The site shows the choice after you publish.')) + '</p>';
         host.innerHTML = h;
         _sdThemeBind(host);
+        _sdPageTransFill(host);
     }
 
     function _sdThemeLookBuilderHtml() {
@@ -79155,10 +79247,17 @@ const StyleDesigner = (function () {
             stored: !!th.variables,
             look: function () { return _sdThemeValue('look'); },
             palette: function () { return _sdThemeValue('palette'); },
-            model: function () {
-                try { return input && input.value ? JSON.parse(input.value) : null; } catch (e) { return null; }
+            model: _sdVarsInputModel,
+            // A page transition changed before the tab ran rides along.
+            setModel: function (m) {
+                if (!input) return;
+                var raw = _sdVarsInputRaw();
+                if (raw && raw.page_only) {
+                    if (!m) return;
+                    if (raw.page) m.page = raw.page; else delete m.page;
+                }
+                input.value = m ? JSON.stringify(m) : '';
             },
-            setModel: function (m) { if (input) input.value = m ? JSON.stringify(m) : ''; },
             tryCss: function (css) { _sdThemeTry.variables = css || ''; _sdThemeApply(); _sdLivePreviewSchedule(); },
             // Whether the canvas reads a variables stylesheet: the saved
             // file or one being tried.
@@ -79804,7 +79903,7 @@ const StyleDesigner = (function () {
         _sdRecEdit.want = null;
         var raw = _sdPreviewDocHtml();
         var payload = _sdPvAsApply(_sdPreviewWidgetPayload(raw));
-        if (!payload) { _sdShowPreview(_sdPreviewDocHtml(null, raw)); return; }
+        if (!payload) { _sdPvAs.check = false; _sdShowPreview(_sdPreviewDocHtml(null, raw)); return; }
 
         // The window opens now, inside the click - one opened when the
         // widgets arrive would meet the pop-up blocker - and waits for them.
@@ -84660,8 +84759,10 @@ const StyleDesigner = (function () {
     // designer/preview_widgets; an answer whose widgets offer a choice loads
     // the part, which draws the bar into the Preview's document. A page
     // that offers none never loads it. `asked`: a refresh the bar asked for
-    // is on its way.
-    var _sdPvAs = { asked: false, setups: null };
+    // is on its way; `running`: "Check all cases" is drawing its cases (the
+    // live preview waits); `check`: the palette asked for a run before the
+    // Preview had answered.
+    var _sdPvAs = { asked: false, setups: null, running: false, check: false };
 
     // The browser key of the page's choice: the design and the saved page,
     // or the tab before its first save.
@@ -84718,10 +84819,11 @@ const StyleDesigner = (function () {
     // The choice into a preview_widgets body: the page's visitor and case,
     // each widget's own record. The server reads it back against what the
     // page offers (pg_preview_as_choice()). It takes one visitor: one who
-    // is signed in or a member wins over the visit.
-    function _sdPvAsApply(payload) {
+    // is signed in or a member wins over the visit. `given`: a choice of
+    // "Check all cases" in place of the kept one.
+    function _sdPvAsApply(payload, given) {
         if (!payload) return payload;
-        var c = _sdPvAsChoice();
+        var c = given || _sdPvAsChoice();
         payload.preview_as = {
             case: c.case,
             visitor: c.who !== 'signed_out' ? c.who : c.visit,
@@ -84748,8 +84850,60 @@ const StyleDesigner = (function () {
             return !!s.source || (Array.isArray(s.cases) && s.cases.length > 1);
         });
         if (!offers && setups && _sdPvAsAudience()) offers = true;
+        var check = _sdPvAs.check && !!setups;
+        if (setups) _sdPvAs.check = false;
         if (!offers && !_sdPartLoaded('previewas')) return;
-        _sdPartCall('previewas', 'answer', [_sdPreviewWin, setups || null, _sdPvAsAudience()]).catch(_sdPartFailed);
+        _sdPartCall('previewas', 'answer', [_sdPreviewWin, setups || null, _sdPvAsAudience()]).then(function () {
+            if (check) _sdPartApis.previewas.check();
+        }).catch(_sdPartFailed);
+    }
+
+    // Whether the active page holds a system widget, the only thing a case
+    // changes (the command palette's "Check all cases").
+    function _sdPvAsHasWidget() {
+        var found = false;
+        (function walk(n) {
+            if (found || !n || typeof n !== 'object') return;
+            if (Array.isArray(n)) { n.forEach(walk); return; }
+            if (n.type === 'shared_ref' && n.props && (_sharedCache[parseInt(n.props.sharedId, 10)] || {}).system_region_config) { found = true; return; }
+            if (n.children) walk(n.children);
+        })(tree);
+        return found;
+    }
+
+    // "Check all cases" from the command palette: the Preview opens first
+    // when it is closed and the run starts once it has answered.
+    function _sdPvAsCheck() {
+        if (_sdLivePreviewOpen() && _sdPartLoaded('previewas')) {
+            _sdPvAs.check = false;
+            _sdPartApis.previewas.check();
+            return;
+        }
+        _sdPvAs.check = !_sdLivePreviewOpen();
+        if (_sdPvAs.check) openPreview();
+    }
+
+    // One case of "Check all cases" drawn by the server without keeping
+    // it: a promise of {widgets: id => markup, setups, raw}, null when the
+    // server failed or the page has no widget.
+    function _sdPvAsAsk(c) {
+        var raw = _sdPreviewDocHtml();
+        var payload = _sdPvAsApply(_sdPreviewWidgetPayload(raw), c);
+        if (!payload) return Promise.resolve(null);
+        return _pgApiPost('preview_widgets', payload).then(function (res) {
+            return (res && res.status === 'success' && res.html) ? { widgets: res.html, setups: res.setups || {}, raw: raw } : null;
+        }, function () { return null; });
+    }
+
+    // A drawn case into the Preview's own window; false when it is closed.
+    function _sdPvAsShow(html) {
+        if (!_sdLivePreviewOpen()) return false;
+        return !!_sdShowPreview(html, _sdPreviewWin);
+    }
+
+    // A run starts or ends: the live preview waits while it draws.
+    function _sdPvAsRunning(on) {
+        _sdPvAs.running = !!on;
     }
 
     // The records the "Record" chooser lists for widget `sid` whose name
@@ -85018,6 +85172,7 @@ const StyleDesigner = (function () {
         _sdLive.timer = 0;
         if (!_sdLivePreviewOpen()) return;
         if (_sdLive.busy > 0) { _sdLive.again = true; return; }
+        if (_sdPvAs.running) { _sdLive.again = true; return; }
         var raw = _sdPreviewDocHtml();
         var payload = _sdPvAsApply(_sdPreviewWidgetPayload(raw));
         var finish = function (widgetHtml, requested, keep) {
@@ -91041,9 +91196,7 @@ const StyleDesigner = (function () {
             look: _sdThemeValue('look'),
             palette: _sdThemeValue('palette'),
             colorMode: _sdColorMode(),
-            model: function () {
-                try { return input && input.value ? JSON.parse(input.value) : null; } catch (e) { return null; }
-            },
+            model: _sdVarsInputModel,
             button: document.getElementById('sd-preview-menu-btn'),
             // A name of the sheet: its variable in Settings, Theme,
             // Variables, its fold open and its row marked.
@@ -92669,6 +92822,12 @@ const StyleDesigner = (function () {
         if (_pgPrototypeShareReady()) {
             items.splice(items.findIndex(function (it) { return it.id === 'act_preview'; }) + 1, 0,
                 { id: 'act_phone', label: _sdT('Preview on a phone'), icon: 'bi-phone', action: function () { _sdPhoneOpen(); } });
+        }
+
+        // "Check all cases" of the Preview, for a page with a system widget.
+        if (_sdPvAsHasWidget()) {
+            items.splice(items.findIndex(function (it) { return it.id === 'act_preview'; }) + 1, 0,
+                { id: 'act_check_cases', label: _sdT('Check all cases'), icon: 'bi-list-check', meta: _sdT('Preview'), action: function () { _sdPvAsCheck(); } });
         }
 
         // ── Assets-panel commands (only when the panel is mounted) ──
@@ -98653,9 +98812,12 @@ const StyleDesigner = (function () {
             _sdProtoCommentsOpen: _sdProtoCommentsOpen,
             _sdProtoCommentsPane: _sdProtoCommentsPane,
             _sdProtoTabs: _sdProtoTabs,
+            _sdPvAsAsk: _sdPvAsAsk,
             _sdPvAsChoice: _sdPvAsChoice,
             _sdPvAsChoose: _sdPvAsChoose,
             _sdPvAsRecords: _sdPvAsRecords,
+            _sdPvAsRunning: _sdPvAsRunning,
+            _sdPvAsShow: _sdPvAsShow,
             _sdRecEditBar: _sdRecEditBar,
             _sdRecEditHtml: _sdRecEditHtml,
             _sdRecEditMarks: _sdRecEditMarks,

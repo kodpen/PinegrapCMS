@@ -34,8 +34,9 @@
  * page size, so the merge can tell whether more remain.
  *
  * Rights: the designer roles see every event of the design; a content
- * editor (Manager, User) sees the events of the pages they may edit and no
- * design-level event (a share link, a design file).
+ * editor (Manager, User) sees the versions of the pages they may edit and
+ * their moves on and off the site, nothing else (no share link, answer,
+ * comment, design file, design or component line).
  *
  * Loaded on demand by the panel action that serves the tab.
  *
@@ -197,6 +198,54 @@ function pg_designer_activity_merge($lists, $limit)
 }
 
 /**
+ * One page of events this person may see. Pure.
+ *
+ * The stores are cut to a page before the events of pages the person may
+ * not open are taken out, so a content editor's page could come back short
+ * or empty while their own events lie further back. This reads on from the
+ * cursor until a page of visible events is found or nothing older remains,
+ * at most `$rounds` reads; a page cut short names the cursor of its last
+ * event, so the next page starts right after it.
+ *
+ * @param callable      $read    function (string before): array(events, more, next)
+ * @param callable|null $visible function (array events): array, null for all
+ * @param int           $limit
+ * @param string        $before  the cursor of the page before ('' for the first)
+ * @param int           $rounds
+ * @return array array(events, bool more, next cursor or '')
+ */
+function pg_designer_activity_fill($read, $visible, $limit, $before = '', $rounds = 10)
+{
+    $limit  = max(1, (int) $limit);
+    $events = array();
+    $more   = false;
+    $next   = '';
+
+    for ($round = 0; $round < max(1, (int) $rounds); $round++) {
+        list($page, $more, $next) = $read((string) $before);
+        $events = array_merge($events, $visible ? array_values((array) $visible($page)) : array_values((array) $page));
+
+        if (count($events) >= $limit) {
+            if (count($events) > $limit) {
+                $events = array_slice($events, 0, $limit);
+                $more = true;
+                $next = pg_designer_activity_cursor($events[$limit - 1]);
+            }
+
+            break;
+        }
+
+        if (!$more || $next === '') {
+            break;
+        }
+
+        $before = $next;
+    }
+
+    return array($events, $more, $more ? $next : '');
+}
+
+/**
  * The sentence of an action, after the person's name: "published Home".
  * '' for an action the reader does not know.
  *
@@ -334,7 +383,8 @@ function _pg_designer_activity_event($store, $id, array $fields)
  *
  * @param array $row revision_id, page_id, revision_no, source, created_at, user_id,
  *                   user_username, page_name, page_folder, editor (the applied
- *                   content change's editor, '' for none)
+ *                   content change's editor, '' for none), oldest_no (the page's
+ *                   oldest kept revision; 1 when not given)
  * @return array
  */
 function pg_designer_activity_from_revision($row)
@@ -346,6 +396,11 @@ function pg_designer_activity_from_revision($row)
     }
 
     $editor = (string) ($row['editor'] ?? '');
+    $no     = (int) $row['revision_no'];
+    // The version before, the left side of Compare: 0 when this is the
+    // first, or when the page's retention trimmed the one before it.
+    $oldest = isset($row['oldest_no']) ? (int) $row['oldest_no'] : 1;
+    $before = ($no - 1 >= max(1, $oldest)) ? $no - 1 : 0;
 
     return _pg_designer_activity_event('revision', $row['revision_id'], array(
         'at'          => (int) $row['created_at'],
@@ -353,7 +408,8 @@ function pg_designer_activity_from_revision($row)
         'action'      => ($editor !== '') ? 'applied' : $source,
         'page_id'     => (int) $row['page_id'],
         'folder_id'   => (int) $row['page_folder'],
-        'revision_no' => (int) $row['revision_no'],
+        'revision_no' => $no,
+        'before_no'   => $before,
         'user_id'     => (int) $row['user_id'],
         'who'         => pg_designer_activity_who($row['user_id'], $row['user_username']),
         'editor'      => $editor,
@@ -673,6 +729,13 @@ function pg_designer_activity_visible($events, $full, $may_page)
     foreach ((array) $events as $event) {
         $page_id = (int) $event['page_id'];
 
+        // Only a page's versions and its moves on and off the site: a
+        // customer's answer or comment belongs to the prototype review,
+        // which is the designer roles' alone.
+        if (!in_array((string) ($event['kind'] ?? ''), array('version', 'page'), true)) {
+            continue;
+        }
+
         if ($page_id > 0 && $may_page($page_id, (int) $event['folder_id'])) {
             $out[] = $event;
         }
@@ -861,7 +924,6 @@ function pg_designer_activity_read($style_id, $user, $before = '', $filter = nul
     require_once(PG_FUNCTIONS_DIR . '/includes/designer_access.php');
 
     $style_id = (int) $style_id;
-    $cursor   = pg_designer_activity_cursor_parse((string) $before);
     $full     = pg_designer_is_full($user);
     $over     = PG_DESIGNER_ACTIVITY_PAGE + 1;
     $empty    = array('events' => array(), 'more' => false, 'next' => '');
@@ -900,7 +962,33 @@ function pg_designer_activity_read($style_id, $user, $before = '', $filter = nul
 
     $own_in = _pg_designer_activity_in(array_keys($own));
     $all_in = _pg_designer_activity_in(array_keys($pages));
-    $lists  = array();
+
+    $read = function ($before) use ($style_id, $full, $own, $own_in, $all_in, $over, $page_of, $where) {
+        return _pg_designer_activity_page($style_id, $full, $own, $own_in, $all_in,
+            pg_designer_activity_cursor_parse($before), $over, $page_of, $where);
+    };
+    $visible = $full ? null : function ($events) use ($may_page) {
+        return pg_designer_activity_visible($events, false, $may_page);
+    };
+
+    list($events, $more, $next) = pg_designer_activity_fill($read, $visible, PG_DESIGNER_ACTIVITY_PAGE, (string) $before);
+
+    return array(
+        'events' => array_map('pg_designer_activity_public', $events),
+        'more'   => $more,
+        'next'   => $next,
+    );
+}
+
+/**
+ * One merged page of the stores' events after the cursor, before the
+ * person's rights are applied.
+ *
+ * @return array array(events, bool more, next cursor or '')
+ */
+function _pg_designer_activity_page($style_id, $full, $own, $own_in, $all_in, $cursor, $over, $page_of, $where)
+{
+    $lists = array();
 
     if ($own && $where('revision') !== false && pg_page_revisions_ready()) {
         $lists[] = _pg_designer_activity_revisions($style_id, $own_in, $cursor, $over, $page_of, $where('revision'));
@@ -918,7 +1006,7 @@ function pg_designer_activity_read($style_id, $user, $before = '', $filter = nul
         }
     }
 
-    if ($own && $where('verdict') !== false && pg_proto_approval_ready()) {
+    if ($full && $own && $where('verdict') !== false && pg_proto_approval_ready()) {
         $rows = db_items(
             "SELECT v.id, v.page_id, v.verdict, v.author_name, v.created_at
              FROM prototype_verdicts AS v
@@ -938,7 +1026,7 @@ function pg_designer_activity_read($style_id, $user, $before = '', $filter = nul
         $lists[] = array_filter($list);
     }
 
-    if ($own && $where('comment') !== false && pg_proto_comments_ready()) {
+    if ($full && $own && $where('comment') !== false && pg_proto_comments_ready()) {
         $rows = db_items(
             "SELECT c.id, c.page_id, c.user_id, c.author_name, c.created_at, user.user_username
              FROM prototype_comments AS c
@@ -959,13 +1047,7 @@ function pg_designer_activity_read($style_id, $user, $before = '', $filter = nul
         $lists[] = $list;
     }
 
-    list($events, $more, $next) = pg_designer_activity_merge($lists, PG_DESIGNER_ACTIVITY_PAGE);
-
-    return array(
-        'events' => array_map('pg_designer_activity_public', pg_designer_activity_visible($events, $full, $may_page)),
-        'more'   => $more,
-        'next'   => $next,
-    );
+    return pg_designer_activity_merge($lists, PG_DESIGNER_ACTIVITY_PAGE);
 }
 
 /**
@@ -992,12 +1074,22 @@ function _pg_designer_activity_revisions($style_id, $own_in, $cursor, $over, $pa
         return array();
     }
 
+    $pages_in = _pg_designer_activity_in(array_column($rows, 'page_id'));
+
+    // Each page's oldest kept revision: the retention trims the oldest, so
+    // the version before the oldest kept one is gone.
+    $oldest = array();
+
+    foreach ((array) db_items("SELECT page_id, MIN(revision_no) AS oldest_no FROM page_revisions
+                               WHERE page_id IN ($pages_in) GROUP BY page_id") as $kept) {
+        $oldest[(int) $kept['page_id']] = (int) $kept['oldest_no'];
+    }
+
     // The applied content changes of these pages only, by page.
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/content_proposals.php');
     $changes = array();
 
     if (pg_content_proposals_ready()) {
-        $pages_in = _pg_designer_activity_in(array_column($rows, 'page_id'));
 
         foreach ((array) db_items(
             "SELECT p.page_id, p.after_hash, p.steps, p.decided_at, user.user_username
@@ -1015,6 +1107,7 @@ function _pg_designer_activity_revisions($style_id, $own_in, $cursor, $over, $pa
         $row['editor'] = isset($changes[$page_id]) ? pg_page_revisions_editor($row, $changes[$page_id]) : '';
         $row['page_name'] = $page_of($page_id, 'page_name');
         $row['page_folder'] = (int) $page_of($page_id, 'page_folder');
+        $row['oldest_no'] = isset($oldest[$page_id]) ? $oldest[$page_id] : 1;
         $events[] = pg_designer_activity_from_revision($row);
     }
 

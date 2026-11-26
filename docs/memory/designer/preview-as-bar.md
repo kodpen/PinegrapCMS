@@ -26,4 +26,4 @@ module: designer
 - Its switch or link last in the bar's right end and as a row of the narrow sheet (`K._sdRecEditHtml()`), the document handed over on each `render()` (`K._sdRecEditSync()`), and `note()`/`redraw()` for its line (`record-edit-in-place-preview.md`).
 
 ## What is left for later steps?
-- "Check all cases" (PW4), the "Member of a group" rows (with access rules), and signed-in drawing (PW2b to PW2d read the visitor).
+- The "Member of a group" rows (with access rules). "Check all cases" is in `preview-as-check.md`.

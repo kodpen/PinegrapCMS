@@ -181,7 +181,7 @@ StyleDesigner.definePart('interactions', function (K) {
     // and redraws the panel, whose rows follow the effect and trigger; a
     // typed number is one undo step per focus and redraws the panel once
     // it is left, showing the value kept.
-    function _sdFxFill(body, n) {
+    function _sdFxFill(body, n, keep) {
         body.innerHTML = _sdFxRows(n);
         var play = body.querySelector('[data-fx-play]');
         if (play) play.addEventListener('click', function () { _sdFxReplay(n); });
@@ -215,6 +215,14 @@ StyleDesigner.definePart('interactions', function (K) {
             });
             if (typed) el.addEventListener('change', function () { K.render(); });
         });
+        // "Between pages": "Keep across pages", drawn by the part
+        // 'pagetrans' when the element can have its own style.
+        if (keep) {
+            var box = document.createElement('div');
+            box.setAttribute('data-fx-keep', '');
+            body.appendChild(box);
+            keep.draw(box);
+        }
     }
 
     return {
