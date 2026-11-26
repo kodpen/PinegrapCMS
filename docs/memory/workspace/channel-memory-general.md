@@ -10,7 +10,8 @@ description: A memory record's project (ws_channel_memory.project) and the gener
 
 ## Which routes take them?
 - Panel actions take `general=1` (`ws_memory_action_channel()`) and `project`; `ws_memory_list` with `general=1` answers the general part alone. API: `workspace.memory.get`, `.update`, `.delete` reach a general record (`general` true, `channel_id` 0; 404 for whoever may not keep it); `.create` and `.update` take `project`.
-- `workspace.memory.general.list` (`GET /workspace/memory/general`; `expired`, `tag`, `project`) and `workspace.memory.general.create` (`POST`, 201): 403 for an owner who may post in no agent channel, 503 before step 11.0.236. `{id}` of `GET /workspace/memory/{id}` takes digits only, so the paths never clash. All are MCP tools and rehearse.
+- `workspace.memory.general.list` (`GET /workspace/memory/general`; `expired`, `tag`, `project`) and `workspace.memory.general.create` (`POST`, 201): 403 for an owner who may post in no agent channel, 503 before step 11.0.236.
+- The application Claude works through reaches the general memory only while Claude may be asked in an agent channel its owner may post in (`ws_api_memory_general_can()`, `ws_memory_general_can($viewer, true)`); otherwise 403 on the general routes and 404 on a general record (#11790). `{id}` of `GET /workspace/memory/{id}` takes digits only, so the paths never clash. All are MCP tools and rehearse.
 
 ## How does a channel's record move to the general memory?
 - `workspace.memory.move_general` (`POST /workspace/memory/{id}/general`): same id, project, tags and text, `channel_id` set to 0 (`ws_memory_move_general()`). `ws_memory_move_check()` over the pure `ws_memory_move_fault()`: only an agent channel's record (422 otherwise, and for one already general), moved by a poster of that channel who keeps the general memory (403). The Memory tab's Move to the general memory button is the panel action `ws_memory_move` over the same check (#10425).
