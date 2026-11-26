@@ -18,7 +18,7 @@ description: Decisions made, product part 106 (2026-11-24 on): seven more design
 
 ## Are the screens drawn first? (owner, 2026-11-24, two choices)
 - Asked how "çizimleri de önce tasarlansın" sits with his rule of 2026-11-20 that no step waits for a drawing, he chose "Çizilsin, onay beklemesin": the design session draws a plan's screens first and the sheet is the step's model; nobody waits for his yes, and no screenshot is sent to him or the architect to approve.
-- Asked how far, he chose "Yedi yeni + başlamamış ekranlar": the seven plans above and the screen steps not yet started of `designer/design-variables-overview.md` (plan done), `plans/designer-sketch.md` and `designer/designer-start-import.md`. SK2 and ST2, started that day, finish by their description; what their sheet shows otherwise becomes a fix step.
+- Asked how far, he chose "Yedi yeni + başlamamış ekranlar": the seven plans above and the screen steps not yet started of `designer/design-variables-overview.md` (plan done), `designer/sketch-overview.md` (plan done) and `designer/designer-start-import.md`. SK2 and ST2, started that day, finish by their description; what their sheet shows otherwise becomes a fix step.
 - So for these plans a screen step waits for its sheet's merge (`plans/designer-drawings.md`). Everywhere else the rule of `screen-described-in-plan.md` stands as it was.
 - What he sees on a sheet and wants changed after a step was built is a fix step.
 
