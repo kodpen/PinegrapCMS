@@ -91,3 +91,12 @@ function test_workspace_calls_hunt_a_silent_call_ends_when_it_was_last_heard()
 	pg_assert_contains("ws_call_end_row(\$call, 0, ws_call_heard_at(\$call, (int) \$call['last_signal_at'], (int) \$call['last_join_at']))", $sweep, 'a call ended by the clean-up, maybe hours after both tabs closed, writes the length it really had in its line, not up to the clean-up');
 	pg_assert_contains('ws_call_end_row($call, 0, $heard[$call_id])', $sweep, 'a call whose last member went unheard ends when that member was last heard');
 }
+
+function test_workspace_calls_hunt_the_api_never_reports_a_dead_call()
+{
+	$get = workspace_calls_hunt_test_function('includes/workspace/api_calls.php', 'ws_api_channel_call_get');
+
+	pg_assert_contains('ws_calls_sweep()', $get, 'every tab closed without its leave and no Workspace open since: the clean-up runs before the read, so the call is not reported on with its people for ever');
+	pg_assert_contains("ws_calls_sweep();\n        \$call = \$call ? ws_call_live((int) \$channel['id']) : null;", $get, 'and the live call is read again after it');
+	pg_assert_contains('ws_calls_live_somewhere()', $get, 'and only while a call may be live, so an idle site asks nothing more');
+}
