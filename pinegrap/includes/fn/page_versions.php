@@ -371,7 +371,12 @@ function pg_page_version_start($live_page_id, $page, $user)
     $experiment_open = ($live_id > 0) && pg_experiment_sheet_ready()
         && db_value("SELECT id FROM experiments WHERE page_id = '$live_id' AND status <> 'ended' LIMIT 1");
 
-    $refusal = pg_page_version_start_refusal(pg_page_bundle_user_may($user), (bool) $live, (bool) $experiment_open);
+    // The folder right is asked here too: the copy (duplicate_page()) ends
+    // the request on a refused folder, which would leave the bundle behind.
+    $may = pg_page_bundle_user_may($user)
+        && (!$live || pg_folder_edit_access((int) $live['page_folder'], (int) $user['id'], (int) $user['role']));
+
+    $refusal = pg_page_version_start_refusal($may, (bool) $live, (bool) $experiment_open);
 
     if ($refusal !== '') {
         return $fail($refusal);
