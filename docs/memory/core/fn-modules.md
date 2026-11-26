@@ -338,7 +338,7 @@ description: Generated from the module field of the memory files: each includes/
 - `page_revisions`: [[page-history-editor-revision]]
 - `page_vitals`: [[page-vitals-beacon]], [[page-vitals-figures]]
 - `panel_screens`: [[agent-guide-panel]]
-- `parasut`: [[connections-accounting-page]], [[erp-parasut-devhub-connection]], [[erp-parasut-devhub-staging]], [[erp-parasut-legacy-buyer-number]], [[erp-parasut-legacy-press-claim]], [[erp-parasut-legacy-token-401]], [[erp-parasut-overview]]
+- `parasut`: [[connections-accounting-page]], [[erp-parasut-devhub-connection]], [[erp-parasut-devhub-staging]], [[erp-parasut-legacy-buyer-number]], [[erp-parasut-legacy-press-claim]], [[erp-parasut-legacy-token-401]], [[erp-parasut-overview]], [[erp-parasut-staging-company]]
 - `parasut_sheet`: [[parasut-import-sheets]]
 - `payments`: [[card-brand-switches]], [[connections-payment-gateways-page]], [[connections-payment-services-page]], [[gateway-masked-keys]], [[order-refunded-amount-writes]], [[payment-driver-paytr-installments]], [[payment-gateway-secrets]], [[payment-return-after-message]]
 - `pdf_merge`: [[shipment-label-bulk]]

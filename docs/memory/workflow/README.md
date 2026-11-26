@@ -22,7 +22,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 ## Clusters
 
 - `agent-channel-*`: 9 files.
-- `bug-hunt-*`: 130 files; start at `bug-hunt.md`.
+- `bug-hunt-*`: 131 files; start at `bug-hunt.md`.
 - `decisions-made-*`: 251 files; start at `decisions-made.md`.
 - `designer-use-*`: 7 files.
 - `merge-train-*`: 6 files; start at `merge-train.md`.
