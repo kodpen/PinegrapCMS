@@ -181,6 +181,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-113.md: Where are the rules and the earlier parts?
 - decisions-made-product-113.md: What does a translated picture text do when it does not fit its source's box? (owner, 2026-11-26, agent channel poll 229, message 14130)
 - decisions-made-product-113.md: How does a design made in Canva open in the Artifact Canvas? (owner, 2026-11-26, agent channel poll 230, message 14151)
+- decisions-made-product-114.md: Where are the rules and the earlier parts?
+- decisions-made-product-114.md: Which ready content does the Artifact Canvas get, and in which order? (owner, 2026-11-26, agent channel poll 231, message 14182)
 - decisions-made-product-12.md: Where are the rules and the earlier parts?
 - decisions-made-product-12.md: Where does a role-3 user edit the ERP settings cards? (#3828)
 - decisions-made-product-12.md: Trendyol import: which column holds the province? (#3835)

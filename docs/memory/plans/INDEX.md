@@ -23,6 +23,8 @@
 - artifact-canvas-content-census-proposals.md: Plan artifact-canvas-content, step AC1: ten proposals for the Artifact Canvas's ready content, most use for least work first, with size, source and licence
 - artifact-canvas-content-census-tools.md: Plan artifact-canvas-content, step AC1: what Canva, Adobe Express, VistaCreate and Polotno Studio give on an empty design, from their public pages (2026-11-26)
 - artifact-canvas-content-census.md: Plan artifact-canvas-content, step AC1: what a person meets on an empty Artifact Canvas board, tool by tool, and which census file holds the rest
+- artifact-canvas-content-screens.md: Plan artifact-canvas-content: how each part of the Artifact Canvas's ready content is put together on screen, step by step (AC4 to AC13)
+- artifact-canvas-content-steps.md: Plan artifact-canvas-content, the build steps AC4 to AC14 (owner, poll 231): the ten kinds of ready content in order, what each step holds, what every step keeps
 - artifact-canvas-content.md: Plan (owner 2026-11-26): the Artifact Canvas gets ready content and opens a design made in Canva as editable layers from the exported file; content census AC1, design file steps DF1 to DF5
 - artifact-canvas-design-file.md: Plan artifact-canvas-content, the design file (owner 2026-11-26, poll 230): a .pptx from Canva opened in the Artifact Canvas as editable layers; rules, the page chooser, steps DF1 to DF5
 - automation-platforms-features.md: Plan automation-platforms, features A1 to A13: the contract the apps rely on, newest-first lists, the subscription limit, event fields and samples, the panel's subscription form, the guide
