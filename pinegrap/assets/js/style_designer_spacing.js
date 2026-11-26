@@ -708,7 +708,9 @@ StyleDesigner.definePart('spacing', function (K) {
         if (!box || !nodes.length) return;
         var reads = nodes.map(function (n) { return Z.hideOn(_cssOf(n)); });
         var names = [['phone', _sdT('Phone')], ['tablet', _sdT('Tablet')], ['desktop', _sdT('Desktop')]];
-        box.className = 'sd-sp-row';
+        // Three written segments are wider than the control beside the
+        // label (162 px) in English and Turkish: the group stands under it.
+        box.className = 'sd-sp-row sd-row-stack';
         box.innerHTML = '<span class="sd-sp-label">' + esc(_sdT('Hide on')) + '</span>' +
             '<div class="sd-seg-grp" role="group" aria-label="' + esc(_sdT('Hide on')) + '">' +
             names.map(function (g) {
