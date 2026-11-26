@@ -116,3 +116,20 @@ function test_workspace_channel_board_figures_in_the_answer()
 	pg_assert_contains('figure: self.figure', $js, 'both views send the figure chosen');
 	pg_assert_contains("aria-pressed", $js, 'a figure is a button that says whether it is on');
 }
+
+function test_workspace_channel_board_recent_closed_read_apart()
+{
+	$merged = ws_channel_board_merge_briefs(
+		array(array('id' => 3), array('id' => 1)),
+		array(array('id' => 1), array('id' => 7), array('id' => 0))
+	);
+
+	pg_assert_same(array(3, 1, 7), array_map(function ($brief) { return (int) $brief['id']; }, $merged), 'each task once, the second read after the first');
+
+	// A channel past the read limit: the tasks finished lately are read on
+	// their own, or "Done in the last 7 days" and the Done column miss them.
+	$php = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/channel_board.php');
+
+	pg_assert_contains("'status'        => 'closed',", $php, 'the closed tasks of the last days are read apart');
+	pg_assert_contains("if (count(\$briefs) >= WS_CHANNEL_BOARD_READ_LIMIT) {", $php, 'only when the first read was full');
+}
