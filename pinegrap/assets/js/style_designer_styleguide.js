@@ -869,7 +869,10 @@ StyleDesigner.definePart('styleguide', function (K) {
                 } else if (r.cssRules && depth < 3) {
                     var inner = walk(r.cssRules, depth + 1);
                     if (!inner) continue;
-                    var head = r.media ? '@media ' + r.media.mediaText : (r.conditionText ? '@supports ' + r.conditionText : (r.name !== undefined && r.constructor && /Layer/.test(r.constructor.name) ? '@layer ' + r.name : ''));
+                    // The at-rule as written (@media, @supports, @container,
+                    // @layer, @scope...): its text up to the block.
+                    var css = String(r.cssText || '');
+                    var head = css.charAt(0) === '@' && css.indexOf('{') !== -1 ? css.slice(0, css.indexOf('{')).trim() : '';
                     text += head ? head + '{' + inner + '}' : inner;
                 }
             }

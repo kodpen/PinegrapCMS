@@ -131,3 +131,22 @@ function test_style_guide_mode_switch_redraws_the_spacing_bars_only()
 	pg_assert_same(array(true, true, true), $r, 'ids unique; the switch redraws the wrapper inside the block, not the block');
 }
 
+// The forced :hover and :focus copies keep the at-rule they sit in as it is
+// written: a rule inside @container stays inside @container, not under an
+// @supports that every browser passes.
+function test_style_guide_forced_states_keep_their_at_rule()
+{
+	$src = style_guide_sheet_test_function('forceStates');
+	pg_assert_true($src !== '', 'the part has forceStates()');
+	$js = $src
+		. 'var made = null; var hover = { selectorText: ".btn:hover", style: { cssText: "color: red;" } };'
+		. 'var doc = { head: { appendChild: function (n) { made = n; } }, createElement: function () { return {}; }, styleSheets: [{ ownerNode: { id: "x" }, cssRules: ['
+		. '{ conditionText: "(min-width: 400px)", cssText: "@container (min-width: 400px) {\n  .btn:hover { color: red; }\n}", cssRules: [hover] },'
+		. '{ media: { mediaText: "(max-width: 600px)" }, conditionText: "(max-width: 600px)", cssText: "@media (max-width: 600px) {\n  .btn:hover { color: red; }\n}", cssRules: [hover] }'
+		. '] }] };'
+		. 'forceStates(doc);'
+		. 'console.log(JSON.stringify(made ? made.textContent : ""));';
+	$r = style_guide_sheet_test_node($js);
+	if ($r === null) return;
+	pg_assert_same('@container (min-width: 400px){.btn.pgsg-s-hover{color: red;}}@media (max-width: 600px){.btn.pgsg-s-hover{color: red;}}', $r, 'each copy in its own at-rule');
+}
