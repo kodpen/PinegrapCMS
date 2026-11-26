@@ -7,6 +7,7 @@ description: Generated from the module field of the memory files: each includes/
 
 ## Which memory file describes an `includes/fn/` module?
 - `a11y`: [[accessibility-report]], [[editor-a11y-measurements]]
+- `accounting_settings_fold`: [[settings-accounting]]
 - `activitypub`: [[activitypub-actor]], [[activitypub-decisions]]
 - `activitypub_comments`: [[activitypub-comments]], [[activitypub-reactions]]
 - `activitypub_inbox`: [[activitypub-inbox]]
@@ -307,6 +308,7 @@ description: Generated from the module field of the memory files: each includes/
 - `office_docx_paragraphs`: [[office-docx-add-delete]]
 - `office_format`: [[office-sheet-format]]
 - `office_new`: [[office-new-files]]
+- `office_pptx_canvas`: [[office-pptx-canvas-mapper]]
 - `office_pptx_design`: [[office-pptx-design-reader]]
 - `office_sheets`: [[office-sheets]]
 - `office_shift`: [[office-sheet-rows-columns]]
@@ -338,7 +340,7 @@ description: Generated from the module field of the memory files: each includes/
 - `pick_waves`: [[pick-pack-waves]]
 - `picker`: [[picker-all-list-dialog]], [[picker-designer-bridge]], [[picker-dialog]], [[picker-editor-bridge]], [[picker-field]], [[picker-overview]], [[picker-page-fields-screens]], [[picker-pages]], [[picker-registry]], [[picker-remaining-screens]], [[picker-site-lists]], [[picker-upload]], [[settings-picker-field]]
 - `picker_all`: [[picker-all-list-server]]
-- `picture_server_draw`: [[picture-text-auto-draw]], [[picture-text-auto-server]], [[picture-text-fit-room]]
+- `picture_server_draw`: [[picture-text-auto-draw]], [[picture-text-auto-server]], [[picture-text-fit-room]], [[picture-text-fit-wrap]]
 - `picture_translation`: [[picture-text-auto-draw]], [[picture-text-auto-panel]], [[picture-text-auto-rows]], [[picture-text-overview]], [[picture-text-translation-doors]], [[picture-text-translation-draw]], [[picture-text-translation-draw-photo]], [[picture-text-translation-draw-server]], [[picture-text-translation-fit-letters]], [[picture-text-translation-group]], [[picture-text-translation-page]], [[picture-text-translation-queue]], [[picture-text-translation-store]]
 - `place_list`: [[place-list]], [[place-list-fields]], [[place-list-near]]
 - `place_map`: [[place-coordinates]], [[place-coordinates-fields]]

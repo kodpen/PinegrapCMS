@@ -703,6 +703,7 @@
 - seo-default-share-image-warning.md: The SEO card's Default Share Image warning names each form once, told apart, without binned forms, five names then a count
 - seo-panel-run-buttons.md: SEO detail panel and SEO card: Refresh score / Analyze HTML run the link step, work on every edit screen, update every score shown; counter measures like the score; missing page is not found
 - server-paged-lists.md: Lists the server searches and pages (list table driver): which moved off DataTables' server paging, what the search box finds (words, labels, Turkish I), the row cells [decision: decisions-made-product-10.md, decisions-made-product-22.md]
+- settings-accounting.md: Site Settings › Accounting as folded rows (SA1): Enable the ERP module at the head, the ERP card cut into six rows, each row's line and pill, hidden e-document cards, anchors
 - settings-accounts.md: Site Settings › Accounts and sign-in as folded rows: order, each row's line, Sign-in attempts and Deleting many at once on rows of their own, providers as connect rows, anchors
 - settings-ai-voice-rows.md: Pinegrap AI's and Voice's opened rows in Site Settings › Assistants and agents (AT5): one column, the fold Application, their drawers, what a test pins
 - settings-appearance-footer-links.md: Footer links of Private label branding (Site Settings › Appearance) as list rows with a drawer each; Move up, Move down, Remove; the order function; the pane drawn after a save

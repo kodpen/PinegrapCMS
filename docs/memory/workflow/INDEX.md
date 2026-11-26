@@ -422,6 +422,7 @@
 - design-template-owner-line.md: Owner (2026-11-11): during the template pause his own line polishes the shipped templates, bolder and with motion, appstudio and dealership first; two workers of one more coordinator take the rest [decision: here]
 - design-work-session.md: Where a screen's look is designed: in a design session of its own while one runs (2026-11-23); since 2026-11-25 none runs and the architect draws the designer plans' sheets; keeping the cost down [decision: decisions-made-product-110.md]
 - designer-use-round-design-variables.md: Designer use round UR1 (#11835): design variables used in a browser as a first-time person; faults found, fixed and left
+- designer-use-round-library-document-guides-focus.md: Use round UR7 (PR #11856): My library, a page from a document, canvas guides and a picture's focus point used in a browser; the eight fixes, what was left and what could not be run
 - designer-use-round-new-design.md: Use round UR2 (PR #11839): the New design window used in a browser; what was found, the eight fixes, what was left and what could not be run
 - designer-use-round-options-panel-left.md: The Options panel faults use round UR4 found and did not fix (State's Turkish label, the 240 px size chooser, six-segment groups, long labels, focus after Add layer), each with why
 - designer-use-round-options-panel.md: Use round UR4 (plan designer-use-round): the Options panel's DO2 to DO26 parts used in a browser at 1440, 390 and 240 px, light and dark, by keyboard; the eight faults fixed
