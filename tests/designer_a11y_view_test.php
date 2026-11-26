@@ -342,3 +342,26 @@ function test_designer_a11y_view_ignores_the_editors_own_changes()
 
 	pg_assert_same(array(0, 0, 0, 1, 1, 1, 1, true), $res, 'a toolbar filled or placed reads nothing; a change of the page is read');
 }
+
+// While a text is edited in place the element carries the editor's state
+// (contenteditable, a label's for taken off), not the page's: the last
+// reading stays until the edit ends.
+function test_designer_a11y_view_waits_for_an_inplace_edit()
+{
+	$res = designer_a11y_view_run('style_designer_accessview.js', array('editing', 'refresh'),
+		'var reads = 0; function read() { reads++; return { controls: [] }; }' . "\n"
+		. 'function drawCard() {} function drawMarks() {} function closePop() {}' . "\n"
+		. 'var old = { controls: [] };' . "\n"
+		. 'var body = { isContentEditable: false };' . "\n"
+		. 'var V = { doc: { body: body, activeElement: { isContentEditable: true } }, r: old };' . "\n"
+		. 'var out = []; refresh(); out.push(reads, V.r === old);' . "\n"
+		. 'V.doc.activeElement = body; refresh(); out.push(reads, V.r !== old);' . "\n"
+		. 'V = { doc: { body: body, activeElement: { isContentEditable: true } }, r: null }; refresh(); out.push(reads);' . "\n"
+		. 'console.log(JSON.stringify(out));');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array(0, true, 1, true, 2), $res, 'no read during an in-place edit; read once it ends; the first read is always made');
+}

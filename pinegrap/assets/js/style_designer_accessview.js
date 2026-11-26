@@ -792,9 +792,21 @@ StyleDesigner.definePart('accessview', function (K) {
         V.rest = setTimeout(refresh, REST_MS);
     }
 
+    // Whether a text of the canvas is being edited in place: the editor
+    // makes it contenteditable and, on a label, takes its for off until the
+    // edit ends, so the page would read with a stop and a missing label of
+    // the editor's.
+    function editing(doc) {
+        var a = doc.activeElement;
+        return !!(a && a !== doc.body && a.isContentEditable);
+    }
+
     function refresh() {
         if (!V) return;
         V.rest = 0;
+        // The last reading stays; the edit's end (the element written back)
+        // reads the page again.
+        if (V.r && editing(V.doc)) return;
         V.r = read();
         V.named = new Map();
         V.r.controls.forEach(function (c) { if (!c.fault && c.name && c.ref) V.named.set(c.ref, c); });
