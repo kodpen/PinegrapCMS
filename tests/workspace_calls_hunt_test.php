@@ -69,3 +69,25 @@ function test_workspace_calls_hunt_a_decline_never_ends_a_call_a_guest_is_in()
 
 	pg_assert_contains('ws_call_has_guest($members)', $decline, 'a conversation of two shared with a guest: the other person\'s Decline would end the call the guest is in, so it is refused');
 }
+
+function test_workspace_calls_hunt_a_silent_call_ends_when_it_was_last_heard()
+{
+	$call = array('started_at' => 1000);
+
+	pg_assert_same(1600, ws_call_heard_at($call, 1600, 1100), 'its newest signal');
+	pg_assert_same(1100, ws_call_heard_at($call, 0, 1100), 'its newest join when nobody signalled');
+	pg_assert_same(1000, ws_call_heard_at($call, 0, 0), 'else its start');
+	pg_assert_same(1000, ws_call_heard_at(array('started_at' => 1000), 900, 0), 'never before its start');
+
+	pg_assert_true(ws_call_is_silent($call, 1600, 1100, 1600 + WS_CALL_SILENCE + 1), 'silence is still counted from the same moment');
+	pg_assert_false(ws_call_is_silent($call, 1600, 1100, 1600 + WS_CALL_SILENCE), 'and not before');
+
+	$end = workspace_calls_hunt_test_function('includes/workspace/calls.php', 'ws_call_end_row');
+
+	pg_assert_contains('$ended_at', $end, 'the end takes the moment it happened');
+
+	$sweep = workspace_calls_hunt_test_function('includes/workspace/calls.php', 'ws_calls_sweep');
+
+	pg_assert_contains("ws_call_end_row(\$call, 0, ws_call_heard_at(\$call, (int) \$call['last_signal_at'], (int) \$call['last_join_at']))", $sweep, 'a call ended by the clean-up, maybe hours after both tabs closed, writes the length it really had in its line, not up to the clean-up');
+	pg_assert_contains('ws_call_end_row($call, 0, $heard[$call_id])', $sweep, 'a call whose last member went unheard ends when that member was last heard');
+}
