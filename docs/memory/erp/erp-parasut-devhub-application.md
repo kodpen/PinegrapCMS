@@ -1,6 +1,6 @@
 ---
 name: erp-parasut-devhub-application
-description: The partner application made on Paraşüt's Developer Portal on 2026-11-26: what was entered, the two fixed redirect addresses, the staging client and company, and what a partner client means for a self-hosted site
+description: Paraşüt's partner application (2026-11-26): what was entered, the two fixed redirect addresses, the staging client and company, a partner client on a self-hosted site
 ---
 
 ## What was applied for?
