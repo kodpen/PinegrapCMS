@@ -529,6 +529,31 @@ function erp_cheque_step_note($step, $reopened = 0)
 }
 
 /**
+ * The date a step's form sent, as the step takes it: today when the box was
+ * left empty, the ISO date as it came, a date in the site's order turned to
+ * ISO. Anything else is passed on as typed, so erp_cheque_step_date_refusal()
+ * refuses it; before, it became today and the money moved on a day nobody
+ * chose.
+ *
+ * @param string $typed
+ * @return string
+ */
+function erp_cheque_typed_step_date($typed)
+{
+    $typed = trim((string) $typed);
+
+    if ($typed === '') {
+        return date('Y-m-d');
+    }
+
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $typed)) {
+        return $typed;
+    }
+
+    return validate_date($typed) ? (string) prepare_form_data_for_input($typed, 'date') : $typed;
+}
+
+/**
  * Why a step cannot carry this date, or '' when it can.
  *
  * A step is dated on or after the day the cheque or note was taken or given

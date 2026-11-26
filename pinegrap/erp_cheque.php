@@ -48,8 +48,7 @@ if ($_POST) {
     pg_request_single_values(array('step', 'date', 'bank_till_id', 'account_id', 'reason'));
 
     $step = (string) ($_POST['step'] ?? '');
-    $typed = trim((string) ($_POST['date'] ?? ''));
-    $date = preg_match('/^\d{4}-\d{2}-\d{2}$/', $typed) ? $typed : ((($typed !== '') && validate_date($typed)) ? prepare_form_data_for_input($typed, 'date') : date('Y-m-d'));
+    $date = erp_cheque_typed_step_date((string) ($_POST['date'] ?? ''));
 
     $done = erp_cheque_step($cheque_id, $step, array(
         'date' => $date,

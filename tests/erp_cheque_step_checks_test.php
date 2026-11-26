@@ -68,3 +68,16 @@ function test_erp_api_cheque_step_asks_the_bank_till_refusal()
 	pg_assert_contains('erp_cheque_bank_till_id_refusal(', $step, 'the API step checks the bank till as the screen does');
 	pg_assert_false(strpos($step, 'erp_api_cash_till(') !== false, 'the API step does not refuse every inactive till');
 }
+
+// A date the screen cannot read is refused, not taken as today: the money
+// moved on a day nobody chose.
+function test_erp_cheque_typed_step_date()
+{
+	pg_assert_same(date('Y-m-d'), erp_cheque_typed_step_date(''), 'an empty date is today');
+	pg_assert_same('2026-03-05', erp_cheque_typed_step_date('2026-03-05'), 'an ISO date is kept');
+	pg_assert_true(erp_cheque_step_date_refusal(erp_cheque_typed_step_date('31.31.2026'), '2026-01-01') !== '', 'an unreadable date is refused by the step');
+	pg_assert_true(erp_cheque_step_date_refusal(erp_cheque_typed_step_date('soon'), '2026-01-01') !== '', 'text is refused by the step');
+
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/erp_cheque.php');
+	pg_assert_contains('erp_cheque_typed_step_date(', $screen, 'the cheque screen reads the date by it');
+}
