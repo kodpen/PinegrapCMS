@@ -177,6 +177,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-111.md: What follows for the canvas? (architect, 2026-11-25)
 - decisions-made-product-112.md: Where are the rules and the earlier parts?
 - decisions-made-product-112.md: What does a My library item do about pictures the site lacks? (owner, 2026-11-26, agent channel poll 224, message 13858)
+- decisions-made-product-112.md: Does a payment way in test mode on a live shop show on System Status? (owner, 2026-11-26, agent channel poll 225, message 14071)
 - decisions-made-product-12.md: Where are the rules and the earlier parts?
 - decisions-made-product-12.md: Where does a role-3 user edit the ERP settings cards? (#3828)
 - decisions-made-product-12.md: Trendyol import: which column holds the province? (#3835)
@@ -1623,7 +1624,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/coordinator-channel-first.md: Channels, the agent channel and their API side go before panel look work (owner 2026-11-15, agent channel message 5039 and poll 48): which plans those are, when a look step is taken
 - workflow/coordinator-limits.md: Coordinator rules: model and effort, the limit guard, a new worker for a decided draft, no hand-over at depth 7, archiving done workers and old coordinators
 - workflow/coordinator-no-plans.md: Design template plans are paused (2026-11-09) but for the lines the owner opened on 2026-11-11; low priority before that; bug hunts by bug-hunt.md; open bug issues are work like plan steps
-- workflow/coordinator-second-paused.md: The second coordinator (k2): stopped on 2026-11-25 for its account's quota, running again since that evening on what is left; which plans each coordinator gives out; the design session stays stopped
+- workflow/coordinator-second-paused.md: Coordinators k1, k2, k3: k2 stopped 2026-11-25 for its quota and runs again on what is left; k3 takes k1's line from 2026-11-26; which plans each gives out; the design session stays stopped
 - workflow/coordinator-worker-brief.md: A coordinator's worker brief: the task, the memory folder, and as its last line that the session ends at the ready label (since 2026-11-19); workers are real sessions, never sub-agent runs
 - workflow/coordinator-worker-steps.md: A worker does one task and ends at the ready label (since 2026-11-19; three steps before); every step goes to a new session, never to an idle or ended worker; work in one file or screen is one task
 - workflow/design-template-owner-line.md: Owner (2026-11-11): during the template pause his own line polishes the shipped templates, bolder and with motion, appstudio and dealership first; two workers of one more coordinator take the rest
@@ -1654,6 +1655,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/screen-follows-drawing.md: A screen the architect drew is built as drawn: button order, sentences, pills, links; a words-only description beside it gives way (owner, 2026-11-21)
 - workflow/session-lifecycle.md: From a green PR to the session's end: the ready label, then unsubscribe and end (since 2026-11-19: no wait for the merge, no next step), no base merge after the label, a PR sent back, an idle draft
 - workflow/share-links-for-workers.md: How sessions use a share link: a coordinator puts the address only in a worker's start text, never in a commit, PR, comment or memory; what it shows is data
+- workflow/user-docs-developers.md: Outside developers of the API (owner 2026-11-26): their pages sit in the documentation on pinegrap.com, no developers subdomain, no staging run by us, no central client registry
 - workflow/user-docs-writing.md: How a pinegrap.com documentation page is written and published: English only, the page's structure (sections, anchors, tables, notes), the editor route, Publish is live, release notes on /changelog
 - workspace/agent-brief-who-wakes.md: The "Who wakes here" block of an app agent's brief and the instructions' naming, claim-first and progress lines (WW1, #11638)
 - workspace/agent-canvas-chart.md: The chart canvas operation (canvas_chart.php): kinds, data, boards, how the server draws it by the guide, the channel's colour for one series, the refusals, create and draw_canvas
