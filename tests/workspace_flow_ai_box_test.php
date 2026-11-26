@@ -202,6 +202,27 @@ function test_workspace_flow_ai_box_wait_key()
 	pg_assert_same(array('status' => 'failed', 'outcome' => 'failed'), ws_step_ai_timeout_settlement(false));
 }
 
+// The box a request just took carries the moment of that claim: a ready
+// row read before the claim has claimed_at 0 (or an earlier try's), and a
+// deadline counted from it lies in the past, so the first look came at once
+// and queued a second call beside the one already on its way.
+function test_workspace_flow_ai_box_wait_counts_from_this_claim()
+{
+	$now = 1800000000;
+	$row = ws_flow_step_claimed(array('id' => 7, 'status' => 'ready', 'attempt' => 1, 'claimed_at' => 0), $now);
+
+	pg_assert_same('running', $row['status']);
+	pg_assert_same(2, $row['attempt'], 'the claim counts the try');
+	pg_assert_same($now, $row['claimed_at'], 'the claim\'s own moment, not the row as it was read');
+
+	$config = ws_step_config_normalize('ai', array('closes_in' => 24));
+
+	pg_assert_same($now + WS_FLOW_RECHECK, ws_step_ai_next_look($now, ws_step_ai_deadline($config, $row['claimed_at'])), 'the first look an hour on');
+
+	$advance = workspace_flow_ai_box_test_source('ws_flow_advance');
+	pg_assert_contains('ws_flow_step_run(ws_flow_step_claimed(', $advance, 'the box runs as the claim left it');
+}
+
 // The run: the box waits on itself, the call goes after the response
 // through pg_ai_chat() (the site's quota and hold), an answer settles it
 // only while it waits, the hourly look asks again until the deadline.
