@@ -212,6 +212,7 @@
 - decisions-made-product-112.md: Decisions made, product part 112 (2026-11-26 on): a My library item says how many pictures the site lacks; a payment way in test on a live shop gets a System Status warning row
 - decisions-made-product-113.md: Decisions made, product part 113 (2026-11-26 on): a translated picture text grows, wraps, then shrinks, corrected by hand per language; a Canva .pptx opens in the Artifact Canvas by a page chooser
 - decisions-made-product-114.md: Decisions made, product part 114 (2026-11-26 on): all ten kinds of ready content for the Artifact Canvas, the basics first; a settings card and its Connections page hand over in one trip
+- decisions-made-product-115.md: Decisions made, product part 115 (2026-11-26 on): the spreadsheet and document editors get all eight abilities offered; simple formulas change the no-formula-engine scope of 2026-11-19
 - decisions-made-product-12.md: Decisions list, product part 12 (2026-10-31 on): ERP settings cards for role 3, Trendyol address order, old n11 rows data step, phone toolbar, Trendyol Luxe, shipment rules confirmed
 - decisions-made-product-13.md: Decisions list, product part 13 (2026-10-31 on): Site Settings group headings, no notes secret feed, no hint on forgot password, IIS preflight nudge
 - decisions-made-product-14.md: Decisions list, product part 14 (2026-10-31 on): own image editor, nothing alone under a screen's title, no PDF of ours for a purchase invoice, Site Settings regrouped
