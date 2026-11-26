@@ -1585,6 +1585,7 @@
     "Open folder": "Aç",
     "Open follow-ups": "Açık takipler",
     "Open for editing by {name}": "Düzenleyen: {name}",
+    "Open for editing by {var}": "{var} düzenlemek için açtı",
     "Open for entries": "Başvurulara aç",
     "Open for inspection": "Denetim için aç",
     "Open from 11:00 to midnight": "11:00'den gece yarısına kadar açık",
