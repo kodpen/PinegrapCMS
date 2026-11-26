@@ -104,7 +104,7 @@ if ($_POST) {
             go($self);
         }
 
-        $result = erp_expense_cancel($id, (string) ($_POST['reason'] ?? ''), (int) $user['id']);
+        $result = erp_expense_cancel($id, (string) ($_POST['reason'] ?? ''), (int) $user['id'], $can_cash);
 
         if (!$result['success']) {
             $liveform->mark_error('reason', h($result['error']));

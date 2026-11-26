@@ -29,6 +29,11 @@ Only a user with `manage_erp_cash`: the cancel writes money back into the
 till, as the API's `erp_api_expense_cash_gate()` already required. Others see
 a note instead of the cancel card; an unpaid expense's cancel needs only the
 ERP right (#5523).
+`erp_expense_cancel($id, $reason, $user_id, $may_refund)` judges the right
+on its own locked row: the screen passes `$can_cash`, the API
+`erp_api_expense_may_refund()`. Judged by the callers on the row they read
+first, an expense paid in that moment was cancelled into the till without
+the right (PR #11843, `tests/erp_expense_cancel_right_test.php`).
 
 ## Does a change keep the filtered list?
 
