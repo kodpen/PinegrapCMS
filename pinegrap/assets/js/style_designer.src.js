@@ -26621,7 +26621,7 @@ const StyleDesigner = (function () {
         var pt = _sdOptState === '' ? _sdPtOf(node) : null;
         var more = _sdTfMoreOpen || ['skx', 'sky', 'o'].some(function (k) { return v[k] !== '' || inh[k] !== ''; }) ||
             Object.keys(_SD_EFF_NONE).some(function (k) { return fv[k] !== '' || finh[k] !== ''; }) ||
-            !!(pt && (pt.cursor !== '' || pt.through));
+            !!(pt && (pt.cursor !== '' || pt.through)) || _sdShapeHas(node);
         var h = '<div class="sd-tf" data-sd-tf-box>' +
             '<div class="sd-trans-sub">' + esc(_sdT('Transform')) + '</div>' +
             tfRow('tx,ty', _sdT('Move'), '<div class="sd-tf-pair">' + field('tx', 'px', 'X', '0') + field('ty', 'px', 'Y', '0') + '</div>') +
@@ -26642,7 +26642,7 @@ const StyleDesigner = (function () {
             h += tfRow('skx,sky', _sdT('Skew'), '<div class="sd-tf-pair">' + field('skx', '°', 'X', '0') + field('sky', '°', 'Y', '0') + '</div>') +
                 tfRow('o', _sdT('Origin'), '<div class="sd-tf-og' + (v.o === '' ? ' sd-trans-inh' : '') + '"><div class="sd-tf-grid" role="radiogroup" aria-label="' + esc(_sdT('Origin')) + '">' + cells + '</div>' +
                     '<small><b>' + esc(names[o]) + '</b>' + (o % 3) * 50 + '% · ' + Math.floor(o / 3) * 50 + '%</small></div>') +
-                _sdEffRowsHtml(fv, finh) + (pt ? _sdPtRowsHtml(pt) : '');
+                _sdEffRowsHtml(fv, finh) + (pt ? _sdPtRowsHtml(pt) : '') + '<div data-sd-shape-box></div>';
         }
         h += '<button type="button" class="sd-tf-more" aria-expanded="' + (more ? 'true' : 'false') + '"><i class="bi bi-chevron-' + (more ? 'up' : 'down') + '" aria-hidden="true"></i>' +
             esc(more ? _sdT('Less') : _sdT('More')) + '</button>';
@@ -27104,6 +27104,34 @@ const StyleDesigner = (function () {
             var t = e.target;
             if (t && t.getAttribute && t.getAttribute('data-sd-pt') === 'cursor') _sdPtSet(t.value);
         });
+    }
+
+    // ── Options: Clip shape and Mask (Shadow and effect › More › Shape) ──
+    // The rows are the part 'shape' (pg_clip_shape.js,
+    // style_designer_shape.js), drawn into the place under "More" once it
+    // is open; it writes clip-path and mask-image on the element's custom
+    // style class or the chosen state's rule. While the element has
+    // either, the canvas outlines its whole box (dashed). Nothing is
+    // loaded while the User Styles hold neither for the element.
+    function _sdShapeHas(node) {
+        var cls = node && node.props ? PgCustomStyle.classOf(node.props.cssClass) : '';
+        var text = cls ? _userStylesGet() : '';
+        return !!cls && text.indexOf('.' + cls) !== -1 && /(?:^|[\s;{])(?:clip-path|(?:-webkit-)?mask(?:-image)?)\s*:/.test(text);
+    }
+
+    function _sdShapeBind(panel) {
+        if (!panel || !panel.querySelector('[data-sd-shape-box]')) return;
+        if (_sdPartLoaded('shape') && _sdPartApis.shape.draw) { _sdPartApis.shape.draw(_sdStateHost()); return; }
+        var node = selectedNode;
+        _sdPartLoad('shape').then(function () {
+            if (selectedNode === node) _sdPartApis.shape.draw(_sdStateHost());
+        }, _sdPartFailed);
+    }
+
+    // The dashed outline on the canvas, after each drawing of the panel.
+    function _sdShapeOutline() {
+        if (_sdStateNode() && _sdShapeHas(selectedNode)) _sdPartCall('shape', 'outline', [_sdStateHost()]).catch(_sdPartFailed);
+        else if (_sdPartLoaded('shape') && _sdPartApis.shape.outline) _sdPartApis.shape.outline(null, canvasDoc);
     }
 
     // ── "Only what I changed": the core's hooks ──
@@ -38475,6 +38503,7 @@ const StyleDesigner = (function () {
         _sdSectBuild = null;
         _sdPropsHead(null);
         _sdReviewAfter(null);
+        _sdShapeOutline();
         if (!selectedNode) {
             panel.innerHTML = '<div class="sd-props-empty"><div><span class="bi bi-cursor d-block mb-3" style="font-size:1.5rem"></span>' + esc(_sdT('Select an element to edit its properties')) + '</div></div>';
             return;
@@ -38724,6 +38753,7 @@ const StyleDesigner = (function () {
         _sdEffBind(panel);
         _sdTxBind(panel);
         _sdPtBind(panel);
+        _sdShapeBind(panel);
         var _counts = {};
         panel.querySelectorAll('[data-sd-otab]').forEach(function (pane) { _counts[pane.getAttribute('data-sd-otab')] = _sdSectHeadsFill(pane); });
         Object.keys(_sdOptHeld).forEach(function (t) { _counts[t] = _sdOptHeldCount(_sdOptHeld[t]); });
@@ -67335,6 +67365,8 @@ const StyleDesigner = (function () {
         }
         // The Cursor row: the cursor out.
         if (kind === 'pt') { _sdPtSet(''); return; }
+        // Clip shape or Mask: its value out, in the chosen state.
+        if (kind === 'shape') { _sdPartCall('shape', 'reset', [_sdStateHost(), propRow.getAttribute('data-sd-sh-keys')]).catch(_sdPartFailed); return; }
         // A Text effect row: its value out (Outline: the width takes it out).
         if (kind === 'tx') {
             var _xk = propRow.getAttribute('data-sd-tx-keys');
