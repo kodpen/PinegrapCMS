@@ -2656,6 +2656,7 @@
     "Click where shapes overlap: unite them. Drag across regions: merge only those. Alt-drag: remove them.": "Şekillerin üst üste geldiği yere tıklayın: birleştirir. Bölgeler üzerinden sürükleyin: yalnız onları birleştirir. Alt ile sürükleyin: kaldırır.",
     "Click where the selected shapes overlap to unite them; drag across their regions to merge or remove only those. Alt while dragging removes them too.": "Seçili şekillerin üst üste geldiği yere tıklayarak onları birleştirin; bölgeleri üzerinden sürükleyerek yalnız onları birleştirin veya kaldırın. Sürüklerken Alt tuşu da kaldırır.",
     "Click where you want to type. Enter goes to the next paragraph, Shift+Enter starts a new line, Esc undoes what you typed in the paragraph.": "Yazmak istediğiniz yere tıklayın. Enter sonraki paragrafa geçer, Shift+Enter yeni satır başlatır, Esc paragrafta yazdıklarınızı geri alır.",
+    "Click where you want to type. Enter starts a new paragraph, Backspace at its start joins it to the one before, Shift+Enter starts a new line, Esc undoes what you typed in the paragraph.": "Yazmak istediğiniz yere tıklayın. Enter yeni bir paragraf başlatır, paragrafın başında Geri tuşu onu öncekiyle birleştirir, Shift+Enter yeni bir satır başlatır, Esc paragrafta yazdıklarınızı geri alır.",
     "Click: point. Drag: curve. Enter: finish. Esc: cancel.": "Tıkla: nokta. Sürükle: eğri. Enter: bitir. Esc: vazgeç.",
     "Clickable prototype": "Tıklanabilir prototip",
     "Clicks": "Tıklama",

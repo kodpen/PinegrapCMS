@@ -22079,6 +22079,11 @@ button.ws-file-name {
 .office-doc-edit .office-para {
   cursor: text;
 }
+/* The sheet is the one place typed in: the caret shows where, no ring
+   around the page. */
+.office-view .office-paper.office-sheet-typing {
+  outline: 0;
+}
 .office-doc-edit .office-typing {
   min-height: 1.5em;
   white-space: pre-wrap;

@@ -382,6 +382,7 @@
     "Paragraph {var:1} is not in the file.": "{var:1}. paragraf dosyada yok.",
     "Paragraph {var:1} is the last paragraph of a table cell, which cannot be left without one, so it is not deleted.": "{var:1}. paragraf, paragrafsız bırakılamayan bir tablo hücresinin son paragrafı, bu yüzden silinmez.",
     "Paragraph {var:1} is the last paragraph of the document, so it is not deleted. Its text can be emptied.": "{var:1}. paragraf belgenin son paragrafı, bu yüzden silinmez. Metni boşaltılabilir.",
+    "Paragraphs in different table cells are not joined.": "Farklı tablo hücrelerindeki paragraflar birleştirilmez.",
     "Parallax": "Paralaks",
     "Parallel Sessions": "Paralel Oturumlar",
     "Parallel turns, the red runs and confidence on every kind of snow.": "Paralel dönüşler, kırmızı pistler ve her tür karda özgüven.",
