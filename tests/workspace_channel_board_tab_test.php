@@ -90,3 +90,12 @@ function test_workspace_channel_board_tab_shared_toolbar()
 	pg_assert_contains('k.bar.filter(', $js, 'urgency, person and the cancelled ones are behind Filter');
 	pg_assert_false(strpos($js, "'btn btn-sm ws-cb-chip") !== false, 'no btn btn-sm chip is drawn any more');
 }
+
+function test_workspace_channel_board_tab_nobody_column_takes_everybody_off()
+{
+	$js = workspace_channel_board_tab_js('workspace_board_channel.js');
+
+	// "Drop here: nobody on it": a card with two people dropped from one
+	// person's column on "Nobody yet" loses both, not only the column's one.
+	pg_assert_contains("var people = (to.drop > 0) ? item.assignees.map(", $js, 'Nobody yet takes every person off the task');
+}
