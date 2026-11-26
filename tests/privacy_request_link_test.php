@@ -173,3 +173,28 @@ function privacy_request_form_link_test_sensitive_scripts()
 
 	return waf_sensitive_scripts();
 }
+
+// An erasure ends the person's link: the anonymised request no longer serves
+// its file, and the erasure deletes the file with the row's address.
+function test_privacy_request_link_ends_with_erasure()
+{
+	$key = 'test-key';
+	$nonce = str_repeat('ab', 16);
+	$now = 1800000000;
+	$end = $now + 3600;
+	$link = pg_privacy_link_parse(privacy_request_link_test_query(7, $end, $nonce, pg_privacy_link_signature(7, $nonce, $end, $key)));
+
+	pg_assert_true(pg_privacy_link_valid($link, array('kind' => 'information', 'status' => 'answered', 'email' => 'a@example.com'), $key, $now, true), 'the address kept');
+	pg_assert_false(pg_privacy_link_valid($link, array('kind' => 'information', 'status' => 'answered', 'email' => pg_privacy_person_token('a@example.com', $key)), $key, $now, true), 'the person erased');
+
+	pg_assert_true(function_exists('_pg_privacy_erase_apply_privacy_requests'), 'the erasure has its own step for requests');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/privacy.php');
+	$start = strpos($source, 'function _pg_privacy_erase_apply_privacy_requests(');
+	$body = ($start === false) ? '' : substr($source, $start, strpos($source, "\n}\n", $start) - $start);
+	pg_assert_true(strpos($body, 'pg_privacy_link_delete(') !== false, 'it deletes the files');
+	pg_assert_true(strpos($body, 'pg_privacy_link_delete(') < strpos($body, '_pg_privacy_erase_write('), 'before the rows lose what finds them');
+
+	$page = (string) file_get_contents(PG_FUNCTIONS_DIR . '/privacy_download.php');
+	pg_assert_contains('SELECT id, kind, status, email FROM privacy_requests', $page, 'the page reads the address');
+}

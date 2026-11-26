@@ -134,12 +134,13 @@ function pg_privacy_link_parse($source)
 
 /**
  * Whether a link may be served: signed by this site, not past its end, for
- * an answered information request whose file is still there. Every other
- * case reads the same, so the page never tells whether a request exists.
- * Pure.
+ * an answered information request whose file is still there and whose
+ * person has not been erased since (the address became a person token).
+ * Every other case reads the same, so the page never tells whether a
+ * request exists. Pure.
  *
  * @param array|null $parsed   pg_privacy_link_parse()
- * @param array|null $request  the row the link names: kind, status
+ * @param array|null $request  the row the link names: kind, status, email
  * @param string     $key
  * @param int        $now
  * @param bool       $file     the file is there
@@ -159,6 +160,7 @@ function pg_privacy_link_valid($parsed, $request, $key, $now, $file)
         && ((int) $parsed['e'] <= (int) $now + pg_privacy_link_ttl())
         && (($request['kind'] ?? '') === 'information')
         && (($request['status'] ?? '') === 'answered')
+        && !pg_privacy_is_person_token($request['email'] ?? '')
         && (bool) $file;
 }
 
