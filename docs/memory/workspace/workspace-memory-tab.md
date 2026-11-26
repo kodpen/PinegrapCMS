@@ -11,7 +11,7 @@ description: The Memory tab (GM3a, MS3): the general and the channel's part as r
 - In an agent channel, for whoever keeps the general memory (`ws_memory_brief_general()`), the general part comes first and the channel's part has `can_move`. With `general=1` the general part comes alone.
 
 ## How does the tab's search work?
-- A `pg-toolbar` with the search box (Search the memory, `ws-bar-search`) above both parts, built in MS3 (#MS3PR). Typing waits 300 ms, then `ws_memory_list` is asked again with `search=<words>`; an answer overtaken by a newer search is dropped. The words stay while the tab is open.
+- A `pg-toolbar` with the search box (Search the memory, `ws-bar-search`) above both parts, built in MS3 (#11882). Typing waits 300 ms, then `ws_memory_list` is asked again with `search=<words>`; an answer overtaken by a newer search is dropped. The words stay while the tab is open.
 - The server matches as the API search does (`ws_memory_search_page()`, `channel-memory-search.md`): every word in the title, text or tags, the expired records too, `WS_MEMORY_PANEL_SEARCH` (100) records a part at most; `more` true adds "Only the first matches are shown. Add a word to narrow them." under the part.
 - With a search a row's line is the text around the first word found, without one the first line (`ws_memory_panel_line()`, 160 characters). A part with no hit says No entry holds these words. The form's project list is kept from the last list without a search.
 

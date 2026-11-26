@@ -27,7 +27,7 @@ priority: 6
 ## Which steps?
 - MS1 (M): the search and the projects read, their tools, the measure, tests of the word match as a pure function. Done (#11838): no index, under 300 ms (`workspace/channel-memory-search.md`).
 - MS2 (S): the brief's digest by projects. Done (#11866): past 40 live records the pinned ones and the projects with counts (`workspace/channel-memory-brief-projects.md`).
-- MS3 (S): the Memory tab's search box. Done (#MS3PR): over both parts through `ws_memory_list` with `search` (`workspace/workspace-memory-tab.md`).
+- MS3 (S): the Memory tab's search box. Done (#11882): over both parts through `ws_memory_list` with `search` (`workspace/workspace-memory-tab.md`).
 - MS4 (S): the mirror tool; the architect writes the merging session's rule after it lands. Then the close-out: the topic files `workspace/channel-memory.md` and `channel-memory-general.md` rewritten, this file deleted.
 
 ## What is not in this plan?
