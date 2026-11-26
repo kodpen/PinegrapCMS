@@ -566,6 +566,7 @@
     "Recipient list block added. You can customize it on the canvas.": "Alıcı Listesi bloku eklendi. Canvas üzerinde özelleştirebilirsiniz.",
     "Recipient list block exists. Select it on canvas to edit.": "Alıcı Listesi bloku mevcut. Canvas'tan seçip içeriğini düzenleyebilirsiniz.",
     "Recipient list — shown again for every recipient": "Alıcı Listesi — her alıcı için tekrar gösterilir",
+    "Recipient mode": "Alıcı modu",
     "Recipient name": "Alıcı adı",
     "Recipient name (empty in single-recipient mode)": "Alıcı adı (tek alıcı modunda boş)",
     "Recipient number": "Alıcı sırası",

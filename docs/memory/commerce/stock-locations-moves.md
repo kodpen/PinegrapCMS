@@ -5,7 +5,7 @@ module: stock_moves
 ---
 
 ## Where are locations edited?
-- Settings › Ecommerce › Stock locations (`pgset-stock-locations`, `includes/settings/commerce.php`): one plain table row per location (name, address, order, default radio, on switch) and a "New location" pair added on save through `pg_stock_location_add()` (the first one seeds the rows, `stock-locations-model.md`).
+- Settings › Ecommerce › Stock locations (`pgset-stock-locations`, `includes/settings/commerce.php`): one plain table row per location (name, address, order, on switch), the Default location select under it, and the New location pair behind "Add a location", added on save through `pg_stock_location_add()` (drawing: `ui/settings-ecommerce-shipping-stock.md`) (the first one seeds the rows, `stock-locations-model.md`).
 - `commerce.save.php` runs only when the card's hidden `stock_location_card` was posted and `pg_stock_ready()`: `pg_stock_locations_save_plan()` (pure) checks before anything on the screen is written, marks `stock_location_name[<id>]` / `stock_location_enabled[<id>]` and stops the save; `pg_stock_locations_save()` writes after the card's columns.
 - A location is never deleted (its moves name it); it is turned off. The default stays on (`default_disabled`), and the default moves in one statement (`IF(id = ?, 1, 0)`), so there is never none or two. A turned-off location takes no transfer in; its units still count in the total.
 

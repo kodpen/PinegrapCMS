@@ -25,7 +25,7 @@ priority: 6
 ## Which steps? (one at a time: one file; M about 1,000 product lines; tests red first)
 - EC1 (M) done (#11868): The fold: the rows' order, names, icons, lines and pills as pure functions in `includes/fn/commerce_settings_fold.php` with `tests/settings_commerce_fold_test.php`; the pane drawn through `pg_settings_fold()`, the purpose line, the cards inside unchanged. Gift Cards & Rewards is cut in two cards here (`pgset-giftcards`, new `pgset-rewards`) with their anchors.
 - EC2 (M) done (#11885): Store and Payment methods opened (`ui/settings-ecommerce-store-payments.md`).
-- EC3 (M) after EC2: Shipping, Address autocomplete, Stock locations opened; the old buttons of `carrier_api.php`, `carrier_labels.php`, `address_autocomplete.php` and `geo.php` drawn into them.
+- EC3 (M) done (#11899): Shipping, Address autocomplete, Stock locations opened (`ui/settings-ecommerce-shipping-stock.md`).
 - EC4 (M) after EC3: Gift cards, Rewards, Reference price opened.
 - EC5 (M) after EC4: Affiliate programme, Referral programme, Product feeds opened; the feed's Ctrl multi-select becomes a list of ticked groups.
 - EC6 (S) Close-out: `ui/settings-ecommerce.md` (and a second file past 4 KB), the survey's Ecommerce lines corrected, this file and its rows file deleted. No `[NEW]` line: it is the open version's tidy.

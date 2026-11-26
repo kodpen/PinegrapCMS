@@ -15,7 +15,8 @@ module: carrier_labels
 - A Trendyol-carried package (#3568): `decisions-made-product-8.md`; labels at checkout and the automatic label: `decisions-made-product-39.md`.
 
 ## What does a person see?
-- Site Settings › Ecommerce › Shipping, block "Carrier Labels": per driver a switch, its connection (keys on its page of Connections, `ui/connections-shipping-services-page.md`), its other fields and "Save and test the connection"; the customs fields where the driver declares customs; "Create the label automatically once the order is paid" (`commerce/shipment-label-auto.md`). Code: `pg_label_settings_rows()`, `carrier-label-drivers.md`.
+- Site Settings › Ecommerce › Shipping, group "Carrier labels": per driver a `pg-switch` heading its fields, its connection (keys on its page of Connections, `ui/connections-shipping-services-page.md`), its other fields and "Save and test the connection"; the customs fields where the driver declares customs; "Create the label automatically once the order is paid" (`commerce/shipment-label-auto.md`).
+- Code: `pg_label_settings_rows()`, `carrier-label-drivers.md`; drawn without popovers, `ui/settings-ecommerce-shipping-stock.md`.
 - The order screen's Shipping Labels card (Create Label, Print Label, Cancel Label, Create Return Label), the returns screen's Create Return Label, the orders list's Create Labels: `shipment-labels.md`, `shipment-label-bulk.md`, `shipment-label-returns.md`. Pickups: `shipment-label-pickup.md`.
 - The order screen's notice "X refused the label: …" carries the service's own text, cut on a whole letter (`carrier-label-text-cuts.md`).
 

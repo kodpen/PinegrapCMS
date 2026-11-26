@@ -140,6 +140,17 @@ foreach (pg_label_drivers() as $commerce_label_key => $commerce_label_driver) {
     }
 }
 
+// The choices of a few, each a pg-seg posting the values the radios did.
+$commerce_seg_options = function ($id, $choices) {
+    $options = array();
+
+    foreach ($choices as $choice) {
+        $options[] = array('value' => $choice[0], 'id' => $id . '_' . $choice[1], 'label' => $choice[2], 'on' => $choice[3] !== '');
+    }
+
+    return $options;
+};
+
 $commerce_parts['shipping'] = array('html' => '
     <div id="pgset-shipping" class="pg-set-card">
         <div class="card">
@@ -147,114 +158,47 @@ $commerce_parts['shipping'] = array('html' => '
                 ' . lang('Shipping') . '
             </div>
             <div class="card-body">
-                <div class="row gy-5">
+                <div class="row gy-5">' . pg_commerce_settings_switch('ecommerce_shipping', $ecommerce_shipping_checked !== '', lang('Shipping')) . '
+                    <div class="col-12">' . pg_commerce_settings_seg(lang('Recipient mode'), 'ecommerce_recipient_mode', $commerce_seg_options('ecommerce_recipient_mode', array(
+                        array('single recipient', 'single_recipient', lang('Single recipient'), $ecommerce_recipient_mode_single_recipient),
+                        array('multi-recipient', 'multirecipient', lang('Several recipients'), $ecommerce_recipient_mode_multirecipient),
+                    ))) . '
+                    </div>' . pg_commerce_settings_group('USPS') . '
+                    ' . pg_carrier_api_settings_fields('usps', $usps_legacy_set)
+                    . pg_commerce_settings_switch('ecommerce_address_verification', $ecommerce_address_verification_checked !== '', lang('Verify US addresses'), lang('Uses the USPS Addresses API with the consumer key and secret on USPS\'s page of Connections.')) . '
+                    <div class="col-12">' . pg_commerce_settings_seg(lang('Enforcement'), 'ecommerce_address_verification_enforcement_type', $commerce_seg_options('ecommerce_address_verification_enforcement_type', array(
+                        array('warning', 'warning', lang('Warning'), $ecommerce_address_verification_enforcement_type_warning_checked),
+                        array('error', 'error', lang('Error'), $ecommerce_address_verification_enforcement_type_error_checked),
+                    ))) . '
+                    </div>' . pg_carrier_api_test_button('usps')
+                    . pg_commerce_settings_group_switch('ups', $ups_checked !== '', 'UPS') . '
+                    ' . pg_carrier_api_settings_fields('ups', $ups_legacy_set) . '
+                    <div class="pg-f-md">
+                        <label for="ups_account" class="form-label">' . lang('Account number') . '</label>
+                        <input type="text" name="ups_account" id="ups_account" class="form-control" value="' . h($ups_account) . '" maxlength="100" aria-describedby="ups_account_help"/>
+                        <div class="form-text" id="ups_account_help">' . lang('For negotiated rates. Leave empty for published rates.') . '</div>
+                    </div>' . pg_carrier_api_test_button('ups')
+                    . pg_commerce_settings_group_switch('fedex', $fedex_checked !== '', 'FedEx') . '
+                    ' . pg_carrier_api_settings_fields('fedex', $fedex_legacy_set) . '
+                    <div class="pg-f-md">
+                        <label for="fedex_account" class="form-label">' . lang('Account number') . '</label>
+                        <input type="text" name="fedex_account" id="fedex_account" class="form-control" value="' . h($fedex_account) . '" maxlength="100"/>
+                    </div>' . pg_carrier_api_test_button('fedex')
+                    . pg_label_settings_rows()
+                    . pg_commerce_settings_group(lang('Messages')) . '
                     <div class="col-12">
-                                                            <div class="form-field">' . pg_settings_tile('truck', 'shop') . '
-                                                                <div class="switch"><input value="1"' . $ecommerce_shipping_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_shipping" name="ecommerce_shipping" data-bs-target="#ecommerce_shipping_row"/></div>
-                                                                <label class="" for="ecommerce_shipping">' . lang('Shipping') . '</label>
-                                                            </div>
-                                                            <div class="collapse popover fade bs-popover-bottom p-0 " id="ecommerce_shipping_row">
-                                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
-                                                                <div class="popover-body">
-                                                                   <div class="row gy-5">
-                                                                        <div class="col-12 ">
-                                                                            <fieldset><legend class="form-label pg-field-label">'. lang('Recipient Mode') . '</legend>
-                                                                            <div class="form-field">
-                                                                                <input value="single recipient" class="radio" type="radio" id="ecommerce_recipient_mode_single_recipient" name="ecommerce_recipient_mode" ' . $ecommerce_recipient_mode_single_recipient . '>
-                                                                                <label class="" for="ecommerce_recipient_mode_single_recipient">'. lang('Single Recipient') . '</label>
-                                                                            </div>
-                                                                            <div class="form-field">
-                                                                                <input value="multi-recipient" class="radio" type="radio" id="ecommerce_recipient_mode_multirecipient" name="ecommerce_recipient_mode" ' . $ecommerce_recipient_mode_multirecipient . '>
-                                                                                <label class="" for="ecommerce_recipient_mode_multirecipient">'. lang('Multi-Recipient') . '</label>
-                                                                            </div>
-                                                                            </fieldset>
-                                                                        </div>
-                                                                        <div class="col-12 "><h3 class="pg-group-label mb-0">' . lang('USPS') . '</h3></div>
-                                                                        ' . pg_carrier_api_settings_fields('usps', $usps_legacy_set) . '
-                                                                        ' . pg_carrier_api_test_button('usps') . '
-                                                                        <div class="col-12 ">
-                                                                            <div class="form-field">
-                                                                                <div class="switch"><input value="1"' . $ecommerce_address_verification_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_address_verification" name="ecommerce_address_verification" data-bs-target="#ecommerce_address_verification_row"/></div>
-                                                                                <label class="" for="ecommerce_address_verification">' . lang('Verify US Addresses') . '</label>
-                                                                            </div>
-                                                                            <div class="collapse popover fade bs-popover-bottom p-0 " id="ecommerce_address_verification_row">
-                                                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(40px, 0px);"></div>
-                                                                                <div class="popover-body">
-                                                                                   <div class="row gy-5">
-                                                                                        <div class="alert theme-primary py-3">' . lang('Uses the USPS Addresses API with the consumer key and secret on USPS\'s page of Connections.') . '</div>
-                                                                                        <div class="col-12 ">
-                                                                                            <fieldset><legend class="form-label pg-field-label">'. lang('Enforcement') . '</legend>
-                                                                                            <div class="form-field">
-                                                                                                <input value="warning" class="radio" type="radio" id="ecommerce_address_verification_enforcement_type_warning" name="ecommerce_address_verification_enforcement_type" ' . $ecommerce_address_verification_enforcement_type_warning_checked . '>
-                                                                                                <label class="" for="ecommerce_address_verification_enforcement_type_warning">'. lang('Warning') . '</label>
-                                                                                            </div>
-                                                                                            <div class="form-field">
-                                                                                                <input value="error" class="radio" type="radio" id="ecommerce_address_verification_enforcement_type_error" name="ecommerce_address_verification_enforcement_type" ' . $ecommerce_address_verification_enforcement_type_error_checked . '>
-                                                                                                <label class="" for="ecommerce_address_verification_enforcement_type_error">'. lang('Error') . '</label>
-                                                                                            </div>
-                                                                                            </fieldset>
-                                                                                        </div>
-                                                                                    </div>
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>
-                                                                        <div class="col-12 ">
-                                                                            <div class="form-field">
-                                                                                <div class="switch"><input value="1"' . $ups_checked . ' class="collapse-switcher" type="checkbox" id="ups" name="ups" data-bs-target="#ups_row"/></div>
-                                                                                <label class="" for="ups">' . lang('UPS') . '</label>
-                                                                            </div>
-                                                                            <div class="collapse popover fade bs-popover-bottom p-0 " id="ups_row">
-                                                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
-                                                                                <div class="popover-body">
-                                                                                   <div class="row gy-5">
-                                                                                        ' . pg_carrier_api_settings_fields('ups', $ups_legacy_set) . '
-                                                                                        <div class="pg-f-md">
-                                                                                            <label for="ups_account" class="form-label">' . lang('Account Number') . '</label>
-                                                                                            <input type="text" name="ups_account" id="ups_account" class="form-control" value="' . h($ups_account) . '" maxlength="100"/>
-                                                                                            <div class="form-text">' . lang('For negotiated rates. Leave empty for published rates.') . '</div>
-                                                                                        </div>
-                                                                                        ' . pg_carrier_api_test_button('ups') . '
-                                                                                    </div>
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>
-                                                                        <div class="col-12 ">
-                                                                            <div class="form-field">
-                                                                                <div class="switch"><input value="1"' . $fedex_checked . ' class="collapse-switcher" type="checkbox" id="fedex" name="fedex" data-bs-target="#fedex_row"/></div>
-                                                                                <label class="" for="fedex">' . lang('FedEx') . '</label>
-                                                                            </div>
-                                                                            <div class="collapse popover fade bs-popover-bottom p-0 " id="fedex_row">
-                                                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
-                                                                                <div class="popover-body">
-                                                                                   <div class="row gy-5">
-                                                                                        ' . pg_carrier_api_settings_fields('fedex', $fedex_legacy_set) . '
-                                                                                        <div class="pg-f-md">
-                                                                                            <label for="fedex_account" class="form-label">' . lang('Account Number') . '</label>
-                                                                                            <input type="text" name="fedex_account" id="fedex_account" class="form-control" value="' . h($fedex_account) . '" maxlength="100"/>
-                                                                                        </div>
-                                                                                        ' . pg_carrier_api_test_button('fedex') . '
-                                                                                    </div>
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>
-                                                                        ' . pg_label_settings_rows() . '
-                                                                        <div class="col-12 ">
-                                                                            <label for="ecommerce_product_restriction_message" class="form-label">' . lang('Product Restriction Message') . '</label>
-                                                                            <textarea name="ecommerce_product_restriction_message" id="ecommerce_product_restriction_message" class="form-control" rows="2" maxlength="255">' . h($ecommerce_product_restriction_message) . '</textarea>
-                                                                        </div>
-                                                                        <div class="col-12 ">
-                                                                            <label for="ecommerce_no_shipping_methods_message" class="form-label">' . lang('No Shipping Methods Message') . '</label>
-                                                                            <textarea name="ecommerce_no_shipping_methods_message" id="ecommerce_no_shipping_methods_message" class="form-control" rows="2" maxlength="255">' . h($ecommerce_no_shipping_methods_message) . '</textarea>
-                                                                        </div>
-                                                                        ' . get_time_picker_format() . '
-                                                                        <div class="pg-f-xs">
-                                                                            <label for="ecommerce_end_of_day_time" class="form-label">' . lang('End of Day Time') . '</label>
-                                                                            <input type="text" name="ecommerce_end_of_day_time" id="ecommerce_end_of_day_time" class="form-control" data-pg-time value="' . prepare_form_data_for_output($ecommerce_end_of_day_time, 'time') . '" maxlength="8"/>' . get_date_picker_format() . pg_fields_script() . '
-                                                                            <div class="form-text">(' . h(pg_time_format_help()) . '), ' . lang('Current Site Time') . ': ' . h(date(pg_time_format_code())) . '</div>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
+                        <label for="ecommerce_product_restriction_message" class="form-label">' . lang('Product restriction message') . '</label>
+                        <textarea name="ecommerce_product_restriction_message" id="ecommerce_product_restriction_message" class="form-control" rows="2" maxlength="255">' . h($ecommerce_product_restriction_message) . '</textarea>
+                    </div>
+                    <div class="col-12">
+                        <label for="ecommerce_no_shipping_methods_message" class="form-label">' . lang('No shipping methods message') . '</label>
+                        <textarea name="ecommerce_no_shipping_methods_message" id="ecommerce_no_shipping_methods_message" class="form-control" rows="2" maxlength="255">' . h($ecommerce_no_shipping_methods_message) . '</textarea>
+                    </div>
+                    ' . get_time_picker_format() . '
+                    <div class="pg-f-xs">
+                        <label for="ecommerce_end_of_day_time" class="form-label">' . lang('End of day time') . '</label>
+                        <input type="text" name="ecommerce_end_of_day_time" id="ecommerce_end_of_day_time" class="form-control" data-pg-time value="' . prepare_form_data_for_output($ecommerce_end_of_day_time, 'time') . '" maxlength="8" aria-describedby="ecommerce_end_of_day_time_help"/>' . get_date_picker_format() . pg_fields_script() . '
+                        <div class="form-text" id="ecommerce_end_of_day_time_help">' . h(lang('Site time now') . ': ' . date(pg_time_format_code()) . ' (' . pg_time_format_help() . ')') . '</div>
                     </div>
                 </div>
             </div>
@@ -269,6 +213,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/stock_moves.php');
 
 $stock_card_ready = pg_stock_ready();
 $stock_card_rows = '';
+$stock_card_options = '';
 $stock_card_locations = $stock_card_ready ? pg_stock_locations() : array();
 $stock_card_default = pg_stock_pick_default($stock_card_locations);
 
@@ -279,9 +224,9 @@ foreach ($stock_card_locations as $stock_card_location) {
                             <td class="pg-embedded-table-text"><input type="text" class="form-control form-control-sm" name="stock_location_name[' . $stock_card_id . ']" maxlength="' . PG_STOCK_NAME_LENGTH . '" value="' . h($stock_card_location['name']) . '" aria-label="' . h(lang('Name')) . '" required /></td>
                             <td class="pg-embedded-table-text"><input type="text" class="form-control form-control-sm" name="stock_location_address[' . $stock_card_id . ']" maxlength="' . PG_STOCK_ADDRESS_LENGTH . '" value="' . h((string) $stock_card_location['address']) . '" aria-label="' . h(lang(array('string' => 'Address of {var:1}', 'vars' => array($stock_card_location['name'])))) . '" /></td>
                             <td><input type="number" min="0" max="65535" step="1" class="form-control form-control-sm pg-embedded-table-number" name="stock_location_order[' . $stock_card_id . ']" value="' . (int) $stock_card_location['sort_order'] . '" aria-label="' . h(lang(array('string' => 'Order of {var:1}', 'vars' => array($stock_card_location['name'])))) . '" /></td>
-                            <td class="pg-embedded-table-tight text-center"><input type="radio" class="radio" name="stock_location_default" value="' . $stock_card_id . '"' . (($stock_card_id === $stock_card_default) ? ' checked' : '') . ' aria-label="' . h(lang(array('string' => 'Make {var:1} the default', 'vars' => array($stock_card_location['name'])))) . '" /></td>
-                            <td class="pg-embedded-table-tight text-center"><div class="switch d-inline-block"><input type="checkbox" value="1" name="stock_location_enabled[' . $stock_card_id . ']"' . (((int) $stock_card_location['enabled'] === 1) ? ' checked' : '') . ' aria-label="' . h(lang(array('string' => '{var:1} is on', 'vars' => array($stock_card_location['name'])))) . '" /></div></td>
+                            <td class="pg-embedded-table-tight text-center"><input type="checkbox" class="pg-switch" value="1" name="stock_location_enabled[' . $stock_card_id . ']"' . (((int) $stock_card_location['enabled'] === 1) ? ' checked' : '') . ' aria-label="' . h(lang(array('string' => '{var:1} is on', 'vars' => array($stock_card_location['name'])))) . '" /></td>
                         </tr>';
+    $stock_card_options .= '<option value="' . $stock_card_id . '"' . (($stock_card_id === $stock_card_default) ? ' selected="selected"' : '') . '>' . h($stock_card_location['name']) . '</option>';
 }
 
 $commerce_stock_off = 0;
@@ -300,11 +245,11 @@ $commerce_parts['stock-locations'] = array('html' => '
             </div>
             <div class="card-body">
                 <div class="row gy-5">
-                    <div class="col-12">
-                        <div class="form-text">' . lang('The places your units are kept: a warehouse, a shop, goods on consignment. A product\'s stock is the sum of its locations. While no location is added, stock is one number as before; the first location you add becomes the default and holds every product\'s current stock.') . '</div>' . (!$stock_card_ready ? '
-                        <div class="form-text fg-warning">' . lang('Stock locations become available once the database upgrade has run.') . '</div>' : '') . '
-                    </div>' . ($stock_card_ready ? '
-                    <input type="hidden" name="stock_location_card" value="1" />' . (($stock_card_rows !== '') ? '
+                    <div class="col-12">' . ($stock_card_ready ? '
+                        <input type="hidden" name="stock_location_card" value="1" />' : '') . '
+                        <p class="pg-field-help pg-text-meta fg-secondary mb-0">' . lang('A product\'s stock is the sum of its locations; the first location added becomes the default and holds the current stock.') . '</p>' . (!$stock_card_ready ? '
+                        <p class="pg-field-help pg-text-meta fg-warning mb-0">' . lang('Stock locations become available once the database upgrade has run.') . '</p>' : '') . '
+                    </div>' . ($stock_card_ready ? (($stock_card_rows !== '') ? '
                     <div class="col-12">
                         <div class="table-responsive">
                             <table class="table table-hover mb-0 pg-embedded-table">
@@ -314,7 +259,6 @@ $commerce_parts['stock-locations'] = array('html' => '
                                         <th scope="col">' . lang('Name') . '</th>
                                         <th scope="col">' . lang('Address') . '</th>
                                         <th scope="col">' . lang('Order') . '</th>
-                                        <th scope="col" class="pg-embedded-table-tight text-center">' . lang('Default') . '</th>
                                         <th scope="col" class="pg-embedded-table-tight text-center">' . lang('On') . '</th>
                                     </tr>
                                 </thead>
@@ -323,17 +267,21 @@ $commerce_parts['stock-locations'] = array('html' => '
                             </table>
                         </div>
                         <div class="form-text">' . lang('A location that is turned off takes no transfers; the units it holds still count in the product\'s stock.') . '</div>
-                    </div>' : '') . '
-                    <div class="col-12 mb-0"><h3 class="pg-group-label mb-0">' . lang('New location') . '</h3></div>
+                    </div>
                     <div class="pg-f-md">
-                        <label for="stock_location_new_name" class="form-label">' . lang('Name') . '</label>
-                        <input type="text" name="stock_location_new_name" id="stock_location_new_name" class="form-control" maxlength="' . PG_STOCK_NAME_LENGTH . '" value="" />
-                    </div>
-                    <div class="pg-f-lg">
-                        <label for="stock_location_new_address" class="form-label">' . lang('Address') . '</label>
-                        <input type="text" name="stock_location_new_address" id="stock_location_new_address" class="form-control" maxlength="' . PG_STOCK_ADDRESS_LENGTH . '" value="" />
-                        <div class="form-text">' . lang('Added when you save.') . '</div>
-                    </div>
+                        <label for="stock_location_default" class="form-label">' . lang('Default location') . '</label>
+                        <select name="stock_location_default" id="stock_location_default" class="form-control">' . $stock_card_options . '</select>
+                    </div>' : '')
+                    . pg_commerce_settings_reveal('stock_location_new', lang('Add a location'), 'plus-lg', '
+                            <div class="pg-f-md">
+                                <label for="stock_location_new_name" class="form-label">' . lang('Name') . '</label>
+                                <input type="text" name="stock_location_new_name" id="stock_location_new_name" class="form-control" maxlength="' . PG_STOCK_NAME_LENGTH . '" value="" />
+                            </div>
+                            <div class="pg-f-lg">
+                                <label for="stock_location_new_address" class="form-label">' . lang('Address') . '</label>
+                                <input type="text" name="stock_location_new_address" id="stock_location_new_address" class="form-control" maxlength="' . PG_STOCK_ADDRESS_LENGTH . '" value="" aria-describedby="stock_location_new_address_help" />
+                                <div class="form-text" id="stock_location_new_address_help">' . lang('Added when you save.') . '</div>
+                            </div>') . '
                     <div class="col-12">
                         <a class="pg-button pg-button-ghost pg-button-sm" href="view_stock_moves.php"><i class="bi bi-clock-history" aria-hidden="true"></i>' . lang('Stock history') . '</a>
                     </div>' : '') . '
@@ -362,6 +310,7 @@ $commerce_parts['address-autocomplete'] = array('html' => '
     </div>') + pg_commerce_fold_address($commerce_on, $commerce_addr_provider);
 
 $pg_settings_scripts[] = pg_addr_settings_script();
+$pg_settings_scripts[] = pg_commerce_settings_reveal_script();
 
 // ── Gift cards ──
 $commerce_parts['giftcards'] = array('html' => '
@@ -564,17 +513,6 @@ foreach (pg_payment_drivers() as $commerce_driver_key => $commerce_driver) {
 if ($ecommerce_offline_payment == 1) {
     $commerce_methods[] = lang('Offline payments');
 }
-
-// The gateway's choices, each a pg-seg posting the values the radios did.
-$commerce_seg_options = function ($id, $choices) {
-    $options = array();
-
-    foreach ($choices as $choice) {
-        $options[] = array('value' => $choice[0], 'id' => $id . '_' . $choice[1], 'label' => $choice[2], 'on' => $choice[3] !== '');
-    }
-
-    return $options;
-};
 
 $commerce_parts['payments'] = array('html' => '
     <div id="pgset-payments" class="pg-set-card">

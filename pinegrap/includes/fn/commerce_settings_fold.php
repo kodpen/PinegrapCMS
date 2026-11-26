@@ -460,3 +460,69 @@ function pg_commerce_settings_ticks($legend, $items)
                         </fieldset>
                     </div>';
 }
+
+/**
+ * A quiet button that opens a box of fields under it, closed at first: the
+ * fields of something new, drawn only when asked for. The box posts its
+ * fields whether open or not. Pure.
+ *
+ * @param string $id    the box's id without _box
+ * @param string $label plain text
+ * @param string $icon  a Bootstrap icon's name without bi-
+ * @param string $html  the box's fields, already escaped
+ * @return string HTML
+ */
+function pg_commerce_settings_reveal($id, $label, $icon, $html)
+{
+    $box = $id . '_box';
+
+    return '
+                    <div class="col-12">
+                        <button type="button" class="pg-button pg-button-quiet pg-button-sm" aria-expanded="false" aria-controls="' . h($box) . '" data-pg-commerce-reveal="' . h($box) . '"><i class="bi bi-' . h($icon) . '" aria-hidden="true"></i>' . h($label) . '</button>
+                    </div>
+                    <div class="col-12" id="' . h($box) . '" hidden>
+                        <div class="row gy-5">' . $html . '
+                        </div>
+                    </div>';
+}
+
+/**
+ * The pane's script for pg_commerce_settings_reveal(): a click opens or
+ * closes the box the button names. Delegated to the document, so the pane's
+ * markup may be replaced after a save. Pure.
+ *
+ * @return string
+ */
+function pg_commerce_settings_reveal_script()
+{
+    return '
+    <script>
+        (function () {
+            if (window.pgCommerceRevealBound) {
+                return;
+            }
+
+            window.pgCommerceRevealBound = true;
+
+            document.addEventListener("click", function (event) {
+                var button = event.target.closest ? event.target.closest("[data-pg-commerce-reveal]") : null;
+                var box = button ? document.getElementById(button.getAttribute("data-pg-commerce-reveal")) : null;
+
+                if (!box) {
+                    return;
+                }
+
+                box.hidden = !box.hidden;
+                button.setAttribute("aria-expanded", box.hidden ? "false" : "true");
+
+                if (!box.hidden) {
+                    var first = box.querySelector("input, select, textarea");
+
+                    if (first) {
+                        first.focus();
+                    }
+                }
+            });
+        })();
+    </script>';
+}
