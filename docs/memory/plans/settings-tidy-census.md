@@ -11,7 +11,7 @@ description: Survey of the Site Settings categories (owner 2026-11-21: tidy ever
 - None. K2, the sales watch hidden in Operations alerts, is a card of its own since #11876 (`ui/settings-maintenance.md`).
 
 ## Which settings are still spread?
-- Seller identity in General › Organization and again in Ecommerce's feeds (`commerce.php`): `settings-ecommerce-tidy.md` (EC5).
+- Seller identity in General › Organization and again in Ecommerce › Product feeds (`commerce.php`): what each is read for is `ui/settings-ecommerce-programmes-feeds.md`; joining them waits for the architect, no plan takes it.
 - Smaller, no plan: the GeoIP note and refresh twice (`firewall.php`, `languages.php`); two deletion gates, "Deleting many at once" (`mass_deletion`, Accounts and sign-in) and the Workspace's `ws_ai_bulk_delete`.
 
 Related: docs/memory/plans/settings-tidy-census-order.md, docs/memory/plans/settings-scan-findings.md
