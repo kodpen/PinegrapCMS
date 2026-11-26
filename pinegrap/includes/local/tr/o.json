@@ -2025,6 +2025,7 @@
     "Opens the task “{var:1}” and waits until it is done or cancelled, at most {var:2} hours.": "“{var:1}” görevini açar ve en fazla {var:2} saat, görev bitene ya da iptal edilene kadar bekler.",
     "Opens the task “{var:1}” and waits until it is done or cancelled.": "“{var:1}” görevini açar ve görev bitene ya da iptal edilene kadar bekler.",
     "Opens {var:1}, closes {var:2}.": "{var:1} açılır, {var:2} kapanır.",
+    "Opens {var} on the site": "Sitede {var} sayfasını açar",
     "Opera": "Opera",
     "Operating System": "İşletim Sistemi",
     "Operation {var:1}": "İşlem {var:1}",

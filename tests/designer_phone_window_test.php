@@ -136,6 +136,38 @@ function test_designer_phone_window_says_why_no_link_was_made()
 	pg_assert_contains('foot.hidden = ', $draw, 'the foot is hidden while there is no link');
 }
 
+// A design with no draft pages gets the code of its live page: the window
+// draws the live state, with "Copy link" and no countdown or "End now", as
+// no share link stands behind it.
+function test_designer_phone_window_draws_the_live_page_with_no_end_or_countdown()
+{
+	$live = array('status' => 'success', 'live' => true, 'url' => 'https://x/about', 'qr' => '<svg></svg>', 'start_page' => 'About');
+	$cases = array(
+		array($live, 0),
+		array(array_merge($live, array('qr' => '')), 0),
+		array(array_merge($live, array('url' => '')), 0),
+	);
+	$res = designer_phone_window_node(array('_phView'), json_encode($cases) . '.map(function (c) { return _phView(c[0], c[1]); })');
+
+	if ($res !== null) {
+		pg_assert_same(array('live', 'failed', 'failed'), $res);
+
+		$foot = designer_phone_window_node(array('_phFoot'), '(function () { esc = function (s) { return s; }; _phNarrow = function () { return false; }; return [_phFoot(true, true), _phFoot(true)]; })()');
+		pg_assert_contains('data-ph="copy"', $foot[0], 'the live page\'s address is copied');
+		pg_assert_false(strpos($foot[0], 'data-ph="end"'), 'nothing to end for the live page');
+		pg_assert_contains('data-ph="end"', $foot[1], 'a share link keeps End now');
+	}
+
+	$draw = designer_phone_window_fn(designer_phone_window_source(), '_phDraw');
+	$at = strpos($draw, "state.view === 'live'");
+	pg_assert_true($at !== false, 'the window draws the live state');
+	$next = strpos($draw, '} else if', $at + 1);
+	$branch = ($next === false) ? substr($draw, $at) : substr($draw, $at, $next - $at);
+	pg_assert_contains('opens the live page', $branch, 'the window says the code opens the live page');
+	pg_assert_false(strpos($branch, '_phStartsLine'), 'no countdown');
+	pg_assert_false(strpos($branch, '_phInfoLine'), 'no line about saves');
+}
+
 function test_designer_phone_window_is_a_part_opened_from_the_preview_menu()
 {
 	$parts = pg_designer_parts();
