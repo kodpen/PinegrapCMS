@@ -37,6 +37,7 @@
 - bug-hunt-areas-api-new-routes.md: The bug hunt of the API routes and MCP tools new in 2026.11.0 (VS8, WQ8, LJ6, SJ6, DV6, share links; PR of 2026-11-24): the two queue faults fixed, what was read clean, what was not run [decision: here]
 - bug-hunt-areas-api-shared-layer.md: The bug hunt of the external API's shared layer (fault, manners, response, router, preconditions, idempotency; channel message 10241, area c, PR #10615): three faults fixed, what was read clean
 - bug-hunt-areas-application-review.md: Bug hunt of the application review desk (Forms › Application programmes, named by the architect 2026-11-26, request 3016): five faults fixed in #11757, what was read clean, what was left [decision: here]
+- bug-hunt-areas-audiences.md: Bug hunt of contact groups filled by rules (#6158 to #6418), named by the architect (2026-11-26, request 3055): what was read, the four faults fixed in #11789, what was found clean and what was asked [decision: here]
 - bug-hunt-areas-backend-layout-probe.md: Layout pass of the 2026-11-22 backend sweep: each panel screen at 390, 768 and 1440 px for covered or clipped controls and cut text; the fix, what the probe misreads
 - bug-hunt-areas-backend-sweep-2.md: Second pass of the owner's whole-backend sweep of 2026-11-22: a role without manage rights, every edit screen saved unchanged, phone dialogs, PHPStan level 2; what it fixed, what read clean
 - bug-hunt-areas-backend-sweep-3.md: Third pass of the owner's whole-backend sweep of 2026-11-22: scheduled jobs, site pages, dark theme, API answers, untranslated texts; what it fixed or reported, what read clean [decision: decisions-made-product-99.md]
@@ -48,6 +49,7 @@
 - bug-hunt-areas-calendar-events.md: Bug hunt 29 of calendar events, repeats and the calendar feeds (.ics, Workspace subscription): four faults fixed, what was read clean, what was left
 - bug-hunt-areas-canvas-data-views.md: The bug hunt of the Artifact Canvas data views (DV1-DV6, #11353, 2026-11-24): the four faults fixed, what was read clean, what was not run [decision: here]
 - bug-hunt-areas-channel-board.md: Bug hunt of a channel's Board tab (2026-11-26, PR #11743): who sees and moves a card, the four figures against the lists, moves, the board's rules, the kept view and ?view=board/list
+- bug-hunt-areas-channel-memory.md: Bug hunt of the channel memory (2026-11-26, PR #11790): who reads and writes, Claude's application and the general memory, a Turkish tag, the brief's size bound; what read clean and what is asked [decision: decisions-made-workspace-9.md]
 - bug-hunt-areas-channel-notes-share.md: Bug hunt of channel notes (CN1-CN3) and the share door (SL1-SL6): six faults fixed, what was read clean, what was left
 - bug-hunt-areas-click-scroll-map.md: The bug hunt of the click and scroll map (architect 2026-11-20, channel message 10776): the three faults fixed, what was read clean, what is no fault [decision: here]
 - bug-hunt-areas-comments-reviews.md: Bug hunt 23, page comments and product reviews (2026-11-24): links in a comment's text, a deleted page's comment notifications, the deleted product finding, what read clean
@@ -114,11 +116,13 @@
 - bug-hunt-areas-site-themes-and-style-switch.md: The bug hunt in site themes and the style switch (area 51, #11474): activating a theme, copying and deleting a style, what a page keeps when its style goes; what was fixed, read clean and left
 - bug-hunt-areas-stock-locations.md: The bug hunt of stock by location and the barcode stock screens (2026-11-20): the three faults fixed, the two issues opened, what was read clean [decision: decisions-made-product-19.md]
 - bug-hunt-areas-subscriptions-recurring.md: The bug hunt of subscriptions and recurring orders (area 33, 2026-11-24): renewals, retries, pause and cancel dates, price changes, card tokens, mails; what it fixed, what was read clean
+- bug-hunt-areas-supplier-feed.md: The bug hunt in supplier feeds SF1 to SF7 (k1, 2026-11-26, #11784): the pull, the readers, the amounts, the sync, several feeds, rights; six faults fixed, what was read clean, what is left
 - bug-hunt-areas-tax-rates-calculation.md: Bug hunt of tax rates calculation (area 50, 2026-11-24): zone and product rates, tax-inclusive prices, per-rate rounding; two cart widget faults fixed, what read clean
 - bug-hunt-areas-two-step-sign-in.md: Bug hunt area 45, two-step sign-in (2026-11-24, PR #11452): the two faults fixed, what read clean, issue #11454, two questions for the architect
 - bug-hunt-areas-volunteer-shifts.md: The bug hunt of volunteer shifts (VS1 to VS8, 2026-11-24): sign-up, waitlist, swaps, calls and reminders, organiser screens, erasure and export, the signed page; what it fixed and what read clean
 - bug-hunt-areas-walk-in-queue.md: Bug hunt of the walk-in queue (WQ1-WQ9, area 6 named by the architect, 2026-11-24): six faults fixed in #11352, one decision question, what was read clean [decision: here]
 - bug-hunt-areas-webhooks-out.md: The bug hunt in outgoing webhooks and announcements (area 41, PR #11441): what was fixed, what was read clean, what is left
+- bug-hunt-areas-whatsapp.md: The bug hunt in WhatsApp messages (WA1–WA10, architect request 3055, 2026-11-26): what was fixed, what was read clean, what is left [decision: decisions-made-workspace-23.md]
 - bug-hunt-areas-workspace-calls.md: The bug hunt of Workspace voice and video calls (CL1-CL8, CN1-CN7), 2026-11-26, #11765: four faults fixed, the ring in a muted channel asked, what read clean [decision: here]
 - bug-hunt-areas-workspace-files-sharing.md: Bug hunt 48, Workspace files sharing (2026-11-24, PR #11476): file addresses after leaving, shares, deletes, replaces, guests, limits, previews; four faults fixed
 - bug-hunt-areas-workspace-look-regressions.md: Hunt 16, 2026-11-24: what the Workspace's move to the panel look (WL2-WL7) broke, what was fixed, what read clean

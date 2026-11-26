@@ -516,6 +516,7 @@
 - designer-options-review.md: Options panel "Only what I changed" (DP9, #10699): the switch at the bottom with the count, the list of changed rows of all three tabs, "Reset all" as one undo step
 - designer-options-search.md: Options panel "Search or add an option…" (DP8, #10658): three tabs by label, section, CSS property, class prefix; results with path; Enter opens the row; no result offers the class
 - designer-options-section-cards.md: The Options panel's identity row and section cards (D3, D6–D9, D11): own section first and open, general sections closed with a count and summary, closed bodies not drawn, one source for changed rows [decision: here]
+- designer-options-shape.md: Clip shape and Mask under Shadow and effect's "More" as built (DO14): the rows, what they write, states, the canvas preview and dashed outline, the part, the cost
 - designer-options-states-drawing-motion.md: Transition, Transform and a section's "More" as drawn (options-states.html, boards T1, R1, R2, Z1, steps DO11 and DO12): the rows, the look's values, Origin, the outline on the canvas
 - designer-options-states-drawing-state.md: The Options panel's State row as drawn (options-states.html, boards S1 to S3, step DO10): the row, the ring, what the panel and the canvas show under a state, "Reset this state"
 - designer-options-states-drawing.md: The drawing of the Options panel's states, Transition and Transform (plan designer-options-census, DO10 to DO12): the sheet, its seven boards, which step builds which, what is new
