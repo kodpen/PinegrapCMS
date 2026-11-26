@@ -11,6 +11,6 @@ description: Decisions list, product part 79 (2026-11-19 on): the own Office cod
 - Poll 156: "Tam kapsam". Its text: previews of .xls, .ods, .csv and .pptx (slide text and pictures); in Excel rows, columns and sheets added and removed, bold, colour and number format, sort, filter and find; "Yeni tablo" and "Yeni belge" in the File Manager and a channel; in Word bold, italic, headings, lists, paragraphs added and removed; a shared "Excel'e aktar" on panel lists and a shared reader with a sheet choice in imports. PHPExcel goes, no library is added.
 - Not chosen: the same without Word editing and .pptx; the move alone.
 - It replaces the scope of 2026-10-19 ("simple editing", .pptx and binary files out) in `platform/office-files-scope.md` as the steps land.
-- The architect's reading, not his words: the steps and what is left out (`plans/office-own-code.md`).
+- The architect's reading, not his words: the steps and what is left out (`platform/office-files-scope.md`, `platform/office-overview.md`).
 
 Related: docs/memory/workflow/decisions-made.md, docs/memory/platform/office-files-scope.md

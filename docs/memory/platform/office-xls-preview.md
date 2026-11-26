@@ -6,7 +6,7 @@ module: office
 
 ## What does an .xls show?
 - Since PR #10542: Quick Look and the file window in the File Manager, and a channel's Preview, draw it as an .xlsx is drawn: worksheets in order (chart and macro sheets left out), a hidden sheet flagged, the sheet's own row numbers, gaps kept. Before it, it had no preview.
-- Doors: `explorer_office_preview`, `ws_file_office`, then `pg_office_read()` → `pg_office_xls_read()`. `pg_office_preview_kind()` gives `xls`; `pg_office_kind()`, which every edit asks, gives '', so it is never edited in place (`plans/office-own-code.md`).
+- Doors: `explorer_office_preview`, `ws_file_office`, then `pg_office_read()` → `pg_office_xls_read()`. `pg_office_preview_kind()` gives `xls`; `pg_office_kind()`, which every edit asks, gives '', so it is never edited in place (`office-files-scope.md`).
 - Sheet names and hidden flags: `pg_sheet_xls_sheets()` (`sheet-reader.md`), from the BOUNDSHEET records. Rows: `pg_sheet_rows($path, 'xls', …)` through `pg_office_ods_rows(…, 'xls')`; a cell is shown as an .ods cell is (`office-ods-preview.md`). A formula shows the result the file stores.
 
 ## What are the limits?
@@ -25,4 +25,4 @@ module: office
 ## How is it tested?
 - `tests/office_xls_test.php` on the sheet reader's fixtures (`tests/fixtures/sheet_read/*.xls`): the preview, a hidden sheet (a byte of book.xls changed in the test), refusals, the copy read back by `pg_sheet_rows(…, 'xlsx')` cell for cell and by the .xlsx preview as the .xls preview showed it, the writer's names and failures, the doors.
 
-Related: docs/memory/platform/office-files.md, docs/memory/platform/sheet-reader.md, docs/memory/plans/office-own-code-steps.md
+Related: docs/memory/platform/office-files.md, docs/memory/platform/sheet-reader.md, docs/memory/platform/office-overview.md

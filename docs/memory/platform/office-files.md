@@ -19,4 +19,5 @@ description: Word and Excel previews (includes/fn/office.php, pg_office_view.js)
 - A part built into a DOM may declare 8 MB; a longer document is read from its beginning, rows and strings node by node: `office-dom-ceiling.md`.
 
 ## Where do the readers go next?
-- Edits, read with `edit`: workbook cells `office-cell-edits.md`, document paragraphs `office-paragraph-edits.md`, in a channel `workspace/workspace-office-edits.md`. Out of scope, and why: `office-files-scope.md`. Channels refuse the macro forms: `workspace/workspace-upload-refusals.md`. File manager files sent to or picked in a channel: `workspace/workspace-file-manager-files.md`; what uses a file: `file-manager-where-used.md`. Tests: `tests/office_test.php` (pure helpers; both readers over packages the test writes).
+- Edits, read with `edit`: workbook cells `office-cell-edits.md`, document paragraphs `office-paragraph-edits.md`, in a channel `workspace/workspace-office-edits.md`. How far it goes: `office-files-scope.md`; every part: `office-overview.md`.
+- Channels refuse the macro forms: `workspace/workspace-upload-refusals.md`. File manager files sent to or picked in a channel: `workspace/workspace-file-manager-files.md`; what uses a file: `file-manager-where-used.md`. Tests: `tests/office_test.php` (pure helpers; both readers over packages the test writes).

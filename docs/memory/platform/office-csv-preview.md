@@ -6,7 +6,7 @@ module: office
 
 ## What does a .csv or .tsv show?
 - Since PR #10484: Quick Look in the File Manager and a channel's Preview (file card, Files tab, the file's menu) draw it as one sheet named after the file, through the doors a workbook uses (`explorer_office_preview`, `ws_file_office`) and `pg_office_read()` → `pg_office_csv_read()`. Before it, Quick Look said "no preview" and a channel offered only its text window.
-- Only looked at: `pg_office_preview_kind()` gives `csv`, while `pg_office_kind()`, which every edit asks, still gives ''. The file window keeps opening it in the text editor and a channel keeps its Edit text window: that is where it is changed. Editing a .csv as a sheet is not built (`plans/office-own-code.md`).
+- Only looked at: `pg_office_preview_kind()` gives `csv`, while `pg_office_kind()`, which every edit asks, still gives ''. The file window keeps opening it in the text editor and a channel keeps its Edit text window: that is where it is changed. Editing a .csv as a sheet is not built (`office-files-scope.md`).
 
 ## How are the character set and the separator guessed?
 - Character set (`pg_office_csv_encoding()`): a UTF-8 byte order mark, or bytes that are all valid UTF-8, read as UTF-8; anything else as Windows-1254, which Excel and older programs on a Turkish Windows save in, converted by the code page's table (`pg_mail_single_byte_to_utf8()`). The mark is never shown; a byte that is not UTF-8, read as UTF-8, shows as U+FFFD.
@@ -22,4 +22,4 @@ module: office
 - The records are split on the file's own bytes (every character looked for is ASCII) and only the kept cells are converted, so the file is never held twice: an 8 MB Windows-1254 file read to 2,000 rows took about 26 MB over the request's start, against 54 MB when the whole text was converted first.
 - Tests: `tests/office_csv_test.php`.
 
-Related: docs/memory/platform/office-files.md, docs/memory/plans/office-own-code-steps.md
+Related: docs/memory/platform/office-files.md, docs/memory/platform/office-overview.md

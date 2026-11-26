@@ -22,4 +22,4 @@ module: office_new
 ## How is it tested?
 - `tests/office_new_test.php`: names, the blank cell, both files read back by the preview as editable, a first edit saved and read back (also by `pg_sheet_rows()`), the doors. Checked by hand: openpyxl, python-docx and LibreOffice 24 open both. Not checked: Excel, Word, the screens in a browser.
 
-Related: docs/memory/platform/office-cell-edits.md, docs/memory/platform/office-paragraph-edits.md, docs/memory/workspace/workspace-office-edits.md, docs/memory/plans/office-own-code-steps.md
+Related: docs/memory/platform/office-cell-edits.md, docs/memory/platform/office-paragraph-edits.md, docs/memory/workspace/workspace-office-edits.md, docs/memory/platform/office-overview.md
