@@ -524,6 +524,12 @@ function pg_privacy_request_send(array $request, $text, array $operator, $refuse
 
     $erase = !$refuse && ($request['kind'] === 'erasure');
 
+    // The kinds without an export or an erasure of their own check here who
+    // this operator may see, as the drawer's disabled Send does.
+    if (pg_privacy_request_send_gathers((string) $request['kind'], $refuse) && !pg_privacy_request_answer_steps($request, pg_privacy_request_gather($request, $operator))['can_send']) {
+        return 'refused';
+    }
+
     if ($erase) {
         $dry = pg_privacy_erase(array('email' => (string) $request['email'], 'contact_id' => (int) $request['contact_id'], 'user_id' => (int) $request['user_id']), $operator, false);
 
@@ -583,6 +589,21 @@ function pg_privacy_request_send(array $request, $text, array $operator, $refuse
     }
 
     return 'ok';
+}
+
+/**
+ * Whether sending checks the gather step first: a correction, objection or
+ * other answer, whose sending runs neither the erase dry run nor the export
+ * that refuse a person of a higher role. A refusal sends only its reason.
+ * Pure.
+ *
+ * @param string $kind
+ * @param bool   $refuse
+ * @return bool
+ */
+function pg_privacy_request_send_gathers($kind, $refuse)
+{
+    return !$refuse && !in_array((string) $kind, array('erasure', 'information'), true);
 }
 
 /**
