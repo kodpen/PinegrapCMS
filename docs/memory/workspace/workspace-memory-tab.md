@@ -1,6 +1,6 @@
 ---
 name: workspace-memory-tab
-description: The Memory tab as rows under folding project headings (GM3a): the general memory and the channel's own as two parts, the search box, a row's columns, Move to the general memory, the form, ws_memory_list's parts
+description: The Memory tab (GM3a, MS3): the general and the channel's part as rows under folding project headings, the search box, a row's columns, Move, the form, ws_memory_list's answer
 ---
 
 ## Why does it look like this?
