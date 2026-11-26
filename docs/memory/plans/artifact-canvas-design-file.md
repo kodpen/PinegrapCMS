@@ -25,7 +25,7 @@ priority: 6
 - After Open a line under the top bar reports: texts and pictures brought in, fonts replaced with their names, elements left out, with "Details" opening the list. Refusals are sentences in the window: not a .pptx, too large, a part that cannot be read.
 
 ## Which steps? (M about 1,000 product lines; tests red first, on presentations the test writes)
-- DF1 (M) The reader, pure: per slide the size, the background and the elements in paint order with resolved places, texts with their styles, pictures with their crops, lines and shapes; counts of what is left out.
+- DF1 (M) done, PR #11840 (`platform/office-pptx-design-reader.md`): the reader, pure: slides of placed elements, counts of what is left out.
 - DF2 (M) after DF1: the mapper, pure: a slide to a canvas document, sizes and spacing by the census's sums, the font lookup, the report's numbers.
 - DF3 (M) after DF2: the canvas's action that reads an uploaded file, the pictures into Files, limits and refusals, and Import's one page as a group.
 - DF4 (M) after DF3: the chooser window, the New image dialog's door, many canvases or scenes, the report line, the phone.

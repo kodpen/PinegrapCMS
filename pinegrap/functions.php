@@ -154,6 +154,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/events.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/automation_flows.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/workspace_mail_gate.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/office.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/office_pptx_design.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/office_edit.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/office_shift.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/office_sheets.php');
