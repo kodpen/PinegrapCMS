@@ -1,10 +1,10 @@
 ---
 name: connections-lead-keeps-pane
-description: A lead from the Site Settings dialog to a Connections service page keeps the pane's unsaved fields and open drawers in sessionStorage and puts them back when the pane comes again (TR3b)
+description: A lead from the Site Settings dialog to a Connections service page keeps the pane's unsaved fields and open drawers in sessionStorage and puts them back when the pane comes again (#11880)
 ---
 
 ## What is it?
-- Step TR3b of `plans/settings-tidy-round.md`, the rule's "Nothing is lost" part (`plans/settings-crossings-rule.md`; owner poll 232). Before it a lead dropped the pane's unsaved choices without asking: Payment Methods' gateway, Shipping's service, SMS and Address Autocomplete providers, an agent's drawer (census paths 7 and 8).
+- Built in #11880, the rule's "Nothing is lost" part (`settings-crossings-rule.md`; owner poll 232). Before it a lead dropped the pane's unsaved choices without asking: Payment Methods' gateway, Shipping's service, SMS and Address Autocomplete providers, an agent's drawer.
 
 ## What happens on the click?
 - `pgSettingsModal` in `backend.src.js` listens to clicks in the dialog. A plain click (no modifier, no `target="_blank"`) on a link `pgSettingsLead()` reads as a lead (`connections.php?…&from=<category>/<card>`) keeps, in `sessionStorage` `pg_settings_kept`: the pane, the card, the open drawers in order (a drawer opened from another drawer too) and every field whose value differs from the markup's own.

@@ -21,7 +21,7 @@ description: Hand-over note of the architect session of 2026-11-24 to 26, writte
 - The ease-of-use study before the launch, in four areas, for a site owner and for an agency. The designer's part is the designer plans, Site Settings the `settings-*` plans; first setup and first day and the daily jobs are not started.
 - After DF4 has landed: a poll whether the Page Design Studio's Canva start reads the same .pptx file.
 - EC5's open point: where the seller's identity stands, General › Organization or Product feeds.
-- Three plans have no coordinator (the Paraşüt DevHub connection, the security scan, the Claude plugin bundle): whose they are is his call. The settings panes come after TR5.
+- Three plans have no coordinator (the Paraşüt DevHub connection, the security scan, the Claude plugin bundle): whose they are is his call. SEO, Languages and Translation, Fediverse, Integrations, Channels and Team have no tidy plan yet (`plans/settings-scan-findings.md`).
 - AH4 waits for his yes to the `addons` table.
 - Paraşüt: PS1 has landed (#11819). Next, dev is connected with his staging client; he enters the client secret himself. The staging sign-in mail to his address with a "+" does not arrive, and Paraşüt's account form refuses that character. What is found goes into `erp/erp-parasut-devhub-connection.md` and `erp-parasut-devhub-client.md`, then the plan is deleted; the partner approval is his poll.
 - Carried from the note of 2026-11-25, not looked at again: the lists' look (14 px rows and quiet row actions of the accepted All Orders drawing against the list table driver's 16 px rows), a question for him before any plan; automations on other screens, nothing planned until he opens it.

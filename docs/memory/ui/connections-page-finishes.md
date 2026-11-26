@@ -1,11 +1,11 @@
 ---
 name: connections-page-finishes
-description: A Google or Microsoft account service's Connections page asks for the missing application itself; the drives give one answer; Microsoft's page has the sign-in part (TR3c)
+description: A Google or Microsoft account service's Connections page asks for the missing application itself; the drives give one answer; Microsoft's page has the sign-in part (#11894)
 module: connections_screen
 ---
 
 ## What is it?
-- Step TR3c of `plans/settings-tidy-round.md`, the rule's "The page finishes it" part (`plans/settings-crossings-rule.md`; owner poll 232). Before it every account service sent the person on to Google's or Microsoft's page for the application (census paths 1 to 6).
+- Built in #11894, the rule's "The page finishes it" part (`settings-crossings-rule.md`; owner poll 232). Before it every account service sent the person on to Google's or Microsoft's page for the application.
 
 ## When does a service's page show the application?
 - `pg_connections_screen_app_here($id, $service, $ready, $manager)` (pure, tested): a registry service whose state is `kind => account` of Google or Microsoft, on a page that is not the provider's own (not `google`, `microsoft`, `github`), while `pg_connect_app_ready()` is false, for a manager. Google Drive, OneDrive, Google Analytics, Merchant Center, Gmail, Microsoft 365 mail, the calendars, OneNote.
