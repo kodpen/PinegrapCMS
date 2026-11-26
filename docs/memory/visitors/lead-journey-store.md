@@ -14,7 +14,7 @@ module: lead_journey_store
 - Catalogue row under marketing while visitor tracking is on and the tables exist; in `pg_consent_revoke_names()` too.
 
 ## How is a visit recorded?
-- The key is synced once per request at the end of `init_tracking()` (`pg_lead_request_browser()`), before the page prints: `update_visitor_page_data()` runs in `get_page.php` after output has started, so a cookie written there was never sent (found on the sandbox before #10882 was ready).
+- The key is synced once per request at the end of `init_tracking()` (`pg_lead_request_browser()`), before the page prints: `update_visitor_page_data()` runs in `get_page.php` after output has started, so a cookie written there was never sent.
 - `update_visitor_page_data()` calls `pg_lead_page_view()`: so only with `VISITOR_TRACKING` and a `visitors` row. The first page of a visit inserts a `lead_visits` row (channel by `pg_visitor_channel()`, campaign = UTM campaign else tracking code, referrer host, landing page);
 - Later pages update `pages` JSON `[page, seconds, at]`, at most 50 (`pg_lead_pages_add()`); a catalogue page adds `pg_track_content()`'s item: `[page, seconds, at, type, id]` (#11245). A tied browser's new visits carry its contact at once.
 
@@ -23,6 +23,7 @@ module: lead_journey_store
 - `newsletter`: the double opt-in confirm (`confirm_subscription.php`) and a new group yes on `email_preferences.php`.
 - `campaign_click`: `view_email_campaign.php?r=<reference_code>` when the `email_recipients` row has a contact (`ref_id` = campaign). The `?t=` code ties nobody.
 - `order`: `submit_order.php` after `pg_order_complete()` returned a number, with the order's contact (`ref_id` = order).
+- A deleted contact ties nobody: `no_contact` (#11806).
 - On `tie`/`move`: `lead_browsers.contact_id`, `tied_at`; untied visits since the consent and inside the keep period get the contact (`pg_lead_tie_back_ids()`); one `contact_journey` row, kind 1 (tie), `detail` = act, `ref_id` = group or user.
 - `form`: `custom_form.php` right after `UPDATE forms SET contact_id`, so a form's group yes without double opt-in ties with it (`ref_id` = form).
 - No booking tie (a booking holds no contact).
@@ -31,7 +32,7 @@ module: lead_journey_store
 - `consent_answer.php` → `pg_lead_consent_changed()`: on a marketing refusal the browser row goes with its visits where `contact_id = 0`, the session part is dropped and the cookie deleted. A page view with the cookie but no yes does the same (`pg_lead_sync_plan()`); if the script already deleted the cookie the session names the row.
 
 ## Who never gets a row?
-- A panel user (`pg_user_has_panel_access()`) or staff browsing as a customer: no key read or written, no visit, no tie.
+- A panel user or staff browsing as a customer after "Log in as this user" (`pg_lead_session_is_staff()`, #11806): no key, no visit, no tie.
 
 ## What do merge and erase do?
 - `pg_contact_holders()`: the three row tables `move`; `contact_scores` `drop` (a new merge answer: one row is kept for the survivor and marked for the next pass, `pg_lead_score_merge()`, `visitors/lead-score.md`). Erase and export: `visitors/lead-journey-view.md`.
