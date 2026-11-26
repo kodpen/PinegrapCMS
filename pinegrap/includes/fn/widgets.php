@@ -7305,6 +7305,63 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
     return str_replace('<!--pg-loop-slot-->', $loop_rendered, $static_html) . $click_script;
 }
 
+// The guest's way on a registration widget: the section `guest` (drawn
+// only while the request carries allow_guest=true) and the button bound to
+// the action continue_as_guest. Allowed, the section's node stays (its
+// binding spent; an empty one gets the site's button) and every guest
+// button submits the form $form_id, the small guest form printed after the
+// widget's own: nothing nested, and Enter in a sign-up field never presses
+// it. Not allowed, both go. Answers whether the tree holds a guest button.
+function _pg_member_guest_apply(&$tree, $allowed, $form_id)
+{
+    $found = false;
+    $button = '<button type="submit" form="' . h($form_id) . '" class="btn btn-outline-primary pg-guest-button">' . h(lang('Continue as a Guest')) . '</button>';
+    $walk = function (&$node) use (&$walk, &$found, $allowed, $form_id, $button) {
+        if (empty($node['children']) || !is_array($node['children'])) return;
+        $kept = array();
+        foreach ($node['children'] as $child) {
+            if (!is_array($child)) { $kept[] = $child; continue; }
+            $b = (isset($child['props']['_bindings']) && is_array($child['props']['_bindings'])) ? $child['props']['_bindings'] : array();
+            $is_section = (string)($b['section'] ?? '') === 'guest';
+            $is_button = (string)($b['action'] ?? '') === 'continue_as_guest';
+            if (($is_section || $is_button) && !$allowed) continue;
+            if ($is_section) {
+                unset($child['props']['_bindings']['section']);
+                if (!$child['props']['_bindings']) unset($child['props']['_bindings']);
+                if (empty($child['children'])) {
+                    $child['children'] = array(array('type' => 'content',
+                        'props' => array('contentType' => 'custom_html', 'html' => $button), 'children' => array()));
+                    $found = true;
+                }
+            }
+            if ($is_button) {
+                _pg_member_set_attr($child, 'type', 'submit');
+                _pg_member_set_attr($child, 'form', (string)$form_id);
+                $found = true;
+            }
+            $walk($child);
+            $kept[] = $child;
+        }
+        $node['children'] = $kept;
+    };
+    if (is_array($tree)) $walk($tree);
+    return $allowed && $found;
+}
+
+// The small form a guest button submits (registration_entrance.php with
+// continue=true, as the classic guest form posts): the token, where to go
+// on, allow_guest. With $with_button it brings its own button, for a tree
+// that has none (a page moved before the widget had the guest section).
+function _pg_member_guest_form_html($form_id, $action, $send_to, $token_field, $with_button)
+{
+    return '<form id="' . h($form_id) . '" action="' . h($action) . '" method="post" class="pg-guest-form">' . $token_field
+        . '<input type="hidden" name="continue" value="true">'
+        . '<input type="hidden" name="send_to" value="' . h((string)$send_to) . '">'
+        . '<input type="hidden" name="allow_guest" value="true">'
+        . ($with_button ? '<button type="submit" class="btn btn-outline-primary pg-guest-button">' . h(lang('Continue as a Guest')) . '</button>' : '')
+        . '</form>';
+}
+
 // Render a 'registration' system widget.
 //
 // Posts to <software>/registration_entrance.php with register=true - the
@@ -7318,7 +7375,9 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
 // Tokens: ^^__site_name^^, ^^__login_url^^, ^^__google_signup_url^^,
 // ^^__password_rules^^, ^^__opt_in_label^^. Sections: captcha,
 // password_rules, google_signup (every sign-in button that is on),
-// login_link. Errors and the "you are registered" notice: liveform
+// login_link, guest (with allow_guest=true; its button bound to the action
+// continue_as_guest, see _pg_member_guest_apply()). Visibility:
+// shows_remember_me. Errors and the "you are registered" notice: liveform
 // 'register', printed by the Messages node.
 //
 // cfg: redirect_page_id (after sign-up), login_page_id (the "already a
@@ -7360,6 +7419,7 @@ function _render_system_widget_registration($tree_json, $widget_id, $cfg = array
     // sign-up just left ("you are registered") prints with it; an editor
     // still sees the form.
     if ($mode !== 'edit' && _pg_member_session_signed_in()) {
+        _pg_member_guest_apply($tree, false, '');
         return _pg_member_render_signed_in($tree, $lf, 'register', $send_to, $page_url,
             array('captcha', 'password_rules', 'google_signup', 'login_link'),
             array('__login_url', '__google_signup_url'),
@@ -7391,6 +7451,15 @@ function _render_system_widget_registration($tree_json, $widget_id, $cfg = array
         _pg_member_drop_control($tree, 'register_remember_me');
         _pg_member_drop_control($tree, 'remember_me');
     }
+    // A converted classic layout shows its remember box (whose label holds
+    // words of its own) under this flag.
+    _eo_apply_visibility_bindings($tree, array('shows_remember_me' => $remember_ok));
+
+    // A guest may go on without an account when the link that brought the
+    // visitor says so (allow_guest=true), as on the classic screen.
+    $guest_ok = (($_GET['allow_guest'] ?? '') === 'true') || (($_POST['allow_guest'] ?? '') === 'true') || $mode === 'edit';
+    $guest_form_id = 'pg-guest-form-' . $widget_id;
+    $guest_button = _pg_member_guest_apply($tree, $guest_ok, $guest_form_id);
 
     $rules_html  = (defined('STRONG_PASSWORD') && STRONG_PASSWORD && function_exists('get_strong_password_requirements'))
         ? '<div class="pg-password-rules small text-muted">' . get_strong_password_requirements() . '</div>' : '';
@@ -7415,7 +7484,7 @@ function _render_system_widget_registration($tree_json, $widget_id, $cfg = array
 
     $rendered = trim(_render_tree_node($tree, 0, 0));
     $lf->remove();
-    $rendered = _pg_member_form_wrap($rendered, $software . '/registration_entrance.php', array(
+    $hidden = array(
         'register'        => 'true',
         'send_to'         => $send_to,
         'return_to'       => $page_url,
@@ -7423,7 +7492,16 @@ function _render_system_widget_registration($tree_json, $widget_id, $cfg = array
         // Which widget drew the form: its tree says which controls fill
         // which address-book columns.
         'pg_widget_id'    => $widget_id,
-    ), 'pg-register-form');
+    );
+    // A refused sign-up keeps the guest's way, as the classic forms do.
+    if ($guest_ok) $hidden['allow_guest'] = 'true';
+    $rendered = _pg_member_form_wrap($rendered, $software . '/registration_entrance.php', $hidden, 'pg-register-form');
+    if ($guest_ok) {
+        // After the widget's form, never inside it.
+        $guest_to = _pg_member_query_path('send_to');
+        $rendered .= _pg_member_guest_form_html($guest_form_id, $software . '/registration_entrance.php',
+            ($guest_to !== '') ? $guest_to : $send_to, get_token_field(), !$guest_button);
+    }
 
     return _pg_member_apply_tokens($rendered, array(
         '__site_name'         => h($site_name),
@@ -8891,7 +8969,8 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
 // Tokens: ^^__site_name^^, ^^__member_id_label^^, ^^__login_url^^,
 // ^^__google_signup_url^^, ^^__password_rules^^, ^^__opt_in_label^^.
 // Sections: password_rules, google_signup (every sign-in button that is
-// on), login_link. Errors and the "membership active" notice: liveform
+// on), login_link. Visibility: shows_remember_me. Errors and the
+// "membership active" notice: liveform
 // 'membership_entrance', printed by the Messages node.
 //
 // cfg: redirect_page_id, login_page_id, contact_group_id (the site setting
@@ -8978,6 +9057,9 @@ function _render_system_widget_membership($tree_json, $widget_id, $cfg = array()
         _pg_member_drop_control($tree, 'register_remember_me');
         _pg_member_drop_control($tree, 'remember_me');
     }
+    // A converted classic layout's remember box (its label holds words of
+    // its own) is shown under this flag.
+    _eo_apply_visibility_bindings($tree, array('shows_remember_me' => $remember_ok));
 
     $rules_html  = (defined('STRONG_PASSWORD') && STRONG_PASSWORD && function_exists('get_strong_password_requirements'))
         ? '<div class="pg-password-rules small text-muted">' . get_strong_password_requirements() . '</div>' : '';
