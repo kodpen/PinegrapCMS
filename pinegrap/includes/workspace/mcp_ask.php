@@ -423,12 +423,16 @@ function ws_mcp_ask_start($row, $asker)
     // A recording nobody heard: the reason and where the setting is
     // (voice.php).
     $unheard = function_exists('ws_voice_unheard_reason') ? ws_voice_unheard_reason($channel, $message) : '';
+    // A recording written out: its transcript is how the agent hears it.
+    $heard_line = (($unheard === '') && function_exists('ws_voice_request_heard_line')) ? ws_voice_request_heard_line($message) : '';
 
     $parts[] = 'The request (message ' . (int) $message['id'] . '):';
     $parts[] = $request_text;
 
     if ($unheard !== '') {
         $parts[] = ws_voice_unheard_line($unheard);
+    } elseif ($heard_line !== '') {
+        $parts[] = $heard_line;
     }
 
     $parts[] = '';

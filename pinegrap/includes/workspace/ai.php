@@ -3952,12 +3952,17 @@ function ws_ai_briefing($row, $asker, $agent = 'ai')
         // A recording nobody heard: the reason and where the setting is,
         // as the site's own line after the request (voice.php).
         $unheard = function_exists('ws_voice_unheard_reason') ? ws_voice_unheard_reason($channel, $message) : '';
+        // A recording written out: its transcript is how the model hears
+        // it, so it answers what was said (voice.php).
+        $heard_line = (($unheard === '') && function_exists('ws_voice_request_heard_line')) ? ws_voice_request_heard_line($message) : '';
 
         $parts[] = 'The request (message ' . (int) $message['id'] . '):';
         $parts[] = pg_ai_data_block('request', $request_text);
 
         if ($unheard !== '') {
             $parts[] = ws_voice_unheard_line($unheard);
+        } elseif ($heard_line !== '') {
+            $parts[] = $heard_line;
         }
 
         // Tagged outside a message (a shared note, a table cell, a task).
