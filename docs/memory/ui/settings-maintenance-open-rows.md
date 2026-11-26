@@ -21,6 +21,6 @@ module: maintenance_settings_open
 ## What stayed?
 - Every field name, value and card id, `object_storage_card`, `sales_watch_card`, the named Save and test buttons, `maintenance.save.php`. The backup's S3 fields and the store's are drawn alike (same labels, same order, test) and stay apart (`platform/object-storage-decisions.md`). Secret boxes are drawn empty with "Saved".
 - Radio ids are the name and the value: `software_update_channel_stable`/`_beta`, `sales_watch_level_low`/`_normal`/`_high`; no link named the old select ids.
-- Built in SM3 of the plan settings-maintenance-tidy.
+- Built in SM3 of the plan settings-maintenance-tidy (#11910).
 
 Related: docs/memory/ui/settings-maintenance.md, docs/memory/ui/settings-maintenance-cron.md, docs/memory/ui/settings-fold-rows.md
