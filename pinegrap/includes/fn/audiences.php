@@ -1436,6 +1436,17 @@ function pg_audience_recompute_pass($group_id, $budget)
     }
 
     $rules = pg_audience_rules_clean((string) $group['rules']);
+
+    // A rule that leans on the group itself never settles; stored before the
+    // save refused it, it is a failed run and writes nothing.
+    if (pg_audience_rules_refs($rules)['contact_group']) {
+        $stored = pg_audience_dynamic_rules();
+
+        if (($stored === null) || pg_audience_group_loops($group_id, $rules, $stored)) {
+            return null;
+        }
+    }
+
     $cursor = (int) $group['compute_cursor'];
     $state = ($cursor > 0) ? pg_audience_state_read($group_id) : array('added' => array(), 'removed' => array());
     $started = microtime(true);
@@ -1677,6 +1688,66 @@ function pg_audience_rules_refs($rules)
     $walk(pg_audience_rules_clean($rules));
 
     return $refs;
+}
+
+/**
+ * Whether a group's rules reach the group itself through "Contact group"
+ * conditions, directly or through other groups filled by rules. Such a rule
+ * never settles: "not in this group" adds every contact on one pass and
+ * removes them on the next, starting the "joined" triggers each time. Pure.
+ *
+ * @param int   $group_id
+ * @param mixed $rules          the group's rules
+ * @param array $rules_by_group the stored rules of the groups filled by
+ *                              rules, id => rules; the group's own entry is
+ *                              not read ($rules stands for it)
+ * @return bool
+ */
+function pg_audience_group_loops($group_id, $rules, array $rules_by_group)
+{
+    $group_id = (int) $group_id;
+    $seen = array();
+    $queue = pg_audience_rules_refs($rules)['contact_group'];
+
+    while ($queue) {
+        $id = (int) array_shift($queue);
+
+        if ($id === $group_id) {
+            return true;
+        }
+
+        if (isset($seen[$id]) || !isset($rules_by_group[$id])) {
+            continue;
+        }
+
+        $seen[$id] = true;
+        $queue = array_merge($queue, pg_audience_rules_refs($rules_by_group[$id])['contact_group']);
+    }
+
+    return false;
+}
+
+/**
+ * The stored rules of every group filled by rules, id => JSON text, for
+ * pg_audience_group_loops(); null on a failed query.
+ *
+ * @return array|null
+ */
+function pg_audience_dynamic_rules()
+{
+    $result = db_q("SELECT id, rules FROM contact_groups WHERE kind = 'dynamic'", array());
+
+    if (!$result) {
+        return null;
+    }
+
+    $map = array();
+
+    while ($row = mysqli_fetch_assoc($result)) {
+        $map[(int) $row['id']] = (string) $row['rules'];
+    }
+
+    return $map;
 }
 
 /**

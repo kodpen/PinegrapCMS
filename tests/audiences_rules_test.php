@@ -405,3 +405,25 @@ function test_audiences_interest_topic_matches_the_stored_topic()
 	pg_assert_false($like(pg_audience_topic_pattern('category', 12), $stored), 'a category of the same id does not');
 	pg_assert_false($like(pg_audience_topic_pattern('folder', 1), $stored), 'folder 1 does not match folder 12');
 }
+
+// A group whose rule names itself, directly or through another group filled
+// by rules, flips every pass: "not in this group" adds every contact, the
+// next pass removes them all, and each add starts the "joined" triggers.
+function test_audiences_group_loops()
+{
+	$in = function ($id, $op = 'in') {
+		return array('match' => 'all', 'conditions' => array(array('key' => 'group', 'op' => $op, 'value' => $id)));
+	};
+	$bought = array('match' => 'all', 'conditions' => array(array('key' => 'customer', 'op' => 'yes')));
+
+	pg_assert_true(pg_audience_group_loops(5, $in(5, 'not_in'), array()), 'a rule on the group itself');
+	pg_assert_true(pg_audience_group_loops(5, $in(6), array(6 => json_encode($in(5)))), 'through another group filled by rules');
+	pg_assert_true(pg_audience_group_loops(5, array('match' => 'any', 'conditions' => array(
+		array('key' => 'customer', 'op' => 'no'),
+		array('match' => 'all', 'conditions' => array(array('key' => 'group', 'op' => 'in', 'value' => 7))),
+	)), array(7 => $in(8), 8 => $in(5))), 'nested and two steps away');
+	pg_assert_true(!pg_audience_group_loops(5, $in(6), array(6 => $bought)), 'another group that reads orders is no loop');
+	pg_assert_true(!pg_audience_group_loops(5, $in(6), array()), 'a hand group is no loop');
+	pg_assert_true(!pg_audience_group_loops(5, $in(6), array(6 => $in(7), 7 => $in(6))), 'a loop that does not reach this group is not this group\'s');
+	pg_assert_true(!pg_audience_group_loops(5, $bought, array(5 => $in(5))), 'the rule being saved replaces the stored one');
+}
