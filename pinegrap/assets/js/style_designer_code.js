@@ -1134,6 +1134,10 @@ StyleDesigner.definePart('code', function (K) {
         if (sid) _sharedDirty[sid] = true;
     }
 
+    // Parents with no text of their own: words typed straight into them
+    // become a text element, as the converter makes them.
+    var _SD_CODE_SPAN_PARENTS = { root: 1, container: 1, row: 1, col: 1 };
+
     // A parent's children, rebuilt from the elements inside it in the text.
     function _sdCodeReconcileChildren(parent, items, sid, report) {
         var kids = [];
@@ -1147,7 +1151,7 @@ StyleDesigner.definePart('code', function (K) {
         items.forEach(function (it) {
             if (it.kind === 'text') {
                 if (it.raw.trim() === '') return;
-                if (parent.type === 'root' || mixed) kids.push(_sdCodeNewSpan(it.raw));
+                if (mixed || _SD_CODE_SPAN_PARENTS[parent.type]) kids.push(_sdCodeNewSpan(it.raw));
                 return;
             }
             var owner = _sdCodeOwnerOf(it) || _sdCodeOwnerInside(it);
