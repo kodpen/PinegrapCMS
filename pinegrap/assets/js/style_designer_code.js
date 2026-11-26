@@ -305,6 +305,15 @@ StyleDesigner.definePart('code', function (K) {
         _sdCodeSyncMode();
         var doc = _sdCodeDocument();
         var current = ed.getValue();
+        // Typed text the tree does not hold yet (waiting for the pause, or
+        // HTML not finished) stays while the tree prints what it printed
+        // before: a selection change or a panel redraw is no reason to write
+        // over it. The ranges have followed the typing, so only the
+        // selection mark is drawn again.
+        if (_sdCode.dirty && doc.text === _sdCode.text && current !== doc.text) {
+            _sdCodeRevealSelection();
+            return;
+        }
         if (doc.text !== current) {
             _sdCode.busy = true;
             try {
