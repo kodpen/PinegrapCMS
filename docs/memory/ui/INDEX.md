@@ -369,6 +369,7 @@
 - image-editor-svg-motion.md: Motion in a saved SVG (AN10): layer groups pgm-n, the numbers M.svgMotion() sends, the @keyframes style the server writes, reduced motion, what reopening keeps [decision: decisions-made-product-15.md]
 - image-editor-svg-sanitize.md: What pg_svg_sanitize() keeps of an SVG, why its style rules are scoped to the root or prefixed to reach use copies, what it refuses
 - image-editor-svg.md: The Artifact Canvas's SVG files: opened as layers on a transparent artboard, saved as SVG through the allowlist sanitizer pg_svg_sanitize()
+- image-editor-text-styles.md: The Artifact Canvas's text styles and font pairs at the top of the Text panel (AC5): the three Add buttons, the twelve pairs file, their sizes, the group a pair makes, the textstyles part
 - image-editor-text.md: The Artifact Canvas's text layers: fields, the one line layout the stage and the save share, typing in place, system and site fonts, resize scaling the letters, the panel
 - image-editor-touch.md: The Artifact Canvas on touch: two-finger twist, 44 px targets, the finger's reach (M.touchReach()), nudge arrows, groups and Attach to, a typed text Animate did not pick [decision: here]
 - image-editor-tracks.md: The Animate tool's tracks: a row per layer, bars from M.trackBars(), dragging (M.trackEdit()), snapping, a row's Motion button, the dock hook, no tracks on a phone [decision: decisions-made-product-67.md]
@@ -724,6 +725,7 @@
 - settings-communication.md: Site Settings › Communication as folded rows (#11151, #11194): Chat and Chat on the site split from the old two-popover card, state lines, what moved, what stayed
 - settings-dashboard-card.md: Dashboard row of Site Settings > Appearance (pgset-dashboard): Card style, Panel backdrop, Reset widgets, Refresh every per sign-in; role < 2 gate; a save shown on the dashboard [decision: decisions-made-access.md]
 - settings-drawer-card-form.md: A settings drawer that edits a record (a department): fields and a named button joined to the settings form by its id, saved by the pane's Save
+- settings-ecommerce-store-payments.md: Site Settings › Ecommerce, the Store and Payment methods rows opened (EC2): groups, the pane's drawing helpers, what moved into Store, the gateway script kept
 - settings-ecommerce.md: Site Settings › Ecommerce as eleven folded rows under Enable Commerce: order, names, each row's line and pill, Gift cards and Rewards as two cards, anchors, what stayed
 - settings-email-tabs.md: Site Settings › E-mail (EM1): one category, tabs E-mail sending and Mailboxes under their old gates, the tab kept in the address, old keys, pages and anchors opening their tab, the save per tab [decision: here]
 - settings-features-rows.md: Site Settings › Features below the Modules board: the folded rows Site search, Sharing buttons, Speed, Badge and the rest, their card ids, state lines and what moved into them
