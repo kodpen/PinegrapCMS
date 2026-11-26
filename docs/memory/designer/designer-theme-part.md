@@ -15,4 +15,5 @@ description: The Themes tab of the designer's assets panel as the part 'theme' (
 ## How does the part reach the assets panel's state?
 - `_themeHost` (inside `initAssetsPanel()`): `wrap`, `mode()`, `userStyles()`, `setUserStyles(content)` (finds or creates the User Styles entry and saves the field), `activeTheme`, `openDesignSettings`, `themeCss`, and the helpers `blockFor`, `setDecl`, `upgrade`, `modeDecls`, `hasDarkDefault`. The part keeps the last host it was handed (`H`) and wraps those helpers under their core names.
 - Entry points: `render(host)` and `write(host, mode, name, value)`. Core functions come from the kit (`applyAssetsToIframe`, `_sdThemes`, `_sdThemeFind`, `_sdThemeValue`, `_sdOpenThemeSettings` were added).
+- "Reset every change in this group" (`_resetThemeGroup()`) removes only the changed variables of the mode shown, with one `saveState()` and one canvas redraw; a group with nothing changed adds no undo step. Every write goes through `_themeVarContent()` (`tests/designer_theme_reset_test.php`).
 - Tests: `tests/designer_parts_test.php` (`theme` cases) runs the part under Node on a fake host.
