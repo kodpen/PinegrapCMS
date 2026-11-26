@@ -365,3 +365,24 @@ function test_designer_a11y_view_waits_for_an_inplace_edit()
 
 	pg_assert_same(array(0, true, 1, true, 2), $res, 'no read during an in-place edit; read once it ends; the first read is always made');
 }
+
+// A tip stands at its element's place when shown: a draw (another kind, a
+// scroll, a new reading) takes it away, and so does the pointer leaving the
+// canvas.
+function test_designer_a11y_view_tip_goes_with_its_place()
+{
+	$res = designer_a11y_view_run('style_designer_accessview.js', array('hideTip', 'onCanvasOut', 'drawMarks'),
+		'var document = { createElement: function () { return { addEventListener: function () {}, style: {} }; } };' . "\n"
+		. 'function view() { return null; } function placeCard() {} function placePill() {} function onMarkClick() {} function onMarkOver() {} function onMarkOut() {}' . "\n"
+		. 'var V = { doc: {}, tip: { hidden: false }, tipFor: {}, kind: "order", r: {} };' . "\n"
+		. 'var out = []; drawMarks(); out.push(V.tip.hidden, V.tipFor);' . "\n"
+		. 'V.tip.hidden = false; V.tipFor = {}; onCanvasOut({ relatedTarget: {} }); out.push(V.tip.hidden);' . "\n"
+		. 'onCanvasOut({ relatedTarget: null }); out.push(V.tip.hidden, V.tipFor);' . "\n"
+		. 'console.log(JSON.stringify(out));');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array(true, null, false, true, null), $res, 'a draw hides the tip; leaving the canvas hides it, moving inside it does not');
+}

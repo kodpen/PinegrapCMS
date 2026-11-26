@@ -389,6 +389,10 @@ StyleDesigner.definePart('accessview', function (K) {
 
     function drawMarks() {
         V.frame = 0;
+        // A tip stood at the place its element had: a scroll, another kind
+        // or a new reading leaves it pointing at nothing.
+        hideTip();
+        V.tipFor = null;
         var v = view(V.doc);
         if (!V.layer) {
             V.layer = document.createElement('div');
@@ -700,6 +704,13 @@ StyleDesigner.definePart('accessview', function (K) {
         if (V && V.tip) V.tip.hidden = true;
     }
 
+    // The pointer leaving the canvas (to the editor or out of the window).
+    function onCanvasOut(e) {
+        if (e.relatedTarget) return;
+        V.tipFor = null;
+        hideTip();
+    }
+
     function onMarkOver(e) {
         var t = e.target.closest('button');
         if (!t || !t._avAt || !t._avAt.tip) return;
@@ -869,6 +880,7 @@ StyleDesigner.definePart('accessview', function (K) {
             win[fn]('keydown', onKey, true);
         }
         doc[fn]('mousemove', onCanvasMove, true);
+        doc[fn]('mouseout', onCanvasOut, true);
         doc[fn]('mousedown', onDown, true);
         window[fn]('resize', onResize);
         window[fn]('keydown', onKey, true);
