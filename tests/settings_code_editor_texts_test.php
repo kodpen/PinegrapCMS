@@ -68,7 +68,7 @@ function test_settings_code_editor_texts_jsonld_field_attached_by_its_card()
 // the first field of the pane brings the texts with it.
 function test_settings_code_editor_texts_each_category_attaches_its_fields()
 {
-	foreach (array('appearance.php', 'features.php', 'maintenance.php', 'seo.php') as $file) {
+	foreach (array('appearance.php', 'features.php', 'seo.php') as $file) {
 		pg_assert_contains('pg_code_editor_attach(', settings_code_editor_texts_source($file), $file . ' attaches its code fields');
 	}
 }

@@ -86,16 +86,10 @@ function test_settings_card_code_fields_are_named()
 	$appearance = settings_card_names_source('appearance.php');
 	pg_assert_contains('<label class="form-label" for="custom_css">', $appearance, 'the Panel CSS label points at its textarea');
 
+	// The job commands are lines with a named Copy button; each job's switch
+	// is named by its row's name (tests/settings_maintenance_cron_test.php).
 	$general = settings_card_names_source('maintenance.php');
-	pg_assert_contains('<textarea id="cron_job_general_dispatch" aria-label="\' . h(lang(\'General job command\')) . \'">', $general, 'the dispatch command box has a translated name');
-
-	$jobs = array('general', 'webhook', 'push', 'exchange_rates', 'email_campaign', 'search_index', 'seo_score', 'seo_analyze', 'requrring_payment', 'membership', 'auto_backup');
-
-	foreach ($jobs as $job) {
-		$id = 'cron_job_' . $job;
-		pg_assert_contains('<h4 class="pg-group-label" id="' . $id . '_title">', $general, $id . ': its heading has an id');
-		pg_assert_contains('<textarea id="' . $id . '" aria-labelledby="' . $id . '_title">', $general, $id . ': its textarea is named by the heading');
-	}
+	pg_assert_contains('pg_copy_button($maintenance_cron_general, lang(\'Copy the command\'), \'cron_job_general_command\')', $general, 'the general job\'s command has a named Copy');
 }
 
 function test_settings_card_barcode_type_is_named()

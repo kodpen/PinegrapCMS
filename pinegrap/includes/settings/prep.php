@@ -1829,13 +1829,8 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
     $job_dispatch_enabled_checked   = ($job_dispatch_enabled == 1) ? ' checked="checked"' : '';
 
-    // One row per dispatchable job, built from the same catalogue the general
-    // job dispatches from, so a job added there appears here without a second
-    // edit. The cadence in brackets is the interval the dispatcher enforces,
-    // not a suggestion: a job switched on here runs no more often than that
-    // however frequently the general job itself is scheduled. An inline job
-    // has no turn of its own - the general job runs it every time it runs -
-    // so it says that instead of an interval.
+    // The job names saved in job_dispatch; the Scheduled jobs card draws a
+    // row per catalogue job from them (includes/fn/maintenance_cron_list.php).
     $job_dispatch_selection = array();
 
     foreach (explode(',', $job_dispatch) as $job_dispatch_name) {
@@ -1845,23 +1840,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         if ($job_dispatch_name !== '') {
             $job_dispatch_selection[] = $job_dispatch_name;
         }
-    }
-
-    $output_job_dispatch_switches = '';
-
-    foreach (pg_cron_jobs() as $job_dispatch_name => $job_dispatch_job) {
-
-        if (!$job_dispatch_job['dispatch']) {
-            continue;
-        }
-
-        $output_job_dispatch_switches .= '
-                                        <div class="pg-f-md">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . (in_array($job_dispatch_name, $job_dispatch_selection, true) ? ' checked="checked"' : '') . ' class="" type="checkbox" id="job_dispatch_job_' . h($job_dispatch_name) . '" name="job_dispatch_job[' . h($job_dispatch_name) . ']"/></div>
-                                                <label class="" for="job_dispatch_job_' . h($job_dispatch_name) . '">' . h($job_dispatch_job['label']) . ' <span class="fg-secondary">(' . h(!empty($job_dispatch_job['inline']) ? lang('on every run of the general job') : pg_cron_interval_label($job_dispatch_job['interval'])) . ')</span>' . (pg_cron_job_active($job_dispatch_name) ? '' : ' <span class="fg-emphasis-warning">&middot; ' . lang('disabled in config.php') . '</span>') . '</label>
-                                            </div>
-                                        </div>';
     }
 
     $waf_enabled_checked            = ($waf_enabled == 1) ? ' checked="checked"' : '';
@@ -2187,42 +2165,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
     $output_os_family = $php_os_family;
 
-    // Windows takes the php.exe form; every other family - Linux, Darwin,
-    // BSD, Solaris - is unix-like and takes the same command. The earlier
-    // Linux/Windows pair left all of these variables undefined on those other
-    // families, which printed a PHP warning inside each command box.
-    // The job scripts live in the software root (PG_FUNCTIONS_DIR); this
-    // file's own directory is includes/settings/, where no job exists.
-    if ($php_os_family === "Windows") {
-        $cron_job_general = 'C:\PHP\php.exe -q '.PG_FUNCTIONS_DIR . '\job.php';
-        $cron_job_exchange_rates = 'C:\PHP\php.exe -q '.PG_FUNCTIONS_DIR . '\update_exchange_rates.php';
-        $cron_job_email_campaign = 'C:\PHP\php.exe -q '.PG_FUNCTIONS_DIR . '\email_campaign_job.php';
-        $cron_job_search_index = 'C:\PHP\php.exe -q '.PG_FUNCTIONS_DIR . '\update_search_index.php';
-        $cron_job_seo_score = 'C:\PHP\php.exe -q '.PG_FUNCTIONS_DIR . '\seo_score_job.php';
-        $cron_job_seo_analyze = 'C:\PHP\php.exe -q '.PG_FUNCTIONS_DIR . '\seo_analyze_job.php';
-        $cron_job_requrring_payment = 'C:\PHP\php.exe -q '.PG_FUNCTIONS_DIR . '\recurring_payment_job.php';
-        $cron_job_membership = 'C:\PHP\php.exe -q '.PG_FUNCTIONS_DIR . '\membership_job.php';
-        $cron_job_auto_backup = 'C:\PHP\php.exe -q '.PG_FUNCTIONS_DIR . '\auto_backup.php';
-        $cron_job_webhook = 'C:\PHP\php.exe -q '.PG_FUNCTIONS_DIR . '\api_webhook_job.php';
-        $cron_job_push = 'C:\PHP\php.exe -q '.PG_FUNCTIONS_DIR . '\push_job.php';
-    } else {
-        $cron_job_general = '/usr/local/bin/php -q '.PG_FUNCTIONS_DIR . '/job.php >/dev/null 2>&1';
-        $cron_job_exchange_rates = '/usr/local/bin/php -q '.PG_FUNCTIONS_DIR . '/update_exchange_rates.php >/dev/null 2>&1';
-        $cron_job_email_campaign = '/usr/local/bin/php -q '.PG_FUNCTIONS_DIR . '/email_campaign_job.php >/dev/null 2>&1';
-        $cron_job_search_index = '/usr/local/bin/php -q '.PG_FUNCTIONS_DIR . '/update_search_index.php >/dev/null 2>&1';
-        $cron_job_seo_score = '/usr/local/bin/php -q '.PG_FUNCTIONS_DIR . '/seo_score_job.php >/dev/null 2>&1';
-        $cron_job_seo_analyze = '/usr/local/bin/php -q '.PG_FUNCTIONS_DIR . '/seo_analyze_job.php >/dev/null 2>&1';
-        $cron_job_requrring_payment = '/usr/local/bin/php -q '.PG_FUNCTIONS_DIR . '/recurring_payment_job.php >/dev/null 2>&1';
-        $cron_job_membership = '/usr/local/bin/php -q '.PG_FUNCTIONS_DIR . '/membership_job.php >/dev/null 2>&1';
-        $cron_job_auto_backup = '/usr/local/bin/php -q '.PG_FUNCTIONS_DIR . '/auto_backup.php >/dev/null 2>&1';
-        $cron_job_webhook = '/usr/local/bin/php -q '.PG_FUNCTIONS_DIR . '/api_webhook_job.php >/dev/null 2>&1';
-        $cron_job_push = '/usr/local/bin/php -q '.PG_FUNCTIONS_DIR . '/push_job.php >/dev/null 2>&1';
-    }
-    $output_warnings_for_auto_backup = '';
-    if (!extension_loaded('pdo_mysql') ) {
-        $output_warnings_for_auto_backup = '<div class="alert theme-warning">' . lang('pdo_mysql.dll is not enabled. Please enable it for Auto Backup feature.') . '</div>';
-    }
-
     // Backups card (2026.4.8, 8.33). The columns arrive with the upgrade; until
     // then the card says so instead of drawing controls. The remote settings
     // are decrypted here only to put the address, user and path back in their
@@ -2304,13 +2246,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $maintenance_my_ip = function_exists('waf_client_ip') ? waf_client_ip() : (string) ($_SERVER['REMOTE_ADDR'] ?? '');
     $maintenance_my_ip_shared = pg_maintenance_ip_is_shared($maintenance_my_ip);
 
-    // The structure pass parses rendered markup with DOMDocument. Without the
-    // extension the job records its run and exits, so the operator would see
-    // a scheduled task that reports healthy and analyzes nothing.
-    $output_warnings_for_seo_analyze = '';
-    if (!class_exists('DOMDocument')) {
-        $output_warnings_for_seo_analyze = '<div class="alert theme-warning">' . lang('The PHP DOM extension is not enabled. Please enable it for the SEO structure analysis job.') . '</div>';
-    }
     //localhost default ip.
     $server_addr = '127.0.0.1';
     //check server ip.

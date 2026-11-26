@@ -60,36 +60,51 @@ $maintenance_parts['channel'] = array('html' => '
         </div>
     </div>') + pg_maintenance_fold_channel($software_update_channel, $update_backup_ready, $update_backup);
 
-// ── Cron Jobs ──
+// ── Scheduled jobs ──
+//
+// The general job's command on one line, then one row a job of the catalogue
+// (includes/fn/maintenance_cron_list.php). Each row's "How to schedule it"
+// opens that job's numbered steps; the drawers are printed outside the form,
+// so they travel in $pg_settings_modals.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/maintenance_cron_list.php');
+
 $maintenance_cron_runs = pg_cron_last_runs();
 $maintenance_cron_jobs = pg_cron_jobs();
+$maintenance_cron_inactive = array();
+$maintenance_cron_warnings = array();
+
+if (!extension_loaded('pdo_mysql')) {
+    $maintenance_cron_warnings['auto_backup'] = lang('pdo_mysql.dll is not enabled. Please enable it for Auto Backup feature.');
+}
+
+// The structure pass parses rendered markup with DOMDocument; without it the
+// job records its run and analyzes nothing.
+if (!class_exists('DOMDocument')) {
+    $maintenance_cron_warnings['seo_analyze_job'] = lang('The PHP DOM extension is not enabled. Please enable it for the SEO structure analysis job.');
+}
+
+foreach ($maintenance_cron_jobs as $maintenance_cron_name => $maintenance_cron_job) {
+    if (!empty($maintenance_cron_job['dispatch']) && !pg_cron_job_active($maintenance_cron_name)) {
+        $maintenance_cron_inactive[] = $maintenance_cron_name;
+    }
+}
+
+$maintenance_cron_general = pg_maintenance_cron_command($output_os_family, PG_FUNCTIONS_DIR, $maintenance_cron_jobs['job']['script']);
 
 $maintenance_parts['cron'] = array('html' => '
                         <div id="pgset-cron" class="pg-set-card">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
-                                    <span class="pg-title-section">' . lang('Cron Jobs') . ' (<span lang="en">' . h($output_os_family) . '</span>)</span>
-                                    <button type="button" class="pg-button pg-button-quiet pg-button-sm" data-bs-toggle="drawer" data-bs-target="#cron_jobs" aria-controls="cron_jobs"><i class="bi bi-clock-history" aria-hidden="true"></i>' . lang('Setup Instructions') . '</button>
-                                </div>
+                                <div class="card-header bg-reset border-0 pg-title-section">' . lang('Scheduled jobs') . '</div>
                                 <div class="card-body">
-                                   <div class="row gy-5">
-                                        <div class="col-12 ">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . $job_dispatch_enabled_checked . ' class="" type="checkbox" id="job_dispatch_enabled" name="job_dispatch_enabled"/></div>
-                                                <label class="" for="job_dispatch_enabled">' . lang('Run Cron Jobs Automatically') . '</label><div class="form-text">' . lang('The jobs selected below run together with the general job instead of needing a scheduled task of their own. One job per turn, the one waiting longest first, so a single turn never takes longer than one job. Long jobs (backup, SEO, search index) and short ones take turns in two separate lanes, so a running backup does not hold up the short jobs. Leaving a job\'s own scheduled task in place is safe: every job records when it last finished, whoever started it, so one that is already running on its own schedule is never started a second time from here.') . '</div>
-                                            </div>
-                                        </div>
-                                        <div class="col-12" id="job_dispatch_jobs">
-                                           <div class="row gy-5">
-                                                <div class="col-12 ">
-                                                    <div class="alert theme-secondary py-3 small">' . lang('The general job must have a scheduled task of its own for this to work, and it is the only one that then needs one. Its command for this server is below.') . '</div>
-                                                    <textarea id="cron_job_general_dispatch" aria-label="' . h(lang('General job command')) . '">' . $cron_job_general . '</textarea>
-                                                    ' . pg_code_editor_attach(array('id' => 'cron_job_general_dispatch', 'code_type' => 'plain','readonly'=>true )) . '
-                                                    <div class="form-text">' . lang('Recommended Schedule: Every Minute') . '</div>
-                                                </div>' . $output_job_dispatch_switches . '
-                                            </div>
-                                        </div>
+                                    <h4 class="pg-group-label">' . lang('General job') . '</h4>
+                                    <p class="d-flex align-items-center gap-2 mb-1"><code class="text-break" id="cron_job_general_command">' . h($maintenance_cron_general) . '</code><span class="pg-copy">' . pg_copy_button($maintenance_cron_general, lang('Copy the command'), 'cron_job_general_command') . '</span></p>
+                                    <p class="pg-text-meta mb-5">' . lang('Every minute') . ' &middot; <span lang="en">' . h($output_os_family) . '</span> &middot; ' . lang('Every site needs this task: it keeps the alerts and the health address working.') . '</p>
+                                    <div class="form-field">
+                                        <div class="switch"><input value="1"' . $job_dispatch_enabled_checked . ' type="checkbox" id="job_dispatch_enabled" name="job_dispatch_enabled"/></div>
+                                        <label for="job_dispatch_enabled">' . lang('Run the jobs with the general job') . '</label><div class="form-text">' . lang('A job switched on below runs with the general job, one at a time, and needs no task of its own.') . '</div>
                                     </div>
+                                    <h4 class="pg-group-label mt-5">' . lang('Jobs') . '</h4>
+                                    ' . pg_maintenance_cron_list_html(pg_maintenance_cron_rows($maintenance_cron_jobs, $job_dispatch_selection, $maintenance_cron_inactive), ($job_dispatch_enabled == 1)) . '
                                 </div>
                             </div>
                         </div>
@@ -102,10 +117,13 @@ $maintenance_parts['cron'] = array('html' => '
                                     return;
                                 }
 
-                                // The selection stays posted while hidden on purpose: switching
-                                // the master off and saving must not clear what was chosen.
+                                // A job\'s switch shows only while the master is on. It is
+                                // hidden, never disabled: the selection stays posted, so
+                                // switching the master off and saving keeps what was chosen.
                                 function sync() {
-                                    list.style.display = master.checked ? "" : "none";
+                                    list.querySelectorAll("[data-pg-cron-switch]").forEach(function (box) {
+                                        box.classList.toggle("d-none", !master.checked);
+                                    });
                                 }
 
                                 master.addEventListener("change", sync);
@@ -119,110 +137,18 @@ $maintenance_parts['cron'] = array('html' => '
     pg_maintenance_fold_cron_count($job_dispatch_selection, $maintenance_cron_jobs)
 );
 
-// The setup instructions explain every job the card can switch on, with the
-// command that runs it on this server. A drawer over the pane, not a second
-// dialog (includes/settings/drawer.php); printed outside the form, so it
-// travels in its own variable.
-$pg_settings_modals[] = pg_settings_drawer('cron_jobs', lang('Cron Jobs') . ' (<span lang="en">' . h($output_os_family) . '</span>)', '
-                               <div class="row gy-5">
-                                    <div class="col-12">
-                                        <div class="alert theme-success form-text" role="alert">
-                                            ' . lang('There are several optional Pinegrap programs or "jobs" which can be scheduled to run automatically on your web server. The setup of these jobs (commonly referred to as "scheduled tasks" or "cron jobs") is optional depending on which Pinegrap features that are going to be used.') . '
-                                        </div>
-                                        <div class="alert theme-secondary form-text" role="alert">
-                                            ' . lang('You do not have to schedule every one of them separately. Turn on "Run Cron Jobs Automatically" in the Cron Jobs card and the general job runs the ones you select, one per run - then the general job is the only one that needs a scheduled task of its own.') . '
-                                        </div>
-                                    </div>
-                                    <div class="col-12 ">
-                                        <h4 class="pg-group-label" id="cron_job_general_title">' . lang('General Jobs') . '</h4>
-                                        <p>' . lang('Every site needs a scheduled task for the general job: it runs the jobs selected under "Run Cron Jobs Automatically", publishes scheduled comments and keeps the health address and the alerts working. While it does not run, the health address answers 503.') . '</p>
-                                        <textarea id="cron_job_general" aria-labelledby="cron_job_general_title">' . $cron_job_general . '</textarea>
-                                        ' . pg_code_editor_attach(array('id' => 'cron_job_general', 'code_type' => 'plain','readonly'=>true )) . '
-                                        <div class="form-text">' . lang('Recommended Schedule: Every Minute') . '</div>
-                                    </div>
-                                    <div class="col-12 ">
-                                        <h4 class="pg-group-label" id="cron_job_webhook_title">' . lang('Webhook Delivery Jobs') . '</h4>
-                                        <p>' . lang('The webhook delivery job sends the events your integrations asked to hear about: a new order, a cancelled order, a stock change. It usually needs no scheduled task of its own - the general job runs it on every turn as long as "Webhook delivery" is selected in the list further down this page, and on a site with no subscriptions that costs a single indexed read.') . '</p>
-                                        <div class="alert theme-secondary">' . lang('NOTE: Schedule the command below only if you want an event delivered within a minute of it happening, without waiting for the general job. It is the same work either way; a dedicated task simply runs it more often.') . '</div>
-                                        <textarea id="cron_job_webhook" aria-labelledby="cron_job_webhook_title">' . $cron_job_webhook . '</textarea>
-                                        ' . pg_code_editor_attach(array('id' => 'cron_job_webhook', 'code_type' => 'plain','readonly'=>true )) . '
-                                        <div class="form-text">' . lang('Recommended Schedule: Every Minute') . '</div>
-                                    </div>
-                                    <div class="col-12 ">
-                                        <h4 class="pg-group-label" id="cron_job_push_title">' . lang('Device Notification Jobs') . '</h4>
-                                        <p>' . lang('The device notification job wakes the phones and computers your operators have turned notifications on for: a new order, a submitted form, a new comment, an unanswered chat message. Like the webhook job it runs inside the general job on every turn as long as "Device notifications" is selected in the list further down this page, so it needs no scheduled task of its own.') . '</p>
-                                        <div class="alert theme-secondary">' . lang('NOTE: A chat message waits a minute before it is sent, so that a message somebody has already read on screen does not arrive on their phone as well. The delay an operator feels is that wait plus however often this job runs.') . '</div>
-                                        <textarea id="cron_job_push" aria-labelledby="cron_job_push_title">' . $cron_job_push . '</textarea>
-                                        ' . pg_code_editor_attach(array('id' => 'cron_job_push', 'code_type' => 'plain','readonly'=>true )) . '
-                                        <div class="form-text">' . lang('Recommended Schedule: Every Minute') . '</div>
-                                    </div>
-                                    <div class="col-12 ">
-                                        <h4 class="pg-group-label" id="cron_job_exchange_rates_title">' . lang('Exchange Rates Jobs') . '</h4>
-                                        <p>' . lang('The exchange rates job is an optional feature which only needs to be enabled if you are using the multi-currency e-commerce feature and want exchange rates for currencies to be updated automatically. Exchange rates can be manually updated via the Admin Panel.') . '</p>
-                                        <textarea id="cron_job_exchange_rates" aria-labelledby="cron_job_exchange_rates_title">' . $cron_job_exchange_rates . '</textarea>
-                                        ' . pg_code_editor_attach(array('id' => 'cron_job_exchange_rates', 'code_type' => 'plain','readonly'=>true )) . '
-                                        <div class="form-text">' . lang('Recommended Schedule: Once a Day') . '</div>
-                                    </div>
-                                    <div class="col-12 ">
-                                        <h4 class="pg-group-label" id="cron_job_email_campaign_title">' . lang('Email Campaign Jobs') . '</h4>
-                                        <p>' . lang(array('string' => 'The e-mail campaign job is an alternative to users manually sending e-mail campaigns from the Software. It is a script that can be scheduled to automatically send e-mail Campaigns. Also, the e-mail campaign job allows e-mail campaigns to be scheduled to be sent at a later time. If you are interested in using the e-mail campaign job, please complete {var:1}.', 'vars' => array('<a class="pg-link-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . pg_settings_link('mail_sending', 'pgset-mail-campaign') . '">' . lang('campaign smtp settings') . '</a>'))) . '</p>
-                                        <div class="alert theme-danger">' . lang('WARNING: Once the e-mail campaign job is enabled, it will send e-mails for all campaigns where the status was "Ready to Send", so please make sure you update the status for old, incomplete, e-mail campaigns to be "Cancelled" before you enable the e-mail campaign job.') . '</div>
-                                        <textarea id="cron_job_email_campaign" aria-labelledby="cron_job_email_campaign_title">' . $cron_job_email_campaign . '</textarea>
-                                        ' . pg_code_editor_attach(array('id' => 'cron_job_email_campaign', 'code_type' => 'plain','readonly'=>true )) . '
-                                        <div class="form-text">' . lang('Recommended Schedule: Every 5 Minutes') . '</div>
-                                    </div>
-                                    <div class="col-12 ">
-                                        <h4 class="pg-group-label" id="cron_job_search_index_title">' . lang('Update Search Index Jobs') . '</h4>
-                                        <p>' . lang('The update search index job is an alternative to clicking the Update Search Index button on the Pages tab. It does the spidering of your website and updates the search index with any new or changed content it finds. Since this is an intensive script that may slow down your site while it runs, you should not run it more than once an hour at the most. Less frequently is even better.') . '</p>
-                                        <textarea id="cron_job_search_index" aria-labelledby="cron_job_search_index_title">' . $cron_job_search_index . '</textarea>
-                                        ' . pg_code_editor_attach(array('id' => 'cron_job_search_index', 'code_type' => 'plain','readonly'=>true )) . '
-                                        <div class="form-text">' . lang('Recommended Schedule: Once a Day') . '</div>
-                                    </div>
-                                    <div class="col-12 ">
-                                        <h4 class="pg-group-label" id="cron_job_seo_score_title">' . lang('SEO Score Jobs') . '</h4>
-                                        <p>' . lang('The SEO score job recalculates the SEO score of every page, product and product group. It only reads database columns, so it is quick, but it has to cover the whole site because the duplicate title and duplicate description checks depend on every other record. Schedule it before the SEO structure analysis job.') . '</p>
-                                        <textarea id="cron_job_seo_score" aria-labelledby="cron_job_seo_score_title">' . $cron_job_seo_score . '</textarea>
-                                        ' . pg_code_editor_attach(array('id' => 'cron_job_seo_score', 'code_type' => 'plain','readonly'=>true )) . '
-                                        <div class="form-text">' . lang('Recommended Schedule: Once a Day') . '</div>
-                                    </div>
-                                    <div class="col-12 ">
-                                        <h4 class="pg-group-label" id="cron_job_seo_analyze_title">' . lang('SEO Structure Analysis Jobs') . '</h4>
-                                        ' . $output_warnings_for_seo_analyze . '
-                                        <p>' . lang('The SEO structure analysis job renders each page in the background and examines the resulting HTML: heading order, image alt text, internal links and orphan pages. This is the expensive half of the SEO score, so it works within a time budget and may need several runs to get through a large site for the first time.') . '</p>
-                                        <div class="alert theme-secondary">' . lang('NOTE: Schedule this job to run after the SEO score job, because a catalog page is scored from the products it lists.') . '</div>
-                                        <textarea id="cron_job_seo_analyze" aria-labelledby="cron_job_seo_analyze_title">' . $cron_job_seo_analyze . '</textarea>
-                                        ' . pg_code_editor_attach(array('id' => 'cron_job_seo_analyze', 'code_type' => 'plain','readonly'=>true )) . '
-                                        <div class="form-text">' . lang('Recommended Schedule: Once a Day') . '</div>
-                                    </div>
-                                    <div class="col-12 ">
-                                        <h4 class="pg-group-label" id="cron_job_requrring_payment_title">' . lang('Recurring Payment Jobs') . '</h4>
-                                        <p>' . lang('The recurring payment job is an optional feature which only needs to be enabled if you want actions to be performed when a recurring payment profile is disabled (i.e. suspended, cancelled, or expired) (e.g. credit card declined). This job requires the PayPal Website Payments Pro payment gateway. The following actions can be performed when the recurring payment profile is disabled. These options can be set in the properties for the product that creates the recurring payment profile.') . '<br>
-                                        ' . lang('Expire membership.') . '<br>
-                                        ' . lang('Revoke private access.') . '<br>
-                                        ' . lang('Send an e-mail to the customer.') . '<br>
-                                        ' . lang('For example, if you have a membership product which has a monthly recurring payment, you might want to expire a persons membership if his/her payment fails (e.g. credit card declined). Also, you might want to send an e-mail to the member with a link to order new membership.') . '</p>
-                                        <div class="alert theme-secondary">' . lang('NOTE: The Recurring Payment Job is NOT REQUIRED for setting up Recurring Products. That is handled through your payment gateway automatically once an Order is submitted for one or more recurring products through your Pinegrap website.') . '</div>
-                                        <textarea id="cron_job_requrring_payment" aria-labelledby="cron_job_requrring_payment_title">' . $cron_job_requrring_payment . '</textarea>
-                                        ' . pg_code_editor_attach(array('id' => 'cron_job_requrring_payment', 'code_type' => 'plain','readonly'=>true )) . '
-                                        <div class="form-text">' . lang('Recommended Schedule: Once a Day') . '</div>
-                                    </div>
-                                    <div class="col-12 ">
-                                        <h4 class="pg-group-label" id="cron_job_membership_title">' . lang('Membership Jobs') . '</h4>
-                                        <p>' . lang('The membership job is an optional feature which only needs to be enabled if you want one or more of the features below. Send membership expiration warning e-mail to members whose membership is about to expire. You can turn it on and set it up in Accounts and sign-in, Registration &amp; Membership card. Remove contacts from the Membership Contact Group when a contact\'s membership is no longer valid (e.g. membership has expired). This feature runs automatically once a scheduled task is setup for the membership job.') . '</p>
-                                        <textarea id="cron_job_membership" aria-labelledby="cron_job_membership_title">' . $cron_job_membership . '</textarea>
-                                        ' . pg_code_editor_attach(array('id' => 'cron_job_membership', 'code_type' => 'plain','readonly'=>true )) . '
-                                        <div class="form-text">' . lang('Recommended Schedule: Once a Day') . '</div>
-                                    </div>
-                                    <div class="col-12 ">
-                                        <h4 class="pg-group-label" id="cron_job_auto_backup_title">' . lang('Auto Backup Jobs') . '</h4>
-                                        ' . $output_warnings_for_auto_backup . '
-                                        <p>' . lang('The auto backup job is an optional feature that must be enabled only if you want the automatic backup feature.') . '</p>
-                                        <div class="alert theme-secondary">' . lang('NOTE: Auto Backup feature is available by default but can be disabled by a developer from the config.php file. This feature can only be operated once a day.') . '</div>
-                                        <textarea id="cron_job_auto_backup" aria-labelledby="cron_job_auto_backup_title">' . $cron_job_auto_backup . '</textarea>
-                                        ' . pg_code_editor_attach(array('id' => 'cron_job_auto_backup', 'code_type' => 'plain','readonly'=>true )) . '
-                                        <div class="form-text">' . lang('Recommended Schedule: Once a week') . '</div>
-                                    </div>
-                                </div>', !empty($pg_settings_in_dialog));
+foreach ($maintenance_cron_jobs as $maintenance_cron_name => $maintenance_cron_job) {
+    if (!empty($maintenance_cron_job['dispatch'])) {
+        $pg_settings_modals[] = pg_maintenance_cron_guide_drawer(
+            $maintenance_cron_name,
+            $maintenance_cron_job,
+            $output_os_family,
+            pg_maintenance_cron_command($output_os_family, PG_FUNCTIONS_DIR, $maintenance_cron_job['script']),
+            !empty($pg_settings_in_dialog),
+            $maintenance_cron_warnings[$maintenance_cron_name] ?? ''
+        );
+    }
+}
 
 // ── Backups ──
 //
