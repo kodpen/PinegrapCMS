@@ -3317,7 +3317,10 @@ function connections_ga_page($page, $may_manage) {
 	$stats_url = defined('STATS_URL') ? (string) STATS_URL : '';
 	$ga_state = pg_ga_state();
 	$ga_connection = pg_ga_connection($ga_state);
-	$google_page = '<a href="' . h(pg_connections_screen_page_url('google')) . '">' . h(lang('Connections')) . ' › Google</a>';
+	// The application is asked on this page while it is missing.
+	$google_page = in_array('app', $page['cards'], true)
+		? '<a href="#connections-app">' . h(lang('Application')) . '</a>'
+		: '<a href="' . h(pg_connections_screen_page_url('google')) . '">' . h(lang('Connections')) . ' › Google</a>';
 
 	$page['status_extra'] = '
 			<div class="mt-4">
@@ -3725,7 +3728,9 @@ function connections_merchant_page($page, $may_manage) {
 
 			$body = '<p class="pg-text-2 mb-0">' . (pg_connect_app_ready(pg_connect_app('google'))
 				? h(lang('Connect a Google account under Status, then choose the Merchant Center account here.'))
-				: h(lang('To connect Merchant Center, set up the Google application first.')) . ' <a href="' . h(pg_connections_screen_page_url('google')) . '">' . h(lang('Connections')) . ' › Google</a>') . '</p>';
+				: h(lang('To connect Merchant Center, set up the Google application first.')) . ' ' . (in_array('app', $page['cards'], true)
+					? '<a href="#connections-app">' . h(lang('Application')) . '</a>'
+					: '<a href="' . h(pg_connections_screen_page_url('google')) . '">' . h(lang('Connections')) . ' › Google</a>')) . '</p>';
 
 		} elseif ($state['account'] === '') {
 
@@ -4211,6 +4216,28 @@ function connections_app_form($provider_key, $provider, $app, $provider_draft, $
 
 }
 
+/* The provider's application on an account service's own page, while it
+   is missing (pg_connections_screen_app_here()): the provider page's form,
+   saved to the same place by save_app, which comes back to this page. Once
+   it is ready the card is gone and Status connects the account. */
+
+function connections_app_card($page_id, $provider_key, $provider, $app, $provider_draft, $can_seal, $redirect_uri) {
+
+	$hint = connections_app_hint($app);
+
+	return '
+		<section class="pg-card p-5 mb-6" id="connections-app" aria-labelledby="connections-page-app">
+			<div class="d-flex flex-wrap align-items-center gap-3 mb-1">
+				<h2 class="pg-title-section mb-0" id="connections-page-app">' . h(lang('Application')) . '</h2>
+				<span class="pg-pill pg-tone-gray">' . h((is_array($app) && !$app['enabled']) ? lang('Off') : lang('Not set up')) . '</span>
+			</div>
+			<p class="pg-card-sub mb-4">' . h(lang(array('string' => 'The {var:1} application the site connects its accounts through.', 'vars' => $provider['label']))) . '</p>
+			' . (($hint === '') ? '' : '<p class="pg-field-help mt-0">' . h($hint) . '</p>') . '
+			' . connections_app_form($provider_key, $provider, $app, $provider_draft, $can_seal, $redirect_uri, $page_id) . '
+		</section>';
+
+}
+
 /* A provider's accounts as list items: purposes, when connected and last
    used, the last error, and Check or Connect again and Disconnect. */
 
@@ -4416,7 +4443,15 @@ function connections_service_page($id, $service, $row, $tile, $facts, $providers
 					data-purpose="' . h($state['purpose']) . '" data-connection="0"' . (($ready && $can_seal) ? '' : ' disabled') . '>
 					<i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Connect a {var:1} account', 'vars' => $providers[$provider_key]['label']))) . '</button>
 			</div>';
+		} elseif (in_array('app', $page['cards'], true)) {
+			// The application is asked on this page, below.
+			$extra .= '
+			<p class="pg-text-meta mt-4 mb-0">' . h(lang('Set up the application below first.')) . ' <a href="#connections-app">' . h(lang('Application')) . '</a></p>';
+		} elseif (in_array('backups', $page['cards'], true)) {
+			// A drive's page connects its account for backups itself, in
+			// Status below: one answer, not a pointer beside it.
 		} elseif (isset($providers[$provider_key]) && in_array($provider_key, pg_connections_screen_page_providers(), true)) {
+			// Nothing on this page connects the account: the provider's page does.
 			$extra .= '
 			<p class="pg-text-meta mt-4 mb-0">' . h(lang(array('string' => 'Accounts are connected on the {var:1} page of Connections, where its application is set up.', 'vars' => $providers[$provider_key]['label']))) . '
 				<a href="' . h(pg_connections_screen_page_url(array_search($provider_key, pg_connections_screen_page_providers(), true))) . '">' . h(lang('Connections')) . ' › ' . h($providers[$provider_key]['label']) . '</a></p>';
@@ -4473,6 +4508,7 @@ function connections_service_page($id, $service, $row, $tile, $facts, $providers
 			</div>
 			<dl class="pg-kv mb-0">' . $facts_html . '</dl>' . $extra . $place . '
 		</section>',
+		'app' => isset($page['app']) ? $page['app'] : '',
 		'details' => $page['details'],
 		'uses' => '
 		<section class="pg-card p-5 mb-6" aria-labelledby="connections-page-uses">
@@ -4668,6 +4704,27 @@ function connections_signin_google_part() {
 							' . h(lang('Accounts and sign-in')) . ' ›</a>
 					</div>
 				</form>
+			</div>';
+
+}
+
+/* Sign in with Microsoft on Microsoft's page: it signs people in through
+   the application below, the one the connected accounts use, so this part
+   only says so and leads to the switch in Accounts and sign-in. */
+
+function connections_signin_microsoft_part($ready) {
+
+	return '
+			<div id="connections-signin">
+				<div class="d-flex flex-wrap align-items-center gap-3 mb-1">
+					<h3 class="pg-group-label mb-0">' . h(lang(array('string' => 'Sign in with {var:1}', 'vars' => 'Microsoft'))) . '</h3>
+					' . ($ready
+						? '<span class="pg-pill pg-tone-teal">' . h(lang('Ready')) . '</span>'
+						: '<span class="pg-pill pg-tone-gray">' . h(lang('Not set up')) . '</span>') . '
+				</div>
+				<p class="pg-field-help mt-0">' . h(lang('Visitors and staff sign in with the Microsoft application below. Whether the button is shown is switched in Site Settings › Accounts and sign-in.')) . '</p>
+				<a class="pg-button pg-button-sm pg-button-quiet" href="' . h(pg_settings_link('security', 'pgset-signin')) . '">
+					' . h(lang('Accounts and sign-in')) . ' ›</a>
 			</div>';
 
 }
@@ -5003,7 +5060,7 @@ if ($provider_page !== '') {
 	$details = '';
 	$page_cards = pg_connections_screen_page_cards($page_id, array(
 		'manager'   => $is_manager,
-		'signin'    => ($provider_page === 'google') && connections_signin_may_manage($user),
+		'signin'    => connections_signin_may_manage($user),
 		'mailboxes' => connections_mailboxes_may_manage($user),
 	));
 
@@ -5018,8 +5075,15 @@ if ($provider_page !== '') {
 	}
 
 	// Google's two applications are shown together: the connected accounts'
-	// one falls back to the Sign in with Google application.
-	$signin_part = in_array('signin', $page_cards, true) ? connections_signin_google_part() : '';
+	// one falls back to the Sign in with Google application. Microsoft's one
+	// application serves both, so its part only leads to the switch.
+	$signin_part = '';
+
+	if (in_array('signin', $page_cards, true)) {
+		$signin_part = ($provider_page === 'google')
+			? connections_signin_google_part()
+			: connections_signin_microsoft_part(pg_connect_app_ready($provider_apps[$provider_page]));
+	}
 
 	if (in_array('details', $page_cards, true)) {
 
@@ -5028,11 +5092,11 @@ if ($provider_page !== '') {
 		$details = '
 		<section class="pg-card p-5 mb-6" id="connections-details" aria-labelledby="connections-page-details">
 			<h2 class="pg-title-section mb-1" id="connections-page-details">' . h(lang('Connection details')) . '</h2>
-			<p class="pg-card-sub mb-4">' . h(($signin_part !== '')
+			<p class="pg-card-sub mb-4">' . h((($signin_part !== '') && ($provider_page === 'google'))
 				? lang('The Google applications the site signs people in and connects its accounts through.')
 				: lang(array('string' => 'The {var:1} application the site connects its accounts through.', 'vars' => $provider['label']))) . '</p>
 			' . $signin_part . '
-			' . (($signin_part !== '') ? '<h3 class="pg-group-label mt-5 mb-1">' . h(lang('Connected accounts application')) . '</h3>' : '') . '
+			' . (($signin_part !== '') ? '<h3 class="pg-group-label mt-5 mb-1">' . h(($provider_page === 'google') ? lang('Connected accounts application') : lang('Application')) . '</h3>' : '') . '
 			' . (($hint === '') ? '' : '<p class="pg-field-help mt-0">' . h($hint) . '</p>') . '
 			' . connections_app_form($provider_page, $provider, $provider_apps[$provider_page],
 				(is_array($draft) && ($draft['provider'] === $provider_page)) ? $draft : null, $can_seal, $redirect_uri, $page_id) . '
@@ -5090,6 +5154,17 @@ if ($provider_page !== '') {
 	$page_provider = isset($page_providers[$page_id]) ? $page_providers[$page_id] : '';
 	$ws_viewer = ($page_id === 'github') ? connections_workspace_viewer($user) : null;
 
+	// A Google or Microsoft account service asks for the provider's
+	// application on its own page while it is missing.
+	$apps_ready = array();
+
+	foreach ($provider_apps as $app_provider => $app) {
+		$apps_ready[$app_provider] = pg_connect_app_ready($app);
+	}
+
+	$app_provider = isset($registry[$page_id]) ? pg_connections_screen_app_here($page_id, $registry[$page_id], $apps_ready, $is_manager) : '';
+	$app_provider = isset($providers[$app_provider]) ? $app_provider : '';
+
 	$page = array(
 		'cards'   => pg_connections_screen_page_cards($page_id, array(
 			'manager'      => $is_manager,
@@ -5110,7 +5185,9 @@ if ($provider_page !== '') {
 			'claude'       => ($page_id === 'claude') && connections_claude_may_manage($user),
 			'mcp'          => (pg_connections_screen_mcp_connector($page_id) !== '') && connections_mcp_may_manage($user),
 			'figma'        => ($page_id === 'figma') && $is_manager,
+			'app'          => ($app_provider !== ''),
 		)),
+		'app'          => '',
 		'details'      => '',
 		'note'         => '',
 		'own'          => '',
@@ -5289,6 +5366,12 @@ if ($provider_page !== '') {
 				(is_array($draft) && ($draft['provider'] === $page_provider)) ? $draft : null, $can_seal, $redirect_uri, $page_id) . '
 		</section>';
 
+	}
+
+	if (in_array('app', $page['cards'], true)) {
+		$page['app'] = connections_app_card($page_id, $app_provider, $providers[$app_provider],
+			isset($provider_apps[$app_provider]) ? $provider_apps[$app_provider] : null,
+			(is_array($draft) && ($draft['provider'] === $app_provider)) ? $draft : null, $can_seal, $redirect_uri);
 	}
 
 	if (in_array('repositories', $page['cards'], true)) {

@@ -88,8 +88,9 @@ function pg_backup_cloud_connections_url($type)
 
 /**
  * Where a destination's application is set up, returning to the Backups
- * card: Google's or Microsoft's page of Connections, or the list's drawer of
- * a provider without a page of its own (Dropbox). Pure.
+ * card: the drive's own page of Connections, which asks for Google's or
+ * Microsoft's application while it is missing, or the list's drawer of a
+ * provider without a page of its own (Dropbox). Pure.
  *
  * @param string $type a key of pg_backup_cloud_types()
  * @return string the address, or '' for an unknown type
@@ -102,11 +103,11 @@ function pg_backup_cloud_app_url($type)
 
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/connections_screen.php');
 
-    $provider = pg_backup_cloud_types()[$type]['provider'];
+    $cloud = pg_backup_cloud_types()[$type];
 
-    return isset(pg_connections_screen_page_providers()[$provider])
-        ? pg_connections_lead_url($provider, 'maintenance', 'pgset-backup', 'connections-details')
-        : 'connections.php#connections-' . $provider;
+    return isset(pg_connections_screen_page_providers()[$cloud['provider']])
+        ? pg_connections_lead_url($cloud['service'], 'maintenance', 'pgset-backup', 'connections-app')
+        : 'connections.php#connections-' . $cloud['provider'];
 }
 
 

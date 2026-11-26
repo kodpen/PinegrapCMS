@@ -700,6 +700,46 @@ function pg_connections_screen_page_providers()
 }
 
 /**
+ * The account provider whose application a service's page asks for itself
+ * (Google, Microsoft), else '': a service whose state is read from that
+ * provider's accounts, on a page that is not the provider's own, while the
+ * application is not ready, for a manager. Its fields are the provider
+ * page's, saved to the same place, so the service's page finishes the
+ * set-up: the application, then the sign-in, then the account. Pure.
+ *
+ * @param string $id      the service's registry key
+ * @param mixed  $service its registry entry
+ * @param array  $ready   provider key => bool (pg_connect_app_ready()); a
+ *                        provider missing counts as not ready
+ * @param bool   $manager may connect the site's accounts
+ * @return string the provider key
+ */
+function pg_connections_screen_app_here($id, $service, $ready, $manager)
+{
+    $page_providers = pg_connections_screen_page_providers();
+
+    if (!$manager || isset($page_providers[$id]) || !is_array($service) || !isset($service['state']) || !is_array($service['state'])) {
+        return '';
+    }
+
+    $state = $service['state'];
+
+    if (!isset($state['kind'], $state['provider']) || ($state['kind'] !== 'account')) {
+        return '';
+    }
+
+    $provider = (string) $state['provider'];
+
+    // Only a provider whose own page holds its application (Google,
+    // Microsoft); GitHub's is a service's page, Dropbox has none.
+    if (!isset($page_providers[$provider]) || ($page_providers[$provider] !== $provider) || ($provider === 'github')) {
+        return '';
+    }
+
+    return (is_array($ready) && !empty($ready[$provider])) ? '' : $provider;
+}
+
+/**
  * The card gateways whose keys are typed on their own page (the keys of
  * pg_payment_gateway_connections()). Pure.
  *
@@ -788,7 +828,10 @@ function pg_connections_screen_carrier_pages()
  * a manager who may open the Mailboxes settings, drawn inside Status), on
  * Google's page "signin" (the Sign in with Google application, for who may open the
  * Accounts and sign-in settings, drawn inside Connection details above the
- * connected accounts' application that falls back to it), "details" (its
+ * connected accounts' application that falls back to it; on Microsoft's,
+ * Sign in with Microsoft's part over the one application both use), "app"
+ * (an account service's provider application while it is missing, for a
+ * manager: pg_connections_screen_app_here()), "details" (its
  * provider's application, for a manager; an AI provider's key, for who may
  * change the assistants; IndexNow's key, for who may open Site Settings ›
  * SEO; Google Analytics' tag and figures, for who may open Visitors and
@@ -836,7 +879,9 @@ function pg_connections_screen_carrier_pages()
  *                    Assistants and agents as the Workspace's
  *                    administrator, Claude's routine address and token),
  *                    'mcp' (bool: the same, a ready-made MCP connector's
- *                    server: its address and sign-in)
+ *                    server: its address and sign-in), 'app' (bool: the
+ *                    provider's application is asked on this page,
+ *                    pg_connections_screen_app_here())
  * @return array list of card keys
  */
 function pg_connections_screen_page_cards($id, $can)
@@ -848,7 +893,7 @@ function pg_connections_screen_page_cards($id, $can)
         $cards[] = 'mailboxes';
     }
 
-    if (($id === 'google') && !empty($can['signin'])) {
+    if (in_array($id, array('google', 'microsoft'), true) && !empty($can['signin'])) {
         $cards[] = 'signin';
     }
 
@@ -856,6 +901,13 @@ function pg_connections_screen_page_cards($id, $can)
     // account a destination uses stays on the Backups card.
     if ((pg_backup_cloud_type_of_service($id) !== '') && !empty($can['manager']) && !empty($can['maintenance'])) {
         $cards[] = 'backups';
+    }
+
+    // The provider's application asked on an account service's page while
+    // it is missing (pg_connections_screen_app_here()); a page holding an
+    // application of its own never shows a second one.
+    if (!empty($can['manager']) && !empty($can['app']) && !isset(pg_connections_screen_page_providers()[$id])) {
+        $cards[] = 'app';
     }
 
     if (!empty($can['manager']) && isset(pg_connections_screen_page_providers()[$id])) {

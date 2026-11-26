@@ -45,7 +45,7 @@ function test_connections_backup_accounts_addresses()
 {
 	pg_assert_same('connections.php?service=google_drive&from=maintenance%2Fpgset-backup', pg_backup_cloud_connections_url('gdrive'), 'Google Drive\'s page, back to the card');
 	pg_assert_same('connections.php?service=dropbox&from=maintenance%2Fpgset-backup', pg_backup_cloud_connections_url('dropbox'), 'Dropbox\'s page');
-	pg_assert_same('connections.php?service=google&from=maintenance%2Fpgset-backup#connections-details', pg_backup_cloud_app_url('gdrive'), 'Google Drive\'s application: Google\'s page, back to the card');
+	pg_assert_same('connections.php?service=google_drive&from=maintenance%2Fpgset-backup#connections-app', pg_backup_cloud_app_url('gdrive'), 'Google Drive\'s application: asked on the drive\'s own page, back to the card');
 	pg_assert_same('connections.php#connections-dropbox', pg_backup_cloud_app_url('dropbox'), 'Dropbox has no page of its own: its drawer');
 	pg_assert_same('', pg_backup_cloud_connections_url('ftp'), 'FTP has no page');
 	pg_assert_same('settings_maintenance.php?backup_connect=onedrive#pgset-backup', pg_backup_cloud_connect_return('onedrive'), 'back to the Backups card');

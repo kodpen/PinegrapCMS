@@ -209,7 +209,7 @@ if ($signin_ready) {
         $signin_microsoft_app_ready
             ? lang('Work, school and personal Microsoft accounts sign in through the Microsoft application on Microsoft\'s page of Connections.')
             : lang('Set up the Microsoft application on Microsoft\'s page of Connections first. Until then the button stays hidden.'),
-        pg_connections_lead_url('microsoft', 'security', 'pgset-signin'),
+        pg_connections_lead_url('microsoft', 'security', 'pgset-signin', 'connections-signin'),
         lang('A personal account\'s address counts as verified, so it can sign in to an existing account with the same address. A work or school address counts only when the directory confirms it owns the domain: in the Microsoft application, under Token configuration, add the optional claim xms_edov to the ID token. Without it, work and school accounts are refused.'));
 
     $signin_apple_provider = pg_connect_provider('apple');
