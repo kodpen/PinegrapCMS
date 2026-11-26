@@ -26,5 +26,8 @@ description: Canvas spacing bands fixes: handles take a drag (#11921: late PGSpa
 - Before #11939 (PR #11942) the only regular draw request was `_positionSizeBadge()`, which every caller skips without a selection: the old element's bands and handles stayed over the next page's canvas until another element was selected.
 - A selection kept but not on the shown canvas still reaches `_sdBandsDraw()` through `_positionSizeBadge()`, which hides when `_sdCanvasInnerOf(node)` is missing.
 
+## How does a drag end when its release is not heard?
+- A move without the main button held ends it as a release (written); `lostpointercapture` without a release puts the value back. Before PR #12003 the drag kept following the pointer and every handle refused the next drag. The Spacing box's sides end the same way, and only a heard release swallows the click after it.
+
 ## What tests it?
 - `tests/designer_canvas_bands_test.php`: `read_the_spacing_box_late`, `inner_handle_clears_the_outer`, `start_step`, `nearest_step_from_auto`, `key_step_from`. The hit areas and the drag itself were checked in Chromium on a sandbox (PR description); the empty-selection hide too (tab switch, Delete, undo/redo; PR #11942).
