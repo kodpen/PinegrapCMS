@@ -168,6 +168,7 @@
 - office-docx-add-delete.md: Adding a paragraph after another and deleting one in a .docx (office_docx_paragraphs.php, OD3, PR #11811): the bar's buttons, the save entries, the kind a new paragraph takes, the refusals
 - office-docx-controls-numbering.md: Word preview: table rows and cells inside content controls and custom XML, and numId 0 taking a paragraph's (or its style's) numbering off (PR #1119), run properties turned off by w:val
 - office-docx-format.md: Bold, italic and underline on selected text of a .docx paragraph (office_docx_format.php, OD1, PR #11152): the bar, the save entry, runs split and joined, what is kept
+- office-docx-page.md: A Word document drawn as a white sheet and typed where it stands (renderDocument(), OP1): no box, the caret where the click fell, the keys, plain paste, the sheet's CSS
 - office-docx-paragraph-kind.md: A .docx paragraph's kind (normal, heading 1-3, bulleted or numbered list) set from the format bar (office_docx_kind.php, OD2): save entry, styles and numbering used or added, refusals
 - office-dom-ceiling.md: How much of a docx or xlsx becomes a libxml tree (office.php, office_edit.php, PR #882): 8 MB a DOM part, a long document read from its beginning, rows and strings node by node
 - office-files-scope.md: How far the own Word and Excel code goes and why: what is edited, what is only shown, what is never built (charts, pivots, layout; formulas beyond the simple ones), the rules every edit keeps [decision: decisions-made-product-115.md, decisions-made-product-79.md]
