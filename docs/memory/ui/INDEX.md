@@ -735,9 +735,10 @@
 - settings-drawer-card-form.md: A settings drawer that edits a record (a department): fields and a named button joined to the settings form by its id, saved by the pane's Save
 - settings-ecommerce-giftcards-rewards.md: Site Settings › Ecommerce, the Gift cards, Rewards and Reference price rows opened (EC4): groups, the radio rows helper, the labels and help lines
 - settings-ecommerce-programmes-feeds.md: Ecommerce settings, Affiliate, Referral and Product feeds rows opened (EC5): groups, the ticked group list and its filter, New address in a drawer, the two seller identities
+- settings-ecommerce-row-lines.md: Site Settings › Ecommerce, what each folded row says while closed: its line, its pill and when it asks for attention (Payment methods "None", "Connect … in Connections", Product feeds' last build)
 - settings-ecommerce-shipping-stock.md: Site Settings › Ecommerce, the Shipping, Address autocomplete and Stock locations rows opened (EC3): groups, the carriers' and label services' drawing, Add a location, the default as a list
 - settings-ecommerce-store-payments.md: Site Settings › Ecommerce, the Store and Payment methods rows opened (EC2): groups, the pane's drawing helpers, what moved into Store, the gateway script kept
-- settings-ecommerce.md: Site Settings › Ecommerce as eleven folded rows under Enable Commerce: order, names, each row's line and pill, Gift cards and Rewards as two cards, anchors, what stayed
+- settings-ecommerce.md: Site Settings › Ecommerce as eleven folded rows under Enable Commerce: order, the rules every row keeps, which file holds which row, Gift cards and Rewards as two cards, anchors, what stayed
 - settings-email-tabs.md: Site Settings › E-mail (EM1): one category, tabs E-mail sending and Mailboxes under their old gates, the tab kept in the address, old keys, pages and anchors opening their tab, the save per tab [decision: here]
 - settings-features-rows.md: Site Settings › Features below the Modules board: the folded rows Site search, Sharing buttons, Speed, Badge and the rest, their card ids, state lines and what moved into them
 - settings-features.md: Site Settings › Features: the Modules board of switch rows, what each row says and posts, Commerce and Accounting with Open, the old card ids, why it was redrawn and what stayed [decision: here]
