@@ -477,6 +477,7 @@
     "Files in this folder are not public. Upload into a public folder.": "Bu klasördeki dosyalar herkese açık değil. Herkese açık bir klasöre yükleyin.",
     "Files left out": "Dışarıda kalan dosyalar",
     "Files of a type that cannot be uploaded here are left out.": "Buraya yüklenemeyen türdeki dosyalar dışarıda bırakılır.",
+    "Files on the disk": "Dosyalar diskte",
     "Files overwriting...": "Dosyaların üzerine yazılıyor...",
     "Files sent with forms": "Formlarla gönderilen dosyalar",
     "Files sit in folders; a folder's access decides who may see and change what is in it.": "Dosyalar klasörlerde durur; klasörün erişimi içindekileri kimin görüp değiştirebileceğine karar verir.",
