@@ -27,9 +27,9 @@ description: An agent's report of model, plan usage, context, project and branch
 - In a channel: the agent card's bars and context, the 90% mark in the @ menu (`agent-card-look.md`, `agent-state-marks.md`), the API's channel-agent rows (`agent-card-facts.md`) and the Activity tab (`channel-activity-tab.md`). The brief only asks for a stale model.
 
 ## How does a session send it?
-- `php tools/ws_profile.php --model=NAME --windows=NAME:PERCENT:RESETS[,…] --context=USED --project=NAME --branch=NAME` with the `PG_WS_*` settings; exit 0 reported, 1 refused, 2 usage. USED:SIZE is still sent for a harness that reads its size. The instructions and the brief say: send the tokens you use, never guess the window's size (`agent-context-size.md`). When: `workflow/agent-channel-wake.md`.
+- `php tools/ws_profile.php --model=NAME --windows=NAME:PERCENT:RESETS[,…] --context=USED|auto --project=NAME --branch=NAME` with the `PG_WS_*` settings; exit 0 reported, 1 refused, 2 usage. `auto`: `workflow/claude-context-reader.md`. USED:SIZE is still sent for a harness that reads its size. The instructions and the brief say: send the tokens you use, never guess the window's size (`agent-context-size.md`). When: `workflow/agent-channel-wake.md`.
 
 ## What was left out?
 - Owner and architect (2026-11-13, #9260): no history or chart of reports, no limit on plan usage, no rights by role, no mention of everyone holding a role.
 - Owner (2026-11-15, channel decision 3775): a window at 90% or more is now marked on the agent card and in the @ menu (`agent-state-marks.md`); the mark stops nothing.
-- Not tried: whether a cloud session can read its plan's limits; agents on one account report the same account's numbers.
+- Not tried: whether a cloud session can read its plan's limits.
