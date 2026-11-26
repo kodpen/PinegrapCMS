@@ -40,6 +40,14 @@
     var COUNTS = {intro: 'paragraphs', text: 'words', cards: 'cards', questions: 'questions', figures: 'figures', testimonial: 'quotes',
         table: 'rows', prices: 'rows', contact: 'lines', picture: 'pictures', gallery: 'pictures'};
     var MAX_PASTE = 600000;
+    // The types of a text item: in a row of another kind, the words around
+    // its items (pg_document_page.js builds them as paragraphs).
+    var LOOSE = {paragraph: true, item: true, quote: true, heading: true, table: true, picture: true};
+
+    // A row's words that are not one of its kind's items.
+    function loose(row, item) {
+        return row.kind !== 'text' && row.kind !== 'intro' && !!(item && LOOSE[item.type]);
+    }
 
     function copy(value) {
         return JSON.parse(JSON.stringify(value));
@@ -100,7 +108,7 @@
     // How much a row holds: [count key, number].
     function count(row) {
         var key = COUNTS[row.kind] || 'words';
-        var n = row.items.length;
+        var n = row.items.filter(function (item) { return !loose(row, item); }).length;
         if (key === 'words') {
             n = row.items.reduce(function (sum, item) {
                 return sum + String(item.text || '').split(/\s+/).filter(Boolean).length;
@@ -113,7 +121,7 @@
 
     // The beginning of a row's words, one line.
     function preview(row) {
-        var parts = row.items.map(function (item) {
+        var parts = row.items.filter(function (item) { return !loose(row, item); }).map(function (item) {
             if (item.rows) {
                 return (item.rows[0] || []).join(' · ');
             }
@@ -133,7 +141,7 @@
                 });
                 return;
             }
-            (SHAPES[row.kind] || ['text']).forEach(function (key) {
+            (loose(row, item) ? (item.src ? ['alt'] : ['text']) : (SHAPES[row.kind] || ['text'])).forEach(function (key) {
                 if (Object.prototype.hasOwnProperty.call(item, key)) {
                     out.push([['items', i, key], key, item[key]]);
                 }
