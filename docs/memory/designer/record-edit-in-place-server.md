@@ -19,7 +19,7 @@ module: record_edit
 
 ## In which order does a save write?
 - Under `GET_LOCK('pg_rec_edit_<id>', 10)`, so two saves of one item never both pass the base check.
-- Rights, approval, the sent list (at most 100), conflicts, then the edit screen's checks in a liveform (`pg_submitted_form_check_field()`: dates, e-mail, the Title's address in use, number kind) plus `pg_rec_edit_value_refusal()` (required, a text's or number's Maximum Length, at most 200,000 characters) and, for a picture, a files row named as an image, out of the Recycle Bin, in a folder the person may view.
+- Rights, approval, the sent list (at most 100), conflicts, then the edit screen's checks in a liveform (`pg_submitted_form_check_field()`: dates, e-mail, the Title's address in use, number kind) plus `pg_rec_edit_value_refusal()` (required, a text's or number's Maximum Length, at most 200,000 characters) and, for a picture, a files row the pickers offer (`pg_rec_edit_picture_file_ok()`) in a folder the person may view.
 - An item whose collection is in the Recycle Bin reads as `missing`.
 - Then `pg_rec_edit_write()`: `pg_record_revision_before()`, the field's `form_data` rows replaced (`pg_submitted_form_save_value()`; a picture gets one row with `file_id`), `last_modified_*`, `update_submitted_form_address_name()` when pretty URLs are on, `pg_record_revision_after(..., 'designer')`, the activity log, `pg_tr_records_saved()` for a complete item.
 - The picture it pointed at before is not deleted (Edit Submitted Form deletes a replaced upload): a chosen picture may be a library file shown elsewhere.

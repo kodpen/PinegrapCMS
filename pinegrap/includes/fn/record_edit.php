@@ -505,20 +505,40 @@ function pg_rec_edit_picture_refusal($value)
         return lang('Please choose an image (JPG, PNG, GIF or WebP).');
     }
 
-    $file = db_item("SELECT name, folder FROM files WHERE id = '" . (int) $value . "' LIMIT 1");
+    $file = db_item("SELECT name, folder, attachment, design FROM files WHERE id = '" . (int) $value . "' LIMIT 1");
 
-    // A file in the Recycle Bin is purged with it, leaving the item pointing
-    // at nothing.
     if (
-        !$file
-        || !pg_coll_image_name_ok((string) $file['name'])
-        || pg_folder_binned((int) $file['folder'])
+        !pg_rec_edit_picture_file_ok($file, $file && pg_folder_binned((int) $file['folder']), $file && (pg_file_chat_conversations((int) $value) !== array()))
         || !check_view_access((int) $file['folder'])
     ) {
         return lang('Please choose an image (JPG, PNG, GIF or WebP).');
     }
 
     return '';
+}
+
+/**
+ * Whether a files row may be a record's picture, by the pickers' rule
+ * (pg_picker_files_where()): an image name, in a folder, not an attachment
+ * (another record's form upload, a volunteer document), not a design file,
+ * not in the Recycle Bin (purged with it) and not a team chat attachment.
+ * A file id can be sent by hand, so the save asks what "Choose a
+ * picture…" would offer. Pure.
+ *
+ * @param array|null $file    files row: name, folder, attachment, design
+ * @param bool       $binned  its folder is in the Recycle Bin
+ * @param bool       $chat    a panel team chat message carries it
+ * @return bool
+ */
+function pg_rec_edit_picture_file_ok($file, $binned, $chat)
+{
+    return is_array($file)
+        && pg_coll_image_name_ok((string) ($file['name'] ?? ''))
+        && ((int) ($file['folder'] ?? 0) > 0)
+        && empty($file['attachment'])
+        && empty($file['design'])
+        && !$binned
+        && !$chat;
 }
 
 /**

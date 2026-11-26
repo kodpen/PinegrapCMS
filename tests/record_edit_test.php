@@ -336,3 +336,26 @@ function test_record_edit_open_sub_action_listed()
 	$subs = pg_page_cache_panel_sub_actions();
 	pg_assert_true(in_array('preview_record_open', $subs['designer']['clean'], true), 'it leaves the page cache alone');
 }
+
+// A picture sent by hand is held to the pickers' rule: no form or volunteer attachment, no design file, no file outside a folder, none in the bin, no team chat attachment.
+function test_record_edit_picture_file_ok()
+{
+	$ok = array('name' => 'a.jpg', 'folder' => '4', 'attachment' => '0', 'design' => '0');
+
+	pg_assert_true(pg_rec_edit_picture_file_ok($ok, false, false), 'a library picture');
+	pg_assert_false(pg_rec_edit_picture_file_ok(null, false, false), 'no file');
+	pg_assert_false(pg_rec_edit_picture_file_ok(array('name' => 'a.pdf') + $ok, false, false), 'not an image');
+	pg_assert_false(pg_rec_edit_picture_file_ok(array('attachment' => '1') + $ok, false, false), 'another record\'s form upload');
+	pg_assert_false(pg_rec_edit_picture_file_ok(array('name' => 'volunteer-doc-1.jpg', 'folder' => '0', 'attachment' => '1') + $ok, false, false), 'a volunteer document\'s file');
+	pg_assert_false(pg_rec_edit_picture_file_ok(array('folder' => '0') + $ok, false, false), 'a file in no folder');
+	pg_assert_false(pg_rec_edit_picture_file_ok(array('design' => '1') + $ok, false, false), 'a design file');
+	pg_assert_false(pg_rec_edit_picture_file_ok($ok, true, false), 'in the Recycle Bin');
+	pg_assert_false(pg_rec_edit_picture_file_ok($ok, false, true), 'a team chat attachment');
+
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/record_edit.php');
+	$body = substr($source, strpos($source, 'function pg_rec_edit_picture_refusal('));
+	$body = substr($body, 0, strpos($body, "\n}\n"));
+	pg_assert_contains('SELECT name, folder, attachment, design FROM files', $body);
+	pg_assert_contains('pg_file_chat_conversations(', $body);
+	pg_assert_contains('pg_rec_edit_picture_file_ok(', $body);
+}
