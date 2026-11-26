@@ -14,7 +14,7 @@ module: marketplace_pricing_settings
 - Left at its defaults with no rule (`mp_pricing_settings_is_default()`), the tab keeps no row, or removes the rows it had: the account then sends the site price, as before any rule. Saving the drawer for its name alone creates no pricing row.
 
 ## When are the prices sent again?
-- When a save moves a price: any rule's percent, fixed or rounding, a rule added or removed, the margin (the floor), or Try first switched to or from sending (`mp_pricing_settings_changed()`; #PRNUM); the robot's step and limit do not. Only for an active account that sends prices.
+- When a save moves a price: any rule's percent, fixed or rounding, a rule added or removed, the margin (the floor), or Try first switched to or from sending (`mp_pricing_settings_changed()`; #11768); the robot's step and limit do not. Only for an active account that sends prices.
 - The request only marks the account in `data/temp/mp_pricing_requeue.json`; the general job (`job.php`, `mp_pricing_requeue_run()`) queues its active listings 500 a statement, five seconds a tick, skipping one a not yet taken row waits for. The drawer says "Prices are sent again in the background."
 - A second change during a pass starts the account over (`mp_pricing_requeue_step()` keeps a newer mark). The marketplace job (`api_sync_job.php`) is not touched.
 

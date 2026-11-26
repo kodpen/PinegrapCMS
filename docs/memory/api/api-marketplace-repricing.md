@@ -11,7 +11,7 @@ description: GET /marketplaces/{account}/repricing and POST (PATCH) /marketplace
 
 ## What does the update route change?
 - Route `marketplaces.repricing.update`: `POST` with `also_accepts` PATCH, scope `products:write`, dry run, handler `api_marketplace_repricing_update()`. Body `strategy` (enum) and `own_price` (money 1 to 100000000, nullable: null or '' clears it); only the fields sent change, an empty body is 422.
-- The new values come from `api_marketplace_repricing_change()` (pure) and are written by `mp_pricing_listing_save()`, the panel row's writer. A changed own price, or a strategy changed while the robot holds a price for the listing, queues it on that account (`mp_pricing_listing_moves()`, `mp_matches_send()`; bug hunt, #PRNUM).
+- The new values come from `api_marketplace_repricing_change()` (pure) and are written by `mp_pricing_listing_save()`, the panel row's writer. A changed own price, or a strategy changed while the robot holds a price for the listing, queues it on that account (`mp_pricing_listing_moves()`, `mp_matches_send()`; bug hunt, #11768).
 - `win` or `grow` on an account whose marketplace does not offer them (n11) is 422 on `strategy`; the panel's row stores Fixed instead, but a client must not get less than it asked for in silence.
 
 ## Who may call them?
