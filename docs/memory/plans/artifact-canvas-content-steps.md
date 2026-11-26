@@ -29,7 +29,7 @@ priority: 6
 - AC14 (S) Close-out: the rules into `ui/image-editor-content.md` and its parts, the `[NEW]` line named, the census files, this file, `artifact-canvas-content-screens.md` and `artifact-canvas-content.md` deleted.
 
 ## What runs beside them?
-- The design file's steps (`artifact-canvas-design-file.md`) and the picture text steps (`picture-text-fit.md`) are other plans: one step of each may run beside one step of this one. AC7 and DF4 both add a row to the New image dialog: the later one is built on the landed other.
+- The design file's steps (`artifact-canvas-design-file.md`) are another plan: one of its steps may run beside one step of this one. AC7 and DF4 both add a row to the New image dialog: the later one is built on the landed other.
 
 ## What did the architect settle for Unsplash? (2026-11-26, agent channel request 3151)
 - The API guidelines ask that every use shows the address the API returned, that the download address is called when a photo is chosen, and that the photographer and Unsplash are credited with a link (help.unsplash.com, "Unsplash API Guidelines", read 2026-11-26).

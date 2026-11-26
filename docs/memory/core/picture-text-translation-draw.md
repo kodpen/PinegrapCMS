@@ -1,22 +1,22 @@
 ---
 name: picture-text-translation-draw
-description: The Artifact Canvas Languages list (#10208): its rows and states, drawing only when every text is translated, the browser draw, the fit floor by a text's size, the draw after a Save
+description: The Artifact Canvas Languages list (#10208): its rows and states, its notes, drawing only when every text is translated, the browser draw, the fit, the draw after a Save
 module: picture_translation
 ---
 
 ## Where is the Languages list?
 - A "Languages" button in the Artifact Canvas's top bar (`assets/js/pg_image_editor_artboard.js`, after Import), shown only for a canvas or a photo with a saved document opened from Files whose texts are in the store and when the site has a target language. It opens a box: one row per target language with a thumbnail, the state, "{n} of {m} texts translated", Draw; "Draw all" below.
-- States (`pg_picture_tr_list_state()`): Not translated (some text has no translation), Translated, Picture drawn, Out of date (row state 2), Look by hand (drawn with `fit` 1). "Drawn" alone is not the label: its Turkish is already "Berabere" (a tied match).
+- States (`pg_picture_tr_list_state()`): Not translated (some text has no translation), Translated, Picture drawn, Out of date (row state 2), Look by hand (drawn with `fit` 1; its line `langLookNote`: "A text does not fit even wrapped at its smallest size: place it with "Correct by hand"."). "Drawn" alone is not the label: its Turkish is already "Berabere" (a tied match).
 - A right-to-left language is listed with "Right to left: the source picture is shown." and no Draw.
 - Owner (2026-11-17, poll 131): a language is drawn only once every counted text is translated into it. Until then Draw is disabled (`M.languageDrawable()`) and the row says how many texts are not translated and that visitors see the source picture; the server refuses such a draw (`untranslated`, 409). Draw all takes Translated and Out of date languages that are drawable. A text that stays the same (a brand name) is translated by typing the same word; the list's note says so.
-- The list's note (`langNote`) says that each language's picture is drawn by itself from the last saved version once all its texts are translated, and that "Draw" does it now (#10448).
+- The list's note (`langNote`) says that each language's picture is drawn by itself from the last saved version once all its texts are translated, and that "Draw" does it now (#10448); then `langSame` (the same word) and `langFixNote`: a longer translation takes the free room, wraps and gets smaller, and one that still does not fit is moved and sized for that language alone with "Correct by hand", the source picture kept.
 - Once every text is translated a row has "Correct by hand" (the language view, `picture-text-fit-view.md`), the main button of a Look by hand row, and "Corrected by hand: {n} texts" where texts are corrected.
 - An Out of date row says "Visitors see the source picture until this one is drawn again." in place of the count. A drawn picture's thumbnail is a link opening it at full size in a new tab, named "Open the picture: {name}".
 
 ## How is a picture drawn?
 - Action `picture_languages` (`pg_picture_tr_languages_answer()`) gives the live canvas document, its hash and per language the texts (`id`, `field`, `text` or null), a stamp and `queued` (a row waiting or out of date). The browser draws from that saved document, never the unsaved one ("Changes not saved yet are not in these pictures.").
 - A Save of the file the list belongs to draws its `queued` languages that are drawable again at once, with no press: `picture-text-auto-panel.md`.
-- `M.languageDoc()` puts the words in by layer id and field; each changed text layer is fitted by `M.languageFitted()`: it grows into the free room around it and shrinks only past it, never under its floor (`picture-text-translation-fit-letters.md`); below it the text is drawn at the floor and the draw is marked (`fit` 1). The room and where the text is put: `picture-text-fit-room.md`.
+- `M.languageDoc()` puts the words in by layer id and field; each changed text layer is fitted by `M.languageFitted()`: it grows into the free room around it, wraps (`picture-text-fit-wrap.md`) and shrinks only past it, never under its floor; a corrected text is put as corrected (`picture-text-fit-correct.md`) (`picture-text-translation-fit-letters.md`); below it the text is drawn at the floor and the draw is marked (`fit` 1). The room and where the text is put: `picture-text-fit-room.md`.
 - A painter on the editor's prototype (as `workspace_canvas_picture.js`) waits for fonts (`layersReady()`) and draws with `drawArtboard()`, the save's renderer.
 
 ## What does the server check and keep, and where is the picture hidden?

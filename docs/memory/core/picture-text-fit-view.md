@@ -5,7 +5,7 @@ module: image_editor
 ---
 
 ## Where does it open?
-- The Languages list: a row whose every text is translated (`M.languageDrawable()`) has "Correct by hand" after Draw; on a Look by hand row it is the row's main (filled) button. A row with corrections says "Corrected by hand: {n} texts" (one: "Corrected by hand: 1 text") from `picture_languages`' `corrected`. The list's note ends with `langFixNote`.
+- The Languages list: a row whose every text is translated (`M.languageDrawable()`) has "Correct by hand" after Draw; on a Look by hand row it is the row's main (filled) button. A row with corrections says "Corrected by hand: {n} texts" (one: "Corrected by hand: 1 text") from `picture_languages`' `corrected`. The list's note ends with `langFixNote` (`picture-text-translation-draw.md`).
 - With changes not saved yet, the button asks "Save your changes first: a language is corrected on the saved picture." with Cancel and Save (Save closes the canvas, as every Save).
 - "Draw the waiting pictures": a Look by hand row's "Edit in Artifact Canvas" carries `data-pg-image-language`; the loader passes `language` to `pgImageEditor.open()` and the editor enters that language's view once the picture and its languages are loaded (`lvAsked()`).
 

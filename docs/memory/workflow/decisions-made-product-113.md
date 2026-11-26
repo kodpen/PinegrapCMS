@@ -15,7 +15,7 @@ description: Decisions made, product part 113 (2026-11-26 on): a translated pict
 - So: a translated text first uses the free room up to the picture's edge and the next layer, keeping the edge's margin; a text that leans on an edge grows away from it. If that is not enough it is broken into lines between words; if that is not enough it shrinks as before.
 - What still does not fit is corrected by hand: in the Artifact Canvas that language's text is moved and sized. The source picture does not change.
 - This replaces the architect's line of 2026-11-16 "no box or size per language" (`core/picture-text-overview.md`) and settles the wrap question `core/picture-text-translation-fit-letters.md` left open. The floor of 2026-11-25 stays for the last step.
-- The rules, the screens and the steps: `plans/picture-text-fit.md`.
+- Built (#11837, #11874, #11888, #11904): the room `core/picture-text-fit-room.md`, the wrap `core/picture-text-fit-wrap.md`, the correction `core/picture-text-fit-correct.md`, its screen `core/picture-text-fit-view.md`.
 
 ## How does a design made in Canva open in the Artifact Canvas? (owner, 2026-11-26, agent channel poll 230, message 14151)
 - Owner (2026-11-26, agent channel message 14119): "canvadan görsel tasarımcıya düzenlenebilir içerik aktarmanın yolu olursa çok başarılı olur, bu sayede oradan bir şekilde tasarladıkları içerik burada düzenlenebilir olur ve çeviri sistemi ile de mükemmel çalışır."

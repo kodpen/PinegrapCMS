@@ -5,7 +5,8 @@ module: picture_server_draw
 ---
 
 ## What does a translated text do now?
-- It grows into its room at the source's size; it shrinks only past the room, never under its floor (`M.languageFloor()`, `picture-text-translation-fit-letters.md`), and under the floor it is drawn there and marked "Look by hand" (`fit` 1), as before. Owner's order (2026-11-26, poll 229): grow, wrap, shrink (`plans/picture-text-fit-rules.md`). Wider than the room it is wrapped between words first (`picture-text-fit-wrap.md`).
+- It grows into its room at the source's size; it shrinks only past the room, never under its floor (`M.languageFloor()`, `picture-text-translation-fit-letters.md`), and under the floor it is drawn there and marked "Look by hand" (`fit` 1), as before.
+- Owner's order (2026-11-26, poll 229, `workflow/decisions-made-product-113.md`): grow, wrap, shrink; the room's numbers are the architect's (2026-11-26, agent channel request 3129). Wider than the room it is wrapped between words first (`picture-text-fit-wrap.md`).
 - `M.languageFitted(put, layout, board)` (`assets/js/pg_image_editor_model.js`) runs the loop for the editor's `drawLanguage()`; `pg_picture_tr_language_fitted()` is its server twin. All rooms are read before any text moves.
 
 ## How is the room read?
