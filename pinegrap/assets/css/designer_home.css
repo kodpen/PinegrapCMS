@@ -1429,6 +1429,12 @@ button.sdh-page:hover {
     display: none;
   }
 
+  /* The settings window hides its descriptions on a phone; the pane's
+     head keeps its one sentence. */
+  .sd-ns-head .pg-sm-desc {
+    display: block;
+  }
+
   .sd-ns-chev {
     display: block;
     flex: 0 0 auto;
