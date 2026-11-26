@@ -375,6 +375,27 @@ function pg_lead_tie($act, $contact_id, $ref_id = 0)
         db_q("UPDATE lead_visits SET contact_id = ? WHERE id IN (" . implode(',', array_map('intval', $ids)) . ") AND contact_id = 0", array((string) $contact_id));
     }
 
+    // A move splits the open visit: the earlier contact keeps its row as it
+    // stands, the new contact gets a row of its own from this page on, with
+    // no campaign or referrer of the visit's start.
+    $split = pg_lead_move_split($decision['verdict'], $session, $now);
+
+    if ($split !== null) {
+        // get_file.php signs in without functions.php: a visit with neither
+        // campaign nor referrer is direct.
+        $flag = defined('PAY_PER_CLICK_FLAG') ? (string) PAY_PER_CLICK_FLAG : '';
+        $channel = function_exists('pg_visitor_channel') ? pg_visitor_channel(array(), $flag) : 'direct';
+        $copy = pg_lead_visit_copy(array(), $channel, $split['landing_page']);
+
+        db_q(
+            "INSERT INTO lead_visits (browser_id, contact_id, visitor_id, started_at, channel, campaign, referrer_host, landing_page, pages) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            array((string) $browser['id'], (string) $contact_id, (string) $session['visitor_id'], (string) $now, $copy['channel'], $copy['campaign'], $copy['referrer_host'], $copy['landing_page'], json_encode($split['pages']))
+        );
+
+        $session = array('browser_id' => $browser['id'], 'visitor_id' => $session['visitor_id'], 'visit_id' => (int) mysqli_insert_id(db::$con), 'pages' => $split['pages']);
+        pg_lead_session_store($session);
+    }
+
     if (pg_schema_has('contact_journey', 'kind')) {
         db_q(
             "INSERT INTO contact_journey (contact_id, kind, at, visit_id, ref_id, detail) VALUES (?, ?, ?, ?, ?, ?)",

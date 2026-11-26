@@ -411,3 +411,20 @@ function test_lead_journey_no_tie_to_a_deleted_contact()
 	pg_assert_same('no_contact', pg_lead_tie_decision(array('contact_gone' => true) + $facts)['verdict'], 'a recipient whose contact was deleted moves nobody');
 	pg_assert_contains("'contact_gone' =>", lead_journey_test_source('includes/fn/lead_journey_store.php'), 'the store reads whether the contact is there');
 }
+
+function test_lead_journey_move_splits_the_open_visit()
+{
+	$session = array('browser_id' => 3, 'visitor_id' => 70, 'visit_id' => 500, 'pages' => array(array('/shop', 12, 1000), array('/sign-in', 0, 1012)));
+
+	$split = pg_lead_move_split('move', $session, 1050);
+	pg_assert_same('/sign-in', $split['landing_page'], 'the new row lands on the page the other person signed in on');
+	pg_assert_same(array(array('/sign-in', 0, 1050)), $split['pages']);
+	pg_assert_same(null, pg_lead_move_split('tie', $session, 1050), 'a first tie takes the open visit back, no split');
+	pg_assert_same(null, pg_lead_move_split('same', $session, 1050));
+	pg_assert_same(null, pg_lead_move_split('move', array('visit_id' => 0, 'visitor_id' => 0, 'pages' => array()) + $session, 1050), 'no visit open, nothing to split');
+
+	$store = lead_journey_test_source('includes/fn/lead_journey_store.php');
+	pg_assert_contains('pg_lead_move_split($decision[\'verdict\'], $session, $now)', $store, 'the store splits on a move');
+	pg_assert_contains('pg_lead_visit_copy(array(), $channel, $split[\'landing_page\'])', $store, 'the new row copies no campaign or referrer');
+	pg_assert_contains('pg_visitor_channel(array(), $flag)', $store, 'channel as for a visit with neither');
+}

@@ -519,3 +519,29 @@ function pg_lead_session_is_staff(array $software, $panel_access)
 {
     return !empty($software['ghost']) || !empty($software['logged_in_as_different_user']) || (bool) $panel_access;
 }
+
+/**
+ * The open visit split on a move: another contact's act on a shared browser
+ * starts a new visit row for that contact, landing on the page the act was
+ * made from (the open visit's last page), so the pages the earlier contact
+ * saw stay with them and no later page is added to their row. A first tie
+ * splits nothing: the open visit, still without a contact, is tied back.
+ * Pure.
+ *
+ * @param string $verdict pg_lead_tie_decision()'s
+ * @param array  $session pg_lead_session()
+ * @param int    $now
+ * @return array|null landing_page, pages; null for no split
+ */
+function pg_lead_move_split($verdict, array $session, $now)
+{
+    if (($verdict !== 'move') || ((int) ($session['visit_id'] ?? 0) <= 0) || ((int) ($session['visitor_id'] ?? 0) <= 0)) {
+        return null;
+    }
+
+    $pages = (isset($session['pages']) && is_array($session['pages'])) ? $session['pages'] : array();
+    $last = $pages ? end($pages) : null;
+    $landing = (is_array($last) && isset($last[0])) ? (string) $last[0] : '';
+
+    return array('landing_page' => $landing, 'pages' => pg_lead_pages_add(array(), $landing, $now));
+}
