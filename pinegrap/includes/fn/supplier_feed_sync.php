@@ -53,7 +53,7 @@ define('PG_SUPPLIER_FEED_FAILED_LINES', 500);
  *
  * @param array $record a flat record
  * @param array $fields product field => the feed's field
- * @return array key, barcode, buy (minor units or null), stock, vat (percent
+ * @return array key, barcode, buy (minor units, null for none or 0), stock, vat (percent
  *               or null), name, category, brand, model, description, images
  */
 function pg_supplier_feed_record_values($record, $fields)
@@ -71,10 +71,14 @@ function pg_supplier_feed_record_values($record, $fields)
         $vat = ($vat_minor === null) ? null : $vat_minor / 100.0;
     }
 
+    // A price of 0 is a supplier's placeholder, not a buy price: it would
+    // replace the last one, or count as a held price when there was one.
+    $buy = ($get('buy_price') === '') ? null : pg_supplier_feed_parse_amount($get('buy_price'), 2);
+
     return array(
         'key'      => $get('supplier_key'),
         'barcode'  => $get('barcode'),
-        'buy'      => ($get('buy_price') === '') ? null : pg_supplier_feed_parse_amount($get('buy_price'), 2),
+        'buy'      => ($buy === 0) ? null : $buy,
         'stock'    => pg_supplier_feed_parse_stock($get('stock')),
         'vat'      => $vat,
         'name'     => $get('name'),
