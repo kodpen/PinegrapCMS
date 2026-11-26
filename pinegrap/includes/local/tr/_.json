@@ -2946,6 +2946,7 @@
     "“{var:1}” is shared ({var:2}). Locking it takes these shares back.": "“{var:1}” paylaşılıyor ({var:2}). Kilitlemek bu paylaşımları geri alır.",
     "“{var:1}” is unlocked.": "“{var:1}” kilidi kaldırıldı.",
     "“{var:1}” is used in {var:2} places. Each keeps the curve as its own.": "“{var:1}” {var:2} yerde kullanılıyor. Her biri eğriyi kendi eğrisi olarak korur.",
+    "“{var:1}” is used in {var:2} places. They lose its value.": "“{var:1}” {var:2} yerde kullanılıyor. Bu yerler değerini kaybeder.",
     "“{var:1}” was made by a newer Pinegrap. Update this site, then import it.": "“{var:1}” daha yeni bir Pinegrap ile hazırlanmış. Önce bu siteyi güncelleyin, sonra içe aktarın.",
     "“{var:1}” {var:2}%": "“{var:1}” %{var:2}",
     "“{var}” has not been saved yet. Save it and it joins the phone's page list.": "“{var}” henüz kaydedilmedi. Kaydettiğinizde telefonun sayfa listesine eklenir.",
