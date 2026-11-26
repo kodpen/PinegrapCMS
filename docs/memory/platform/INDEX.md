@@ -261,6 +261,7 @@
 - structured-data-open-graph.md: Rules for JSON-LD and Open Graph (2026.4.4): no invented data, json_encode only, custom JSON-LD, merchant parts, OG image resolvers, SEO card key. [decision: decisions-made-seo.md]
 - system-status-ca-bundle.md: The "CA Store" and "CA Certificate Bundle" system status checks - which store outbound TLS verifies against and why, the probe from System Status, the bundle age, thresholds, weights and cache.
 - system-status-check-rules.md: System Status rules - a check row and its button share one read, the cache dropped by pg_system_status_forget() after a save, per-check detail boxes, confirm tiles on buttons.
+- system-status-payment-mode.md: The "Payment Mode" System Status row - a switched-on payment way in test on a live shop, by the set-up card's own rule; when it is drawn, what it names, which saves drop the cache [decision: here]
 - system-status-php-security-fixes.md: The "PHP Security Fixes" System Status check (PHP2Shell, CVE-2026-109618/109619): fixed releases, build date, four states, and the Docker image's upload progress setting
 - theme-activation-page-styles.md: What turning a theme file on or off does to the pages' styles: preview_styles rows per theme and device type, written when it goes off (replaced or turned off alone), applied when it comes on
 - update-backup-rollback.md: Backup a software update or repair writes before replacing files (pre-update-*.zip) and the rollback on Repair Software: contents, hash record, effect on files and config.version

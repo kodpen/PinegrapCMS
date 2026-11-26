@@ -409,6 +409,7 @@
 - designer-chrome-tokens.md: The Page Design Studio chrome's --sd-* colour tokens in style_designer.css: which token is for what, the measured ratios, the four areas that read tokens only, and the test that checks them
 - designer-class-dedupe.md: How the designer replaces a class of the same family when one is added (deduplicateCssClass, CLASS_MUTEX_PREFIXES): longest prefix, same breakpoint only, callers, test
 - designer-cleanup-drawing.md: The drawing of the designer's "Clean up" window (plan designer-cleanup, CU2 and CU3): boards U1 what opens it and U2 the window with its four lists and rows
+- designer-cleanup-removal.md: "Remove" of the Clean up window (CU3): the snapshot first, what the server re-checks and removes, rules and variables saved by the editor, the closing line, rows that stay
 - designer-cleanup-states-drawing.md: The drawing of the designer's "Clean up" window, boards U3 and U4: "Show", ticked rows and the foot, what is not listed, the closing line after "Remove", the states [decision: here]
 - designer-cleanup-window.md: The designer's "Clean up" window as built (CU2): what opens it, the four lists and what each counts as unused, "Show", the states, the endpoint and the part
 - designer-code-editor-decisions.md: The designer's code editor: owner rules (2026-10-19) and lasting decisions behind it (CodeMirror 6 facade, lazy load, half-locked code, one emitter), and which PRs built which part
