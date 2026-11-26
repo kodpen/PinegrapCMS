@@ -25,4 +25,4 @@ module: markdown
 - An entity in an address stays text (`&amp;#106;avascript:`), which the browser reads as a page name.
 
 ## What was measured?
-- PR #11795: the reader is 610 PHP lines and 276 JS lines in their own files; `style_designer.src.js` grew by 43 lines (the component, its markup helper, the Options box, the palette card and drawing). The part bundle `style_designer_markdown.min.js` is new; the core bundle grows only by those lines.
+- PR #11797: the reader is 610 PHP lines and 276 JS lines in their own files; `style_designer.src.js` grew by 43 lines (the component, its markup helper, the Options box, the palette card and drawing). Built: `style_designer.min.js` 3,113,836 to 3,115,234 bytes (+1,398); the new part bundle `style_designer_markdown.min.js` is 7,150 bytes, fetched only when a Markdown element is drawn.
