@@ -369,7 +369,7 @@ description: Generated from the module field of the memory files: each includes/
 - `push_broker`: [[api-native-push]]
 - `quiet_hours`: [[api-workspace-quiet-hours]], [[quiet-hours]]
 - `ready_reports`: [[order-report-ready-reports]], [[order-report-ready-strip]], [[visitor-report-ready-reports]]
-- `record_edit`: [[record-edit-in-place-canvas-row]], [[record-edit-in-place-overview]], [[record-edit-in-place-server]]
+- `record_edit`: [[bug-hunt-areas-record-edit-in-place]], [[record-edit-in-place-canvas-row]], [[record-edit-in-place-overview]], [[record-edit-in-place-server]]
 - `record_old_address`: [[record-rename-address]]
 - `record_revisions`: [[collection-history]], [[collection-revisions]]
 - `referral`: [[referral-busy-retry]], [[referral-checks]], [[referral-programme]], [[referral-rules]], [[referral-settings-card]]
