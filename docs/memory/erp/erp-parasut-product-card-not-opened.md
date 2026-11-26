@@ -16,9 +16,14 @@ description: An invoice line whose own Paraşüt card is not opened is refused i
 ## What about a create that got no answer?
 - It may have opened the card without Pinegrap keeping its id, so the next send opens a second one. The refusal tells the operator to delete such a card on Paraşüt first. No lookup finds it afterwards (unchanged).
 
+## Which VAT rate should a new card take?
+- Rule: a card opened for an invoice line takes that line's VAT rate; a caller without a line (E-Shipment) takes the catalog's. An existing card is not updated. The line is the sale and the card's rate a default: a stale catalog rate must not stop an invoice.
+- Today the create sends the catalog's `products.tax_rate`, so an old 18 % product makes Paraşüt refuse the card and with it a 20 % invoice: bug #11982.
+
 ## What stays as it was?
 - The 404 resend: a kept card Paraşüt no longer holds is forgotten and opened again (erp-parasut-stale-kept-ids.md); if that create fails, the resend stops with this refusal. A 404 naming the default product/service refuses naming the setting.
 - `erp_edoc_parasut_product_refusal()`, asked before the buyer card, sees only lines with `product_id` ≤ 0 and rounding lines: with no default set, a deleted product's line is refused only after the buyer card was found or opened.
 
 ## How was it checked?
-- Unit tests only (`tests/parasut_default_product_test.php`): the demo key expired on 2026-10-25. A failed create or products read refusing an invoice never ran live; the failed read's flag is checked in the source.
+- Unit tests (`tests/parasut_default_product_test.php`); the failed read's flag is checked in the source. A failed products read refusing an invoice never ran live.
+- Live on staging (2026-11-27, #1631): a product at an 18 % catalog rate on a 20 % line: Paraşüt refused the card, the send was refused in its words, and no sales invoice was created.

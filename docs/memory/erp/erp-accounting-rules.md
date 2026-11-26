@@ -10,6 +10,7 @@ description: ERP accounting rules (4.103): withholding in the VAT difference, th
 
 ## How does a zero-rated line get its exemption code?
 - Only through `erp_vat_line_exemption_code($line)`: a line that carries VAT gets none; a 0% line keeps the code it has (a return keeps its invoice's), else its product's (`products.vat_exemption_code`), else the store default. An e-document with a 0% line and no reason is refused by the tax authority's schema.
+- Such a line must be refused before any request, by one pre-send check both drivers (Paraşüt, İşbaşı) share. Today Paraşüt's driver sends it without `vat_exemption_reason_code` (bug #11983); GİB's answer could not be seen on staging.
 - Every path that writes `erp_invoice_items` writes `vat_exemption_code` with it: today the order bridge (`order_bridge.php`), the manual invoice draft and its issue (`invoice_manual.php`) and returns (`returns.php`). A new line writer does the same.
 - The store default is three digits or empty (`erp_vat_exemption_code_valid()`). The product column has no field on the product screen; the Workspace record changes can set it.
 

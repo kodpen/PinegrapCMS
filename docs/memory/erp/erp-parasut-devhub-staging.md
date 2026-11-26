@@ -22,7 +22,7 @@ module: parasut
 ## Where does the test mark show?
 - `parasut_environment_mark()`: the amber pill "Test environment" only while connected (status active) in staging. On Paraşüt's page it stands before the status line; the e-document screens (ERP dashboard, invoice, settings card) read it through `erp_edoc_parasut_environment()`.
 
-## What is not tested?
-- A full round on staging (order buttons, e-document send) after #11957, and whether `uygulama-staging.parasut.com` opens the invoice: the architect's test round on dev.
+## Was it tested live?
+- A full round ran on dev against company 35477 on 2026-11-27 (order buttons, e-document send, inbox, export). What staging lets a round test, and what it cannot: `erp-parasut-staging-company.md`.
 
 Tests: `tests/parasut_devhub_staging_test.php`. Related: `erp-parasut-devhub-connection.md`, `erp-parasut-devhub-application.md`.

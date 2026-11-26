@@ -11,5 +11,9 @@ description: Which provider cards ERP › Account sync links to accounts on its 
 - An invoice never goes to an archived card (Paraşüt `erp_edoc_parasut_linked_contact_usable()` searches by number and opens a new card instead), and a poll links the invoice's card only to an account with no card (`erp_edoc_account_link_from_invoice()`). Since archived cards came into the list (#884) the auto-link took them: an account with only an archived card was linked to it, its invoices opened a new card that never got linked, and every invoice read the archived card once more. An active card with an archived duplicate counted as shared and was no longer linked at all. Fixed in PR #1116 (issue #967).
 - An account already linked to an archived card by that rule stays linked until someone unlinks it on the Account sync screen.
 
+## Which links does an invoice send leave as they are?
+- A card the send opens for an account with no card is not recorded: only Ask After the Status links it (`erp_edoc_account_link_from_invoice()`, called from `erp_edoc_invoice_poll()`, and only while the account has no card).
+- A send that finds the linked Paraşüt card gone (404) searches by number and opens a new card, but `erp_edoc_accounts` keeps pointing at the dead one; that poll does not relink an account that has a card. Seen on staging, 2026-11-27; behaviour as built, not a bug.
+
 ## Tests?
 - `tests/erp_edoc_account_autolink_test.php` (the two queries); in the sandbox both cases from the issue, `development` against the fix.

@@ -12,3 +12,6 @@ description: Paraşüt driver, part 2: how the conversion picks e-Fatura or e-Ar
 ## How are its requests made?
 - `erp_edoc_parasut_request()` on `erp_edoc_http()` and `erp_edoc_log()`, with the legacy client's token (`parasut_get_token()`, `erp-parasut-connection.md`). A renewal runs under a named `GET_LOCK` per company and client; whoever waited reads the token the other one stored.
 - One retry after a 401 (a new token) and one after a 429 (the next window); `parasut_throttle()` keeps 10 requests per 10 s per process.
+
+## Whose is the rate limit?
+- Paraşüt counts its 10 requests per 10 s per company and client, not per process: every process on one company (several panel users, a test round's workers) shares it. `parasut_throttle()` paces only its own process, so several at once still meet 429s; the one retry after a 429 recovered each one seen on staging (2026-11-27, erp-parasut-staging-company.md).

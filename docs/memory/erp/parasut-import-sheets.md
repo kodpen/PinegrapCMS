@@ -16,6 +16,13 @@ module: parasut_sheet
 - A data row is keyed by column index (`pg_parasut_sheet_rows()` turns the orders export's row number => column letter cells into rows). An int or float is a number, `array('date' => 'Y-m-d H:i')` a date serial, anything else inline text, never a formula. Every column of a data row gets a thin grey (B8B8B8) bordered, left-aligned cell, empty or not.
 - The orders export's formats: C and F `d.mm.yyyy`, P, Q and S `#,##0.00`, R `#,##` (as PHPExcel wrote them; R shows 0 as blank, the value is still 0). The ERP export sets none: its dates are `d.m.Y` text and its amounts plain numbers, as before.
 
+## Was the head compared with Paraşüt's own template?
+- Yes: Paraşüt staging's sales-invoice import template (Excel, downloaded 2026-11-27) has the same 20 headings in row 3 and the same help note in row 1 as `includes/fn/parasut_sheet.php`, byte for byte, in the same order.
+- Its date columns are date cells, as the orders export writes them. The ERP export's `d.m.Y` text dates (`erp_export_date()`, above) were not tried against Paraşüt's importer: nothing was uploaded. No code change; if an upload ever shows the importer refusing text dates, that is a bug then, and the ERP export writes the date serial the orders export does.
+
+## Which VAT rate does the ERP export's sheet write?
+- The rate the order charged, 18 % included (seen 2026-11-27), with no warning and no change planned: an 18 % rate on a new order is a fault of the site's tax setting, not of the export. Paraşüt's API refuses 18 (erp-parasut-driver.md).
+
 ## What did the template files have that the new file has not?
 - Rich text in the contacts note (bold 12 title), the `mailto:destek@parasut.com` link on A1, empty styled rows down to 982, document properties (creator and title) and printer settings. Paraşüt's importer reads the cells from row 4 under the headings; none of these is read.
 
