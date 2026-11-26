@@ -7,7 +7,7 @@ description: The New design window below 768 px (a list, then the pane with "All
 - The whole screen (`md-down:dialog-fullscreen`), two screens of one window: first the starts as one grouped list, each row ending in a chevron (`.sd-ns-chev`) and none marked; a press opens that start's pane (`#sdStartModal.is-pane`, set by `assets/js/designer_home.js`).
 - The pane sits under a sticky bar with "All starts" (`#sd-ns-back`) that goes back to the list; entering the pane adds a history entry, so the phone's Back does the same. The foot's buttons are full width, the filled one on top.
 - The home's "New design" (`data-sd-narrow="list"`) opens on the list; a first-visit card or `?start=` opens on its start's pane. Template cards are two a row (`col-6 xl:col-4`).
-- Why: the strip of starts that stood over the pane had five of the seven starts off its edge (board N5 of `designer-home-tidy-drawing.md`, #11934).
+- Architect (2026-11-26): narrow, the strip of starts leaves for a list: the strip that stood over the pane had five of the seven starts off its edge (board N5 of `designer-home-tidy-drawing.md`, #11934).
 
 ## What does the home look like on a phone (below 576 px)?
 - The head keeps "Designs", the count and "New design"; the sentence leaves, "Shared components and system widgets" is its icon with the words as its tooltip (`pg_designer_home_comp_button()`, `.sdh-comp-label` hidden), the search takes a row of its own.
