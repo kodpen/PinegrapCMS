@@ -182,8 +182,8 @@ function ws_claude_setup_guide($host, $prompt, $key = '')
                 lang(array('string' => 'Copy the URL of the routine\'s {var:1} trigger, press {var:2} and copy the token at once: both go into Claude\'s page of Connections.', 'vars' => ws_claude_setup_marks(2))),
                 array('API', 'Generate token')
             ),
-            'extra' => '<a class="pg-button pg-button-quiet pg-button-sm mt-3" href="' . h(ws_claude_connections_url()) . '" target="_blank" rel="noopener">'
-                . h(lang('Open Claude in Connections')) . ' <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>',
+            'extra' => '<a class="pg-button pg-button-quiet pg-button-sm mt-3" href="' . h(ws_claude_connections_url()) . '">'
+                . h(lang('Open Claude in Connections')) . '</a>',
         ),
         array(
             'title' => h(lang('Try')),

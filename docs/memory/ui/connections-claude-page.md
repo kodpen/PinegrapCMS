@@ -20,7 +20,7 @@ module: connections_screen
 
 ## What stays in Site Settings?
 - The row (`settings-claude-row.md`): switch, application, summary, Try, set-up drawer, Key and secret. `ws_claude_settings_input()` gives `routine_url` null when not posted, and save and `ws_claude_settings_changed()` then leave the routine alone; the save module now enters on `ws_claude_app_id`.
-- Set-up step 4 is "Paste the routine address and the token in Connections" with "Open Claude in Connections" (new tab, so the drawer's steps stay open).
+- Set-up step 4 is "Paste the routine address and the token in Connections" with "Open Claude in Connections" (same tab; the set-up drawer opens again on the way back, `connections-lead-keeps-pane.md`).
 
 ## What did the registry change?
 - `claude`: `place` `connections.php`, `found_at` `#settings/workspace_assistants/pgset-ws-claude` (gate and settings search kept). No table, column or data step.

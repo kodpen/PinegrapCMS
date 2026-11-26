@@ -49,6 +49,71 @@ window.pgSettingsKeepDrawer = function (drawer, button) {
     return !(button && /_(delete|remove|archive)$/.test(String(button.name || '')));
 };
 
+// A lead from a Site Settings pane to a service's page of Connections: an
+// address of connections.php carrying from=<category>/<card>[/<drawer>]
+// (pg_connections_lead_url()). Answers the card it names and, for a lead that
+// sits in a card's drawer and does not name one yet, the address with that
+// drawer added to from=, so the way back names the drawer to open again;
+// null for any other address. Pure.
+window.pgSettingsLead = function (href, drawer) {
+    href = String(href || '');
+
+    var asked = /^[^?#]*connections\.php\?[^#]*[?&]from=([^&#]*)/.exec(href);
+    var from = '';
+
+    if (!asked) {
+        return null;
+    }
+
+    try {
+        from = decodeURIComponent(asked[1]);
+    } catch (error) {
+        return null;
+    }
+
+    var parts = /^([a-z_]{1,40})\/(pgset-[a-z0-9\-]{1,60})(?:\/([a-z0-9_\-]{1,60}))?$/.exec(from);
+
+    if (!parts) {
+        return null;
+    }
+
+    var inside = parts[3] || '';
+
+    drawer = String(drawer || '');
+
+    if (!inside && /^[a-z0-9_\-]{1,60}$/.test(drawer)) {
+        inside = drawer;
+        href = href.replace(/([?&]from=)[^&#]*/, '$1' + encodeURIComponent(from + '/' + drawer));
+    }
+
+    return { pane: parts[1], card: parts[2], drawer: inside, href: href };
+};
+
+// Whether a pane's field stays out of what the browser keeps while a lead is
+// followed: a password, a key, a secret or a token, a hidden or file field,
+// one-time codes, a field without a name. Pure.
+window.pgSettingsKeptSecret = function (name, type, complete) {
+    name = String(name || '');
+
+    if (!name || /^(password|hidden|file)$/.test(String(type || '')) || /password|one-time-code/.test(String(complete || ''))) {
+        return true;
+    }
+
+    return /(^|[_\-\[])(pass|passwd|password|secret|token|key|apikey)([_\-\]]|$)/i.test(name);
+};
+
+// Whether the pane being painted puts back what a lead kept: the same
+// category, kept within the last hour. Pure.
+window.pgSettingsKeptDue = function (record, pane, now) {
+    if (!record || (typeof record !== 'object') || (record.pane !== pane)) {
+        return false;
+    }
+
+    var age = Number(now) - Number(record.at);
+
+    return (age >= 0) && (age < 3600000);
+};
+
 // Which folded row of a settings pane (includes/settings/fold.php) opens: the
 // first key asked that is a row of the pane, '' for none. The asks come in
 // their order of weight: the row holding what was asked for (a card, a field
@@ -12102,6 +12167,7 @@ function pgInitInjected(scope) {
 var pgSettingsModal = (function () {
 
     var STORE = 'pg_settings_last_pane';
+    var KEPT = 'pg_settings_kept';   // what a lead to Connections kept (sessionStorage)
 
     var el = null;              // the dialog
     var modal = null;           // its bootstrap instance
@@ -12424,6 +12490,31 @@ var pgSettingsModal = (function () {
             pressed = (!event.isDefaultPrevented() && this.name && !this.disabled)
                 ? { name: this.name, value: this.value }
                 : null;
+        });
+
+        // A lead to a service's page of Connections leaves in the same tab:
+        // what the pane holds unsaved and the drawers open are kept for the
+        // trip, and the lead names the drawer it sat in. A click that opens
+        // another tab leaves this one as it is.
+        el.addEventListener('click', function (event) {
+
+            var link = (event.target && event.target.closest) ? event.target.closest('a[href]') : null;
+
+            if (!link || !pane || event.defaultPrevented || (event.button !== 0)
+                || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey
+                || (link.getAttribute('target') || '') === '_blank') {
+                return;
+            }
+
+            var open = cardDrawer();
+            var lead = window.pgSettingsLead(link.getAttribute('href'), (open && open.contains(link)) ? open.id : '');
+
+            if (!lead) {
+                return;
+            }
+
+            link.setAttribute('href', lead.href);
+            keepForLead(lead);
         });
 
         // Closing with unsaved changes is the one thing worth interrupting for.
@@ -13943,6 +14034,11 @@ window.pgCodeEditorReady = function (markup, done) {
             reopen(place);
         }
 
+        // Back from a lead to Connections: what the pane held is put back.
+        if (!place) {
+            putBackKept(key);
+        }
+
         // The pane the operator was reading has just been replaced, so focus
         // is on an element that no longer exists and has fallen to the body.
         // Putting it on the new pane is where a reader has to start anyway.
@@ -14165,6 +14261,187 @@ window.pgCodeEditorReady = function (markup, done) {
 
 
     /**
+     * A field's value when it differs from the one the pane arrived with
+     * (the markup's own), null when it does not: a select's as the list of
+     * its chosen values, a box's as '1' or ''.
+     */
+    function keptValue(control) {
+
+        if ((control.type === 'checkbox') || (control.type === 'radio')) {
+            return (control.checked !== control.defaultChecked) ? (control.checked ? '1' : '') : null;
+        }
+
+        if (control.tagName === 'SELECT') {
+            var now = [];
+            var changed = false;
+
+            Array.prototype.forEach.call(control.options, function (option) {
+                if (option.selected) {
+                    now.push(option.value);
+                }
+
+                changed = changed || (option.selected !== option.defaultSelected);
+            });
+
+            return changed ? now : null;
+        }
+
+        return (control.value !== control.defaultValue) ? control.value : null;
+    }
+
+
+    /**
+     * The pane's fields, the drawers' with them (form="…"), each with a
+     * name and its place among the fields of that name.
+     */
+    function eachField(visit) {
+
+        var seen = {};
+
+        Array.prototype.forEach.call(form ? form.elements : [], function (control) {
+
+            var name = control.name || '';
+
+            seen[name] = (seen[name] === undefined) ? 0 : seen[name] + 1;
+            visit(control, name, seen[name]);
+        });
+    }
+
+
+    /**
+     * Keep what the pane holds unsaved, and the drawers open, while a lead
+     * takes the operator to a service's page of Connections; paint() puts it
+     * back when the pane comes again (putBackKept()). Never a password, a key
+     * or a token (pgSettingsKeptSecret()), and in sessionStorage only: it
+     * goes with the tab.
+     */
+    function keepForLead(lead) {
+
+        var fields = [];
+        var drawers = below.map(function (under) { return under.drawer.id; });
+        var open = cardDrawer();
+
+        if (open) {
+            drawers.push(open.id);
+        }
+
+        eachField(function (control, name, index) {
+
+            if (control.disabled || /^(submit|button|reset|image)$/.test(control.type)
+                || window.pgSettingsKeptSecret(name, control.type, control.getAttribute('autocomplete'))) {
+                return;
+            }
+
+            // A code field's editor holds its text, not the hidden textarea.
+            if ((control.tagName === 'TEXTAREA') && (control.style.display === 'none')) {
+                return;
+            }
+
+            var value = keptValue(control);
+
+            if (value !== null) {
+                fields.push({ name: name, index: index, value: value });
+            }
+        });
+
+        try {
+            if (fields.length || drawers.length) {
+                window.sessionStorage.setItem(KEPT, JSON.stringify({ pane: pane, card: lead.card, drawers: drawers, fields: fields, at: Date.now() }));
+            } else {
+                window.sessionStorage.removeItem(KEPT);
+            }
+        } catch (error) {
+            // No store (a private window): the pane comes back as saved.
+        }
+    }
+
+
+    /**
+     * The pane a lead left comes again: the fields it kept are put back and
+     * the pane is marked as changed, the drawers open again. Read once.
+     */
+    function putBackKept(key) {
+
+        var record = null;
+
+        try {
+            record = JSON.parse(window.sessionStorage.getItem(KEPT) || 'null');
+        } catch (error) {
+            return;
+        }
+
+        if (!window.pgSettingsKeptDue(record, key, Date.now())) {
+            return;
+        }
+
+        try {
+            window.sessionStorage.removeItem(KEPT);
+        } catch (error) {
+            // Read once all the same: nothing below reads it again.
+        }
+
+        var wanted = {};
+        var put = [];
+
+        (Array.isArray(record.fields) ? record.fields : []).forEach(function (field) {
+            if (field && (typeof field.name === 'string')) {
+                wanted[field.name + '\n' + field.index] = field.value;
+            }
+        });
+
+        eachField(function (control, name, index) {
+
+            var value = wanted[name + '\n' + index];
+
+            if ((value === undefined) || control.disabled || window.pgSettingsKeptSecret(name, control.type, control.getAttribute('autocomplete'))) {
+                return;
+            }
+
+            if ((control.type === 'checkbox') || (control.type === 'radio')) {
+                control.checked = (value === '1');
+            } else if (control.tagName === 'SELECT') {
+                var chosen = [].concat(value).map(String);
+
+                Array.prototype.forEach.call(control.options, function (option) {
+                    option.selected = (chosen.indexOf(option.value) !== -1);
+                });
+            } else {
+                control.value = String(value);
+            }
+
+            put.push(control);
+        });
+
+        if (put.length) {
+            // What is held against a password manager's fill is what the
+            // operator chose, so sweep() leaves it.
+            if (held) {
+                for (var i = 0; i < held.length; i++) {
+                    held[i][1] = valueOf(held[i][0]);
+                }
+            }
+
+            // The card's own scripts follow (a gateway's connection shown).
+            put.forEach(function (control) {
+                control.dispatchEvent(new Event('input', { bubbles: true }));
+                control.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+
+            window.pgSettingsFoldReveal(put[0]);
+
+            touched = true;
+            setDirty(snapshot() !== baseline);
+        }
+
+        (Array.isArray(record.drawers) ? record.drawers : []).forEach(function (id) {
+            if ((typeof id === 'string') && byId(id)) {
+                reopen({ drawer: id, drawerScroll: 0 });
+            }
+        });
+    }
+
+
+    /**
      * Opens the drawer a save came from again, on the pane read back, with the
      * button that opens it as the one focus returns to. Gone (the record is no
      * longer there): nothing opens.
@@ -14178,16 +14455,20 @@ window.pgCodeEditorReady = function (markup, done) {
         }
 
         var trigger = null;
+        var over = cardDrawer();
 
-        $('#pg_settings_modal_pane [data-pgdrawer="open"]').each(function () {
-            if (!trigger && ((this.getAttribute('data-bs-target') || '') === '#' + place.drawer)) {
+        // A drawer opened from another drawer has its button there: the
+        // button in the drawer open now wins, so closing goes back to it.
+        $('#pg_settings_modal_pane [data-pgdrawer="open"], #pg_settings_modal_drawers [data-pgdrawer="open"]').each(function () {
+            if (((this.getAttribute('data-bs-target') || '') === '#' + place.drawer)
+                && (!trigger || (over && over.contains(this) && !over.contains(trigger)))) {
                 trigger = this;
             }
         });
 
         // The drawer's button is the focus to come back to: its folded row
         // opens, whichever row was open before.
-        if (trigger) {
+        if (trigger && !(over && over.contains(trigger))) {
             window.pgSettingsFoldReveal(trigger);
         }
 

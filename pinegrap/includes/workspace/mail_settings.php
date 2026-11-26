@@ -488,11 +488,13 @@ function ws_mail_connection_purpose_names($keys)
  *                            accounts serving mail_read
  * @param bool   $ready    the provider's application is set up
  *                         (ws_mail_connect_ready())
- * @param bool   $new_tab  open the page in a new tab: a box's drawer, whose
- *                         form may be half filled
+ * @param bool   $in_box   in a box's set-up drawer: no line on adding a box.
+ *                         The page opens in the same tab; the drawer and the
+ *                         box's unsaved fields come back with the way back
+ *                         (pgSettingsLead() in backend.src.js)
  * @return string HTML
  */
-function ws_mail_connection_html($viewer, $provider, $count, $ready, $new_tab = false)
+function ws_mail_connection_html($viewer, $provider, $count, $ready, $in_box = false)
 {
     $google = ($provider === 'google');
     $provider = $google ? 'google' : 'microsoft';
@@ -509,7 +511,7 @@ function ws_mail_connection_html($viewer, $provider, $count, $ready, $new_tab = 
     }
 
     if ($connected) {
-        $note = $new_tab ? '' : lang(array(
+        $note = $in_box ? '' : lang(array(
             'string' => 'Next, add the mailbox with Add a mailbox and choose Mail service: {var:1}.',
             'vars'   => $google ? lang('Gmail or Google Workspace') : lang('Microsoft 365 or Outlook.com')));
     } elseif ($other) {
@@ -525,8 +527,7 @@ function ws_mail_connection_html($viewer, $provider, $count, $ready, $new_tab = 
             ? lang('A Gmail mailbox can be read through a connected account; a manager or an administrator connects it here or in Settings › Connections.')
             : lang('A Microsoft 365 mailbox is read through a connected account; a manager or an administrator connects it here or in Settings › Connections.')) . '</span>';
     } else {
-        $side = '<a class="pg-button pg-button-quiet pg-button-sm" href="' . h(ws_mail_connections_url($provider)) . '"'
-            . ($new_tab ? ' target="_blank" rel="noopener"' : '') . '>'
+        $side = '<a class="pg-button pg-button-quiet pg-button-sm" href="' . h(ws_mail_connections_url($provider)) . '">'
             . h($connected ? lang('Manage in Connections') : ($other ? lang('Sign in for mailboxes in Connections') : lang('Connect in Connections'))) . '</a>';
     }
 
@@ -577,8 +578,9 @@ function ws_mail_connect_ready($provider = 'microsoft')
 
 /**
  * What a provider's set-up drawer shows beside its words: the account's
- * state with a link to the provider's page on Connections, opened in a new
- * tab so a half-filled box form stays as typed (ws_mail_connection_html()),
+ * state with a link to the provider's page on Connections, in the same tab:
+ * the drawer and a half-filled box form come back with the way back
+ * (ws_mail_connection_html()),
  * the addresses the application must list as redirect URIs (Sign in's and
  * connect.php's) and the provider's console.
  *

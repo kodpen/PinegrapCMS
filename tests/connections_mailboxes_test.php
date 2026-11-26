@@ -76,9 +76,9 @@ function test_connections_mailboxes_card_shows_the_state_without_a_button()
 	$member = ws_mail_connection_html(array('role' => 3), 'google', 0, true);
 	pg_assert_true(strpos($member, '<a ') === false, 'a user below manager is told who can, with no link to Connections');
 
-	// In a box's drawer the page opens in a new tab, so the half-filled form
-	// stays as it is.
-	pg_assert_contains('target="_blank" rel="noopener"', ws_mail_connection_html(array('role' => 1), 'google', 0, true, true));
+	// In a box's drawer too the page opens in the same tab: the drawer and
+	// the half-filled form come back with the way back (backend.src.js).
+	pg_assert_true(strpos(ws_mail_connection_html(array('role' => 1), 'google', 0, true, true), 'target="_blank"') === false, 'the drawer opens it in place');
 	pg_assert_true(strpos($off, 'target="_blank"') === false, 'the card opens it in place');
 
 	$card = connections_mailboxes_test_source('includes/workspace/mail_settings.php');
