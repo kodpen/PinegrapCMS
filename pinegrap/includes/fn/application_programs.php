@@ -788,6 +788,26 @@ function pg_application_entry_for_form($form_id)
 }
 
 /**
+ * Takes a deleted submission's entry off its programme with the reviews
+ * given on it in every round, as the personal data erasure does: reviewers
+ * no longer get answers that are gone, and no blank entry is ranked,
+ * decided or mailed. The entry's audit_log lines stay. The round's stored
+ * means are combined again when its Entries tab opens or the next review
+ * is sent.
+ *
+ * @param int $form_id forms.id of the deleted submission
+ */
+function pg_application_entry_delete_for_form($form_id)
+{
+    if (((int) $form_id <= 0) || !pg_application_program_ready()) {
+        return;
+    }
+
+    db_q("DELETE application_reviews FROM application_reviews INNER JOIN application_entries ON application_entries.id = application_reviews.entry_id WHERE application_entries.form_id = ?", array((int) $form_id));
+    db_q("DELETE FROM application_entries WHERE form_id = ?", array((int) $form_id));
+}
+
+/**
  * Lets a not eligible entry in, with the person's note; the reasons stay
  * beside it.
  *
