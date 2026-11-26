@@ -171,3 +171,37 @@ function test_sketch_details_menus()
 	), pg_designer_sketch_menus($menus, $items), 'menus in order, an item of an unlisted menu left out');
 	pg_assert_same(array(), pg_designer_sketch_menus(false, false), 'nothing read');
 }
+
+// The window's head names the page with what it is: a sketch page not built
+// yet, or the draft it was built into (details.html, board D1).
+function test_sketch_details_head_says_built()
+{
+	if (!function_exists('exec')) {
+		return;
+	}
+
+	$out = array();
+	$status = 1;
+	@exec('node --version 2>&1', $out, $status);
+
+	if ($status !== 0) {
+		return;
+	}
+
+	$script = "var window = {PGSketchDetails: {}}, part = null;\n"
+		. "var StyleDesigner = {definePart: function (n, f) { part = f({_sdT: function (s, v) { return String(s).replace('{var:1}', v); }, esc: function (s) { return s; }, sdToast: function () {}}); }};\n"
+		. file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_sketchdetails.js') . "\n"
+		. "console.log(JSON.stringify([part.pure.sub({name: 'Classes'}, 'Classes'), part.pure.sub({name: 'Classes', built: {uid: 'u', sig: 's'}}, 'Classes')]));";
+	$file = @tempnam(sys_get_temp_dir(), 'pgskd');
+
+	if ($file === false) {
+		return;
+	}
+
+	file_put_contents($file, $script);
+	$out = array();
+	@exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $status);
+	@unlink($file);
+	pg_assert_same(0, $status, 'the Node script runs: ' . implode("\n", array_slice($out, 0, 8)));
+	pg_assert_same(array('Classes · sketch page, not built yet', 'Classes · draft'), json_decode(implode("\n", $out), true), 'not built yet, then draft');
+}
