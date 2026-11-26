@@ -288,3 +288,17 @@ function test_style_guide_names_carry_their_number()
 	pg_assert_same('1 unit', $m['blocks']['spacing']['rows'][0]['name'], 'one unit');
 	pg_assert_same('4 units', $m['blocks']['spacing']['rows'][3]['name'], 'four units');
 }
+
+// A class's name keeps its case: class names are case-sensitive in HTML, so
+// a sample drawn as class="bigtitle" would not take a ".BigTitle" rule.
+function test_style_guide_own_class_keeps_its_case()
+{
+	$d = pg_design_variables_defaults('', '');
+	$styles = pg_style_guide_text_styles(".BigTitle { font-size: 2rem; }\n.big-title { font-size: 1.5rem; }", $d);
+	$own = array_values(array_filter($styles, function ($r) { return $r['source'] === 'class'; }));
+	pg_assert_same(2, count($own), 'two own classes');
+	pg_assert_same('.BigTitle', $own[0]['selector'], 'the selector as the stylesheet writes it');
+	pg_assert_same('.BigTitle', $own[0]['name'], 'named as written');
+	pg_assert_same(32, $own[0]['px'], 'its own size');
+	pg_assert_same('.big-title', $own[1]['selector'], 'a lower-case class stays as it is');
+}
