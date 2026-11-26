@@ -96,7 +96,8 @@ function pg_security_content_builtin_hosts()
 }
 
 /**
- * The host a URL points to, lower case, without port or trailing dot; '' for
+ * The host a URL points to, lower case, without port or trailing dot (a
+ * backslash read as a slash, as browsers do); '' for
  * a URL on the site itself (a relative path), a data: or other non-web URL,
  * or one that is not a URL at all.
  *
@@ -109,9 +110,12 @@ function pg_security_content_url_host($url)
         return '';
     }
 
-    $url = str_replace('\\/', '/', trim($url));
+    // A JSON-escaped slash first; then a browser reads a backslash as a
+    // slash in an http or https address, and any run of two or more slashes
+    // as the start of the host.
+    $url = str_replace('\\', '/', str_replace('\\/', '/', trim($url)));
 
-    if (preg_match('#^(?:https?:)?//(?:[^/?\#@]*@)?([^/?\#:\\\\]+)#i', $url, $match) !== 1) {
+    if (preg_match('#^(?:https?:)?/{2,}(?:[^/?\#@]*@)?([^/?\#:]+)#i', $url, $match) !== 1) {
         return '';
     }
 

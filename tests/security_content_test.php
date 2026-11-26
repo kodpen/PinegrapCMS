@@ -88,6 +88,21 @@ function test_security_content_rules_read_entities_in_an_attribute_value()
 }
 
 
+function test_security_content_rules_read_backslashes_as_slashes()
+{
+	$known = array('mysite.example');
+
+	// For http and https a browser reads a backslash as a slash.
+	pg_assert_same(array('content_script_host' => array('evil.example')), pg_security_content_rules('<script src="https:\\\\evil.example/a.js"></script>', $known));
+	pg_assert_same(array('content_script_host' => array('evil.example')), pg_security_content_rules('<script src="\\\\evil.example/a.js"></script>', $known));
+	pg_assert_same(array('content_script_host' => array('evil.example')), pg_security_content_rules('<script src="/\\evil.example/a.js"></script>', $known));
+	pg_assert_same('evil.example', pg_security_content_url_host('https:\\\\evil.example\\a.js'));
+	pg_assert_same('', pg_security_content_url_host('\\js\\own.js'), 'a path on the site');
+	pg_assert_same('', pg_security_content_url_host('\/cdn.mysite.example\/a.js'), 'a JSON-escaped path on the site');
+	pg_assert_same('evil.example', pg_security_content_url_host('https:\/\/evil.example\/a.js'));
+}
+
+
 function test_security_content_rules_find_a_script_added_by_code()
 {
 	$known = array('mysite.example');
