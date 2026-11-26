@@ -232,12 +232,12 @@ function ws_agent_role_label($key)
 function ws_agent_shape($row)
 {
     $row = (array) $row;
-    $int = array('id', 'app_id', 'door_failures', 'door_last_knock', 'wake_every', 'wake_next_at', 'seen_at', 'created_by', 'created_at', 'updated_at', 'report_at');
+    $int = array('id', 'app_id', 'door_failures', 'door_last_knock', 'wake_every', 'wake_next_at', 'seen_at', 'created_by', 'created_at', 'updated_at', 'report_at', 'context_size');
     $out = array();
 
     foreach (array('id', 'kind', 'handle', 'name', 'avatar', 'app_id', 'provider', 'model', 'status', 'door_kind', 'door_url',
         'door_failures', 'door_last_knock', 'door_error', 'wake_every', 'wake_next_at', 'wake_note', 'seen_at', 'created_by', 'created_at', 'updated_at',
-        'report_model', 'report_usage', 'report_at') as $field) {
+        'report_model', 'report_usage', 'report_at', 'context_size') as $field) {
         $out[$field] = in_array($field, $int, true) ? (int) ($row[$field] ?? 0) : (string) ($row[$field] ?? '');
     }
 

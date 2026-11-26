@@ -16,7 +16,7 @@ priority: 6
 - No schema change. Phone and dark as the canvas does them (`ui/image-editor-phone.md`).
 
 ## Which steps? (one at a time, each after the one before; S under 400, M about 1,000 product lines; tests red first)
-- AC4 (S) Site colours: the action that reads the site's palettes and variables, the row in the shared colour control.
+- AC4 (S) Done (#11854): Site colours: the action that reads the site's palettes and variables, the row in the shared colour control (`ui/image-editor-site-colors.md`).
 - AC5 (S) Text styles and font pairs in the Text panel.
 - AC6 (M) Element sets: about forty shapes in the Sticker tool, as svg layers.
 - AC7 (M) "Start from a design": the row in the New image dialog, the tiles, the purpose filter, the index, the "Your picture" box, and the first six designs.

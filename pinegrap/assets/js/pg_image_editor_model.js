@@ -2686,8 +2686,14 @@
     // fit the source's box (w0 x h0): never grown, never under the floor of
     // the source's size on the picture's shorter side (languageFloor());
     // mark when it still does not fit there.
-    function languageFit(w0, h0, w1, h1, size, side) {
+    // With a room (roomW x roomH, languageRoom() less what the layout and
+    // the box differ by) the text first grows into it: it shrinks only past
+    // the room, never under the old rule's size, as the room holds the box.
+    function languageFit(w0, h0, w1, h1, size, side, roomW, roomH) {
         var scale = 1, floor = languageFloor(size, side);
+
+        w0 = Math.max(Number(w0) || 0, Number(roomW) || 0);
+        h0 = Math.max(Number(h0) || 0, Number(roomH) || 0);
 
         if ((w0 > 0) && (w1 > w0)) {
             scale = Math.min(scale, w0 / w1);
@@ -2702,6 +2708,287 @@
         }
 
         return { scale: Math.round(scale * 10000) / 10000, mark: false };
+    }
+
+    // A layer's box as numbers (x, y, w, h, rot), null without one.
+    function roomBox(l) {
+        var keys = ['x', 'y', 'w', 'h'], b = { rot: Number(l && l.rot) || 0 };
+
+        for (var i = 0; i < keys.length; i++) {
+            var v = l ? l[keys[i]] : null;
+
+            if ((typeof v !== 'number') && ((typeof v !== 'string') || (v.trim() === ''))) {
+                return null;
+            }
+
+            b[keys[i]] = Number(v);
+
+            if (!isFinite(b[keys[i]])) {
+                return null;
+            }
+        }
+
+        return ((b.w < 0) || (b.h < 0)) ? null : b;
+    }
+
+    // A box's corners turned by its angle around its middle, clockwise on
+    // the screen from the top left.
+    function roomCorners(b) {
+        var a = b.rot * Math.PI / 180, cos = Math.cos(a), sin = Math.sin(a), cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+
+        return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(function (k) {
+            var ox = k[0] * b.w / 2, oy = k[1] * b.h / 2;
+
+            return [cx + ox * cos - oy * sin, cy + ox * sin + oy * cos];
+        });
+    }
+
+    // Whether point p is inside the four corners q (on an edge counts).
+    function roomInside(q, p) {
+        for (var k = 0; k < 4; k++) {
+            var a = q[k], b = q[(k + 1) % 4], dx = b[0] - a[0], dy = b[1] - a[1], len = Math.sqrt(dx * dx + dy * dy);
+
+            if ((len > 0) && ((dx * (p[1] - a[1]) - dy * (p[0] - a[0])) / len < -1e-6)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    // The edges of the four corners q as limits of the room in the text's
+    // frame (turn: a point to that frame, cos and sin of its angle): each
+    // edge less a margin, the text's own distance to it when it leans on it
+    // (nearer than a tenth of the shorter side), else 4% of that side.
+    function roomPlanes(q, shorter, mine, turn, cos, sin, out) {
+        for (var k = 0; k < 4; k++) {
+            var a = q[k], b = q[(k + 1) % 4], dx = b[0] - a[0], dy = b[1] - a[1], len = Math.sqrt(dx * dx + dy * dy);
+
+            if (len <= 0) {
+                continue;
+            }
+
+            var nx = -dy / len, ny = dx / len, d = Infinity, p = turn(a);
+
+            mine.forEach(function (m) {
+                d = Math.min(d, (m[0] - a[0]) * nx + (m[1] - a[1]) * ny);
+            });
+
+            out.push({ px: p[0], py: p[1], nx: nx * cos + ny * sin, ny: -nx * sin + ny * cos, m: (d < shorter / 10) ? d : 0.04 * shorter });
+        }
+    }
+
+    // How far a side of the room may go (axis 0 across, 1 upright; up: the
+    // right or the bottom side) inside the limits, its two corners at ends
+    // on the other axis.
+    function roomLimit(planes, axis, up, ends) {
+        var v = up ? Infinity : -Infinity;
+
+        planes.forEach(function (p) {
+            var k = axis ? p.ny : p.nx;
+
+            if (up ? (k >= -1e-9) : (k <= 1e-9)) {
+                return;
+            }
+
+            ends.forEach(function (o) {
+                var lim = (axis ? p.py : p.px) + (p.m - (axis ? (o - p.px) * p.nx : (o - p.py) * p.ny)) / k;
+
+                v = up ? Math.min(v, lim) : Math.max(v, lim);
+            });
+        });
+
+        return v;
+    }
+
+    // A side's limit from the layers beside the text on one axis (blocks in
+    // the text's frame): a layer in the way less a gap, the smaller of the
+    // text's distance to it and half its size; toward another text the
+    // middle between the two, less half that gap.
+    function roomBlocks(blocks, axis, lo, hi, from, to, gap, room) {
+        var a0 = axis ? 'y0' : 'x0', a1 = axis ? 'y1' : 'x1', o0 = axis ? 'x0' : 'y0', o1 = axis ? 'x1' : 'y1';
+
+        blocks.forEach(function (b) {
+            if ((b[o0] >= hi - 1e-6) || (b[o1] <= lo + 1e-6)) {
+                return;
+            }
+
+            var g;
+
+            if (b[a0] >= to - 1e-6) {
+                g = Math.max(0, Math.min(b[a0] - to, gap));
+                room[1] = Math.min(room[1], b.text ? (to + b[a0]) / 2 - g / 2 : b[a0] - g);
+            } else if (b[a1] <= from + 1e-6) {
+                g = Math.max(0, Math.min(from - b[a1], gap));
+                room[0] = Math.max(room[0], b.text ? (from + b[a1]) / 2 + g / 2 : b[a1] + g);
+            }
+        });
+    }
+
+    // A translated text's room: the rectangle it may use, in its own frame
+    // (x, y, w, h as the layer's box before its angle). It starts as the
+    // text's box and goes out, first across then upright, to the first
+    // thing in its way: the picture's edge (board: w, h) less a margin, a
+    // card under the text that holds it (smaller than the picture) less the
+    // same margin, a layer beside it less a gap, the middle toward another
+    // text. A hidden layer, one that covers the whole picture under the text
+    // and one above that covers the text are not read. Null where it cannot
+    // be read (no picture size, no box): the old rule's box stays.
+    function languageRoom(doc, id, board) {
+        var W = Number(board && board.w) || 0, H = Number(board && board.h) || 0;
+        var layers = (doc && Array.isArray(doc.layers)) ? doc.layers : [], at = -1;
+
+        layers.forEach(function (l, i) {
+            if ((at < 0) && l && (l.type === 'text') && (String(l.id) === String(id))) {
+                at = i;
+            }
+        });
+
+        var s = (at >= 0) ? roomBox(layers[at]) : null;
+
+        if ((W <= 0) || (H <= 0) || !s || (s.w <= 0) || (s.h <= 0)) {
+            return null;
+        }
+
+        var a = s.rot * Math.PI / 180, cos = Math.cos(a), sin = Math.sin(a), cx = s.x + s.w / 2, cy = s.y + s.h / 2;
+        var gap = Math.max(0, Number(layers[at].size) || 0) / 2, mine = roomCorners(s), picture = [[0, 0], [W, 0], [W, H], [0, H]];
+        var planes = [], blocks = [];
+        var turn = function (p) {
+            var dx = p[0] - cx, dy = p[1] - cy;
+
+            return [cx + dx * cos + dy * sin, cy - dx * sin + dy * cos];
+        };
+
+        roomPlanes(picture, Math.min(W, H), mine, turn, cos, sin, planes);
+
+        layers.forEach(function (l, i) {
+            var b = (i === at) ? null : roomBox(l);
+
+            if (!b || l.hidden || ((l.opacity !== undefined) && (l.opacity !== null) && (Number(l.opacity) <= 0))) {
+                return;
+            }
+
+            var q = roomCorners(b), xs = [], ys = [];
+
+            if (mine.every(function (p) { return roomInside(q, p); })) {
+                if ((i < at) && !picture.every(function (p) { return roomInside(q, p); })) {
+                    roomPlanes(q, Math.min(b.w, b.h), mine, turn, cos, sin, planes);
+                }
+
+                return;
+            }
+
+            q.forEach(function (p) {
+                p = turn(p);
+                xs.push(p[0]);
+                ys.push(p[1]);
+            });
+
+            blocks.push({
+                x0: Math.min.apply(null, xs), x1: Math.max.apply(null, xs), y0: Math.min.apply(null, ys), y1: Math.max.apply(null, ys),
+                text: l.type === 'text'
+            });
+        });
+
+        var x0 = s.x, x1 = s.x + s.w, y0 = s.y, y1 = s.y + s.h;
+        var across = [roomLimit(planes, 0, false, [y0, y1]), roomLimit(planes, 0, true, [y0, y1])];
+
+        roomBlocks(blocks, 0, y0, y1, x0, x1, gap, across);
+        across = [Math.min(across[0], x0), Math.max(across[1], x1)];
+
+        var upright = [roomLimit(planes, 1, false, across), roomLimit(planes, 1, true, across)];
+
+        roomBlocks(blocks, 1, across[0], across[1], y0, y1, gap, upright);
+        upright = [Math.min(upright[0], y0), Math.max(upright[1], y1)];
+
+        var r2 = function (n) { return Math.round(n * 100) / 100; };
+
+        return { x: r2(across[0]), y: r2(upright[0]), w: r2(across[1] - across[0]), h: r2(upright[1] - upright[0]) };
+    }
+
+    // Where a fitted text (laid out as after; its source laid out as
+    // before) is put: as the old rule put it while it stays inside its
+    // source's box (the aligned side kept across, textFit(), the middle
+    // upright); past it, the same place slid inside its room toward the
+    // free side, the room's middle when it is wider than the room, turned
+    // around the source's middle. Answers x, y.
+    function languagePlace(src, room, before, after) {
+        var w0 = Number(src.w) || 0, h0 = Number(src.h) || 0, w = after.w, h = after.h;
+
+        if (!room || ((w <= w0 + 1e-9) && (h <= before.h + 1e-9))) {
+            return { x: textFit(src, after).x, y: Math.round(((Number(src.y) || 0) + (before.h - h) / 2) * 100) / 100 };
+        }
+
+        var x = Number(src.x) || 0, y = (Number(src.y) || 0) + (h0 - h) / 2, cx = (Number(src.x) || 0) + w0 / 2, cy = (Number(src.y) || 0) + h0 / 2;
+        var a = (Number(src.rot) || 0) * Math.PI / 180, cos = Math.cos(a), sin = Math.sin(a);
+
+        x += (src.align === 'center') ? (w0 - w) / 2 : ((src.align === 'right') ? w0 - w : 0);
+        x = (w <= room.w) ? Math.min(Math.max(x, room.x), room.x + room.w - w) : room.x + (room.w - w) / 2;
+        y = (h <= room.h) ? Math.min(Math.max(y, room.y), room.y + room.h - h) : room.y + (room.h - h) / 2;
+
+        var px = x + w / 2 - cx, py = y + h / 2 - cy;
+
+        return {
+            x: Math.round((cx + px * cos - py * sin - w / 2) * 100) / 100,
+            y: Math.round((cy + px * sin + py * cos - h / 2) * 100) / 100
+        };
+    }
+
+    // A language's document (languageDoc()) with each changed text fitted:
+    // it grows into its room (languageRoom(), read before any text moves),
+    // shrinks only past it, never under its floor (then the draw is marked,
+    // fit 1), and is put by languagePlace(). layout: a text layer => its
+    // laid out w, h (null: it cannot be; the answer is null); board: the
+    // picture's w, h. Changes put.doc. Twin of
+    // pg_picture_tr_language_fitted().
+    function languageFitted(put, layout, board) {
+        var doc = put.doc, mark = false, rooms = {}, failed = false;
+        var side = Math.min(Number(board && board.w) || 0, Number(board && board.h) || 0);
+
+        doc.layers.forEach(function (l) {
+            if (put.source[l.id]) {
+                rooms[l.id] = languageRoom(doc, l.id, board);
+            }
+        });
+
+        doc.layers.forEach(function (l) {
+            var src = put.source[l.id];
+
+            if (!src || failed) {
+                return;
+            }
+
+            var before = layout(src), wide = layout(l), room = rooms[l.id];
+
+            if (!before || !wide) {
+                failed = true;
+
+                return;
+            }
+
+            var fit = languageFit(before.w, before.h, wide.w, wide.h, src.size, side,
+                room ? before.w + room.w - (Number(src.w) || 0) : 0, room ? before.h + room.h - (Number(src.h) || 0) : 0);
+
+            l.size = Math.round((Number(src.size) || 1) * fit.scale * 100) / 100;
+
+            var after = layout(l);
+
+            if (!after) {
+                failed = true;
+
+                return;
+            }
+
+            var at = languagePlace(src, room, before, after);
+
+            l.x = at.x;
+            l.y = at.y;
+            l.w = after.w;
+            l.h = after.h;
+            mark = mark || fit.mark;
+        });
+
+        return failed ? null : { doc: doc, fit: mark ? 1 : 0 };
     }
 
     // A canvas document with a language's words in its layers (texts:
@@ -2792,7 +3079,8 @@
     }
 
     var ARTBOARD = {
-        LANGUAGE_FLOOR: LANGUAGE_FLOOR, languageFloor: languageFloor, languageFit: languageFit, languageDoc: languageDoc, languageDrawable: languageDrawable, languagesToDraw: languagesToDraw,
+        LANGUAGE_FLOOR: LANGUAGE_FLOOR, languageFloor: languageFloor, languageFit: languageFit, languageRoom: languageRoom, languagePlace: languagePlace,
+        languageFitted: languageFitted, languageDoc: languageDoc, languageDrawable: languageDrawable, languagesToDraw: languagesToDraw,
         languageRowPlan: languageRowPlan, languageRowStatus: languageRowStatus, languagesWaiting: languagesWaiting,
         BOARD_PRESETS: BOARD_PRESETS, BOARD_BACKGROUNDS: BOARD_BACKGROUNDS, boardSide: boardSide, boardPreset: boardPreset,
         boardDrag: boardDrag, boardAnchored: boardAnchored, boardAround: boardAround, applyBoard: applyBoard,
@@ -12866,6 +13154,36 @@
         filesRemember: filesRemember, filesRemembered: filesRemembered, filesIndent: filesIndent
     };
 
+    // ---- Site colours (pg_image_editor_colors.js) ----
+
+    var SITE_COLORS_MAX = 12;
+
+    // The site_colors answer made safe for the swatch row: well-formed
+    // #rrggbb colours, each once, lower case, named (the colour itself when
+    // the answer names none), twelve at most; [] for a refusal or no answer.
+    function siteColors(res) {
+        var out = [], seen = {};
+
+        if (!res || (res.status !== 'success') || !Array.isArray(res.colors)) {
+            return out;
+        }
+
+        res.colors.forEach(function (c) {
+            var hex = (c && (typeof c.color === 'string')) ? c.color.trim().toLowerCase() : '';
+
+            if ((out.length >= SITE_COLORS_MAX) || !/^#[0-9a-f]{6}$/.test(hex) || seen[hex]) {
+                return;
+            }
+
+            seen[hex] = true;
+            out.push({ color: hex, name: ((typeof c.name === 'string') && c.name.trim()) ? c.name.trim().slice(0, 60) : hex });
+        });
+
+        return out;
+    }
+
+    var SITECOLORS = { siteColors: siteColors };
+
     var api = {
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,
         flipRot: flipRot, coverScale: coverScale, fitZoom: fitZoom, centred: centred, fitView: fitView, zoomAt: zoomAt,
@@ -12883,7 +13201,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, FOLLOW, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU, VIDEO, SOUND, CLIP, MIX, UPLOAD, PHONE, GROUP, ATTACH, DATA, SEND].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, FOLLOW, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU, VIDEO, SOUND, CLIP, MIX, UPLOAD, PHONE, GROUP, ATTACH, DATA, SEND, SITECOLORS].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');

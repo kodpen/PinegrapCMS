@@ -4617,8 +4617,16 @@
             var windows = el('div', 'ws-agent-card-box' + (data.stale ? ' is-stale' : ''));
 
             // The reported context, "Context 412k of 1M tokens (41%)", with
-            // its bar, marked from 90% as a plan window is.
-            if (data.context) {
+            // its bar, marked from 90% as a plan window is. With no size
+            // (percent null) the words alone, no bar and no mark.
+            if (data.context && (data.context.percent === null)) {
+                var ctxOnly = el('div', 'ws-agent-card-window');
+                var ctxOnlyTop = el('div', 'ws-agent-card-row');
+
+                ctxOnlyTop.appendChild(el('span', 'ws-agent-card-value pg-tabular', data.context.words));
+                ctxOnly.appendChild(ctxOnlyTop);
+                windows.appendChild(ctxOnly);
+            } else if (data.context) {
                 var held = Math.max(0, Math.min(100, data.context.percent));
                 var ctxItem = el('div', 'ws-agent-card-window' + (held >= 90 ? ' is-high' : ''));
                 var ctxTop = el('div', 'ws-agent-card-row');

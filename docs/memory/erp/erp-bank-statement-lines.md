@@ -13,14 +13,11 @@ description: ERP bank statement lines: each line once (line_hash), recording a l
 - The amount goes into the key uncast: past 2^31 kurus (21.474.836,48) `erp_bank_amount()` gives a float on 32-bit PHP, and an `(int)` cast would wrap it onto another amount and change the hash of a line stored before.
 - On PHP 7.3+ `mb_strtolower()` turns `İ` into `i` + U+0307 (full case mapping); on 7.1/7.2 it gives a plain `i`. So `EFT ÜCRETİ` and `Eft Ücreti` hash differently on 7.3+, and moving a site from 7.2 to 7.3+ changes the hash of stored lines containing `İ`. Kept so that stored hashes still match.
 
-## How is a line matched?
-- See erp-bank-statement-matching: candidates, cancels, undoing a match.
-
 ## How is an unmatched line recorded?
 - Nothing is written until the operator says so. `erp_bank_line_record()`: a collection or payment through `erp_post_receipt()` (closing an invoice when one is named), or an expense paid from the bank through `erp_expense_save()` (VAT 0, not deductible). Or the line is set aside (`erp_bank_line_ignore()`). No bank API: statements come as files.
 - The line is claimed (`SELECT … FOR UPDATE` on `status = 'new'`) in one transaction with the posting (`erp_bank_line_post()`) and the status change. Before, two requests for one line (two tabs, or its button while Record the N suggested lines ran) both read it as new and posted the money twice.
 
-Reading the file, CSV separator and amount: `erp-bank-statements.md`. Tests: `tests/erp_bank_import_test.php`. The invoice a line suggests: erp-receipt-not-for-return; which lines get one: erp-bank-statement-suggestions.
+Reading the file, CSV separator and amount: `erp-bank-statements.md`. Tests: `tests/erp_bank_import_test.php`. Matching: erp-bank-statement-matching. The invoice a line suggests: erp-receipt-not-for-return; which lines get one: erp-bank-statement-suggestions.
 
 ## What does a refused step keep, and which forms send once?
 - A column choice without a Date column, or with none of Amount, Money out and Money in, is refused by `erp_bank_statement.php` before the build: the posted columns, "Dates are written" and the heading box go to the liveform session and the missing select is marked (`col_date`, `col_amount`); the screen shows them instead of the bank account's remembered columns. Before, everything chosen was reset and only a general error showed.

@@ -359,6 +359,7 @@
 - image-editor-scissors.md: The Artifact Canvas's Scissors tool: a click cuts a path or shape at a point, a drag cuts every path the line crosses; the model's cut functions
 - image-editor-select.md: How the Artifact Canvas picks layers: Select's click, Shift, box, Select all, groups, touch; Ctrl or Cmd selecting from any tool, the Text tool and Animate's click keeping the playhead
 - image-editor-send.md: The Artifact Canvas's main button as a split button (#10858): the chevron's menu from M.sendMenu(), send to a Workspace channel, Download, who is offered what from a channel and from the File Manager [decision: here]
+- image-editor-site-colors.md: The Artifact Canvas's "Site colours" row in every colour control (AC4): which colours, their order and names, the site_colors action, the colors part and the core's swatchRows hook
 - image-editor-sound.md: Music and sounds on an animation (V4): doc.sounds on the whole timeline, sounds from Files, the rows under the tracks, the Sound panel, Web Audio in step with the play bar, the sound_files action [decision: decisions-made-product-31.md]
 - image-editor-sticker.md: The Artifact Canvas's Sticker and Frame tools: the sticker layer, its label, a picture from Files, the four frames on the saved picture's edge, an artboard's background fill, how a save draws them
 - image-editor-subject-brushes.md: The Artifact Canvas's Keep and Remove brushes on a selected subject (E28b, #6889): strokes as hard labels of a new cut, and the guided-filter soft edge of the layers made from it
@@ -720,6 +721,7 @@
 - settings-communication.md: Site Settings › Communication as folded rows (#11151, #11194): Chat and Chat on the site split from the old two-popover card, state lines, what moved, what stayed
 - settings-dashboard-card.md: Dashboard row of Site Settings > Appearance (pgset-dashboard): Card style, Panel backdrop, Reset widgets, Refresh every per sign-in; role < 2 gate; a save shown on the dashboard [decision: decisions-made-access.md]
 - settings-drawer-card-form.md: A settings drawer that edits a record (a department): fields and a named button joined to the settings form by its id, saved by the pane's Save
+- settings-ecommerce.md: Site Settings › Ecommerce as eleven folded rows under Enable Commerce: order, names, each row's line and pill, Gift cards and Rewards as two cards, anchors, what stayed
 - settings-email-tabs.md: Site Settings › E-mail (EM1): one category, tabs E-mail sending and Mailboxes under their old gates, the tab kept in the address, old keys, pages and anchors opening their tab, the save per tab [decision: here]
 - settings-features-rows.md: Site Settings › Features below the Modules board: the folded rows Site search, Sharing buttons, Speed, Badge and the rest, their card ids, state lines and what moved into them
 - settings-features.md: Site Settings › Features: the Modules board of switch rows, what each row says and posts, Commerce and Accounting with Open, the old card ids, why it was redrawn and what stayed [decision: here]

@@ -391,10 +391,16 @@ if ((string) $statement['status'] === 'mapping') {
             $action = '<a class="small pg-link-body-emphasis" href="' . h($link) . '">' . h(trim((string) $line['cash_description'])) . '</a>'
                 . (((string) $line['account_title'] !== '') ? '<div class="pg-text-2">' . h((string) $line['account_title']) . '</div>' : '');
 
-            // A wrong match (another movement of the same amount) is undone
-            // here, so the line can be recorded.
-            if (((string) $line['status'] === 'matched') && !$readonly) {
-                $action .= $post_form('<input type="hidden" name="line_id" value="' . (int) $line['id'] . '" /><input type="hidden" name="erp_action" value="unmatch" />', lang('Not this movement'), 'btn-link fg-secondary');
+            if (!empty($line['cash_cancelled'])) {
+                $action .= '<div class="pg-text-2 fg-danger">' . h(lang('The movement was cancelled, so this bank line is not in the books.')) . '</div>';
+            }
+
+            // A wrong match (another movement of the same amount), or a
+            // movement cancelled since, is undone here, so the line can be
+            // recorded.
+            if (erp_bank_line_reopenable($line) && !$readonly) {
+                $action .= $post_form('<input type="hidden" name="line_id" value="' . (int) $line['id'] . '" /><input type="hidden" name="erp_action" value="unmatch" />',
+                    ((string) $line['status'] === 'matched') ? lang('Not this movement') : lang('Record again'), 'btn-link fg-secondary');
             }
         }
 

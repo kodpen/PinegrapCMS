@@ -226,6 +226,36 @@ StyleDesigner.definePart('variables', function (K) {
         return h + '</div>';
     }
 
+    // A fold's head as drawn: the group's icon tile, its name, one line
+    // written from its values, the chevron.
+    var FOLD_ICONS = { color: 'bi-palette', type: 'bi-type', spacing: 'bi-distribute-vertical', shape: 'bi-bounding-box-circles', custom: 'bi-person' };
+    function foldHead(key, label, line) {
+        return '<summary class="sd-vars-summary"><span class="sd-vars-tile bi ' + (FOLD_ICONS[key] || 'bi-sliders') + '" aria-hidden="true"></span>' +
+            '<span class="sd-vars-fn"><b>' + esc(label) + '</b>' + (line ? '<small>' + esc(line) + '</small>' : '') + '</span>' +
+            '<span class="bi bi-chevron-down sd-vars-ch" aria-hidden="true"></span></summary>';
+    }
+
+    // The closed fold still says what it holds: the colours' count, else
+    // the first values of the group (a font by its first name).
+    function foldLine(key, m) {
+        var rows = S.list.rows.filter(function (vr) { return vr.group === key; });
+        if (key === 'color') return _sdT('{var} colours, each with a light and a dark value', rows.length);
+        var out = [];
+        rows.forEach(function (vr) {
+            if (out.length >= 3) return;
+            var v = m.values[vr.key];
+            if (v == null || typeof v === 'object' || String(v) === '') return;
+            v = String(v);
+            if (vr.kind === 'font') v = v.split(',')[0].replace(/["']/g, '').trim();
+            if (vr.kind === 'choice') {
+                var op = (vr.options || []).filter(function (o) { return o.value === v; })[0];
+                if (op) v = op.label;
+            }
+            out.push(v);
+        });
+        return out.join(' · ');
+    }
+
     function draw() {
         if (!shown() || !S) return;
         var m = current() || S.model;
@@ -234,7 +264,11 @@ StyleDesigner.definePart('variables', function (K) {
                 '<span class="sd-th-sub">' + esc(_sdT('The named colours, type, spacing and shape of the design. Change one here and every page that uses it follows.')) + '</span></div>';
         (S.list.groups || []).forEach(function (g) {
             h += '<details class="sd-vars-group" data-group="' + attr(g.key) + '"' + (open[g.key] ? ' open' : '') + '>' +
-                 '<summary class="sd-vars-summary">' + esc(g.label) + '</summary>';
+                 foldHead(g.key, g.label, foldLine(g.key, m));
+            if (g.key === 'color') {
+                h += '<div class="sd-vars-row sd-vars-cols" aria-hidden="true"><span></span><span></span>' +
+                     '<span class="sd-vars-pair"><span>' + esc(_sdT('Light')) + '</span><span>' + esc(_sdT('Dark')) + '</span></span></div>';
+            }
             S.list.rows.forEach(function (vr) {
                 if (vr.group !== g.key) return;
                 var v = m.values[vr.key];
@@ -243,8 +277,8 @@ StyleDesigner.definePart('variables', function (K) {
             });
             h += '</details>';
         });
-        h += '<details class="sd-vars-group" data-group="custom"' + (open.custom || (m.custom && m.custom.length) ? ' open' : '') + '>' +
-             '<summary class="sd-vars-summary">' + esc(_sdT('Your own')) + '</summary>';
+        h += '<details class="sd-vars-group" data-group="custom"' + (open.custom ? ' open' : '') + '>' +
+             foldHead('custom', _sdT('Your own'), (m.custom && m.custom.length) ? String(m.custom.length) + ' / 24' : '');
         (m.custom || []).forEach(function (c, i) { h += customRow(c, i, used); });
         h += '<div class="sd-vars-add">' +
              '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-vars-act="add-color"><span class="bi bi-plus-lg me-1"></span>' + esc(_sdT('Add a colour')) + '</button>' +
@@ -295,8 +329,13 @@ StyleDesigner.definePart('variables', function (K) {
 
     function bind() {
         var el = H.el;
+        // One fold open at a time.
         el.querySelectorAll('details.sd-vars-group').forEach(function (d) {
-            d.addEventListener('toggle', function () { open[d.getAttribute('data-group')] = d.open; });
+            d.addEventListener('toggle', function () {
+                open[d.getAttribute('data-group')] = d.open;
+                if (!d.open) return;
+                el.querySelectorAll('details.sd-vars-group[open]').forEach(function (o) { if (o !== d) o.open = false; });
+            });
         });
         el.querySelectorAll('.sd-vars-color').forEach(function (inp) {
             inp.addEventListener('input', function () {
@@ -733,6 +772,38 @@ StyleDesigner.definePart('variables', function (K) {
         L = null;
     }
 
+    // Focus back on the control's button once the list is gone, so a person
+    // on the keyboard stays in the row. A choice redraws the panel: the row
+    // is then found again by its property.
+    function refocus(anchor) {
+        var prop = anchor.getAttribute('data-sd-var-prop');
+        setTimeout(function () {
+            var ctl = anchor.isConnected ? anchor
+                : (prop ? document.querySelector('.sd-var-ctl[data-sd-var-prop="' + prop + '"]') : null);
+            var b = ctl ? ctl.querySelector('[data-sd-var-open]') : null;
+            if (b) b.focus();
+        }, 60);
+    }
+
+    // Arrow keys walk the search and the rows on show; Enter in the search
+    // (passed on by the list's document listener) takes the first row on show.
+    function listKeys(e) {
+        var rows = Array.prototype.slice.call(L.el.querySelectorAll('.sd-var-row')).filter(function (r) {
+            return !r.hidden && !(r.parentNode && r.parentNode.hidden);
+        });
+        var q = L.el.querySelector('.sd-var-search');
+        var at = rows.indexOf(document.activeElement);
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            var to = e.key === 'ArrowDown' ? at + 1 : (at === -1 ? rows.length - 1 : at - 1);
+            if (to < 0) { if (q) q.focus(); return; }
+            if (rows[Math.min(to, rows.length - 1)]) rows[Math.min(to, rows.length - 1)].focus();
+        } else if (e.key === 'Enter' && e.target === q && rows.length) {
+            e.preventDefault();
+            rows[0].click();
+        }
+    }
+
     function listHtml(host, m) {
         var now = host.value ? String(host.value).trim() : '';
         var h = '';
@@ -780,6 +851,7 @@ StyleDesigner.definePart('variables', function (K) {
     function choose(host, expr) {
         tipDone();
         close();
+        refocus(host.anchor);
         if (host.locked) { host.set(expr); return; }
         if (!host.hasCss()) {
             host.setModel(current() || S.model);
@@ -799,7 +871,10 @@ StyleDesigner.definePart('variables', function (K) {
         host.anchor.appendChild(el);
         var off = function (e) {
             if (e.type === 'keydown') {
-                if (e.key === 'Escape') { e.stopPropagation(); close(); }
+                if (e.key === 'Escape') { e.stopPropagation(); close(); refocus(host.anchor); }
+                // Taken here, before the right panel's own Enter guard
+                // (which blurs a field) sees it.
+                else if (e.key === 'Enter' && el.contains(e.target) && e.target.classList.contains('sd-var-search')) { e.stopPropagation(); listKeys(e); }
                 return;
             }
             if (!el.contains(e.target) && !host.anchor.contains(e.target)) close();
@@ -814,6 +889,7 @@ StyleDesigner.definePart('variables', function (K) {
             el.innerHTML = listHtml(host, m);
             var q = el.querySelector('.sd-var-search');
             q.addEventListener('input', function () { filter(q.value); });
+            el.addEventListener('keydown', function (e) { if (L && L.el === el) listKeys(e); });
             el.addEventListener('click', function (e) {
                 var t = e.target.closest('[data-vl-expr], [data-vl-typed], [data-vl-tip]');
                 if (!t) return;

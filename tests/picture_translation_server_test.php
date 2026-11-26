@@ -267,7 +267,9 @@ function test_picture_server_fitted()
 
 		return ($l['text'] === 'no font') ? null : array('w' => round(mb_strlen($l['text']) * $size / 2, 2), 'h' => round($size * 1.25, 2));
 	};
-	$doc = array('v' => 1, 'artboard' => array('width' => 600, 'height' => 500), 'layers' => array(
+	// A document with no size has no room to read: the old rule, the
+	// source's box (tests/picture_text_fit_test.php has the room).
+	$doc = array('v' => 1, 'layers' => array(
 		array('id' => 'c', 'type' => 'text', 'text' => 'Sale', 'size' => 20, 'align' => 'center', 'x' => 100, 'y' => 50, 'w' => 40, 'h' => 25),
 		array('id' => 'r', 'type' => 'text', 'text' => 'Sale', 'size' => 20, 'align' => 'right', 'x' => 100, 'y' => 90, 'w' => 40, 'h' => 25),
 		array('id' => 'l', 'type' => 'text', 'text' => 'Sale', 'size' => 20, 'x' => 100, 'y' => 130, 'w' => 40, 'h' => 25),
@@ -304,9 +306,12 @@ function test_picture_server_fitted()
 	pg_assert_same(0, pg_picture_tr_language_fitted($one, $layout)['fit'], 'every text fits: no mark');
 
 	// On a 400 x 200 artboard the same text is 10% of the shorter side: its
-	// floor is half, and "Angebot" fits at 0.5714.
+	// floor is half, and "Angebot" fits at 0.5714 between two layers that
+	// leave it no room across.
 	$small = $doc;
 	$small['artboard'] = array('width' => 400, 'height' => 200);
+	$small['layers'][] = array('id' => 'w', 'type' => 'rect', 'x' => 90, 'y' => 50, 'w' => 10, 'h' => 25);
+	$small['layers'][] = array('id' => 'e', 'type' => 'rect', 'x' => 140, 'y' => 50, 'w' => 10, 'h' => 25);
 	$large = pg_picture_tr_language_fitted(pg_picture_tr_language_doc($small, array(array('id' => 'c', 'field' => 'text', 'text' => 'Angebot'))), $layout);
 	pg_assert_same(11.43, (float) $large['doc']['layers'][0]['size'], 'a large text shrinks under 70%');
 	pg_assert_same(0, $large['fit'], 'above its floor: no mark');

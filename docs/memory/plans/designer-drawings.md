@@ -26,10 +26,10 @@ priority: 8
 
 ## Which steps, in this order?
 - DD1 (M) Done (#11508). `designer/design-variables-overview.md`: the Variables tab, the Options chip, the start questions, Export and Import. Holds DV2 to DV5.
-- DD2 (M) Done (#11526). `designer-sketch.md`: "Build the page" and "Build again", "Page details", the two AI actions, the reference picture. Holds SK4 to SK7.
+- DD2 (M) Done (#11526). `designer/sketch-overview.md`: "Build the page" and "Build again", "Page details", the two AI actions, the reference picture. Holds SK4 to SK7.
 - DD3 (M) Done (#11525). `designer-start-import.md`: Figma on Connections, the frame list, the report; Canva's form, reference pictures and brand. Holds ST3, ST5, ST6.
 - DD5 (S) Done (#11538). `designer-preview-as.md`: the "Preview as" bar, its three choosers, the "Check all cases" list. Holds PW3, PW4.
-- DD6 (M) Done (#11547). `designer-component-overrides.md`: marking a field open, the component's list, "This place" with the dot and reset, variants. Holds CO3 to CO5.
+- DD6 (M) Done (#11547). Component overrides, built (`designer/component-overrides-overview.md`): open fields, their list, "This place", variants.
 - DD7 (M) Done (#11547). `designer-publish-check-drawing.md`: the results, the five groups, Fix, Show me and Ignore, the weight budget. Holds PC4, PC5.
 - DD8 (M) Done (#11550). `designer/designer-canvas-guides-drawing.md`: Measure, the spacing bands and handles, the column grid, equal gaps, layout lines. Holds CG2 to CG5.
 - DD9 (M) Done (#11559). `designer-my-library-drawing.md`: the save window, "My library" in Blocks, "Manage library", Export, Import. Holds ML2 to ML4.

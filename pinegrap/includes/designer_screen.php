@@ -74,6 +74,7 @@ function pg_designer_asset_stamp($relative_path)
  *   send_to         return path
  *   from_pages      bool — opened from the pages list
  *   delete_button   ready HTML for the toolbar (edit mode only)
+ *   start_variables null, or the start's variables (look, model, css) in add mode
  */
 function pg_designer_screen_render($ctx)
 {
@@ -84,6 +85,10 @@ function pg_designer_screen_render($ctx)
     $style    = $ctx['style'];
     $pages    = is_array($ctx['pages']) ? $ctx['pages'] : array();
     $active   = (int)$ctx['active_page_id'];
+    // The start questions' (or the Figma import's) variables of a new
+    // design: the model in the hidden input, its stylesheet tried at once.
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/design_variables.php');
+    $sd_start_vars = pg_design_variables_start_editor(isset($ctx['start_variables']) ? $ctx['start_variables'] : null);
 
     // The design's framework; a style from before 2026.4.5 is Bootstrap 5.
     $sd_framework = pg_design_framework(isset($style['framework']) ? $style['framework'] : '');
@@ -387,6 +392,9 @@ function pg_designer_screen_render($ctx)
         // The "Clicks" layer (pg_page_clicks_designer_config()); null hides
         // its toggle.
         'clicks'        => $sd_clicks,
+        // The Sketch tool's Pinegrap AI actions (includes/fn/sketch_ai.php):
+        // designers, on a site where Pinegrap AI writes the drafts.
+        'sketchAi'      => $access === PG_DESIGNER_ACCESS_FULL && pg_ai_write_engine() === 'pinegrap',
         // The editor's parts not needed to open a page, run on first use:
         // their file addresses by name, for every part whose file's 'when'
         // holds (includes/designer_parts/, pg_designer_parts_for()).
@@ -473,7 +481,7 @@ function pg_designer_screen_render($ctx)
         'startAction'   => !empty($ctx['start_action']) ? $ctx['start_action'] : null,
         // Looks and colour palettes (includes/fn/design_themes.php): every
         // choice with its stylesheet, the saved custom ones included.
-        'themes'        => pg_design_theme_catalog() + array('variables' => pg_design_variables_url($style_id)),
+        'themes'        => pg_design_theme_catalog() + array('variables' => pg_design_variables_url($style_id), 'variablesTry' => $sd_start_vars['try']),
         // The design's stored easing curves (its own variables of kind
         // curve), offered in every Easing list.
         'curves'        => pg_design_variables_curves(pg_design_variables_stored($style_id)),
@@ -584,7 +592,7 @@ function pg_designer_screen_render($ctx)
                 <!-- The colour mode (Settings, Theme): light, dark, auto or empty. -->
                 <input type="hidden" name="style_color_mode" id="sd-style-color-mode" value="' . h(isset($style['color_mode']) ? pg_design_color_mode_key($style['color_mode']) : '') . '">
                 <!-- The variables model the Variables tab changed (JSON); empty: unchanged. -->
-                <input type="hidden" name="style_variables" id="sd-style-variables" value="">
+                <input type="hidden" name="style_variables" id="sd-style-variables" value="' . h($sd_start_vars['input']) . '">
 
                 <div class="sd-wrapper">
                     <!-- One toolbar. Left: what you do to pages (add, settings,
@@ -2257,8 +2265,8 @@ function pg_designer_start_window($templates, $from_pages)
                . '</button>';
         $panes .= '<section class="sd-ns-pane" role="tabpanel" id="sd-ns-pane-' . $key . '" aria-labelledby="sd-ns-tab-' . $key . '" tabindex="0"'
                 . ' data-go="' . h($k['go']) . '"' . pg_designer_start_part_attrs($key) . ($i === 0 ? '' : ' hidden') . '>'
-                . '<h3 class="pg-sm-heading">' . h(isset($k['heading']) ? $k['heading'] : $k['title']) . '</h3>'
-                . '<p class="pg-sm-desc">' . h($k['line']) . '</p>'
+                . '<div class="pg-sm-heading sd-ns-head"><h3 class="pg-title-section">' . h(isset($k['heading']) ? $k['heading'] : $k['title']) . '</h3>'
+                . '<p class="pg-sm-desc pg-text-2">' . h($k['line']) . '</p></div>'
                 . ($k['disabled'] ? '' : pg_designer_start_pane($k, $templates, $from_pages))
                 . '</section>';
     }

@@ -7,7 +7,7 @@ module: office
 ## What does an .ods show?
 - Since PR #10519: Quick Look and the file window in the File Manager, and a channel's Preview (file card, Files tab, the file's menu), draw it as an .xlsx is drawn (`office-files.md`): sheet tabs in the workbook's order, a hidden sheet (its table style has `table:display="false"`) flagged as the .xlsx preview flags one, the sheet's own row numbers, gaps kept.
 - Doors: `explorer_office_preview`, `ws_file_office`, then `pg_office_read()` → `pg_office_ods_read()`. Before it, Quick Look said "no preview", the file window showed the file's icon and a channel had no Preview.
-- Only looked at: `pg_office_preview_kind()` gives `ods`, while `pg_office_kind()`, which every edit asks, gives ''. The answer's kind is `ods`, and `pgOfficeView.render()` draws it with no editing options, whatever the window passes. Editing an .ods is not built (`plans/office-own-code.md`).
+- Only looked at: `pg_office_preview_kind()` gives `ods`, while `pg_office_kind()`, which every edit asks, gives ''. The answer's kind is `ods`, and `pgOfficeView.render()` draws it with no editing options, whatever the window passes. Editing an .ods is not built (`office-files-scope.md`).
 
 ## How is it read?
 - `pg_office_open($path, $error, 'content.xml')` measures the package as for a workbook. `pg_office_ods_sheets()` streams content.xml once for the names and the hidden table styles, counting tables as the sheet reader does; each sheet's rows come from `pg_sheet_rows($path, 'ods', $error, $index)` (`sheet-reader.md`), and the walk is left once the preview has its rows.
@@ -21,4 +21,4 @@ module: office
 - More than 1,000 sheets (`PG_OFFICE_MAX_ODS_SHEETS`): too large. 500,000 empty sheets fit in 7 MB and filled 512 MB as tabs.
 - Tests: `tests/office_ods_test.php`: the sheet reader's LibreOffice `book.ods` and packages the test writes.
 
-Related: docs/memory/platform/office-files.md, docs/memory/platform/sheet-reader.md, docs/memory/plans/office-own-code-steps.md
+Related: docs/memory/platform/office-files.md, docs/memory/platform/sheet-reader.md, docs/memory/platform/office-overview.md

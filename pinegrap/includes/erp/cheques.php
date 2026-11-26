@@ -529,6 +529,31 @@ function erp_cheque_step_note($step, $reopened = 0)
 }
 
 /**
+ * The date a step's form sent, as the step takes it: today when the box was
+ * left empty, the ISO date as it came, a date in the site's order turned to
+ * ISO. Anything else is passed on as typed, so erp_cheque_step_date_refusal()
+ * refuses it; before, it became today and the money moved on a day nobody
+ * chose.
+ *
+ * @param string $typed
+ * @return string
+ */
+function erp_cheque_typed_step_date($typed)
+{
+    $typed = trim((string) $typed);
+
+    if ($typed === '') {
+        return date('Y-m-d');
+    }
+
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $typed)) {
+        return $typed;
+    }
+
+    return validate_date($typed) ? (string) prepare_form_data_for_input($typed, 'date') : $typed;
+}
+
+/**
  * Why a step cannot carry this date, or '' when it can.
  *
  * A step is dated on or after the day the cheque or note was taken or given
@@ -597,6 +622,76 @@ function erp_cheque_bank_till_refusal($till, $cheque, $kept_currency, $bank_curr
 }
 
 /**
+ * erp_cheque_bank_till_refusal() for a till by its id, with the currencies of
+ * that till and the cheque's portfolio read from the database: what the step
+ * and the API both ask.
+ *
+ * @param int   $bank_till_id
+ * @param array $cheque  erp_cheques row: bank_till_id, portfolio_till_id
+ * @return string
+ */
+function erp_cheque_bank_till_id_refusal($bank_till_id, $cheque)
+{
+    $bank_row = db_item("SELECT id, is_active, currency FROM erp_cash_accounts WHERE id = '" . (int) $bank_till_id . "' LIMIT 1");
+    $portfolio_row = db_item("SELECT id, currency FROM erp_cash_accounts WHERE id = '" . (int) ($cheque['portfolio_till_id'] ?? 0) . "' LIMIT 1");
+    $base = erp_base_currency();
+    $currency_of = function ($row) use ($base) {
+        $currency = (is_array($row) && erp_fx_enabled()) ? strtoupper(trim((string) ($row['currency'] ?? ''))) : '';
+
+        return ($currency !== '') ? $currency : $base;
+    };
+
+    return erp_cheque_bank_till_refusal($bank_row, $cheque, $currency_of($portfolio_row), $currency_of($bank_row));
+}
+
+/**
+ * The tills a cheque's bank step may choose, as a WHERE condition on
+ * erp_cash_accounts: the active ones but its portfolio, and the bank it was
+ * handed to even when that bank was taken off since, the one
+ * erp_cheque_bank_till_refusal() still lets it be collected at. Without it the
+ * list lacked that bank and the form posted the first active till instead.
+ *
+ * @param array $cheque  erp_cheques row: bank_till_id, portfolio_till_id
+ * @return string
+ */
+function erp_cheque_bank_till_choices_where($cheque)
+{
+    $stored = (int) ($cheque['bank_till_id'] ?? 0);
+    $active = ($stored > 0) ? "(is_active = 1 OR id = '" . $stored . "')" : 'is_active = 1';
+
+    return $active . " AND id <> '" . (int) ($cheque['portfolio_till_id'] ?? 0) . "'";
+}
+
+/**
+ * Why a cheque or note cannot be passed on to this account, or ''.
+ *
+ * The screen and the API ask the same: the account exists, is active, and is
+ * not the one the cheque came from. Passed back to its own customer, the step
+ * was a payment to them that left the invoices the cheque had closed reading
+ * as paid, which only a bounce opens again.
+ *
+ * @param array|null $account  erp_account() row: id, status
+ * @param array      $cheque   erp_cheques row: account_id
+ * @return string
+ */
+function erp_cheque_endorse_account_refusal($account, $cheque)
+{
+    if (!is_array($account)) {
+        return lang('That account could not be found.');
+    }
+
+    if ((string) ($account['status'] ?? '') !== 'active') {
+        return lang('That account is not active.');
+    }
+
+    if ((int) $account['id'] === (int) ($cheque['account_id'] ?? 0)) {
+        return lang('Pass it on to an account other than the one it came from.');
+    }
+
+    return '';
+}
+
+/**
  * The next step of a cheque or note.
  *
  * @param int    $id
@@ -641,19 +736,9 @@ function erp_cheque_step($id, $step, $options, $user_id)
         return $fail(lang('Choose the bank account.'));
     }
 
-    if (in_array($step, array('deposit', 'collect', 'pay'), true)) {
-        $bank_row = db_item("SELECT id, is_active, currency FROM erp_cash_accounts WHERE id = '" . $bank_till . "' LIMIT 1");
-        $base = erp_base_currency();
-        $currency_of = function ($row) use ($base) {
-            $currency = (is_array($row) && erp_fx_enabled()) ? strtoupper(trim((string) ($row['currency'] ?? ''))) : '';
-
-            return ($currency !== '') ? $currency : $base;
-        };
-        $portfolio_row = db_item("SELECT id, currency FROM erp_cash_accounts WHERE id = '" . (int) $cheque['portfolio_till_id'] . "' LIMIT 1");
-
-        if (($refusal = erp_cheque_bank_till_refusal($bank_row, $cheque, $currency_of($portfolio_row), $currency_of($bank_row))) !== '') {
-            return $fail($refusal);
-        }
+    if (in_array($step, array('deposit', 'collect', 'pay'), true)
+        && (($refusal = erp_cheque_bank_till_id_refusal($bank_till, $cheque)) !== '')) {
+        return $fail($refusal);
     }
 
     if ($step === 'deposit') {
@@ -709,6 +794,11 @@ function erp_cheque_step($id, $step, $options, $user_id)
         if ($to_account <= 0) {
             erp_tx_rollback();
             return $fail(lang('Choose an account.'));
+        }
+
+        if (($step === 'endorse') && (($refusal = erp_cheque_endorse_account_refusal(erp_account($to_account), $cheque)) !== '')) {
+            erp_tx_rollback();
+            return $fail($refusal);
         }
 
         $rate = erp_cheque_till_rate((int) $cheque['portfolio_till_id'], $date);

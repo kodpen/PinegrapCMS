@@ -326,7 +326,7 @@
                 }
             }
             box.appendChild(live);
-            drawFoot([['me-auto pg-text-meta pg-doc-local', t.local], ['quiet', t.cancel, o.cancel], ['fill pg-doc-read', st.warned ? t.readAgain : t.read, read]]);
+            drawFoot([['me-auto pg-text-meta pg-doc-local', t.local], cancelButton(), ['fill pg-doc-read', st.warned ? t.readAgain : t.read, read]]);
             syncRead();
         }
 
@@ -348,10 +348,20 @@
             }
         }
 
+        // Cancel only where the caller gives one: the New design window has
+        // its own beside the foot.
+        function cancelButton() {
+            return o.cancel ? ['quiet', t.cancel, o.cancel] : null;
+        }
+
         // The foot's buttons: [class, label, click]; a span without click.
+        // An empty entry is left out.
         function drawFoot(list) {
             foot.innerHTML = '';
             list.forEach(function (it) {
+                if (!it) {
+                    return;
+                }
                 if (!it[2]) {
                     var s = document.createElement('span');
                     s.className = it[0];
@@ -564,7 +574,7 @@
                     again2.setSelectionRange(focus[1], focus[2]);
                 } catch (e) { /* not a text field */ }
             }
-            drawFoot([['quiet me-auto', t.back, function () { drawForm(); }], ['quiet', t.cancel, o.cancel], ['fill pg-doc-build', t.build, build]]);
+            drawFoot([['quiet me-auto', t.back, function () { drawForm(); }], cancelButton(), ['fill pg-doc-build', t.build, build]]);
         }
 
         function drawRow(row, at) {

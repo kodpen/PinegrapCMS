@@ -16,7 +16,7 @@ description: The Prototype view's sketch reader (assets/js/pg_sketch_reader.js, 
 - Shape: thin full-width band at the top = header, at the bottom = footer (small boxes only there too); a tall band (30%) right under the header or the top = intro; equal boxes in a row (within 20%) = gallery (pictures only), cards (each picture and text) or features; a box whose children are such a row reads as that row; two or more wide thin stacked fields with a button = form; a low band of text with a button = cta; a lone button = cta; cross = picture, else text.
 
 ## When is a section unsure?
-- `empty`: one box with nothing in it (not a header or footer); `words`: typed words naming two kinds; `mixed`: unlike boxes side by side. The guess is `kind`, `options` the kinds to ask about; a sure section has `reason: null`, `options: []`. The tool asks, never guesses in silence (`plans/designer-sketch.md`).
+- `empty`: one box with nothing in it (not a header or footer); `words`: typed words naming two kinds; `mixed`: unlike boxes side by side. The guess is `kind`, `options` the kinds to ask about; a sure section has `reason: null`, `options: []`. The tool asks, never guesses in silence (`sketch-overview.md`).
 
 ## Where is it tested?
 - `tests/sketch_reader_test.php` runs it in Node (skipped without Node).

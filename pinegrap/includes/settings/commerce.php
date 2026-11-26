@@ -2,12 +2,18 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Site Settings - the Ecommerce cards: the store, shipping, gift cards, payment and affiliates.
+ * Site Settings - the Ecommerce cards: the store, payment methods, shipping,
+ * address autocomplete, stock locations, gift cards, rewards, the reference
+ * price, the affiliate and referral programmes and the product feeds.
  *
- * Fills $pg_settings_cards, one grid column per card, in reading order. Which
- * cards belong here is said once, in includes/settings/registry.php; this file
- * holds them, and <key>.save.php writes what they edit. The variables they read
- * are prepared by includes/settings/prep.php.
+ * Enable Commerce stands at the pane's head; under it each part is one folded
+ * row (includes/settings/fold.php) holding its card, the rows' order, names
+ * and lines being includes/fn/commerce_settings_fold.php. Fills
+ * $pg_settings_cards with the head and the one list of rows. Which cards
+ * belong here is said once, in includes/settings/registry.php; this file
+ * holds them, and commerce.save.php writes what they edit, every field under
+ * its old name. The variables they read are prepared by
+ * includes/settings/prep.php.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -19,8 +25,30 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     exit;
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/commerce_settings_fold.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/settings/fold.php');
+
+// Whether the store is on, as stored: every row's pill reads Off while not.
+$commerce_on = ($ecommerce_on_or_off == 1);
+
+// Each part's card and its line of state, by row key; drawn as rows at the
+// end in pg_commerce_fold_order().
+$commerce_parts = array();
+
+// ── Enable Commerce ──
+// The module's switch stands above the rows, with its line while the store
+// is off: the rows' settings are kept but nothing on the site uses them.
+$commerce_head = '
+    <div class="d-flex flex-column gap-3 mb-5">
+        <div class="d-flex align-items-center gap-5">
+            <input type="checkbox" class="pg-switch" value="1"' . $ecommerce_checked . ' id="ecommerce" name="ecommerce"' . ($commerce_on ? '' : ' aria-describedby="ecommerce_help"') . '/>
+            <label class="pg-text-2" for="ecommerce">' . lang('Enable Commerce') . '</label>
+        </div>' . ($commerce_on ? '' : '
+        <p class="pg-field-help pg-text-meta fg-secondary mb-0" id="ecommerce_help">' . lang('The store is off. These settings are kept but nothing on the site uses them until Commerce is enabled.') . '</p>') . '
+    </div>';
+
 // ── Store ──
-$pg_settings_cards[] = '
+$commerce_parts['store'] = array('html' => '
     <div id="pgset-store" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 pg-title-section">
@@ -28,15 +56,6 @@ $pg_settings_cards[] = '
             </div>
             <div class="card-body">
                 <div class="row gy-5">
-                                        <div class="col-12 ">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . $ecommerce_checked . ' class="" type="checkbox" id="ecommerce" name="ecommerce"/></div>
-                                                <label class="" for="ecommerce">' . lang('Enable Commerce') . '</label>
-                                            </div>
-                                        </div>
-' . ($ecommerce_checked === ''
-    ? '<div class="pg-f-xs"><div class="pg-f-xs alert theme-secondary mb-0 py-3 small">' . lang('The store is off. These settings are kept but nothing on the site uses them until Commerce is enabled.') . '</div></div>'
-    : '') . '
                                                         <div id="pgsub-store" class="pg-f-xs">
                                                             <label for="ecommerce_next_order_number" class="form-label">' . lang('Next Order Number') . '</label>
                                                             <input type="number" name="ecommerce_next_order_number" id="ecommerce_next_order_number" class="form-control" value="' . h($ecommerce_next_order_number) . '" min="1" step="1"/>
@@ -131,7 +150,7 @@ $pg_settings_cards[] = '
                 </div>
             </div>
         </div>
-    </div>';
+    </div>') + pg_commerce_fold_store($commerce_on, $ecommerce_next_order_number, ($ecommerce_tax == 1) && ($ecommerce_tax_exempt == 1));
 
 // ── Shipping ──
 // The checked pack before a label (includes/fn/shipment_labels.php), a
@@ -153,7 +172,24 @@ if (pg_schema_has('order_packs') && pg_schema_has('config_text')) {
                                                                         </div>';
 }
 
-$pg_settings_cards[] = '
+// The carriers connected, by name, for the row's line: the carriers' APIs
+// (pg_carrier_api_connected()) and the label services that may open
+// shipments (pg_label_ready()).
+$commerce_carriers = array();
+
+foreach (array('usps', 'ups', 'fedex') as $commerce_carrier) {
+    if (pg_carrier_api_connected($commerce_carrier)) {
+        $commerce_carriers[] = pg_carrier_api_definition($commerce_carrier)['label'];
+    }
+}
+
+foreach (pg_label_drivers() as $commerce_label_key => $commerce_label_driver) {
+    if (pg_label_ready($commerce_label_key)) {
+        $commerce_carriers[] = $commerce_label_driver['label'];
+    }
+}
+
+$commerce_parts['shipping'] = array('html' => '
     <div id="pgset-shipping" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 pg-title-section">
@@ -273,7 +309,7 @@ $pg_settings_cards[] = '
                 </div>
             </div>
         </div>
-    </div>';
+    </div>') + pg_commerce_fold_shipping($commerce_on, $ecommerce_shipping == 1, $ecommerce_recipient_mode !== 'single recipient', $commerce_carriers);
 
 // ── Stock locations ──
 // Where units are kept (includes/fn/stock_moves.php). A location is never
@@ -298,7 +334,15 @@ foreach ($stock_card_locations as $stock_card_location) {
                         </tr>';
 }
 
-$pg_settings_cards[] = '
+$commerce_stock_off = 0;
+
+foreach ($stock_card_locations as $stock_card_location) {
+    if ((int) $stock_card_location['enabled'] !== 1) {
+        $commerce_stock_off++;
+    }
+}
+
+$commerce_parts['stock-locations'] = array('html' => '
     <div id="pgset-stock-locations" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 pg-title-section">
@@ -346,12 +390,15 @@ $pg_settings_cards[] = '
                 </div>
             </div>
         </div>
-    </div>';
+    </div>') + pg_commerce_fold_stock($commerce_on, $stock_card_ready, count($stock_card_locations), $commerce_stock_off);
 
 // ── Address Autocomplete ──
 // The switch and the provider; each provider's key or server is typed on
 // its page of Connections (includes/fn/address_autocomplete.php).
-$pg_settings_cards[] = '
+$commerce_addr_provider = pg_addr_provider();
+$commerce_addr_provider = ($commerce_addr_provider !== '') ? pg_addr_provider_definition($commerce_addr_provider)['label'] : '';
+
+$commerce_parts['address-autocomplete'] = array('html' => '
     <div id="pgset-address-autocomplete" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 pg-title-section">
@@ -362,16 +409,16 @@ $pg_settings_cards[] = '
                 </div>
             </div>
         </div>
-    </div>';
+    </div>') + pg_commerce_fold_address($commerce_on, $commerce_addr_provider);
 
 $pg_settings_scripts[] = pg_addr_settings_script();
 
-// ── Gift Cards & Rewards ──
-$pg_settings_cards[] = '
+// ── Gift cards ──
+$commerce_parts['giftcards'] = array('html' => '
     <div id="pgset-giftcards" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 pg-title-section">
-                ' . lang('Gift Cards & Rewards') . '
+                ' . lang('Gift cards') . '
             </div>
             <div class="card-body">
                 <div class="row gy-5">
@@ -418,6 +465,22 @@ $pg_settings_cards[] = '
                                                             </label>
                                                             <div class="form-text">(' . lang('leave blank for no bonus') . ')</div>
                                                         </div>
+                </div>
+            </div>
+        </div>
+    </div>') + pg_commerce_fold_giftcards($commerce_on, $ecommerce_gift_card == 1, $ecommerce_gift_card_validity_days);
+
+// ── Rewards ──
+// Points towards a goal, their store credit, and what reaching the goal
+// grants.
+$commerce_parts['rewards'] = array('html' => '
+    <div id="pgset-rewards" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 pg-title-section">
+                ' . lang('Rewards') . '
+            </div>
+            <div class="card-body">
+                <div class="row gy-5">
                                                         <div class="col-12 ">
                                                             <div class="form-field">
                                                                 <div class="switch"><input value="1"' . $ecommerce_reward_program_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_reward_program" name="ecommerce_reward_program" data-bs-target="#ecommerce_reward_program_row"/></div>
@@ -502,10 +565,57 @@ $pg_settings_cards[] = '
                 </div>
             </div>
         </div>
-    </div>';
+    </div>') + pg_commerce_fold_rewards($commerce_on, $ecommerce_reward_program == 1, $ecommerce_reward_program_points);
 
 // ── Payment Methods ──
-$pg_settings_cards[] = '
+// The methods switched on, by name, in the checkout's order, and a card
+// gateway chosen whose keys are not all on its page of Connections.
+$commerce_methods = array();
+$commerce_unconnected = '';
+
+if ($ecommerce_credit_debit_card == 1) {
+    $commerce_gateway_page = pg_payment_gateway_connection_for($ecommerce_payment_gateway);
+    $commerce_gateway_driver = pg_payment_driver_for_gateway($ecommerce_payment_gateway);
+    $commerce_gateway_name = lang('Cards');
+
+    if ($commerce_gateway_page !== '') {
+        $commerce_gateway_definitions = pg_payment_gateway_connections();
+        $commerce_gateway_name = $commerce_gateway_definitions[$commerce_gateway_page]['label'];
+
+        if (!pg_payment_gateway_connected($commerce_gateway_definitions[$commerce_gateway_page], pg_payment_gateway_connection_stored())) {
+            $commerce_unconnected = $commerce_gateway_name;
+        }
+    } elseif ($commerce_gateway_driver !== '') {
+        $commerce_gateway_name = pg_payment_driver($commerce_gateway_driver)['label'];
+
+        if (pg_payment_driver_has_page($commerce_gateway_driver)
+            && !pg_payment_driver_keys_complete(pg_payment_fields($commerce_gateway_driver), pg_payment_settings($commerce_gateway_driver))) {
+            $commerce_unconnected = $commerce_gateway_name;
+        }
+    }
+
+    $commerce_methods[] = $commerce_gateway_name;
+}
+
+if ($ecommerce_paypal_express_checkout == 1) {
+    $commerce_methods[] = 'PayPal Express Checkout';
+}
+
+if ($ecommerce_pay_with_iyzico == 1) {
+    $commerce_methods[] = lang('Pay with iyzico');
+}
+
+foreach (pg_payment_drivers() as $commerce_driver_key => $commerce_driver) {
+    if (($commerce_driver['kind'] === 'redirect') && ($commerce_driver['settings'] === 'connect') && pg_payment_settings($commerce_driver_key)['enabled']) {
+        $commerce_methods[] = $commerce_driver['label'];
+    }
+}
+
+if ($ecommerce_offline_payment == 1) {
+    $commerce_methods[] = lang('Offline payments');
+}
+
+$commerce_parts['payments'] = array('html' => '
     <div id="pgset-payments" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 pg-title-section">
@@ -760,7 +870,7 @@ $pg_settings_cards[] = '
                 </div>
             </div>
         </div>
-    </div>';
+    </div>') + pg_commerce_fold_payments($commerce_on, $commerce_methods, $commerce_unconnected);
 
 // ── Reference Price ──
 // Which price stands beside a reduced price as the price before the discount
@@ -784,7 +894,7 @@ if ($reference_price_rule_ready) {
                             <div class="form-text mb-3">' . $reference_rule_text[1] . '</div>';
     }
 
-    $pg_settings_cards[] = '
+    $commerce_parts['reference-price'] = array('html' => '
     <div id="pgset-reference-price" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 pg-title-section">
@@ -800,11 +910,11 @@ if ($reference_price_rule_ready) {
                 </div>
             </div>
         </div>
-    </div>';
+    </div>') + pg_commerce_fold_reference($commerce_on, $ecommerce_reference_price_rule);
 }
 
 // ── Affiliate Program ──
-$pg_settings_cards[] = '
+$commerce_parts['affiliate'] = array('html' => '
                         <div id="pgset-affiliate" class="pg-set-card">
                             <div class="card">
                                 <div class="card-header bg-reset border-0 pg-title-section">
@@ -853,7 +963,7 @@ $pg_settings_cards[] = '
                                    </div>
                                 </div>
                             </div>
-                        </div>';
+                        </div>') + pg_commerce_fold_affiliate($commerce_on, $affiliate_program == 1, $affiliate_default_commission_rate);
 
 // ── Referral programme ──
 // A customer with an order brings a friend through their own link; the rules
@@ -867,7 +977,7 @@ if (!defined('ECOMMERCE') || (ECOMMERCE !== true)) {
     $referral_notice = lang('The referral programme gives rewards once the database upgrade has run.');
 }
 
-$pg_settings_cards[] = '
+$commerce_parts['referral'] = array('html' => '
                         <div id="pgset-referral" class="pg-set-card">
                             <div class="card">
                                 <div class="card-header bg-reset border-0 pg-title-section">
@@ -921,7 +1031,7 @@ $pg_settings_cards[] = '
                                    </div>
                                 </div>
                             </div>
-                        </div>';
+                        </div>') + pg_commerce_fold_referral($commerce_on, !empty($referral_settings['on']), $referral_settings['reward'], BASE_CURRENCY_CODE);
 
 // ── Product Feeds ──
 // The shop's products as files shopping platforms read
@@ -987,7 +1097,25 @@ if (!$product_feeds_ready) {
     $product_feeds_notice = lang('E-commerce is turned off, so no feed is built.');
 }
 
-$pg_settings_cards[] = '
+// The feeds switched on and their last build, for the row's line.
+$commerce_feeds_on = 0;
+$commerce_feeds_built = 0;
+$commerce_feeds_count = 0;
+
+foreach ($product_feeds_settings['formats'] as $commerce_feed) {
+    if (!$commerce_feed['enabled']) {
+        continue;
+    }
+
+    $commerce_feeds_on++;
+
+    if ((int) $commerce_feed['built_at'] > $commerce_feeds_built) {
+        $commerce_feeds_built = (int) $commerce_feed['built_at'];
+        $commerce_feeds_count = (int) $commerce_feed['count'];
+    }
+}
+
+$commerce_parts['feeds'] = array('html' => '
                         <div id="pgset-feeds" class="pg-set-card">
                             <div class="card">
                                 <div class="card-header bg-reset border-0 pg-title-section">
@@ -1038,4 +1166,15 @@ $pg_settings_cards[] = '
                                    </div>
                                 </div>
                             </div>
-                        </div>';
+                        </div>') + pg_commerce_fold_feeds($commerce_on, $product_feeds_ready, $commerce_feeds_on, $commerce_feeds_built, $commerce_feeds_count, time(), pg_time_format_code(), get_date_format_code());
+
+// ── The rows ──
+$commerce_rows = array();
+
+foreach (pg_commerce_fold_order() as $commerce_key) {
+    if (isset($commerce_parts[$commerce_key])) {
+        $commerce_rows[] = array('key' => $commerce_key) + pg_commerce_fold_face($commerce_key) + $commerce_parts[$commerce_key];
+    }
+}
+
+$pg_settings_cards[] = $commerce_head . pg_settings_fold($commerce_rows);

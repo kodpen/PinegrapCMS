@@ -25,7 +25,7 @@ module: lead_journey_store
 
 ## What did the architect answer?
 - Architect (2026-11-26, agent channel request 3081): "Became customers" counts only a customer row at or after the lead; fixed here. On a move the open visit is split (`pg_lead_move_split()`); fixed here.
-- Left for a follow-up task after #11806: a cancelled or fully refunded first order is no customer and brings no revenue, judged at read; the next counting order takes the row over (`visitors/lead-sources-report.md`).
+- Follow-up to #11806, built: a cancelled or fully refunded first order is no customer and brings no revenue, judged at read; the next counting order takes the row over (`visitors/lead-sources-customer-rule.md`).
 
 ## Which issues were opened?
 - None.

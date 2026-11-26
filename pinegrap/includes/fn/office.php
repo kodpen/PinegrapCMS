@@ -3012,9 +3012,10 @@ function pg_office_xls_copy($path, $target)
  * @param ZipArchive $zip
  * @param string     $refused set to large or damaged when the presentation part or a relationships part could not be read whole
  * @param bool       $found   whether the package holds a presentation part at all
+ * @param string     $main    set to the presentation part's name
  * @return array[]
  */
-function pg_office_pptx_slides($zip, &$refused = null, &$found = null)
+function pg_office_pptx_slides($zip, &$refused = null, &$found = null, &$main = null)
 {
     $out = array();
     $refused = '';

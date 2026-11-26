@@ -125,8 +125,8 @@ function ws_agent_app_setup_posted($source)
 
 /**
  * The Agents card's form fields for the agent of an application: what the
- * tab posts over what the agent has, so its duty, schedule, status and
- * sealed door secret stay as they are. A new agent is an active poll agent
+ * tab posts over what the agent has, so its duty, schedule, status, context
+ * window size and sealed door secret stay as they are. A new agent is an active poll agent
  * with no schedule. Pure.
  *
  * @param int        $app_id
@@ -159,6 +159,8 @@ function ws_agent_app_setup_fields($app_id, $current, $posted)
         'door_secret'       => '',
         'door_secret_clear' => '',
         'token_limit'       => '',
+        // The context window's size is the Agents card's; this tab keeps it.
+        'context_size'      => ($current && ((int) ($current['context_size'] ?? 0) > 0)) ? (string) (int) $current['context_size'] : '',
     );
 }
 

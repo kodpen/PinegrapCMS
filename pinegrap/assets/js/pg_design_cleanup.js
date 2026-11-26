@@ -3,8 +3,9 @@
  *
  * The "Clean up" window's pure part (window.PgDesignCleanup): the four
  * lists of an answer of designer/cleanup_list in their fixed order, which
- * list opens first, a list's tick state, what is ticked, sizes in words and
- * the window's view. No DOM; the part style_designer_cleanup.js draws.
+ * list opens first, a list's tick state, what is ticked, sizes in words, the
+ * window's view, and for "Remove" the request, its outcome and the rows that
+ * stayed. No DOM; the part style_designer_cleanup.js draws.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -17,9 +18,10 @@ var PgDesignCleanup = (function () {
     // The lists, always in this order; rules and files have a size.
     var KINDS = ['rules', 'files', 'components', 'variables'];
 
-    // A row's key, unique over the four lists.
+    // A row's key, unique over the four lists: a rule by its id (its sheet,
+    // place and text), else by its place in the list.
     function key(kind, row, i) {
-        if (kind === 'files' || kind === 'components') return kind + ':' + row.id;
+        if (kind === 'files' || kind === 'components' || (kind === 'rules' && row.id)) return kind + ':' + row.id;
         if (kind === 'variables') return kind + ':' + row.key;
         return kind + ':' + i;
     }
@@ -97,5 +99,54 @@ var PgDesignCleanup = (function () {
         return any ? 'lists' : 'empty';
     }
 
-    return { KINDS: KINDS, lists: lists, firstOpen: firstOpen, tickState: tickState, ticked: ticked, size: size, view: view };
+    // What "Remove" asks for: per kind the ids of the ticked rows
+    // (variables by key).
+    function removal(ls, marks) {
+        var out = { rules: [], files: [], components: [], variables: [] };
+        ls.forEach(function (l) {
+            l.rows.forEach(function (r) {
+                if (marks[r.key]) out[l.kind].push(l.kind === 'variables' ? r.key.slice(10) : r.id);
+            });
+        });
+        return out;
+    }
+
+    // What "Remove" did: of (ticked), count, bytes and the count per kind of
+    // what went; failed is key => reason for the rows that stayed.
+    function outcome(ls, marks, failed) {
+        var t = ticked(ls, marks);
+        var out = { of: t.count, count: 0, bytes: 0, kinds: {} };
+        ls.forEach(function (l) {
+            l.rows.forEach(function (r) {
+                if (!marks[r.key] || failed[r.key]) return;
+                out.count++;
+                out.bytes += r.bytes || 0;
+                out.kinds[l.kind] = (out.kinds[l.kind] || 0) + 1;
+            });
+        });
+        return out;
+    }
+
+    // The lists read again after "Remove", with every row that could not be
+    // removed listed and its reason as `failed`: a rule read again is found
+    // by its sheet, media and text (its place moved), another row by its
+    // key; a row no longer read is put back at its list's end.
+    function keep(after, before, failed) {
+        function same(kind, a, b) {
+            if (kind !== 'rules') return a.key === b.key;
+            return a.sheet === b.sheet && a.media === b.media && a.text === b.text;
+        }
+        return after.map(function (l, n) {
+            var rows = l.rows.slice();
+            (before[n] ? before[n].rows : []).forEach(function (old) {
+                if (!failed[old.key]) return;
+                var hit = rows.filter(function (r) { return same(l.kind, r, old); })[0];
+                if (!hit) { hit = {}; Object.keys(old).forEach(function (k) { hit[k] = old[k]; }); rows.push(hit); }
+                hit.failed = failed[old.key];
+            });
+            return { kind: l.kind, rows: rows, bytes: l.bytes, notes: l.notes };
+        });
+    }
+
+    return { KINDS: KINDS, lists: lists, removal: removal, outcome: outcome, keep: keep, firstOpen: firstOpen, tickState: tickState, ticked: ticked, size: size, view: view };
 }());

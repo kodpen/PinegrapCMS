@@ -195,5 +195,66 @@ function test_lead_touch_became_customer_only_at_or_after_the_lead()
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/lead_touch.php');
 	$body = substr($source, strpos($source, 'function pg_lead_sources_read('));
 
-	pg_assert_contains("c.kind = '\" . PG_LEAD_JOURNEY_CUSTOMER . \"' AND c.at >= j.at)", $body, 'a contact who bought first and sent a form later did not become a customer since');
+	pg_assert_contains("\$converted = \$converted || (\$at >= (int) \$row['at']);", $body, 'a contact who bought first and sent a form later did not become a customer since');
+}
+
+function test_lead_touch_customer_read_a_counting_first_order()
+{
+	$row = array('at' => 1000, 'detail' => 'order', 'ref_id' => 5);
+	$own = array('id' => 5, 'status' => 'complete', 'cancelled_at' => 0, 'total' => 4000, 'refunded_amount' => 0, 'order_date' => 1000);
+
+	pg_assert_same(array('at' => 1000, 'revenue' => 4000), pg_lead_customer_read($row, $own, array()), 'a counting first order is the customer and its total the revenue');
+	pg_assert_same(array('at' => 1000, 'revenue' => 4000), pg_lead_customer_read($row, array('status' => 'exported') + $own, array()), 'exported counts');
+}
+
+function test_lead_touch_customer_read_a_cancelled_or_fully_refunded_first_order()
+{
+	$row = array('at' => 1000, 'detail' => 'order', 'ref_id' => 5);
+	$own = array('id' => 5, 'status' => 'complete', 'cancelled_at' => 0, 'total' => 4000, 'refunded_amount' => 0, 'order_date' => 1000);
+
+	pg_assert_same(null, pg_lead_customer_read($row, array('cancelled_at' => 1200) + $own, array()), 'a cancelled first order makes no customer');
+	pg_assert_same(null, pg_lead_customer_read($row, array('refunded_amount' => 4000) + $own, array()), 'a first order refunded in full makes no customer');
+	pg_assert_same(null, pg_lead_customer_read($row, array('refunded_amount' => 4000, 'total' => 4000, 'cancelled_at' => 0) + $own, array(
+		array('id' => 9, 'status' => 'complete', 'cancelled_at' => 1500, 'total' => 900, 'refunded_amount' => 0, 'order_date' => 1400),
+		array('id' => 8, 'status' => 'incomplete', 'cancelled_at' => 0, 'total' => 900, 'refunded_amount' => 0, 'order_date' => 1300),
+	)), 'later orders that do not count take nothing over');
+}
+
+function test_lead_touch_customer_read_a_partly_refunded_first_order()
+{
+	$row = array('at' => 1000, 'detail' => 'order', 'ref_id' => 5);
+	$own = array('id' => 5, 'status' => 'complete', 'cancelled_at' => 0, 'total' => 4000, 'refunded_amount' => 1500, 'order_date' => 1000);
+
+	pg_assert_same(array('at' => 1000, 'revenue' => 2500), pg_lead_customer_read($row, $own, array()), 'a partial refund keeps the customer; revenue less the refund');
+}
+
+function test_lead_touch_customer_read_a_later_counting_order_takes_over()
+{
+	$row = array('at' => 1000, 'detail' => 'order', 'ref_id' => 5);
+	$own = array('id' => 5, 'status' => 'complete', 'cancelled_at' => 1100, 'total' => 4000, 'refunded_amount' => 0, 'order_date' => 1000);
+	$others = array(
+		array('id' => 12, 'status' => 'complete', 'cancelled_at' => 0, 'total' => 700, 'refunded_amount' => 0, 'order_date' => 3000),
+		array('id' => 5, 'status' => 'complete', 'cancelled_at' => 1100, 'total' => 4000, 'refunded_amount' => 0, 'order_date' => 1000),
+		array('id' => 11, 'status' => 'exported', 'cancelled_at' => 0, 'total' => 2000, 'refunded_amount' => 500, 'order_date' => 2000),
+		array('id' => 10, 'status' => 'complete', 'cancelled_at' => 0, 'total' => 900, 'refunded_amount' => 900, 'order_date' => 1500),
+		array('id' => 4, 'status' => 'complete', 'cancelled_at' => 0, 'total' => 100, 'refunded_amount' => 0, 'order_date' => 900),
+	);
+
+	pg_assert_same(array('at' => 2000, 'revenue' => 1500), pg_lead_customer_read($row, $own, $others), 'the next counting order after the first takes the row over, with its own amount');
+	pg_assert_same(array('at' => 1000, 'revenue' => 4000), pg_lead_customer_read($row, array('cancelled_at' => 0) + $own, $others), 'an undone cancel brings the first order back');
+}
+
+function test_lead_touch_customer_read_as_written()
+{
+	pg_assert_same(array('at' => 1000, 'revenue' => 0), pg_lead_customer_read(array('at' => 1000, 'detail' => 'invoice', 'ref_id' => 3), null, array()), 'a paid-invoice row stays, with no revenue');
+	pg_assert_same(array('at' => 1000, 'revenue' => 0), pg_lead_customer_read(array('at' => 1000, 'detail' => 'order', 'ref_id' => 3), null, array()), 'an order that is gone is read as written');
+}
+
+function test_lead_touch_report_judges_the_customer_rows_at_read()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/lead_touch.php');
+	$body = substr($source, strpos($source, 'function pg_lead_sources_read('));
+
+	pg_assert_contains('pg_lead_customer_read(', $body, 'each customer row is judged by its order');
+	pg_assert_contains('pg_product_insights_counted_sql(', $body, 'a row before the period is read when a counting order of the period may take it over');
 }

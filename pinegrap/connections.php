@@ -1198,6 +1198,9 @@ if ($_POST) {
 
 				db("UPDATE config SET " . implode(', ', $gateway_sets) . ", last_modified_user_id = '" . (int) $user['id'] . "', last_modified_timestamp = UNIX_TIMESTAMP()");
 
+				// A classic gateway's key decides its mode on System Status.
+				pg_system_status_forget();
+
 			}
 
 			if ($action === 'gateway_remove') {
@@ -1232,6 +1235,7 @@ if ($_POST) {
 			if ($action === 'driver_remove') {
 
 				if (pg_payment_settings_forget_keys($driver_id, $user['id'])) {
+					pg_system_status_forget();
 					$liveform->add_notice(lang(array('string' => '{var:1} was disconnected.', 'vars' => $driver_definition['label'])));
 					log_activity(lang(array('string' => 'removed the {var:1} connection', 'vars' => $driver_definition['label'])), $_SESSION['sessionusername']);
 				}
@@ -1255,6 +1259,8 @@ if ($_POST) {
 
 				if (!$liveform->check_form_errors() && $driver_decision['changed']) {
 					pg_payment_settings_store($driver_id, $driver_decision['values'], $driver_decision['secrets'], $driver_decision['enabled'], $user['id']);
+					// The keys decide the driver's mode on System Status.
+					pg_system_status_forget();
 					$liveform->add_notice(lang(array('string' => 'The {var:1} keys were saved.', 'vars' => $driver_definition['label'])));
 					log_activity(lang(array('string' => 'changed the {var:1} connection', 'vars' => $driver_definition['label'])), $_SESSION['sessionusername']);
 				}
@@ -2738,7 +2744,7 @@ function connections_method_page($page, $id, $may_manage) {
 		<section class="pg-card p-5 mb-6" id="' . h($section) . '" aria-labelledby="' . h($section) . '-title">
 			<h2 class="pg-title-section mb-1" id="' . h($section) . '-title">' . h($beside ? $definition['label'] : lang('Connection details')) . '</h2>
 			<p class="pg-card-sub mb-4">' . h(($id === 'givex')
-				? lang('The site\'s Givex account. Whether Givex cards are accepted is set on the Gift Cards & Rewards card of Site Settings › Ecommerce.')
+				? lang('The site\'s Givex account. Whether Givex cards are accepted is set on the Gift cards row of Site Settings › Ecommerce.')
 				: lang(array('string' => 'The site\'s {var:1} keys. Whether it is offered at checkout, its Transaction Type and Mode are set on the Payment Methods card of Site Settings › Ecommerce.', 'vars' => $definition['label']))) . '</p>
 			<form method="post" action="connections.php" class="connections-app-form">
 				' . get_token_field() . '
@@ -2764,7 +2770,7 @@ function connections_method_page($page, $id, $may_manage) {
 
 	}
 
-	$card_name = ($definition['card'] === 'pgset-giftcards') ? lang('Gift Cards & Rewards') : lang('Payment Methods');
+	$card_name = ($definition['card'] === 'pgset-giftcards') ? lang('Gift cards') : lang('Payment Methods');
 
 	$page['uses'] .= '
 				<a class="pg-card-inner-row connections-row" href="' . h(pg_settings_link('commerce', $definition['card'])) . '">

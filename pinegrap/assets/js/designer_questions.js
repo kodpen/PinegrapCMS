@@ -47,6 +47,8 @@
             '.pgq-steps li{display:flex;align-items:center;gap:.375rem;opacity:.7}' +
             '.pgq-steps li+li:before{content:"";width:1.5rem;border-top:1px solid currentColor;opacity:.3;margin-right:.25rem}' +
             '.pgq-steps li.is-on{opacity:1;font-weight:600}' +
+            // On a phone the line wraps: no connector at a line's start.
+            '@media (max-width:575.98px){.pgq-steps{gap:.375rem .875rem}.pgq-steps li+li:before{display:none}}' +
             '.pgq-n{display:inline-flex;width:1.25rem;height:1.25rem;border-radius:50%;align-items:center;justify-content:center;font-size:.6875rem;border:1px solid rgba(127,127,127,.5)}' +
             '.is-on .pgq-n{background:var(--bs-primary,#2563eb);border-color:var(--bs-primary,#2563eb);color:#fff}' +
             '.is-done .pgq-n{border-color:#0d9488;color:#0d9488}' +
@@ -64,7 +66,7 @@
             '.pgq-demo u{text-underline-offset:3px}' +
             '.pgq-demo i{font-style:normal;padding:.125rem .5rem;border-radius:1rem;font-size:.8125rem}' +
             '.pgq-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(11rem,1fr));gap:.75rem}' +
-            '.pgq-card{position:relative;text-align:start;border:1px solid rgba(127,127,127,.35);border-radius:.5rem;padding:.75rem;background:transparent;color:inherit;cursor:pointer}' +
+            '.pgq-card{position:relative;display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;text-align:start;border:1px solid rgba(127,127,127,.35);border-radius:.5rem;padding:.75rem;background:transparent;color:inherit;cursor:pointer}' +
             '.pgq-card[aria-checked=true]{border-color:var(--bs-primary,#2563eb);box-shadow:0 0 0 2px var(--bs-primary,#2563eb)}' +
             '.pgq-card strong{display:block;margin:.25rem 0}' +
             '.pgq-card small{display:block;opacity:.75}' +
@@ -72,7 +74,7 @@
             '.pgq-card[aria-checked=true] .pgq-tick{opacity:1}' +
             '.pgq-btn{display:inline-block;font-size:.625rem;padding:.125rem .5rem;color:#fff;background:var(--bs-primary,#2563eb)}' +
             '.pgq-aa{font-size:1.5rem;line-height:1}' +
-            '.pgq-room{display:grid;gap:.25rem;margin-bottom:.5rem}' +
+            '.pgq-room{display:grid;gap:.25rem;margin-bottom:.5rem;align-self:stretch}' +
             '.pgq-room span{display:block;height:.5rem;border-radius:.125rem;background:rgba(127,127,127,.3)}' +
             '.pgq-more{background:none;border:0;padding:.5rem 0;color:inherit;opacity:.8;cursor:pointer}' +
             '.pgq-note{font-size:.8125rem;opacity:.75;margin:1rem 0 0}' +
@@ -135,12 +137,12 @@
                     '<i style="background:' + esc(c) + '22;color:' + esc(c) + '">' + esc(t.highlight) + '</i></div>';
             } else if (k === 'accent') {
                 var own = a.accent !== 'auto';
-                h = '<div class="pgq-cards" role="radiogroup">' +
+                h = '<div class="pgq-cards" role="radiogroup" aria-label="' + esc(q.steps[k].ask) + '">' +
                     card('accent', 'auto', !own, '<strong>' + esc(t.auto) + '</strong><small>' + esc(t.autoLine.replace('{var:1}', a.brand || '')) + '</small>') +
                     card('accent', 'own', own, '<strong>' + esc(t.own) + '</strong><small>' + esc(t.ownLine) + '</small>') +
                     '</div>' + (own ? '<div class="mt-3">' + swatches(a.accent, 'accent') + '</div>' : '');
             } else if (k === 'look') {
-                h = '<div class="pgq-cards" role="radiogroup">';
+                h = '<div class="pgq-cards" role="radiogroup" aria-label="' + esc(q.steps[k].ask) + '">';
                 q.looks.forEach(function (l, i) {
                     if (i >= q.shown && !all && l.key !== a.look) return;
                     h += card('look', l.key, a.look === l.key,
@@ -149,7 +151,7 @@
                 });
                 h += '</div>' + (all ? '' : '<button type="button" class="pgq-more" data-q-act="all">' + esc(t.allLooks) + ' <i class="bi bi-chevron-down" aria-hidden="true"></i></button>');
             } else if (k === 'type') {
-                h = '<div class="pgq-cards" role="radiogroup">';
+                h = '<div class="pgq-cards" role="radiogroup" aria-label="' + esc(q.steps[k].ask) + '">';
                 Object.keys(q.types).forEach(function (key) {
                     var ty = q.types[key];
                     h += card('type', key, a.type === key,
@@ -158,7 +160,7 @@
                 });
                 h += '</div>';
             } else {
-                h = '<div class="pgq-cards" role="radiogroup">';
+                h = '<div class="pgq-cards" role="radiogroup" aria-label="' + esc(q.steps[k].ask) + '">';
                 Object.keys(q.rooms).forEach(function (key) {
                     var r = q.rooms[key], bars = '', gap = key === 'roomy' ? '.625rem' : '.25rem';
                     for (var i = 0; i < 3; i++) bars += '<span></span>';
@@ -191,10 +193,27 @@
                 (host.mode === 'pane' ? '<p class="pgq-note"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' + esc(t.replace) + '</p>' : '') +
                 (host.foot ? '' : '<div class="pgq-foot">' + foot() + '</div>') + '</div>';
             if (host.foot) host.foot.innerHTML = foot();
-            if (focus) {
+            // A radio group is one tab stop: its chosen item, else its first.
+            host.el.querySelectorAll('[role=radiogroup]').forEach(function (g) {
+                var items = g.querySelectorAll('[role=radio]');
+                var on = g.querySelector('[role=radio][aria-checked=true]') || items[0];
+                items.forEach(function (r) { r.tabIndex = r === on ? 0 : -1; });
+            });
+            if (typeof focus === 'string') {
+                // A choice redrew the step: the same item keeps the focus.
+                var keep = host.el.querySelector(focus);
+                if (keep) keep.focus();
+            } else if (focus) {
                 var h = host.el.querySelector('.pgq-ask');
                 if (h) h.focus();
             }
+        }
+
+        // The selector that finds a clicked item again after a redraw.
+        function sel(el) {
+            if (el.hasAttribute('data-q-color')) return '[data-q-color="' + el.getAttribute('data-q-color') + '"][data-q-for="' + el.getAttribute('data-q-for') + '"]';
+            if (el.hasAttribute('data-q-card')) return '[data-q-card="' + el.getAttribute('data-q-card') + '"][data-q-key="' + el.getAttribute('data-q-key') + '"]';
+            return '';
         }
 
         // The answer of the step on show, or '' when nothing is chosen yet.
@@ -222,7 +241,7 @@
             draw(true);
         }
 
-        function setColor(name, v, fromField) {
+        function setColor(name, v, fromField, keep) {
             v = hex(v);
             if (!v) return;
             a[name] = v;
@@ -240,25 +259,29 @@
                 }
                 return;
             }
-            draw(false);
+            draw(keep || false);
         }
 
         function onClick(e) {
             var el = e.target.closest ? e.target.closest('[data-q-act],[data-q-color],[data-q-card]') : null;
             if (!el) return;
             if (el.hasAttribute('data-q-color')) {
-                setColor(el.getAttribute('data-q-for'), el.getAttribute('data-q-color'), false);
+                setColor(el.getAttribute('data-q-for'), el.getAttribute('data-q-color'), false, sel(el));
                 return;
             }
             if (el.hasAttribute('data-q-card')) {
                 var name = el.getAttribute('data-q-card'), key = el.getAttribute('data-q-key');
                 if (name === 'accent') a.accent = key === 'auto' ? 'auto' : (hex(a.accent) || '');
                 else a[name] = key;
-                draw(false);
+                draw(sel(el));
                 return;
             }
             var act = el.getAttribute('data-q-act');
-            if (act === 'all') { all = true; draw(false); }
+            if (act === 'all') {
+                // The first look that was hidden takes the focus.
+                all = true;
+                draw('.pgq-card[data-q-card="look"]:nth-child(' + (q.shown + 1) + ')');
+            }
             else if (act === 'skip') go(true);
             else if (act === 'next') go(false);
             else if (act === 'cancel') { off(); host.cancel(); }
@@ -276,17 +299,33 @@
             }
         }
 
+        // Arrow keys move within a radio group and choose, as radios do.
+        function onKey(e) {
+            var el = e.target;
+            if (!el || !el.getAttribute || el.getAttribute('role') !== 'radio') return;
+            var d = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+            if (!d) return;
+            var g = el.closest('[role=radiogroup]');
+            if (!g) return;
+            var items = Array.prototype.slice.call(g.querySelectorAll('[role=radio]'));
+            var to = items[(items.indexOf(el) + d + items.length) % items.length];
+            e.preventDefault();
+            if (to) to.click();
+        }
+
         var roots = host.foot ? [host.el, host.foot] : [host.el];
         roots.forEach(function (r) {
             r.addEventListener('click', onClick);
             r.addEventListener('input', onInput);
         });
+        host.el.addEventListener('keydown', onKey);
 
         function off() {
             roots.forEach(function (r) {
                 r.removeEventListener('click', onClick);
                 r.removeEventListener('input', onInput);
             });
+            host.el.removeEventListener('keydown', onKey);
         }
 
         draw(true);
@@ -299,8 +338,10 @@
     // Variables tab runs. The host is the tab's (_sdVarsAskAgain()): the
     // pane, the look and palette, the model, the try-on, setLook, close and
     // the editor's button classes.
-    if (window.StyleDesigner && window.StyleDesigner.definePart) {
-        window.StyleDesigner.definePart('questions', function (K) {
+    // The core declares StyleDesigner as a top-level const: a global binding,
+    // never a property of window. In the New design window it is absent.
+    if (typeof StyleDesigner !== 'undefined' && StyleDesigner.definePart) {
+        StyleDesigner.definePart('questions', function (K) {
             var esc2 = K.esc;
             var _sdT = K._sdT;
             var sdToast = K.sdToast;

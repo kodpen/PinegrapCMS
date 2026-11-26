@@ -41,9 +41,7 @@
 - design-template-own-looks-order.md: Order of the polishing round after Launch: every shipped template's family and pages steps, in which order, and where each template stands
 - design-template-own-looks.md: Plan (owner 2026-11-07): block families in their own source files (B0), Launch as an Apple-like product page (L1-L3), then a polishing round for every template
 - designer-cleanup.md: Plan (owner 2026-11-24, level 2): "Clean up" for a design: style rules, files, shared components and variables nothing uses, listed with the reason and removed only when ticked; steps CU1 to CU4
-- designer-component-overrides.md: Plan (owner 2026-11-24): a shared component's open fields changed per place (text, picture, link, shown) and named variants, the rest following the component; steps CO1 to CO6
 - designer-drawings.md: Plan (owner 2026-11-24): the designer plans' screens are drawn first, DD1 to DD11, by the design session or the architect; a screen step waits for its drawing's merge, never for a yes
-- designer-sketch.md: Plan (owner 2026-11-24, before the launch): the Prototype view as a drawing board: a page sketched as boxes is read, built from blocks and filled with the variables; SK1 to SK9
 - designer-use-round.md: Plan (owner 2026-11-26): the Page Design Studio's features of 2026-11 used in a browser as a first-time person, their faults fixed, their look brought to the chrome's rules; steps UR1 to UR8
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), the queue worker, incoming e-invoices; where to start
@@ -67,10 +65,6 @@
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer
 - mobile-api-shelved-m8.md: Plan mobile-api-shelved, steps M8a to M8d (owner 2026-11-22, beside the other plans): sort=newest on the remaining lists, several reads in one request, a list of deleted records, a CORS allow-list
 - mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what exists (M1–M7), M8 given out beside the other plans, decisions, how its needs arrive
-- office-own-code-os1-census.md: OS1 census of plan office-own-code: the panel lists that export CSV today (screen, file, request, columns), most used first, those left out, the size
-- office-own-code-os2-census.md: OS2 census of plan office-own-code: the importers that take only CSV today (file, action, what, how the CSV is read, sample file), those left out, the parts OS2a and OS2c
-- office-own-code-steps.md: Steps of plan office-own-code: previews OP1-OP4 (.csv, .ods, .xls, .pptx), sheet editing OE1-OE5, document editing OD1-OD3, shared Excel export OS1 and import reader OS2
-- office-own-code.md: Plan (owner 2026-11-19, poll 156 "Tam kapsam"): the own Office code grows after PHPExcel goes: more previews, wider editing, shared Excel export and import; order and rules
 - parasut-devhub-connection.md: Plan (2026-11-25): connecting Paraşüt with a client from its Developer Portal (DevHub): the registered redirect address, sign-in at id.parasut.com with PKCE, short tokens; step PD1
 - parasut-devhub-staging.md: Plan (owner 2026-11-26): Paraşüt's test environment (staging) for a Developer Portal client: the choice on Paraşüt's page of Connections, the sign-in host, the mark on the status line; step PS1
 - picture-text-fit-rules.md: Plan picture-text-fit, the fit's rules (architect 2026-11-26): a text's room from the picture's edges and the other layers, the order grow, wrap, shrink, what stays of the old rule
@@ -78,6 +72,7 @@
 - picture-text-fit.md: Plan (owner 2026-11-26, poll 229): a translated picture text grows into the free room, then wraps, then shrinks; one language's texts corrected by hand in the Artifact Canvas; steps PF1 to PF5
 - plan-state-channel.md: Plan (owner 2026-11-23): what slows the work with memory and plans in git: a docs-only PR's full check, the plan file shared with workers; a light check, step state as channel tasks; PS1-PS3
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
+- settings-accounting-tidy.md: Plan (step TR5 of settings-tidy-round): Site Settings › Accounting as folded rows, the flat ERP card cut into six by topic, steps SA1 to SA4
 - settings-crossings-census-leads.md: Crossings census, the leads: every Site Settings card (and other screen) that leads to a Connections page, the page and anchor it opens, its label, same or new tab, when the lead shows
 - settings-crossings-census-names.md: Crossings census, the names at both ends: the lead's label words, what the Connections page calls the card it leads back to, and where the two differ
 - settings-crossings-census-pages.md: Crossings census, the pages: for each service page of Connections the way back to its card, and where the person stands after Connect, Save and Disconnect
@@ -85,6 +80,10 @@
 - settings-crossings-census-setups.md: Crossings census, first set-ups: for each feature, the hops from its card to working on a new site, counted as moves between card, Connections page and outside service
 - settings-crossings-census-worst.md: Crossings census, the ten worst paths between Site Settings and Connections, ranked by hops, lost work and dead ends, each with what makes it bad; the examples TR2 asks the owner with
 - settings-crossings-census.md: Census of the crossings between Site Settings cards and Connections pages (plan settings-tidy-round, TR1): their shared shape, what is decided, which file holds what
+- settings-crossings-rule.md: Plan settings-tidy-round, step TR2: the one rule for a hand-over between a Site Settings card and its Connections page (owner, poll 232), and what the return may never be
+- settings-ecommerce-tidy-rows.md: Plan settings-ecommerce-tidy: the eleven folded rows of Site Settings › Ecommerce, what each says closed (line, pill, attention) and what it holds when open
+- settings-ecommerce-tidy.md: Plan (step TR4 of settings-tidy-round): Site Settings › Ecommerce redrawn as folded rows, its ten cards without popovers or plain radios, steps EC1 to EC6
+- settings-maintenance-tidy.md: Plan (step TR5 of settings-tidy-round): Site Settings › Updates and maintenance as folded rows, the cron card as a list of jobs, the sales watch a row of its own, steps SM1 to SM4
 - settings-scan-findings.md: Faults found by the 2026-11-21 scan of the Site Settings panes and the step or PR that takes each; a step strikes its lines, the file is deleted when none is left
 - settings-tidy-census-order.md: Survey of the Site Settings categories, its second part: how old each category looks, what is already planned or decided, and the order of the per-category tidy plans
 - settings-tidy-census.md: Survey of the Site Settings categories (owner 2026-11-21: tidy every settings screen, e-mail first): the contradictions and scattered settings found, ranked, with file and line

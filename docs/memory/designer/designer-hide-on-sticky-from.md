@@ -4,7 +4,7 @@ description: Style › Size and display's "Hide on" (Phone, Tablet, Desktop) and
 ---
 
 ## What do the rows do?
-- "Hide on", under Display: three buttons, Phone (XS and SM, below 768 px), Tablet (MD) and Desktop (LG and up), as the canvas bar's widths. Pressed where every selected element is hidden at all of those sizes; a click hides or shows that group on every element in one undo step. Options census DO3 (#11602) (`options-panel-census.md`).
+- "Hide on", under Display: three buttons standing under the label at every width (written segments wider than 162 px, UR4), Phone (XS and SM, below 768 px), Tablet (MD) and Desktop (LG and up), as the canvas bar's widths. Pressed where every selected element is hidden at all of those sizes; a click hides or shows that group on every element in one undo step. Options census DO3 (#11602) (`options-panel-census.md`).
 - "Sticky from", under Position, shown only while Position is Sticky: "Every screen size" or "From MD up" and so on.
 
 ## What do they write?

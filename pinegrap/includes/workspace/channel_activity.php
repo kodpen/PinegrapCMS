@@ -577,6 +577,7 @@ function ws_channel_activity_js_strings()
         'act_tab_activity'    => lang('Activity'),
         'act_project'         => ws_js_template('Project: {var:1}', 1),
         'act_context'         => ws_js_template('{var:1} of {var:2} tokens', 2),
+        'act_context_used'    => ws_js_template('{var:1} tokens', 1),
         // The agents block, the same under both tabs.
         'agents_title'        => lang('AI agents'),
         'agents_manage'       => lang('Manage agents'),

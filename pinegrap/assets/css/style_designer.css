@@ -2983,14 +2983,14 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
    button groups are (28 high, segments 24). A state that holds a value
    carries a ring, 7 px, a 1.5 px accent line, white on the chosen
    segment. Under 300 px the group stands under its label. */
-.sd-state-row { display: flex; align-items: center; gap: 6px 10px; margin: 2px 0 8px; padding-left: 14px; }
+.sd-state-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 2px 0 8px; padding: 0 12px 0 14px; }
 .sd-state-lbl { width: 92px; min-width: 92px; font-size: 12px; color: var(--sd-label); }
 .sd-state-grp {
-    display: flex; align-items: center; gap: 2px; flex: 1; min-width: 0; height: 28px; padding: 1px;
+    display: flex; align-items: center; gap: 2px; flex: 1 0 auto; max-width: 100%; height: 28px; padding: 1px;
     border: 1px solid var(--sd-input-border); border-radius: 9px; background: var(--sd-input-bg); box-sizing: border-box;
 }
 .sd-state-seg {
-    flex: 1 1 auto; display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+    flex: 1 0 auto; display: inline-flex; align-items: center; justify-content: center; gap: 4px;
     min-width: 24px; height: 24px; padding: 0 6px; border: none; border-radius: 7px;
     background: transparent; color: var(--sd-label); font-size: 11.5px; font-weight: 600;
     white-space: nowrap; overflow: hidden; cursor: pointer;
@@ -3009,6 +3009,10 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-state-seg.sd-seg-on .sd-state-ring { border-color: #fff; }
 .sd-rcol-narrow .sd-state-row { flex-direction: column; align-items: stretch; }
 .sd-rcol-narrow .sd-state-lbl { width: auto; min-width: 0; }
+/* A group too wide for the row (four states in Turkish) stands under the
+   label; under 300 px its segments go two to a line, never cut. */
+.sd-rcol-narrow .sd-state-grp { flex-wrap: wrap; height: auto; }
+.sd-rcol-narrow .sd-state-seg { flex: 1 0 calc(50% - 1px); }
 @media (prefers-reduced-motion: reduce) { .sd-state-seg { transition: none; } }
 /* The line under the row, the first-use line. */
 .sd-state-line, .sd-state-hint {
@@ -3080,6 +3084,36 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 #sd-properties.sd-state-on .sd-trans-all { display: inline-block; }
 .sd-trans-ms { display: flex; align-items: center; gap: 8px; }
 .sd-trans-ms .form-range-input { flex: 1 1 auto; min-width: 0; }
+/* Bootstrap 6 sets a range's track and thumb from .form-range, which the
+   panel's sliders have no wrapper of: without these the thumb is not drawn. */
+#sd-properties .sd-trans-ms .form-range-input {
+    --bs-range-track-width: 100%; --bs-range-track-height: 4px; --bs-range-track-cursor: pointer;
+    --bs-range-track-bg: var(--sd-border-strong); --bs-range-track-border-radius: 99px; --bs-range-track-fill-bg: var(--sd-accent-strong);
+    --bs-range-thumb-width: 14px; --bs-range-thumb-height: 14px; --bs-range-thumb-bg: var(--sd-accent-strong);
+    --bs-range-thumb-border: 2px solid var(--sd-text); --bs-range-thumb-border-radius: 99px; --bs-range-thumb-box-shadow: none;
+    --bs-range-thumb-active-bg: var(--sd-accent); --bs-range-thumb-transition-property: background-color;
+    --bs-range-thumb-transition-duration: .12s; --bs-range-thumb-transition-timing: ease;
+    height: 24px; padding: 0; border: 0; background: transparent; box-shadow: none;
+}
+/* A unit or an axis beside a field: grey on the chrome's ground, not the
+   page theme's light one. */
+#sd-properties .input-group-text {
+    height: 30px; padding: 0 7px; font-size: 11.5px; color: var(--sd-text-muted);
+    background: var(--sd-raised-bg-2); border-color: var(--sd-input-border);
+}
+/* A field joined to a unit or a list in a spacing-style row (Z Index and
+   its layer list) on the chrome's field look; a slider's number keeps room
+   for four digits beside its unit. */
+#sd-properties .sd-sp-row > .input-group > .form-control {
+    height: 30px; min-height: 30px; padding: .3rem .6rem; font-size: 12px; line-height: 1.4;
+    color: var(--sd-text); background-color: var(--sd-input-bg); border-color: var(--sd-input-border); box-shadow: none;
+}
+#sd-properties .sd-sp-row > .input-group > select.form-control {
+    appearance: none; -webkit-appearance: none; cursor: pointer; padding-right: 1.75rem;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23b8bdc4' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+    background-repeat: no-repeat; background-position: right .5rem center; background-size: 12px 10px;
+}
+#sd-properties .sd-trans-ms .input-group > .form-control { padding-left: 6px; padding-right: 4px; }
 .sd-trans-ms .input-group { flex: 0 0 84px; width: 84px; }
 .sd-trans-ms.sd-trans-inh .form-range-input { filter: grayscale(1); opacity: .6; }
 /* Transform in Shadow and effect: Move and Skew as two fields, a value
@@ -3087,6 +3121,8 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
    effect, the section's "More" / "Less" row. */
 .sd-tf-pair { display: flex; gap: 6px; }
 .sd-tf-pair .input-group { flex: 1 1 0; min-width: 0; }
+.sd-tf-pair .input-group > .form-control { min-width: 0; }
+.sd-tf-pair > select { flex: 1 1 0; min-width: 0; }
 .sd-tf-pair .input-group-text { padding: 0 5px; }
 .sd-tf .sd-trans-inh .form-control::placeholder { color: var(--sd-text-muted); }
 .sd-tf-og { display: flex; align-items: center; gap: 10px; }
@@ -8213,7 +8249,21 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 
 /* The Variables tab (style_designer_variables.js): a fold per group, a row per variable. */
 .sd-vars-group { margin-bottom: 8px; border: 1px solid #30363d; border-radius: 8px; background: #0d1117; }
-.sd-vars-summary { padding: 7px 10px; font-size: 12.5px; font-weight: 600; color: #e6edf3; cursor: pointer; }
+.sd-vars-summary { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 8px 12px; color: var(--sd-text); cursor: pointer; list-style: none; }
+.sd-vars-summary::-webkit-details-marker { display: none; }
+.sd-vars-summary:focus-visible { outline: 0; box-shadow: var(--sd-focus-ring); border-radius: 8px; }
+.sd-vars-tile { flex: 0 0 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; font-size: 15px; color: var(--sd-tile, var(--sd-accent)); background: color-mix(in srgb, var(--sd-tile, var(--sd-accent)) 16%, transparent); }
+.sd-vars-group[data-group="type"] { --sd-tile: #a78bfa; }
+.sd-vars-group[data-group="spacing"] { --sd-tile: var(--sd-success); }
+.sd-vars-group[data-group="shape"] { --sd-tile: var(--sd-warning); }
+.sd-vars-fn { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.sd-vars-fn b { font-size: 12.5px; font-weight: 600; }
+.sd-vars-fn small { font-size: 11.5px; color: var(--sd-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-vars-ch { flex: 0 0 auto; color: var(--sd-text-muted); transition: transform 120ms; }
+.sd-vars-group[open] > .sd-vars-summary .sd-vars-ch { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) { .sd-vars-ch { transition: none; } }
+.sd-vars-cols { padding-top: 4px; padding-bottom: 4px; font-size: 10.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--sd-text-muted); }
+.sd-vars-cols .sd-vars-pair > span { width: 36px; text-align: center; }
 .sd-vars-row { display: grid; grid-template-columns: 26px minmax(0, 1fr) minmax(0, 1.3fr) auto auto; align-items: center; gap: 8px; padding: 5px 10px; border-top: 1px solid #21262d; font-size: 12px; color: #c9d1d9; }
 .sd-vars-row .form-control { background-color: #161b22; color: #c9d1d9; border-color: #30363d; }
 .sd-vars-row.is-marked { background: rgba(88, 166, 255, .12); box-shadow: inset 3px 0 0 #58a6ff; }
@@ -9365,6 +9415,9 @@ button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible, bu
 .sd-cu-state-head { margin: 4px 0 0; font-weight: 600; }
 .sd-cu-foot { gap: 8px; }
 .sd-cu-ticked { font-size: .78rem; color: var(--sd-text-muted); }
+/* The closing line after "Remove" over the lists; a row that stayed says why. */
+.sd-cu-result { margin-bottom: 4px; }
+.sd-cu-failed { color: var(--sd-warning); }
 .sd-pc-unused-end { display: flex; align-items: center; gap: 8px; }
 .sd-pc-unused-end .sd-pc-bar-note { flex: 1; }
 @media (max-width: 767.98px) {
@@ -9812,3 +9865,28 @@ button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible, bu
 .sd-ga-foot > span { flex: 1; }
 .sd-ga-foot > button { flex: none; padding: 2px 8px; font-size: 11.5px; border-radius: 7px; border: 1px solid var(--sd-border-strong); background: none; color: var(--sd-label); }
 .sd-ga-dim { opacity: .5; }
+
+/* The Sketch tool's Pinegrap AI actions (style_designer_sketchai.js): the
+   "Describe the page" window and the page dimmed while it is drawn. */
+.sd-sai { width: min(480px, 100%); }
+.sd-sai .sd-skd-body { padding-top: .85rem; }
+.sd-sai-field { min-height: 7.5rem; resize: vertical; }
+.sd-sai-note { margin: .4rem 0 .6rem; font-size: .75rem; color: var(--sd-text-muted); }
+.sd-sai-warn { margin: 0 0 .85rem; padding: .45rem .6rem; border-radius: 8px; font-size: .75rem; background: color-mix(in srgb, #f5a524 16%, transparent); color: #f5c46b; }
+.sd-sai .sd-skd-foot { justify-content: flex-end; }
+.sd-sai-dim { pointer-events: none; }
+.sd-sai-dim .sd-sketch-box { opacity: .4; filter: grayscale(1); }
+@media (max-width: 575.98px) {
+    .sd-skd-back:has(.sd-sai) { padding: 0; align-items: flex-end; }
+    .sd-sai { width: 100%; border-radius: 12px 12px 0 0; }
+    .sd-sai .sd-skd-foot > * { flex: 1; }
+}
+
+/* The Options panel's secondary buttons ("Add layer", "Play on the canvas",
+   "Edit the curve") and its help lines on the chrome's tokens: the chrome is
+   always dark, Bootstrap's own colours follow the page theme. */
+#sd-properties .btn-outline.theme-secondary {
+    background: var(--sd-raised-bg-2); color: var(--sd-text); border-color: var(--sd-border-strong); border-radius: 8px;
+}
+#sd-properties .btn-outline.theme-secondary:hover { background: color-mix(in srgb, var(--sd-text) 8%, var(--sd-raised-bg-2)); }
+#sd-properties .form-text { color: var(--sd-text-muted); font-size: 11.5px; line-height: 1.45; }

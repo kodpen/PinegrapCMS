@@ -10,7 +10,7 @@ description: Options controls offering a design's variables (DV3): which rows, t
 
 ## How does a person bind one?
 - A quiet 22 px "Variables" button (braces icon) beside the control, shown on hover or focus; nothing in the panel's head. It opens the list of the part `variables` (`pick`), 252 px under the control: the first-use line with "Got it" (`localStorage` `sd_vars_tip`, never again once dismissed or a variable chosen), "Search variables", "Variables", "Your own", "Type scale" (size), then "Custom colour…" / "Custom value…", which drops a binding and opens today's control.
-- The list closes on Escape, a click outside or a choice; it holds its two document listeners only while open.
+- The list closes on Escape, a click outside or a choice, focus back on the control's button; arrows walk the search and rows, Enter in the search takes the first row (taken in the list's document listener, before the right panel's Enter guard blurs it; #11835). Two document listeners, only while open.
 
 ## What does a bound control hold?
 - An inline style in `props._attrs` style (`setAttrStyleProp()`), so it beats the utility class and needs no column: `var(--pg-var-<token>)`, a step `calc(var(--pg-var-size-base) * var(--pg-var-scale) …)` (a negative step divides), a multiple `calc(var(--pg-var-space-unit) * n)`. `_sdVarExpr()` writes, `_sdVarParse()` reads back; anything else is a typed value.
