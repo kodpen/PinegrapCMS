@@ -1,6 +1,6 @@
 ---
 name: office-sheet-format-controls
-description: The sheet editor's format bar (OE3b) for the selected cells, its colour swatches, one format change a save, and how the preview draws each cell's look and number format
+description: The sheet editor's format bar (OE3b) for the selected cells, its colour swatches, ranges waiting with the typed cells, and how each cell's look and number format is drawn
 module: office
 ---
 
@@ -14,7 +14,8 @@ module: office
 ## How are the cells formatted?
 - The bar above an editable grid (`.office-format`, look A: `pg-icon-button` Bold and Italic, a `pg-seg` of three alignments, a `pg-seg` General / Number / Money / Percent / Date, a quiet Undo). Ctrl+B and Ctrl+I in the grid too.
 - It changes the selected cells: one, or the rectangle Shift+click or Shift+arrows make from the first selected cell. Choosing the alignment already on gives back general.
-- The change waits as one save of its own (`{op: format, sheet, name, range, set}` in `view.edits()`), drawn on the cells at once (but the number text, shown after the save). One range a save; nothing beside cell, row, column or sheet changes; at most 5000 cells. Escape or Undo drops it.
+- Each range waits in the workbook's one list beside the typed cells, in the order they were made (`{op: format, sheet, name, range, set}` in `view.edits()`, `office-sheet-change-list.md`), drawn on the cells at once (but the number text, shown after the save). Any number of ranges; at most 5000 cells a range. Escape in the grid, or the bar's "Undo the format change", drops the last range.
+- The bar is hidden while a row, column or sheet change waits (those are still a save of their own until OF3 of plan office-sheet-steady).
 - Not offered on a protected sheet, even one whose protection allows formatting.
 - Money takes the site's base currency (the server's default).
 
