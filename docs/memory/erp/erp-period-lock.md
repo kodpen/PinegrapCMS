@@ -10,6 +10,7 @@ description: ERP period lock (config.erp_lock_date, 4.79): what it refuses, the 
 ## How does a new write path use it?
 - Every new path that writes to the account ledger or a till asks `erp_lock_refusal($date)` first and gives the operator the sentence it returns (it names the lock date and the refused date). The API endpoints ask up front too (`erp_api_cash_lock_check()`, `api_documents.php`).
 - `erp_account_post()` (`ledger.php`) and `erp_cash_post()` (`cash.php`) ask again, so a path that forgot still cannot write into a closed period. They leave the reason with `erp_lock_refused()`, and `erp_db_error()` returns it in place of a database error, so the caller's usual error path shows the reason.
+- A screen that writes a card and then a dated entry asks before the card: Add account (`add_erp_account.php`) marks a locked opening date on the Date field before the account is saved, as the API does. Before (PR #11869), the account was saved without its opening balance and the edit screen has no opening card.
 
 ## Which date is a write judged by?
 - A new document: its issue date (`erp_invoice_issue()`, `erp_invoice_from_order()`, expenses).
