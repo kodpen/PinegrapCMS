@@ -188,6 +188,13 @@ if (!$_POST) {
     $opening_date_sql = ($opening_date !== '') ? prepare_form_data_for_input($opening_date, 'date') : date('Y-m-d');
     $opening_rate = array('rate' => 1.0, 'rate_date' => $opening_date_sql, 'source' => 'base');
 
+    // The opening entry is refused in a locked period. Asked before the card
+    // is saved: refused after it, the account stayed without its opening
+    // balance and the edit screen has no opening card to enter it again.
+    if (($opening !== 0) && ($liveform->check_form_errors() == false) && (($refusal = erp_lock_refusal($opening_date_sql)) !== '')) {
+        $liveform->mark_error('opening_date', $refusal);
+    }
+
     if (($opening !== 0) && ($currency !== erp_base_currency()) && ($liveform->check_form_errors() == false)) {
         $opening_rate = erp_fx_rate_for($currency, $opening_date_sql);
         if (!is_array($opening_rate)) {
