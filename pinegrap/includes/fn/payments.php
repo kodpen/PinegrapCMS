@@ -945,9 +945,9 @@ function pg_payment_settings_inputs_html($key, $fields, $settings)
             case 'switch':
                 $html .= '
                                                                                         <div class="col-12">
-                                                                                            <div class="form-field">
-                                                                                                <div class="switch"><input value="1"' . (($value === '1') ? ' checked="checked"' : '') . ' class="" type="checkbox" id="' . h($id) . '" name="' . h($id) . '"/></div>
-                                                                                                <label class="" for="' . h($id) . '">' . h($field['label']) . '</label>
+                                                                                            <div class="d-flex align-items-center gap-5">
+                                                                                                <input type="checkbox" class="pg-switch" value="1"' . (($value === '1') ? ' checked="checked"' : '') . ' id="' . h($id) . '" name="' . h($id) . '"/>
+                                                                                                <label class="pg-text-2" for="' . h($id) . '">' . h($field['label']) . '</label>
                                                                                             </div>' . $help . '
                                                                                         </div>';
                 break;
@@ -1076,22 +1076,14 @@ function pg_payment_settings_redirect_rows()
 
         $settings = pg_payment_settings($key);
         $switch = pg_payment_input_name($key, 'enabled');
-        $row = pg_payment_input_name($key, 'row');
 
         $html .= '
-                                                        <div class="col-12 ">
-                                                            <div class="form-field">
-                                                                <div class="switch"><input value="1"' . ($settings['enabled'] ? ' checked="checked"' : '') . ' class="collapse-switcher" type="checkbox" id="' . h($switch) . '" name="' . h($switch) . '" data-bs-target="#' . h($row) . '"/></div>
-                                                                <label class="" for="' . h($switch) . '">' . h($definition['label']) . '</label>
-                                                            </div>
-                                                            <div class="collapse popover fade bs-popover-bottom p-0 " id="' . h($row) . '">
-                                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
-                                                                <div class="popover-body">
-                                                                    <div class="row gy-5">' . pg_payment_settings_card_fields_html($definition, pg_payment_fields($key), $settings) . '
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>';
+                    <div class="col-12">
+                        <div class="d-flex align-items-center gap-5">
+                            <input type="checkbox" class="pg-switch" value="1"' . ($settings['enabled'] ? ' checked="checked"' : '') . ' id="' . h($switch) . '" name="' . h($switch) . '"/>
+                            <label class="pg-group-label mb-0" for="' . h($switch) . '">' . h($definition['label']) . '</label>
+                        </div>
+                    </div>' . pg_payment_settings_card_fields_html($definition, pg_payment_fields($key), $settings);
     }
 
     return $html;

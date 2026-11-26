@@ -346,7 +346,7 @@ function pg_settings_categories()
                 'pgset-feeds'     => lang('Product feeds'),
             ),
             'keywords' => array(
-                'pgset-store'     => pg_settings_keywords(lang('store, commerce, ecommerce, order number, tax, vat, barcode, currency')),
+                'pgset-store'     => pg_settings_keywords(lang('store, commerce, ecommerce, order number, tax, vat, barcode, currency, product images, photo reviews, custom product field, label, pack')),
                 'pgset-payments'  => pg_settings_keywords(lang('payment, card, credit card, iyzico, iyzipay, paypal, stripe, installment, wire transfer, cash on delivery, 3d secure')),
                 'pgset-shipping'  => pg_settings_keywords(lang('shipping, cargo, delivery, ups, fedex, usps, recipient, address verification')),
                 'pgset-address-autocomplete' => pg_settings_keywords(lang('address, autocomplete, suggestions, google places, mapbox, photon, openstreetmap')),
@@ -1318,6 +1318,10 @@ function pg_settings_legacy_anchors()
         'waf_text_log'     => array('firewall',   'pgset-waf-logs'),
         'pgset-ecommerce'  => array('commerce',   'pgset-store'),
         'pgsub-store'      => array('commerce',   'pgset-store'),
+        // The label rule left Shipping and the custom product field labels
+        // left Payment methods for Store's Labels and Products groups.
+        'pack_before_label' => array('commerce',  'pgset-store'),
+        'ecommerce_custom_product_field_1_label' => array('commerce', 'pgset-store'),
         'pgsub-shipping'   => array('commerce',   'pgset-shipping'),
         'pgsub-giftcards'  => array('commerce',   'pgset-giftcards'),
         // The reward programme left Gift Cards & Rewards for Rewards; an old

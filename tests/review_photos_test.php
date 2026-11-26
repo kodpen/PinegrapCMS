@@ -82,7 +82,7 @@ function test_review_photos_wiring()
 
 	pg_assert_contains("define('REVIEW_PHOTOS', (int) (\$row['review_photos'] ?? 0) == 1);", review_photos_test_file('init.php'), 'the constant, off before the upgrade');
 	pg_assert_contains("pg_schema_has('config', 'review_photos')", review_photos_test_file('includes/settings/commerce.save.php'), 'saved once the column is there');
-	pg_assert_contains("\$review_photos_ready ? '", review_photos_test_file('includes/settings/commerce.php'), 'shown once the column is there');
+	pg_assert_contains("(\$review_photos_ready ? pg_commerce_settings_switch('review_photos'", review_photos_test_file('includes/settings/commerce.php'), 'shown once the column is there');
 
 	$migration = review_photos_test_file('includes/migrations/2026.11.0.php');
 	pg_assert_contains('upgrade_2026_11_0_review_photos();          // 11.0.57', $migration, 'the step is called');
