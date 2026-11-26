@@ -663,3 +663,50 @@ function test_workspace_memory_digest_count_line_inside_the_bound()
 	$whole = ws_memory_digest($few, array(), 100, 100000);
 	pg_assert_same($whole, ws_memory_digest($few, array(), 100, mb_strlen($whole) + 2));
 }
+
+function test_workspace_memory_unchanged()
+{
+	$row = array('id' => 7, 'channel_id' => 3, 'title' => 'Merge window', 'text' => "Trains land at 08:00.\nNot on Fridays.", 'tags' => 'merge,iade', 'pinned' => '1', 'expires_at' => '0', 'project' => 'Release train', 'updated_at' => '500');
+	$same = array('title' => 'Merge window', 'text' => "Trains land at 08:00.\nNot on Fridays.", 'tags' => 'merge,iade', 'pinned' => 1, 'expires_at' => 0, 'project' => 'Release train');
+
+	pg_assert_true(ws_memory_unchanged($row, $same, true));
+
+	// Each checked field on its own is a change.
+	foreach (array('title' => 'Merge windows', 'text' => 'Trains land at 09:00.', 'tags' => 'merge', 'pinned' => 0, 'expires_at' => 2000, 'project' => 'Other') as $field => $value) {
+		$values = $same;
+		$values[$field] = $value;
+		pg_assert_false(ws_memory_unchanged($row, $values, true), $field);
+	}
+
+	// The same tags in another order are another index line.
+	$values = $same;
+	$values['tags'] = 'iade,merge';
+	pg_assert_false(ws_memory_unchanged($row, $values, true));
+
+	// Values come from ws_memory_check(): a tag in another case or a trailing
+	// space is folded there, so it reads as the stored row.
+	$values = $same;
+	$values['tags'] = implode(',', ws_memory_tags('#Merge, İade'));
+	$values['title'] = trim('Merge window ');
+	$values['project'] = ws_memory_project(' Release   train ');
+	pg_assert_true(ws_memory_unchanged($row, $values, true));
+
+	// no_expiry on an entry that has none: expires_at 0 against 0.
+	$values = $same;
+	$values['expires_at'] = 0;
+	pg_assert_true(ws_memory_unchanged($row, $values, true));
+
+	// A field left out of the request keeps the stored value in the check.
+	$values = $same;
+	unset($values['project']);
+	pg_assert_false(ws_memory_unchanged($row, $values, true));
+	pg_assert_true(ws_memory_unchanged($row, $values, false));
+
+	// Without the project column the project is not compared.
+	$values = $same;
+	$values['project'] = 'Other';
+	pg_assert_true(ws_memory_unchanged($row, $values, false));
+	$bare = $row;
+	unset($bare['project']);
+	pg_assert_true(ws_memory_unchanged($bare, $same, false));
+}

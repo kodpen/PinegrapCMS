@@ -5,7 +5,8 @@ description: A channel's memory (ws_channel_memory) and the decision mark by a p
 
 ## What holds a channel's memory?
 - `ws_channel_memory` (step 11.0.173, `upgrade_2026_11_0_ws_channel_memory()`): title (150), text (4000), tags (comma list, lower case, at most 10 of 32 characters: `ws_memory_tags()`), pinned, `expires_at` (0 never), `author_kind`/`author_id` and `updated_by_kind`/`updated_by_id` (`user` or `app`, the same pair as `ws_messages.sender_kind`/`sender_id`). Every channel has one, an agent channel or not; a discussion's rows go with it in `ws_threads_purge()`.
-- Read with `ws_memory_ready()` first (files land before the upgrade). Checks: `ws_memory_check()` (panel and API share it; fields left out keep their value; an unchanged past expiry is not refused again) over the pure `ws_memory_entry_fault()`. Writes `ws_memory_save()`, `ws_memory_delete()`. Whoever may post in the channel writes and deletes entries.
+- Read with `ws_memory_ready()` first. Checks: `ws_memory_check()` (panel and API share it; fields left out keep their value; an unchanged past expiry is not refused again) over the pure `ws_memory_entry_fault()`. Writes `ws_memory_save()`, `ws_memory_delete()`. Whoever may post in the channel writes them.
+- Architect (2026-11-26, agent channel request 3063): an update that changes nothing writes nothing; `updated_at`/`updated_by_*` stay and the route answers 200 with the entry as it stands, no "unchanged" field (`channel-memory-note.md`).
 - `ws_memory_sweep()` (`workspace_recurring_job.php`) deletes entries expired 30 days ago and those of gone channels.
 
 ## What does an agent's brief carry?
@@ -16,9 +17,7 @@ description: A channel's memory (ws_channel_memory) and the decision mark by a p
 - `ws_ai_memory_parts()` puts it in a `channel memory` data block of Claude's brief (`ws_ai_briefing()`), the app agent's brief and the preamble (`GET /workspace/messages/{id}/preamble`): one digest for all. Pinegrap AI gets none (no tool reads an entry).
 
 ## Who marked a message?
-- `ws_messages.marked_by_kind` (`user` default, `app`): an application key or an OAuth connection marks as the application (`marked_by` = application id), a team devices session as the person (`ws_message_mark($viewer, $message, $kind, $app_id)`). An agent's mark never reads as a person's, so it is never an owner decision. Without the column an application's mark is refused (503 / "The database has to be updated first.").
-- Any non-system message is markable: `sender_kind` `user` or `app` (`ws_message_mark_check()`, `can_mark` in the payload).
-- Name the marker only with `ws_mark_by_name()` and collect people with `ws_mark_people_ids()`: a bare `marked_by` lookup names the person whose id the application has. `GET /workspace/decisions` gives `marked_by` (`user_id` null for an application) and `marked_by_kind`; the person filter counts only people's marks. A discussion's copy keeps the kind (`ws_thread_copy_sync()`).
+- `ws_messages.marked_by_kind`, `ws_message_mark()`, `ws_mark_by_name()`: `channel-memory-mark.md`.
 
 ## Which routes?
 - `api_memory.php` (`ws_memory_api_routes()`): `workspace.messages.mark` (`POST /workspace/messages/{id}/mark`, kind decision, note or message), `workspace.memory.list` (`GET /workspace/channels/{id}/memory`, no texts; `expired`, `tag`), `.get`, `.create` (201), `.update` (POST with PATCH), `.delete` with its `delete_post` twin. All rehearse, all are MCP tools. `no_expiry` takes an expiry off.

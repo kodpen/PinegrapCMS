@@ -825,6 +825,30 @@ function ws_memory_check($viewer, $channel, $input, $current = null)
 }
 
 /**
+ * Whether checked values hold what an entry already stores: title, text,
+ * tags (in their stored order), pinned, expires_at and, where the column is
+ * there, project. The values come from ws_memory_check(), so a tag in
+ * another case or a trailing space is already folded as stored. Pure.
+ *
+ * @param array $row     ws_channel_memory
+ * @param array $values  ws_memory_check()['values']
+ * @param bool  $project whether the project column is compared (ws_memory_project_ready())
+ * @return bool
+ */
+function ws_memory_unchanged($row, $values, $project)
+{
+    if (((string) ($row['title'] ?? '') !== (string) ($values['title'] ?? ''))
+        || ((string) ($row['text'] ?? '') !== (string) ($values['text'] ?? ''))
+        || (ws_memory_tags((string) ($row['tags'] ?? '')) !== ws_memory_tags((string) ($values['tags'] ?? '')))
+        || ((int) ($row['pinned'] ?? 0) !== (int) ($values['pinned'] ?? 0))
+        || ((int) ($row['expires_at'] ?? 0) !== (int) ($values['expires_at'] ?? 0))) {
+        return false;
+    }
+
+    return !$project || (ws_memory_project($row['project'] ?? '') === ws_memory_project($values['project'] ?? ''));
+}
+
+/**
  * Writes an entry checked by ws_memory_check().
  *
  * @param int        $channel_id 0 for the general memory
@@ -832,10 +856,17 @@ function ws_memory_check($viewer, $channel, $input, $current = null)
  * @param string     $kind    user | app: who writes
  * @param int        $id      their user or application id
  * @param array|null $current the entry changed, null for a new one
- * @return int the entry's id
+ * @return int the entry's id; an update that changes nothing writes
+ *             nothing (no UPDATE, no note, updated_at and updated_by stay)
  */
 function ws_memory_save($channel_id, $values, $kind, $id, $current = null)
 {
+    // A repeated write (an agent sending again after a lost answer) would
+    // otherwise move the entry up the brief's index and note the channel.
+    if ($current && ws_memory_unchanged($current, $values, ws_memory_project_ready())) {
+        return (int) $current['id'];
+    }
+
     $kind = ($kind === 'app') ? 'app' : 'user';
     $now = time();
     $set = "title = '" . e($values['title']) . "',
