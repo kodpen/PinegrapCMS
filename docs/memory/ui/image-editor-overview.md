@@ -23,9 +23,9 @@ module: image_editor
 - The editor never has the server rasterise SVG (GD cannot; Imagick often lacks it): an SVG is kept as sanitized markup (`image-editor-svg-sanitize.md`, `image-editor-svg.md`). An agent's canvas is the exception (`platform/image-server-draw.md`).
 
 ## What is the document?
-- JSON: source (file id, natural size), geometry (quarter turns, flips, straighten, crop box and shape, output size), adjustments, filter, frame, artboard, layers, motion and scenes.
+- JSON: source (file id, size), geometry (turns, flips, straighten, crop, output size), adjustments, filter, frame, artboard, layers, motion and scenes.
 - Layers live in rotated space (after quarter turns and flips, before straighten and crop): a text stays upright and a crop never moves a layer; the picture alone takes the full transform. One path builder gives the `d` string that both the SVG view and the export draw; text has one line layout for both.
 - The document refuses inline pixel data and a size over 1 MB; an inserted picture is its own `files` row referenced by id (`image-editor-versions.md`).
 
 ## Where is each part?
-- Files of a tool and the hooks it may use: `image-editor-parts.md`; the core, loader and labels: `image-editor-modal.md`; keys: `image-editor-keys.md`, `image-editor-access.md`, touch: `image-editor-touch.md`; the Page Design Studio's button: `designer/image-editor-tool.md`.
+- A tool's files and hooks: `image-editor-parts.md`; core, loader, labels: `image-editor-modal.md`; keys: `image-editor-keys.md`, `image-editor-access.md`, touch: `image-editor-touch.md`; the Page Design Studio's button: `designer/image-editor-tool.md`; a .pptx opened: `image-editor-design-file.md`.

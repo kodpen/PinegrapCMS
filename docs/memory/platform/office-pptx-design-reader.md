@@ -5,7 +5,7 @@ module: office_pptx_design
 ---
 
 ## What is it?
-- Since PR #11840 (step DF1 of `plans/artifact-canvas-design-file.md`): `pg_pptx_design_read($path, $limits)` in `includes/fn/office_pptx_design.php` reads a .pptx as a design, without a library, for the Artifact Canvas to open as layers. Pure: no database, nothing written, nothing taken out of the package. Its slides become canvas documents through `pg_pptx_canvas_slide()` (`office-pptx-canvas-mapper.md`); `design_file` opens them (`ui/image-editor-design-file.md`).
+- Since PR #11840 (the design file, `ui/image-editor-design-file.md`): `pg_pptx_design_read($path, $limits)` in `includes/fn/office_pptx_design.php` reads a .pptx as a design, without a library, for the Artifact Canvas to open as layers. Pure: no database, nothing written, nothing taken out of the package. Its slides become canvas documents through `pg_pptx_canvas_slide()` (`office-pptx-canvas-mapper.md`); `design_file` opens them (`ui/image-editor-design-file.md`).
 - It opens the package through the preview's gates and finds the slides with `pg_office_pptx_slides()` (`office-files.md`, `office-pptx-preview.md`).
 
 ## What does it give?

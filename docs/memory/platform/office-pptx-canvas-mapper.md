@@ -5,12 +5,12 @@ module: office_pptx_canvas
 ---
 
 ## What is it?
-- Step DF2 of `plans/artifact-canvas-design-file.md`: `pg_pptx_canvas_slide($design, $slide, $options)` in `includes/fn/office_pptx_canvas.php` turns one slide of `pg_pptx_design_read()` (`office-pptx-design-reader.md`) into a canvas document (`ui/image-editor-overview.md`). Pure. Loaded where used, not by `functions.php`.
+- PR #11872 (`ui/image-editor-design-file.md`): `pg_pptx_canvas_slide($design, $slide, $options)` in `includes/fn/office_pptx_canvas.php` turns one slide of `pg_pptx_design_read()` (`office-pptx-design-reader.md`) into a canvas document (`ui/image-editor-overview.md`). Pure. Loaded where used, not by `functions.php`.
 - It answers `doc` (an artboard, layers `l0`, `l1`… in paint order), `pictures` (layer id => part, ext, crop, flips) and `report`.
 
 ## Which sums turn the file's units into pixels?
 - 9525 EMU a pixel (`PG_PPTX_CANVAS_EMU`): Canva's 18288000 EMU slide is 1920 px; the board's sides are kept to 16-8000.
-- Text size px = `sz` / 100 × 4 / 3; line height = `spcPts` / `sz`, a percent spacing × 1.2, none 1.2; letter spacing em = `spc` / `sz` (`plans/artifact-canvas-canva-census.md`).
+- Text size px = `sz` / 100 × 4 / 3; line height = `spcPts` / `sz`, a percent spacing × 1.2, none 1.2; letter spacing em = `spc` / `sz`.
 
 ## How is a text box mapped?
 - One text layer: the first run's style, the first paragraph's alignment (centre, right, else left); a paragraph is a new line, and a paragraph wider than its box's inner width is broken between words (the canvas's text has no wrap). A box with `wrap="none"` is not broken.

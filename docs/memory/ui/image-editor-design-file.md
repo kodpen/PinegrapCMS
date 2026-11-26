@@ -1,29 +1,36 @@
 ---
 name: image-editor-design-file
-description: The Artifact Canvas's design file (DF3): action design_file reading a .pptx into pages, its pictures kept in Files, limits and refusals, Import's "A design file (.pptx)" adding one page as a group
+description: Open a design file (.pptx from Canva) in the Artifact Canvas as editable layers: why the .pptx, the rules, action design_file, pictures into Files, refusals, Import's "A design file (.pptx)"
 module: image_editor_design
 ---
 
-## What is it?
-- Step DF3 of `plans/artifact-canvas-design-file.md`: a .pptx (Canva: Share, Download, PPTX) opened in the canvas. Server: `includes/fn/image_editor_design.php`, loaded by `functions.php`, reading with `pg_pptx_design_read()` (`platform/office-pptx-design-reader.md`) and mapping with `pg_pptx_canvas_slide()` (`platform/office-pptx-canvas-mapper.md`).
-- Browser: `assets/js/pg_image_editor_design.js`, its own bundle `pg_image_editor_design.min.js`, never in the canvas's first load: `designScript()` (artboard part) loads it from config `design` the first time Import's item is used. Labels `design*` sit in `pg_image_editor_strings_artboard()`.
+## What is it, and why the .pptx?
+- Owner (2026-11-26, poll 230, `workflow/decisions-made-product-113.md`): a design downloaded from Canva (Share, Download, PPTX) opens in the canvas, each page a canvas or a scene. Built in PRs #11840, #11872, #11889, #11913.
+- Architect (2026-11-26): the .pptx, not the .pdf: it keeps every text as a box with paragraphs and style and every picture apart with its crop; the PDF gives drawn lines of glyphs. Read on the owner's ten-page file (never committed).
+- Owner (2026-11-26): a Canva design of the Website kind is published, not downloaded, so the doors' hint says it gives no file.
+- Open: the Page Design Studio's Canva start reading the same file for a page's texts and pictures, asked of the owner.
+
+## Which rules bind it?
+- Architect (2026-11-26): no Canva call and no library; own reader (`platform/office-pptx-design-reader.md`) and mapper (`platform/office-pptx-canvas-mapper.md`), the package opened through the preview's gates (`platform/office-files.md`).
+- A text box is one text layer, a paragraph a new line; differing runs take the first run's style, counted as simplified. Groups resolve to places; turns and flips are kept; charts, tables, effects are left out and counted.
+- Fonts are looked up by family and replaced when the catalogue lacks one; an embedded font is never taken from the package (its licence is the design tool's). Picture parts become the site's files only as parts of the opened canvas (`api/canva-api-terms.md`).
+- Nothing joins the canvas's first load: `assets/js/pg_image_editor_design.js` (bundle `pg_image_editor_design.min.js`) loads from config `design` by `designScript()` when a door is used. Labels `design*` in `pg_image_editor_strings_artboard()`.
 
 ## What does the action design_file do?
-- `{ name, pages?, design? | upload?, file_id | folder_id }` + the file's bytes after the request's line, or in parts (upload kind `design`, `image-editor-upload.md`).
-- Without `pages` it only reads: every page's document and report (pictures still `pptx:` parts), `count`, `width`, `height`, `truncated`, the added-up report, and `design`: the id the file is kept under in `data/temp/image_editor_uploads` (kind `design`, a day like any upload), so the pages are opened without sending it again.
-- With `pages` (1-based, at most 100) the folder is checked first (`file_id`'s folder or `folder_id`, edit right, not the Recycle Bin; none: "A design file is opened into Files: save this image in the File Manager first."). Those pages come back with their pictures kept as files and the kept package is removed.
+- `includes/fn/image_editor_design.php`. `{ name, pages?, design? | upload?, file_id | folder_id }` + the bytes after the request's line, or in parts (upload kind `design`, `image-editor-upload.md`).
+- Without `pages` it reads: each page's document and report (pictures still `pptx:` parts), `count`, `width`, `height`, `truncated`, the summed report, and `design`, the id the file is kept under in `data/temp/image_editor_uploads` for a day.
+- With `pages` (1-based, at most 100) the folder is checked first (edit right, not the Recycle Bin; none: "A design file is opened into Files: save this image in the File Manager first."); pictures become files and the kept package is removed.
 
 ## How does a picture become a file?
-- `pg_image_editor_design_picture_bytes()`: the part read with `pg_zip_entry_contents()` up to 32 MB; PNG, JPEG, GIF or WebP by its bytes that `getimagesizefromstring()` reads. A cut, a flip or a GIF/WebP is drawn again with GD (`pg_image_editor_design_redraw()`, 50 MP at most): a JPEG stays one, the rest become PNG. SVG, EMF and the rest are left out.
-- Kept as a picture from this computer is on a save: the site's upload cap, a unique name "<file name> <page>.<ext>", its own files row (`pg_image_editor_record()`); one part with the same cut and flips once per open; 300 pictures an open.
-- `pg_image_editor_design_point()` points each layer at its file (`src`, `fileId`); a layer whose picture was left out is removed and counted in the report as `left.picture`.
+- `pg_image_editor_design_picture_bytes()`: up to 32 MB; PNG, JPEG, GIF, WebP by bytes. A crop, flip, GIF or WebP is redrawn with GD (50 MP at most): JPEG stays JPEG, the rest PNG. SVG, EMF and others are left out (`left.picture`).
+- Saved as a picture from this computer (`ui/image-editor-canvas-save.md`): upload cap, name "<file name> <page>.<ext>", own files row; one part with the same cut once per open; 300 pictures an open.
 
-## What is refused, and how?
-- A file whose bytes are no ZIP: "This is not a .pptx file. In Canva: Share, Download, then PPTX." (also on the first part of an upload). The reader's sentences otherwise: too large (part 64 MB, package 256 MB), a part not readable. Larger than one request without parts: the upload's 413.
+## What is refused?
+- No ZIP: "This is not a .pptx file. In Canva: Share, Download, then PPTX."; the reader's sentences: too large (part 64 MB, package 256 MB), a part not readable; one request too large without parts: 413.
 
-## What does Import do with it?
-- Import's menu "A design file (.pptx)" (with `importApi()`): a file picker, the read, the window "Open a design file" picking one page (`image-editor-design-chooser.md`), then the page asked for.
-- `designPlace()`: the page's board colour (not white) a rectangle under its layers, a locked background unlocked, new ids, one new group (`M.groupNewId()`), scaled as one into the board (`viewRect()`) contained and centred with `M.groupScale()`, letters by `M.textResize()`, outlines and corner radii by the same factor. One undo step; the group is picked; a toast "Page {n} added: {texts} texts, {pictures} pictures.".
+## What do the doors do?
+- The New image dialog's "Open a design file" and the window "Open a design file": `image-editor-design-chooser.md`.
+- Import's "A design file (.pptx)": one page joins as one group (`designPlace()`): board colour a rectangle under it, new ids, scaled into the board and centred (`M.groupScale()`, `M.textResize()`), one undo step, a toast "Page {n} added: {texts} texts, {pictures} pictures.".
 
 ## How is it tested?
-- `tests/image_editor_design_test.php`: the pure parts, GD's cut and flips, a two-page presentation the test writes read and its picture taken out cut, and `designPlace()` under Node. Not run in a browser or against a database: the files rows and the menu item.
+- `tests/image_editor_design_test.php`: pure parts, GD's cut and flips, a two-page presentation the test writes, `designPlace()` under Node. Not in a browser or against a database.
