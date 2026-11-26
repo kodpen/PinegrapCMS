@@ -11,7 +11,7 @@ description: The sheet grid's row and column head menu (pg_office_view.js) that 
 - Offered on a sheet whose cells may be edited and that is not protected.
 
 ## How does a change look while it waits?
-- Since OF3 (plan office-sheet-steady) it goes into the one list of changes beside cells, formats and sheet changes, any number of them (`office-sheet-change-list.md`). The grid is drawn again as the list leaves it at once: an inserted row or column is there, empty, its head in the accent colour, and is typed into before the save; a deleted one is gone and the rest moved. Escape in the grid drops it while it is the last change.
+- Since OF3 (plan office-sheet-steady) it goes into the one list of changes beside cells, formats and sheet changes, any number of them (`office-sheet-change-list.md`). The grid is drawn again as the list leaves it at once: an inserted row or column is there, empty, its head in the accent colour, and is typed into before the save; a deleted one is gone and the rest moved. Undo takes it back (`office-sheet-undo.md`).
 - Before OF3 one row or column change was a save of its own, drawn as a line or struck through, with "Undo the row or column change".
 
 ## What was checked?

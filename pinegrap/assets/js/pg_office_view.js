@@ -1892,6 +1892,7 @@
             var id = (shown.index >= 0) ? workbook.sheets[shown.index].id : null;
             var at = shown.cell ? cellPosition(shown.cell) : null;
             var scroll = [pane.scrollTop, pane.scrollLeft];
+            var focused = book.contains(document.activeElement);
 
             steps = state;
             rebuild();
@@ -1905,6 +1906,16 @@
 
             if (row && row.cells[at.column + 1]) {
                 select(row.cells[at.column + 1]);
+            }
+
+            // The tabs are drawn again and a greyed button lets go of the
+            // focus: it stays in the workbook, so the next key reaches it.
+            if (focused && !book.contains(document.activeElement)) {
+                var target = shown.cell || tabs.querySelector('.office-tab.active');
+
+                if (target) {
+                    target.focus({ preventScroll: true });
+                }
             }
 
             notify();

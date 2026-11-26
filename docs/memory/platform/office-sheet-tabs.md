@@ -10,7 +10,7 @@ description: The sheet tabs' menu (pg_office_view.js, OE2b) that adds, renames, 
 - A name is typed in place of the tab: Enter keeps it, Esc leaves the sheet as it was. The view checks the server's name rules against the sheets as the list leaves them and names the problem in the status line.
 
 ## How does a waiting change look?
-- Since OF3 (plan office-sheet-steady) sheet changes go into the one list beside cells, formats, rows and columns, any number of them (`office-sheet-change-list.md`). The tabs are drawn again from the list: a renamed tab shows its new name, a moved one stands in its new place, a deleted one is gone, an added one is a tab whose empty grid is typed into before the save; each changed sheet's tab carries the changed dot. Escape in the grid drops the change while it is the last one.
+- Since OF3 (plan office-sheet-steady) sheet changes go into the one list beside cells, formats, rows and columns, any number of them (`office-sheet-change-list.md`). The tabs are drawn again from the list: a renamed tab shows its new name, a moved one stands in its new place, a deleted one is gone, an added one is a tab whose empty grid is typed into before the save; each changed sheet's tab carries the changed dot. Undo takes it back (`office-sheet-undo.md`).
 - Before OF3 one sheet change was a save of its own, struck through or dashed on the tabs, with "Undo the sheet change".
 
 ## What was checked?
