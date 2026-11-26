@@ -209,6 +209,9 @@ function pg_image_editor_config()
         'subject' => pg_js_bundle_urls('assets/js/pg_image_editor_subject.min.js'),
         // Follow's tracker, started as a worker.
         'track'   => pg_js_bundle_urls('assets/js/pg_image_editor_track.min.js'),
+        // The design file's script, loaded the first time Import's design
+        // item is used (designScript(), pg_image_editor_artboard.js).
+        'design'  => pg_js_bundle_urls('assets/js/pg_image_editor_design.min.js'),
         // The largest file Save to Files and an upload take (0: no limit
         // known); a file larger than one part is sent in parts.
         'animationLimit' => pg_image_editor_upload_limits()['max'],
@@ -2887,6 +2890,12 @@ function pg_image_editor_strings_artboard()
         'importComputer'    => lang('From this computer'),
         'importSite'        => lang('From the site'),
         'importError'       => lang('This file cannot be imported.'),
+        // Import's design file (pg_image_editor_design.js, loaded on use).
+        'designImport'      => lang('A design file (.pptx)'),
+        'designReading'     => lang('Reading the design file...'),
+        'designOpening'     => lang('Bringing in the page and its pictures...'),
+        'designAdded'       => lang('Page {n} added: {texts} texts, {pictures} pictures.'),
+        'designError'       => lang('The design file could not be opened.'),
         'languages'         => lang('Languages'),
         'langNote'          => lang('Each language\'s picture is drawn by itself from the last saved version once all its texts are translated, and shown on the pages in that language; "Draw" does it now.'),
         'langUnsaved'       => lang('Changes not saved yet are not in these pictures.'),
@@ -6241,7 +6250,7 @@ function pg_image_editor_strings_phone()
  */
 function pg_image_editor_upload_kinds()
 {
-    return array('video' => 'video_upload', 'sound' => 'sound_upload', 'animation' => 'animation');
+    return array('video' => 'video_upload', 'sound' => 'sound_upload', 'animation' => 'animation', 'design' => 'design_file');
 }
 
 /**
@@ -6473,6 +6482,10 @@ function pg_image_editor_upload_format($kind, $head)
         return pg_image_editor_sound_format($head);
     }
 
+    if ($kind === 'design') {
+        return pg_image_editor_design_format($head);
+    }
+
     return ($kind === 'animation') ? pg_image_editor_animation_type($head) : '';
 }
 
@@ -6547,7 +6560,7 @@ function pg_image_editor_upload_sweep()
  * the largest file (pg_image_editor_upload_limits()) and the disk's room;
  * where it lands is checked by the action that takes it.
  *
- *   { kind: video|sound|animation, size } -> { status, upload, part, received: 0, size }
+ *   { kind: video|sound|animation|design, size } -> { status, upload, part, received: 0, size }
  *
  * @return array array(payload, HTTP status)
  */
@@ -6671,7 +6684,13 @@ function pg_image_editor_action_upload_part($request, $user)
     if ($check === 'format') {
         pg_image_editor_upload_drop($id);
 
-        return pg_image_editor_refusal(($meta['kind'] === 'sound') ? lang('Only MP3, AAC, M4A, WAV and Ogg sounds can be added.') : (($meta['kind'] === 'video') ? lang('Only MP4 and WebM videos can be added.') : lang('Invalid request.')));
+        $refusals = array(
+            'sound'  => lang('Only MP3, AAC, M4A, WAV and Ogg sounds can be added.'),
+            'video'  => lang('Only MP4 and WebM videos can be added.'),
+            'design' => pg_image_editor_design_not_pptx(),
+        );
+
+        return pg_image_editor_refusal(isset($refusals[$meta['kind']]) ? $refusals[$meta['kind']] : lang('Invalid request.'));
     }
 
     if ($check !== '') {
