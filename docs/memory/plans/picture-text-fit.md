@@ -19,7 +19,7 @@ priority: 6
 - PF1 (M) Done (#11837). The room and the growth, pure, in the model and its PHP twin on shared fixtures: the owner's three cases, a text on each of the four edges, two texts side by side and stacked, a headline over a line, a text on a card, a turned text, a sticker's label.
   - The measure, in the PR: a fixture set of at least twenty layouts, each with translations 1.0, 1.3, 1.6, 2.0 and 2.5 times its source's width; how many end "Look by hand" before and after. A test holds that no text ends smaller than the old rule made it.
 - PF2 (M) Done (#11874). The wrap in both twins; the stage, the save and the server draw the lines the fit gives; the shrink takes the wrap that needs the least.
-- PF3 (M) after PF2: the correction's model, no screen: the field on a text layer, the document check, the language document and the server's draw taking it in place of the fit, the states, tests.
+- PF3 (M) Done (#11888). The correction's model (`core/picture-text-fit-correct.md`), no screen: the field on a text layer, the document check, the language document and the server's draw taking it in place of the fit, the states, tests.
 - PF4 (M) after PF3: the language view and the Languages list's rows as `plans/picture-text-fit-screens.md` describes them, on a phone too; "Draw the waiting pictures" opens it from a "Look by hand" row.
 - PF5 (S) Close-out: a face asked with each layer's own text (the open point of `core/picture-text-translation-fit-letters.md`), the notes of the Languages list and the queue reworded, the `core/picture-text-*` files corrected, the three plan files deleted. No new `[NEW]` line: the feature has its own.
 
