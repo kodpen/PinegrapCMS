@@ -64,6 +64,28 @@ function test_ad_conversions_visitor_plan()
 	pg_assert_same(array(), pg_ad_conversion_visitor_plan('purchase', true, array('marketing' => true), $settings), 'the purchase has its own path');
 }
 
+// Begin checkout's value is the cart's lines (price times quantity, minor
+// units): at the payment step the order's total column is not written yet.
+function test_ad_conversions_begin_checkout_detail()
+{
+	$lines = array(
+		array('product_name' => 'SKU-1', 'quantity' => '2', 'price' => '1250'),
+		array('product_name' => 'SKU-2', 'quantity' => '1', 'price' => '999'),
+	);
+
+	$detail = pg_ad_conversion_begin_checkout_detail($lines, 'EUR', 1700000000);
+	pg_assert_same(3499, $detail['value'], 'the lines, not the empty total');
+	pg_assert_same('EUR', $detail['currency'], 'the currency');
+	pg_assert_same('', $detail['order_number'], 'no order number yet');
+	pg_assert_same(2, count($detail['contents']), 'the lines');
+	pg_assert_same(0, pg_ad_conversion_begin_checkout_detail(array(), 'EUR', 1)['value'], 'an empty cart');
+
+	$module = ad_conversions_visitor_test_source('includes/fn/ad_conversions.php');
+	$start = strpos($module, 'function pg_ad_conversion_begin_checkout(');
+	$end = strpos($module, 'function pg_ad_conversion_switch_row(');
+	pg_assert_false(strpos(substr($module, $start, $end - $start), 'SELECT total FROM orders') !== false, 'the total column is not read');
+}
+
 // The event ids: one per form record, account, order (begin checkout) and
 // cart add.
 function test_ad_conversions_visitor_event_ids()
