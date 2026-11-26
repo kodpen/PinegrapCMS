@@ -386,12 +386,108 @@ function pg_lead_sources_totals(array $groups)
 }
 
 /**
+ * A customer row as the report reads it, judged at read (the row is never
+ * changed): null when it makes no customer, else when the contact became one
+ * and the revenue it brings in minor units. Pure.
+ * - A paid-invoice row, or an order row whose order is gone (deleted,
+ *   purged) or was not read, is read as written with no revenue.
+ * - An order the Customers report counts (pg_customer_value_order_counts())
+ *   is the customer, worth its total less any refund
+ *   (pg_customer_value_order_amount()).
+ * - An order it does not count (cancelled, refunded in full) is no
+ *   customer: the contact's next counting order after it takes the row over,
+ *   with that order's time and amount; with none, no customer.
+ *
+ * @param array      $row    at, detail, ref_id
+ * @param array|null $order  the row's own order: id, status, cancelled_at, total, refunded_amount, order_date
+ * @param array[]    $others the contact's other orders, the same columns, in any order
+ * @return array|null at, revenue
+ */
+function pg_lead_customer_read(array $row, $order, array $others)
+{
+    if (((string) ($row['detail'] ?? '') !== 'order') || !is_array($order)) {
+        return array('at' => (int) $row['at'], 'revenue' => 0);
+    }
+
+    if (pg_customer_value_order_counts($order)) {
+        return array('at' => (int) $row['at'], 'revenue' => pg_customer_value_order_amount($order));
+    }
+
+    $own = array((int) $order['order_date'], (int) $order['id']);
+    $next = null;
+
+    foreach ($others as $other) {
+        $place = array((int) $other['order_date'], (int) $other['id']);
+
+        if (($place <= $own) || !pg_customer_value_order_counts($other)) {
+            continue;
+        }
+
+        if (($next === null) || ($place < array((int) $next['order_date'], (int) $next['id']))) {
+            $next = $other;
+        }
+    }
+
+    return ($next === null) ? null : array('at' => (int) $next['order_date'], 'revenue' => pg_customer_value_order_amount($next));
+}
+
+/**
+ * The orders the customer rows name, and for a row whose own order does not
+ * count, the contact's complete or exported orders a later one may take it
+ * over from: own (by order id), others (by contact id).
+ *
+ * @param array[] $rows contact_id, detail, ref_id
+ * @return array own, others
+ */
+function pg_lead_customer_orders(array $rows)
+{
+    $out = array('own' => array(), 'others' => array());
+    $ids = array();
+
+    foreach ($rows as $row) {
+        if ((string) $row['detail'] === 'order') {
+            $ids[(int) $row['ref_id']] = (int) $row['contact_id'];
+        }
+    }
+
+    if (!$ids) {
+        return $out;
+    }
+
+    $columns = 'id, contact_id, status, total, order_date, '
+        . (pg_schema_has('orders', 'cancelled_at') ? 'cancelled_at' : '0 AS cancelled_at') . ', '
+        . (pg_schema_has('orders', 'refunded_amount') ? 'refunded_amount' : '0 AS refunded_amount');
+    $contacts = array();
+
+    foreach (array_chunk(array_keys($ids), 500) as $chunk) {
+        foreach ((array) db_items("SELECT " . $columns . " FROM orders WHERE id IN (" . implode(',', $chunk) . ")") as $order) {
+            $out['own'][(int) $order['id']] = $order;
+
+            if (!pg_customer_value_order_counts($order)) {
+                $contacts[$ids[(int) $order['id']]] = true;
+            }
+        }
+    }
+
+    foreach (array_chunk(array_keys($contacts), 500) as $chunk) {
+        foreach ((array) db_items("SELECT " . $columns . " FROM orders WHERE contact_id IN (" . implode(',', $chunk) . ") AND status IN ('complete', 'exported')") as $order) {
+            $out['others'][(int) $order['contact_id']][] = $order;
+        }
+    }
+
+    return $out;
+}
+
+/**
  * The lead and customer rows of a period with the touch's visit, each
  * contact's earliest row of a kind only (a merge moves both contacts' rows
  * to the one kept, and a contact becomes a lead or a customer once): its
  * channel, campaign and landing page; whether a lead's contact became a
- * customer at or after the lead (one who bought first is no conversion); a customer's first order total in minor units
- * (0 for a paid invoice).
+ * customer at or after the lead (one who bought first is no conversion); a
+ * customer's revenue. With commerce on, each customer row is judged by its
+ * order (pg_lead_customer_read()): a row taken over by a later order counts
+ * in that order's period, so a row before the period is read when a counting
+ * order of the contact falls in it.
  *
  * @param int    $from
  * @param int    $to    the first second after the period
@@ -404,25 +500,88 @@ function pg_lead_sources_read($from, $to, $touch)
         return array();
     }
 
+    $from = (int) $from;
+    $to = (int) $to;
+    $commerce = defined('ECOMMERCE') && (ECOMMERCE === true);
     $visit = ($touch === 'last') ? 'j.last_visit_id' : 'j.first_visit_id';
-    $orders = (defined('ECOMMERCE') && (ECOMMERCE === true))
-        ? "(SELECT o.total FROM orders o WHERE o.id = j.ref_id AND j.kind = '" . PG_LEAD_JOURNEY_CUSTOMER . "' AND j.detail = 'order')"
-        : '0';
-    $rows = array();
+    $customer = "'" . PG_LEAD_JOURNEY_CUSTOMER . "'";
+    $earlier = '';
 
-    foreach ((array) db_items("SELECT j.kind, v.channel, v.campaign, v.landing_page, " . $orders . " AS revenue, v.id AS visit_id,
-            (SELECT COUNT(*) FROM contact_journey c WHERE c.contact_id = j.contact_id AND c.kind = '" . PG_LEAD_JOURNEY_CUSTOMER . "' AND c.at >= j.at) AS customer_rows
+    if ($commerce) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_insights.php');
+        $counted = pg_product_insights_counted_sql(pg_schema_has('orders', 'cancelled_at'), pg_schema_has('orders', 'refunded_amount'));
+        $earlier = " OR (j.kind = " . $customer . " AND j.detail = 'order' AND j.at < '" . $from . "'
+                AND EXISTS (SELECT 1 FROM orders WHERE orders.id = j.ref_id AND NOT (" . $counted . "))
+                AND EXISTS (SELECT 1 FROM orders WHERE orders.contact_id = j.contact_id AND orders.id <> j.ref_id AND " . $counted . "
+                    AND orders.order_date >= '" . $from . "' AND orders.order_date < '" . $to . "'))";
+    }
+
+    $found = (array) db_items("SELECT j.contact_id, j.kind, j.at, j.detail, j.ref_id, v.channel, v.campaign, v.landing_page, v.id AS visit_id
         FROM contact_journey j
         LEFT JOIN lead_visits v ON v.id = " . $visit . "
-        WHERE j.kind IN ('" . PG_LEAD_JOURNEY_LEAD . "', '" . PG_LEAD_JOURNEY_CUSTOMER . "') AND j.at >= '" . (int) $from . "' AND j.at < '" . (int) $to . "'
-            AND NOT EXISTS (SELECT 1 FROM contact_journey e WHERE e.contact_id = j.contact_id AND e.kind = j.kind AND (e.at < j.at OR (e.at = j.at AND e.id < j.id)))") as $row) {
+        WHERE j.kind IN ('" . PG_LEAD_JOURNEY_LEAD . "', " . $customer . ") AND ((j.at >= '" . $from . "' AND j.at < '" . $to . "')" . $earlier . ")
+            AND NOT EXISTS (SELECT 1 FROM contact_journey e WHERE e.contact_id = j.contact_id AND e.kind = j.kind AND (e.at < j.at OR (e.at = j.at AND e.id < j.id)))");
+
+    // Every customer row of the leads' contacts, to tell whether each lead
+    // became a customer at or after it.
+    $leads = array();
+
+    foreach ($found as $row) {
+        if ((int) $row['kind'] === PG_LEAD_JOURNEY_LEAD) {
+            $leads[(int) $row['contact_id']] = true;
+        }
+    }
+
+    $customers = array();
+
+    foreach (array_chunk(array_keys($leads), 500) as $chunk) {
+        foreach ((array) db_items("SELECT contact_id, at, detail, ref_id FROM contact_journey WHERE kind = " . $customer . " AND contact_id IN (" . implode(',', $chunk) . ")") as $row) {
+            $customers[] = $row;
+        }
+    }
+
+    $orders = $commerce ? pg_lead_customer_orders(array_merge($found, $customers)) : array('own' => array(), 'others' => array());
+    $judge = function ($row) use ($orders) {
+        return pg_lead_customer_read($row, $orders['own'][(int) $row['ref_id']] ?? null, $orders['others'][(int) $row['contact_id']] ?? array());
+    };
+    $became = array();
+
+    foreach ($customers as $row) {
+        $read = $judge($row);
+
+        if ($read !== null) {
+            $became[(int) $row['contact_id']][] = $read['at'];
+        }
+    }
+
+    $rows = array();
+
+    foreach ($found as $row) {
+        $kind = (int) $row['kind'];
+        $converted = false;
+        $revenue = 0;
+
+        if ($kind === PG_LEAD_JOURNEY_CUSTOMER) {
+            $read = $judge($row);
+
+            if (($read === null) || ($read['at'] < $from) || ($read['at'] >= $to)) {
+                continue;
+            }
+
+            $revenue = $read['revenue'];
+        } else {
+            foreach ($became[(int) $row['contact_id']] ?? array() as $at) {
+                $converted = $converted || ($at >= (int) $row['at']);
+            }
+        }
+
         $rows[] = array(
-            'kind'         => (int) $row['kind'],
+            'kind'         => $kind,
             'channel'      => (string) $row['channel'],
             'campaign'     => (string) $row['campaign'],
             'landing_page' => (string) $row['landing_page'],
-            'converted'    => ((int) $row['kind'] === PG_LEAD_JOURNEY_LEAD) && ((int) $row['customer_rows'] > 0),
-            'revenue'      => (int) $row['revenue'],
+            'converted'    => $converted,
+            'revenue'      => $revenue,
             'gone'         => $row['visit_id'] === null,
         );
     }
