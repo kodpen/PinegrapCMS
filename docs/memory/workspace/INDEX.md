@@ -283,6 +283,7 @@
 - workspace-agent-settings.md: Workspace agents card in Site Settings (Assistants and agents) and Workspace Settings: rows, drawers, field and button names, form by kind, what a save keeps, shared check and write [decision: decisions-made-panel-9.md]
 - workspace-ai-call-timeout.md: How long one Pinegrap AI model call may take (500 s, PG_AI_CALL_TIMEOUT 20-600), why it is no longer 55 s, what still cuts a call off, the levers to measure before changing limits [decision: here]
 - workspace-ai-rewrite.md: "Rewrite with AI" in the Workspace composer (ai_write target ws_message): what the model reads, the button, Use as one undo step, tags kept, no AI mark
+- workspace-ai-token-counter.md: Pinegrap AI's daily token counter of the licence under the licence card's days and on the Pinegrap AI settings row: where the figure comes from, when it is asked again, when the day ends [decision: here]
 - workspace-ai-turn-calls.md: How ws_ai_step() makes one model turn's tool calls: answer, fail and decide last; a failed canvas, live page or page tool holds the turn's answer back; why
 - workspace-api-bin-flow-blocks-followup.md: Workspace API routes of CA16 (#9831): a binned table row deleted for good (person only, no MCP tool), a draft flow from a table, titled blocks searched and read, a customer channel's follow-up
 - workspace-api-callers.md: Which Workspace API writes the person must make themselves: ws_api_person_only() vs ws_api_own_words_only(), whose name a write carries, refusals, which are no MCP tools [decision: here]
