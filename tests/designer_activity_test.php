@@ -598,3 +598,90 @@ function test_designer_activity_filter_sql_per_part()
 	// An unknown part reads nothing.
 	pg_assert_same(false, pg_designer_activity_filter_sql('nopart', $none));
 }
+
+// A version whose version before was trimmed by the page's retention names
+// none, so its row does not open Compare on a revision that is gone.
+function test_designer_activity_revision_names_the_version_before()
+{
+	$row = array(
+		'revision_id' => 21, 'page_id' => 4, 'revision_no' => 31, 'source' => 'publish',
+		'created_at' => 1700, 'user_id' => 2, 'user_username' => 'ayse', 'page_name' => 'Prices',
+		'page_folder' => 9, 'editor' => '',
+	);
+
+	pg_assert_same(30, pg_designer_activity_from_revision($row + array('oldest_no' => 2))['before_no']);
+	pg_assert_same(0, pg_designer_activity_from_revision($row + array('oldest_no' => 31))['before_no']);
+	pg_assert_same(30, pg_designer_activity_from_revision($row)['before_no']);
+
+	$row['revision_no'] = 1;
+	pg_assert_same(0, pg_designer_activity_from_revision($row + array('oldest_no' => 1))['before_no']);
+}
+
+// A content editor's page is cut to fifty before the events of pages that
+// are not theirs are taken out: the reader goes on reading until fifty of
+// their own are found or nothing older remains, so a page never comes back
+// empty while their events lie further back.
+function test_designer_activity_fill_reads_on_past_hidden_events()
+{
+	$all = array();
+	for ($i = 1; $i <= 130; $i++) {
+		$event = _designer_activity_test_event('revision', $i, 10000 - $i);
+		// Only every tenth event, and none of the newest sixty, is theirs.
+		$event['mine'] = ($i > 60 && $i % 10 === 0);
+		$all[] = $event;
+	}
+
+	$read = function ($before) use ($all) {
+		$cursor = pg_designer_activity_cursor_parse($before);
+		$list = array();
+		foreach ($all as $event) {
+			if (pg_designer_activity_is_after($event, $cursor)) {
+				$list[] = $event;
+			}
+		}
+		return pg_designer_activity_merge(array(array_slice($list, 0, 4)), 3);
+	};
+	$visible = function ($events) {
+		return array_values(array_filter($events, function ($e) { return $e['mine']; }));
+	};
+
+	$seen = array();
+	$before = '';
+	for ($round = 0; $round < 20; $round++) {
+		list($events, $more, $next) = pg_designer_activity_fill($read, $visible, 3, $before, 50);
+		pg_assert_true(count($events) <= 3, 'a page holds at most the page size');
+		if ($more) {
+			pg_assert_true(count($events) > 0, 'a page with more after it is never empty');
+		}
+		foreach ($events as $event) {
+			$seen[] = $event['key'];
+		}
+		if (!$more) {
+			break;
+		}
+		$before = $next;
+	}
+
+	pg_assert_same(array('revision:70', 'revision:80', 'revision:90', 'revision:100', 'revision:110', 'revision:120', 'revision:130'), $seen);
+}
+
+// A full read (the designer roles) is one round, as before.
+function test_designer_activity_fill_one_round_when_all_visible()
+{
+	$calls = 0;
+	$read = function ($before) use (&$calls) {
+		$calls++;
+		return pg_designer_activity_merge(array(array(
+			_designer_activity_test_event('audit', 1, 30),
+			_designer_activity_test_event('audit', 2, 20),
+			_designer_activity_test_event('audit', 3, 10),
+		)), 2);
+	};
+
+	list($events, $more, $next) = pg_designer_activity_fill($read, null, 2, '', 10);
+
+	pg_assert_same(1, $calls);
+	pg_assert_same(2, count($events));
+	pg_assert_true($more);
+	pg_assert_same('20:audit:2', $next);
+}
