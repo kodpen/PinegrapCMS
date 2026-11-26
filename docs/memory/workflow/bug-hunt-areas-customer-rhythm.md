@@ -1,11 +1,11 @@
 ---
 name: bug-hunt-areas-customer-rhythm
-description: Bug hunt of customer rhythm (agent channel request 3034, PR #PRNUM): what was read, the four faults fixed, what was found clean, what was asked and left
+description: Bug hunt of customer rhythm (agent channel request 3034, PR #11767): what was read, the four faults fixed, what was found clean, what was asked and left
 module: customer_rhythm
 ---
 
 ## What was the area, and what was read?
-- Architect, agent channel 2026-11-26, request 3034: reorder time per product, a customer's own rhythm, stages, the reorder reminder. Hunt PR #PRNUM.
+- Architect, agent channel 2026-11-26, request 3034: reorder time per product, a customer's own rhythm, stages, the reorder reminder. Hunt PR #11767.
 - Read: `includes/fn/customer_rhythm.php`, `customer_rhythm_pass.php`, `customer_rhythm_tell.php`, `customer_rhythm_link.php`, `customer_rhythm_report.php`, `reorder.php`, the privacy erase and merge lines, the counting rule in `customer_values.php`, and the six `tests/customer_rhythm*_test.php`.
 
 ## What was fixed?
