@@ -1574,6 +1574,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/architect.md: Decision questions: asked in the agent channel, no architect issue (2026-11-13); the architect decides technical ones, asks the owner schema and product-behaviour ones, records the answer
 - workflow/bug-hunt-areas-2.md: The areas given to a bug hunt from 2026-11-17 on (wholesale prices, publish approval, visitor push, gift cards and store credit), the issues each ended with and what it read clean
 - workflow/bug-hunt-areas-5.md: Bug hunt areas given on the evening of 2026-11-20: order profit and shipping labels (K3), the bookings' visitor side and stock per location (K2); files, what to look at, what is left alone
+- workflow/bug-hunt-areas-agent-requests.md: The bug hunt in the agents' request queue and wakes (architect, 2026-11-26, request 3016): what was fixed, what was read clean, what is asked and left
 - workflow/bug-hunt-areas-api-new-routes.md: The bug hunt of the API routes and MCP tools new in 2026.11.0 (VS8, WQ8, LJ6, SJ6, DV6, share links; PR of 2026-11-24): the two queue faults fixed, what was read clean, what was not run
 - workflow/bug-hunt-areas-backend-sweep.md: The owner's whole-backend sweep of 2026-11-22: how every panel screen was loaded and read, what it found and fixed (#11051), what read clean
 - workflow/bug-hunt-areas-canvas-data-views.md: The bug hunt of the Artifact Canvas data views (DV1-DV6, #11353, 2026-11-24): the four faults fixed, what was read clean, what was not run
