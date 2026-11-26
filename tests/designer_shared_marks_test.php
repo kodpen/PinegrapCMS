@@ -63,8 +63,19 @@ function test_designer_shared_marks_frames_take_no_room()
 		pg_assert_contains($frame, $css, 'a frame is an outline drawn inward: ' . $frame);
 	}
 
-	pg_assert_contains("[':hover:not(:has(.sd-shared-wrap:hover))']", $css, 'the innermost part under the pointer gets the 1.5px frame');
-	pg_assert_contains("':has(.sd-wrap.sd-selected)'", $css, 'the line round a chosen element of a part stays');
+	pg_assert_contains("['.sd-part-hov.sd-part-hov:hover']", $css, 'the innermost part under the pointer gets the 1.5px frame');
+	pg_assert_contains("'.sd-part-sel.sd-part-sel'", $css, 'the line round a chosen element of a part stays');
+	// A :has() over the hover or the selection restyled the whole canvas on
+	// every pointer move and selection in a large design.
+	pg_assert_true(strpos($css, ':has(.sd-shared-wrap:hover)') === false && strpos($css, ':has(.sd-wrap:hover)') === false, 'no hover rule tests :has()');
+	pg_assert_true(strpos($css, ':has(.sd-wrap.sd-selected)') === false, 'no part frame tests :has() for the selection');
+
+	$mark = designer_shared_marks_fn($js, '_sdPartSelMark');
+	pg_assert_contains("closest('.sd-shared-wrap')", $mark, 'every part over a selected wrapper is marked');
+	pg_assert_contains("classList.remove('sd-part-sel')", $mark, 'a part the selection left loses its mark');
+	$hover = designer_shared_marks_fn($js, '_sdHoverMark');
+	pg_assert_contains("classList.add('sd-hov')", $hover, 'the innermost hovered wrapper is marked');
+	pg_assert_contains("classList.add('sd-part-hov')", $hover, 'the innermost hovered part is marked');
 
 	$rule = designer_shared_marks_fn($js, '_sdPartFrameRule');
 	pg_assert_contains("' > :not(.sd-tb)'", $rule, 'a boxless wrapper puts the frame on its child');

@@ -6377,14 +6377,14 @@ const StyleDesigner = (function () {
         'html { scroll-behavior:auto !important; }',
         // Designer node wrapper — inset box-shadow: it does not affect layout and adds no scrollbar
         '.sd-wrap:where(:not([data-sd-self])) { position:relative; box-shadow:inset 0 0 0 0px transparent; min-height:28px; cursor:pointer; transition:box-shadow .15s, background .15s; border-radius:3px; }',
-        '.sd-wrap:where(:not([data-sd-self])):hover:not(:has(.sd-wrap:hover)) { box-shadow:inset 0 0 0 1px rgba(13,110,253,.35); }',
+        '.sd-wrap:where(:not([data-sd-self])).sd-hov.sd-hov:hover { box-shadow:inset 0 0 0 1px rgba(13,110,253,.35); }',
         // An element that is its own wrapper (a summary, _sdSelfWrapped()) is
         // the page's element: the wrapper's box styling is not put on it (the
         // canvas rules are unlayered and would beat a framework's layered
         // ones), only a position for its toolbar and outlines for the marks.
         // The :where() above keeps every other wrapper's specificity.
         '.sd-wrap[data-sd-self] { position:relative; }',
-        '.sd-wrap[data-sd-self]:hover:not(:has(.sd-wrap:hover)) { outline:1px solid rgba(13,110,253,.35); outline-offset:-1px; }',
+        '.sd-wrap[data-sd-self].sd-hov.sd-hov:hover { outline:1px solid rgba(13,110,253,.35); outline-offset:-1px; }',
         // Audit badge: a small "!" pinned to the top-left of a wrapper whose
         // node has an HTML / SEO warning. Click opens the audit panel on it.
         '.sd-issue-badge { position:absolute; top:-7px; left:-7px; z-index:20; width:16px; height:16px; border-radius:50%; background:#f0c040; color:#1b1f24; font:700 11px/16px sans-serif; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,.4); cursor:pointer; pointer-events:auto; }',
@@ -6480,12 +6480,15 @@ const StyleDesigner = (function () {
         // viewport: at the top-left of the page they lay over whatever starts there (a switch, a
         // brand) and took its clicks whenever the pointer was over the page between elements.
         'body > .sd-wrap[data-sd-type="root"] > .sd-tb { position:fixed; top:auto !important; bottom:0; left:0; border-radius:0 4px 0 0; }',
-        // HOVER MODE (innermost only): show name tag + drag handle — use :has() to avoid cascade
-        '.sd-wrap:hover:not(:has(.sd-wrap:hover)) > .sd-tb { display:flex; background:rgba(13,110,253,.82); pointer-events:auto; }',
-        '.sd-wrap:hover:not(:has(.sd-wrap:hover)) > .sd-tb .sd-tb-name { display:flex; }',
-        '.sd-wrap:hover:not(:has(.sd-wrap:hover)) > .sd-tb .sd-tb-btns { display:flex; }',
+        // HOVER MODE (innermost only): show name tag + drag handle. The
+        // innermost hovered wrapper carries .sd-hov (_sdHoverMark()); a
+        // :has() test of the hovered wrappers restyled the whole canvas on
+        // every pointer move in a large design.
+        '.sd-wrap.sd-hov.sd-hov:hover > .sd-tb { display:flex; background:rgba(13,110,253,.82); pointer-events:auto; }',
+        '.sd-wrap.sd-hov.sd-hov:hover > .sd-tb .sd-tb-name { display:flex; }',
+        '.sd-wrap.sd-hov.sd-hov:hover > .sd-tb .sd-tb-btns { display:flex; }',
         // Hide action buttons (not drag handle span) when only hovered but not selected
-        '.sd-wrap:not(.sd-selected):hover:not(:has(.sd-wrap:hover)) > .sd-tb .sd-tb-btns button { display:none; }',
+        '.sd-wrap:not(.sd-selected).sd-hov.sd-hov:hover > .sd-tb .sd-tb-btns button { display:none; }',
         // SELECTED MODE: show all toolbar buttons, hide name
         '.sd-wrap.sd-selected > .sd-tb { display:flex !important; background:#0d6efd; pointer-events:auto; }',
         '.sd-wrap.sd-selected > .sd-tb .sd-tb-name { display:none !important; }',
@@ -7026,17 +7029,17 @@ const StyleDesigner = (function () {
         // puts the frame on its child instead (_sdPartBoxless()).
         '.sd-wrap.sd-shared-wrap { --sd-part:16,185,129; position:relative !important; box-shadow:none !important; background:none !important; outline:0 solid transparent; outline-offset:0; }',
         '.sd-wrap.sd-system-wrap { --sd-part:99,102,241; }',
-        _sdPartFrameRule([':hover', ':has(.sd-wrap.sd-selected)'], 'outline:1px solid rgba(var(--sd-part),.6) !important; outline-offset:-1px !important;'),
-        _sdPartFrameRule([':hover:not(:has(.sd-shared-wrap:hover))'], 'outline:1.5px solid rgb(var(--sd-part)) !important; outline-offset:-1.5px !important;'),
+        _sdPartFrameRule([':hover', '.sd-part-sel.sd-part-sel'], 'outline:1px solid rgba(var(--sd-part),.6) !important; outline-offset:-1px !important;'),
+        _sdPartFrameRule(['.sd-part-hov.sd-part-hov:hover'], 'outline:1.5px solid rgb(var(--sd-part)) !important; outline-offset:-1.5px !important;'),
         _sdPartFrameRule(['.sd-selected.sd-selected'], 'outline:2px solid rgb(var(--sd-part)) !important; outline-offset:-2px !important;'),
         // The name tag: "Header · Shared", the kind lighter. Shown on the
         // innermost part under the pointer and on a chosen one, in the
         // part's colour; the grip only while chosen. The tree root inside
         // a part keeps its blue tag to itself while the part's tag shows.
-        '.sd-shared-wrap:hover:not(:has(.sd-shared-wrap:hover)) > .sd-tb, .sd-wrap.sd-shared-wrap.sd-selected > .sd-tb { display:flex !important; background:rgb(var(--sd-part)) !important; pointer-events:auto; }',
-        '.sd-shared-wrap:hover:not(:has(.sd-shared-wrap:hover)) > .sd-tb > .sd-tb-name.sd-part-tag, .sd-wrap.sd-shared-wrap.sd-selected > .sd-tb > .sd-tb-name.sd-part-tag { display:flex !important; }',
+        '.sd-shared-wrap.sd-part-hov.sd-part-hov:hover > .sd-tb, .sd-wrap.sd-shared-wrap.sd-selected > .sd-tb { display:flex !important; background:rgb(var(--sd-part)) !important; pointer-events:auto; }',
+        '.sd-shared-wrap.sd-part-hov.sd-part-hov:hover > .sd-tb > .sd-tb-name.sd-part-tag, .sd-wrap.sd-shared-wrap.sd-selected > .sd-tb > .sd-tb-name.sd-part-tag { display:flex !important; }',
         '.sd-wrap.sd-shared-wrap:not(.sd-selected) > .sd-tb > .sd-tb-btns { display:none !important; }',
-        '.sd-shared-wrap:hover:not(:has(.sd-shared-wrap:hover)) .sd-shared-inner > .sd-wrap[data-sd-type="root"]:not(.sd-selected) > .sd-tb { display:none !important; }',
+        '.sd-shared-wrap.sd-part-hov.sd-part-hov:hover .sd-shared-inner > .sd-wrap[data-sd-type="root"]:not(.sd-selected) > .sd-tb { display:none !important; }',
         '.sd-part-tag { gap:4px; text-transform:none !important; letter-spacing:0 !important; font-size:10px !important; font-weight:600 !important; }',
         '.sd-part-kind { font-weight:400; opacity:.75; }',
         // "Shared parts" of the View menu (body.sd-parts-lit, Design mode's
@@ -7336,7 +7339,7 @@ const StyleDesigner = (function () {
         // to the element; the toolbar, note dot and issue badge are placed at
         // the element by _sdPlaceWrapChrome() whenever they show.
         '.sd-wrap.sd-fx-flat:not(.d-none):not(.sd-state-off) { display:contents !important; }',
-        '.sd-wrap.sd-fx-flat:hover:not(:has(.sd-wrap:hover)) > ' + _SD_FX_EL + ' { outline:1px solid rgba(13,110,253,.35); outline-offset:-1px; }',
+        '.sd-wrap.sd-fx-flat.sd-hov.sd-hov:hover > ' + _SD_FX_EL + ' { outline:1px solid rgba(13,110,253,.35); outline-offset:-1px; }',
         '.sd-wrap.sd-fx-flat.sd-has-issue > ' + _SD_FX_EL + ' { outline:1px solid rgba(240,192,64,.7); outline-offset:-1px; }',
         '.sd-wrap.sd-fx-flat.sd-selected > ' + _SD_FX_EL + ' { outline:1px solid rgba(13,110,253,.7) !important; outline-offset:-1px !important; }',
         '.sd-wrap.sd-fx-flat.sd-drop-hl > ' + _SD_FX_EL + ' { box-shadow:inset 0 0 0 2px #0d6efd !important; }',
@@ -8382,6 +8385,7 @@ const StyleDesigner = (function () {
             var t = e.target;
             var w = (t && t.closest) ? t.closest('.sd-wrap') : null;
             _sdHoverWrap = w;
+            _sdHoverMark(w, (t && t.closest) ? t.closest('.sd-shared-wrap') : null);
             if (w) {
                 // Hovering shows this wrapper's toolbar, and the name of each
                 // bound wrapper around it.
@@ -8395,6 +8399,10 @@ const StyleDesigner = (function () {
                 var part = w.closest('.sd-shared-wrap');
                 if (part && part !== w) { _sdTbFlip(part); _sdPlaceWrapChrome(part); }
             }
+        });
+        // The pointer leaving the canvas takes the hover marks with it.
+        canvasDoc.addEventListener('mouseout', function (e) {
+            if (!e.relatedTarget) _sdHoverMark(null, null);
         });
         var _sdChromeRaf = 0;
         canvasDoc.addEventListener('load', function (e) {
@@ -8800,6 +8808,7 @@ const StyleDesigner = (function () {
         canvasDoc = null;
         iframeReady = false;
         _sdHoverWrap = null;
+        _sdHovMarked = _sdPartHovMarked = null;
         old.parentNode.replaceChild(fresh, old);
         _sdInitCanvasDoc();
         if (typeof window._sdSyncTheme === 'function') window._sdSyncTheme();
@@ -10575,6 +10584,7 @@ const StyleDesigner = (function () {
         _syncToggleableShowStateFromDom();
         renderCanvas();
         _sdEmailCanvasSync();
+        _sdPartSelMark();
         // Set when only the scoped node's element was drawn again: the rest
         // of the canvas kept its DOM and its badges.
         var _redrawn = _scope ? _sdCanvasRedrawnEl : null;
@@ -10924,6 +10934,7 @@ const StyleDesigner = (function () {
                 var wrap = _findCanvasEl(n);
                 if (wrap) { wrap.classList.add('sd-selected'); _sdTbFill(wrap); _sdRevealInDetails(wrap); }
             });
+            _sdPartSelMark();
             // Placed once every panel is written (_sdMeasureFlush()).
             if (_sdMeasureBatch) _sdMeasureBatch.chrome = true; else _sdPlaceSelectedChrome();
             _sdTextInnerMark();
@@ -11236,6 +11247,9 @@ const StyleDesigner = (function () {
     // _sdFxSoon()), the pass that adds and drops sd-fx-unpos and sd-fx-abs.
     function _sdPlaceSelectedChrome() {
         if (!canvasDoc || !canvasDoc.body) return;
+        // A part drawn after the render (a component's row arriving) gets
+        // its mark here.
+        _sdPartSelMark();
         // The selection's toolbar spot is measured again once the pass has
         // laid the page out: taken before it (a card's cover with no height
         // yet), it stayed 'inside', over the picture, with room below it.
@@ -11252,6 +11266,44 @@ const StyleDesigner = (function () {
 
     // The wrapper under the pointer (the canvas mouseover handler).
     var _sdHoverWrap = null;
+
+    // The innermost wrapper and the innermost shared part under the pointer
+    // carry .sd-hov and .sd-part-hov, which the canvas styles read with
+    // :hover. A :hover:not(:has(.sd-wrap:hover)) test instead had Chromium
+    // match :has() through the subtree of every hovered wrapper on each
+    // pointer move, a style pass over the whole canvas in a large design.
+    var _sdHovMarked = null, _sdPartHovMarked = null;
+    function _sdHoverMark(w, part) {
+        if (_sdHovMarked !== w) {
+            if (_sdHovMarked) _sdHovMarked.classList.remove('sd-hov');
+            if (w) w.classList.add('sd-hov');
+            _sdHovMarked = w;
+        }
+        if (_sdPartHovMarked !== part) {
+            if (_sdPartHovMarked) _sdPartHovMarked.classList.remove('sd-part-hov');
+            if (part) part.classList.add('sd-part-hov');
+            _sdPartHovMarked = part;
+        }
+    }
+
+    // Every shared part holding a selected wrapper carries .sd-part-sel
+    // (its thin frame), in place of a :has(.sd-wrap.sd-selected) test that
+    // restyled the whole canvas on each selection. Only what changes is
+    // written.
+    function _sdPartSelMark() {
+        if (!canvasDoc || !canvasDoc.body) return;
+        var want = [];
+        canvasDoc.querySelectorAll('.sd-wrap.sd-selected').forEach(function (w) {
+            for (var p = w.parentElement ? w.parentElement.closest('.sd-shared-wrap') : null; p;
+                 p = p.parentElement ? p.parentElement.closest('.sd-shared-wrap') : null) {
+                if (want.indexOf(p) === -1) want.push(p);
+            }
+        });
+        canvasDoc.querySelectorAll('.sd-part-sel').forEach(function (p) {
+            if (want.indexOf(p) === -1) p.classList.remove('sd-part-sel');
+        });
+        want.forEach(function (p) { if (!p.classList.contains('sd-part-sel')) p.classList.add('sd-part-sel'); });
+    }
 
     // Where a wrapper's toolbar goes, from its box's top and bottom and the
     // canvas viewport's height: 'above' it; with no room above (the top of
