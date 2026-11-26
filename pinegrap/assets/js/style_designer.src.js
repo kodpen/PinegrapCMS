@@ -10384,6 +10384,9 @@ const StyleDesigner = (function () {
     // the panel's own function decides what to do.
     function _sdPanelHidden(host) {
         if (!host) return false;
+        // In a paint pass, as it was before the pass's first write.
+        var seen = _sdMeasureBatch && _sdMeasureBatch.hidden;
+        for (var i = 0; seen && i < seen.length; i++) if (seen[i][0] === host) return seen[i][1];
         if (host.closest && host.closest('.sd-panel-bottom.collapsed:not(.sd-docked)')) return true;
         return !(host.getClientRects && host.getClientRects().length);
     }
@@ -10504,7 +10507,10 @@ const StyleDesigner = (function () {
         if (isRoot) rows = Array.prototype.slice.call(panel.querySelectorAll('[data-ht-root]'));
         Array.prototype.forEach.call(panel.querySelectorAll('.sd-ht-selected'), function (r) { r.classList.remove('sd-ht-selected'); });
         rows.forEach(function (r) { r.classList.add('sd-ht-selected'); });
-        if (rows.length && !isRoot && rows[0].scrollIntoView) rows[0].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        if (rows.length && !isRoot && rows[0].scrollIntoView) {
+            if (_sdMeasureBatch) _sdMeasureBatch.htmlRow = rows[0];
+            else rows[0].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
         return true;
     }
 
@@ -10552,6 +10558,7 @@ const StyleDesigner = (function () {
     // ── end of panels on demand
 
     function render() {
+        var _own = _sdMeasureBegin();
         // The node an edit limited this render to (_sdRenderNode()), read
         // before renderCanvas() takes it.
         var _scope = _sdCanvasScope;
@@ -10600,6 +10607,7 @@ const StyleDesigner = (function () {
         _sdSharedBaseline();
         _sdGuidesSync();
         _sdA11ySync();
+        if (_own) _sdMeasureFlush();
     }
 
     // Every cached component tree gets a snapshot of what its row holds the
@@ -10701,11 +10709,15 @@ const StyleDesigner = (function () {
             _sharedDirty[_editingSharedSid] = true;
             if (_editingSharedSid !== _prevSid && !_sharedWarned[_editingSharedSid]) {
                 _sharedWarned[_editingSharedSid] = true;
-                sdToast(
-                    '<span class="bi bi-puzzle-fill me-1" style="color:#22c55e"></span>' +
-                    _sdT('You are editing a shared component — saving affects <strong>every</strong> style that uses it.'),
-                    'warning', 7000
-                );
+                // Shown after the selection's paint: showing a toast reads
+                // its computed style, a style pass over the whole designer.
+                setTimeout(function () {
+                    sdToast(
+                        '<span class="bi bi-puzzle-fill me-1" style="color:#22c55e"></span>' +
+                        _sdT('You are editing a shared component — saving affects <strong>every</strong> style that uses it.'),
+                        'warning', 7000
+                    );
+                }, 0);
             }
         }
     }
@@ -10847,7 +10859,55 @@ const StyleDesigner = (function () {
         }
     }
 
+    // While a paint pass runs (renderSelectionOnly(), render()), the
+    // measuring its parts ask for is held here and done once after the last
+    // write (_sdMeasureFlush()). A read after a write lays out the designer
+    // and the canvas frame again, and in a large design each layout costs
+    // tens of milliseconds: a selection in the Store template (1,862 canvas
+    // elements) laid the page out four or five times.
+    var _sdMeasureBatch = null;
+
+    // Opens a batch; false when one is already open (a nested pass leaves
+    // the measuring to the outer one). The Options panel's scroll and
+    // which panels can be seen (_sdPanelHidden()) are read here, before
+    // anything is written. A batch a thrown error left open is closed at
+    // the end of its task, so the measuring is never held longer.
+    function _sdMeasureBegin() {
+        if (_sdMeasureBatch) return false;
+        var props = document.getElementById('sd-properties');
+        var hidden = [];
+        ['tree', 'html', 'attrs', 'styles'].forEach(function (name) {
+            var host = _sdPanelHost(name);
+            if (host) hidden.push([host, _sdPanelHidden(host)]);
+        });
+        var b = _sdMeasureBatch = { propsTop: props ? props.scrollTop : 0, hidden: hidden };
+        Promise.resolve().then(function () { if (_sdMeasureBatch === b) _sdMeasureFlush(); });
+        return true;
+    }
+
+    // Closes the batch and does what it holds, every read before the
+    // writes that depend on it: the Layers row brought into view, the
+    // Options panel's scroll, the HTML tree row, the canvas chrome of the
+    // selection (or only the size badge) and the tree map's marks.
+    function _sdMeasureFlush() {
+        var b = _sdMeasureBatch;
+        _sdMeasureBatch = null;
+        if (!b) return;
+        // The designer's own panels first: once the canvas chrome is
+        // written, a read in the designer lays the canvas frame out again.
+        if (b.reveal) _sdTreeRevealSelection(b.revealForce);
+        // The map is measured with the frame's own layout: read here, after
+        // the Layers scroll, it laid the designer out once more.
+        if (b.map) _sdTreeMapMarksSoon();
+        if (b.props && b.props.panel.isConnected) b.props.panel.scrollTop = b.props.top;
+        if (b.htmlRow && b.htmlRow.isConnected) b.htmlRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        if (b.chrome) _sdPlaceSelectedChrome();
+        else if (b.badge) _positionSizeBadge();
+        if (b.chromeOf && b.chromeOf.length) _sdPlaceChromeOf(b.chromeOf);
+    }
+
     function renderSelectionOnly() {
+        var _own = _sdMeasureBegin();
         // Keep _editingSharedSid in sync with the new selection so ctx-bar lookups
         // (findDropdownContainer / findNavbarContainer / findCompositeContext, etc.)
         // walk the correct tree when selection changes inside a system widget or
@@ -10864,7 +10924,8 @@ const StyleDesigner = (function () {
                 var wrap = _findCanvasEl(n);
                 if (wrap) { wrap.classList.add('sd-selected'); _sdTbFill(wrap); _sdRevealInDetails(wrap); }
             });
-            _sdPlaceSelectedChrome();
+            // Placed once every panel is written (_sdMeasureFlush()).
+            if (_sdMeasureBatch) _sdMeasureBatch.chrome = true; else _sdPlaceSelectedChrome();
             _sdTextInnerMark();
         }
         renderProperties();
@@ -10875,6 +10936,7 @@ const StyleDesigner = (function () {
         updateCtxBar();
         _sdSharedBaseline();
         _sdGuidesSync();
+        if (_own) _sdMeasureFlush();
     }
 
     // The <details> the operator opened or closed on the canvas. A render
@@ -34276,6 +34338,11 @@ const StyleDesigner = (function () {
     // tree (the section closed, the Notes tab open) is left for when it
     // shows again.
     function _sdTreeRevealSelection(force) {
+        if (_sdMeasureBatch) {
+            _sdMeasureBatch.reveal = true;
+            if (force) _sdMeasureBatch.revealForce = true;
+            return;
+        }
         var n = selectedNode;
         if (!n) { _sdTreeShownFor = null; return; }
         if (n === _sdTreeShownFor && !force) return;
@@ -34515,8 +34582,17 @@ const StyleDesigner = (function () {
         _sdTreeMapMarks();
     }
 
+    // _sdTreeMapMarks() on the next animation frame, once for a frame.
+    var _sdTreeMapRaf = 0;
+    function _sdTreeMapMarksSoon() {
+        if (_sdTreeMapRaf) return;
+        if (typeof requestAnimationFrame !== 'function') { _sdTreeMapMarks(); return; }
+        _sdTreeMapRaf = requestAnimationFrame(function () { _sdTreeMapRaf = 0; _sdTreeMapMarks(); });
+    }
+
     // The range in view and the selection on the map.
     function _sdTreeMapMarks() {
+        if (_sdMeasureBatch) { _sdMeasureBatch.map = true; return; }
         var map = document.getElementById('sd-ov-map');
         var d = _sdTreeMapData;
         if (!map || map.hidden || !d || !d.ranges) return;
@@ -38763,6 +38839,13 @@ const StyleDesigner = (function () {
         if (btn) btn.focus();
     }
 
+    // The Options panel's scroll after a draw; in a paint pass it is set
+    // with the pass's measuring, as setting it lays the page out.
+    function _sdPropsScrollTo(panel, top) {
+        if (_sdMeasureBatch) _sdMeasureBatch.props = { panel: panel, top: top };
+        else panel.scrollTop = top;
+    }
+
     function renderProperties() {
         var panel = document.getElementById('sd-properties');
         if (!panel) return;
@@ -38772,7 +38855,9 @@ const StyleDesigner = (function () {
         // Several elements: a kind of its own, so their tab is kept for
         // the same kinds selected again (_sdMcKind()).
         var _kind = selectedNodes.length > 1 ? _sdMcKind(selectedNodes.map(_sdPanelKind)) : _sdPanelKind(selectedNode);
-        var _keepScroll = (_kind && _kind === _sdPanelLastKind) ? panel.scrollTop : 0;
+        // In a paint pass the scroll read before its first write is kept,
+        // and put back once everything is written (_sdMeasureFlush()).
+        var _keepScroll = (_kind && _kind === _sdPanelLastKind) ? (_sdMeasureBatch ? _sdMeasureBatch.propsTop : panel.scrollTop) : 0;
         _sdOptTab = _sdOptTabKeep(_kind, _sdPanelLastKind, _sdOptTab);
         _sdPanelLastKind = '';
         _sdPanelLazy = {};
@@ -38885,7 +38970,7 @@ const StyleDesigner = (function () {
             }
             _sdPanelLastKind = _kind;
             renderMultiProperties();
-            panel.scrollTop = _keepScroll;
+            _sdPropsScrollTo(panel, _keepScroll);
             return;
         }
 
@@ -39039,7 +39124,7 @@ const StyleDesigner = (function () {
         _sdCoAfter(panel, selectedNode);
         _sdQuickDraw(panel, [selectedNode]);
         _sdReviewAfter(_counts);
-        panel.scrollTop = _keepScroll;
+        _sdPropsScrollTo(panel, _keepScroll);
         // Re-apply search filter if user had typed something
         var srch = document.getElementById('sd-props-search');
         if (srch && srch.value.trim()) filterPropertiesPanel(srch.value.toLowerCase().trim());
@@ -62722,6 +62807,7 @@ const StyleDesigner = (function () {
     }
 
     function _positionSizeBadge() {
+        if (_sdMeasureBatch) { _sdMeasureBatch.badge = true; return; }
         _sdBandsSoon();
         var badge = _ensureSizeBadge();
         if (!badge) return;
@@ -97202,7 +97288,8 @@ const StyleDesigner = (function () {
         // New elements, put on after the fidelity pass placed the old ones
         // (the validation runs debounced): the badges of see-through and
         // sd-fx-unpos wrappers are placed now, not on the first hover.
-        _sdPlaceChromeOf(badged);
+        if (_sdMeasureBatch) _sdMeasureBatch.chromeOf = (_sdMeasureBatch.chromeOf || []).concat(badged);
+        else _sdPlaceChromeOf(badged);
     }
 
     function scheduleValidation() {
