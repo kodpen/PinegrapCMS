@@ -437,3 +437,34 @@ function test_canvas_bands_column_handle_and_gaps_in_the_part()
 	pg_assert_contains('host.col = _sdBandsCol(node);', $core, 'handed with the bands\' host');
 	pg_assert_contains('host.siblings = ', $core, 'the siblings for the equal gaps');
 }
+
+// A drag whose release the handle did not hear (the button let go outside
+// the window, a capture lost) ends: the next move without the main button
+// held writes as a release, a lost capture puts the value back. Before,
+// the drag went on following the pointer with no button held and every
+// handle refused the next drag (S.live stayed set).
+function test_canvas_bands_drag_ends_without_its_release()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_bands.js');
+
+	pg_assert_true(strpos($js, 'function _bdLetGo(ev) {') !== false, 'a move with the main button no longer held is told');
+	pg_assert_true(strpos($js, "return typeof ev.buttons === 'number' && !(ev.buttons & 1);") !== false, 'from the buttons held');
+	pg_assert_same(2, substr_count($js, "if (_bdLetGo(ev)) { up({ type: 'pointerup' }); return; }"), 'the spacing and the column handle end as a release');
+	pg_assert_same(2, substr_count($js, "h.addEventListener('lostpointercapture', up);"), 'both end on a lost capture');
+	pg_assert_same(2, substr_count($js, "h.removeEventListener('lostpointercapture', up);"), 'and drop that listener with the others');
+}
+
+// A panel docked or a column resized moves a canvas of a fixed width
+// without resizing its window, so no canvas draw follows: the bands and
+// the layout lines follow the canvas area's size themselves while shown,
+// and drop the observer with their other listeners.
+function test_canvas_bands_and_lines_follow_the_area_size()
+{
+	$bands = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_bands.js');
+	$guides = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_guides.js');
+
+	pg_assert_true(strpos($bands, 'S.ro = new ResizeObserver(_bdAreaScroll);') !== false && strpos($bands, 'S.ro.observe(area);') !== false, 'the bands observe the area');
+	pg_assert_same(2, substr_count($bands, 'if (S.ro) { S.ro.disconnect(); S.ro = null; }'), 'and let it go with the area or on hide');
+	pg_assert_true(strpos($guides, 'L.ro = new ResizeObserver(linesSoon);') !== false && strpos($guides, 'L.ro.observe(area);') !== false, 'the lines observe the area');
+	pg_assert_true(strpos($guides, 'if (L.ro) { L.ro.disconnect(); L.ro = null; }') !== false, 'and let it go when they end');
+}

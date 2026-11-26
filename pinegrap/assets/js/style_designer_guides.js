@@ -164,6 +164,14 @@ StyleDesigner.definePart('guides', function (K) {
         }
     }
 
+    // A spacing or column handle being dragged or stepped (the part
+    // 'bands' marks its layer is-live): its Alt means all four sides and its
+    // Escape puts the value back, so Measure draws nothing over it and the
+    // lines leave its Escape alone.
+    function bandHeld() {
+        return !!document.querySelector('.sd-cgb-layer.is-live');
+    }
+
     function clear() {
         if (M && M.layer) M.layer.hidden = true;
     }
@@ -173,7 +181,7 @@ StyleDesigner.definePart('guides', function (K) {
         M.frame = 0;
         var sel = M.host.selected();
         var hov = M.target;
-        if (!sel || !hov || hov === sel || !hov.isConnected || !sel.isConnected) return clear();
+        if (!sel || !hov || hov === sel || !hov.isConnected || !sel.isConnected || bandHeld()) return clear();
         var v = view(M.host.doc);
         if (!v) return clear();
         var a = place(G.box(M.host.rectOf(sel)), v);
@@ -259,7 +267,7 @@ StyleDesigner.definePart('guides', function (K) {
     // the selected element's wrapper (null once the selection is not one
     // element of that document), its rectangle and its name.
     function measure(host) {
-        if (!G || !host || !host.doc || !host.doc.defaultView) return;
+        if (!G || !host || !host.doc || !host.doc.defaultView || bandHeld()) return;
         if (M && M.host.doc === host.doc) {
             M.host = host;
             return;
@@ -376,10 +384,10 @@ StyleDesigner.definePart('guides', function (K) {
         if (L && !L.frame) L.frame = requestAnimationFrame(linesDraw);
     }
 
-    // Escape ends the lines and only that, outside a text being typed or a
-    // window over the editor.
+    // Escape ends the lines and only that, outside a text being typed, a
+    // window over the editor or a handle being changed.
     function linesEsc(e) {
-        if (e.key !== 'Escape' || !L) return;
+        if (e.key !== 'Escape' || !L || bandHeld()) return;
         var t = e.target;
         if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName || '') || (t.closest && t.closest('dialog')))) return;
         e.preventDefault();
@@ -398,6 +406,14 @@ StyleDesigner.definePart('guides', function (K) {
             w[fn]('resize', linesSoon);
         });
         if (win) win[fn]('scroll', linesSoon, { passive: true, capture: true });
+        // A panel docked or a column resized moves a canvas of a fixed
+        // width without resizing its window or the editor's.
+        if (L.ro) { L.ro.disconnect(); L.ro = null; }
+        var area = on && win && win.frameElement && win.frameElement.closest ? win.frameElement.closest('.sd-iframe-area') : null;
+        if (area && typeof ResizeObserver === 'function') {
+            L.ro = new ResizeObserver(linesSoon);
+            L.ro.observe(area);
+        }
     }
 
     // Shows the lines, or draws them again for the canvas `host.doc` (a
@@ -407,7 +423,7 @@ StyleDesigner.definePart('guides', function (K) {
         if (!G || !host || !host.doc || !host.doc.defaultView) return;
         if (L && L.win !== host.doc.defaultView) linesOff();
         if (!L) {
-            L = { host: host, win: host.doc.defaultView, layer: null, frame: 0 };
+            L = { host: host, win: host.doc.defaultView, layer: null, frame: 0, ro: null };
             linesListen(true);
         }
         L.host = host;

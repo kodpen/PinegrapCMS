@@ -88,3 +88,20 @@ function test_designer_guides_lines_drawn_by_the_part_outside_the_page()
 	pg_assert_true(strpos($js, "L.layer.className = 'sd-gl-layer';") !== false, 'a layer of its own in the editor');
 	pg_assert_true(strpos($js, "w[fn]('keydown', linesEsc, true);") !== false && strpos($js, 'linesListen(false);') !== false, 'Escape listened to only while the lines show');
 }
+
+// While a spacing or column handle is changed (the bands' layer is-live),
+// Alt is the handle's "all four sides": Measure neither starts nor draws.
+// Escape is the handle's: the layout lines leave it alone. Before, Escape
+// on a stepped handle turned the lines off and left the value on the
+// canvas, and Alt during a drag drew Measure's lines over the bands.
+function test_designer_guides_leave_a_held_handle_alone()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_guides.js');
+	$bands = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_bands.js');
+
+	pg_assert_true(strpos($js, "return !!document.querySelector('.sd-cgb-layer.is-live');") !== false, 'a held handle is read from the bands\' layer');
+	pg_assert_true(strpos($bands, "S.layer.classList.add('is-live');") !== false, 'which the bands mark while a change is under way');
+	pg_assert_true(strpos($js, "if (!G || !host || !host.doc || !host.doc.defaultView || bandHeld()) return;") !== false, 'Measure does not start');
+	pg_assert_true(strpos($js, '!sel.isConnected || bandHeld()) return clear();') !== false, 'nor draws');
+	pg_assert_true(strpos($js, "if (e.key !== 'Escape' || !L || bandHeld()) return;") !== false, 'the lines leave the handle\'s Escape');
+}
