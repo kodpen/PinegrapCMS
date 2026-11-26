@@ -389,17 +389,17 @@ function ws_mail_box_account_ask_forms($return)
 
 /**
  * The address of a provider's page on Connections, at its Connect an
- * account for mailboxes action, with the place to come back to once the
- * account is connected (pg_connections_screen_mail_return()). Pure.
+ * account for mailboxes action, returning to the Mailboxes card once the
+ * account is connected (pg_connections_back()). Pure.
  *
  * @param string $provider microsoft | google
- * @param string $return   a Site Settings address
  * @return string
  */
-function ws_mail_connections_url($provider, $return = 'settings_mailboxes.php#pgset-ws-mail')
+function ws_mail_connections_url($provider)
 {
-    return 'connections.php?service=' . (($provider === 'google') ? 'google' : 'microsoft')
-        . '&mail_return=' . rawurlencode($return) . '#connections-mail';
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/connections_screen.php');
+
+    return pg_connections_lead_url(($provider === 'google') ? 'google' : 'microsoft', 'email', 'pgset-ws-mail', 'connections-mail');
 }
 
 /**

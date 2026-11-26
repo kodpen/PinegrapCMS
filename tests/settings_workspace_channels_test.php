@@ -129,7 +129,7 @@ function test_settings_workspace_channels_github_card_leads_to_connections()
 
 	pg_assert_false(function_exists('ws_settings_github_link_drawer'), 'no Link a repository drawer in Site Settings');
 	pg_assert_false(function_exists('ws_github_links_settings_dialog_input'), 'nor its field names');
-	pg_assert_contains("'/connections.php?service=github#connections-repositories'", $source, 'the card leads to the links on GitHub\'s page');
+	pg_assert_contains("pg_connections_lead_url('github', 'workspace_channels', 'pgset-ws-github', 'connections-repositories')", $source, 'the card leads to the links on GitHub\'s page, and back');
 	pg_assert_false(strpos(settings_workspace_channels_test_source('includes/settings/workspace_channels.save.php'), 'ws_github_') !== false, 'Channels writes no link');
 }
 

@@ -1124,7 +1124,7 @@ function pg_label_connection_html($key, $definition, $fields, $settings)
     return pg_payment_connection_block_html(pg_label_input_name($key, 'connection'), $definition['label'], $connected, $connected
         ? lang('The keys are kept on its page of Connections.')
         : lang('The keys are missing, so no label can be made with this service. Enter them on its page of Connections.'),
-        pg_payment_gateway_connections_url($key));
+        pg_payment_gateway_connections_url($key, 'pgset-shipping'));
 }
 
 /**

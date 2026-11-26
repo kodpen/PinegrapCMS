@@ -20,15 +20,18 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
- * The address of a chat service's page on Connections. Pure.
+ * The address of a chat service's page on Connections, returning to the
+ * Chat notifications card.
  *
  * @param string $kind slack, teams or telegram
  * @return string
  */
 function pg_notify_connections_url($kind)
 {
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/connections_screen.php');
+
     return (defined('PATH') ? PATH : '') . (defined('SOFTWARE_DIRECTORY') ? SOFTWARE_DIRECTORY : '')
-        . '/connections.php?service=' . rawurlencode((string) $kind);
+        . '/' . pg_connections_lead_url($kind, 'maintenance', 'pgset-chat-notify');
 }
 
 /**

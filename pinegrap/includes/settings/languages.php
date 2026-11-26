@@ -20,6 +20,8 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     exit;
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/connections_screen.php');
+
 pg_tr_load();
 
 $output_translation_not_ready = '
@@ -358,7 +360,7 @@ $pg_settings_cards[] = '
 
 // The Google Cloud Translation key is typed on its page of Connections; this
 // card shows the connection and leads there.
-$translation_google_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/connections.php?service=google_translate';
+$translation_google_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . pg_connections_lead_url('google_translate', 'languages', 'pgset-translation-engines');
 
 // Whether the two AI engines can run here, in one line each.
 $translation_ai_state = '';

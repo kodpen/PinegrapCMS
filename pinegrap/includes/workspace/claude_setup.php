@@ -212,14 +212,17 @@ function ws_claude_setup_guide($host, $prompt, $key = '')
 
 /**
  * The address of Claude's page on Connections, where the routine address and
- * the token are typed. Pure but for the path constants.
+ * the token are typed, returning to the Claude card. Pure but for the path
+ * constants.
  *
  * @return string
  */
 function ws_claude_connections_url()
 {
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/connections_screen.php');
+
     return (defined('PATH') ? PATH : '') . (defined('SOFTWARE_DIRECTORY') ? SOFTWARE_DIRECTORY : '')
-        . '/connections.php?service=claude';
+        . '/' . pg_connections_lead_url('claude', 'workspace_assistants', 'pgset-ws-claude');
 }
 
 /**

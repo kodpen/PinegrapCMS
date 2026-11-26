@@ -38,6 +38,21 @@ $liveform = new liveform('connections');
 
 $screen_url = URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/connections.php';
 
+// Where a write on a service's page goes: back to that page, keeping the
+// Site Settings card that led there, marked saved when it went through and
+// took nothing away (pg_connections_back_after_write()).
+function connections_after_write($location) {
+
+	// The write's action, as the writes below read it.
+	global $liveform, $action, $ws_action;
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/connections_screen.php');
+
+	return pg_connections_back_after_write($location, isset($_POST['connections_from']) ? $_POST['connections_from'] : '',
+		(is_string($ws_action) && ($ws_action !== '')) ? $ws_action : (string) $action, (bool) $liveform->check_form_errors());
+
+}
+
 // A provider that only signs people in (accounts => false: Apple) has no
 // account for the site to connect; its application is set up with the
 // sign-in settings instead.
@@ -361,7 +376,7 @@ if ($_POST) {
 			ws_github_links_settings_post($ws_viewer, $ws_action, $liveform);
 		}
 
-		header('Location: ' . $screen_url . '?service=github#connections-repositories');
+		header('Location: ' . connections_after_write($screen_url . '?service=github#connections-repositories'));
 		exit();
 
 	}
@@ -377,12 +392,15 @@ if ($_POST) {
 		$mcp_page = (isset($_GET['service']) && (pg_connections_screen_mcp_connector($_GET['service']) !== '')) ? (string) $_GET['service'] : '';
 
 		if (($mcp_page !== '') && connections_mcp_may_manage($user)) {
-			// A sign-in leaves for the service at once and comes back here.
-			ws_mcp_settings_place(array('return' => pg_connections_screen_page_url($mcp_page), 'anchor' => '#connections-details', 'hold' => false));
+			// A sign-in leaves for the service at once and comes back here, with
+			// the card that led here; its return carries no saved= mark, as
+			// mcp_connected= says how the sign-in went.
+			ws_mcp_settings_place(array('return' => pg_connections_back_after_write(pg_connections_screen_page_url($mcp_page),
+				isset($_POST['connections_from']) ? $_POST['connections_from'] : '', 'mcp_disconnect', true), 'anchor' => '#connections-details', 'hold' => false));
 			ws_mcp_settings_post(connections_workspace_viewer($user), $ws_action, $liveform);
 		}
 
-		header('Location: ' . $screen_url . (($mcp_page !== '') ? '?service=' . $mcp_page . '#connections-details' : ''));
+		header('Location: ' . connections_after_write($screen_url . (($mcp_page !== '') ? '?service=' . $mcp_page . '#connections-details' : '')));
 		exit();
 
 	}
@@ -1104,7 +1122,7 @@ if ($_POST) {
 
 		}
 
-		header('Location: ' . $screen_url . '?service=google#connections-signin');
+		header('Location: ' . connections_after_write($screen_url . '?service=google#connections-signin'));
 		exit();
 
 	}
@@ -1153,7 +1171,7 @@ if ($_POST) {
 
 		}
 
-		header('Location: ' . $screen_url . '?service=signin_apple');
+		header('Location: ' . connections_after_write($screen_url . '?service=signin_apple'));
 		exit();
 
 	}
@@ -1213,7 +1231,7 @@ if ($_POST) {
 
 		}
 
-		header('Location: ' . $screen_url . (($gateway_definition !== null) ? '?service=' . $gateway_id : ''));
+		header('Location: ' . connections_after_write($screen_url . (($gateway_definition !== null) ? '?service=' . $gateway_id : '')));
 		exit();
 
 	}
@@ -1269,7 +1287,7 @@ if ($_POST) {
 
 		}
 
-		header('Location: ' . $screen_url . (($driver_definition !== null) ? '?service=' . $driver_id : ''));
+		header('Location: ' . connections_after_write($screen_url . (($driver_definition !== null) ? '?service=' . $driver_id : '')));
 		exit();
 
 	}
@@ -1324,7 +1342,7 @@ if ($_POST) {
 
 		}
 
-		header('Location: ' . $screen_url . (($method_definition !== null) ? '?service=' . $method_definition['page'] : ''));
+		header('Location: ' . connections_after_write($screen_url . (($method_definition !== null) ? '?service=' . $method_definition['page'] : '')));
 		exit();
 
 	}
@@ -1387,7 +1405,7 @@ if ($_POST) {
 
 		}
 
-		header('Location: ' . $screen_url . (($label_definition !== null) ? '?service=' . $label_id : ''));
+		header('Location: ' . connections_after_write($screen_url . (($label_definition !== null) ? '?service=' . $label_id : '')));
 		exit();
 
 	}
@@ -1450,7 +1468,7 @@ if ($_POST) {
 
 		}
 
-		header('Location: ' . $screen_url . (($carrier_definition !== null) ? '?service=' . $carrier_id : ''));
+		header('Location: ' . connections_after_write($screen_url . (($carrier_definition !== null) ? '?service=' . $carrier_id : '')));
 		exit();
 
 	}
@@ -1521,7 +1539,7 @@ if ($_POST) {
 
 		}
 
-		header('Location: ' . $screen_url . (($captcha_definition !== null) ? '?service=' . $captcha_provider : ''));
+		header('Location: ' . connections_after_write($screen_url . (($captcha_definition !== null) ? '?service=' . $captcha_provider : '')));
 		exit();
 
 	}
@@ -1682,7 +1700,7 @@ if ($_POST) {
 		&& preg_match('/^[a-z0-9_]{1,60}$/', $_POST['connections_return'])) ? $_POST['connections_return'] : '';
 
 	if ($return_service !== '') {
-		header('Location: ' . $screen_url . '?service=' . $return_service);
+		header('Location: ' . connections_after_write($screen_url . '?service=' . $return_service));
 		exit();
 	}
 
@@ -1692,11 +1710,11 @@ if ($_POST) {
 	$page_service = array_search($return_provider, pg_connections_screen_page_providers(), true);
 
 	if ($page_service !== false) {
-		header('Location: ' . $screen_url . '?service=' . $page_service);
+		header('Location: ' . connections_after_write($screen_url . '?service=' . $page_service));
 		exit();
 	}
 
-	header('Location: ' . $screen_url . (($return_provider !== '') ? '#connections-' . rawurlencode($return_provider) : ''));
+	header('Location: ' . connections_after_write($screen_url . (($return_provider !== '') ? '#connections-' . rawurlencode($return_provider) : '')));
 
 	exit();
 
@@ -1816,7 +1834,9 @@ function connections_state_pill($state) {
 $open_categories = array();
 $category_list = pg_settings_categories();
 
-foreach (pg_settings_categories_for($user, null, $category_list) as $category_key => $category) {
+$open_category_list = pg_settings_categories_for($user, null, $category_list);
+
+foreach ($open_category_list as $category_key => $category) {
 	$open_categories[$category_key] = true;
 }
 
@@ -1999,6 +2019,17 @@ if (isset($_GET['service']) && ($page_id === '')) {
 	header('Location: ' . $screen_url);
 	exit();
 }
+
+// The Site Settings card a lead to this page came from, among the
+// categories the user may open: the way back at the page's head, and where
+// a Save or a Connect that completes the service returns to.
+$back = ($page_id !== '') ? pg_connections_back(pg_connections_back_legacy($_GET, $page_id), $open_category_list) : null;
+$back_shell = is_array($back)
+	? array(
+		'label' => lang(array('string' => 'Back to {var:1}', 'vars' => $back['label'])),
+		'url'   => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . pg_settings_link($back['category'], $back['card']),
+	)
+	: null;
 
 // The seven mail routes are one row on the list, opening Site Settings ›
 // E-mail sending; a route's name still finds it, and a route's own page
@@ -4917,6 +4948,24 @@ if (($page_id !== '') && (pg_connections_screen_mcp_connector($page_id) !== '') 
 
 }
 
+// How the write or the sign-in that brought the person back here ended,
+// for the return to the card that led here: a Save that went through
+// (saved=), or a Connect (connect.php's message, an MCP connector's
+// sign-in). A refusal, or a Paraşüt company that could not be read, stays.
+$back_done = '';
+
+if (is_array($back) && !$liveform->check_form_errors()) {
+
+	if (!empty($_GET['saved'])) {
+		$back_done = 'saved';
+	}
+
+	if ((is_array($flash) && ($flash['kind'] === 'notice') && empty($parasut_answer['warnings'])) || isset($_GET['mcp_connected'])) {
+		$back_done = 'connected';
+	}
+
+}
+
 $liveform_messages = $liveform->output_errors() . $liveform->output_notices();
 
 $liveform->remove_form();
@@ -4948,6 +4997,7 @@ if ($provider_page !== '') {
 			array('label' => lang('Connections'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/connections.php'),
 			array('label' => $page_row['name']),
 		),
+		'back'                => $back_shell,
 	));
 
 	$details = '';
@@ -4961,11 +5011,10 @@ if ($provider_page !== '') {
 	$mail_part = '';
 
 	if (in_array('mailboxes', $page_cards, true) && pg_connect_purpose('mail_read')) {
-		$mail_return = pg_connections_screen_mail_return(isset($_GET['mail_return']) ? $_GET['mail_return'] : '');
 		$mail_part = connections_mail_part($provider_page,
 			isset($site_accounts[$provider_page]) ? $site_accounts[$provider_page] : array(),
 			pg_connect_app_ready($provider_apps[$provider_page]) && $can_seal,
-			pg_connect_return_path(($mail_return !== '') ? $mail_return : pg_connections_screen_page_url($page_id)));
+			pg_connect_return_path(pg_connections_back_page_url($page_id, $back)));
 	}
 
 	// Google's two applications are shown together: the connected accounts'
@@ -5010,7 +5059,13 @@ if ($provider_page !== '') {
 	</div>';
 
 	$drawers = '';
-	$connect_return = pg_connections_screen_page_url($page_id);
+	$connect_return = pg_connections_back_page_url($page_id, $back);
+
+	// What returning to the card asks of this page: its application set up.
+	// Mailboxes is the exception: its account is connected here, so only a
+	// Connect returns there.
+	$back_state = (pg_connect_app_ready($provider_apps[$provider_page]) && !(is_array($back) && ($back['card'] === 'pgset-ws-mail')))
+		? 'connected' : 'not_connected';
 
 } elseif ($page_id !== '') {
 
@@ -5028,6 +5083,7 @@ if ($provider_page !== '') {
 			array('label' => lang('Connections'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/connections.php'),
 			array('label' => $page_row['name']),
 		),
+		'back'                => $back_shell,
 	));
 
 	$page_providers = pg_connections_screen_page_providers();
@@ -5205,14 +5261,14 @@ if ($provider_page !== '') {
 	}
 
 	// Google Drive's, OneDrive's and Dropbox's pages: connect an account for
-	// backups, back to the Backups card when started from it.
+	// backups, back to the card that led here (the Backups card).
 	if (in_array('backups', $page['cards'], true)) {
 		$backup_type = pg_backup_cloud_type_of_service($page_id);
 		$backup_provider = pg_backup_cloud_types()[$backup_type]['provider'];
 		$page['status_extra'] .= connections_backup_part($backup_provider,
 			isset($providers[$backup_provider]) ? $providers[$backup_provider]['label'] : $backup_provider,
 			isset($provider_apps[$backup_provider]) && pg_connect_app_ready($provider_apps[$backup_provider]) && $can_seal && pg_connect_purpose('backup'),
-			pg_connect_return_path(!empty($_GET['backup_return']) ? pg_backup_cloud_connect_return($backup_type) : pg_connections_screen_page_url($page_id)));
+			pg_connect_return_path(pg_connections_back_page_url($page_id, $back)));
 	}
 
 	// An AI provider's page: its key, and the assistants that use it.
@@ -5259,7 +5315,8 @@ if ($provider_page !== '') {
 	</div>';
 
 	$drawers = '';
-	$connect_return = pg_connections_screen_page_url($page_id);
+	$connect_return = pg_connections_back_page_url($page_id, $back);
+	$back_state = $page_row['state'];
 
 } else {
 
@@ -5301,6 +5358,36 @@ if ($provider_page !== '') {
 		</div>';
 
 	$connect_return = 'connections.php';
+	$back_state = '';
+
+}
+
+// A Save or a Connect that completes the service returns to the card that
+// led here, with a line saying what was connected (read by the card's
+// screen, includes/settings/screen.php). connect.php's own message is put
+// back for the cards that read it (Mailboxes, Backups).
+if (($page_id !== '') && pg_connections_back_due($back, $back_done, $back_state)) {
+
+	$back_url = pg_connections_back_destination($back, $page_id);
+
+	if ($back_url === '') {
+		$back_url = pg_settings_link($back['category'], $back['card']);
+	}
+
+	$back_text = '';
+
+	if (($back_done === 'connected') && is_array($flash)) {
+		pg_connect_flash($flash['kind'], $flash['text'], $flash['connection_id']);
+	} elseif ($provider_page !== '') {
+		$back_text = lang(array('string' => 'The {var:1} application is set up.', 'vars' => $providers[$provider_page]['label']));
+	} else {
+		$back_text = lang(array('string' => '{var:1} is connected.', 'vars' => $rows[$page_id]['name']));
+	}
+
+	$_SESSION['software']['settings_returned'] = array('category' => $back['category'], 'text' => $back_text);
+
+	header('Location: ' . URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/' . $back_url);
+	exit();
 
 }
 
@@ -5336,6 +5423,21 @@ echo $shell . '
 (function () {
 
 	var phone = window.matchMedia("(max-width: 575.98px)");
+
+	// A page led to from a Site Settings card: each of its forms carries the
+	// card, so a Save keeps the way back and can return there.
+	var from = ' . json_encode(is_array($back) ? $back['value'] : '', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) . ';
+	if (from) {
+		document.querySelectorAll("form").forEach(function (form) {
+			var action = form.getAttribute("action") || "";
+			if (String(form.method).toLowerCase() !== "post" || (action !== "" && !/(^|\/)connections\.php(\?|#|$)/.test(action)) || form.elements.connections_from) { return; }
+			var field = document.createElement("input");
+			field.type = "hidden";
+			field.name = "connections_from";
+			field.value = from;
+			form.appendChild(field);
+		});
+	}
 
 	// A provider row opens its drawer; on a phone the drawer is a sheet
 	// from the bottom.

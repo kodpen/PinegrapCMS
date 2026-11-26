@@ -13491,8 +13491,10 @@ function pg_carrier_number_field($value)
  */
 function pg_edoc_card_connection_html($code, $label, $connected)
 {
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/connections_screen.php');
+
     $url = (defined('PATH') ? PATH : '') . (defined('SOFTWARE_DIRECTORY') ? SOFTWARE_DIRECTORY : '')
-        . '/connections.php?service=' . rawurlencode((string) $code);
+        . '/' . pg_connections_lead_url((string) $code, 'accounting', 'pgset-invoice');
 
     return '
                                                                 <div class="d-flex flex-column align-items-start gap-2" id="pgsub-edoc-' . h($code) . '-connection">

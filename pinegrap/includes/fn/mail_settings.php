@@ -95,7 +95,8 @@ function pg_mail_settings_providers()
 /**
  * The Connect button of one provider's way in the ways sheet. It submits a
  * hidden form outside the settings form (includes/settings/mail_sending.php);
- * while the provider's application is not set up, a link to Connections.
+ * while the provider's application is not set up, a link to the provider's
+ * page of Connections, which returns to this card once it is.
  *
  * @param array  $providers    pg_mail_settings_providers()
  * @param string $key          google or microsoft
@@ -105,7 +106,10 @@ function pg_mail_settings_providers()
 function pg_mail_settings_connect_buttons(array $providers, $key, $has_accounts)
 {
     if (!isset($providers[$key])) {
-        return '<div class="pg-field-help"><a href="connections.php">' . h(lang('Set up the application on Connections first.')) . '</a></div>';
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/connections_screen.php');
+
+        return '<div class="pg-field-help"><a href="' . h(pg_connections_lead_url(($key === 'google') ? 'google' : 'microsoft', 'email', 'pgset-mail-system', 'connections-details')) . '">'
+            . h(lang('Set up the application on Connections first.')) . '</a></div>';
     }
 
     $label = $has_accounts

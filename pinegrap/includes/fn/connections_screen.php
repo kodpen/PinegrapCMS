@@ -902,26 +902,186 @@ function pg_connections_screen_page_cards($id, $can)
 }
 
 /**
- * Where connecting an account for mailboxes returns to when it was started
- * from Site Settings (the Mailboxes card or a box's form): a settings page
- * of the panel, in the shape connect.php keeps (pg_connect_return_path())
- * and a path pg_safe_redirect_path() lets through unchanged. Anything else
- * is refused with '', and the provider's page is returned to. Pure.
+ * The Site Settings card a lead to a service's page came from (from=), by
+ * the settings registry's keys: category, card and, where there is one, a
+ * drawer's key. Never an address: the page builds the way back from these
+ * keys with pg_settings_link(). A category the reader may not open, or a
+ * card it does not hold, is dropped. Pure.
  *
- * @param mixed $asked the page's mail_return parameter
- * @return string the address, or ''
+ * @param mixed $asked      <category>/<card>[/<drawer>]
+ * @param array $categories the categories the reader may open
+ *                          (pg_settings_categories_for()): key => label, sections
+ * @return array|null category, card, drawer, label (the card's title), value
  */
-function pg_connections_screen_mail_return($asked)
+function pg_connections_back($asked, $categories)
 {
-    if (!is_string($asked) || !preg_match('/^settings_[a-z_]{1,40}\.php(#[A-Za-z0-9_\-]{1,60})?$/', $asked)) {
+    if (!is_string($asked) || !preg_match('~^([a-z_]{1,40})/(pgset-[a-z0-9\-]{1,60})(?:/([a-z0-9_\-]{1,60}))?$~D', $asked, $match)) {
+        return null;
+    }
+
+    if (!is_array($categories) || !isset($categories[$match[1]]['sections'][$match[2]])) {
+        return null;
+    }
+
+    return array(
+        'category' => $match[1],
+        'card'     => $match[2],
+        'drawer'   => isset($match[3]) ? $match[3] : '',
+        'label'    => (string) $categories[$match[1]]['sections'][$match[2]],
+        'value'    => $asked,
+    );
+}
+
+/**
+ * The address of a lead from a Site Settings card to a service's page of
+ * Connections, carrying the card it came from, in the shape connect.php
+ * keeps (pg_connect_return_path()). Every lead from a card uses it, in the
+ * same tab. Pure.
+ *
+ * @param string $service  the service's registry key
+ * @param string $category the card's category, '' for no return
+ * @param string $card     the card's anchor (pgset-…)
+ * @param string $anchor   a part of the page to open at, without '#'
+ * @param string $drawer   a drawer of the card the lead sits in
+ * @return string
+ */
+function pg_connections_lead_url($service, $category, $card, $anchor = '', $drawer = '')
+{
+    $from = ($category !== '' && $card !== '') ? $category . '/' . $card . (($drawer !== '') ? '/' . $drawer : '') : '';
+
+    return pg_connections_screen_page_url($service)
+        . (($from !== '') ? '&from=' . rawurlencode($from) : '')
+        . (($anchor !== '') ? '#' . $anchor : '');
+}
+
+/**
+ * A service's page, keeping the way back it was reached with. Pure.
+ *
+ * @param string     $service
+ * @param array|null $back what pg_connections_back() read
+ * @return string
+ */
+function pg_connections_back_page_url($service, $back)
+{
+    return pg_connections_screen_page_url($service)
+        . (is_array($back) ? '&from=' . rawurlencode($back['value']) : '');
+}
+
+/**
+ * Whether a write on a service's page takes something away (Disconnect,
+ * Remove, Delete): it stays on the page whatever led there. Pure.
+ *
+ * @param string $action the posted action
+ * @return bool
+ */
+function pg_connections_back_removes($action)
+{
+    return is_string($action) && (bool) preg_match('/(^|_)(remove|disconnect|delete)(_|$)/', $action);
+}
+
+/**
+ * The address a write on a service's page goes to: its page, keeping the
+ * card that led there, marked saved= when it went through and took nothing
+ * away, so the page can return to the card once the service is ready. The
+ * list and a page reached from it are left as they are. Pure.
+ *
+ * @param string $location the address the write would go to
+ * @param mixed  $from     the posted connections_from
+ * @param string $action   the posted action
+ * @param bool   $refused  whether the write was refused (the form's errors)
+ * @return string
+ */
+function pg_connections_back_after_write($location, $from, $action, $refused)
+{
+    $location = (string) $location;
+
+    if (!is_string($from) || !preg_match('~^[a-z_]{1,40}/pgset-[a-z0-9\-]{1,60}(/[a-z0-9_\-]{1,60})?$~D', $from)
+        || !preg_match('/\?service=[a-z0-9_]{1,60}(?=$|#)/', $location)) {
+        return $location;
+    }
+
+    $hash = strpos($location, '#');
+    $anchor = ($hash === false) ? '' : substr($location, $hash);
+    $address = ($hash === false) ? $location : substr($location, 0, $hash);
+
+    return $address . '&from=' . rawurlencode($from)
+        . ((!$refused && !pg_connections_back_removes($action)) ? '&saved=1' : '')
+        . $anchor;
+}
+
+/**
+ * Whether a service's page returns to the card that led there by itself:
+ * a Connect that went through, or a Save that leaves the service ready.
+ * A refused Save, a Save that leaves something missing and a plain visit
+ * stay. Pure.
+ *
+ * @param array|null $back  what pg_connections_back() read
+ * @param string     $done  saved, connected, or ''
+ * @param string     $state the service's state now (pg_connections_screen_state())
+ * @return bool
+ */
+function pg_connections_back_due($back, $done, $state)
+{
+    if (!is_array($back)) {
+        return false;
+    }
+
+    return ($done === 'connected') || (($done === 'saved') && ($state === 'connected'));
+}
+
+/**
+ * The card a page was led to from, read from the address: from=, or one of
+ * the two parameters it replaced, for the links written before it: a
+ * drive's backup_return=1 (the Backups card) and mail_return= (a settings
+ * page with its card's anchor; a category that became a tab names the
+ * category holding it, pg_settings_moved_categories()). Checked again by
+ * pg_connections_back(). Pure.
+ *
+ * @param array  $get     the page's query
+ * @param string $service the page's service
+ * @return string <category>/<card>[/<drawer>], or ''
+ */
+function pg_connections_back_legacy($get, $service)
+{
+    if (isset($get['from']) && is_string($get['from']) && ($get['from'] !== '')) {
+        return $get['from'];
+    }
+
+    if (!empty($get['backup_return']) && is_string($get['backup_return'])
+        && function_exists('pg_backup_cloud_type_of_service') && (pg_backup_cloud_type_of_service($service) !== '')) {
+        return 'maintenance/pgset-backup';
+    }
+
+    if (isset($get['mail_return']) && is_string($get['mail_return'])
+        && preg_match('/^settings_([a-z_]{1,40})\.php#(pgset-[a-z0-9\-]{1,60})$/D', $get['mail_return'], $match)) {
+        $moved = function_exists('pg_settings_moved_categories') ? pg_settings_moved_categories() : array();
+
+        return (isset($moved[$match[1]]) ? $moved[$match[1]][0] : $match[1]) . '/' . $match[2];
+    }
+
+    return '';
+}
+
+/**
+ * Where a return to a card lands when the card's own address is not
+ * enough: the Backups card is opened with the destination of the drive
+ * just connected shown chosen (?backup_connect=). '' for every other card,
+ * whose address is pg_settings_link(). Pure.
+ *
+ * @param array|null $back
+ * @param string     $service
+ * @return string
+ */
+function pg_connections_back_destination($back, $service)
+{
+    if (!is_array($back) || ($back['category'] !== 'maintenance') || ($back['card'] !== 'pgset-backup')
+        || !function_exists('pg_backup_cloud_type_of_service')) {
         return '';
     }
 
-    if (pg_connect_return_path($asked) !== $asked || pg_safe_redirect_path('/' . $asked, '/') !== '/' . $asked) {
-        return '';
-    }
+    $type = pg_backup_cloud_type_of_service($service);
 
-    return $asked;
+    return ($type !== '') ? pg_backup_cloud_connect_return($type) : '';
 }
 
 /**

@@ -731,15 +731,17 @@ function pg_addr_settings_provider()
 
 /**
  * The address of a provider's page on Connections, where its key or server
- * is kept.
+ * is kept, returning to the Address Autocomplete card.
  *
  * @param string $provider
  * @return string
  */
 function pg_addr_connections_url($provider)
 {
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/connections_screen.php');
+
     return (defined('PATH') ? PATH : '') . (defined('SOFTWARE_DIRECTORY') ? SOFTWARE_DIRECTORY : '')
-        . '/connections.php?service=' . rawurlencode((string) $provider);
+        . '/' . pg_connections_lead_url((string) $provider, 'commerce', 'pgset-address-autocomplete');
 }
 
 /**

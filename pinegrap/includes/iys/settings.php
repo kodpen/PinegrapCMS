@@ -132,7 +132,10 @@ function pg_iys_settings_card_html()
 {
     $app = pg_iys_settings_before();
     $connected = $app['enabled'] && pg_iys_app_complete($app);
-    $url = (defined('PATH') ? PATH : '') . (defined('SOFTWARE_DIRECTORY') ? SOFTWARE_DIRECTORY : '') . '/connections.php?service=iys';
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/connections_screen.php');
+
+    $url = (defined('PATH') ? PATH : '') . (defined('SOFTWARE_DIRECTORY') ? SOFTWARE_DIRECTORY : '') . '/'
+        . pg_connections_lead_url('iys', 'contact', 'pgset-iys');
 
     $line = $connected
         ? lang('The e-mail and SMS marketing answers are synced with İYS every day. The account is kept on İYS\'s page of Connections.')

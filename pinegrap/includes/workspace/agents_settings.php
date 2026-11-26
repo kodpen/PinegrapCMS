@@ -457,7 +457,7 @@ function ws_agents_settings_form($self_url, $agent, $apps, $admin, $form = null)
                 ? array('name' => $name('key_clear'), 'id' => $p . 'key-use-' . $provider_id, 'attrs' => $disabled)
                 : null;
             $rows .= '<div class="col-12' . (($shown && ($chosen === $provider_id)) ? '' : ' d-none') . '" data-ws-agent-when="provider=' . h($provider_id) . '">'
-                . pg_ai_connection_block_html($provider_id, ws_model_provider_name($provider_id), pg_ai_connection_ready($provider_id), $own) . '</div>';
+                . pg_ai_connection_block_html($provider_id, ws_model_provider_name($provider_id), pg_ai_connection_ready($provider_id), $own, 'pgset-ws-agents') . '</div>';
         }
 
         if ($own_key) {

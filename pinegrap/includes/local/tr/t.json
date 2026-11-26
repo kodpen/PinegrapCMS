@@ -8876,6 +8876,8 @@
     "The {var:1} and last name you entered do not match a membership that can be activated.": "Girdiğiniz {var:1} ve soyad, aktive edilebilecek bir üyelikle eşleşmiyor.",
     "The {var:1} appears at the link below.": "{var:1|c} aşağıdaki bağlantıda görünür.",
     "The {var:1} application is not set up yet. Enter it on Connected accounts first.": "{var:1} uygulaması henüz kurulmadı. Önce Bağlı hesaplar ekranında girin.",
+    "The {var:1} application is not set up yet. Enter it on its page of Connections first.": "{var:1} uygulaması henüz kurulmadı. Önce Bağlantılar'daki sayfasında girin.",
+    "The {var:1} application is set up.": "{var:1} uygulaması kuruldu.",
     "The {var:1} application the site connects its accounts through.": "Sitenin hesaplarını bağladığı {var:1} uygulaması.",
     "The {var:1} application was saved.": "{var:1} uygulaması kaydedildi.",
     "The {var:1} boxes on this page are replaced. Ctrl+Z brings them back.": "Bu sayfadaki {var:1} kutunun yerine yenileri gelir. Ctrl+Z geri getirir.",

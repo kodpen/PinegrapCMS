@@ -115,7 +115,7 @@ function test_workspace_mail_box_form_connection()
 
 function test_workspace_mail_connect_button()
 {
-	pg_assert_contains('&mail_return=settings_mailboxes.php%23pgset-ws-mail', ws_mail_connections_url('microsoft'), 'back to the card');
+	pg_assert_contains('&from=email%2Fpgset-ws-mail', ws_mail_connections_url('microsoft'), 'back to the card');
 	pg_assert_contains('Connections', ws_mail_connection_html(array('role' => 2), 'microsoft', 0, true), 'a manager connects it in Connections');
 	pg_assert_true(strpos(ws_mail_connection_html(array('role' => 3), 'microsoft', 0, true), 'connections.php') === false, 'a member is told who can');
 }

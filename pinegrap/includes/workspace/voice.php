@@ -828,7 +828,7 @@ function ws_voice_settings_card($self_url, $viewer, $form = null)
         // OpenAI's connection on Connections, in the place of the custom
         // address while OpenAI is the provider.
         'connection'  => function_exists('pg_ai_connection_block_html')
-            ? pg_ai_connection_block_html('openai', 'OpenAI', pg_ai_connection_ready('openai'), ($admin && $openai && $config['own_key']) ? array('name' => $prefix . 'voice_key_clear', 'id' => 'ws_voice_key_use', 'attrs' => '') : null)
+            ? pg_ai_connection_block_html('openai', 'OpenAI', pg_ai_connection_ready('openai'), ($admin && $openai && $config['own_key']) ? array('name' => $prefix . 'voice_key_clear', 'id' => 'ws_voice_key_use', 'attrs' => '') : null, 'pgset-ws-voice')
             : '',
     )) . ws_voice_settings_script();
 }

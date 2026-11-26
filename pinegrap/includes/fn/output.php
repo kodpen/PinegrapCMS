@@ -917,7 +917,7 @@ function pg_download_marker_watch()
 /**
  * The page shell of a panel screen: output_header() with the screen's tour
  * named in its head. It takes output_header()'s keys (title, extra classes,
- * icon, heading, heading_description, cancel, breadcrumb, head, hide_menu,
+ * icon, heading, heading_description, cancel, breadcrumb, back, head, hide_menu,
  * menu_drawer)
  * plus 'tour' and 'pre_main_html'. The screen's actions are not drawn here:
  * they go into its toolbar, pg_screen_toolbar(), inside <main>.
@@ -2762,8 +2762,17 @@ function output_header($properties = false)
     // <main> stays its own container. The <nav> wraps only the trail, so a screen
     // that has a back control but no crumbs still gets the strip without
     // announcing an empty breadcrumb landmark.
+    // Optional way back to the place that led here, beside the trail:
+    // ['back' => ['label' => 'Back to Backups', 'url' => 'settings_maintenance.php#pgset-backup']].
+    $output_back_link = '';
+    if (isset($properties['back']) && is_array($properties['back'])
+        && isset($properties['back']['label'], $properties['back']['url']) && ((string) $properties['back']['url'] !== '')) {
+        $output_back_link = '<a class="pg-button pg-button-quiet pg-button-sm ms-auto" href="' . h((string) $properties['back']['url']) . '">'
+            . '<i class="bi bi-arrow-left" aria-hidden="true"></i>' . h((string) $properties['back']['label']) . '</a>';
+    }
+
     if ($output_breadcrumb_trail !== '' || $output_cancel_button !== '') {
-        $output_breadcrumb = '<div class="pg-breadcrumb pg-print-none">' . $output_cancel_button . $output_breadcrumb_trail . '</div>';
+        $output_breadcrumb = '<div class="pg-breadcrumb pg-print-none">' . $output_cancel_button . $output_breadcrumb_trail . $output_back_link . '</div>';
     }
 
 

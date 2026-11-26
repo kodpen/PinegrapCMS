@@ -21,6 +21,12 @@ if (!defined('PG_TEST_RUNNER')) {
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/connections_screen.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
 
+if (!defined('PG_SETTINGS_MENU')) {
+	define('PG_SETTINGS_MENU', true);
+}
+
+require_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
+
 function connections_mailboxes_test_source($file)
 {
 	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
@@ -43,22 +49,13 @@ function test_connections_mailboxes_action_keeps_the_mailboxes_gate()
 	pg_assert_contains('data-purpose="mail_read"', $page, 'the action connects for Reading mailboxes');
 }
 
-function test_connections_mailboxes_return_address_is_checked()
-{
-	pg_assert_same('settings_mailboxes.php#pgset-ws-mail', pg_connections_screen_mail_return('settings_mailboxes.php#pgset-ws-mail'), 'back to the card');
-	pg_assert_same('settings_mailboxes.php', pg_connections_screen_mail_return('settings_mailboxes.php'));
-
-	foreach (array('', 'https://example.com/x.php', '//example.com/settings_mailboxes.php', '/settings_mailboxes.php', 'settings_mailboxes.php#a b',
-		"settings_mailboxes.php\r\nX: y", 'connections.php', '../settings_mailboxes.php', 'javascript:alert(1)', array('settings_mailboxes.php')) as $asked) {
-		pg_assert_same('', pg_connections_screen_mail_return($asked), 'refused: ' . (is_string($asked) ? $asked : 'an array'));
-	}
-}
-
 function test_connections_mailboxes_link_to_the_page()
 {
-	pg_assert_same('connections.php?service=google&mail_return=settings_mailboxes.php%23pgset-ws-mail#connections-mail', ws_mail_connections_url('google'));
-	pg_assert_same('connections.php?service=microsoft&mail_return=settings_mailboxes.php%23pgset-ws-mail#connections-mail', ws_mail_connections_url('other'), 'Microsoft by default');
-	pg_assert_same('settings_mailboxes.php#pgset-ws-mail', pg_connections_screen_mail_return(rawurldecode('settings_mailboxes.php%23pgset-ws-mail')), 'the page takes the address the card gives');
+	// The return is the one of every lead (tests/connections_back_test.php):
+	// the E-mail category's Mailboxes card, by its keys.
+	pg_assert_same('connections.php?service=google&from=email%2Fpgset-ws-mail#connections-mail', ws_mail_connections_url('google'));
+	pg_assert_same('connections.php?service=microsoft&from=email%2Fpgset-ws-mail#connections-mail', ws_mail_connections_url('other'), 'Microsoft by default');
+	pg_assert_same('email/pgset-ws-mail', pg_connections_back_legacy(array('mail_return' => 'settings_mailboxes.php#pgset-ws-mail'), 'google'), 'an older link still returns to the card');
 }
 
 function test_connections_mailboxes_card_shows_the_state_without_a_button()

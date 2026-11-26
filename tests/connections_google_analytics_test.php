@@ -87,7 +87,7 @@ function test_connections_google_analytics_card_shows_the_connection()
 	}
 
 	pg_assert_contains('id="pgsub-google-analytics"', $card, 'the card shows the connection');
-	pg_assert_contains('connections.php?service=google_analytics', $card, 'and leads to its page');
+	pg_assert_contains("pg_connections_lead_url('google_analytics', 'privacy', 'pgset-analytics')", $card, 'and leads to its page, and back');
 	pg_assert_contains("lang('Manage in Connections')", $card, 'with Manage in Connections');
 	pg_assert_false(is_file(PG_FUNCTIONS_DIR . '/includes/settings/privacy_analytics.php'), 'the figures part left the card');
 	pg_assert_contains('connections.php?service=google_analytics', connections_google_analytics_test_source('includes/dashboard/v2/cards/ga.php'), 'the dashboard card leads to the page');

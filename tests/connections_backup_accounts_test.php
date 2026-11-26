@@ -43,8 +43,10 @@ function test_connections_backup_accounts_service_of_each_destination()
 
 function test_connections_backup_accounts_addresses()
 {
-	pg_assert_same('connections.php?service=google_drive&backup_return=1', pg_backup_cloud_connections_url('gdrive'), 'Google Drive\'s page, back to the card');
-	pg_assert_same('connections.php?service=dropbox&backup_return=1', pg_backup_cloud_connections_url('dropbox'), 'Dropbox\'s page');
+	pg_assert_same('connections.php?service=google_drive&from=maintenance%2Fpgset-backup', pg_backup_cloud_connections_url('gdrive'), 'Google Drive\'s page, back to the card');
+	pg_assert_same('connections.php?service=dropbox&from=maintenance%2Fpgset-backup', pg_backup_cloud_connections_url('dropbox'), 'Dropbox\'s page');
+	pg_assert_same('connections.php?service=google&from=maintenance%2Fpgset-backup#connections-details', pg_backup_cloud_app_url('gdrive'), 'Google Drive\'s application: Google\'s page, back to the card');
+	pg_assert_same('connections.php#connections-dropbox', pg_backup_cloud_app_url('dropbox'), 'Dropbox has no page of its own: its drawer');
 	pg_assert_same('', pg_backup_cloud_connections_url('ftp'), 'FTP has no page');
 	pg_assert_same('settings_maintenance.php?backup_connect=onedrive#pgset-backup', pg_backup_cloud_connect_return('onedrive'), 'back to the Backups card');
 	pg_assert_same('', pg_backup_cloud_connect_return('s3'), 'no return for another type');
@@ -71,7 +73,8 @@ function test_connections_backup_accounts_page_and_card()
 	$page = connections_backup_accounts_test_source('connections.php');
 
 	pg_assert_contains('data-purpose="backup"', $page, 'the page connects for the backup purpose');
-	pg_assert_contains("pg_backup_cloud_connect_return(\$backup_type)", $page, 'back to the card when started from it');
+	pg_assert_contains("pg_connect_return_path(pg_connections_back_page_url(\$page_id, \$back))", $page, 'back to the card when started from it, through the page');
+	pg_assert_contains('pg_connections_back_destination($back, $page_id)', $page, 'which opens the Backups card at the destination');
 	pg_assert_contains("pg_settings_may_open('maintenance', \$user)", $page, 'under the category\'s gate');
 
 	$card = connections_backup_accounts_test_source('includes/settings/maintenance.php');
