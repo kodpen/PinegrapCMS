@@ -99,8 +99,8 @@ function test_marketplace_pricing_settings_parse_refuses()
 }
 
 // A save changes the prices when a price-moving figure of any rule changes,
-// a rule comes or goes, or the margin moves; the robot's own settings and a
-// brand's case do not.
+// a rule comes or goes, the margin moves or the robot starts or stops
+// sending; its step and limit and a brand's case do not.
 function test_marketplace_pricing_settings_changed()
 {
 	$before = mp_pricing_settings_parse(marketplace_pricing_settings_test_post(array(
@@ -108,11 +108,21 @@ function test_marketplace_pricing_settings_changed()
 	)), array())['rules'];
 
 	$same = mp_pricing_settings_parse(marketplace_pricing_settings_test_post(array(
-		'pr_percent' => '5,00', 'pr_try' => '', 'pr_step' => '3', 'pr_grow' => '5',
+		'pr_percent' => '5,00', 'pr_step' => '3', 'pr_grow' => '5',
 		'pr_rule_scope' => array('b:ACME'), 'pr_rule_percent' => array('10'),
 	)), array())['rules'];
 
-	pg_assert_false(mp_pricing_settings_changed($before, $same), 'robot settings and brand case only');
+	pg_assert_false(mp_pricing_settings_changed($before, $same), 'the robot\'s step, limit and brand case only');
+
+	// While the robot sends, its price goes out in place of the rules'
+	// (mp_repricer_send_price()): switching it to or from sending moves the
+	// price of every listing it set.
+	$sending = mp_pricing_settings_parse(marketplace_pricing_settings_test_post(array(
+		'pr_percent' => '5', 'pr_try' => '', 'pr_rule_scope' => array('b:Acme'), 'pr_rule_percent' => array('10'),
+	)), array())['rules'];
+
+	pg_assert_true(mp_pricing_settings_changed($before, $sending), 'Try first switched off: the robot starts sending');
+	pg_assert_true(mp_pricing_settings_changed($sending, $before), 'Try first switched on: the rules\' price goes out again');
 	pg_assert_true(mp_pricing_settings_changed(array(), $before), 'rules where there were none');
 	pg_assert_true(mp_pricing_settings_changed($before, array()), 'every rule gone');
 
