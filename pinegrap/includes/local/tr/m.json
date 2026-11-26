@@ -475,6 +475,7 @@
     "Mark {var:1} channels as read?": "{var:1} kanal okundu olarak işaretlensin mi?",
     "Mark {var:1} done": "{var:1}: bitti olarak işaretle",
     "Mark {var} machine translation(s) here as reviewed? The ones flagged suspicious are left to be looked at one by one.": "Buradaki {var} makine çevirisi gözden geçirildi olarak işaretlensin mi? Şüpheli işaretlenenler tek tek bakılmak üzere bırakılır.",
+    "Markdown": "Markdown",
     "Markdown exports now include images and attachments, in a folder beside the notes.": "Markdown dışa aktarımları artık görselleri ve ekleri, notların yanındaki bir klasörde içeriyor.",
     "Markdown file": "Markdown dosyası",
     "Markdown is supported. The note never reaches the exported HTML.": "Markdown destekli. Not, dışa aktarılan HTML'de yer almaz.",
