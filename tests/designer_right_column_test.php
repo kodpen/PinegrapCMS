@@ -7,8 +7,9 @@
  * the state this browser kept (a browser that never chose gets the closed
  * strip), and which right column width a stored layout brings back (only a
  * width the user dragged; the old defaults saved by every layout write are
- * not one). The readers are cut out of the source and run under Node; on a
- * machine without Node those cases are skipped.
+ * not one), and when the Styles head drops its words to icons. The
+ * readers are cut out of the source and run under Node; on a machine
+ * without Node those cases are skipped.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -47,7 +48,7 @@ function designer_right_column_test_run($code)
 	$source = designer_right_column_test_source();
 	$fns = '';
 
-	foreach (array('_sdBpOpenRead', '_sdLayoutRightWidth') as $name) {
+	foreach (array('_sdBpOpenRead', '_sdLayoutRightWidth', '_sdBpStylesNarrow') as $name) {
 		$fn = designer_right_column_test_function($source, $name);
 		pg_assert_true($fn !== '', 'the editor has ' . $name . '()');
 
@@ -125,4 +126,20 @@ JS
 	}
 
 	pg_assert_same(array(0, 0, 0, 0, 312, 260, 240, 0, 0, 0, 0), $answer);
+}
+
+// The Styles head drops "Export to a File" and the rules' search to icon
+// buttons while its part is under 460 px wide; a part not laid out yet
+// (width 0, as while the panel is shut) keeps the words.
+function test_designer_bottom_panel_styles_head_narrow()
+{
+	$answer = designer_right_column_test_run(
+		"out = [0, -1, null, 120, 459, 459.5, 460, 461, 900].map(_sdBpStylesNarrow);"
+	);
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(array(false, false, false, true, true, true, false, false, false), $answer);
 }
