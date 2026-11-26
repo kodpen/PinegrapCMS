@@ -75,6 +75,11 @@
     var SHEET_ROWS = 1048576;
     var SHEET_COLUMNS = 16384;
 
+    // The empty grid an added sheet is drawn as, the size of a new
+    // spreadsheet's (PG_OFFICE_NEW_ROWS, PG_OFFICE_NEW_COLUMNS).
+    var NEW_ROWS = 30;
+    var NEW_COLUMNS = 10;
+
     // The most cells one format change takes (PG_OFFICE_EDIT_MAX_CHANGES).
     var FORMAT_CELLS = 5000;
 
@@ -564,22 +569,36 @@
     }
 
     // A workbook's waiting changes are one list in the order they were
-    // made, as the save sends them: a typed cell ({sheet, cell}, its value
-    // kept beside the list) or a format range ({sheet, range, set}). The
-    // server applies each on the workbook the one before left.
+    // made, as the save sends them: a typed cell ({sheet, cell, value}), a
+    // format range ({sheet, range, set}), a row or column inserted or
+    // deleted ({op: insert|delete, sheet, axis, at}; `at` a row number or a
+    // 0-based column, the line inserted before) or a sheet change ({op:
+    // sheet_add|sheet_rename|sheet_delete|sheet_move, sheet, to}). Every
+    // position and sheet place is the workbook's at that point of the list,
+    // as the server applies each on the workbook the one before left; the
+    // grid and the tabs are drawn from the list (listBook()).
 
-    // Puts a typed cell at the end of the list, or takes it out when it
-    // holds the file's value again. A cell typed again moves to the end, so
-    // it is written over every format laid on it before.
-    function listCell(list, sheet, address, changed) {
-        for (var index = list.length - 1; index >= 0; index--) {
-            if (!list[index].range && list[index].sheet === sheet && list[index].cell === address) {
+    // Whether a change moves cells or sheets, so that an address before it
+    // names another cell than after it.
+    function listMoves(step) {
+        return !step.cell && !step.range;
+    }
+
+    // Takes a typed cell out of the changes made since the last row, column
+    // or sheet change, then, unless `value` is null, puts it at the end with
+    // its value. A cell typed again moves to the end, so it is written over
+    // every format laid on it before; the caller leaves `value` null when
+    // the cell holds its value without the change.
+    function listCell(list, sheet, address, value) {
+        for (var index = list.length - 1; index >= 0 && !listMoves(list[index]); index--) {
+            if (list[index].cell && list[index].sheet === sheet && list[index].cell === address) {
                 list.splice(index, 1);
+                break;
             }
         }
 
-        if (changed) {
-            list.push({ sheet: sheet, cell: address });
+        if (value !== null && value !== undefined) {
+            list.push({ sheet: sheet, cell: address, value: String(value) });
         }
 
         return list;
@@ -605,66 +624,302 @@
         return list.length;
     }
 
-    // A cell's look with every waiting range over it laid on, in order.
-    function listLook(look, list, sheet, row, column) {
-        list.forEach(function (step) {
-            if (step.range && step.sheet === sheet && inRange(step.range, row, column)) {
-                look = lookWith(look, step.set);
-            }
+    // A cell's look with the format parts laid on it (listBook()'s `sets`
+    // of the cell), in order.
+    function listLook(look, sets) {
+        (sets || []).forEach(function (set) {
+            look = lookWith(look, set);
         });
 
         return look || {};
     }
 
-    // The save list: each change in its order with its sheet's name. A
-    // cell's value is the one `values` (per sheet, address => value) holds
-    // now; a cell no longer there is left out, and one there but not in the
-    // list yet (the cell being typed) goes last. `rangeName` writes a range.
-    function listEdits(list, values, names, rangeName) {
-        var out = [];
-        var listed = {};
+    // Where a row number or a column lands after a line is inserted before
+    // `at` or deleted at it; null for the line deleted.
+    function shiftAt(number, op, at) {
+        if (number < at) {
+            return number;
+        }
 
-        list.forEach(function (step) {
-            if (step.range) {
-                var set = {};
+        if (op === 'insert') {
+            return number + 1;
+        }
 
-                Object.keys(step.set).forEach(function (key) {
-                    set[key] = step.set[key];
-                });
+        return (number === at) ? null : number - 1;
+    }
 
-                out.push({ op: 'format', sheet: step.sheet, name: names[step.sheet], range: rangeName(step.range), set: set });
-            } else if (values[step.sheet] && own(values[step.sheet], step.cell)) {
-                listed[step.sheet + '!' + step.cell] = true;
-                out.push({ sheet: step.sheet, name: names[step.sheet], cell: step.cell, value: values[step.sheet][step.cell] });
+    // An address-keyed map with its addresses moved by a row or column
+    // change; the cells of a deleted line leave it.
+    function shiftKeys(map, axis, op, at) {
+        var out = {};
+
+        Object.keys(map || {}).forEach(function (address) {
+            var parts = /^([A-Z]+)(\d+)$/.exec(address);
+
+            if (!parts) {
+                return;
             }
-        });
 
-        values.forEach(function (sheetValues, sheet) {
-            Object.keys(sheetValues).forEach(function (address) {
-                if (!listed[sheet + '!' + address]) {
-                    out.push({ sheet: sheet, name: names[sheet], cell: address, value: sheetValues[address] });
-                }
-            });
+            var column = columnIndex(parts[1]);
+            var row = parseInt(parts[2], 10);
+            var moved = shiftAt((axis === 'row') ? row : column, op, at);
+
+            if (moved !== null) {
+                out[(axis === 'row') ? columnName(column) + moved : columnName(moved) + row] = map[address];
+            }
         });
 
         return out;
     }
 
-    // The class a cell or head takes from the row or column waiting to be
-    // inserted (a line drawn before or after the one chosen) or deleted
-    // (struck through).
-    function shiftMark(state, row, column) {
-        var pending = state ? state.pending : null;
+    // A column-keyed map of a row (its styles, its shown texts) moved by a
+    // column change.
+    function shiftColumns(map, op, at) {
+        var out = {};
 
-        if (!pending || ((pending.axis === 'row') ? row : column) !== pending.at) {
-            return '';
+        Object.keys(map || {}).forEach(function (key) {
+            var moved = shiftAt(parseInt(key, 10), op, at);
+
+            if (moved !== null) {
+                out[moved] = map[key];
+            }
+        });
+
+        return out;
+    }
+
+    // An area [first row, first column, last row, last column, …] moved as
+    // the server moves it: an insert inside widens it, a delete inside
+    // narrows it; null when nothing of it is left.
+    function shiftRange(range, axis, op, at) {
+        var out = range.slice();
+        var low = (axis === 'row') ? 0 : 1;
+        var high = low + 2;
+
+        if (op === 'insert') {
+            out[low] += (out[low] >= at) ? 1 : 0;
+            out[high] += (out[high] >= at) ? 1 : 0;
+        } else {
+            out[low] -= (out[low] > at) ? 1 : 0;
+            out[high] -= (out[high] >= at) ? 1 : 0;
         }
 
-        if (pending.place === 'delete') {
-            return 'office-shift-delete';
+        return (out[high] < out[low]) ? null : out;
+    }
+
+    function copyOf(object, skip) {
+        var out = {};
+
+        Object.keys(object || {}).forEach(function (key) {
+            if (key !== skip) {
+                out[key] = object[key];
+            }
+        });
+
+        return out;
+    }
+
+    // A sheet with a row or a column inserted or deleted: its rows, cell
+    // values, styles, shown texts, formula marks, locked cells and areas
+    // moved, an inserted row drawn empty, an inserted line marked added.
+    function shiftSheet(sheet, axis, op, at) {
+        var out = copyOf(sheet, 'byRow');
+        var width = Math.max(sheet.wide || 0, sheetWidth(sheet));
+        var edit = sheet.edit ? copyOf(sheet.edit) : null;
+        var added = sheet.added || { row: {}, column: {} };
+
+        if (axis === 'row') {
+            var rows = [];
+            var placed = (op !== 'insert');
+
+            sheet.rows.forEach(function (row) {
+                var number = shiftAt(row.n, op, at);
+
+                if (!placed && row.n >= at) {
+                    rows.push({ n: at, cells: [] });
+                    placed = true;
+                }
+
+                if (number === row.n) {
+                    rows.push(row);
+                } else if (number !== null) {
+                    var moved = copyOf(row);
+
+                    moved.n = number;
+                    rows.push(moved);
+                }
+            });
+
+            if (!placed) {
+                rows.push({ n: at, cells: [] });
+            }
+
+            out.rows = rows;
+        } else {
+            out.rows = sheet.rows.map(function (row) {
+                var copy = copyOf(row);
+
+                copy.cells = row.cells.slice();
+
+                if (at < copy.cells.length) {
+                    if (op === 'insert') {
+                        copy.cells.splice(at, 0, '');
+                    } else {
+                        copy.cells.splice(at, 1);
+                    }
+                }
+
+                copy.s = row.s ? shiftColumns(row.s, op, at) : row.s;
+                copy.show = row.show ? shiftColumns(row.show, op, at) : row.show;
+                copy.calc = row.calc ? row.calc.map(function (column) { return shiftAt(column, op, at); }).filter(function (column) { return column !== null; }) : row.calc;
+
+                return copy;
+            });
+
+            out.wide = (op === 'insert') ? Math.min(Math.max(width, at) + 1, SHEET_COLUMNS) : Math.max(0, width - ((at < width) ? 1 : 0));
         }
 
-        return 'office-shift-insert-' + pending.axis + ((pending.place === 'after') ? '-after' : '');
+        if (edit) {
+            edit.locked = shiftKeys(edit.locked, axis, op, at);
+            edit.formulas = shiftKeys(edit.formulas, axis, op, at);
+            edit.ranges = (edit.ranges || []).map(function (range) { return shiftRange(range, axis, op, at); }).filter(Boolean);
+            out.edit = edit;
+        }
+
+        out.added = { row: added.row, column: added.column };
+        out.added[axis] = shiftColumns(added[axis], op, at);
+
+        if (op === 'insert') {
+            out.added[axis][at] = true;
+        }
+
+        return out;
+    }
+
+    // An added sheet as the grid draws it: an empty grid of the rows and
+    // columns of a new spreadsheet (PG_OFFICE_NEW_ROWS, PG_OFFICE_NEW_COLUMNS),
+    // every cell open; the server makes the rows a cell is typed into.
+    function newSheet(name, id) {
+        var rows = [];
+
+        for (var number = 1; number <= NEW_ROWS; number++) {
+            rows.push({ n: number, cells: [] });
+        }
+
+        return { id: id, name: name, rows: rows, wide: NEW_COLUMNS, edit: { ok: true }, changed: true };
+    }
+
+    function moveItem(list, from, to) {
+        list.splice(to, 0, list.splice(from, 1)[0]);
+    }
+
+    // The workbook as the list leaves it, from the sheets the server sent:
+    // {sheets, values, sets}. Each sheet is a copy with `id` (its place as
+    // opened, or "new" and a number), its rows, name and edit as the list
+    // leaves them, `changed` when a change of the list touches it, `added`
+    // rows and columns; `values` holds per sheet the cells typed (address
+    // => value), `sets` the format parts laid on each cell (address =>
+    // [set]). Nothing the server sent is changed.
+    function listBook(sheets, list) {
+        var book = {
+            sheets: sheets.map(function (sheet, index) {
+                var copy = copyOf(sheet, 'byRow');
+
+                copy.id = index;
+
+                return copy;
+            }),
+            values: sheets.map(function () { return {}; }),
+            sets: sheets.map(function () { return {}; })
+        };
+        var added = 0;
+
+        list.forEach(function (step) {
+            var at = step.sheet;
+
+            if (step.cell) {
+                if (book.sheets[at]) {
+                    book.values[at][step.cell] = step.value;
+                    book.sheets[at].changed = true;
+                }
+            } else if (step.range) {
+                if (book.sheets[at]) {
+                    for (var row = step.range[0]; row <= step.range[2]; row++) {
+                        for (var column = step.range[1]; column <= step.range[3]; column++) {
+                            var address = columnName(column) + row;
+
+                            (book.sets[at][address] = book.sets[at][address] || []).push(step.set);
+                        }
+                    }
+
+                    book.sheets[at].changed = true;
+                }
+            } else if (step.op === 'insert' || step.op === 'delete') {
+                if (book.sheets[at]) {
+                    book.sheets[at] = shiftSheet(book.sheets[at], step.axis, step.op, step.at);
+                    book.sheets[at].changed = true;
+                    book.values[at] = shiftKeys(book.values[at], step.axis, step.op, step.at);
+                    book.sets[at] = shiftKeys(book.sets[at], step.axis, step.op, step.at);
+                }
+            } else if (step.op === 'sheet_add') {
+                book.sheets.push(newSheet(step.to, 'new' + (++added)));
+                book.values.push({});
+                book.sets.push({});
+            } else if (book.sheets[at] && step.op === 'sheet_rename') {
+                book.sheets[at] = copyOf(book.sheets[at]);
+                book.sheets[at].name = step.to;
+                book.sheets[at].changed = true;
+            } else if (book.sheets[at] && step.op === 'sheet_delete') {
+                book.sheets.splice(at, 1);
+                book.values.splice(at, 1);
+                book.sets.splice(at, 1);
+            } else if (book.sheets[at] && step.op === 'sheet_move' && book.sheets[step.to]) {
+                book.sheets[at].changed = true;
+                moveItem(book.sheets, at, step.to);
+                moveItem(book.values, at, step.to);
+                moveItem(book.sets, at, step.to);
+            }
+        });
+
+        return book;
+    }
+
+    // The save list: each change in its order, named by its sheet's name
+    // at that point of the list (`names` the names as opened); `rangeName`
+    // writes a range. The server inserts before the line it is sent.
+    function listEdits(list, names, rangeName) {
+        var out = [];
+
+        names = names.slice();
+
+        list.forEach(function (step) {
+            var name = names[step.sheet];
+
+            if (step.cell) {
+                out.push({ sheet: step.sheet, name: name, cell: step.cell, value: step.value });
+            } else if (step.range) {
+                out.push({ op: 'format', sheet: step.sheet, name: name, range: rangeName(step.range), set: copyOf(step.set) });
+            } else if (step.op === 'insert' || step.op === 'delete') {
+                var change = { sheet: step.sheet, name: name, op: step.op };
+
+                change[step.axis] = (step.axis === 'row') ? step.at : columnName(step.at);
+                out.push(change);
+            } else if (step.op === 'sheet_add') {
+                out.push({ op: 'sheet_add', to: step.to });
+                names.push(step.to);
+            } else if (step.op === 'sheet_rename') {
+                out.push({ op: 'sheet_rename', sheet: step.sheet, name: name, to: step.to });
+                names[step.sheet] = step.to;
+            } else if (step.op === 'sheet_delete') {
+                out.push({ op: 'sheet_delete', sheet: step.sheet, name: name });
+                names.splice(step.sheet, 1);
+            } else if (step.op === 'sheet_move') {
+                out.push({ op: 'sheet_move', sheet: step.sheet, name: name, to: step.to });
+                moveItem(names, step.sheet, step.to);
+            }
+        });
+
+        return out;
     }
 
     // A row's or a column's head. A column's, with `tools`, is a button
@@ -5098,12 +5353,14 @@
             csvText: csvText,
             csvName: csvName
         },
-        // A workbook's waiting cells and formats as one ordered list.
+        // A workbook's waiting changes as one ordered list, and the workbook
+        // it leaves.
         sheetList: {
             cell: listCell,
             format: listFormat,
             count: listCount,
             look: listLook,
+            book: listBook,
             edits: listEdits
         },
         // A document's bold, italic and underline, which read no page: the
