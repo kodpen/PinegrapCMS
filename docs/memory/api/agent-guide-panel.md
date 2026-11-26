@@ -5,8 +5,8 @@ module: agent_guide_panel, panel_screens
 ---
 
 ## What does the panel topic say?
-- `includes/fn/agent_guide_panel.php` (#10725, plan ai-guide AG5), four sections. `screens`: each screen the viewer may open as "English label (address)", one line per main-menu section (Pages, Files, Store, Visitors, Contacts, Users, Email, Calendars, Forms, Menus, Ads, Design); a screen not listed answers Access denied.
-- `finding`: Ctrl+K; for managers the Site Settings dialog and System tools; the `?` shortcuts. `saving`: only the Save button keeps a change. `designer`: the Assistant box or `design_pages_get` then `design_proposals_create`, never drags on the canvas.
+- `includes/fn/agent_guide_panel.php` (#10725, plan ai-guide AG5), four sections (three below the designer role). `screens`: each screen the viewer may open as "English label (address)", one line per main-menu section (Pages, Files, Store, Visitors, Contacts, Users, Email, Calendars, Forms, Menus, Ads, Design); a screen not listed answers Access denied.
+- `finding`: Ctrl+K; for managers the Site Settings dialog and System tools; the `?` shortcuts. `saving`: only the Save button keeps a change. `designer`: the Assistant box or `design_pages_get` then `design_proposals_create`, never drags on the canvas; only for a viewer with the `design` gate (roles 0 and 1), since the editor answers Access denied to anyone else (bug hunt, `workflow/bug-hunt-areas-agent-guide.md`).
 
 ## Where do the screens come from?
 - From the panel search box's own list, `pg_panel_search_screens()` in `includes/fn/panel_screens.php`, under its gates (`pg_panel_search_viewer_gates()`): a screen is in the topic exactly when the viewer gets its Ctrl+K chip. A new chip in that list reaches the guide with no change here; a chip whose address is a `#` fragment (a header dialog) is left out.
