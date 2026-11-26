@@ -184,3 +184,22 @@ function test_application_programs_reasons_are_told_in_plain_words()
 	pg_assert_same('Age: above the range', pg_application_reason_text(array('code' => 'above', 'field' => 'age'), 'Age'));
 	pg_assert_same('age: not one of the choices allowed', pg_application_reason_text(array('code' => 'not_listed', 'field' => 'age'), ''));
 }
+
+// "Open for entries" and "Close" pressed on a page drawn before the status
+// changed (a second press, another tab) end there with a word, never in the
+// Set-up save below them: that read the state form's empty post as the
+// settings, refused it for a missing name and drew the Set-up form blank,
+// and a Save from it wiped the rounds, rules and texts.
+function test_application_stale_open_or_close_never_reaches_the_setup_save()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_application_program.php');
+	$save = strpos($source, '$ap_input = pg_application_program_input($_POST, $ap_field_types);');
+
+	foreach (array('submit_open', 'submit_close') as $button) {
+		$start = strpos($source, "if (isset(\$_POST['" . $button . "'])) {");
+		pg_assert_true($start !== false, $button . ' is handled whatever the status');
+		$end = strpos($source, "\n    }\n", $start);
+		pg_assert_contains('go($ap_back);', substr($source, $start, $end - $start), $button . ' always ends in a redirect');
+		pg_assert_true($start < $save, $button . ' before the Set-up save');
+	}
+}
