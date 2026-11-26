@@ -151,3 +151,22 @@ function test_record_edit_preview_link_for_other_kinds()
 	pg_assert_contains("a.status !== 'ok'", $other, 'no link for whoever may not open it');
 	pg_assert_contains('if (!R.id) return (R.other && R.other.screen) ? link(R.other.screen, where) : \'\';', record_edit_preview_cut($part, 'html'));
 }
+
+// A plain text area keeps its line breaks when it is typed in; a line of text is one line.
+function test_record_edit_preview_keeps_line_breaks()
+{
+	$typed = record_edit_preview_cut(record_edit_preview_source('assets/js/style_designer_recordedit.js'), 'typed');
+	pg_assert_contains('var multi = !!(field(o.fid) || {}).multiline;', $typed);
+	pg_assert_contains("if (!rich && !multi) v = v.replace(/[\\r\\n]+/g, ' ');", $typed, 'only a single line drops them');
+}
+
+// A save takes off the changes it sent; a change typed while it was on its way stays counted.
+function test_record_edit_preview_save_keeps_later_changes()
+{
+	$part = record_edit_preview_source('assets/js/style_designer_recordedit.js');
+	pg_assert_contains('R.sent[c.field_id] = c.value;', record_edit_preview_cut($part, 'save'));
+
+	$saved = record_edit_preview_cut($part, 'saved');
+	pg_assert_contains('if (R.edits[fid] === R.sent[fid]) delete R.edits[fid];', $saved);
+	pg_assert_false(strpos($saved, 'R.edits = {}; R.bad = {}; R.theirs = {}; R.conflicts = []; R.mode = \'\';') !== false, 'a saved answer no longer drops every change');
+}

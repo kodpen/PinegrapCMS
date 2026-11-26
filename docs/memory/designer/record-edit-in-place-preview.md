@@ -19,17 +19,17 @@ module: designer
 - A value of the page's record outside a widget draws as `[Label]` in the Preview; a frame writes the item's value into it.
 
 ## How is each field edited?
-- Text and number: `contenteditable="plaintext-only"`, Enter or a click outside keeps, Escape gives back (a refused value goes back to the record's). Formatted text bound to `html`: the small bar (Bold, Italic, Link, two lists, `execCommand`). Date: a calendar of the part, stored `YYYY-MM-DD`, shown with `toLocaleDateString()` in the page's language.
+- Text and number: `contenteditable="plaintext-only"`, Enter or a click outside keeps, Escape gives back (a refused value goes back to the record's). A plain text area (`multiline`) keeps its line breaks. Formatted text bound to `html`: the small bar (Bold, Italic, Link, two lists, `execCommand`). Date: a calendar of the part, stored `YYYY-MM-DD`, shown with `toLocaleDateString()` in the page's language.
 - Picture: "Change picture" opens "Choose a picture…" (`pgEditorPicker.pictures()` in the designer's window, a file with an id only), "Alternative text" when `alt` is bound to a field, "Remove the picture" when not required.
 - A field drawn twice changes in both places as it is typed. Required empty or a number that is none: red frame with the reason, not counted.
 
 ## What does the foot bar do?
-- `record_edit_save` with every counted change (`base` the value read, or theirs after "Keep mine"). `saved`: the line under the bar (`previewas.note()`), the Preview drawn again from the server (`_sdRecEditRedraw()` clears `_sdLive.sig`). `invalid`/`refused`: red frames and "1 of 2 changes was refused…". `conflict`: one card pair per field, the save goes on after the last. `approval`, `missing`, `denied`: the line says so and the switch leaves.
+- `record_edit_save` with every counted change (`base` the value read, or theirs after "Keep mine"). `saved`: the changes sent are taken off (one typed meanwhile stays), the note line (`previewas.note()`), the Preview drawn again from the server (`_sdRecEditRedraw()` clears `_sdLive.sig`). `invalid`/`refused`: red frames and "1 of 2 changes was refused…". `conflict`: one card pair per field, the save goes on after the last. `approval`, `missing`, `denied`: the line says so and the switch leaves.
 - A bar choice with changes not saved waits (`_sdPvAsChoose()` asks `holds()`): amber "Save your 2 changes … first?". Turning the switch off asks the same. Closing the window asks through the browser's `beforeunload`.
 - A design edit reloading the Preview keeps the changes and the field being edited.
 
 ## What was measured?
-- Marking the fixture page's 1,539 nodes: about 1 ms per Preview markup, only while on. Off: one property read per node in `_sdEmitNode()`. Part: 31 KB minified (11 KB gzip), not in the core.
+- Marking 1,539 nodes: about 1 ms per Preview markup, only while on. Part: 31 KB minified, not in the core.
 
 ## Which test guards it?
 - `tests/record_edit_preview_test.php`; `marks` in `tests/preview_as_bar_test.php`; `form_page_id` in `tests/record_edit_test.php`.
