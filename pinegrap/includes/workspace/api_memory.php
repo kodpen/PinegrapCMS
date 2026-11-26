@@ -37,6 +37,11 @@ function ws_memory_api_routes()
     $id = array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true);
     $who = ' An application key or an OAuth connection writes as the application, a team devices session (POST /auth/login) as the person.';
     $errors = ' A refused value answers 422 validation_failed naming the field; a channel the owner may not post in 403 forbidden; the database not updated yet 503 service_unavailable.';
+    $search = array(
+        array('name' => 'search', 'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'Words that must all be in an entry\'s title, text or tags (a "quoted phrase" is one word). The hits come 50 a page, each with snippet, the text around its first word; page with next_cursor.'),
+        array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor of the previous page of a search. Left out on the first call.'),
+    );
+    $project = array('name' => 'project', 'in' => 'query', 'type' => 'string', 'max_length' => WS_MEMORY_PROJECT_MAX, 'description' => 'Only the entries filed under this project. GET /workspace/memory/projects lists them.');
     $fields = array(
         array('name' => 'project', 'in' => 'body', 'type' => 'string', 'max_length' => WS_MEMORY_PROJECT_MAX, 'description' => 'The project the entry is filed under, its heading in the Memory tab; empty for none.'),
         array('name' => 'title', 'in' => 'body', 'type' => 'string', 'max_length' => WS_MEMORY_TITLE_MAX, 'description' => 'What the entry is about, in a few words: agents choose what to read by it.'),
@@ -73,12 +78,13 @@ function ws_memory_api_routes()
             'handler'     => 'ws_api_memory_list',
             'returns'     => array('list' => 'WorkspaceMemoryIndexEntry'),
             'summary'     => 'The index of a channel\'s memory',
-            'description' => 'The memory entries of a channel the owner of the application may read, pinned first and then the most recently changed, without their texts: read the ones needed with GET /workspace/memory/{id}. Every channel has a memory; an agent\'s brief carries the same index. Expired entries are left out unless expired is true. tag keeps the entries with that tag.',
-            'params'      => array(
+            'description' => 'The memory entries of a channel the owner of the application may read, pinned first and then the most recently changed, without their texts: read the ones needed with GET /workspace/memory/{id}. Every channel has a memory; an agent\'s brief carries the same index. Expired entries are left out unless expired is true. tag keeps the entries with that tag, project those filed under that project; search finds the entries holding every word, 50 a page.',
+            'params'      => array_merge(array(
                 $id,
                 array('name' => 'expired', 'in' => 'query', 'type' => 'bool', 'description' => 'The expired entries too.'),
                 array('name' => 'tag', 'in' => 'query', 'type' => 'string', 'max_length' => WS_MEMORY_TAG_MAX),
-            ),
+                $project,
+            ), $search),
         ),
 
         array(
@@ -90,11 +96,27 @@ function ws_memory_api_routes()
             'returns'     => array('list' => 'WorkspaceMemoryIndexEntry'),
             'summary'     => 'The index of the general memory',
             'description' => 'The general memory the agent channels share (channel_id 0), for whoever may post in an agent channel: pinned first, then the most recently changed, without their texts: read the ones needed with GET /workspace/memory/{id}. Expired entries are left out unless expired is true; tag and project narrow the list. 403 forbidden for an owner who may post in no agent channel; 503 service_unavailable before the database update.',
-            'details'     => 'The brief of an agent asked in an agent channel carries the same index before the channel\'s own. tag keeps the entries with that tag, project those filed under that project.',
-            'params'      => array(
+            'details'     => 'The brief of an agent asked in an agent channel carries the same index before the channel\'s own. tag keeps the entries with that tag, project those filed under that project; search finds the entries holding every word, 50 a page.',
+            'params'      => array_merge(array(
                 array('name' => 'expired', 'in' => 'query', 'type' => 'bool', 'description' => 'The expired entries too.'),
                 array('name' => 'tag', 'in' => 'query', 'type' => 'string', 'max_length' => WS_MEMORY_TAG_MAX),
-                array('name' => 'project', 'in' => 'query', 'type' => 'string', 'max_length' => WS_MEMORY_PROJECT_MAX, 'description' => 'Only the entries filed under this project, as written (case kept).'),
+                $project,
+            ), $search),
+        ),
+
+        array(
+            'id'          => 'workspace.memory.projects',
+            'method'      => 'GET',
+            'path'        => '/workspace/memory/projects',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_memory_projects',
+            'returns'     => array('list' => 'WorkspaceMemoryProject'),
+            'summary'     => 'The projects of a memory with their entry counts',
+            'description' => 'The projects of a channel\'s memory (channel_id) or of the general memory (no channel_id), each with its count of entries, alphabetical; project is empty for the entries filed under none, listed last. A memory list with project gives one project\'s entries.',
+            'details'     => 'Expired entries are left out unless expired is true. The general memory: 403 forbidden for an owner who may post in no agent channel; 503 service_unavailable before the database update.',
+            'params'      => array(
+                array('name' => 'channel_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'A channel the owner may read; left out for the general memory.'),
+                array('name' => 'expired', 'in' => 'query', 'type' => 'bool', 'description' => 'The expired entries counted too.'),
             ),
         ),
 
@@ -217,7 +239,13 @@ function ws_api_memory_index_entry_schema()
         'updated_by' => 'WorkspaceMemoryWriter',
         'created_at' => 'datetime?',
         'updated_at' => 'datetime?',
+        'snippet'    => 'string?',
     );
+}
+
+function ws_api_memory_project_schema()
+{
+    return array('project' => 'string', 'count' => 'integer');
 }
 
 function ws_api_memory_entry_schema()
@@ -368,11 +396,61 @@ function ws_api_memory_list($params)
 {
     $viewer = ws_api_viewer();
     $channel = ws_api_channel_or_404($viewer, $params['id']);
+
+    ws_api_memory_index($channel['id'], $params);
+}
+
+/**
+ * A memory's index as the list routes answer it: every entry (500 at most,
+ * no texts) narrowed by tag and project, or with search one page of the
+ * entries holding every word, each with the text around its first word.
+ *
+ * @param int   $channel_id 0 for the general memory
+ * @param array $params     expired, tag, project, search, cursor
+ */
+function ws_api_memory_index($channel_id, $params)
+{
     $tag = ws_memory_tag($params['tag'] ?? '');
+    $project = ws_memory_project($params['project'] ?? '');
+    $terms = ws_memory_search_terms($params['search'] ?? '');
     $out = array();
 
-    foreach (ws_memory_rows($channel['id'], !empty($params['expired'])) as $row) {
+    if ($terms) {
+        $offset = 0;
+
+        if (isset($params['cursor']) && ((string) $params['cursor'] !== '')) {
+            $cursor = api_cursor_decode($params['cursor']);
+
+            if (($cursor === null) || ((int) $cursor['v'] < 0) || ((int) $cursor['i'] !== (int) $channel_id)) {
+                api_fail(400, 'invalid_cursor', lang('The cursor is not readable. Start the listing again without one.'), 'cursor');
+            }
+
+            $offset = (int) $cursor['v'];
+        }
+
+        $page = ws_memory_search_page($channel_id, $terms, array(
+            'expired' => !empty($params['expired']),
+            'tag'     => $tag,
+            'project' => $project,
+            'offset'  => $offset,
+            'limit'   => WS_MEMORY_SEARCH_PAGE,
+        ));
+
+        foreach ($page['rows'] as $row) {
+            $out[] = ws_api_memory_present($row, false) + array('snippet' => ws_memory_search_snippet((string) $row['text'], $terms));
+        }
+
+        api_ok_list($out, WS_MEMORY_SEARCH_PAGE, $page['more'] ? api_cursor_encode($offset + WS_MEMORY_SEARCH_PAGE, $channel_id) : null);
+
+        return;
+    }
+
+    foreach (ws_memory_rows($channel_id, !empty($params['expired'])) as $row) {
         if (($tag !== '') && !in_array($tag, ws_memory_tags((string) $row['tags']), true)) {
+            continue;
+        }
+
+        if (($project !== '') && (ws_memory_project($row['project'] ?? '') !== $project)) {
             continue;
         }
 
@@ -408,21 +486,23 @@ function ws_api_memory_general_list($params)
 {
     $viewer = ws_api_viewer();
     ws_api_memory_general_or_403($viewer);
-    $tag = ws_memory_tag($params['tag'] ?? '');
-    $project = ws_memory_project($params['project'] ?? '');
-    $out = array();
 
-    foreach (ws_memory_rows(0, !empty($params['expired'])) as $row) {
-        if (($tag !== '') && !in_array($tag, ws_memory_tags((string) $row['tags']), true)) {
-            continue;
-        }
+    ws_api_memory_index(0, $params);
+}
 
-        if (($project !== '') && (ws_memory_project($row['project'] ?? '') !== $project)) {
-            continue;
-        }
+function ws_api_memory_projects($params)
+{
+    $viewer = ws_api_viewer();
+    $channel_id = (int) ($params['channel_id'] ?? 0);
 
-        $out[] = ws_api_memory_present($row, false);
+    if ($channel_id > 0) {
+        ws_api_memory_ready_or_503();
+        $channel_id = (int) ws_api_channel_or_404($viewer, $channel_id)['id'];
+    } else {
+        ws_api_memory_general_or_403($viewer);
     }
+
+    $out = ws_memory_projects($channel_id, !empty($params['expired']));
 
     api_ok_list($out, count($out));
 }

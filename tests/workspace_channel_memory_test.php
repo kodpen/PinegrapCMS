@@ -636,7 +636,7 @@ function test_workspace_memory_tag_with_dotted_capital_i()
 	pg_assert_same('', ws_memory_entry_problem(array('title' => 'x', 'tags' => ws_memory_tags("\u{0130}ade \u{015E}irket")), 1000));
 
 	$api = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/api_memory.php');
-	pg_assert_same(2, substr_count($api, "\$tag = ws_memory_tag(\$params['tag'] ?? '');"), 'both list filters fold the tag as it is stored');
+	pg_assert_same(1, substr_count($api, "\$tag = ws_memory_tag(\$params['tag'] ?? '');"), 'the lists share one filter (ws_api_memory_index()), folding the tag as it is stored');
 }
 
 // The digest stays within its size, closing count included: the count line
