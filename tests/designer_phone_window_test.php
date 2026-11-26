@@ -98,6 +98,44 @@ function test_designer_phone_window_draws_the_state_the_answer_asks_for()
 	pg_assert_same(array('ready', 'ended', 'team', 'failed', 'failed', 'failed'), $res);
 }
 
+// A failed answer says why: the server's message where it gave one, and
+// "Try again" only where trying again can help (no answer, a malformed one,
+// or a link the server could not store, marked `retry`). A design with no
+// draft pages gets its reason and no button.
+function test_designer_phone_window_says_why_no_link_was_made()
+{
+	$cases = array(
+		null,
+		array('status' => 'error', 'message' => 'This design has no draft pages.'),
+		array('status' => 'error', 'message' => 'Permission denied.'),
+		array('status' => 'error', 'message' => 'Sorry, we could not accept your request.', 'retry' => true),
+		array('status' => 'error'),
+		array('status' => 'success', 'link' => array('id' => 7), 'url' => 'https://x', 'qr' => ''),
+	);
+	$res = designer_phone_window_node(array('_phFailure'), json_encode($cases) . '.map(_phFailure)');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		array('text' => 'Nothing was changed.', 'again' => true),
+		array('text' => 'This design has no draft pages.', 'again' => false),
+		array('text' => 'Permission denied.', 'again' => false),
+		array('text' => 'Sorry, we could not accept your request.', 'again' => true),
+		array('text' => 'Nothing was changed.', 'again' => false),
+		array('text' => 'Nothing was changed.', 'again' => true),
+	), $res);
+
+	// Only the link the server could not store is marked to be tried again.
+	$server = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/prototype_phone.php');
+	pg_assert_same(1, substr_count($server, "'retry' => true"), 'one answer offers a retry');
+
+	// With no link the foot shows no buttons that look pressable.
+	$draw = designer_phone_window_fn(designer_phone_window_source(), '_phDraw');
+	pg_assert_contains('foot.hidden = ', $draw, 'the foot is hidden while there is no link');
+}
+
 function test_designer_phone_window_is_a_part_opened_from_the_preview_menu()
 {
 	$parts = pg_designer_parts();

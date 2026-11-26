@@ -533,7 +533,9 @@ function pg_proto_phone_panel($sub, $request, $user)
         $made = pg_proto_link_issue($style_id, $plan, (int) $user['id'], (string) $user['username']);
 
         if ($made === null) {
-            return array('status' => 'error', 'message' => lang('Sorry, we could not accept your request.'));
+            // The only error a second press can mend: the window offers
+            // "Try again" for this answer alone.
+            return array('status' => 'error', 'message' => lang('Sorry, we could not accept your request.'), 'retry' => true);
         }
 
         $row = $made['row'];
