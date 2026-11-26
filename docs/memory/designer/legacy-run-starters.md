@@ -20,4 +20,4 @@ description: Where the legacy-editable run gets a widget's starter layout for a 
 ## Tests?
 - Unit: a posted tree of an unlisted kind dropped, a missing kind leaving its page unconverted, the settings put into a posted tree. The browser part is checked on a sandbox by the step's PR.
 
-Related: docs/memory/designer/legacy-stock-types.md, docs/memory/plans/legacy-editable-steps.md
+Related: docs/memory/designer/legacy-stock-types.md, docs/memory/designer/legacy-editable-overview.md

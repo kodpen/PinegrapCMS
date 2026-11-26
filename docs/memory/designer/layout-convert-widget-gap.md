@@ -25,4 +25,4 @@ description: What the layout converter does with a piece a page type's layout ha
 - LE10c: the address type switch is carried into `cfg.address_type`. "What is this?" is a link bound to the page the type row names, dropped when it names none.
 - LE10d: one list, the widget's. The Featured and Catalog loops merge into it (`_pg_lc_merge_loops()`) where a merged row loses nothing, each kept under the row's kind (`__result_type`, `__result_is_featured`). A row flag for the first row of its kind keeps the three headings only if the widget draws the results in that order; otherwise they are dropped pieces.
 
-Related: docs/memory/plans/legacy-editable-layouts.md, docs/memory/designer/member-widgets-handlers-and-forms.md, docs/memory/designer/no-form-in-form.md
+Related: docs/memory/designer/layout-type-overview.md, docs/memory/designer/member-widgets-handlers-and-forms.md, docs/memory/designer/no-form-in-form.md
