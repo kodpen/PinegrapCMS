@@ -205,6 +205,22 @@ function ws_task_due_label($task)
 }
 
 /**
+ * Is an open task past its due date? A 0000-00-00 due date is no due date.
+ * Pure.
+ *
+ * @param string|null $due    Y-m-d
+ * @param string      $status
+ * @param string      $today  Y-m-d
+ * @return bool
+ */
+function ws_task_is_overdue($due, $status, $today)
+{
+    $due = (string) $due;
+
+    return ($due !== '') && ($due !== '0000-00-00') && ($due < (string) $today) && ws_task_is_open((string) $status);
+}
+
+/**
  * The shape a task has in lists, on the board and in the API.
  *
  * @param array $task
@@ -238,7 +254,7 @@ function ws_task_brief($task, $assignees)
         'start_date'       => ($start !== '' && $start !== '0000-00-00') ? $start : null,
         'due_date'         => ($due !== '' && $due !== '0000-00-00') ? $due : null,
         'due_label'        => ws_task_due_label($task),
-        'overdue'          => ($due !== '') && ($due < date('Y-m-d')) && ws_task_is_open($task['status']),
+        'overdue'          => ws_task_is_overdue($due, $task['status'], date('Y-m-d')),
         'estimate_minutes' => (int) $task['estimate_minutes'],
         'estimate_label'   => ((int) $task['estimate_minutes'] > 0) ? ws_minutes_label($task['estimate_minutes']) : '',
         'department_id'    => (int) $task['department_id'],

@@ -4917,7 +4917,7 @@ function ws_handle_action($action, $request)
                 'search'     => trim((string) ($request['q'] ?? '')),
                 'priority'   => (string) ($request['priority'] ?? ''),
             ));
-            $tasks = ws_tasks_for_person($tasks, !empty($request['mine']) ? (int) $viewer['id'] : (int) ($request['person'] ?? 0));
+            $tasks = ws_tasks_for_person(ws_tasks_for_person($tasks, (int) ($request['person'] ?? 0)), !empty($request['mine']) ? (int) $viewer['id'] : 0);
 
             return ws_action_ok(array('tasks' => ws_channel_board_list_figure($tasks, $figure)));
 
