@@ -14,15 +14,15 @@ priority: 6
 - A picture goes through the checks of a picture brought from the computer and becomes a file of the site (`ui/image-editor-canvas-save.md`); its crop is kept.
 - Groups are resolved into places on the page; a turn and a flip are kept; what the canvas cannot hold (a chart, a table, an effect) is left out and counted.
 - Fonts by the census's rule: looked up by family, replaced when the catalogue lacks one, never taken from the package.
-- Nothing is added to the canvas's first load: the chooser's script is asked for when the door is used.
+- Nothing joins the canvas's first load: the chooser's script loads when a door is used.
 
 ## Where are the doors, and what is the chooser?
-- The New image dialog gains "Open a design file" under its sizes, and Import's menu gains "A design file (.pptx)". Both say in a hint how the file is made: in Canva, Share, Download, PPTX.
-- After the file is chosen the window "Open a design file" shows the pages as tiles in the file's order, each drawn small by the canvas's own renderer from what was read, with its number and a tick. A page with a text it could not read whole carries the amber mark.
+- The New image dialog gains "Open a design file" under its sizes, and Import's menu gains "A design file (.pptx)". Both hint how the file is made (in Canva: Share, Download, PPTX) and that a Canva design of the Website kind has no download (the census).
+- After the file is chosen the window "Open a design file" shows the pages as tiles in the file's order, each drawn small by the canvas's own renderer from what was read, with its number and a tick. A page not read whole carries the amber mark.
 - From the New image dialog every page is ticked. The foot says "Open {n} pages as {n} canvases", has the tick box "As scenes of one canvas" and the button "Open". Each ticked page becomes a canvas file in the folder the dialog was opened for, named by the file and the page's number, and the first opens; with the box ticked one canvas with a scene a page (`ui/image-editor-scenes.md`).
 - From Import in an open canvas one page is picked, and its layers join the open canvas as one group fitted to the board, in one undo step.
 - A file of one page skips the tiles. On a phone the tiles are two a row and the foot stays in view.
-- After Open a line under the top bar reports: texts and pictures brought in, fonts replaced with their names, elements left out, with "Details" opening the list. Refusals are sentences in the window: not a .pptx, too large, a part that cannot be read.
+- After Open a line under the top bar reports: texts and pictures brought in, fonts replaced with their names, elements left out, with "Details" opening the list. Refusals are sentences in the window: not a .pptx, too large, a part not readable.
 
 ## Which steps? (M about 1,000 product lines; tests red first, on presentations the test writes)
 - DF1 (M) The reader, pure: per slide the size, the background and the elements in paint order with resolved places, texts with their styles, pictures with their crops, lines and shapes; counts of what is left out.
