@@ -147,6 +147,7 @@ function test_delivery_tower_parcel_query()
 	pg_assert_contains('LIMIT 200', $sql, 'one page');
 	pg_assert_contains('shipment_problems', $sql, 'a parcel with an open problem is read whatever its age');
 	pg_assert_contains("NOT IN ('incomplete', 'cancelled')", $sql, 'a cancelled order is left out');
+	pg_assert_contains('shipping_tracking_numbers.status_at', $sql, 'the last status change is read for the hand-closed rule');
 	pg_assert_same(array(500, 1700000000, 1700000000, 1700000000), $params, 'the place and the window');
 }
 
@@ -199,6 +200,16 @@ function test_delivery_tower_parcel_changes()
 	$sold = array(11 => array_merge($parcels[11], array('source' => 'marketplace')));
 	$changes = pg_delivery_tower_parcel_changes($sold, $labels, array(), $figures, $now, $settings, array(), $tz);
 	pg_assert_same(2, $changes['open'][0]['kind'] ?? 0, 'a marketplace reports the status of its own labels');
+
+	// Stuck closed by hand after its last status: the next pass leaves it
+	// closed; a status read after that close judges the parcel anew.
+	$moving = array(10 => array_merge($parcels[10], array('status_at' => _dt_passes_test_at('2026-11-12 09:00'))));
+	$hand = array(10 => array(1 => _dt_passes_test_at('2026-11-18 11:00')));
+	$changes = pg_delivery_tower_parcel_changes($moving, array(), array(), $figures, $now, $settings, array(), $tz, $hand);
+	pg_assert_same(array(), $changes['open'], 'a kind closed by hand is not opened again while the status holds');
+	$moving[10]['status_at'] = _dt_passes_test_at('2026-11-19 09:00');
+	$changes = pg_delivery_tower_parcel_changes($moving, array(), array(), $figures, $now, $settings, array(), $tz, $hand);
+	pg_assert_same(1, $changes['open'][0]['kind'] ?? 0, 'a later status opens it again, as a new row');
 
 	// A kind switched off in the settings opens nothing.
 	$off = pg_delivery_tower_settings_clean(array('stuck' => 0));

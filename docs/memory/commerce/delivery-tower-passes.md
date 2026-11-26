@@ -11,12 +11,14 @@ module: delivery_tower_passes
 ## How is the nightly summary built? (T1 to T3)
 - Due when there is none or it was built before the last local 02:00 (`pg_delivery_tower_summary_due()`, `PG_DELIVERY_TOWER_NIGHT_HOUR`).
 - Walks parcels delivered in the last 90 days (`PG_DELIVERY_TOWER_DAYS`) by id, 1,000 a page, until the tick's deadline. Each parcel is packed into one integer (calendar days, working days, on-time mark) per carrier and province key, so 100k parcels stay a few MB; the walk keeps its place in `data/temp/delivery_tower_summary_<hash of database@host>.json` (taken only under a day old) and writes the summary once at the end.
-- `config_text` `delivery_tower_summary`: `at`, `days`, `parcels`, `figures` (as `pg_delivery_tower_figures()` gives them, read by `pg_delivery_tower_figure_for()`), `on_time` (judged and on-time counts per carrier: `country` when the carrier has a country figure, and the provinces that have a figure; under 20 parcels the Create Label chooser reads "Not enough parcels yet"). Over 65,535 bytes, the provinces with the fewest parcels are left out until it fits (`pg_delivery_tower_summary_encode()`).
+- `config_text` `delivery_tower_summary`: `at`, `days`, `parcels`, `figures` (as `pg_delivery_tower_figures()` gives them, read by `pg_delivery_tower_figure_for()`), `on_time` (judged and on-time counts per carrier: `country` when the carrier has a country figure, and the provinces that have a figure). Over 65,535 bytes, the provinces with the fewest parcels are left out until it fits (`pg_delivery_tower_summary_encode()`).
+- With no country on-time counts (under 20 parcels) the Create Label chooser reads "Not enough parcels yet" for that carrier.
 
 ## How does the hourly problem pass work? (T4 to T7)
 - Due an hour after the last walk started, or at once while one is under way (`pg_delivery_tower_pass_due()`; record `delivery_tower_pass` = `after`, `at`). It runs after the summary in the same tick only when the summary is done.
 - Reads, by id, parcels on an order not incomplete or cancelled that are not delivered, have a number and were made, shipped or moved in the last 90 days, plus every parcel with an open problem whatever its age (`pg_delivery_tower_parcel_query()`). Older forgotten rows are not judged, so the first run does not flood the desk.
 - Per page: the newest active non-return label per parcel (`label_at`, driver), the open kinds, and `pg_delivery_tower_parcel_changes()` (pure) calls the rules; a label whose driver is in `pg_shipment_tracking_drivers()` makes the status read. Opens are one `INSERT IGNORE` a page; a close sets `closed_at`, `close_reason` 1. `delivered_at` > 0 counts as delivered whatever the status column says.
+- Each page also reads the latest hand close per kind (`pg_delivery_tower_page_hand_closed()`, one query); the parcel's `status_at` decides whether it still holds (`delivery-tower-rules.md`).
 - At the end of a walk, open rows whose parcel is gone or whose order is gone, incomplete or cancelled are closed with reason 1.
 - Settings: `pg_delivery_tower_settings()` reads `config_text` `delivery_tower_settings`.
 

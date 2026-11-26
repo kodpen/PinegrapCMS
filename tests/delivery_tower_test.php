@@ -233,6 +233,32 @@ function test_delivery_tower_problem_closed_by_a_delivery()
 	pg_assert_same(array('returned'), $pass['open'], 'and the return is opened');
 }
 
+function test_delivery_tower_pass_keeps_a_kind_closed_by_hand()
+{
+	$pass = pg_delivery_tower_pass('in_transit', array(), array('stuck'), array('stuck'));
+	pg_assert_same(array(), $pass['open'], 'found and held: nothing to open');
+
+	$pass = pg_delivery_tower_pass('in_transit', array(), array('stuck'), array());
+	pg_assert_same(array('stuck'), $pass['open'], 'found and not held: opened');
+
+	$pass = pg_delivery_tower_pass('exception', array(), array('problem', 'stuck'), array('stuck'));
+	pg_assert_same(array('problem'), $pass['open'], 'held with another kind found: only the other opens');
+
+	$pass = pg_delivery_tower_pass('in_transit', array('problem'), array(), array('problem'));
+	pg_assert_same(array('problem' => 'status_changed'), $pass['close'], 'an open kind still closes when the status left');
+}
+
+function test_delivery_tower_held_kinds()
+{
+	$status_at = 1000;
+	pg_assert_same(array('stuck'), pg_delivery_tower_held_kinds(array('stuck' => 1500), $status_at), 'closed by hand after the last status: held');
+	pg_assert_same(array('stuck'), pg_delivery_tower_held_kinds(array('stuck' => 1000), $status_at), 'closed by hand at the moment of the last status: held');
+	pg_assert_same(array(), pg_delivery_tower_held_kinds(array('stuck' => 900), $status_at), 'the status changed after the hand close: judged anew');
+	pg_assert_same(array('not_handed_over'), pg_delivery_tower_held_kinds(array('not_handed_over' => 5), 0), 'a label never scanned stays held');
+	pg_assert_same(array(), pg_delivery_tower_held_kinds(array(), $status_at), 'a row closed by a status holds nothing (only hand closes are handed in)');
+	pg_assert_same(array('problem', 'returned'), pg_delivery_tower_held_kinds(array('problem' => 1200, 'returned' => 1300, 'stuck' => 800), $status_at), 'all four kinds follow the rule');
+}
+
 function test_delivery_tower_settings_clean()
 {
 	$defaults = pg_delivery_tower_settings_clean(array());
