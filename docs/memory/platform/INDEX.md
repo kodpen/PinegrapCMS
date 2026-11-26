@@ -165,11 +165,11 @@
 - office-cell-edits.md: Excel cells changed in the file window (includes/fn/office_edit.php, PR #656): what may change, how a typed value is stored, the row splice, why formula results are taken out
 - office-cell-locks.md: Which workbook cells the file window never changes (formulas, merges, tables, signed or password-reserved files) and how the grid tells which cells of a protected sheet are open
 - office-csv-preview.md: .csv and .tsv as a sheet in Quick Look and a channel's Preview (PR #10484): separator and character set guessed, the choice above the sheet, limits, view only
-- office-docx-add-delete.md: Adding a paragraph after another and deleting one in a .docx (office_docx_paragraphs.php, OD3, PR #11811): the bar's buttons, the save entries, the kind a new paragraph takes, the refusals
+- office-docx-add-delete.md: Adding a paragraph after another (Enter) and deleting one (Delete the paragraph) in a .docx (office_docx_paragraphs.php, OD3, PR #11811): the save entries, the kind a new paragraph takes, the refusals
 - office-docx-controls-numbering.md: Word preview: table rows and cells inside content controls and custom XML, and numId 0 taking a paragraph's (or its style's) numbering off (PR #1119), run properties turned off by w:val
 - office-docx-format.md: Bold, italic and underline on selected text of a .docx paragraph (office_docx_format.php, OD1, PR #11152): the bar, the save entry, runs split and joined, what is kept
 - office-docx-page-keys.md: Keys of a Word document typed on its sheet (OP2, PR #11940): Enter splits, Backspace and Delete join, selections and arrows cross paragraphs, B/I/U across them
-- office-docx-page.md: A Word document drawn as a white sheet and typed where it stands (renderDocument(), OP1, OP2 PR #11940): one typed sheet, the caret followed, what stays; the keys in office-docx-page-keys.md
+- office-docx-page.md: A Word document drawn as a white sheet and typed where it stands (renderDocument(), OP1, OP2 PR #11940): one typed sheet, the caret followed, what stays; the keys in office-docx-page-keys.md [decision: decisions-made-product-115.md]
 - office-docx-paragraph-kind.md: A .docx paragraph's kind (normal, heading 1-3, bulleted or numbered list) set from the format bar (office_docx_kind.php, OD2): save entry, styles and numbering used or added, refusals
 - office-docx-undo.md: Undo and Redo of a Word document typed on its sheet (OP3, PR #11963): the bar's pair, Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z, what one change is, what a press puts back
 - office-dom-ceiling.md: How much of a docx or xlsx becomes a libxml tree (office.php, office_edit.php, PR #882): 8 MB a DOM part, a long document read from its beginning, rows and strings node by node
@@ -178,7 +178,7 @@
 - office-new-files.md: New spreadsheet and New document (OE5, PR #11119): the File Manager's New menu and a channel's attach menu make an empty .xlsx or .docx with the product's writer and open it for editing
 - office-ods-preview.md: .ods as a workbook in Quick Look, the file window and a channel's Preview (PR #10519): read through the sheet reader, the preview's limits, the cell ceiling, the shared walk, view only
 - office-overview.md: Start file for the office-* files: Office files shown and edited by own code in the File Manager and channels; decisions, parts by screen label, which file holds what [decision: decisions-made-product-79.md]
-- office-paragraph-edits.md: Word paragraphs changed in the file window and the Workspace (includes/fn/office_edit.php, PR #702): which paragraphs, how new text goes into the runs (#1149, #1158), refused documents
+- office-paragraph-edits.md: Word paragraph text saved from the file window and the Workspace (office_edit.php, PR #702): which paragraphs, the save entry, new text in the runs (#1149, #1158), refusals
 - office-pptx-canvas-mapper.md: The design file mapper pg_pptx_canvas_slide() (DF2): a .pptx slide as an Artifact Canvas document; units, font lookup, paragraph breaks, pictures for the caller, the report
 - office-pptx-design-reader.md: The design file reader pg_pptx_design_read() (PR #11840): a .pptx read as slides of placed elements for the Artifact Canvas; units, what each element gives, what is left out and counted, limits
 - office-pptx-preview.md: .pptx as a list of slides in Quick Look, the file window and a channel's Preview (PR #10585): title, text in reading order, pictures, speaker notes; limits, refusals, view only
