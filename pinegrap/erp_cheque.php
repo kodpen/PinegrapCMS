@@ -48,8 +48,7 @@ if ($_POST) {
     pg_request_single_values(array('step', 'date', 'bank_till_id', 'account_id', 'reason'));
 
     $step = (string) ($_POST['step'] ?? '');
-    $typed = trim((string) ($_POST['date'] ?? ''));
-    $date = preg_match('/^\d{4}-\d{2}-\d{2}$/', $typed) ? $typed : ((($typed !== '') && validate_date($typed)) ? prepare_form_data_for_input($typed, 'date') : date('Y-m-d'));
+    $date = erp_cheque_typed_step_date((string) ($_POST['date'] ?? ''));
 
     $done = erp_cheque_step($cheque_id, $step, array(
         'date' => $date,
@@ -78,7 +77,7 @@ $name = trim(($kinds[(string) $cheque['kind']] ?? '') . ' ' . (string) $cheque['
 
 $tills = '';
 $till_count = 0;
-foreach ((array) db_items("SELECT id, name, currency, kind FROM erp_cash_accounts WHERE is_active = 1 AND id <> '" . (int) $cheque['portfolio_till_id'] . "' ORDER BY (kind = 'bank') DESC, sort_order ASC, id ASC") as $till) {
+foreach ((array) db_items("SELECT id, name, currency, kind FROM erp_cash_accounts WHERE " . erp_cheque_bank_till_choices_where($cheque) . " ORDER BY (kind = 'bank') DESC, sort_order ASC, id ASC") as $till) {
     $tills .= '<option value="' . (int) $till['id'] . '"' . (((int) $till['id'] === (int) $cheque['bank_till_id']) ? ' selected' : '') . '>' . h($till['name'] . ' (' . $till['currency'] . ')') . '</option>';
     $till_count++;
 }
