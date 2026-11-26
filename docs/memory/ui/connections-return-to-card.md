@@ -30,6 +30,6 @@ module: connections_screen
 - E-mail sending's "Set up the application on Connections first." opens Google's or Microsoft's page (`#connections-details`), not the list.
 - Backups' "Connected accounts" link became "Set up the {var:1} application": Google's or Microsoft's page; Dropbox, with no page, its drawer on the list.
 - MCP servers' Manage in Connections opens in the same tab; with no connector picked, Open in Connections still opens the list's MCP group.
-- Left for TR3b (a drawer opened again): a box's form on Mailboxes and Claude's set-up step 4 keep their new tab; the leads inside a drawer name only their card.
+- A box's set-up drawer on Mailboxes and Claude's set-up step 4 open the page in the same tab too (TR3b); what the pane held and the drawers open come back: `connections-lead-keeps-pane.md`.
 
 Tests: `tests/connections_back_test.php`.

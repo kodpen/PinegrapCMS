@@ -135,7 +135,7 @@ function test_workspace_mail_google_account_state_in_the_box_form()
 {
 	$unset = ws_mail_connection_html(array('role' => 1), 'google', 0, false, true);
 	pg_assert_contains(h(lang('The Google application is not set up yet.')), $unset, 'the application not set up is said');
-	pg_assert_contains('href="' . h(ws_mail_connections_url('google')) . '" target="_blank" rel="noopener"', $unset, 'Google\'s page in a new tab');
+	pg_assert_contains('href="' . h(ws_mail_connections_url('google')) . '">', $unset, 'Google\'s page in the same tab');
 	pg_assert_contains('bi-google', $unset);
 	pg_assert_true(strpos(ws_mail_connection_html(array('role' => 3), 'google', 1, true, true), '<a ') === false, 'a user below manager is told who can');
 }
