@@ -247,3 +247,22 @@ function test_application_review_store_audit_types()
 	pg_assert_true(isset($types['application_program']), 'a programme');
 	pg_assert_true(isset($types['application_entry']), 'an entry');
 }
+
+// A deleted submission leaves the desk with its entry and the reviews given
+// on it, as the personal data erasure takes them: no reviewer is left to
+// score answers that are gone, and no blank entry is ranked, decided or
+// mailed.
+function test_application_deleted_submission_takes_its_entry_and_reviews()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/submitted_form_writes.php');
+	require_once(__DIR__ . '/helpers/source_reader.php');
+
+	$delete = pg_test_function_source('pg_submitted_form_delete');
+	pg_assert_contains('pg_application_entry_delete_for_form($form_id);', $delete, 'the submission delete clears its entry');
+	pg_assert_true(strpos($delete, 'pg_application_entry_delete_for_form($form_id);') > strpos($delete, 'DELETE FROM forms WHERE id = ?'), 'only once the submission is gone');
+
+	$clear = pg_test_function_source('pg_application_entry_delete_for_form');
+	pg_assert_contains('pg_application_program_ready()', $clear, 'nothing before the tables exist');
+	pg_assert_contains('DELETE application_reviews FROM application_reviews INNER JOIN application_entries ON application_entries.id = application_reviews.entry_id WHERE application_entries.form_id = ?', $clear, 'its reviews, every round');
+	pg_assert_contains('DELETE FROM application_entries WHERE form_id = ?', $clear, 'then its entry');
+}
