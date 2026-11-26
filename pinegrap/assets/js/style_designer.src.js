@@ -12864,7 +12864,7 @@ const StyleDesigner = (function () {
     // recipient picker is only a marker (_apply_catalog_item_view_bindings()),
     // the watcher list adds its rows before them (widgets_comments.php).
     // Every other section's children give way to what the server draws.
-    var _SD_SECTION_KEEPS_CHILDREN = { recipient_picker: 1, comment_watchers: 1, form_step_nav: 1, password_rules: 1 };
+    var _SD_SECTION_KEEPS_CHILDREN = { recipient_picker: 1, comment_watchers: 1, form_step_nav: 1, password_rules: 1, guest: 1 };
 
     var _SD_CHIP_KINDS = [['data-sd-cond', 'sd-chip-cond'], ['data-sd-off-reason', 'sd-chip-off'], ['data-sd-cf-shown', 'sd-chip-shown']];
     function _sdChipRow(doc, wrapper) {
@@ -47799,6 +47799,9 @@ const StyleDesigner = (function () {
             out.push(['password_rules',       _sdT('Strong password rules (hidden when the site setting is off)')]);
             out.push(['google_signup',        _sdT('Sign-up buttons: Google, Microsoft and Apple (only the ones turned on)')]);
             out.push(['login_link',           _sdT('Sign-in link')]);
+            // Its button is bound to "Continue as a Guest"; the site posts
+            // it with a small form of its own, after the sign-up form.
+            out.push(['guest',                _sdT('Continue as a Guest (shown only when the link that brought the visitor allows a guest)')]);
         } else if (type === 'membership') {
             out.push(['password_rules',       _sdT('Strong password rules (hidden when the site setting is off)')]);
             out.push(['google_signup',        _sdT('Sign-up buttons: Google, Microsoft and Apple (only the ones turned on)')]);
@@ -48008,6 +48011,10 @@ const StyleDesigner = (function () {
             note = on.length ? _sdT('Turned on now: {var}', on.join(', ')) : _sdT('No provider is turned on now.');
         } else if (section === 'captcha' && kind === 'registration') {
             return _sdCommentsSectionSample('comment_captcha', doc);
+        } else if (section === 'guest' && kind === 'registration') {
+            // An empty guest section: the site puts its own button in it.
+            html = '<button type="button" class="btn btn-outline-primary pg-guest-button" tabindex="-1">' + esc(_sdT('Continue as a Guest')) + '</button>';
+            note = _sdT('Shown only when the link that brought the visitor allows a guest.');
         } else if (section === 'password_rules' && _sdMemberHasRules(kind)) {
             html = _SD_HTML_PREVIEW_TOKENS.__password_rules();
         } else if (link) {
@@ -51400,6 +51407,12 @@ const StyleDesigner = (function () {
             ['shows_remember_me',        _sdT('The "Remember Me" box is offered')],
             ['has_forgot_password_link', _sdT('A forgot password link is offered')]
         ],
+        registration: [
+            ['shows_remember_me',        _sdT('The "Remember Me" box is offered')]
+        ],
+        membership: [
+            ['shows_remember_me',        _sdT('The "Remember Me" box is offered')]
+        ],
         logout: [
             ['is_signed_in',    _sdT('The visitor is signed in')],
             ['is_signed_out',   _sdT('The visitor is signed out')],
@@ -51842,6 +51855,9 @@ const StyleDesigner = (function () {
             }
             if (region === 'search_results') {
                 aOpts.push(['submit_search',       _sdT('Submit the Search')]);
+            }
+            if (region === 'registration' && (isRealButton || cur.action === 'continue_as_guest')) {
+                aOpts.push(['continue_as_guest',   _sdT('Continue as a Guest (guest section)')]);
             }
             if (region === 'form_item_view') {
                 aOpts.push(['ai_summarize',        _sdT('Summarize with the browser\'s AI (form_item_view)')]);
@@ -59260,6 +59276,11 @@ const StyleDesigner = (function () {
             ratio: function (v) { return _sdRatioCss(v) || ''; },
             ratioOf: function (n) { return _sdAspectOf(n.props, n.type === 'content' && n.props.contentType === 'image'); },
             setSize: _sdSpSizeSet,
+            // A grid child's box, for its "Area" (the part 'grid').
+            parentOf: function (n) {
+                var p = n ? _sdAnyParent(n) : null;
+                return p ? p.parent : null;
+            },
             commit: function (next, changes) {
                 if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
                 if (_sdPanelLockReason(nodes)) return;
@@ -73639,6 +73660,15 @@ const StyleDesigner = (function () {
                                             customName: _sdT('Registration Button'), _attrs: [{ name: 'type', value: 'submit' }] }),
                                         createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Sign-up Buttons'),
                                             _bindings: { section: 'google_signup' } }),
+                                        // Drawn only when the link allows a guest; the
+                                        // button posts the site's guest form, printed
+                                        // after this form (never inside it).
+                                        createNode('semantic', { tag: 'div', cssClass: 'mt-3', customName: _sdT('Continue as a Guest'),
+                                            _bindings: { section: 'guest' } }, [
+                                            createNode('semantic', { tag: 'button', cssClass: 'btn btn-outline-primary w-100', text: _sdT('Continue as a Guest'),
+                                                customName: _sdT('Guest Button'), _attrs: [{ name: 'type', value: 'submit' }],
+                                                _bindings: { action: 'continue_as_guest' } })
+                                        ]),
                                         createNode('semantic', { tag: 'div', cssClass: 'text-center mt-3 small', customName: _sdT('Links') }, [
                                             createNode('content', { contentType: 'link', text: _sdT('Already have an account? Sign in'), href: '#', cssClass: '',
                                                 _bindings: { href: '__login_url' } })

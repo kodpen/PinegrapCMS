@@ -9765,3 +9765,53 @@ button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible, bu
 @media (prefers-reduced-motion: reduce) {
     .sd-empty-starts, .sd-help-tips-knob, .sd-help-tips-knob::after { transition: none; }
 }
+
+/* A grid box's named areas (Advanced › Layout › Areas, the part 'grid'):
+   the fold field, the small grid of cells and areas, the list, the lines.
+   The six tints are the look's in turn: blue, teal, amber, violet, rose, grey. */
+.sd-ga-t1 { --sd-ga: #6aa5ff; } .sd-ga-t2 { --sd-ga: #3fd0a8; } .sd-ga-t3 { --sd-ga: #f2b84b; }
+.sd-ga-t4 { --sd-ga: #b19cff; } .sd-ga-t5 { --sd-ga: #f58aa0; } .sd-ga-t6 { --sd-ga: #9aa0a8; }
+.sd-ga-fold { display: flex; align-items: center; gap: 7px; height: 30px; padding: 0 9px; font-size: 12px; text-align: start;
+    background: var(--sd-input-bg); border: 1px solid var(--sd-input-border); border-radius: 9px; color: var(--sd-text); }
+.sd-ga-fold[aria-expanded="true"] { border-color: var(--sd-border-strong); }
+.sd-ga-fold:disabled { color: var(--sd-text-muted); }
+.sd-ga-fold > span:last-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-ga-sqs { display: inline-flex; gap: 3px; }
+.sd-ga-sqs > i, .sd-ga-sq { flex: none; width: 10px; height: 10px; border-radius: 3px; background: var(--sd-ga); }
+.sd-ga { margin: 2px 0 8px; }
+.sd-ga-wrap { display: grid; grid-template-columns: 14px 1fr; gap: 4px; }
+.sd-ga-num { display: grid; gap: 3px; font-size: 10px; color: var(--sd-text-muted); text-align: center; font-variant-numeric: tabular-nums; }
+.sd-ga-num.is-c { grid-column: 2; } .sd-ga-num.is-r { align-items: center; }
+.sd-ga-grid { position: relative; display: grid; gap: 3px; touch-action: none; user-select: none; border-radius: 6px; }
+.sd-ga-grid:focus-visible { outline: 2px solid var(--sd-accent); outline-offset: 2px; }
+.sd-ga-grid > i { border-radius: 5px; background: var(--sd-input-bg); box-shadow: inset 0 0 0 1px var(--sd-input-border); }
+.sd-ga-grid > i.is-key { box-shadow: inset 0 0 0 1.5px var(--sd-accent); }
+.sd-ga-area { position: relative; display: flex; align-items: center; justify-content: center; min-width: 0; padding: 0 6px;
+    border-radius: 5px; font-size: 11px; font-weight: 600; color: var(--sd-text); cursor: grab;
+    background: color-mix(in srgb, var(--sd-ga) 22%, var(--sd-panel-bg)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sd-ga) 62%, transparent); }
+.sd-ga-area > b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sd-ga-area.is-on { z-index: 2; box-shadow: inset 0 0 0 1px var(--sd-ga), 0 0 0 2px var(--sd-panel-bg), 0 0 0 3.5px var(--sd-accent); }
+.sd-ga-area.is-inh { color: var(--sd-text-muted); background: color-mix(in srgb, var(--sd-ga) 9%, var(--sd-panel-bg));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sd-ga) 30%, transparent); }
+.sd-ga-handle { position: absolute; right: -4px; bottom: -4px; width: 9px; height: 9px; border-radius: 2px; cursor: nwse-resize;
+    background: var(--sd-text); box-shadow: 0 0 0 1.5px var(--sd-accent); }
+.sd-ga-mark { z-index: 3; display: flex; align-items: center; justify-content: center; border-radius: 5px; font-size: 11px; pointer-events: none;
+    background: rgba(var(--sd-accent-rgb), .12); outline: 1.5px dashed var(--sd-accent); outline-offset: -1px; color: var(--sd-accent); }
+.sd-ga-mark.is-bad { background: color-mix(in srgb, var(--sd-danger) 12%, transparent); outline-color: var(--sd-danger); color: var(--sd-danger); }
+.sd-ga-list { display: grid; gap: 2px; margin: 8px 0 0; }
+.sd-ga-li { display: flex; align-items: center; gap: 8px; min-height: 30px; padding: 0 4px 0 6px; border-radius: 8px; }
+.sd-ga-li.is-on { background: var(--sd-accent-soft); box-shadow: inset 0 0 0 1px var(--sd-accent-line); }
+.sd-ga-li > button.sd-ga-name { flex: none; max-width: 45%; padding: 0; border: 0; background: none; color: var(--sd-text); font-size: 12px; font-weight: 600;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-ga-li > input { flex: 1; min-width: 0; height: 26px; font-size: 12px; padding: 0 6px; border-radius: 7px;
+    background: var(--sd-input-bg); border: 1px solid var(--sd-accent); color: var(--sd-text); }
+.sd-ga-li > small { flex: 1; min-width: 0; font-size: 11.5px; color: var(--sd-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sd-ga-li > .sd-ga-bin { flex: none; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 6px; background: none; color: var(--sd-text-muted); }
+.sd-ga-li > .sd-ga-bin:hover { color: var(--sd-danger); }
+.sd-ga-line { margin: 6px 0 0; font-size: 11.5px; line-height: 1.45; color: var(--sd-text-muted); }
+.sd-ga-line.is-bad { color: var(--sd-danger); }
+.sd-ga-line.is-warn { color: var(--sd-warning); }
+.sd-ga-foot { display: flex; align-items: center; gap: 8px; margin: 8px 0 0; font-size: 11.5px; color: var(--sd-text-muted); }
+.sd-ga-foot > span { flex: 1; }
+.sd-ga-foot > button { flex: none; padding: 2px 8px; font-size: 11.5px; border-radius: 7px; border: 1px solid var(--sd-border-strong); background: none; color: var(--sd-label); }
+.sd-ga-dim { opacity: .5; }

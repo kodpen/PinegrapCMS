@@ -778,8 +778,10 @@ function pg_figma_import_frame($id, $index, $user)
 
         if (!$data['folder']) {
             require_once(PG_FUNCTIONS_DIR . '/includes/designer_import.php');
-            $ctx = (object) array('folders' => array(), 'user_id' => (int) $user['id']);
+            $ctx = (object) array('folders' => array(), 'user_id' => (int) $user['id'], 'created' => array('folders' => array()));
             $data['folder'] = pg_di_folder_path(array('Figma', ($data['name'] !== '') ? $data['name'] : $data['key']), $ctx);
+            // Stop removes the file's folder only when this import made it.
+            $data['made_folder'] = in_array($data['folder'], $ctx->created['folders'], true);
         }
 
         $limits = pg_upload_limits();
@@ -917,6 +919,17 @@ function pg_figma_import_finish($id, $user, $variables)
     );
     $data['frames'] = array();
     $data['done'] = true;
+
+    // Stop removed the work file while this step was making the rows: the
+    // rows are taken back and nothing is written again.
+    if (pg_figma_import_load($id) === null) {
+        foreach ($shared as $row) {
+            db("DELETE FROM shared_components WHERE id = '" . (int) $row['id'] . "' AND category LIKE 'import:figma/%' LIMIT 1");
+        }
+
+        return array('ok' => false);
+    }
+
     pg_figma_import_keep($id, $data);
 
     return array('ok' => true, 'report' => array(
@@ -955,8 +968,118 @@ function pg_figma_import_ready($id)
 }
 
 /**
+ * What a stop may delete, from an import's work: the files it fetched
+ * (each once, by the id it stored), the shared rows it made, and its
+ * Figma/<file name> folder when the import made it (0 otherwise). Nothing
+ * found by name. Pure.
+ *
+ * @param array $data the work file's content
+ * @return array files => list of array('id', 'name'), shared => ids, folder
+ */
+function pg_figma_stop_targets($data)
+{
+    $files = array();
+
+    foreach ((isset($data['files']) && is_array($data['files'])) ? $data['files'] : array() as $file) {
+        $fid = is_array($file) && isset($file['id']) ? (int) $file['id'] : 0;
+
+        if ($fid > 0 && !isset($files[$fid])) {
+            $files[$fid] = array('id' => $fid, 'name' => isset($file['name']) ? (string) $file['name'] : '');
+        }
+    }
+
+    $shared = array();
+
+    foreach (isset($data['ready']['shared']) && is_array($data['ready']['shared']) ? $data['ready']['shared'] : array() as $row) {
+        $sid = is_array($row) && isset($row['id']) ? (int) $row['id'] : 0;
+
+        if ($sid > 0) {
+            $shared[$sid] = $sid;
+        }
+    }
+
+    return array(
+        'files'  => array_values($files),
+        'shared' => array_values($shared),
+        'folder' => (!empty($data['made_folder']) && isset($data['folder'])) ? max(0, (int) $data['folder']) : 0,
+    );
+}
+
+/**
+ * Whether a name under data/temp is an import's work file
+ * (pg_figma_import_path()). Pure.
+ *
+ * @param string $name
+ * @return bool
+ */
+function pg_figma_is_work_file($name)
+{
+    return (bool) preg_match('/^figma_[a-f0-9]{40}\.json$/', (string) $name);
+}
+
+/**
+ * Takes back what an import stored: its fetched files, its shared rows and
+ * its folder when the import made it and nothing else is in it.
+ *
+ * @param array $data the work file's content
+ */
+function pg_figma_import_discard($data)
+{
+    $t = pg_figma_stop_targets($data);
+
+    if ($t['files']) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/explorer/recycle_bin.php');
+
+        foreach ($t['files'] as $file) {
+            pg_delete_file_record($file);
+        }
+    }
+
+    foreach ($t['shared'] as $sid) {
+        db("DELETE FROM shared_components WHERE id = '" . (int) $sid . "' AND category LIKE 'import:figma/%' LIMIT 1");
+    }
+
+    $fid = (int) $t['folder'];
+
+    if ($fid > 0
+        && (int) db_value("SELECT COUNT(*) FROM folder WHERE folder_parent = '$fid'") === 0
+        && (int) db_value("SELECT COUNT(*) FROM files WHERE folder = '$fid'") === 0
+        && (int) db_value("SELECT COUNT(*) FROM page WHERE page_folder = '$fid'") === 0) {
+        db("DELETE FROM folder WHERE folder_id = '$fid' LIMIT 1");
+    }
+}
+
+/**
+ * Stops the import kept in a work file found by the clean-up sweep: what
+ * it stored is taken back, then the file goes.
+ *
+ * @param string $path a data/temp path whose name pg_figma_is_work_file() accepts
+ * @return bool whether a work file was read
+ */
+function pg_figma_import_stop_path($path)
+{
+    if (!pg_figma_is_work_file(basename((string) $path)) || !is_file($path)) {
+        return false;
+    }
+
+    $data = json_decode((string) file_get_contents($path), true);
+    @unlink($path);
+
+    if (!is_array($data)) {
+        return false;
+    }
+
+    pg_figma_import_discard($data);
+
+    return true;
+}
+
+/**
  * Stops an import: what was fetched is removed from the file manager, the
- * shared components it made are deleted, and its work file goes.
+ * shared components it made are deleted, its Figma/<file name> folder goes
+ * when the import made it and it is empty, and its work file goes. The
+ * window calls it on Stop, on its close before "Open the design" and when
+ * the finish step fails.
  *
  * @param string $id
  * @return bool
@@ -969,19 +1092,10 @@ function pg_figma_import_stop($id)
         return false;
     }
 
-    if ($data['files']) {
-        require_once(PG_FUNCTIONS_DIR . '/includes/explorer/recycle_bin.php');
-
-        foreach ($data['files'] as $file) {
-            pg_delete_file_record(array('id' => (int) $file['id'], 'name' => (string) $file['name']));
-        }
-    }
-
-    foreach (isset($data['ready']['shared']) ? $data['ready']['shared'] : array() as $row) {
-        db("DELETE FROM shared_components WHERE id = '" . (int) $row['id'] . "' AND category LIKE 'import:figma/%' LIMIT 1");
-    }
-
+    // The work file goes first, so a frame step still fetching sees the
+    // import stopped and deletes what it stores (pg_figma_import_keep_step()).
     @unlink(pg_figma_import_path($id));
+    pg_figma_import_discard($data);
 
     return true;
 }

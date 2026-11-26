@@ -192,7 +192,19 @@ if (!$_POST) {
         }
     }
 
+    // A Figma import's work file left behind is stopped from that file
+    // first: the pictures it fetched and the shared rows it made go with
+    // it, as "Stop" in the New design window takes them.
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/figma_start.php');
+
     foreach($file_list as $file){
+        if((dirname($file) === $temp_directory) && pg_figma_is_work_file(basename($file))){
+            pg_figma_import_stop_path($file);
+            if(!file_exists($file)){
+                $file_counter++;
+                $deleted_names[] = $file;
+            }
+        }
         if(file_exists($file)){
             $is_folder = is_dir($file);
             if(!pg_clean_up_delete_path($file)){
