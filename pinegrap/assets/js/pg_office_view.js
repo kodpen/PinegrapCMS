@@ -2812,40 +2812,85 @@
         return walk(root) ? count : -1;
     }
 
-    // Where in a paragraph's text a click landed, as [start, end]: the words
-    // the browser selected (the second click of a double click selects one),
-    // or the point clicked. null when it cannot be told.
-    function pointedText(node, event) {
-        var selection = window.getSelection ? window.getSelection() : null;
-        var start = -1;
-        var end = -1;
+    // Whether an element is a tab as the server and drawText() draw it.
+    function isTabChar(node) {
+        return (' ' + (node.className || '') + ' ').indexOf(' office-tabchar ') !== -1;
+    }
 
-        if (selection && selection.rangeCount) {
-            var range = selection.getRangeAt(0);
+    // A paragraph's text read from its drawing as it is typed in: text as it
+    // stands, a drawn tab a tab, a br a line break. The br a browser keeps in
+    // an emptied paragraph, or after a line break typed at its end, only
+    // holds the line open and is no text.
+    function paragraphText(root) {
+        var text = '';
+        var lastBreak = false;
 
-            if (node.contains(range.startContainer) && node.contains(range.endContainer)) {
-                start = textOffset(node, range.startContainer, range.startOffset);
-                end = textOffset(node, range.endContainer, range.endOffset);
+        (function walk(current) {
+            for (var child = current.firstChild; child; child = child.nextSibling) {
+                if (child.nodeType === 3) {
+                    if (child.nodeValue !== '') {
+                        text += child.nodeValue;
+                        lastBreak = false;
+                    }
+                } else if (child.nodeType !== 1) {
+                    continue;
+                } else if (child.nodeName === 'BR') {
+                    text += '\n';
+                    lastBreak = true;
+                } else if (isTabChar(child)) {
+                    text += '\t';
+                    lastBreak = false;
+                } else {
+                    walk(child);
+                }
             }
+        })(root);
+
+        if (lastBreak && (text.length === 1 || text.charAt(text.length - 2) === '\n')) {
+            text = text.slice(0, -1);
         }
 
-        if ((start < 0 || end < 0) && event) {
-            var caret = null;
+        return text;
+    }
 
-            if (document.caretPositionFromPoint) {
-                var position = document.caretPositionFromPoint(event.clientX, event.clientY);
-                caret = position ? { node: position.offsetNode, offset: position.offset } : null;
-            } else if (document.caretRangeFromPoint) {
-                var point = document.caretRangeFromPoint(event.clientX, event.clientY);
-                caret = point ? { node: point.startContainer, offset: point.startOffset } : null;
-            }
+    // The node and offset in a paragraph's drawing where a point of its text
+    // stands, counted as textOffset() counts it: inside a text when it can
+    // be, else beside a tab or a line break. A point past the text is its
+    // end; an empty paragraph holds its own start.
+    function textPoint(root, offset) {
+        var left = Math.max(0, offset);
+        var found = null;
+        var last = null;
 
-            if (caret && node.contains(caret.node)) {
-                start = end = textOffset(node, caret.node, caret.offset);
-            }
+        function indexIn(parent, child) {
+            return Array.prototype.indexOf.call(parent.childNodes, child);
         }
 
-        return (start < 0 || end < 0) ? null : [Math.min(start, end), Math.max(start, end)];
+        (function walk(current) {
+            for (var child = current.firstChild; child && !found; child = child.nextSibling) {
+                if (child.nodeType === 3) {
+                    if (left <= child.nodeValue.length) {
+                        found = { node: child, offset: left };
+                        return;
+                    }
+
+                    left -= child.nodeValue.length;
+                    last = { node: child, offset: child.nodeValue.length };
+                } else if (child.nodeType === 1 && (child.nodeName === 'BR' || isTabChar(child))) {
+                    if (left === 0) {
+                        found = { node: current, offset: indexIn(current, child) };
+                        return;
+                    }
+
+                    left -= 1;
+                    last = { node: current, offset: indexIn(current, child) + 1 };
+                } else if (child.nodeType === 1) {
+                    walk(child);
+                }
+            }
+        })(root);
+
+        return found || last || { node: root, offset: 0 };
     }
 
     // Text into a node, tabs and line breaks the way the server draws them.
@@ -2857,7 +2902,11 @@
 
             line.split('\t').forEach(function (piece, position) {
                 if (position > 0) {
-                    node.appendChild(el('span', 'office-tabchar', ' '));
+                    var tab = el('span', 'office-tabchar', ' ');
+
+                    // One character of the text: the caret passes it whole.
+                    tab.setAttribute('contenteditable', 'false');
+                    node.appendChild(tab);
                 }
 
                 if (piece !== '') {
@@ -2989,15 +3038,19 @@
         return list;
     }
 
-    // A document as the safe HTML the server made. Read for editing, the
-    // paragraphs it marked (data-p) may be given a new text, except those it
-    // marked as holding more than text (data-lock); the server checks the
-    // same again when the edit is saved. A paragraph is picked with a click
-    // and opened with another (or Enter, or F2); what it is given shows plain
-    // until the file is saved, when the server keeps the formatting of the
-    // words that did not change.
+    // A document as the safe HTML the server made, drawn on a white sheet.
+    // Read for editing, the paragraphs it marked (data-p) may be given a new
+    // text, except those it marked as holding more than text (data-lock);
+    // the server checks the same again when the edit is saved. A paragraph
+    // that may change is typed where it stands, the caret where the click
+    // fell; what it is given shows plain until the file is saved, when the
+    // server keeps the formatting of the words that did not change.
     function renderDocument(container, office, strings, options) {
-        var doc = el('div', 'office-doc');
+        var doc = el('div', 'office-doc office-doc-paged');
+
+        // The sheet is file content: white with dark text in both themes,
+        // so the panel's light tokens are used inside it.
+        var paper = el('div', 'office-paper');
         var status = el('div', 'office-note office-status');
         var edit = office.edit || null;
         var editable = !!(options && options.editable) && !!edit;
@@ -3035,21 +3088,24 @@
         var bar = null;
         var controls = {};
 
-        // The paragraphs marked, the one picked, the one pressed on while it
-        // was already picked, the open editor, what was selected in it when
-        // it closed, and what the status line adds.
+        // The paragraphs marked, the one picked, the one being typed in
+        // (editor: its node, position, whether anything was typed, the
+        // last selection in it), what was selected in it when it was left,
+        // whether one was ever typed in, and what the status line adds.
         var nodes = [];
-        var shown = { node: null, pressed: null, editor: null, last: null, note: '' };
+        var shown = { node: null, editor: null, last: null, opened: false, note: '' };
 
         doc.setAttribute('aria-label', strings.doc || '');
+        paper.setAttribute('data-bs-theme', 'light');
+        doc.appendChild(paper);
 
         // The server made this markup itself from the file's text, escaped,
         // with its own small set of tags; nothing the file wrote reaches here
         // as markup.
-        doc.innerHTML = office.html || '';
+        paper.innerHTML = office.html || '';
 
         if (!office.html) {
-            doc.appendChild(el('div', 'office-note', strings.empty || ''));
+            paper.appendChild(el('div', 'office-note', strings.empty || ''));
         }
 
         container.appendChild(doc);
@@ -3072,6 +3128,26 @@
             return String(value).replace(/\r\n?/g, '\n');
         }
 
+        // How a paragraph is made typable: plain text only where the
+        // browser can, so it never takes markup of its own.
+        var typeMode = (function () {
+            var probe = document.createElement('div');
+
+            try {
+                probe.contentEditable = 'plaintext-only';
+            } catch (error) {
+                return 'true';
+            }
+
+            return probe.contentEditable === 'plaintext-only' ? 'plaintext-only' : 'true';
+        })();
+
+        // Whether something was typed into a paragraph that is still being
+        // typed in: its text is then read from its drawing.
+        function typedIn(position) {
+            return !!shown.editor && shown.editor.typed && shown.editor.position === position;
+        }
+
         // The changes as they stand, with the text of the paragraph being
         // typed in: Save is offered, and sends it, before Enter.
         function changesNow() {
@@ -3081,9 +3157,9 @@
                 list[position] = changes[position];
             });
 
-            if (shown.editor) {
+            if (shown.editor && shown.editor.typed) {
                 var position = shown.editor.position;
-                var value = normal(shown.editor.input.value);
+                var value = paragraphText(shown.editor.node);
 
                 if (value === texts[position]) {
                     delete list[position];
@@ -3095,11 +3171,11 @@
             return list;
         }
 
-        // The text a paragraph has now: typed in its open box, changed, or
+        // The text a paragraph has now: as it is being typed, changed, or
         // the file's.
         function textNow(position) {
-            if (shown.editor && shown.editor.position === position) {
-                return normal(shown.editor.input.value);
+            if (typedIn(position)) {
+                return paragraphText(shown.editor.node);
             }
 
             return own(changes, position) ? changes[position] : texts[position];
@@ -3205,21 +3281,54 @@
             }
         }
 
+        // The selection inside a paragraph as [start, end] of its text, or
+        // null when the selection is not all in it.
+        function selectionIn(node) {
+            var selection = window.getSelection ? window.getSelection() : null;
+
+            if (!selection || !selection.rangeCount) {
+                return null;
+            }
+
+            var range = selection.getRangeAt(0);
+
+            if (!node.contains(range.startContainer) || !node.contains(range.endContainer)) {
+                return null;
+            }
+
+            var start = textOffset(node, range.startContainer, range.startOffset);
+            var end = textOffset(node, range.endContainer, range.endOffset);
+
+            return (start < 0 || end < 0) ? null : [Math.min(start, end), Math.max(start, end)];
+        }
+
+        // Selects a stretch of a paragraph's text in its drawing.
+        function placeSelection(node, start, end) {
+            var selection = window.getSelection ? window.getSelection() : null;
+
+            if (!selection || !document.createRange) {
+                return;
+            }
+
+            var from = textPoint(node, start);
+            var to = textPoint(node, end);
+            var range = document.createRange();
+
+            range.setStart(from.node, from.offset);
+            range.setEnd(to.node, to.offset);
+            selection.removeAllRanges();
+            selection.addRange(range);
+        }
+
         // The text selected for the bar, counted in the paragraph's text as
-        // it is now: in the open box, or in the box of the paragraph still
-        // picked when it closed. null when none.
+        // it is now: in the paragraph being typed in, or in the paragraph
+        // still picked when it was left. null when none.
         function selectedText() {
             var range = null;
+            var live = shown.editor ? (selectionIn(shown.editor.node) || shown.editor.range) : null;
 
-            if (shown.editor) {
-                var input = shown.editor.input;
-
-                range = {
-                    node: shown.editor.node,
-                    position: shown.editor.position,
-                    start: Math.min(input.selectionStart, input.selectionEnd),
-                    end: Math.max(input.selectionStart, input.selectionEnd)
-                };
+            if (live) {
+                range = { node: shown.editor.node, position: shown.editor.position, start: live[0], end: live[1] };
             } else if (shown.last && shown.last.node === shown.node) {
                 range = shown.last;
             }
@@ -3253,9 +3362,11 @@
             }
 
             shown.note = '';
+            redraw(range.node);
 
-            if (!shown.editor) {
-                redraw(range.node);
+            // The text typed in stays selected, to format it again.
+            if (document.activeElement === range.node) {
+                placeSelection(range.node, range.start, range.end);
             }
 
             drawBar();
@@ -3341,7 +3452,7 @@
             nodes.splice(nodes.indexOf(node) + 1, 0, fresh);
             redraw(fresh);
             notify();
-            openEditor(fresh, null);
+            enter(fresh, 0);
         }
 
         // Why the picked paragraph of the file may not be deleted, '' when
@@ -3412,6 +3523,12 @@
             }
 
             redraw(node);
+
+            // A paragraph kept again is typed in where the caret stands.
+            if (document.activeElement === node) {
+                openEditor(node);
+            }
+
             drawBar();
             notify();
         }
@@ -3510,7 +3627,10 @@
             shown.node = node;
             node.classList.add('office-selected');
             node.tabIndex = 0;
-            node.focus({ preventScroll: true });
+
+            if (document.activeElement !== node) {
+                node.focus({ preventScroll: true });
+            }
 
             if (scroll !== false && node.scrollIntoView) {
                 node.scrollIntoView({ block: 'nearest' });
@@ -3530,18 +3650,37 @@
             return (index < 0) ? null : (nodes[index + step] || null);
         }
 
+        // Whether a paragraph is typed in where it stands: one that may
+        // change and is not to be deleted. A drawn tab is one character the
+        // caret passes whole.
+        function setTyping(node) {
+            var on = node.classList.contains('office-para') && !own(deletes, node.getAttribute('data-p'));
+
+            node.contentEditable = on ? typeMode : 'false';
+            node.classList.toggle('office-typing', on);
+
+            Array.prototype.forEach.call(node.querySelectorAll('.office-tabchar'), function (tab) {
+                tab.setAttribute('contenteditable', 'false');
+            });
+        }
+
         // Draws a paragraph as it stands: its new text, or the server's
         // drawing when it has none.
         function redraw(node) {
             var position = node.getAttribute('data-p');
-            var look = lookOf(position, false);
+
+            // A changed text keeps the bold, italic and underline it was
+            // typed with, carried over as the server will write them.
+            var look = lookOf(position, own(changes, position) || typedIn(position));
             var shaped = formatted(position);
 
-            if (own(changes, position) || shaped) {
+            if (own(changes, position) || shaped || typedIn(position)) {
                 drawText(node, textNow(position), look ? look.want : null);
             } else if (own(drawn, position)) {
                 node.innerHTML = drawn[position];
             }
+
+            setTyping(node);
 
             // A kind asked for shows as a look of the paragraph until the
             // save draws it again as what it has become.
@@ -3573,6 +3712,8 @@
             notify();
         }
 
+        // Leaves the paragraph being typed in: what was typed is kept, or
+        // undone when save is false, and the paragraph drawn as it stands.
         function closeEditor(save) {
             var editor = shown.editor;
 
@@ -3580,122 +3721,85 @@
                 return;
             }
 
-            var input = editor.input;
+            var live = selectionIn(editor.node) || editor.range;
 
-            // What was selected stays the bar's to change, unless the text
-            // typed was undone (or holds a line end the text counts apart).
-            shown.last = (save && normal(input.value) === input.value) ? {
-                node: editor.node,
-                position: editor.position,
-                start: Math.min(input.selectionStart, input.selectionEnd),
-                end: Math.max(input.selectionStart, input.selectionEnd)
-            } : null;
+            // What was selected stays the bar's to change.
+            shown.last = (save && live) ? { node: editor.node, position: editor.position, start: live[0], end: live[1] } : null;
+
+            if (save && editor.typed) {
+                var value = paragraphText(editor.node);
+
+                shown.editor = null;
+                keep(editor.node, value);
+                return;
+            }
 
             shown.editor = null;
-            editor.node.classList.remove('office-editing');
-
-            if (save) {
-                keep(editor.node, editor.input.value);
-            } else {
-                redraw(editor.node);
-                notify();
-            }
+            redraw(editor.node);
+            notify();
         }
 
-        // The box grows with its text, so the paragraph keeps its place.
-        function fit(input) {
-            input.style.height = 'auto';
-            input.style.height = input.scrollHeight + 'px';
-        }
+        // Starts typing in a paragraph that may change, where the caret
+        // stands. An empty one is drawn holding a space to keep its line;
+        // it is typed into empty.
+        function openEditor(node) {
+            var position = node ? node.getAttribute('data-p') : null;
 
-        function openEditor(node, span) {
-            if (!node || node.classList.contains('office-locked') || own(deletes, node.getAttribute('data-p')) || (shown.editor && shown.editor.node === node)) {
+            if (!node || !node.classList.contains('office-para') || own(deletes, position) || (shown.editor && shown.editor.node === node)) {
                 return;
             }
 
             closeEditor(true);
-            select(node, false);
-
-            var position = node.getAttribute('data-p');
-            var input = el('textarea', 'office-editor office-para-editor');
 
             if (!own(drawn, position)) {
                 drawn[position] = node.innerHTML;
             }
 
-            input.value = own(changes, position) ? changes[position] : texts[position];
-            input.rows = 1;
-            input.setAttribute('aria-label', strings.doc_editor || '');
+            shown.editor = { node: node, position: position, typed: false, range: selectionIn(node) };
+            shown.opened = true;
 
-            shown.editor = { node: node, position: position, input: input };
-            node.classList.add('office-editing');
-            node.textContent = '';
-            node.appendChild(input);
-            fit(input);
-            input.focus({ preventScroll: true });
+            if (textNow(position) === '' && paragraphText(node) !== '') {
+                node.textContent = '';
 
-            var length = input.value.length;
-
-            input.setSelectionRange(span ? Math.min(span[0], length) : length, span ? Math.min(span[1], length) : length);
-
-            input.addEventListener('input', function () {
-                fit(input);
-                notify();
-            });
-
-            ['select', 'keyup', 'mouseup'].forEach(function (type) {
-                input.addEventListener(type, drawBar);
-            });
-
-            input.addEventListener('blur', function () {
-                if (shown.editor && shown.editor.input === input) {
-                    closeEditor(true);
+                if (document.activeElement === node) {
+                    placeSelection(node, 0, 0);
                 }
-            });
+            }
 
-            input.addEventListener('keydown', function (event) {
-                // The keys end here: the paragraphs and the panel's own
-                // shortcuts must not see them while a paragraph is typed in.
-                event.stopPropagation();
+            drawBar();
+        }
 
-                // A key that finishes a word in an input method belongs to it.
-                if (event.isComposing || event.keyCode === 229) {
-                    return;
-                }
+        // Puts the caret into a paragraph at a point of its text ('end' for
+        // its end); one that may not be typed in is only picked.
+        function enter(node, at) {
+            if (!node) {
+                return;
+            }
 
-                var key = event.key;
+            if (!node.classList.contains('office-typing')) {
+                select(node);
+                return;
+            }
 
-                if (formatKey(event)) {
-                    return;
-                }
+            node.focus({ preventScroll: true });
+            select(node, false);
+            openEditor(node);
 
-                if ((event.ctrlKey || event.metaKey) && (key === 's' || key === 'S')) {
-                    event.preventDefault();
-                    closeEditor(true);
-                    select(node, false);
-                    save();
-                    return;
-                }
+            var length = textNow(node.getAttribute('data-p')).length;
+            var offset = (at === 'end') ? length : Math.min(at, length);
 
-                // Shift+Enter is a line break inside the paragraph, as a
-                // word processor takes it: the box types it itself.
-                if (key === 'Enter' && event.shiftKey) {
-                    return;
-                }
+            placeSelection(node, offset, offset);
 
-                if (key === 'Enter' || key === 'Tab') {
-                    event.preventDefault();
-                    closeEditor(true);
-                    select(beside(node, (key === 'Tab' && event.shiftKey) ? -1 : 1) || node);
-                    return;
-                }
+            if (node.scrollIntoView) {
+                node.scrollIntoView({ block: 'nearest' });
+            }
+        }
 
-                if (key === 'Escape') {
-                    event.preventDefault();
-                    closeEditor(false);
-                    select(node, false);
-                }
-            });
+        // Esc: what was typed into the paragraph since the caret came into
+        // it is undone; the caret stays, at its end.
+        function undoTyping(node) {
+            closeEditor(false);
+            enter(node, 'end');
         }
 
         Array.prototype.forEach.call(doc.querySelectorAll('[data-p]'), function (node) {
@@ -3713,13 +3817,14 @@
             }
 
             node.classList.add('office-para');
+            setTyping(node);
 
             Array.prototype.forEach.call(node.querySelectorAll('a[href]'), function (link) {
                 link.title = strings.doc_link || '';
             });
         });
 
-        // One stop for the Tab key; the arrows go on from there.
+        // One stop for the Tab key; the arrows and Tab go on from there.
         if (nodes.length) {
             nodes[0].tabIndex = 0;
             doc.classList.add('office-doc-edit');
@@ -3727,61 +3832,192 @@
             doc.tabIndex = 0;
         }
 
-        // A paragraph reached with Tab is picked as a click would pick it, so
-        // the arrows, Enter and F2 work on it at once. A link inside one keeps
-        // its own focus.
+        // A paragraph reached with Tab or a click is picked; one that may
+        // change is typed in, the caret where the browser put it.
         doc.addEventListener('focusin', function (event) {
             var node = event.target;
 
-            if (node.hasAttribute && node.hasAttribute('data-p') && nodes.indexOf(node) !== -1 && node !== shown.node && !shown.editor) {
-                select(node);
-            }
-        });
-
-        doc.addEventListener('mousedown', function (event) {
-            if (shown.editor && shown.editor.node.contains(event.target)) {
+            if (!node.hasAttribute || !node.hasAttribute('data-p') || nodes.indexOf(node) === -1) {
                 return;
             }
 
-            var node = paragraphOf(event.target);
+            if (shown.editor && shown.editor.node !== node) {
+                closeEditor(true);
+            }
 
-            shown.pressed = (node && node === shown.node) ? node : null;
-
-            if (node) {
+            if (node !== shown.node) {
                 select(node, false);
             }
+
+            openEditor(node);
         });
 
-        doc.addEventListener('click', function (event) {
-            if (shown.editor && shown.editor.node.contains(event.target)) {
+        // Leaving a paragraph keeps what was typed; the window losing the
+        // focus does not leave it.
+        doc.addEventListener('focusout', function (event) {
+            var editor = shown.editor;
+
+            if (!editor || event.target !== editor.node || (event.relatedTarget && editor.node.contains(event.relatedTarget))) {
                 return;
             }
 
+            if (!event.relatedTarget && document.hasFocus && !document.hasFocus()) {
+                return;
+            }
+
+            closeEditor(true);
+        });
+
+        // A click on the sheet below the last paragraph puts the caret at
+        // the end of the last one that may change, as on a page.
+        doc.addEventListener('mousedown', function (event) {
+            if (event.target !== paper || event.button !== 0) {
+                return;
+            }
+
+            var typable = nodes.filter(function (node) {
+                return node.classList.contains('office-typing');
+            });
+            var last = typable[typable.length - 1];
+
+            if (last && event.clientY > last.getBoundingClientRect().bottom) {
+                event.preventDefault();
+                enter(last, 'end');
+            }
+        });
+
+        // A link in a paragraph that can be changed is followed with Ctrl or
+        // Cmd held, as in a word processor; a plain click places the caret.
+        doc.addEventListener('click', function (event) {
             var node = paragraphOf(event.target);
             var link = event.target.closest ? event.target.closest('a[href]') : null;
-            var follow = !!link && (event.ctrlKey || event.metaKey);
 
-            // A link in a paragraph that can be changed is followed with Ctrl
-            // or Cmd held, as in a word processor; a plain click edits.
-            if (link && node && !follow && !node.classList.contains('office-locked')) {
-                event.preventDefault();
-            }
-
-            // A click on the paragraph already picked opens it, where the
-            // click landed (with the word a double click selected).
-            if (node && node === shown.pressed && !follow) {
-                openEditor(node, pointedText(node, event));
-            }
-
-            shown.pressed = null;
-        });
-
-        doc.addEventListener('keydown', function (event) {
-            if (shown.editor || !shown.node) {
+            if (!link || !node || node.classList.contains('office-locked')) {
                 return;
             }
 
+            event.preventDefault();
+
+            if (event.ctrlKey || event.metaKey) {
+                window.open(link.href, '_blank', 'noopener,noreferrer');
+            }
+        });
+
+        // Typed text is read as it changes.
+        doc.addEventListener('input', function (event) {
+            if (shown.editor && event.target === shown.editor.node) {
+                shown.editor.typed = true;
+                notify();
+                drawBar();
+            }
+        });
+
+        // What a paragraph takes: plain text. Formatting goes through the
+        // bar; a drop and a new block are not taken, Enter is the key's.
+        doc.addEventListener('beforeinput', function (event) {
+            var node = paragraphOf(event.target);
+            var type = event.inputType || '';
+
+            if (!node || !node.classList.contains('office-typing')) {
+                return;
+            }
+
+            if (/^format/.test(type) || type === 'insertFromDrop' || type === 'deleteByDrag') {
+                event.preventDefault();
+                return;
+            }
+
+            if (type === 'insertParagraph') {
+                event.preventDefault();
+                enter(beside(node, 1), 0);
+                return;
+            }
+
+            if (!shown.editor || shown.editor.node !== node) {
+                select(node, false);
+                openEditor(node);
+            }
+        });
+
+        // Paste is plain text, typed where the caret stands.
+        doc.addEventListener('paste', function (event) {
+            var node = paragraphOf(event.target);
+
+            if (!node || !shown.editor || shown.editor.node !== node) {
+                return;
+            }
+
+            var data = event.clipboardData || null;
+            var text = data ? normal(data.getData('text/plain') || '') : '';
+
+            event.preventDefault();
+
+            if (text === '' || (document.execCommand && document.execCommand('insertText', false, text))) {
+                return;
+            }
+
+            var selection = window.getSelection();
+
+            if (!selection || !selection.rangeCount) {
+                return;
+            }
+
+            var range = selection.getRangeAt(0);
+            var piece = document.createTextNode(text);
+
+            range.deleteContents();
+            range.insertNode(piece);
+            range.setStartAfter(piece);
+            range.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(range);
+            shown.editor.typed = true;
+            notify();
+        });
+
+        // The bar follows the selection in the paragraph typed in. Once the
+        // view has left the page the listener goes.
+        function followSelection() {
+            if (!doc.isConnected) {
+                if (shown.opened) {
+                    document.removeEventListener('selectionchange', followSelection);
+                }
+                return;
+            }
+
+            var live = shown.editor ? selectionIn(shown.editor.node) : null;
+
+            if (live) {
+                shown.editor.range = live;
+                drawBar();
+            }
+        }
+
+        document.addEventListener('selectionchange', followSelection);
+
+        doc.addEventListener('keydown', function (event) {
+            var editor = shown.editor;
+            var node = editor ? editor.node : shown.node;
+
+            if (!node || !node.contains(event.target)) {
+                return;
+            }
+
+            var typing = !!editor && event.target === editor.node;
             var key = event.key;
+            var plain = !(event.ctrlKey || event.metaKey || event.altKey);
+
+            // The keys of a paragraph typed in end here: the panel's own
+            // shortcuts must not see them. Esc with nothing typed is the
+            // window's.
+            if (typing && !(key === 'Escape' && !editor.typed)) {
+                event.stopPropagation();
+            }
+
+            // A key that finishes a word in an input method belongs to it.
+            if (event.isComposing || event.keyCode === 229) {
+                return;
+            }
 
             if ((event.ctrlKey || event.metaKey) && (key === 's' || key === 'S')) {
                 event.preventDefault();
@@ -3790,26 +4026,51 @@
                 return;
             }
 
-            if (event.target === shown.node && formatKey(event)) {
+            if (event.target === node && formatKey(event)) {
                 event.stopPropagation();
                 return;
             }
 
-            if (event.target !== shown.node) {
+            if (event.target !== node) {
                 return;
             }
 
-            if (key === 'ArrowDown' || key === 'ArrowUp') {
+            if (typing) {
+                // Enter goes on to the start of the next paragraph;
+                // Shift+Enter is a line break inside this one, typed by the
+                // browser.
+                if (key === 'Enter' && plain && !event.shiftKey) {
+                    event.preventDefault();
+                    enter(beside(node, 1), 0);
+                    return;
+                }
+
+                if (key === 'Escape' && editor.typed) {
+                    event.preventDefault();
+                    undoTyping(node);
+                    return;
+                }
+            }
+
+            // Tab and Shift+Tab go to the next paragraph and the one before;
+            // at either end the focus leaves the document.
+            if (key === 'Tab' && plain) {
+                var next = beside(node, event.shiftKey ? -1 : 1);
+
+                if (next) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    enter(next, event.shiftKey ? 'end' : 0);
+                }
+                return;
+            }
+
+            // A paragraph only picked (locked or to be deleted): the arrows
+            // pick the next and the one before.
+            if (!typing && (key === 'ArrowDown' || key === 'ArrowUp')) {
                 event.preventDefault();
                 event.stopPropagation();
-                select(beside(shown.node, (key === 'ArrowDown') ? 1 : -1) || shown.node);
-                return;
-            }
-
-            if (key === 'Enter' || key === 'F2') {
-                event.preventDefault();
-                event.stopPropagation();
-                openEditor(shown.node, null);
+                enter(beside(node, (key === 'ArrowDown') ? 1 : -1) || node, 0);
             }
         });
 
@@ -3830,7 +4091,8 @@
                 glyph.setAttribute('aria-hidden', 'true');
                 button.appendChild(glyph);
 
-                // A press keeps the focus, and so the selection, in the box.
+                // A press keeps the focus, and so the selection, in the
+                // paragraph typed in.
                 button.addEventListener('mousedown', function (event) {
                     event.preventDefault();
                 });
@@ -3886,7 +4148,7 @@
                 glyph.setAttribute('aria-hidden', 'true');
                 button.appendChild(glyph);
 
-                // A press keeps the focus in the paragraph's box.
+                // A press keeps the focus in the paragraph typed in.
                 button.addEventListener('mousedown', function (event) {
                     event.preventDefault();
                 });
@@ -4000,6 +4262,11 @@
                         redraw(node);
                     }
                 });
+
+                // The paragraph the caret is in is typed in again.
+                if (document.activeElement && nodes.indexOf(document.activeElement) !== -1) {
+                    openEditor(document.activeElement);
+                }
 
                 drawBar();
                 notify();
@@ -4248,6 +4515,13 @@
             expandMarks: expandMarks,
             carryMarks: carryMarks,
             formatRanges: formatRanges
+        },
+        // A paragraph's text read from its drawing while it is typed in,
+        // and a point of that text found in the drawing again.
+        docText: {
+            paragraphText: paragraphText,
+            textOffset: textOffset,
+            textPoint: textPoint
         },
         render: function (container, office, strings, options) {
             strings = strings || {};
