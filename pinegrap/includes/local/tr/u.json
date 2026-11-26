@@ -523,6 +523,7 @@
     "Use attribute names in curly braces. e.g.: {Color}-{Size}": "Süslü parantez içinde özellik adlarını kullanın. ör.: {Renk}-{Beden}",
     "Use headphones as a signal: on means focus, off means a chat is welcome. Your neighbours learn it within a week.": "Kulaklığı işaret olarak kullanın: takılıysa odaklanıyorsunuz, değilse sohbete açıksınız. Yan masadakiler bunu bir haftada öğrenir.",
     "Use in orders, forms and flows": "Siparişlerde, formlarda ve akışlarda kullan",
+    "Use letters, digits, - and _, starting with a letter.": "Harf, rakam, - ve _ kullanın; bir harfle başlayın.",
     "Use my store credit": "Mağaza kredimi kullan",
     "Use object storage": "Nesne depolamayı kullan",
     "Use one of your passkeys to finish signing in.": "Oturum açmayı tamamlamak için geçiş anahtarlarınızdan birini kullanın.",

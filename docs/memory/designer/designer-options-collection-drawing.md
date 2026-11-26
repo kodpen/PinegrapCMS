@@ -23,8 +23,8 @@ description: The drawing of "New collection with pages" (plan designer-options-c
 - As today: the Pages window (head with its count, "Add Page", the search, the filters, the groups, a page's row, the foot's keys, the phone's sheet: `designer-pages-window.md`), the command palette, a field, a list with its tick, the quiet and the blue small buttons, the bad line, the green "done" line.
 - New: the row "New collection with pages"; the window's second view with its head (the arrow back, "1 of 2"); the two choices "A new collection" and "One that is there"; a field's line (grip, name, kind, bin) with its sub-line; a collection's line; a page's line (name and address); the lines with ticks while it is made; the closing line with links.
 
-## What is left to the step, and asked of the architect?
-- How the collection's page is closed to visitors (a folder visitors cannot open, as the templates' submission pages are, or another way) is settled with the architect when DO23 is given out. The drawing fixes only what is seen: the page is closed, staff add the items.
+## What does the drawing leave to the step?
+- How the collection's page is closed to visitors, the state the two pages start in and where a field's uploads go: `collection-with-pages-folder.md`. The drawing fixes only what is seen: the page is closed, staff add the items.
 - The tags on the canvas ("Form list", "Form detail") are the widgets' names as today, whatever they read.
 - Where "Add the first item" leads is where staff add an item to a collection today.
 

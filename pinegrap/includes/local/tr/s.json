@@ -3416,6 +3416,7 @@
     "Shown once. Anyone with this address can read this item until {var:1}.": "Yalnızca bir kez gösterilir. Bu adrese sahip herkes bu öğeyi {var:1} tarihine kadar okuyabilir.",
     "Shown only to a signed-in member: their own comments, published or awaiting approval.": "Yalnızca oturum açmış üyeye gösterilir: yayınlanmış ya da onay bekleyen kendi yorumları.",
     "Shown only to people who may edit the page a comment is on.": "Yalnızca yorumun bulunduğu sayfayı düzenleyebilenlere gösterilir.",
+    "Shown only when the link that brought the visitor allows a guest.": "Yalnızca ziyaretçiyi getiren bağlantı misafire izin verdiğinde gösterilir.",
     "Shown read-only. Change it with Edit.": "Salt okunur gösteriliyor. Değiştirmek için Düzenle'yi kullanın.",
     "Shown record": "Gösterilen kayıt",
     "Shown the year before last": "Önceki yıl sergilendi",

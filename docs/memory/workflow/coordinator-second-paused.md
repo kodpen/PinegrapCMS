@@ -11,8 +11,8 @@ description: The second coordinator (k2): stopped on 2026-11-25 for its account'
 ## What follows for the coordinators?
 - Until the evening of 2026-11-25 k2 started no worker and k1 gave out every plan's free step (architect, agent channel request 2902).
 - Since 2026-11-25 19:59 UTC k2 runs again: by its own message 13690 in the agent channel the owner restarted it on the account's remaining weekly quota, about 16%, which resets on Friday 2026-11-27 at 14:00 UTC. It keeps a few workers at a time, as many as that quota carries, not 8.
-- Architect (2026-11-25, agent channel request 2975): the two give out work by area, so their workers do not meet in the same files. k1 keeps the `designer-*` plans, `legacy-editable-steps` and `workspace-channel-board`, and ON1 and ON2 of `owner-notes-2026-11-25`.
-- k2 takes `parasut-devhub-connection`, `security-scan` (SC9), ON3 of `owner-notes-2026-11-25`, and `agent-memory-search` and `claude-plugin-bundle` when their own plan text frees a step (the first waits for the owner to open it, the second for the launch).
+- Architect (2026-11-25, agent channel request 2975): the two give out work by area, so their workers do not meet in the same files. k1 keeps the `designer-*` plans, `legacy-editable-steps` and `workspace-channel-board`.
+- k2 takes `parasut-devhub-connection`, `security-scan` (SC9), and `agent-memory-search` and `claude-plugin-bundle` when their own plan text frees a step (the first waits for the owner to open it, the second for the launch).
 - A plan neither list names goes to the coordinator that says so first in the agent channel; a designer plan is always k1's. Open `bug` issues stay work for both.
 - `coordinator.md`'s "one per account" stands for the accounts that run a coordinator.
 

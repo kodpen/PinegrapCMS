@@ -1480,6 +1480,7 @@
     "Drag a card, or move it with the arrow keys on its grip. Changes are only on your dashboard.": "Kartı tutup sürükle ya da sağdaki tutamaca gelip ok tuşlarıyla taşı. Değişiklikler yalnız senin panonda.",
     "Drag a variable into the message, or click it to add it where the cursor is:": "Bir değişkeni mesaja sürükleyin ya da imlecin olduğu yere eklemek için tıklayın:",
     "Drag across overlapping regions: merge them. Alt-drag: remove them.": "Üst üste gelen bölgeler üzerinden sürükleyin: birleştirir. Alt ile sürükleyin: kaldırır.",
+    "Drag across the cells to make an area.": "Alan oluşturmak için hücrelerin üzerinde sürükleyin.",
     "Drag across the regions of the selected shapes to merge or remove them; Alt while dragging removes them too.": "Seçili şekillerin bölgeleri üzerinden sürükleyerek onları birleştirin veya kaldırın; sürüklerken Alt tuşu da kaldırır.",
     "Drag and drop an element": "Element sürükleyip bırakın",
     "Drag fields to canvas": "Alanları tuvale sürükleyin",

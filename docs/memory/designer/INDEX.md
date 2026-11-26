@@ -28,7 +28,7 @@
 - campaign-email-body-mail-programs.md: MA4 (2026-11-13): what an HTML e-mail body must be for Gmail, Outlook and Apple Mail: width, tables, inline styles, head style, pictures, the 102 KB clip, the parts it keeps
 - campaign-email-body-today.md: MA4 census (2026-11-13): how a campaign's HTML body and the designed e-mails (account, form, comment, receipt) are made today, what the e-mail render leaves in, and who may design one
 - campaign-email-body-way.md: MA4 proposal (2026-11-13, kept on #9083): a campaign's e-mail body as an e-mail design page (600 px canvas, mail blocks), the mail pass, ready designs, pasted HTML, test send
-- canva-start.md: The Canva start of the New design window (ST6): exported PNG pages uploaded, kept as reference pictures under sketch pages, their colours offered for the variables; no Canva call, no PDF
+- canva-start.md: The Canva start of the New design window (ST6): exported PNG pages uploaded, kept as reference pictures under sketch pages, their colours offered for the variables; no Canva call, no PDF [decision: here]
 - canvas-closed-blocks-content.md: Content nodes the server draws (Messages, Breadcrumb, Variant Attribute, Applied Offers, Carousel, own code, Language Switcher): what each opens to today and what stays closed [decision: here]
 - canvas-closed-blocks-emails.md: Designed e-mail pages and their closed parts today: the comment e-mail's System region drawn with a note (CB3), the fixed markup kept for a page with no card, the other e-mails' widget slots [decision: here]
 - canvas-closed-blocks-regions.md: Region nodes and classic page types on the canvas today: the System region converter (CB10, #10060), the nine page types with no widget, the legacy regions [decision: here]
@@ -78,6 +78,7 @@
 - collection-rows-writer.md: Collection "Rows" field kind: rows as child collection records, codes in order on the parent, the spec, the writer and its order of writes, the 100-row limit
 - collection-rows.md: Start file of the collection "Record rows" field (Kind "Rows"): rows of a record as child records, decisions, file map, R1 to R19 with PRs, open items [decision: here]
 - collection-template-refs.md: A template's reference into another tab's form (_cf.ref tab:<key>): Publish, forms target first, sample references by label, blog categories, export (C6b1, C6b2)
+- collection-with-pages-folder.md: Where "New collection with pages" (DO23) puts what it makes: the collection's page in a private "Collections" folder and not a draft, the two pages as drafts, the fields' upload folder [decision: here]
 - collections-decisions.md: Typed collections over designer forms: why a form with a flag, the approved schema (#2393, #3051), why items have no schedule columns (#3746), what C1–C7 built and where it is described [decision: decisions-made-product-10.md, decisions-made-schema-3.md]
 - comment-admin-notification.md: The administrator e-mail add_comment.php sends about a new comment: queued, written in the staff language, attachment line only when a file came
 - comment-anonymous-name.md: The stored literal 'Anonymous' of a nameless comment and every reader that shows it in the site or panel language through pg_comment_display_name()
@@ -443,6 +444,7 @@
 - designer-fonts-part.md: The Google Fonts browser of the designer as the part 'fonts' (D5 part 6): what moved, what the core keeps, the host it works through
 - designer-form-palette-and-fields.md: Designer form controls: label[for] protection, fieldset radio/checkbox groups, CF_PALETTE rules, overview-tree option folding.
 - designer-form-uploads-for-readers.md: Designed-form uploads open for visitors when a public designed record view or list shows the record and prints the field (get_file.php, includes/record_files.php); what keeps them closed
+- designer-grid-areas.md: Advanced › Layout's "Areas" on a grid box and "Area" on its child (DO6): the small grid, what each change writes, the lines, per screen size, the canvas tint, the part 'grid'
 - designer-grid-child-place.md: Advanced › Layout's Span columns, Span rows and Start at on a grid box's child (DO5): the CSS each writes, per screen size, typed values kept, the part 'grid'
 - designer-grid-columns-rows.md: Advanced › Layout's Columns and Rows on a grid box (DO4): modes (Default, Equal, Fixed sizes, As many as fit, Custom), the CSS each writes, per screen size, the part 'grid', Gap kept
 - designer-grid-node-tag.md: Opening tag of designer container/row/col on the page and in the editor HTML: twin helpers, classes once, attribute order, column widths, sizing props; page bodies drawn before
@@ -657,7 +659,7 @@
 - express-order-legal-documents.md: Checkout document boxes and KVKK lines in the designer's express order tree: legal_* field bindings, has_legal_documents / has_legal_kvkk* flags, __legal_* tokens, sentence split of the label
 - figma-import-converter.md: The Figma converter (#11509): a frame of a Figma nodes answer to a designer tree, with the lists of pictures, instances, colours, variables and the report left for the next step [decision: here]
 - figma-start-frame-list.md: The Figma start of the New design window (#11558, ST3): when it is listed, the pane's states, the server reads (figma_file, figma_pictures), the frame list part and what Next hands on
-- figma-start-import.md: The Figma start's import (#11643): the four steps, pictures fetched with an upload's limits, shared components, variables, the report, the editor's tabs
+- figma-start-import.md: The Figma start's import (#11643): the four steps, pictures fetched with an upload's limits, Stop, shared components, variables, the report, the editor's tabs [decision: here]
 - folder-view-widget.md: The Folder View widget (classic "folder view" page type): settings and their fallback, the folder tree as a main loop plus nested folder_view.children lists, row tokens, flags, what is left out.
 - form-feed-detail-access.md: A form list's ?rss=true item whose detail page is not public is a teaser (title, link, guid, pubDate, category; no description, no media), whoever asks; both feeds (#11462, bug #11440) [decision: decisions-made-product-109.md]
 - form-feed-item-guid-enclosure.md: A form feed item's guid is unique per record (permalink with a detail page, page#code without one); a typed media address gets length 0 and a type from its extension, or no enclosure
@@ -698,6 +700,7 @@
 - layout-type-converter-catalog.md: A catalog page's layout file into the Catalog widget's design elements (LE8b): each piece, the map options it brought, the listing's new flags and tokens, the run's settings order, the starting sites
 - layout-type-converter-checkout-steps.md: Billing information, shipping address and arrival, shipping method layout files into their widgets (LE9c, #11628): maps, new flags and tokens, differences, starting sites
 - layout-type-converter-editor.md: LE6b: a file page's System region in the editor, the dropped pieces listed in the Region panel, Convert to design elements from the layout file (layout_code convert_type)
+- layout-type-converter-entrance.md: Registration and membership entrance layout files into their widgets (LE10b, #11730): the login form cut and reported, the guest section held, the guest form after the widget's form, starting sites
 - layout-type-converter-express-order-render.md: What the Express Order widget gives a converted classic layout (LE9b, #11486): tokens, row values, flags, the type row's state, known differences, starting sites
 - layout-type-converter-express-order.md: An express order page's layout file into the Express Order widget (LE9b, #11486): the cart's map, the theme's billing markup, the widget's sections, controls
 - layout-type-converter-order-form.md: An order form page's layout file into the Order Form widget's design elements (LE7): what each piece becomes, the map options it brought, the new flags and token, the starting-site texts
@@ -912,6 +915,7 @@
 - sketch-page-details.md: "Page details" of a Prototype view sketch page (SK5): the More menu and palette row, the seven rows and defaults, checks, the sketch_details endpoint, where values are kept [decision: here]
 - sketch-read-picture.md: "Read the picture" of the Sketch tool (SK7b): the reference picture read into proposed boxes by the browser's model, nothing sent; row, first use, busy, Keep, Discard [decision: here]
 - sketch-reader.md: The Prototype view's sketch reader (assets/js/pg_sketch_reader.js, window.PGSketchReader): boxes drawn in a frame in, sections with kinds and unsure marks out; its input, rules, output and test
+- start-abandoned-cleanup.md: What an abandoned Figma or Canva start deletes (#11705): the stop step, the window's close, a failed finish, the Cleanup tool's work files, the Canva drop by session ids [decision: here]
 - store-template-front-end.md: Store template front-end fixes (#3621): footer contact column, no card hint at checkout, product tabs on one line, the product page's edit pencil on the widget and clear of headings.
 - style-complete.md: pg_style_complete.js: smart completion in the designer code editors (attributes, CSS values, var(--…) tokens, Bootstrap JS API), no duplicate options, tests
 - style-copy-delete-binned-pages.md: Pages in the Recycle Bin and a style: a design's copy leaves them out, and they do not keep a classic style from going to the bin once the bin holds styles

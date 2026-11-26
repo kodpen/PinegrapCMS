@@ -1,6 +1,6 @@
 ---
 name: figma-start-import
-description: The Figma start's import (#11643): the four steps, pictures fetched with an upload's limits, shared components, variables, the report, the editor's tabs
+description: The Figma start's import (#11643): the four steps, pictures fetched with an upload's limits, Stop, shared components, variables, the report, the editor's tabs
 module: figma_start
 ---
 
@@ -16,8 +16,9 @@ module: figma_start
 - `pg_figma_store_picture()`: the server downloads Figma's address (`pg_cloud_picker_download()`, never past `pg_upload_limits()['file_max']`), checks the first bytes (`pg_figma_picture_type()`: png, jpg, gif, webp, svg; anything else is not stored), passes an SVG through `pg_svg_sanitize()`, then stores with `pg_file_store_upload()`.
 - At most `pg_figma_max_pictures()` (200) files an import (`pg_figma_picture_budget()`); the rest are report notes. One image fill used on several layers is stored once and spends one place. Folder: `Figma/<file name>` (`pg_di_folder_path()`).
 - An image node gets `src`, a box with an image fill `background-image:url("…")`; a failed picture: empty place, a note.
-- "Stop" deletes the fetched files (`pg_delete_file_record()`) and the shared rows, and removes the work file.
-- A frame step ending after Stop deletes what it fetched, writing nothing back (`pg_figma_import_keep_step()`).
+
+## What does Stop do?
+- Architect (2026-11-26, agent channel request 2991): an abandoned start does what "Stop" does: it deletes what it stored itself and nothing uses (`start-abandoned-cleanup.md`, #11705).
 
 ## Which component becomes shared?
 - `pg_figma_shared_plan()`: a `componentId` met on two frames or more (twice on one frame is not enough). The first instance's subtree is the row's tree; every instance becomes a `shared_ref` (`sharedId`, `sharedName`, no children). A shared component inside another is a `shared_ref` there too, looked up only in the frame the tree came from (node ids are per frame).
