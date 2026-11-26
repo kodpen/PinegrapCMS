@@ -26722,8 +26722,10 @@ const StyleDesigner = (function () {
                 '<div class="input-group input-group-sm"><input type="text" inputmode="decimal" class="form-control form-control-sm" data-sd-tf="' + key + '" value="' + esc(String(v[key])) + '" placeholder="' + esc(String(inh[key] !== '' ? inh[key] : dflt)) + '" aria-label="' + esc(name) + '">' +
                 (unit ? '<span class="input-group-text">' + unit + '</span>' : '') + '</div></div>';
         };
+        // A pair of fields (X and Y) stands under its label under 300 px:
+        // two fields with their units do not fit the 104 px beside it.
         var tfRow = function (keys, label, ctrl) {
-            return '<div class="sd-prop-row" data-sd-tf-keys="' + keys + '"><label class="sd-prop-label">' + esc(label) + '</label><div class="sd-prop-control">' + ctrl + '</div></div>';
+            return '<div class="sd-prop-row' + (ctrl.indexOf('sd-tf-pair') !== -1 ? ' sd-row-stack-n' : '') + '" data-sd-tf-keys="' + keys + '"><label class="sd-prop-label">' + esc(label) + '</label><div class="sd-prop-control">' + ctrl + '</div></div>';
         };
         // Cursor and "Let clicks through" are Normal's only (_sdPtRowsHtml()).
         var pt = _sdOptState === '' ? _sdPtOf(node) : null;
@@ -27053,7 +27055,7 @@ const StyleDesigner = (function () {
         var h = '<div class="sd-tf" data-sd-tx-box>';
         if (more) {
             var row = function (key, label, ctrl) {
-                return '<div class="sd-prop-row" data-sd-tx-keys="' + key + '"><label class="sd-prop-label">' + esc(label) + '</label><div class="sd-prop-control">' + ctrl + '</div></div>';
+                return '<div class="sd-prop-row' + (ctrl.indexOf('sd-tf-pair') !== -1 ? ' sd-row-stack-n' : '') + '" data-sd-tx-keys="' + key + '"><label class="sd-prop-label">' + esc(label) + '</label><div class="sd-prop-control">' + ctrl + '</div></div>';
             };
             var list = function (key, name, opts, cur) {
                 return '<select class="form-select form-select-sm' + (cur === '' ? ' sd-trans-inh' : '') + '" data-sd-tx="' + key + '" aria-label="' + esc(name) + '">' +
@@ -91710,6 +91712,10 @@ const StyleDesigner = (function () {
                 if (tn === 'TEXTAREA') return;
                 if (tn === 'BUTTON') return;
                 if (tn === 'A') return;
+                // The options search handles its own Enter (open the result)
+                // after this capture-phase guard; stopping it here left the
+                // box with no result opened and no focus.
+                if (t.id === 'sd-props-search') return;
                 if (tn === 'INPUT') {
                     var ty = (t.type || '').toLowerCase();
                     if (ty === 'submit' || ty === 'button' || ty === 'reset' || ty === 'file' || ty === 'checkbox' || ty === 'radio') return;

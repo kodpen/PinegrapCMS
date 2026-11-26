@@ -226,3 +226,18 @@ function test_options_search_is_a_part()
 	pg_assert_contains('_SD_OPT_SEARCH_MS = 120', $core, 'results 120 ms after typing');
 	pg_assert_contains("e.key !== '/'", $core, '/ focuses the box');
 }
+
+// The right column's Enter guard (it stops a text field's Enter from
+// submitting the editor's form) runs in the capture phase, before the box's
+// own handler: it must leave the search box's Enter to the box, or Enter
+// never opens a result and only takes the focus away.
+function test_options_search_enter_passes_the_right_column_guard()
+{
+	$core = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$at = strpos($core, "rightPanel.addEventListener('keydown'");
+	pg_assert_true($at !== false, 'the right column has its Enter guard');
+	$guard = substr($core, (int) $at, 1600);
+	$own = strpos($guard, "t.id === 'sd-props-search'");
+	$stop = strpos($guard, 'e.stopPropagation()');
+	pg_assert_true($own !== false && $stop !== false && $own < $stop, 'the guard returns for the options search before it stops the key');
+}
