@@ -188,3 +188,33 @@ function test_erp_edoc_invoice_send_stops_when_the_claim_fails()
 
 	pg_assert_true(($claim !== false) && ($affected !== false) && ($claim < $affected) && ($affected < $call), 'claimed before the provider is called');
 }
+
+// A line at 0% VAT with no exemption code is refused before anything is
+// written: before the row is claimed (it stays as it was, to be sent again
+// once a code is set) and before the driver is called, so no record is
+// opened at the provider. The codes are resolved before the driver reads the
+// lines, so a store default set since the issue goes with the document.
+function test_erp_edoc_invoice_send_refuses_a_zero_rated_line_without_a_code_first()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/erp/edoc/service.php');
+	$start = strpos($source, "\nfunction erp_edoc_invoice_send(");
+	$body = substr($source, $start, strpos($source, "\nfunction ", $start + 10) - $start);
+	$lines = strpos($body, 'erp_edoc_invoice_lines_exemption($lines)');
+	$refused = strpos($body, "if (\$exemption['refusal'] !== '') {");
+	$claim = strpos($body, 'erp_edoc_invoice_send_claim_where($invoice)');
+	$call = strpos($body, "erp_edoc_call('send_invoice', array(\$invoice, \$exemption['lines']");
+
+	pg_assert_true(($lines !== false) && ($refused !== false) && ($lines < $refused), 'the lines are checked');
+	pg_assert_true(($claim !== false) && ($refused < $claim), 'before the row is claimed');
+	pg_assert_true(($call !== false) && ($claim < $call), 'the driver gets the resolved lines');
+
+	$from = strpos($source, "\nfunction erp_edoc_invoice_lines_exemption(");
+	pg_assert_true($from !== false, 'one check for every driver');
+	$helper = ($from !== false) ? substr($source, $from, strpos($source, "\n}\n", $from) - $from) : '';
+	$resolve = strpos($helper, 'erp_vat_line_exemption_code($line)');
+	$refusal = strpos($helper, 'erp_vat_exemption_missing_refusal(');
+	$write = strpos($helper, 'UPDATE erp_invoice_items');
+
+	pg_assert_true(($resolve !== false) && ($refusal !== false) && ($resolve < $refusal), 'resolved as the issue resolves it, then checked');
+	pg_assert_true(($write !== false) && ($refusal < $write), 'nothing is written when a line is refused');
+}

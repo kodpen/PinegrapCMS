@@ -1285,6 +1285,7 @@
     "No Thanks Button": "Hayır Teşekkürler Düğmesi",
     "No Title": "Başlık Yok",
     "No Topics Found": "Konu Bulunamadı",
+    "No VAT exemption code is given for the 0% VAT on {var:1}, and GİB refuses an e-document without one, so nothing was sent. Set the exemption code for zero-rated lines under Accounting rules, or give the product its own exemption code, then send it again.": "{var:1} için %0 KDV'nin istisna kodu verilmemiş; GİB istisna kodu olmayan e-belgeyi reddeder, bu yüzden hiçbir şey gönderilmedi. Muhasebe kuralları altında %0 KDV'li satırların istisna kodunu girin ya da ürüne kendi istisna kodunu verin, sonra yeniden gönderin.",
     "No Web Browser Title property found for {var:1}": "{var:1} için Web Tarayıcı Başlığı özelliği bulunamadı",
     "No WebP": "WebP yok",
     "No WhatsApp message is sent from a demonstration site.": "Tanıtım sitesinden WhatsApp mesajı gönderilmez.",

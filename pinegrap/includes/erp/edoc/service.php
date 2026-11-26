@@ -1154,6 +1154,57 @@ function erp_edoc_invoice_provider_cancel($invoice_id, $reason = '', $user_id = 
 }
 
 /**
+ * The lines of an invoice about to be sent, each with the exemption code it
+ * is written with now, and the refusal when a line at 0% VAT still has none
+ * (erp_vat_exemption_missing_refusal()). One check for every driver, asked
+ * by the send before any request.
+ *
+ * The code is resolved as the issue resolves it (erp_vat_line_exemption_code():
+ * the line's own, its product's, the store's default), so a code set since
+ * the invoice was issued is taken now. It is written onto a line stored
+ * without one, as the issue would have written it: the stored line then
+ * says what the e-document says, and a driver that reads the lines again at
+ * the hand-over to GİB finds it. A refusal writes nothing, so the invoice is
+ * sent again once a code is set.
+ *
+ * @param array $lines  erp_invoice_items rows of the invoice
+ * @return array ['lines' => array, 'refusal' => string]
+ */
+function erp_edoc_invoice_lines_exemption($lines)
+{
+    $resolved = array();
+    $filled = array();
+
+    foreach ((array) $lines as $index => $line) {
+        $code = erp_vat_line_exemption_code($line);
+
+        if (($code !== '') && (trim((string) ($line['vat_exemption_code'] ?? '')) === '') && ((int) ($line['id'] ?? 0) > 0)) {
+            $filled[(int) $line['id']] = $code;
+        }
+
+        $line['vat_exemption_code'] = $code;
+        $resolved[$index] = $line;
+    }
+
+    $refusal = erp_vat_exemption_missing_refusal($resolved);
+
+    if ($refusal !== '') {
+        return array('lines' => $lines, 'refusal' => $refusal);
+    }
+
+    foreach ($filled as $id => $code) {
+        if (erp_query("UPDATE erp_invoice_items SET vat_exemption_code = '" . escape($code) . "'
+                WHERE id = '" . (int) $id . "' AND vat_exemption_code = ''") === false) {
+            $error = erp_db_error();
+
+            return array('lines' => $lines, 'refusal' => ($error !== '') ? $error : lang('That could not be saved.'));
+        }
+    }
+
+    return array('lines' => $resolved, 'refusal' => '');
+}
+
+/**
  * Sends an invoice through the active provider and writes the outcome on
  * the row. The operator sees the provider's own message on failure.
  *
@@ -1179,6 +1230,16 @@ function erp_edoc_invoice_send($invoice_id, $user_id = 0)
     $provider = $gate['provider'];
     $lines = (array) db_items("SELECT * FROM erp_invoice_items WHERE invoice_id = '" . $invoice_id . "' ORDER BY line_no ASC, id ASC");
 
+    // A line at 0% VAT has to name its exemption code on the e-document, and
+    // GİB's schema refuses one without it. Asked here, for every driver,
+    // before the row is claimed or the provider is called: a refusal leaves
+    // nothing at the provider and the row as it was.
+    $exemption = erp_edoc_invoice_lines_exemption($lines);
+
+    if ($exemption['refusal'] !== '') {
+        return array('success' => false, 'message' => '', 'error' => $exemption['refusal']);
+    }
+
     // Marked before the call, and only where the row still stands as the
     // gate read it: a second send that passed the gate in the same moment
     // (a double click, a bulk send beside the invoice screen) matches no row
@@ -1199,7 +1260,7 @@ function erp_edoc_invoice_send($invoice_id, $user_id = 0)
         ? erp_edoc_account_link_code($provider, (int) $invoice['account_id'], (string) ($party['tax_number'] ?? ''), (string) ($party['country_code'] ?? ''))
         : '';
 
-    $result = erp_edoc_call('send_invoice', array($invoice, $lines, array('party' => $party)), $provider);
+    $result = erp_edoc_call('send_invoice', array($invoice, $exemption['lines'], array('party' => $party)), $provider);
 
     if (empty($result['success'])) {
         // A driver that wrote a record and could not take it back names it:
