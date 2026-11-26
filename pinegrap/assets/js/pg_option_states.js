@@ -27,6 +27,9 @@
  *   PGOptionStates.fxWrite(text, cls, st, key, v) // the new text with one effect value set
  *   PGOptionStates.fxFilter(vals)               // the filter value of a set of Filter values
  *   PGOptionStates.fxMaybe(text, cls)           // whether the text may hold one (no parse)
+ *   PGOptionStates.txRead(text, cls)            // { shadow, track, font, lines, grad, stroke, strokec }: Normal's text values
+ *   PGOptionStates.txWrite(text, cls, key, v)   // the new text with one text value set
+ *   PGOptionStates.txMaybe(text, cls)           // whether the text may hold one (no parse)
  *
  * The declarations carry !important: the Bootstrap utilities they stand in
  * for carry it too, so a state's value wins over Normal's class.
@@ -735,6 +738,139 @@
         return !!cls && text.indexOf('.' + cls) !== -1 && /(?:^|[\s;{])(?:filter|backdrop-filter|mix-blend-mode|background-blend-mode)\s*:/.test(text);
     }
 
+    // ── Text: shadow, letter spacing, font family, line limit, gradient
+    // fill and outline (the Text section's "More") ──
+    // Written to the element's custom style class only (the Text section
+    // takes no state). A value no row reads stays as written and reads as
+    // 'own'; choosing a row's value replaces it.
+    var TX_SHADOWS = {
+        soft: '0 1px 2px rgb(0 0 0 / .25)',
+        medium: '0 2px 6px rgb(0 0 0 / .35)',
+        strong: '0 4px 14px rgb(0 0 0 / .5)',
+        glow: '0 0 12px color-mix(in srgb, var(--bs-primary) 60%, transparent)'
+    };
+    var TX_FONTS = { body: 'var(--pg-font-body)', heading: 'var(--pg-font-heading)' };
+    var TX_GRADS = {
+        'primary-info': ['primary', 'info'],
+        'primary-secondary': ['primary', 'secondary'],
+        'success-info': ['success', 'info'],
+        'warning-danger': ['warning', 'danger']
+    };
+    var TX_STROKE_COLORS = ['primary', 'secondary', 'dark', 'light', 'white', 'black'];
+    var TX_LINES = [['display', '-webkit-box'], ['-webkit-box-orient', 'vertical'], ['overflow', 'hidden']];
+    var TX_FILL = ['-webkit-background-clip', 'background-clip', '-webkit-text-fill-color'];
+    var TX_EM_RE = new RegExp('^' + NUM + 'em$', 'i');
+    var TX_STROKE_RE = new RegExp('^' + NUM + 'px(?:\\s+(.+))?$', 'i');
+
+    function txGrad(key) {
+        var g = TX_GRADS[key];
+        return g ? 'linear-gradient(90deg, var(--bs-' + g[0] + '), var(--bs-' + g[1] + '))' : '';
+    }
+
+    function txKeyOf(map, val) {
+        var f = flat(val);
+        var out = '';
+        Object.keys(map).forEach(function (k) { if (flat(typeof map[k] === 'string' ? map[k] : txGrad(k)) === f) out = k; });
+        return out;
+    }
+
+    // { shadow, track, font, lines, grad, stroke, strokec }: a row's key,
+    // the letter spacing in em, the line count, the outline's width in px
+    // and its colour ('' the text's own); 'own' for a value no row writes.
+    function txRead(text, cls) {
+        var out = { shadow: '', track: '', font: '', lines: '', grad: '', stroke: '', strokec: '' };
+        var map = tfDecls(tfRule(text, cls, ''));
+        var m;
+        if (map['text-shadow']) out.shadow = txKeyOf(TX_SHADOWS, map['text-shadow']) || 'own';
+        if (map['letter-spacing']) {
+            m = TX_EM_RE.exec(map['letter-spacing']);
+            out.track = m ? Number(m[1]) : 'own';
+        }
+        if (map['font-family']) out.font = txKeyOf(TX_FONTS, map['font-family']) || 'own';
+        if (map['-webkit-line-clamp']) {
+            var n = parseInt(map['-webkit-line-clamp'], 10);
+            out.lines = n >= 1 ? n : 'own';
+        }
+        if (flat(map['-webkit-background-clip'] || map['background-clip']) === 'text') {
+            out.grad = txKeyOf(TX_GRADS, map['background-image'] || '') || 'own';
+        }
+        if (map['-webkit-text-stroke']) {
+            m = TX_STROKE_RE.exec(map['-webkit-text-stroke']);
+            if (!m) {
+                out.stroke = 'own';
+            } else {
+                out.stroke = Number(m[1]);
+                var c = /^var\(--bs-([a-z]+)\)$/i.exec(flat(m[2] || ''));
+                out.strokec = c && TX_STROKE_COLORS.indexOf(c[1]) !== -1 ? c[1] : '';
+            }
+        }
+        return out;
+    }
+
+    // The text with one Text value set ('' takes it out): shadow, font or
+    // grad (a row's key), track (em, −0.5 to 2), lines (1 to 10), stroke
+    // (px, 0 to 10; 0 takes it out) or strokec (a colour name, '' the
+    // text's own).
+    function txWrite(text, cls, key, value) {
+        text = String(text || '');
+        if (!U() || !CLASS_RE.test(cls)) return text;
+        var v = value === null || value === undefined ? '' : String(value).trim().toLowerCase();
+        var put = function (prop, val) { text = tfPut(text, cls, '', prop, val); };
+        var map = tfDecls(tfRule(text, cls, ''));
+        if (key === 'shadow') {
+            if (v !== '' && !TX_SHADOWS[v]) return text;
+            put('text-shadow', v ? TX_SHADOWS[v] : '');
+        } else if (key === 'font') {
+            if (v !== '' && !TX_FONTS[v]) return text;
+            put('font-family', v ? TX_FONTS[v] : '');
+        } else if (key === 'track') {
+            v = numClean(v, -0.5, 2, 3);
+            if (v === '' && String(value || '').trim() !== '') return text;
+            put('letter-spacing', v === '' ? '' : v + 'em');
+        } else if (key === 'lines') {
+            v = numClean(v, 1, 10, 0);
+            if (v === '' && String(value || '').trim() !== '') return text;
+            // The clamp's own display and overflow go with it; another
+            // value of them stays.
+            TX_LINES.forEach(function (d) {
+                if (v !== '') put(d[0], d[1]);
+                else if (flat(map[d[0]]) === d[1]) put(d[0], '');
+            });
+            put('-webkit-line-clamp', v === '' ? '' : String(v));
+            put('line-clamp', v === '' ? '' : String(v));
+        } else if (key === 'grad') {
+            if (v !== '' && !TX_GRADS[v]) return text;
+            var clipped = flat(map['-webkit-background-clip'] || map['background-clip']) === 'text';
+            if (v !== '' || clipped) put('background-image', v ? txGrad(v) : '');
+            TX_FILL.forEach(function (p) { put(p, v ? (p === '-webkit-text-fill-color' ? 'transparent' : 'text') : ''); });
+        } else if (key === 'stroke' || key === 'strokec') {
+            var cur = txRead(text, cls);
+            var w = cur.stroke === 'own' ? '' : cur.stroke;
+            var c = cur.strokec;
+            if (key === 'stroke') {
+                w = numClean(v, 0, 10, 2);
+                if (w === '' && v !== '') return text;
+            } else {
+                if (v !== '' && TX_STROKE_COLORS.indexOf(v) === -1) return text;
+                c = v;
+                if (w === '') w = 1;
+            }
+            var on = w !== '' && w > 0;
+            put('-webkit-text-stroke', on ? w + 'px ' + (c ? 'var(--bs-' + c + ')' : 'currentcolor') : '');
+            put('paint-order', on ? 'stroke fill' : '');
+        } else {
+            return text;
+        }
+        return text;
+    }
+
+    // Whether the text may hold a Text value for cls: a look, no parse.
+    function txMaybe(text, cls) {
+        text = String(text || '');
+        return !!cls && text.indexOf('.' + cls) !== -1 &&
+            /(?:^|[\s;{])(?:text-shadow|letter-spacing|font-family|-webkit-line-clamp|-webkit-text-stroke|-webkit-background-clip|background-clip)\s*:/.test(text);
+    }
+
     var api = {
         STATES: STATES,
         PSEUDO: PSEUDO,
@@ -761,7 +897,13 @@
         fxRead: fxRead,
         fxWrite: fxWrite,
         fxFilter: fxFilter,
-        fxMaybe: fxMaybe
+        fxMaybe: fxMaybe,
+        TX_SHADOWS: TX_SHADOWS,
+        TX_GRADS: TX_GRADS,
+        TX_STROKE_COLORS: TX_STROKE_COLORS,
+        txRead: txRead,
+        txWrite: txWrite,
+        txMaybe: txMaybe
     };
 
     root.PGOptionStates = api;

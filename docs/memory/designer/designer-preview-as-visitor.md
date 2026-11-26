@@ -29,8 +29,8 @@ module: designer_preview_render
 - Inside it the operator's id reaches no statement: a wiring test lists the census's files of the first two classes and fails for a bare `USER_ID` or `USER_LOGGED_IN` left in them.
 - The never-writes assertions of `designer-preview-as-server.md` hold for each visitor.
 
-## How is it cut?
-- If the census is more than one M step: PW2c takes signed in, signed out and member; PW2d takes first visit and returning. PW4 then waits for both.
+## How was it cut?
+- The census reached 13 widget files: PW2c (#11728) took signed in, signed out and member (`designer-preview-as-viewer.md`); PW2d takes first visit and returning. PW4 waits for both.
 - A chosen record with a real customer's address, e-mail or phone is masked in a signed-in view, as the plan says; the mask is one function beside the reader.
 
 Related: docs/memory/designer/designer-preview-as-readers.md, docs/memory/designer/designer-preview-as-server.md, docs/memory/designer/canvas-sample-account.md

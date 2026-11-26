@@ -153,6 +153,18 @@
         return sideValue(a) !== '' && sideValue(a) === sideValue(b);
     }
 
+    // The side "Load this revision" loads: the one holding the revision
+    // whose row opened Compare (History puts it left, Activity right with
+    // the version before it left), else the left side when it is a
+    // revision; '' when neither.
+    function loadSide(sides, history) {
+        if (!sides) return '';
+        var want = sideValue({ kind: 'rev', no: history });
+        if (want && sideValue(sides.before) === want) return 'before';
+        if (want && sideValue(sides.after) === want) return 'after';
+        return (sides.before && sides.before.kind === 'rev') ? 'before' : '';
+    }
+
     // `live` says the two sides are the page on the site and the draft.
     function foot(state, count, live) {
         if (state === 'same' || state === 'new' || state === 'unreadable') return state;
@@ -239,6 +251,7 @@
         sideValue: sideValue,
         sideValues: sideValues,
         sameSide: sameSide,
+        loadSide: loadSide,
         foot: foot,
         withBase: withBase,
         icon: icon,

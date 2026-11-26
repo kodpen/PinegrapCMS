@@ -1,12 +1,16 @@
 ---
 name: designer-compare-look-tab
-description: Compare's Look tab (part compare, CL2): its sides, the pictures drawn by compare_render, the slider, Side by side, the width, the states, History's choosers
+description: Compare's Look tab (part compare, CL2): its sides, what Load this revision loads, the pictures drawn by compare_render, the slider, Side by side, the width, the states, History's choosers
 module: seo_draft
 ---
 
 ## Where does the Compare window live?
 - Designer part `compare` (`includes/designer_parts/compare.php`, `when` always): `pg_compare_changes.js` (the reader), `pg_compare_look.js` (`window.PgCompareLook`, the pure rules) and `style_designer_compare.js` (the window). The core keeps `_sdCompareOpen(opts)` and `_sdRevisionOpenCompare(pageId, no, done)`, History's row button.
 - `opts`: `pageId`; `left` / `right` as `now` (the tab's tree), `live` (the page on the site) or `rev:<no>`, default `live` and `now`; `history` (the revision whose row opened it: its head, the side choosers, "Load this revision"); `done`. The Activity tab (`designer-activity-tab.md`) opens it with `left: 'rev:<n-1>', right: 'rev:<n>', history: n`.
+
+
+## What does "Load this revision" load?
+- The side holding `rev:<history>`, the revision whose row opened Compare: the left from History's row, the right from an Activity row (the version before it is left); when the choosers moved it off both sides, the left side if it is a revision, else the button is off (`PgCompareLook.loadSide()`). It loaded the left side only before CL4's fix, so an Activity row loaded the version before (n−1).
 
 ## What is the page on the site?
 - The tab's stored tree: `PgCompareLook.liveTree(p.baseline)` (the baseline is the tree's JSON, then `|` and the settings). For a page not open in a tab, the newest revision. A draft page (`page_draft` with drafts ready) or one never saved has none: the reader's `new`.

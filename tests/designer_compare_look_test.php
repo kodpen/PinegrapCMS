@@ -229,3 +229,19 @@ function test_compare_look_list_rules()
 	pg_assert_same(array('Text “Full”', 'Button'), $res['names'], 'names in an opened row');
 	pg_assert_same(array(array('before' => 'Rest.', 'after' => 'Rest well.'), null, null), $res['words'], 'only a text row opens into its words');
 }
+
+// "Load this revision" loads the revision whose row opened Compare, on
+// whichever side it stands (History: left; Activity: right, n-1 on the
+// left), else the left side when it is a revision, else nothing.
+function test_compare_look_load_side()
+{
+	$res = compare_look_test_node('function S(a, b) { return { before: L.side(a), after: L.side(b) }; }'
+		. ' out = [L.loadSide(S("rev:4", "now"), 4), L.loadSide(S("rev:6", "rev:7"), 7), L.loadSide(S("rev:3", "live"), 7),'
+		. ' L.loadSide(S("now", "rev:7"), 2), L.loadSide(S("live", "now"), 7), L.loadSide(null, 3)];');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array('before', 'after', 'before', '', '', ''), $res, 'the side the chosen revision stands on');
+}

@@ -9,7 +9,7 @@ description: Decisions made, product part 108 (2026-11-24 on): ten more designer
 ## Which ten features come in levels? (owner, 2026-11-24, in the architect's window)
 - Shown the ten more he had asked for (part 106), he wrote: "10 özellik seviyeli şekilde dahil olsun sen planı hazırla. önceliğimiz arayüzü modern ve basit tutmak özellikler girsin ancak kullanıcıda kasma hissi oluşturmasın."
 - Level 1: screens side by side (`designer/designer-side-by-side.md`, landed), select similar (`designer/designer-select-similar-matcher.md`), the first tour and tips (`designer/designer-first-tour-card.md`, landed).
-- Level 2: the style guide sheet (`designer/designer-style-guide-rules.md`, landed), the accessibility view (`designer/accessibility-view-rules.md`, landed), a draft compared with the live page (`plans/designer-compare-live.md`), clean up (`plans/designer-cleanup.md`).
+- Level 2: the style guide sheet (`designer/designer-style-guide-rules.md`, landed), the accessibility view (`designer/accessibility-view-rules.md`, landed), a draft compared with the live page (`designer/designer-compare-look-tab.md`, landed), clean up (`plans/designer-cleanup.md`).
 - Level 3: a page from a document (`designer/document-to-page.md`, landed), a record corrected in place (`designer/record-edit-in-place-overview.md`), the Activity tab (`designer/designer-activity.md`, landed).
 - Their sheets were drawn first, as he chose in part 106: ten sheets, DD12 to DD21, all landed by 2026-11-25; each plan names its drawing.
 

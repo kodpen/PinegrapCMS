@@ -6136,6 +6136,7 @@
     "Success to Create new Application": "Yeni Uygulama Oluşturma Başarılı",
     "Success to Delete Application, id: {var:1}.": "Uygulama Silme Başarılı, id: {var:1}.",
     "Success to generate secret key for {var:1}.": "{var:1} için gizli anahtar oluşturma başarılı.",
+    "Success to info": "Başarıdan bilgiye",
     "Success variant": "Başarılı",
     "Success. Being redirected for Upgrade.": "Başarılı. Yükseltme için yönlendiriliyorsunuz.",
     "Such as 4.2 or 4.0 and later. Leave it empty if the guide applies to every version.": "Örneğin 4.2 ya da 4.0 ve sonrası. Rehber her sürüm için geçerliyse boş bırakın.",

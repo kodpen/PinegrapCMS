@@ -363,3 +363,150 @@ function test_preview_render_renderers_read_the_case()
 	$at   = (int) strpos($cart, 'db("UPDATE order_items');
 	pg_assert_true($at > 0 && strpos(substr($cart, $at - 400, 400), '!pg_seo_rendering()') !== false, 'the recurring defaults are not written by a background render');
 }
+
+// The visitor of a Preview widget (PW2c): one reader in place of the
+// USER_LOGGED_IN family; outside the scope it is the request's constants.
+function test_preview_render_viewer_outside_is_the_request()
+{
+	$viewer = pg_preview_as_viewer();
+	pg_assert_false($viewer['preview']);
+	pg_assert_false($viewer['sample']);
+	pg_assert_same(defined('USER_LOGGED_IN') && USER_LOGGED_IN === true, $viewer['signed_in']);
+	pg_assert_same(defined('USER_ID') ? (int) USER_ID : 0, $viewer['id']);
+	pg_assert_same(defined('USER_EMAIL_ADDRESS') ? (string) USER_EMAIL_ADDRESS : '', $viewer['email']);
+	pg_assert_same(defined('USER_MEMBER') && USER_MEMBER === true, $viewer['member']);
+	pg_assert_same(array(), pg_preview_as_current(), 'no scope held');
+}
+
+function test_preview_render_viewer_per_visitor()
+{
+	$seen = array();
+	foreach (array('signed_out', 'signed_in', 'member') as $visitor) {
+		$seen[$visitor] = pg_preview_as_while(pg_preview_as_setup('my_account', array('visitor' => $visitor)), function () {
+			return pg_preview_as_viewer();
+		});
+	}
+	pg_assert_true($seen['signed_out']['preview']);
+	pg_assert_false($seen['signed_out']['signed_in']);
+	pg_assert_same('', $seen['signed_out']['email']);
+	pg_assert_same(null, $seen['signed_out']['role']);
+
+	pg_assert_true($seen['signed_in']['signed_in']);
+	pg_assert_true($seen['signed_in']['sample'], 'the sample account');
+	pg_assert_same(0, $seen['signed_in']['id'], 'no user row: id 0');
+	pg_assert_same(0, $seen['signed_in']['contact_id']);
+	pg_assert_same(3, $seen['signed_in']['role'], 'a plain user');
+	pg_assert_same('alex', $seen['signed_in']['username']);
+	pg_assert_same('alex@example.com', $seen['signed_in']['email']);
+	pg_assert_false($seen['signed_in']['member']);
+
+	pg_assert_true($seen['member']['member']);
+	pg_assert_true($seen['member']['signed_in']);
+	pg_assert_same(0, $seen['member']['id']);
+
+	pg_assert_false(pg_preview_as_viewer()['preview'], 'cleared after the widget');
+}
+
+function test_preview_render_view_rule()
+{
+	$out    = array('signed_in' => false, 'member' => false);
+	$in     = array('signed_in' => true, 'member' => false);
+	$member = array('signed_in' => true, 'member' => true);
+	pg_assert_true(pg_preview_as_view_rule('public', $out));
+	pg_assert_false(pg_preview_as_view_rule('registration', $out));
+	pg_assert_true(pg_preview_as_view_rule('registration', $out, true), 'anybody can get in');
+	pg_assert_true(pg_preview_as_view_rule('guest', $in));
+	pg_assert_false(pg_preview_as_view_rule('membership', $in));
+	pg_assert_false(pg_preview_as_view_rule('private', $in));
+	pg_assert_true(pg_preview_as_view_rule('membership', $member));
+	pg_assert_true(pg_preview_as_view_rule('private', $member));
+	pg_assert_false(pg_preview_as_view_rule('membership', $out, true));
+}
+
+function test_preview_render_sample_account_agrees_with_the_canvas()
+{
+	$sample = pg_preview_as_sample_account();
+	pg_assert_same('alex', $sample['account']['username']);
+	pg_assert_same('alex@example.com', $sample['contact']['email_address']);
+	pg_assert_same(2, count($sample['recipients']), 'two saved recipients');
+	pg_assert_same('97201', $sample['recipients'][0]['zip_code'], 'the order\'s shipping address first');
+	foreach (pg_sw_profile_fields() as $f) {
+		pg_assert_true(array_key_exists($f, $sample['contact']), 'profile field ' . $f);
+	}
+	$first = $sample['recipients'][0];
+	pg_assert_same($first, pg_preview_as_sample_recipient($first['ship_to_name']));
+	pg_assert_same(null, pg_preview_as_sample_recipient('nobody'));
+}
+
+function test_preview_render_mask()
+{
+	pg_assert_same('j•••@example.org', pg_preview_as_mask('jane.doe@example.org', 'email'));
+	pg_assert_same('•••33', pg_preview_as_mask('+90 555 111 22 33', 'phone'));
+	pg_assert_same('H•••', pg_preview_as_mask('Harbour Road 12', 'address'));
+	pg_assert_same('', pg_preview_as_mask('  ', 'email'));
+	pg_assert_same('email', pg_preview_as_mask_kind('email address', ''));
+	pg_assert_same('phone', pg_preview_as_mask_kind('text box', 'mobile_phone'));
+	pg_assert_same('address', pg_preview_as_mask_kind('text box', 'business_address_1'));
+	pg_assert_same('address', pg_preview_as_mask_kind('text box', 'business_zip_code'));
+	pg_assert_same('', pg_preview_as_mask_kind('text box', 'first_name'));
+	$rows = pg_preview_as_mask_rows(array(
+		array('data' => 'jane@example.org', 'field_type' => 'email address', 'field_contact' => ''),
+		array('data' => 'Jane', 'field_type' => 'text box', 'field_contact' => 'first_name'),
+	));
+	pg_assert_same('j•••@example.org', $rows[0]['data']);
+	pg_assert_same('Jane', $rows[1]['data']);
+}
+
+// The never-writes guarantees hold for every visitor.
+function test_preview_render_scope_writes_nothing_per_visitor()
+{
+	foreach (array('signed_out', 'signed_in', 'member') as $visitor) {
+		$_SESSION = array('cart' => 1);
+		$inside = pg_preview_as_while(pg_preview_as_setup('login_region', array('visitor' => $visitor)), function () {
+			$_SESSION['software']['user_id'] = 99;
+			return array('background' => pg_seo_rendering(), 'search' => pg_site_search_countable(), 'visit' => pg_page_fact_background(false));
+		});
+		pg_assert_true($inside['background'], $visitor);
+		pg_assert_false($inside['search'], $visitor);
+		pg_assert_true($inside['visit'], $visitor);
+		pg_assert_same(array('cart' => 1), $_SESSION, $visitor . ': the session is as before');
+	}
+	$_SESSION = array();
+}
+
+// The census of PW2c: the renderers that draw differently signed in or out,
+// or read rows by the visitor's id, read the visitor through the reader.
+// A bare USER_ID or USER_LOGGED_IN left in one of them fails here.
+function test_preview_render_visitor_wiring()
+{
+	$census = array(
+		'includes/fn/widgets.php' => array('pg_sw_submitted_form_visible', '_render_system_widget_my_account', '_render_system_widget_order_view', 'pg_sw_auto_catalog_detail_page'),
+		'includes/fn/widgets_account.php' => array('_pg_acct_signed_in', '_pg_member_session_signed_in', 'pg_sw_page_type_widget_url', '_render_system_widget_logout',
+			'_render_system_widget_change_password', '_render_system_widget_account_profile', '_render_system_widget_email_preferences',
+			'_render_system_widget_address_book', '_pg_my_account_extras', '_render_system_widget_login_region', '_pg_acct_staff_url'),
+		'includes/fn/widgets_billing_information.php' => array('_render_system_widget_billing_information'),
+		'includes/fn/widgets_booking.php' => array('pg_booking_widget_visitor'),
+		'includes/fn/widgets_express_order.php' => array('_eo_render_saved_address_select', '_eo_sms_box_shown', '_eo_prefill_billing_fields'),
+		'includes/fn/widgets_folder_view.php' => array(),
+		'includes/fn/widgets_comments_recent.php' => array(),
+		'includes/fn/widgets_shipping_address.php' => array(),
+		'includes/fn/widgets_catalog.php' => array(),
+		'includes/fn/widgets_comments.php' => array(),
+	);
+	foreach ($census as $path => $functions) {
+		$source = designer_preview_render_test_source($path);
+		pg_assert_contains('pg_preview_as_viewer()', $source, $path . ' reads the viewer');
+		foreach ($functions as $fn) {
+			$start = strpos($source, 'function ' . $fn . '(');
+			pg_assert_true($start !== false, $fn . ' found');
+			$end  = strpos($source, "\n}\n", $start);
+			$body = substr($source, $start, $end - $start);
+			pg_assert_false((bool) preg_match('/(?<![\'\w])USER_(ID|LOGGED_IN|CONTACT_ID|EMAIL_ADDRESS|USERNAME)\b/', $body), $fn . ' reads the visitor through pg_preview_as_viewer()');
+		}
+	}
+	$billing = designer_preview_render_test_source('includes/fn/widgets_billing_information.php');
+	pg_assert_false((bool) preg_match('/(?<![\'\w])USER_(ID|LOGGED_IN|CONTACT_ID)\b/', $billing), 'billing reads no constant');
+	foreach (array('widgets_booking.php', 'widgets_shipping_address.php', 'widgets_comments_recent.php', 'widgets_catalog.php') as $file) {
+		pg_assert_false((bool) preg_match('/(?<![\'\w])USER_(ID|LOGGED_IN|EMAIL_ADDRESS)\b/', designer_preview_render_test_source('includes/fn/' . $file)), $file);
+	}
+}

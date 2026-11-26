@@ -262,7 +262,7 @@ function test_photo_gallery_widget_renderer_uses_the_setting()
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_photo_gallery.php');
 	pg_assert_contains('$chosen = pg_gal_folder_setting($cfg);', $source, 'reads the setting');
 	pg_assert_contains("pg_gal_top_folder(\$chosen, \$page_folder, '_pg_gal_parent_or_null', \$bin_id)", $source, 'the top folder');
-	pg_assert_contains('if ($chosen > 0 && $root_id > 0 && !check_view_access($root_id)) $root_id = 0;', $source, 'a chosen folder the visitor may not view shows nothing');
+	pg_assert_contains('if ($chosen > 0 && $root_id > 0 && !pg_preview_as_view_access($root_id)) $root_id = 0;', $source, 'a chosen folder the visitor may not view shows nothing');
 	pg_assert_contains("\$_GET['folder_id'] : null, \$parent_of, \$bin_id)", $source, 'albums walk with the bin');
 }
 
