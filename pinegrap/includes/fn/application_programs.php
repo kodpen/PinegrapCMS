@@ -826,13 +826,16 @@ function pg_application_entry_override(array $entry, $note, $user_id)
 
     $stored = $entry['note'];
     $stored['override'] = array('note' => $note, 'by' => (int) $user_id, 'at' => time());
-    $ok = (bool) db_q("UPDATE application_entries SET eligible = 3, eligibility_note = ?, updated_at = UNIX_TIMESTAMP() WHERE (id = ?) AND (eligible = 2)", array(json_encode($stored, JSON_UNESCAPED_UNICODE), (int) $entry['id']));
+    $ok = db_q("UPDATE application_entries SET eligible = 3, eligibility_note = ?, updated_at = UNIX_TIMESTAMP() WHERE (id = ?) AND (eligible = 2)", array(json_encode($stored, JSON_UNESCAPED_UNICODE), (int) $entry['id']));
 
-    if ($ok) {
-        pg_audit('update', 'application_entry', (int) $entry['id'], array('eligible' => 2), array('eligible' => 3, 'note' => $note));
+    // A second press finds the entry let in already and changes no row.
+    if (!$ok || (mysqli_affected_rows(db::$con) < 1)) {
+        return false;
     }
 
-    return $ok;
+    pg_audit('update', 'application_entry', (int) $entry['id'], array('eligible' => 2), array('eligible' => 3, 'note' => $note));
+
+    return true;
 }
 
 /**

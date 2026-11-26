@@ -203,3 +203,15 @@ function test_application_stale_open_or_close_never_reaches_the_setup_save()
 		pg_assert_true($start < $save, $button . ' before the Set-up save');
 	}
 }
+
+// "Let it in" pressed twice (or by two managers at once) lets the entry in
+// once: the second press changes no row, so it writes no second audit_log
+// line and says it was not let in.
+function test_application_entry_override_counts_only_a_changed_row()
+{
+	require_once(__DIR__ . '/helpers/source_reader.php');
+	$source = pg_test_function_source('pg_application_entry_override');
+
+	pg_assert_contains('mysqli_affected_rows(db::$con) < 1', $source, 'a second press changes nothing');
+	pg_assert_true(strpos($source, 'mysqli_affected_rows(db::$con) < 1') < strpos($source, "pg_audit('update', 'application_entry'"), 'checked before the audit line');
+}
