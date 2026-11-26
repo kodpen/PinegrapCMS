@@ -11,9 +11,9 @@ module: customer_rhythm_tell
 - Only for a row whose `contact_id` names a contact that is still there (one read per batch); a marketplace buyer has no row.
 
 ## When is a product named in a reorder event?
-- At most one event per customer while the brake runs since `reminded_at` (7 days).
-- A product is named once per purchase: only when its window (due day minus the lead, 3 days) opened after `reminded_at`, and only until the brake's days after its due day. The rules file left the window's end to this step: without it a purchase years past its due day would be told on a site's first pass and every week after.
-- The brake and the window's end use the same days, so a product whose window opens during a brake is still open when it ends and is named then.
+- At most one event per contact while the brake runs (7 days): since the key's `reminded_at` and the contact's latest under any key (`MAX(reminded_at)` by `contact_id`). Since #11767; before, a contact with orders under two addresses got two reminders a night.
+- A product is named once per purchase: only when its window (due day minus the lead, 3 days) opened after `reminded_at`, and only until the brake's days after its due day, or a purchase years past due would be told every week.
+- Brake and window end use the same days, so a window opening during a brake is still open when it ends.
 - A product bought again since gets a new due day (`pg_customer_rhythm_due_products()`), so it can be named again.
 
 ## What does the comparison share do? (H12)

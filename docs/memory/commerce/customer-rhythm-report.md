@@ -6,7 +6,7 @@ module: customer_rhythm_report
 
 ## Where is it?
 - `view_customer_report.php?part=rhythm`: the toolbar's Value / Rhythm switch, shown once `pg_customer_rhythm_ready()`. Same gate as the report (`validate_ecommerce_report_access()`, commerce on). Built by `pg_customer_rhythm_report_html()`.
-- Before the first pass: how far the running pass is (`customer_rhythm_pass`), or that it comes after the scheduled jobs' next run. "As of" is the summary's `at`.
+- Before the first pass: how far the pass is, or that it comes after the next job run. "As of" is the summary's `at`.
 
 ## What does the Rhythm part show?
 - Stages: customers and expected 12-month value per stage, read from the table (`pg_customer_rhythm_stage_totals()`, GROUP BY `stage`), so they match the list; stage 0 ("Not yet known") only when there are any. A stage's pill filters the list.
@@ -24,7 +24,7 @@ module: customer_rhythm_report
 
 ## What does the contact card show? (H15)
 - `edit_contact.php`, card "Order rhythm" under Journey (`pg_customer_rhythm_contact_card()`): for role < 3 or a commerce or commerce reports right, after the first pass. The row is the contact's e-mail key, else its contact key, else the latest row naming the contact.
-- Stage, days since the last order, own interval (the store's median until a second order), next due day, chance, expected 12 months, and the products due now, worked out live from that key's counting orders (at most 1,000) with the summary's product rhythms, today's stock and the lead days.
+- Stage, days since the last order, own interval (the store's median until a second order on another day: two orders under a day apart make no gap, fixed by #11767), next due day, chance, expected 12 months, and the products due now, worked out live from that key's counting orders (at most 1,000) with the summary's product rhythms, today's stock and the lead days.
 
 ## Where are the settings? (H15)
 - Card "Rhythm settings" at the end of the Rhythm part, Manager and above (`pg_customer_rhythm_may_change()`); posts `rhythm_settings` to the report. Writes config_text `customer_rhythm_settings` (`pg_customer_rhythm_settings_encode()`): `on`, `brake_days` 1-90, `lead_days` 0-30, `share`. An unchecked switch is off.
