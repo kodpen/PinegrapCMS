@@ -4,8 +4,8 @@ description: Hand-over of the architect session of 2026-11-24 to 26, the work in
 ---
 
 ## What of that session's work has landed?
-- All of its PRs: #11898 (the editor's frame sheet and plan `designer-frame-tidy`), #11901 (FR5 no longer waits: poll 234, "Evet, tek çubuk") and #11903 (DD4, the Sketch tool, whose fix step SX1 landed as #11907).
-- Coordinator k3 was told both lanes (messages 14338 and 14355). Since 2026-11-26 (owner, message 14372) only the architect, the merging session and k3 work: k1 and k2 are out of the agent channel.
+- All of its PRs: #11898 (the editor's frame sheet, plan `designer-frame-tidy`), #11901 (FR5 no longer waits: poll 234) and #11903 (DD4, the Sketch tool; its fix SX1 is #11907).
+- Since 2026-11-26 (owner, message 14372) only the architect, the merging session and k3 work: k1 and k2 are out of the agent channel.
 
 ## What is still to do with the sheets?
 - No sheet is left to draw and the plan that listed them is closed; what a sheet holds is in `designer-sheet-rules.md`.
@@ -15,15 +15,15 @@ description: Hand-over of the architect session of 2026-11-24 to 26, the work in
 - `architect-draws-new-part.md`, `design-work-session.md`. The model is the latest committed sheet: `designer/designer-frame-tidy-drawing/` holds the editor's whole chrome as classes under `.ed` in `drawing.css`, `designer-home-tidy-drawing/` a window and a list screen.
 - One HTML file on `ui/look-sheet/sheet.css` and a local `drawing.css`; rendered by headless Chrome at 1600 px wide in both themes, cut to its content, saved as `-dark.jpg` and `-light.jpg`; looked at once per theme at device scale 1.
 - Beside it a memory file: which board belongs to which step, what the sheet fixes, what stays. Labels in English as the step writes them.
-- First the screen is counted on dev at 1440, 1024 and 390 px. The pictures are posted to the agent channel in Turkish, the first with the text, the others under it.
+- First the screen is counted on dev at 1440, 1024 and 390 px. The pictures go to the agent channel in Turkish, the first with the text.
 - A plan whose steps are "each waits for the one before it" gives out only its first open step (`tools/free_work.php`): a step waiting for the owner goes last among the screen steps, with "owner's" in its parenthesis.
-- The generator and render scripts were scratch files and went with the session.
 
 ## What is still the architect's own?
 - After MS4 has landed: the merging session's rule for the memory mirror.
 - AC1's census may show that shared component and theme changes need a store, a schema question for the owner.
 - The office editors (owner 2026-11-26, `decisions-made-product-115.md`): the steps of `plans/office-sheet-abilities.md`, `office-sheet-formulas.md` and `office-document-abilities.md` are not free; the architect marks their lines `free` when OF4, SA5 and OP3 have landed, each by a docs PR, and tells k3.
-- Bug issue #11921 (the canvas's spacing handles dead with Side by side on, three smaller faults): the owner waits for the fix; k3 was told (message 14442).
+- The owner's designer reports of 2026-11-26 are bug issues with k3: #11939 (bands left after a page switch), #11944 (code view), #11945 (a panel drag restyles the document).
+- His stutter everywhere, Edit off too (poll 237), did not show on a sandbox. Poll 238 asks for a private-window try; if it stutters there, the search goes on with dev's data.
 
 ## What is watched?
 - k3's own tasks: the context size on the agent form.
