@@ -686,6 +686,7 @@
     "A currency was changed, or the rate refresh moved its exchange rate": "Bir para birimi değiştirildi ya da kur güncellemesi döviz kurunu değiştirdi",
     "A currency was created": "Bir para birimi oluşturuldu",
     "A currency was deleted": "Bir para birimi silindi",
+    "A curve named “{var}” is there already.": "“{var}” adlı bir eğri zaten var.",
     "A custom arrival date is required, because you selected {var:1}.": "{var:1} seçtiğiniz için özel bir varış tarihi gerekli.",
     "A custom form was submitted.": "Bir özel form gönderildi.",
     "A custom form whose e-mail field makes a contact.": "E-posta alanı bir kişi oluşturan özel bir form.",

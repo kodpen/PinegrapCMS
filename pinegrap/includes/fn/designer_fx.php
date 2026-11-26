@@ -187,15 +187,68 @@ function pg_fx_normalize($fx)
     if ($effect === 'reveal' && ($out['trigger'] === 'hover' || $out['trigger'] === 'click')) $out['trigger'] = $triggers[0];
 
     $easings = pg_fx_easings();
-    $easing = isset($fx['easing']) && is_string($fx['easing']) ? strtolower($fx['easing']) : '';
+    $easing = pg_fx_easing_clean(isset($fx['easing']) ? $fx['easing'] : '');
     $out['duration'] = $num('duration');
     $out['delay']    = $num('delay');
-    $out['easing']   = in_array($easing, $easings, true) ? $easing : $easings[0];
+    $out['easing']   = $easing !== '' ? $easing : $easings[0];
     if (!in_array($effect, array('fade', 'zoom-out', 'reveal'), true)) $out['distance'] = $num('distance');
     if ($out['trigger'] === 'load' || $out['trigger'] === 'view') $out['stagger'] = $num('stagger');
     if ($out['trigger'] === 'view') $out['repeat'] = !empty($fx['repeat']);
 
     return $out;
+}
+
+/**
+ * The four numbers of an easing curve from "x1, y1, x2, y2": each in its
+ * shortest form, x1 and x2 between 0 and 1, y1 and y2 held between -0.5
+ * and 1.5 (the graph's room above and below). null when the text is not
+ * four numbers or an x leaves 0 to 1.
+ *
+ * @param mixed $text the numbers, comma separated
+ * @return array|null four strings
+ */
+function pg_fx_curve_numbers($text)
+{
+    if (!is_string($text)) return null;
+    $parts = explode(',', $text);
+    if (count($parts) !== 4) return null;
+    $out = array();
+    foreach ($parts as $i => $p) {
+        $p = trim($p);
+        if (!preg_match('/^-?(\d{1,3}(\.\d*)?|\.\d+)$/', $p)) return null;
+        $n = (float)$p;
+        if ($i % 2 === 0 && ($n < 0 || $n > 1)) return null;
+        if ($i % 2 === 1) $n = max(-0.5, min(1.5, $n));
+        $s = rtrim(rtrim(sprintf('%.3F', round($n, 3)), '0'), '.');
+        $out[] = ($s === '' || $s === '-0') ? '0' : $s;
+    }
+    return $out;
+}
+
+/**
+ * An easing in its written form: a named one (pg_fx_easings()), a curve
+ * as cubic-bezier(x1, y1, x2, y2), or a stored curve of the design as
+ * var(--pg-var-c-<key>, cubic-bezier(...)) whose numbers are its
+ * fallback. '' for anything else. Twin of _sdEaseClean() in the editor.
+ *
+ * @param mixed $easing the easing as given
+ * @return string
+ */
+function pg_fx_easing_clean($easing)
+{
+    if (!is_string($easing)) return '';
+    $s = strtolower(trim($easing));
+    if (in_array($s, pg_fx_easings(), true)) return $s;
+    $key = '';
+    if (preg_match('/^var\(\s*--pg-var-c-([a-z0-9][a-z0-9-]{0,29})\s*,\s*(.+)\)$/', $s, $m)) {
+        $key = $m[1];
+        $s = trim($m[2]);
+    }
+    if (!preg_match('/^cubic-bezier\(([^()]*)\)$/', $s, $m)) return '';
+    $p = pg_fx_curve_numbers($m[1]);
+    if ($p === null) return '';
+    $curve = 'cubic-bezier(' . implode(', ', $p) . ')';
+    return $key === '' ? $curve : 'var(--pg-var-c-' . $key . ', ' . $curve . ')';
 }
 
 /**
@@ -221,7 +274,7 @@ function pg_fx_attrs($props)
         if (!isset($fx[$name])) continue;
         if ($name === 'easing') {
             $easings = pg_fx_easings();
-            if ($fx[$name] !== $easings[0]) $out .= ' data-pg-fx-easing="' . $fx[$name] . '"';
+            if ($fx[$name] !== $easings[0]) $out .= ' data-pg-fx-easing="' . htmlspecialchars($fx[$name], ENT_QUOTES) . '"';
             continue;
         }
         if ($fx[$name] !== $nums[$name][2]) $out .= ' data-pg-fx-' . $name . '="' . $fx[$name] . '"';
