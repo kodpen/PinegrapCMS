@@ -21,6 +21,8 @@ description: The code editor's minimap: @replit/codemirror-minimap in the lazy b
 
 ## How is it drawn?
 - `_minimapExtension(cm, on)` gives the facet `showMinimap` with `displayText: 'blocks'` (cheaper than characters on a long page) and `showOverlay: 'mouse-over'` (the viewport box only while the pointer is over it). The host element has the class `pg-ce-minimap`. It draws on a canvas, so jsdom cannot show it; a Chromium run did.
-- Test: `tests/code_editor_test.php` reads the facet off a state under Node on the bundle, and checks the option, `setMinimap`/`hasMinimap`, the designer's call and both toggles.
+- The package draws its whole canvas inside every editor update and re-reads the colour and font of every highlight class first (a hidden element and a forced style recalculation each): about 45 recalculations and 88 ms a key on an empty designer page, 7 and 30 ms without the minimap (issue #11944).
+- `_minimapTame()` wraps the plugin's `create` once (found in `showMinimap.extensions`, the plugin is not exported): the reads are kept until the editor's classes or `data-bs-theme` change, and a draw waits `MINIMAP_QUIET_MS` (300 ms) after the last text or size change (a side panel drag too); a scroll or selection draws on the next frame. After: 9 recalculations and 29 ms a key. An unknown shape leaves it as shipped.
+- Test: `tests/code_editor_test.php` reads the facet off a state under Node on the bundle, and checks the option, `setMinimap`/`hasMinimap`, the designer's call, both toggles and the deferred draw.
 
 Related: docs/memory/core/code-editor-facade-and-bundle.md, docs/memory/designer/designer-code-editor-decisions.md
