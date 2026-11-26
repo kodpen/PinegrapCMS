@@ -285,51 +285,64 @@ function ws_memory_digest($entries, $decisions, $now, $max = WS_MEMORY_DIGEST_MA
         'memory'    => 'Channel memory (read an entry with workspace.memory.get, its id without the #):',
         'decisions' => $across ? 'Decisions in the agent channels (one made in another channel names it first):' : 'Decisions in this channel:',
     );
-    $out = array();
-    $used = 0;
-    $left = 0;
-    $left_general = false;
-    $full = false;
+    $decisions_list = $across ? 'workspace.decisions.list (agent_channels only)' : 'workspace.decisions.list';
 
-    foreach ($headings as $key => $heading) {
-        if (empty($sections[$key])) {
-            continue;
-        }
+    // Lays the lines out within a budget for them; the closing count is not
+    // in it, so a digest that runs past $max is laid out again with less.
+    $lay = function ($budget) use ($headings, $sections, $older, $decisions_list) {
+        $out = array();
+        $used = 0;
+        $left = 0;
+        $left_general = false;
+        $full = false;
 
-        $kept = array();
-
-        foreach ($sections[$key] as $line) {
-            $cost = mb_strlen($line) + 1 + ($kept ? 0 : mb_strlen($heading) + 2);
-
-            // Once a line does not fit, the lines after it wait too, so a
-            // short old line never takes the place of a newer one.
-            if ($full || ($used + $cost > $max)) {
-                $full = true;
-                $left++;
-                $left_general = $left_general || ($key === 'general');
+        foreach ($headings as $key => $heading) {
+            if (empty($sections[$key])) {
                 continue;
             }
 
-            $kept[] = $line;
-            $used += $cost;
+            $kept = array();
+
+            foreach ($sections[$key] as $line) {
+                $cost = mb_strlen($line) + 1 + ($kept ? 0 : mb_strlen($heading) + 2);
+
+                // Once a line does not fit, the lines after it wait too, so a
+                // short old line never takes the place of a newer one.
+                if ($full || ($used + $cost > $budget)) {
+                    $full = true;
+                    $left++;
+                    $left_general = $left_general || ($key === 'general');
+                    continue;
+                }
+
+                $kept[] = $line;
+                $used += $cost;
+            }
+
+            if ($kept) {
+                $out[] = $heading . "\n" . implode("\n", $kept);
+            }
         }
 
-        if ($kept) {
-            $out[] = $heading . "\n" . implode("\n", $kept);
+        // One count closes the digest: the lines the size left out and the
+        // older decisions together, or the older decisions alone.
+        if ($left > 0) {
+            $out[] = '(' . ($left + $older) . ' more not shown: list them with ' . ($left_general ? 'workspace.memory.general.list, ' : '') . 'workspace.memory.list and ' . $decisions_list . '.)';
+        } elseif ($older > 0) {
+            $out[] = '(' . $older . ' older decisions not shown: list them with ' . $decisions_list . '.)';
         }
+
+        return implode("\n\n", $out);
+    };
+
+    $digest = $lay($max);
+
+    for ($budget = $max; (mb_strlen($digest) > $max) && ($budget > 0);) {
+        $budget -= mb_strlen($digest) - $max;
+        $digest = $lay($budget);
     }
 
-    // One count closes the digest: the lines the size left out and the
-    // older decisions together, or the older decisions alone.
-    $decisions_list = $across ? 'workspace.decisions.list (agent_channels only)' : 'workspace.decisions.list';
-
-    if ($left > 0) {
-        $out[] = '(' . ($left + $older) . ' more not shown: list them with ' . ($left_general ? 'workspace.memory.general.list, ' : '') . 'workspace.memory.list and ' . $decisions_list . '.)';
-    } elseif ($older > 0) {
-        $out[] = '(' . $older . ' older decisions not shown: list them with ' . $decisions_list . '.)';
-    }
-
-    return implode("\n\n", $out);
+    return $digest;
 }
 
 /* ---------------------------------------------------------------------------

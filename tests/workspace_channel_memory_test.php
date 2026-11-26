@@ -66,9 +66,12 @@ function test_workspace_memory_digest()
 		ws_memory_digest($entries, $decisions, $now));
 	pg_assert_same('', ws_memory_digest(array(), array(), $now));
 
-	// A line that does not fit is left out whole, with the lines after it, and counted.
-	$small = ws_memory_digest($entries, $decisions, $now, mb_strlen($heading) + 12);
-	pg_assert_same($heading . "\n- #4 Pin\n\n(3 more not shown: list them with workspace.memory.list and workspace.decisions.list.)", $small);
+	// A line that does not fit is left out whole, with the lines after it,
+	// and counted; the count is inside the size too, so one character short
+	// of the whole digest leaves room for the count alone.
+	$whole = ws_memory_digest($entries, $decisions, $now);
+	pg_assert_same('(4 more not shown: list them with workspace.memory.list and workspace.decisions.list.)', ws_memory_digest($entries, $decisions, $now, mb_strlen($whole) - 1));
+	pg_assert_same($whole, ws_memory_digest($entries, $decisions, $now, mb_strlen($whole) + 2));
 }
 
 // The brief lists the newest decisions only, then one line with how many
@@ -107,8 +110,9 @@ function test_workspace_memory_digest_bounds_the_decisions()
 
 	// The character bound cuts first: one closing line counts the lines it
 	// left out and the older decisions together, never two counts.
-	$cut = ws_memory_digest(array(), $forty, 100, mb_strlen($heading) + 2 + 3 * 14);
-	pg_assert_same($heading . "\n- Decision 40\n- Decision 39\n- Decision 38\n\n(37 more not shown: list them with workspace.memory.list and workspace.decisions.list.)", $cut);
+	$expect = $heading . "\n- Decision 40\n- Decision 39\n- Decision 38\n\n(37 more not shown: list them with workspace.memory.list and workspace.decisions.list.)";
+	$cut = ws_memory_digest(array(), $forty, 100, mb_strlen($expect));
+	pg_assert_same($expect, $cut);
 	pg_assert_same(1, substr_count($cut, 'not shown'));
 }
 
@@ -446,8 +450,8 @@ function test_workspace_memory_digest_general_first()
 
 	// One size holds both: the general lines take their room first, and the
 	// count names the general list when a general line was left out.
-	$small = ws_memory_digest($entries, $decisions, $now, mb_strlen($general_heading) + 2 + 16, null, $general);
-	pg_assert_same($general_heading . "\n- #8 House rule\n\n(3 more not shown: list them with workspace.memory.general.list, workspace.memory.list and workspace.decisions.list.)", $small);
+	$expect = $general_heading . "\n- #8 House rule\n\n(3 more not shown: list them with workspace.memory.general.list, workspace.memory.list and workspace.decisions.list.)";
+	pg_assert_same($expect, ws_memory_digest($entries, $decisions, $now, mb_strlen($expect), null, $general));
 }
 
 function test_workspace_memory_move_fault()
@@ -633,4 +637,29 @@ function test_workspace_memory_tag_with_dotted_capital_i()
 
 	$api = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/api_memory.php');
 	pg_assert_same(2, substr_count($api, "\$tag = ws_memory_tag(\$params['tag'] ?? '');"), 'both list filters fold the tag as it is stored');
+}
+
+// The digest stays within its size, closing count included: the count line
+// was added after the lines were fitted and ran the brief past the bound.
+function test_workspace_memory_digest_count_line_inside_the_bound()
+{
+	$entries = array();
+
+	for ($i = 1; $i <= 40; $i++) {
+		$entries[] = array('id' => $i, 'title' => str_repeat('t', 40), 'tags' => array(), 'pinned' => 0, 'expires_at' => 0, 'updated_at' => $i);
+	}
+
+	$general = array(array('id' => 99, 'project' => 'Launch', 'title' => 'Shared', 'tags' => array(), 'pinned' => 0, 'expires_at' => 0, 'updated_at' => 1));
+	$many = array_fill(0, 10, array('body' => 'Ship it', 'marked_at' => 1, 'channel' => ''));
+
+	foreach (array(300, 500, 1000, 1500) as $max) {
+		$digest = ws_memory_digest($entries, $many, 100, $max, 30, $general, true);
+		pg_assert_true(mb_strlen($digest) <= $max, 'within ' . $max . ', was ' . mb_strlen($digest));
+		pg_assert_contains(' more not shown: list them with ', $digest, 'the count still closes it at ' . $max);
+	}
+
+	// What fits whole is laid out as before.
+	$few = array_slice($entries, 0, 2);
+	$whole = ws_memory_digest($few, array(), 100, 100000);
+	pg_assert_same($whole, ws_memory_digest($few, array(), 100, mb_strlen($whole) + 2));
 }
