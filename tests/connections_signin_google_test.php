@@ -46,7 +46,7 @@ function test_connections_signin_google_card_keeps_the_sign_in_gate()
 	pg_assert_same(array('status', 'signin', 'details', 'uses'), pg_connections_screen_page_cards('google', array('manager' => true, 'signin' => true)), 'the sign-in application above the connected accounts\' one');
 	pg_assert_same(array('status', 'details', 'uses'), pg_connections_screen_page_cards('google', array('manager' => true, 'signin' => false)), 'not without the sign-in settings\' right');
 	pg_assert_same(array('status', 'signin', 'uses'), pg_connections_screen_page_cards('google', array('manager' => false, 'signin' => true)), 'each part keeps its own gate');
-	pg_assert_same(array('status', 'details', 'uses'), pg_connections_screen_page_cards('microsoft', array('manager' => true, 'signin' => true)), 'only Google\'s page has it');
+	pg_assert_same(array('status', 'signin', 'details', 'uses'), pg_connections_screen_page_cards('microsoft', array('manager' => true, 'signin' => true)), 'Microsoft\'s page has Sign in with Microsoft\'s part');
 
 	// Accounts and sign-in is a manager's category, the gate of the card
 	// the application came from; nobody gains or loses a right.
@@ -59,7 +59,7 @@ function test_connections_signin_google_card_keeps_the_sign_in_gate()
 	$save = strpos($screen, "if (\$action === 'signin_google_save') {");
 	pg_assert_true($save !== false, 'the save action is there');
 	pg_assert_contains('if (connections_signin_may_manage($user)) {', substr($screen, $save, 200), 'the save asks the gate first');
-	pg_assert_contains("'signin'    => (\$provider_page === 'google') && connections_signin_may_manage(\$user),", $screen, 'and so does the drawing');
+	pg_assert_contains("'signin'    => connections_signin_may_manage(\$user),", $screen, 'and so does the drawing');
 }
 
 function test_connections_signin_google_fields_moved_to_the_page()

@@ -75,7 +75,7 @@ function test_connections_page_finishes_drives_one_answer()
 
 	pg_assert_contains('function connections_app_card(', $screen, 'the application card of a service\'s page');
 	pg_assert_contains('connections_app_form($provider_key, $provider, $app', $screen, 'the same form and storage as the provider\'s page');
-	pg_assert_contains("!in_array('app', \$page['cards'], true) && !in_array('backups', \$page['cards'], true)", $screen, 'the pointer to the provider\'s page only where nothing here connects');
+	pg_assert_true(preg_match("~elseif \\(in_array\\('app', \\\$page\\['cards'\\], true\\)\\) \\{.*?elseif \\(in_array\\('backups', \\\$page\\['cards'\\], true\\)\\) \\{.*?Accounts are connected on the~s", $screen) === 1, 'the pointer to the provider\'s page only where nothing here connects');
 	pg_assert_contains("href=\"#connections-app\"", $screen, 'Google Analytics and Merchant Center point to the application on their page');
 
 	pg_assert_same('connections.php?service=google_drive&from=maintenance%2Fpgset-backup#connections-app', pg_backup_cloud_app_url('gdrive'), 'the Backups card: the drive\'s own page');
