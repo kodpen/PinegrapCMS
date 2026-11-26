@@ -1,6 +1,6 @@
 ---
 name: page-clicks-designer-layer
-description: The designer's Clicks layer (part clicks #10056, wired #10715): toolbar toggle and panel, the read page_clicks, sdDesign.clicks, badges, tenth lines, side list, empty state
+description: The designer's Clicks layer (part clicks #10056, wired #10715): View menu row, palette row and panel, the read page_clicks, sdDesign.clicks, badges, tenth lines, side list, empty state
 module: page_clicks
 ---
 
@@ -11,7 +11,8 @@ module: page_clicks
 - Every variant of an experiment is counted together; the panel says so (C23).
 
 ## How is it opened in the editor? (#10715)
-- A "Clicks" toolbar toggle (`#sd-clicks-btn`, `bi-hand-index`, before Undo), made by `_sdClicksPartInit()` only when `sdDesign.clicks` and the part are handed over. On: a panel `.sd-clicks-panel` over the canvas' right edge, its body is `host.panel`; `_sdPartCall('clicks', 'open', …)`. Off or its close button: `close()`.
+- The row "Clicks on this page" of the canvas bar's View menu (`#sd-clicks-btn`, `bi-hand-index`, a group of its own before Side by side) and the command palette row "Show / Hide clicks on this page" (`act_clicks`), both only when `_sdClicksReady()`: `sdDesign.clicks` and the part handed over. It was a page bar button before FR1 of plan designer-frame-tidy.
+- On, it counts in the View button's badge and opens a panel `.sd-clicks-panel` over the canvas' right edge, its body is `host.panel`; `_sdPartCall('clicks', 'open', …)`. Off or its close button: `close()`.
 - `_sdClicksDrawn()` at the end of `renderCanvas()`: `refresh()` soon after a full draw, `reload()` when the active tab changed. A one-node redraw keeps the layer.
 - Badge and line look: `_sdClicksCanvasStyle()` puts `<style id="sd-clicks-style">` into each canvas document, since `style_designer.css` does not reach the frame. Panel look (`.sd-clicks-*`): `style_designer.css`.
 

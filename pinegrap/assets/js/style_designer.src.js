@@ -7557,6 +7557,11 @@ const StyleDesigner = (function () {
             '<button type="button" class="sd-vb-row" id="sd-vb-guides" role="menuitemcheckbox" aria-checked="true"><span class="bi bi-rulers"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Canvas guides')) + '</span><span class="sd-vb-switch" aria-hidden="true"></span></button>' +
             '<div class="sd-vb-keyrow"><span class="sd-vb-row-lbl">' + esc(_sdT('Measure: point at another element')) + '</span><kbd class="sd-vb-kbd">Alt</kbd></div>' +
             '<div class="sd-vb-keyrow"><span class="sd-vb-row-lbl">' + esc(_sdT('Layout lines')) + '</span><kbd class="sd-vb-kbd">Shift+G</kbd></div>' +
+            // Clicks on this page: the part 'clicks' layer and its panel
+            // (_sdClicksToggle()), a group of its own, only for whoever the
+            // part is handed to. A canvas built again keeps its state.
+            (_sdClicksReady() ? '<div class="sd-vb-menu-line" role="separator"></div>' +
+                '<button type="button" class="sd-vb-row' + (_sdClicks.on ? ' active' : '') + '" id="sd-clicks-btn" role="menuitemcheckbox" aria-checked="' + (_sdClicks.on ? 'true' : 'false') + '"><span class="bi bi-hand-index"></span><span class="sd-vb-row-lbl">' + esc(_sdT('Clicks on this page')) + '</span><span class="sd-vb-switch" aria-hidden="true"></span></button>' : '') +
             // The canvas with a phone and a tablet beside it (_sdSideSync()),
             // under a line; dimmed with its reason when the column is too
             // narrow for three.
@@ -7571,6 +7576,8 @@ const StyleDesigner = (function () {
             _sdViewMenuOpen(false);
             _sdProtoCommentsOpen();
         });
+        var clicksRow = viewMenu.querySelector('#sd-clicks-btn');
+        if (clicksRow) clicksRow.addEventListener('click', function () { _sdClicksToggle(!_sdClicks.on); });
         ((window.pgUI && typeof pgUI.overlayHost === 'function') ? pgUI.overlayHost(wrapper) : document.body).appendChild(viewMenu);
 
         // The sizes as one list: an option per width button, in its order.
@@ -7860,7 +7867,7 @@ const StyleDesigner = (function () {
         var bar = document.getElementById('sd-bp-bar');
         if (!bar) return;
         var setA = function (el, name, v) { if (el && el.getAttribute(name) !== v) el.setAttribute(name, v); };
-        var sw = ['sd-vb-outline', 'sd-vb-parts', 'sd-vb-grid', 'sd-vb-theme', 'sd-vb-motion', 'sd-vb-a11y', 'sd-vb-guides', 'sd-vb-side'].map(function (id) {
+        var sw = ['sd-vb-outline', 'sd-vb-parts', 'sd-vb-grid', 'sd-vb-theme', 'sd-vb-motion', 'sd-vb-a11y', 'sd-vb-guides', 'sd-clicks-btn', 'sd-vb-side'].map(function (id) {
             var el = document.getElementById(id);
             var on = !!(el && el.classList.contains('active'));
             setA(el, 'aria-checked', on ? 'true' : 'false');
@@ -92801,6 +92808,7 @@ const StyleDesigner = (function () {
             { id: 'act_parts', label: _sdPartsLit() ? _sdT('Hide shared parts') : _sdT('Show shared parts'), icon: 'bi-puzzle', action: function() { _sdPartsLitSet(!_sdPartsLit()); } },
             { id: 'act_guides', label: _sdT('Toggle Canvas guides'), icon: 'bi-rulers', action: function() { _sdGuidesSet(_sdGuidesOff()); } },
             { id: 'act_layout_lines', label: _sdT('Toggle Layout lines'), icon: 'bi-layout-three-columns', hint: 'Shift+G', action: function() { if (!_sdGuidesOff() && canvasDoc) _sdLinesShow(!_sdLines.on); } },
+            (_sdClicksReady() ? { id: 'act_clicks', label: _sdClicks.on ? _sdT('Hide clicks on this page') : _sdT('Show clicks on this page'), icon: 'bi-hand-index', action: function () { _sdClicksToggle(!_sdClicks.on); } } : null),
             { id: 'act_side', label: _sdT('Side by side'), icon: 'bi-layout-three-columns', action: function() { var b = document.getElementById('sd-vb-side'); if (b) b.click(); } },
             (_sdProto.open ? null : { id: 'act_a11y_view', label: _sdA11yState().on ? _sdT('Hide accessibility view') : _sdT('Show accessibility view'), icon: 'bi-universal-access', action: function () { _sdA11ySet(!_sdA11yState().on); } }),
             { id: 'act_shortcuts', label: _sdT('Keyboard Shortcuts'), icon: 'bi-question-circle', hint: '?', action: function() { openShortcutsModal('keys'); } }
@@ -99407,26 +99415,16 @@ const StyleDesigner = (function () {
 
     // ── The "Clicks" layer ────────────────────────────────────────────────
     // The part 'clicks' (assets/js/style_designer_clicks.js), handed over
-    // with sdDesign.clicks only to whoever may open Visitors. Its toolbar
-    // toggle opens a panel over the canvas' right edge and the part's
-    // badges and tenth lines on the canvas; each canvas draw puts them back,
-    // and a draw of another tab asks for that page's figures.
+    // with sdDesign.clicks only to whoever may open Visitors. The View
+    // menu's row "Clicks on this page" (#sd-clicks-btn) and a command
+    // palette row switch it: a panel over the canvas' right edge and the
+    // part's badges and tenth lines on the canvas; each canvas draw puts
+    // them back, and a draw of another tab asks for that page's figures.
     var _sdClicks = { on: false, panel: null, key: null, reload: false, soon: 0 };
 
-    function _sdClicksPartInit() {
-        if (!_design || !_design.clicks || !_sdPartUrls('clicks')) return;
-        var bar = document.querySelector('.sd-toolbar-actions');
-        if (!bar || document.getElementById('sd-clicks-btn')) return;
-        var btn = document.createElement('button');
-        btn.type = 'button';
-        btn.id = 'sd-clicks-btn';
-        btn.className = 'sd-icon-btn sd-clicks-btn';
-        btn.title = _sdT('Clicks on this page\'s links and buttons');
-        btn.setAttribute('aria-pressed', 'false');
-        btn.innerHTML = '<span class="bi bi-hand-index" aria-hidden="true"></span><span class="sd-clicks-btn-txt">' + esc(_sdT('Clicks')) + '</span>';
-        var undo = document.getElementById('sd-main-undo');
-        bar.insertBefore(btn, (undo && undo.parentNode === bar) ? undo : null);
-        btn.addEventListener('click', function () { _sdClicksToggle(!_sdClicks.on); });
+    // Whether this operator gets the layer: the part and its figures.
+    function _sdClicksReady() {
+        return !!(_design && _design.clicks && _sdPartUrls('clicks'));
     }
 
     // The panel beside the canvas the part draws in (host.panel).
@@ -99451,7 +99449,7 @@ const StyleDesigner = (function () {
         _sdClicks.on = !!on;
         if (btn) {
             btn.classList.toggle('active', _sdClicks.on);
-            btn.setAttribute('aria-pressed', _sdClicks.on ? 'true' : 'false');
+            btn.setAttribute('aria-checked', _sdClicks.on ? 'true' : 'false');
         }
         clearTimeout(_sdClicks.soon);
         if (!_sdClicks.on) {
@@ -99595,7 +99593,6 @@ const StyleDesigner = (function () {
                 _updateSaveButtonState();
             }
             _sdAiPartInit();
-            _sdClicksPartInit();
             _sdTourInit();
         },
         getTree: function () { return tree; },
