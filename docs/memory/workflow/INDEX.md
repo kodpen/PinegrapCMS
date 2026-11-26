@@ -68,6 +68,9 @@
 - bug-hunt-areas-designer-import.md: The bug hunt of the designer's HTML, ZIP and paste importers on the server (hunt 55, 2026-11-24, #11501): the seven faults fixed, what was read clean, what was not run
 - bug-hunt-areas-designer-shared-components.md: Bug hunt of the designer's shared components, server side (area 54, 2026-11-24): four faults fixed in the hunt's PR #11498, two issues, what was read clean [decision: decisions-made-product-109.md]
 - bug-hunt-areas-document-to-page.md: Bug hunt "Page from a document" (2026-11-26, PR #11769): seven faults fixed (file pick, pictures, words, how much was read), what read clean, the two faults left built in PR #11792
+- bug-hunt-areas-erp-bank-statement-lines.md: The bug hunt in ERP bank statement lines, matching and suggestions (agent channel request 3141, 2026-11-26): what was fixed, what was read clean, what is left
+- bug-hunt-areas-erp-cheques.md: The bug hunt of ERP cheques and promissory notes (2026-11-26, PR #11844): the five faults fixed, the product question asked, what was read clean and what was left [decision: here]
+- bug-hunt-areas-erp-expenses.md: The bug hunt of ERP expenses and repeating expenses (2026-11-26, PR #11843): three races fixed, what was read clean and what was left [decision: here]
 - bug-hunt-areas-figma-canva-starts.md: The bug hunt of the Figma and Canva starts of the New design window (hunt 57, 2026-11-25): what was given, what was found and fixed, what read clean, issues opened
 - bug-hunt-areas-file-manager-permissions.md: Bug hunt 53, File Manager permissions (2026-11-24, PR #11492): who sees, moves, renames and deletes a file or folder, the Recycle Bin, design files, path checks; three faults fixed
 - bug-hunt-areas-flow-waits.md: The bug hunt in Workspace flows that wait, the run side (architect 2026-11-26, request 3068): one fault fixed (the claim time a waiting box counts from), what was read clean, what was left [decision: here]
@@ -412,6 +415,9 @@
 - decisions-made.md: The decisions list: places reviewed and kept as they are on purpose; how to treat it and who adds to it, then the code and files that look dead or wrong but stay.
 - design-template-owner-line.md: Owner (2026-11-11): during the template pause his own line polishes the shipped templates, bolder and with motion, appstudio and dealership first; two workers of one more coordinator take the rest [decision: here]
 - design-work-session.md: Where a screen's look is designed: in a design session of its own while one runs (2026-11-23); since 2026-11-25 none runs and the architect draws the designer plans' sheets; keeping the cost down [decision: decisions-made-product-110.md]
+- designer-use-round-new-design.md: Use round UR2 (PR #11839): the New design window used in a browser; what was found, the eight fixes, what was left and what could not be run
+- designer-use-round-options-panel-left.md: The Options panel faults use round UR4 found and did not fix (State's Turkish label, the 240 px size chooser, six-segment groups, long labels, focus after Add layer), each with why
+- designer-use-round-options-panel.md: Use round UR4 (plan designer-use-round): the Options panel's DO2 to DO26 parts used in a browser at 1440, 390 and 240 px, light and dark, by keyboard; the eight faults fixed
 - dev-machine-testing.md: Testing on dev.pinegrap.com (the owner's PC): what may be written, the shared sign-in and page lock, the shared checkout, asking for a page as a visitor, logs and the job's heartbeat, browser traps
 - docs-only-pr-checks.md: A pull request whose every changed file is under docs/ runs only the memory check and the branch guards in php-checks.yml; its jobs keep their names and end green
 - git-branches-and-shared-files.md: Branch policy (development vs main), who does git, commit author, the PR footer (pointer), shared files without conflicts, generated files a PR leaves out, API vs ERP files [decision: here]

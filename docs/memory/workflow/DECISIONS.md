@@ -1615,6 +1615,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/bug-hunt-areas-click-scroll-map.md: The bug hunt of the click and scroll map (architect 2026-11-20, channel message 10776): the three faults fixed, what was read clean, what is no fault
 - workflow/bug-hunt-areas-delivery-tower.md: The delivery tower bug hunt (2026-11-26, #11800): rules, passes, desk, scorecard, chooser, API; two faults fixed, the hand-closed rule built, read clean, left
 - workflow/bug-hunt-areas-designer-activity.md: Bug hunt of the designer's History "Activity" tab and its audit lines (2026-11-26, PR #11762): three faults fixed, what was read clean
+- workflow/bug-hunt-areas-erp-cheques.md: The bug hunt of ERP cheques and promissory notes (2026-11-26, PR #11844): the five faults fixed, the product question asked, what was read clean and what was left
+- workflow/bug-hunt-areas-erp-expenses.md: The bug hunt of ERP expenses and repeating expenses (2026-11-26, PR #11843): three races fixed, what was read clean and what was left
 - workflow/bug-hunt-areas-flow-waits.md: The bug hunt in Workspace flows that wait, the run side (architect 2026-11-26, request 3068): one fault fixed (the claim time a waiting box counts from), what was read clean, what was left
 - workflow/bug-hunt-areas-flows-outside-doors.md: The bug hunt in Workspace flows reached from outside and by another hand (web address start, shares, a role-3 member's flows; architect 2026-11-26, request 3045): fixed, read clean, left
 - workflow/bug-hunt-areas-launch-journey.md: The bug hunt of the site set-up journey (SJ1a to SJ5, 2026.11.0): the facts reader, the set-up card, "Go live", First week and Start here, the agency summary

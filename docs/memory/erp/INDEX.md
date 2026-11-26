@@ -30,7 +30,7 @@
 - erp-cash-forecast.md: ERP cash forecast: what counts as money in and out over 30, 60 or 90 days, the item shape, cheque tills left out of today's cash, how a new source is added, the API's scope.
 - erp-cashflow-report.md: ERP cash flow report: transfers excluded in all-till view, opening balance rule, period slice keys, payment-method labels, toolbar and tr.json traps.
 - erp-cheque-bank-till-and-due.md: Which bank till a cheque step may use (screen and API alike), and what the cheque list's "Due within a week" card counts.
-- erp-cheque-form-checks.md: Cheque and note form and step checks (PR #5636): the amount limit, the step reason in the notes, the full status filter, required and labelled fields, action-named step buttons.
+- erp-cheque-form-checks.md: Cheque and note form and step checks (PR #5636, #11844): amount limit, step reason, status filter, labelled fields, step buttons, endorse account, typed step date.
 - erp-cheque-receipts.md: Why a cheque's or note's receipt is not cancelled on its own (screen, erp_receipt_cancel(), API 409 receipt_belongs_to_cheque), and what to do with a cheque entered by mistake
 - erp-cheques.md: ERP cheques and promissory notes (4.101): the steps, money only through erp_post_receipt and erp_post_transfer, a step never rewrites an earlier movement, which tills hold them. [decision: decisions-made-product-15.md]
 - erp-counter-sale-completion.md: Counter sale completion in pg_local_order_complete() (shared with the API): claim and numbering order, the invoice with the ERP on, receipts and split payment, the cash right, failures as warnings.
@@ -51,6 +51,7 @@
 - erp-edoc-send-readiness.md: What the provider would refuse, asked before it is: missing-field lists and format helpers, the repair form, the not-ready filter, the final-consumer number, sales-only rules, GİB's date order.
 - erp-edoc-settings-card.md: The E-Invoice card (pgset-invoice, Site Settings › Accounting): e-Document Provider choice (only a connected one), Test the connection, the owner decision to keep it there
 - erp-efatura-threshold.md: The e-Fatura threshold warning (includes/erp/efatura_threshold.php): the two threshold settings, what counts as a sale, the daily cached sum, the System Status tile and its deadline. [decision: decisions-made.md]
+- erp-expense-change-lock.md: A change of an expense locks its row and is refused when it was paid or cancelled since the form read it, so it is never paid twice or rewritten behind its till movement
 - erp-expense-change-reaches-repeat.md: Changing an expense also updates the active repeat of its family (supplier, tax number, category, description, amount, tax rate, tax_deductible); frequency, day, end and till stay [decision: decisions-made-product-28.md]
 - erp-expense-form-checks.md: Expense screen checks: non-numbers, the field a refusal marks, the paid cancel's till right, send_to, repeat end dates, refused category saves, kept dates, card-body grids, the form layout.
 - erp-expense-receipts.md: An ERP expense's receipt file: one door for form and API, type read from the bytes, replacing keeps the old copy (erp_archive_store again), readers take the newest row, MAX(id) in direct joins.

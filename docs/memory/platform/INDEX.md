@@ -176,6 +176,7 @@
 - office-ods-preview.md: .ods as a workbook in Quick Look, the file window and a channel's Preview (PR #10519): read through the sheet reader, the preview's limits, the cell ceiling, the shared walk, view only
 - office-overview.md: Start file for the office-* files: Office files shown and edited by own code in the File Manager and channels; decisions, parts by screen label, which file holds what [decision: decisions-made-product-79.md]
 - office-paragraph-edits.md: Word paragraphs changed in the file window and the Workspace (includes/fn/office_edit.php, PR #702): which paragraphs, how new text goes into the runs (#1149, #1158), refused documents
+- office-pptx-design-reader.md: The design file reader pg_pptx_design_read() (PR #11840): a .pptx read as slides of placed elements for the Artifact Canvas; units, what each element gives, what is left out and counted, limits
 - office-pptx-preview.md: .pptx as a list of slides in Quick Look, the file window and a channel's Preview (PR #10585): title, text in reading order, pictures, speaker notes; limits, refusals, view only
 - office-sheet-format-controls.md: The sheet editor's format bar (OE3b) for the selected cells, its colour swatches, one format change a save, and how the preview draws each cell's look and number format [decision: here]
 - office-sheet-format.md: Format of selected cells of an .xlsx (office_format.php, OE3a): the save entry, how new styles are written beside the old ones, the number formats, what is refused and why

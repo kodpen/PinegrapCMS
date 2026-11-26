@@ -176,6 +176,7 @@
 - picture-text-auto-panel.md: Pictures drawn by an open panel page in the background (picture_auto.js): the footer's tag, the lock, the order, the stop, a failed row, the draw after a Save, the shared drawing
 - picture-text-auto-rows.md: A translated picture's waiting rows written at a page save, its texts' translate-on-save job (scope file:<id>), the waiting mark in data/temp, the keep shared by every draw
 - picture-text-auto-server.md: Translated canvas pictures drawn by the server with nobody there: the job's draw, PHP twins of the language document and fit, what waits for a panel, budget and mark
+- picture-text-fit-room.md: A translated picture text grows into the free room around it before it shrinks (#11837): M.languageRoom(), languagePlace(), languageFitted(), PHP twins, fixtures, measure
 - picture-text-overview.md: Picture text translation as a whole (owner 2026-11-16, #10028 to #10448): what it does, its binding decisions, what it leaves out and why, where each part is [decision: decisions-made-product-113.md, decisions-made-product-63.md, decisions-made-product-64.md]
 - picture-text-translation-doors.md: The file doors of a language's picture: it follows its source on a move, goes with it on a delete, is never swapped while the source is binned, counts in Disk Usage, the daily sweep's catch-up
 - picture-text-translation-draw-photo.md: A photo with text layers drawn per language from the Artifact Canvas Languages list (PT4b): the browser's overlay and parts, the server drawing on the base row as a save does, format kept
