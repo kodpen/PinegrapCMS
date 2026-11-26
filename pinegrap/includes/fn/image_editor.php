@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_image_editor_parts()
 {
-    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'langview', 'export', 'vector', 'svg', 'motion', 'tracks', 'sound', 'keyframes', 'render', 'scenes', 'present', 'access', 'record', 'follow', 'fonts', 'textstyles', 'glyph', 'elements', 'starts', 'data', 'warp', 'puppet', 'outline', 'builder', 'video', 'clip', 'mix', 'upload', 'phone', 'colors', 'actions', 'menu');
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'langview', 'export', 'vector', 'svg', 'motion', 'tracks', 'sound', 'keyframes', 'render', 'scenes', 'present', 'access', 'record', 'follow', 'fonts', 'textstyles', 'glyph', 'elements', 'starts', 'resize', 'data', 'warp', 'puppet', 'outline', 'builder', 'video', 'clip', 'mix', 'upload', 'phone', 'colors', 'actions', 'menu');
 }
 
 /**
@@ -1415,7 +1415,7 @@ function pg_image_editor_single_keys()
         'token', 'action', 'mode', 'file_id', 'file_name', 'folder_id', 'version_id', 'base', 'name',
         'kind', 'object_type', 'object_id', 'column', 'from', 'to', 'target', 'upload', 'family',
         'weight', 'italic', 'search', 'svg', 'png', 'on', 'picture', 'overlay', 'colour', 'size',
-        'offset', 'table', 'language', 'stamp', 'fit',
+        'offset', 'table', 'language', 'stamp', 'fit', 'copy_name',
     );
 }
 
@@ -3316,8 +3316,12 @@ function pg_image_editor_save_canvas($request, $board, $mode, $user)
 
         $row = $file['row'];
         $folder = (int) $row['folder'];
+        // A copy may be named (copy_name, Resize to other sizes names each
+        // size); else it takes the canvas's own name.
+        $copy = preg_replace('/\.[a-z0-9]{2,5}$/i', '', trim(isset($request['copy_name']) ? (string) $request['copy_name'] : ''));
+        $copy = ($copy !== '') ? $copy : preg_replace('/\.[a-z0-9]{2,5}$/i', '', (string) $row['name']);
         $name = ($mode === 'replace') ? (string) $row['name']
-            : get_unique_name(array('name' => prepare_file_name(preg_replace('/\.[a-z0-9]{2,5}$/i', '', (string) $row['name']) . '.png'), 'type' => 'file'));
+            : get_unique_name(array('name' => prepare_file_name($copy . '.png'), 'type' => 'file'));
 
     } else {
         return pg_image_editor_refusal(lang('Invalid request.'));
@@ -7633,4 +7637,31 @@ function pg_image_editor_starts_urls()
     $v = (int) @filemtime(PG_FUNCTIONS_DIR . '/assets/canvas/designs.json');
 
     return array('index' => $dir . 'designs.json?v=' . $v, 'base' => $dir . 'designs/', 'v' => $v);
+}
+
+// -- Resize to other sizes (pg_image_editor_resize.js) --
+
+/**
+ * The Canvas tool's "Resize to other sizes": the button, its list of sizes,
+ * the line saying what was made and the texts that came out too small.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_resize()
+{
+    return array(
+        'resizeOpen'     => lang('Resize to other sizes'),
+        'resizeCustom'   => lang('Custom size'),
+        'resizeNote'     => lang('Each size is saved as a new canvas in Files, its layers placed and scaled to fit it.'),
+        'resizeMake'     => lang('Make {n} sizes'),
+        'resizeMakeOne'  => lang('Make 1 size'),
+        'resizeEmpty'    => lang('Tick at least one size.'),
+        'resizeMaking'   => lang('Making {done} of {n} sizes…'),
+        'resizeMade'     => lang('{n} sizes made in Files.'),
+        'resizeMadeOne'  => lang('1 size made in Files.'),
+        'resizeStopped'  => lang('{done} of {n} sizes were made.'),
+        'resizeSmall'    => lang('Text smaller than {floor} px: {list}'),
+        'resizeShow'     => lang('Show'),
+        'resizeNoFiles'  => lang('Save this canvas in Files to make other sizes.'),
+    );
 }
