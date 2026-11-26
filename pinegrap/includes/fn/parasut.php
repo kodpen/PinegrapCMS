@@ -1358,6 +1358,13 @@ function parasut_connect_with_code($code, $client_id = '', $client_secret = '', 
         return $fail(lang('Paste the authorization code Paraşüt showed after the sign-in.'));
     }
 
+    // Asked before the code is exchanged, so a refused one is not spent.
+    $refusal = parasut_code_connect_refusal(parasut_devhub_connection());
+
+    if ($refusal !== '') {
+        return $fail($refusal);
+    }
+
     if (($client_id === '') || ($client_secret === '')) {
         return $fail(lang('The client id and the client secret are needed before Pinegrap can be authorized.'));
     }
@@ -1772,6 +1779,12 @@ function parasut_devhub_status($connection, $details)
 function parasut_devhub_after_connect($connection_id)
 {
     $answer = array('notices' => array(), 'warnings' => array(), 'log' => '');
+
+    // Connecting again keeps the connection's id, so the e-mail and company
+    // read for the account before would still pass as this one's when the
+    // read below fails.
+    pg_connect_service_delete('parasut_devhub');
+
     $token = pg_connect_access_token((int) $connection_id);
 
     if (empty($token['ok'])) {
@@ -1816,6 +1829,25 @@ function parasut_devhub_after_connect($connection_id)
         'email' => $me['email'],
         'replaced_company_id' => $company['replaced'],
     ));
+}
+
+/**
+ * Why a code of the older way is not connected, '' when it may be. While the
+ * site holds a connection made with a portal client, every request goes with
+ * that connection (parasut_token_choice()): a code connected beside it would
+ * be reported as the connection while it is not used, and the company it
+ * finds would replace the number the portal connection works in. Pure.
+ *
+ * @param array|null $connection  parasut_devhub_connection()
+ * @return string
+ */
+function parasut_code_connect_refusal($connection)
+{
+    if (parasut_token_choice($connection) !== 'connection') {
+        return '';
+    }
+
+    return lang('Paraşüt is connected with a client from the Developer Portal, and every request goes with it. Disconnect it first to connect a client from before the portal.');
 }
 
 /**

@@ -203,3 +203,58 @@ function test_library_io_import_plan_keeps_names_and_says_where()
 	pg_assert_same('three PLANS', $plan[1]['item']['name'], 'a name in use is kept as it is: both are kept');
 	pg_assert_same(array(5, 6, 7, 8, 9), $orders, 'after the library\'s last');
 }
+
+function test_library_io_hunt_event_attribute_in_capitals()
+{
+	pg_assert_same('event onerror', _library_io_code(pg_library_text_problem('<img src="/a.png" ONERROR="alert(1)">', 'html')),
+		'an attribute name in capitals is the same attribute');
+	pg_assert_same('event onload', _library_io_code(pg_library_text_problem('<svg/OnLoad=alert(1)>', 'html')));
+}
+
+function test_library_io_hunt_tag_read_whole()
+{
+	pg_assert_same('event onerror', _library_io_code(pg_library_text_problem('<img alt=">" onerror="alert(1)" src="/a.png">', 'html')),
+		'a quoted > does not end the tag');
+	pg_assert_same('address javascript:', _library_io_code(pg_library_text_problem("<a title='>' href=\"java\tscript:x\">x</a>", 'html')));
+	pg_assert_same('event onerror', _library_io_code(pg_library_text_problem('<p>Hi</p><img src=x onerror=alert(1)//', 'html')),
+		'a tag left open at the end is closed by the markup after it');
+	pg_assert_same('event onclick', _library_io_code(pg_library_text_problem("<a title=it's onclick=x>y</a>", 'html')),
+		'an unquoted value with a quote mark');
+	pg_assert_same('', _library_io_code(pg_library_text_problem('Price < 5 and 3 > 1, one = two', 'text')));
+}
+
+function test_library_io_hunt_reference_without_semicolon()
+{
+	pg_assert_same('javascript:', pg_library_address_refused('java&#115cript:alert(1)'), 'a numeric reference without its ;');
+	pg_assert_same('javascript:', pg_library_address_refused('&#x6A;avascript&#58alert(1)'));
+	pg_assert_same('address javascript:', _library_io_code(pg_library_text_problem('<a href="&#106avascript:x">y</a>', 'html')));
+	pg_assert_same('', pg_library_address_refused('/a?b=1&#38c=2'));
+}
+
+function test_library_io_hunt_style_url()
+{
+	pg_assert_same('address javascript:', _library_io_code(pg_library_css_problem('a{background:url("javascript:alert(1)")}')),
+		'a quoted address holding )');
+	pg_assert_same('address data:', _library_io_code(pg_library_css_problem("a{background:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E\")}")),
+		'a quoted address holding the other quote');
+	pg_assert_same('address data:', _library_io_code(pg_library_css_problem('a{background:url(\\64 ata:text/html,x)}')),
+		'a CSS hex escape');
+	pg_assert_same('script', _library_io_code(pg_library_css_problem('a{width:expr\\65 ssion(alert(1))}')));
+	pg_assert_same('', _library_io_code(pg_library_css_problem("a{background:url('/files/a b.jpg')} b{content:\"\\201C\"}")));
+}
+
+function test_library_io_hunt_svg_animation()
+{
+	pg_assert_same('address javascript:', _library_io_code(pg_library_text_problem(
+		'<svg><a><animate attributeName="href" values="javascript:alert(1)"/><text>x</text></a></svg>', 'html')));
+	pg_assert_same('address javascript:', _library_io_code(pg_library_text_problem(
+		'<svg><a><set attributeName="href" to="javascript:alert(1)"/></a></svg>', 'html')));
+	pg_assert_same('address javascript:', _library_io_code(pg_library_text_problem(
+		'<svg><animate attributeName="href" values="/a;javascript:alert(1)"/></svg>', 'html')));
+	pg_assert_same('', _library_io_code(pg_library_text_problem('<svg><animate attributeName="opacity" values="0;1" from="0" to="1"/></svg>', 'html')));
+}
+
+function test_library_io_hunt_style_not_utf8_still_read()
+{
+	pg_assert_same('address javascript:', _library_io_code(pg_library_css_problem("a{content:'\xff'} b{background:url(\"javascript:x\")}")));
+}

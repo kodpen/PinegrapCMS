@@ -28,4 +28,4 @@ description: Options panel census, part 3: gaps to dress and move an element (ho
 - Missing: Clip shape (circle, ellipse, inset with corners, a few polygons such as slant and arrow) and Mask (a fade to transparent at one edge, a picture as mask) on any element. M (shape editor and canvas preview). Reads `--pg-radius-*` for inset corners.
 
 ## Cursor and pointer?
-- Missing: Cursor (pointer, default, not-allowed) and "Let clicks through" (`pe-none`, a Bootstrap class). S. Reads none.
+- Built by DO17: Cursor (Pointer, Default, Not allowed) and "Let clicks through" (`pe-none`) under Shadow and effect's "More", Normal only (`designer-options-pointer.md`).

@@ -25,5 +25,5 @@ description: The Prototype view's Sketch tool (SK2): Sketch and New page, frames
 ## Where is a sketch kept?
 - In this browser only, `localStorage` `pg_proto_sketch_<style id>`: `{ n, pages: [{ id, name, x, y, boxes: [{ id, x, y, w, h, kind, text }] }] }`, read through `_sdSketchClean()` (at most 50 pages and 200 boxes a page, unknown kinds dropped). A built page also keeps it in its draft's root (`props._sketch`, `designer/sketch-build.md`); no table or column was added.
 
-## What was not checked?
-- The drags, the chip menu and the keys were not run in a browser; the pure parts (`snapRect()`, `_sdSketchClean()`, `_sdSketchRect()`) are tested in Node. Speed, touch and pen, and a light look are the plan's SK8.
+## How is it checked?
+- The pure parts (`snapRect()`, `_sdSketchClean()`, `_sdSketchRect()`, `_sdSketchNearSide()`) are tested in Node. The drags, touch, pen, the chip menu and every key run in Chromium by hand (`tests/js/sketch_feel.js`, `sketch-feel.md`).

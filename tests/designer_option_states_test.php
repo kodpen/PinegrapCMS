@@ -374,3 +374,34 @@ function test_designer_option_states_text()
 	pg_assert_same($base_text, $r['zero'], 'a width of 0 takes the outline out');
 	pg_assert_same(array(true, false), $r['maybe']);
 }
+
+// Cursor (cursorWrite()/cursorRead()): Normal's rule only, the three rows
+// written and read back, a cursor no row writes read as 'own' and replaced
+// by a row's value, an unknown value writing nothing.
+function test_designer_option_states_cursor()
+{
+	$r = designer_option_states_run(
+		'var c = "pgs-abc123", base = ".pgs-abc123 {\n  color: red;\n}\n";'
+		. 'var a = S.cursorWrite(base, c, "Pointer");'
+		. 'var own = base.replace("color: red;", "color: red;\n  cursor: zoom-in;");'
+		. 'console.log(JSON.stringify({ a: a, read: S.cursorRead(a, c), out: S.cursorWrite(a, c, ""),'
+		. ' swap: S.cursorWrite(a, c, "not-allowed"), own: S.cursorRead(own, c), ownSwap: S.cursorWrite(own, c, "default"),'
+		. ' none: S.cursorRead(base, c), noState: S.cursorRead(a.replace(".pgs-abc123 {", ".pgs-abc123:hover {"), c),'
+		. ' bad: [S.cursorWrite(base, c, "grab") === base, S.cursorWrite(base, "x", "pointer") === base] }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	$base_text = ".pgs-abc123 {\n  color: red;\n}\n";
+	pg_assert_same(".pgs-abc123 {\n  color: red;\n  cursor: pointer;\n}\n", $r['a'], 'the cursor written on the class rule');
+	pg_assert_same('pointer', $r['read']);
+	pg_assert_same($base_text, $r['out'], 'empty takes the cursor out');
+	pg_assert_same(".pgs-abc123 {\n  color: red;\n  cursor: not-allowed;\n}\n", $r['swap']);
+	pg_assert_same('own', $r['own'], 'a cursor no row writes reads as own');
+	pg_assert_same(".pgs-abc123 {\n  color: red;\n  cursor: default;\n}\n", $r['ownSwap'], 'a row replaces a cursor of its own');
+	pg_assert_same('', $r['none']);
+	pg_assert_same('', $r['noState'], 'a state\'s rule is not read');
+	pg_assert_same(array(true, true), $r['bad'], 'an unknown value or class writes nothing');
+}

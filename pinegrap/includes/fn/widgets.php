@@ -4305,6 +4305,7 @@ function pg_ai_summary_inject($content)
 //   ^^member_id^^                — contacts.member_id
 //   ^^member^^                   — "1" if active member, "0" otherwise
 //   ^^not_logged_in^^            — empty when logged in, cfg message when not
+//   ^^__member_id_label^^        — the site's word for the member number
 //
 // Per-submission loop tokens (loop_area + show_submissions) — named as the two
 // form widgets name them, so a row design carries over:
@@ -4498,6 +4499,8 @@ function _render_system_widget_my_account($tree_json, $widget_id, $cfg = array()
     ) + $link_values;
     // The member's store credit balance, as the store credit section prints it.
     $values['__store_credit_balance'] = h($extras['store_credit']['balance_info']);
+    // The site's word for the member number (a converted classic layout).
+    $values['__member_id_label'] = h(defined('MEMBER_ID_LABEL') ? (string)MEMBER_ID_LABEL : '');
     // The member's own allow-listed account values (pg_sw_entity_fields('account')).
     $values += pg_sw_entity_account_tokens($uid, pg_sw_cond_tree_json($tree_decoded));
 

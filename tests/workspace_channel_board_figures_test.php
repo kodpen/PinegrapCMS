@@ -116,3 +116,32 @@ function test_workspace_channel_board_figures_in_the_answer()
 	pg_assert_contains('figure: self.figure', $js, 'both views send the figure chosen');
 	pg_assert_contains("aria-pressed", $js, 'a figure is a button that says whether it is on');
 }
+
+function test_workspace_channel_board_recent_closed_read_apart()
+{
+	$merged = ws_channel_board_merge_briefs(
+		array(array('id' => 3), array('id' => 1)),
+		array(array('id' => 1), array('id' => 7), array('id' => 0))
+	);
+
+	pg_assert_same(array(3, 1, 7), array_map(function ($brief) { return (int) $brief['id']; }, $merged), 'each task once, the second read after the first');
+
+	// A channel past the read limit: the tasks finished lately are read on
+	// their own, or "Done in the last 7 days" and the Done column miss them.
+	$php = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/channel_board.php');
+
+	pg_assert_contains("'status'        => 'closed',", $php, 'the closed tasks of the last days are read apart');
+	pg_assert_contains("if (count(\$briefs) >= WS_CHANNEL_BOARD_READ_LIMIT) {", $php, 'only when the first read was full');
+}
+
+function test_workspace_channel_board_zero_due_date_is_not_overdue()
+{
+	// The List view paints a brief's overdue red; the Overdue figure reads
+	// a 0000-00-00 due date as none, so the brief must too.
+	pg_assert_false(ws_task_is_overdue('0000-00-00', 'todo', '2026-11-26'), 'a 0000-00-00 due date is no due date');
+	pg_assert_false(ws_task_is_overdue('', 'todo', '2026-11-26'), 'no due date');
+	pg_assert_false(ws_task_is_overdue(null, 'doing', '2026-11-26'), 'a null due date');
+	pg_assert_true(ws_task_is_overdue('2026-11-25', 'waiting', '2026-11-26'), 'an open task due yesterday');
+	pg_assert_false(ws_task_is_overdue('2026-11-26', 'todo', '2026-11-26'), 'due today is not late');
+	pg_assert_false(ws_task_is_overdue('2026-11-20', 'done', '2026-11-26'), 'a closed task is never late');
+}

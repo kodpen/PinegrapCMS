@@ -121,3 +121,25 @@ function test_my_reviews_menu_row_follows_membership()
 	pg_assert_contains("if (pg_application_review_member((int) \$user['id'])) {\n        \$menu_items[28]['id'] = 28;", $menu, 'slot 28 by membership');
 	pg_assert_contains("case 'my_reviews.php':\n            \$active_menu = 28;", $menu, 'the screen lights its row');
 }
+
+// A review can be changed while it is not sent, its round is the
+// programme's current one, and that round is not over (closed, its end
+// passed): the outside juror's link expires then, and "My reviews" stops
+// taking scores at the same time, so no late score moves the means after
+// the cut.
+function test_application_review_open_until_the_round_is_over()
+{
+	$now = 1800000000;
+	$program = array('status' => 1, 'round' => 1, 'rounds' => array(array('ends_at' => $now - 60)));
+
+	pg_assert_true(pg_application_review_open(array('status' => 1, 'round' => 1), $program, $now), 'an open programme past the round end still takes scores');
+	pg_assert_false(pg_application_review_open(array('status' => 2, 'round' => 1), $program, $now), 'a sent review');
+	pg_assert_false(pg_application_review_open(array('status' => 0, 'round' => 1), array('round' => 2) + $program, $now), 'a round no longer current');
+
+	$closed = array('status' => 2) + $program;
+	pg_assert_false(pg_application_review_open(array('status' => 0, 'round' => 1), $closed, $now), 'closed and the round ended');
+	pg_assert_true(pg_application_review_open(array('status' => 0, 'round' => 1), array('rounds' => array(array('ends_at' => $now + 60))) + $closed, $now), 'closed, the round runs');
+	pg_assert_true(pg_application_review_open(array('status' => 1, 'round' => 1), array('rounds' => array(array('ends_at' => 0))) + $closed, $now), 'closed, no round end');
+
+	pg_assert_contains("'open'     => pg_application_review_open(\$review, \$program, time()),", pg_test_function_source('_pg_application_review_context'), 'the scoring screen and its saves read it');
+}

@@ -141,8 +141,12 @@ StyleDesigner.definePart('variables', function (K) {
                 '<input type="color" class="sd-vars-color" data-custom="' + i + '" data-mode="dark" value="' + attr(c.dark) + '" aria-label="' + attr(c.name) + ', ' + attr(_sdT('Dark')) + '" title="' + attr(_sdT('Dark')) + '">' +
               '</span>'
             : '<input type="text" class="form-control form-control-sm sd-vars-input" data-custom="' + i + '" value="' + attr(c.value) + '" aria-label="' + attr(c.name) + '" spellcheck="false">';
-        return '<div class="sd-vars-row" data-var-row="' + attr(c.key) + '">' +
-            (c.kind === 'color' ? '<span class="sd-vars-swatch" style="background:' + attr(c.light) + '" aria-hidden="true"></span>' : '<span class="sd-vars-sample" aria-hidden="true"></span>') +
+        // A curve: its sign where a colour has its swatch, its four numbers
+        // in the field (checked here: the server drops a refused one).
+        var lead = c.kind === 'color' ? '<span class="sd-vars-swatch" style="background:' + attr(c.light) + '" aria-hidden="true"></span>'
+            : c.kind === 'curve' ? '<span class="sd-vars-sample">' + K._sdCurveSign(c.value, true) + '</span>'
+            : '<span class="sd-vars-sample" aria-hidden="true"></span>';
+        return '<div class="sd-vars-row" data-var-row="' + attr(c.key) + '">' + lead +
             '<input type="text" class="form-control form-control-sm sd-vars-name" data-custom-name="' + i + '" value="' + attr(c.name) + '" maxlength="40" aria-label="' + attr(_sdT('Name')) + '">' +
             value + usedHtml(used || {}, tokenOf(c.key, true)) +
             '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-vars-act="remove" data-custom="' + i + '" title="' + attr(_sdT('Remove')) + '" aria-label="' + attr(_sdT('Remove')) + '"><span class="bi bi-x-lg"></span></button>' +
@@ -257,7 +261,15 @@ StyleDesigner.definePart('variables', function (K) {
                 } else {
                     var c = m.custom[+inp.getAttribute('data-custom')];
                     if (!c) return;
-                    c.value = inp.value.trim();
+                    if (c.kind === 'curve') {
+                        var nums = K._sdCurveNums(inp.value);
+                        inp.classList.toggle('is-invalid', !nums);
+                        inp.title = nums ? '' : _sdT('Four numbers. The first and the third stay between 0 and 1.');
+                        if (!nums) return;
+                        c.value = nums.join(', ');
+                    } else {
+                        c.value = inp.value.trim();
+                    }
                 }
                 change(m, true);
             });
@@ -295,6 +307,11 @@ StyleDesigner.definePart('variables', function (K) {
                 : { key: key, name: _sdT('Size {var}', n - 1), kind: 'size', value: '1rem' });
             open.custom = true;
         } else if (what === 'remove') {
+            var gone = m.custom[+b.getAttribute('data-custom')];
+            var n = gone && gone.kind === 'curve' ? (H.usage ? H.usage() : {})[tokenOf(gone.key, true)] || 0 : 0;
+            // A used curve is asked about: each element keeps its numbers
+            // (the fallback written with the variable).
+            if (n && !b.hasAttribute('data-sure')) { askRemove(b, gone, n); return; }
             m.custom.splice(+b.getAttribute('data-custom'), 1);
         } else {
             return;
@@ -303,6 +320,59 @@ StyleDesigner.definePart('variables', function (K) {
         S.model = m;
         draw();
         change(m, true);
+    }
+
+    // "Remove" on a used curve: the question in place, under the row.
+    function askRemove(b, c, n) {
+        var row = b.closest('.sd-vars-row');
+        if (!row || row.nextElementSibling && row.nextElementSibling.hasAttribute('data-vars-sure')) return;
+        var q = document.createElement('div');
+        q.className = 'sd-vars-sure';
+        q.setAttribute('data-vars-sure', '');
+        q.setAttribute('role', 'alert');
+        q.innerHTML = '<span>' + esc(_sdT('“{var:1}” is used in {var:2} places. Each keeps the curve as its own.', [c.name, n])) + '</span>' +
+            '<button type="button" class="btn btn-sm btn-outline theme-danger" data-sure>' + esc(_sdT('Remove')) + '</button>' +
+            '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-cancel>' + esc(_sdT('Cancel')) + '</button>';
+        row.parentNode.insertBefore(q, row.nextSibling);
+        q.querySelector('[data-sure]').addEventListener('click', function () { b.setAttribute('data-sure', ''); act('remove', b); });
+        q.querySelector('[data-cancel]').addEventListener('click', function () { q.remove(); b.focus(); });
+        q.querySelector('[data-cancel]').focus();
+    }
+
+    // The curve editor's "Save as…" (op 'add', c { name, value }) and
+    // "Update" (op 'update', c { key, value }): the model of the moment
+    // (asked once when the tab never ran) takes the curve as one of the
+    // design's own variables. Answers { key } or { refused: reason }.
+    function curve(host, op, c) {
+        return ready(host).then(function (res) {
+            if (!res) return { refused: _sdT('Network error.') };
+            var m = copyModel();
+            m.custom = m.custom || [];
+            var value = (K._sdCurveNums(String(c.value)) || []).join(', ');
+            if (!value) return { refused: _sdT('Four numbers. The first and the third stay between 0 and 1.') };
+            var row;
+            if (op === 'update') {
+                row = m.custom.filter(function (x) { return x.kind === 'curve' && x.key === c.key; })[0];
+                if (!row) return { refused: _sdT('Network error.') };
+                row.value = value;
+            } else {
+                var name = String(c.name || '').trim().slice(0, 40);
+                if (!name) return { refused: _sdT('Give the curve a name.') };
+                if (m.custom.some(function (x) { return x.kind === 'curve' && x.name.toLowerCase() === name.toLowerCase(); })) {
+                    return { refused: _sdT('A curve named “{var}” is there already.', name) };
+                }
+                if (m.custom.length >= 24) return { refused: _sdT('A design keeps at most 24 of its own variables.') };
+                var base = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 24) || 'curve', key = base, i = 2;
+                while (m.custom.some(function (x) { return x.key === key; })) key = base + '-' + i++;
+                row = { key: key, name: name, kind: 'curve', value: value };
+                m.custom.push(row);
+            }
+            H.setModel(m);
+            S.model = m;
+            draw();
+            change(m, true);
+            return { key: row.key };
+        });
     }
 
     // ── Export and Import ────────────────────────────────────────────────
@@ -551,7 +621,7 @@ StyleDesigner.definePart('variables', function (K) {
             }
         }
         (m.custom || []).forEach(function (c) {
-            if ((host.kind === 'color') !== (c.kind === 'color')) return;
+            if (c.kind === 'curve' || (host.kind === 'color') !== (c.kind === 'color')) return;
             own.push({ expr: host.expr({ token: tokenOf(c.key, true) }), name: c.name,
                 value: c.kind === 'color' ? c.light : pxText(px(c.value)) || c.value, color: c.kind === 'color' ? c.light : '' });
         });
@@ -704,5 +774,5 @@ StyleDesigner.definePart('variables', function (K) {
         });
     }
 
-    return { render: render, refresh: refresh, reveal: reveal, pick: pick, detach: detach, exportTokens: exportTokens, importTokens: importTokens };
+    return { render: render, refresh: refresh, reveal: reveal, pick: pick, detach: detach, exportTokens: exportTokens, importTokens: importTokens, curve: curve };
 });

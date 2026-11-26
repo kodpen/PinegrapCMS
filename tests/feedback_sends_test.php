@@ -196,3 +196,15 @@ function test_feedback_sends_wiring()
 	pg_assert_same(array('booking', 41), ws_events_record_of('booking.completed', array('id' => 41)));
 	pg_assert_same(array('calendar_event', 3), ws_events_record_of('ticket.checked_in', array('id' => 9, 'calendar_event_id' => 3)));
 }
+
+// A row sent long after its due time (a WhatsApp survey waiting for its
+// template) gets its link signed again at the send, so the link holds as
+// long as the 30 days the reminder and the no-answer rule count from it.
+function test_feedback_sends_link_signed_at_the_send()
+{
+	$source = pg_test_function_source('pg_feedback_send_due');
+	$claim = strpos($source, 'SET status = " . PG_FEEDBACK_SENT');
+	$sign = strpos($source, 'pg_feedback_set_due($row[\'id\'], (int) $now, pg_feedback_key());');
+	pg_assert_true(($claim !== false) && ($sign !== false) && ($sign > $claim), 'signed again once claimed');
+	pg_assert_contains("'due_at' => (int) \$now", $source, 'the sender signs at the send time');
+}

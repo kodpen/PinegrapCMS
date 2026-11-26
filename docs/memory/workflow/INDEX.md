@@ -31,9 +31,11 @@
 - bug-hunt-areas-3.md: The areas given to a bug hunt from 2026-11-20 on (the own sheet reader and its importers; Incoming e-mail and Mailboxes at phone width), what each fixed, the issues it opened and what it read clean
 - bug-hunt-areas-4.md: Bug hunt areas beside bug-hunt-areas-3: the fifteen panel screens hunted on 2026-11-19 and the two areas given on 2026-11-20 (prototype comments' guest side, picture text translation's server side)
 - bug-hunt-areas-5.md: Bug hunt areas given on the evening of 2026-11-20: order profit and shipping labels (K3), the bookings' visitor side and stock per location (K2); files, what to look at, what is left alone [decision: here]
+- bug-hunt-areas-agent-requests.md: The bug hunt in the agents' request queue and wakes (architect, 2026-11-26, request 3016): what was fixed, what was read clean, what is asked and left [decision: here]
 - bug-hunt-areas-ai-connections.md: The bug hunt in the AI provider connections (agent channel message 10241, area b, #10616): the faults fixed, the issues opened and what was read clean
 - bug-hunt-areas-api-new-routes.md: The bug hunt of the API routes and MCP tools new in 2026.11.0 (VS8, WQ8, LJ6, SJ6, DV6, share links; PR of 2026-11-24): the two queue faults fixed, what was read clean, what was not run [decision: here]
 - bug-hunt-areas-api-shared-layer.md: The bug hunt of the external API's shared layer (fault, manners, response, router, preconditions, idempotency; channel message 10241, area c, PR #10615): three faults fixed, what was read clean
+- bug-hunt-areas-application-review.md: Bug hunt of the application review desk (Forms › Application programmes, named by the architect 2026-11-26, request 3016): five faults fixed in #11757, what was read clean, what was left [decision: here]
 - bug-hunt-areas-backend-layout-probe.md: Layout pass of the 2026-11-22 backend sweep: each panel screen at 390, 768 and 1440 px for covered or clipped controls and cut text; the fix, what the probe misreads
 - bug-hunt-areas-backend-sweep-2.md: Second pass of the owner's whole-backend sweep of 2026-11-22: a role without manage rights, every edit screen saved unchanged, phone dialogs, PHPStan level 2; what it fixed, what read clean
 - bug-hunt-areas-backend-sweep-3.md: Third pass of the owner's whole-backend sweep of 2026-11-22: scheduled jobs, site pages, dark theme, API answers, untranslated texts; what it fixed or reported, what read clean [decision: decisions-made-product-99.md]
@@ -44,6 +46,7 @@
 - bug-hunt-areas-booking-visitor.md: The bug hunt of bookings on the visitor's side (2026-11-20): the widget's endpoint, the slot engine, hold and confirm, the manage page, the deposit payment; what it fixed and what read clean
 - bug-hunt-areas-calendar-events.md: Bug hunt 29 of calendar events, repeats and the calendar feeds (.ics, Workspace subscription): four faults fixed, what was read clean, what was left
 - bug-hunt-areas-canvas-data-views.md: The bug hunt of the Artifact Canvas data views (DV1-DV6, #11353, 2026-11-24): the four faults fixed, what was read clean, what was not run [decision: here]
+- bug-hunt-areas-channel-board.md: Bug hunt of a channel's Board tab (2026-11-26, PR #11743): who sees and moves a card, the four figures against the lists, moves, the board's rules, the kept view and ?view=board/list
 - bug-hunt-areas-channel-notes-share.md: Bug hunt of channel notes (CN1-CN3) and the share door (SL1-SL6): six faults fixed, what was read clean, what was left
 - bug-hunt-areas-click-scroll-map.md: The bug hunt of the click and scroll map (architect 2026-11-20, channel message 10776): the three faults fixed, what was read clean, what is no fault [decision: here]
 - bug-hunt-areas-comments-reviews.md: Bug hunt 23, page comments and product reviews (2026-11-24): links in a comment's text, a deleted page's comment notifications, the deleted product finding, what read clean
@@ -69,11 +72,13 @@
 - bug-hunt-areas-menus-navigation.md: The bug hunt of site menus and navigation (2026-11-24, hunt 36): the faults fixed, what was left for a decision, what was read clean
 - bug-hunt-areas-migration-steps-11.md: Bug hunt of the 2026.11.0 migration steps (area 13, #11376): no fault; run twice, cut off at 57 points, paused, upgraded from a real 2026.4.10 install, tables of schema-46 to -49 matched
 - bug-hunt-areas-multi-language-pages.md: Bug hunt 32, multi-language pages (#11423): the language lost on a payment's return and in the form sender's subject, what was read clean, what needs an order language column
+- bug-hunt-areas-my-library.md: Bug hunt of the designer's My library (2026-11-26): an item saved, inserted as a copy, managed, exported and imported as a file; what was fixed, what read clean, what was left [decision: here]
 - bug-hunt-areas-notifications-bell.md: The bug hunt of the panel's bell and the mails it sends (2026-11-24, #11438): the seven faults fixed, what was read clean, what was judged decided [decision: here]
 - bug-hunt-areas-oauth-connected-accounts.md: The bug hunt of OAuth and connected accounts (2026-11-24, area 42): the two faults fixed, what was read clean
 - bug-hunt-areas-ops-alerts-once.md: The bug hunt of staff alerts told once (2026-11-24, #11358): pg_ops_alert() and the bell lines on it; the five faults fixed, what was read clean, what was not there yet [decision: here]
 - bug-hunt-areas-order-legal-documents.md: The bug hunt of the order's legal documents (pre-information form, distance sales contract, KVKK copy; #10663, 2026-11-20): the three faults fixed, the issue opened, what was read clean [decision: here]
 - bug-hunt-areas-page-versions-publish.md: The bug hunt of page drafts, scheduled publishing and revisions (2026-11-24, hunt 35): the three faults fixed, the finding left as an issue, what was read clean
+- bug-hunt-areas-parasut-devhub-connect.md: The bug hunt in Paraşüt through a Developer Portal client (agent channel request 3016, 2026-11-26, #11741): the faults fixed, what was read clean and what was left
 - bug-hunt-areas-payment-gateways-callbacks.md: Bug hunt of the payment gateways' return and notify endpoints (area 49, 2026-11-24): repeated messages, a message before the return, amounts; what it fixed and read clean
 - bug-hunt-areas-phone-dark-new-screens.md: Bug hunt 15 (2026-11-24): the 2026.11.0 screens at 390 px and in the dark theme on a sandbox; the five faults fixed in #11382, what read clean, what was not reached
 - bug-hunt-areas-pick-pack.md: The bug hunt of pick and pack (PP1-PP7, 2026-11-24, #11341): six faults fixed, two issues opened for a decision, what was read clean
@@ -85,9 +90,11 @@
 - bug-hunt-areas-product-variants-stock.md: The bug hunt of product variants and stock (area 30, 2026-11-24): three faults fixed, what was left for a decision, what was read clean
 - bug-hunt-areas-prototype-approval.md: The bug hunt of prototype approval (2026-11-25, hunt 56, PA1 to PA6): the four faults fixed in #11701, the issue opened, what was read clean
 - bug-hunt-areas-prototype-comments.md: The bug hunt of prototype comments, the guest's side (architect 2026-11-20, channel message 10096): the five faults fixed, the issues opened, what was read clean [decision: here]
+- bug-hunt-areas-record-edit-in-place.md: Bug hunt of record edit in place ("Edit content here", "Edit this record's content", 2026-11-26): what was fixed, what read clean, what was left [decision: here]
 - bug-hunt-areas-redirects-urls.md: The bug hunt of redirects and URL handling (2026-11-24, hunt 22): the three faults fixed, the findings left for a decision, what was read clean
 - bug-hunt-areas-release-bundle.md: Bug hunt of publishing and taking back a release bundle (agent channel message 10241, area a, #10614): five faults fixed, what was read clean [decision: here]
 - bug-hunt-areas-rights-new-screens.md: Bug hunt of rights by role on the 2026.11.0 screens (volunteers, queue, pick and pack, Hot Contacts, launch journey, share links, prototype settings): two faults fixed in #11374
+- bug-hunt-areas-satisfaction-surveys.md: Bug hunt of the satisfaction surveys (architect, 2026-11-26, request 3016, K2): faults fixed, what was read clean, what was left and asked [decision: here]
 - bug-hunt-areas-scheduled-tasks.md: The bug hunt in the scheduled tasks (area 19, #11394): the cron entry and its jobs, what was fixed, what was read clean, what is left
 - bug-hunt-areas-seo-meta-output.md: Bug hunt of what a page puts in its head (area 47, 2026-11-24): six faults fixed in the hunt's PR (#11459), what was read clean, what is left as it is
 - bug-hunt-areas-settings-save.md: The owner's backend sweep of 2026-11-22: every Site Settings pane saved unchanged on the sandbox; what an unchanged save rewrites and why that is no fault; the one fault it found

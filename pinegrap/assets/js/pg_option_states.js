@@ -30,6 +30,8 @@
  *   PGOptionStates.txRead(text, cls)            // { shadow, track, font, lines, grad, stroke, strokec }: Normal's text values
  *   PGOptionStates.txWrite(text, cls, key, v)   // the new text with one text value set
  *   PGOptionStates.txMaybe(text, cls)           // whether the text may hold one (no parse)
+ *   PGOptionStates.cursorRead(text, cls)        // Normal's cursor: a row's key, '' or 'own'
+ *   PGOptionStates.cursorWrite(text, cls, v)    // the new text with the cursor set ('' takes it out)
  *
  * The declarations carry !important: the Bootstrap utilities they stand in
  * for carry it too, so a state's value wins over Normal's class.
@@ -287,6 +289,9 @@
     var TRANS_LOOK_MS = 'var(--pg-duration, 0.15s)';
     var TRANS_LOOK_EASE = 'var(--pg-ease, ease-in-out)';
     var EASES = ['ease-out', 'ease', 'ease-in', 'ease-in-out', 'linear'];
+    // A curve as the editor writes it (_sdEaseClean()): its own numbers, or
+    // a stored curve of the design with its numbers as the fallback.
+    var CURVE = /^(var\(--pg-var-c-[a-z0-9-]+, )?cubic-bezier\([-0-9., ]+\)\)?$/;
     var TRANS_PROPS = ['transition-property', 'transition-duration', 'transition-timing-function'];
     var MS_MAX = 1000;
 
@@ -367,7 +372,7 @@
             return dropBlock(text, rule);
         }
         var ms = msClean(t.ms);
-        var ease = (EASES.indexOf(t.ease) !== -1 || (t.ease && t.ease === was.ease)) ? t.ease : '';
+        var ease = (EASES.indexOf(t.ease) !== -1 || CURVE.test(t.ease || '') || (t.ease && t.ease === was.ease)) ? t.ease : '';
         keep = [
             ['transition-property', prop],
             ['transition-duration', ms === '' ? TRANS_LOOK_MS : ms + 'ms'],
@@ -871,6 +876,27 @@
             /(?:^|[\s;{])(?:text-shadow|letter-spacing|font-family|-webkit-line-clamp|-webkit-text-stroke|-webkit-background-clip|background-clip)\s*:/.test(text);
     }
 
+    // ── Cursor (Shadow and effect › More › Pointer) ──
+    // Written to the element's custom style class only, Normal's rule: a
+    // cursor shows while the pointer is over the element, so a state adds
+    // nothing. A value no row writes reads as 'own' and stays until a row's
+    // value replaces it.
+    var CURSORS = ['pointer', 'default', 'not-allowed'];
+
+    function cursorRead(text, cls) {
+        var v = flat(tfDecls(tfRule(text, cls, ''))['cursor']);
+        if (!v) return '';
+        return CURSORS.indexOf(v) !== -1 ? v : 'own';
+    }
+
+    function cursorWrite(text, cls, value) {
+        text = String(text || '');
+        if (!U() || !CLASS_RE.test(cls)) return text;
+        var v = value === null || value === undefined ? '' : String(value).trim().toLowerCase();
+        if (v !== '' && CURSORS.indexOf(v) === -1) return text;
+        return tfPut(text, cls, '', 'cursor', v);
+    }
+
     var api = {
         STATES: STATES,
         PSEUDO: PSEUDO,
@@ -903,7 +929,10 @@
         TX_STROKE_COLORS: TX_STROKE_COLORS,
         txRead: txRead,
         txWrite: txWrite,
-        txMaybe: txMaybe
+        txMaybe: txMaybe,
+        CURSORS: CURSORS,
+        cursorRead: cursorRead,
+        cursorWrite: cursorWrite
     };
 
     root.PGOptionStates = api;

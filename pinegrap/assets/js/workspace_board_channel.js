@@ -981,9 +981,11 @@
                 break;
 
             case 'person':
-                var people = item.assignees.map(function (person) { return person.id; }).filter(function (id) {
+                // A person's column swaps the column's person for that one;
+                // "Nobody yet" takes every person off, as its drop place says.
+                var people = (to.drop > 0) ? item.assignees.map(function (person) { return person.id; }).filter(function (id) {
                     return id !== from.drop;
-                });
+                }) : [];
 
                 if ((to.drop > 0) && (people.indexOf(to.drop) === -1)) {
                     people.push(to.drop);

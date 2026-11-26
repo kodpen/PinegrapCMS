@@ -510,3 +510,92 @@ function test_preview_render_visitor_wiring()
 		pg_assert_false((bool) preg_match('/(?<![\'\w])USER_(ID|LOGGED_IN|EMAIL_ADDRESS)\b/', designer_preview_render_test_source('includes/fn/' . $file)), $file);
 	}
 }
+
+// First visit and returning: inside a Preview widget the audience reader of
+// the visit answers the chosen visitor, never the pg_ret cookie, whatever
+// the browser holds; the member token answers the chosen member.
+function test_preview_render_visit_per_case()
+{
+	$saved = $_COOKIE;
+	$old   = (string) (time() - 86400);
+	foreach (array(null, $old) as $cookie) {
+		if ($cookie === null) {
+			unset($_COOKIE['pg_ret']);
+		} else {
+			$_COOKIE['pg_ret'] = $cookie;
+		}
+		foreach (pg_preview_as_visitors() as $visitor) {
+			$seen = pg_preview_as_while(pg_preview_as_setup('login_region', array('visitor' => $visitor)), function () {
+				return array(
+					'viewer'     => pg_preview_as_viewer(),
+					'returning'  => pg_audience_value('__audience_returning', true),
+					'live'       => pg_audience_value('__audience_returning', false),
+					'member'     => pg_audience_value('__audience_member', true),
+					'country'    => pg_audience_value('__audience_country', true),
+				);
+			});
+			$label = $visitor . ($cookie === null ? ', no cookie' : ', an old cookie');
+			$want  = ($visitor === 'returning') ? '1' : '';
+			pg_assert_same($visitor === 'returning', $seen['viewer']['returning'], $label);
+			pg_assert_same($want, $seen['returning'], $label . ': the chosen case, not the cookie');
+			pg_assert_same($want, $seen['live'], $label . ': the same read for a visit');
+			pg_assert_same(($visitor === 'member') ? '1' : '', $seen['member'], $label . ': member');
+			pg_assert_same('', $seen['country'], $label . ': no request value in a Preview');
+			if ($visitor === 'first_visit' || $visitor === 'returning') {
+				pg_assert_false($seen['viewer']['signed_in'], $label . ': signed out');
+				pg_assert_false($seen['viewer']['member'], $label);
+			}
+		}
+	}
+	$_COOKIE = $saved;
+}
+
+// The reader writes nothing: the cookie is neither set nor changed, and a
+// drawn page's audience spans leave no cache note.
+function test_preview_render_visit_leaves_the_cookie()
+{
+	$saved = $_COOKIE;
+	unset($_COOKIE['pg_ret']);
+	foreach (array('first_visit', 'returning') as $visitor) {
+		pg_preview_as_while(pg_preview_as_setup('login_region', array('visitor' => $visitor)), function () {
+			pg_audience_value('__audience_returning', false);
+			pg_audience_values_for('<!--pg-pf:0123456789ab:' . rtrim(strtr(base64_encode('[{"t":"__audience_returning"}]'), '+/', '-_'), '=') . '-->x<!--/pg-pf:0123456789ab-->', true);
+		});
+		pg_assert_false(isset($_COOKIE['pg_ret']), $visitor . ': no cookie set');
+	}
+	$_COOKIE['pg_ret'] = '1700000000';
+	pg_preview_as_while(pg_preview_as_setup('login_region', array('visitor' => 'first_visit')), function () {
+		pg_audience_value('__audience_returning', false);
+	});
+	pg_assert_same('1700000000', $_COOKIE['pg_ret'], 'the browser\'s cookie is left as it was');
+	foreach (headers_list() as $header) {
+		pg_assert_false(stripos($header, 'pg_ret=') !== false, 'no Set-Cookie');
+	}
+	$_COOKIE = $saved;
+}
+
+// Outside a Preview widget the viewer's returning is the cookie's, as the
+// audience reader reads it for a visit.
+function test_preview_render_visit_outside_is_the_cookie()
+{
+	$saved = $_COOKIE;
+	unset($_COOKIE['pg_ret']);
+	pg_assert_false(pg_preview_as_viewer()['returning'], 'no cookie: a first visit');
+	$_COOKIE['pg_ret'] = (string) (time() - 86400);
+	pg_assert_true(pg_preview_as_viewer()['returning'], 'an old cookie: returning');
+	$_COOKIE['pg_ret'] = (string) time();
+	pg_assert_false(pg_preview_as_viewer()['returning'], 'a cookie of this visit: a first visit');
+	$_COOKIE = $saved;
+}
+
+// The audience value of a chosen visitor, pure.
+function test_preview_render_audience_value()
+{
+	pg_assert_same('1', pg_preview_as_audience_value('returning', array('returning' => true)));
+	pg_assert_same('', pg_preview_as_audience_value('returning', array('returning' => false)));
+	pg_assert_same('1', pg_preview_as_audience_value('member', array('signed_in' => true, 'member' => true)));
+	pg_assert_same('', pg_preview_as_audience_value('member', array('signed_in' => false, 'member' => true)));
+	foreach (array('group', 'country', 'device', 'utm_source', 'utm_campaign', 'experiment', '') as $kind) {
+		pg_assert_same('', pg_preview_as_audience_value($kind, array('returning' => true, 'signed_in' => true, 'member' => true)), $kind);
+	}
+}

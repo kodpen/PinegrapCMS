@@ -657,15 +657,18 @@ function pg_preview_as_sample_recipient($ship_to_name)
  * request's own constants back, read with defined(), so a live visit draws
  * as before. Inside one it gives the setup's visitor: signed out (nobody),
  * signed in (the sample account: id 0, a plain user's role, no user row),
- * member (the sample account let in by the page's access rules). No
- * constant is redefined. The operator's own rights (an edit link) are no
+ * member (the sample account let in by the page's access rules), first
+ * visit and returning (signed out). No constant is redefined. The operator's own rights (an edit link) are no
  * visitor's and are not read here.
  *
  * preview: whether a Preview visitor is drawn; sample: the sample account,
  * whose rows come from pg_preview_as_sample_account(), never from a
- * statement; role: null when not signed in.
+ * statement; role: null when not signed in; returning: whether the browser
+ * was seen before this visit, the pg_ret cookie's answer outside a Preview
+ * widget (pg_audience_returning()) and the chosen visitor's inside one, so
+ * the audience conditions never read the operator's own cookie there.
  *
- * @return array {preview, sample, signed_in, id, contact_id, role, member, username, email, first_name, last_name}
+ * @return array {preview, sample, signed_in, id, contact_id, role, member, username, email, first_name, last_name, returning}
  */
 function pg_preview_as_viewer()
 {
@@ -684,6 +687,8 @@ function pg_preview_as_viewer()
             'email'      => defined('USER_EMAIL_ADDRESS') ? (string)USER_EMAIL_ADDRESS : '',
             'first_name' => '',
             'last_name'  => '',
+            'returning'  => function_exists('pg_audience_returning') && defined('PG_AUDIENCE_RETURNING_COOKIE')
+                && pg_audience_returning(isset($_COOKIE[PG_AUDIENCE_RETURNING_COOKIE]) ? $_COOKIE[PG_AUDIENCE_RETURNING_COOKIE] : null, time()) === '1',
         );
     }
     $visitor   = isset($current['visitor']) ? $current['visitor'] : 'signed_out';
@@ -702,7 +707,27 @@ function pg_preview_as_viewer()
         'email'      => $signed_in ? $account['email'] : '',
         'first_name' => $signed_in ? $account['first_name'] : '',
         'last_name'  => $signed_in ? $account['last_name'] : '',
+        'returning'  => $visitor === 'returning',
     );
+}
+
+/**
+ * The value of an audience kind (pg_audience_token_kind()) for the visitor
+ * of a Preview widget, in place of what pg_audience_value() reads of the
+ * request: returning from the chosen case, never the pg_ret cookie; member
+ * from the chosen member. Every other kind reads '': the sample account is
+ * in no contact group, and the operator's country, device, UTM values and
+ * experiment buckets are no visitor's. Pure.
+ *
+ * @param string $kind
+ * @param array  $viewer pg_preview_as_viewer()
+ * @return string '1' or ''
+ */
+function pg_preview_as_audience_value($kind, $viewer)
+{
+    if ($kind === 'returning') return !empty($viewer['returning']) ? '1' : '';
+    if ($kind === 'member') return (!empty($viewer['signed_in']) && !empty($viewer['member'])) ? '1' : '';
+    return '';
 }
 
 /**

@@ -10,6 +10,7 @@ module: feedback_surveys
 - Sent after: the touchpoint, its filter, the delay in hours or days, at most 90 days; the periodic one: every N months, active in the last M months.
 - Sent by: E-mail, SMS, WhatsApp; Service message or Commercial, the periodic one Commercial fixed; with WhatsApp, "WhatsApp template" and a list per variable (`platform/feedback-whatsapp.md`). Low scores: fallback user, the user who joins after 48 hours, a public Workspace channel.
 - After the answer: the review invitation switch, a line and link to Google Reviews when no place is set.
+- A survey that has been used (`pg_feedback_survey_used()`) keeps its kind: Save with another score is refused with "The score cannot be changed once the survey has been sent." (`known['kind']` of `pg_feedback_survey_input()`), since its stored scores, bands, sums and the mails already out are of that kind.
 - An empty question or comment label uses `pg_feedback_default_texts()` for the kind, shown as the field's placeholder.
 - Status column: the On switch with its pill, the e-mail preview (`pg_feedback_mail_html()`, buttons not links), Send me a test, Delete or Archive. Script `assets/js/feedback_survey.js`, served as written.
 

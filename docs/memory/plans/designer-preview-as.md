@@ -28,7 +28,7 @@ priority: 7
 - PW2 (M) after PW1: the server: `preview_widgets` takes a case per widget; the record search with the rights check; the never-writes tests: the record cases (chosen, long, sold out) drawn, the flags and the visitor held for renderers (`designer/designer-preview-as-server.md`). Done (#11546).
 - PW2b (M) after PW2: the renderers read the held flags (empty lists, search and cart; long lists; a form sent with a required field missing), inside the same scope. Done (#11632).
 - PW2c (M) after PW2b: the renderers read the visitor (signed in as the sample account, member, first visit, returning) through one viewer reader; no constant is redefined, the sample account gets no user row (`designer/designer-preview-as-visitor.md`, which also says how the step is cut if its census is too large). Cut: the census reaches 13 widget files, so PW2c takes signed out, signed in and member. Done (#11728).
-- PW2d (S) after PW2c: first visit and returning: the audience conditions' reader of the visit gets the chosen one in place of the `pg_ret` cookie (`designer/designer-preview-as-visitor.md`).
+- PW2d (S) after PW2c: first visit and returning: the audience conditions' reader of the visit gets the chosen one in place of the `pg_ret` cookie (`designer/designer-preview-as-visitor.md`). Done (#11746).
 - PW3 (M) after PW2 and DD5: the bar and its three choosers. Done (#11650, `designer/preview-as-bar.md`).
 - PW4 (M) after PW3, PW2b, PW2c and PW2d: "Check all cases", measured in the Preview's frame.
 - PW5 (S) Close-out: memory in `designer/`, this file deleted, the `[NEW]` line named.

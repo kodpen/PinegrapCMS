@@ -27,11 +27,12 @@ module: application_programs
 ## How is a not eligible entry let in?
 - The submitted form's screen shows an "Application" card to forms managers: pill Eligible, Not eligible (amber), Let in, with the reasons in words (`pg_application_reason_text()`).
 - A not eligible entry can be sent a correction link from the same card (`application-review-correction-link.md`).
-- "Let it in" needs a note: `eligible` 3, the note beside the reasons as `override {note, by, at}`, an `audit_log` line on `application_entry`.
+- "Let it in" needs a note: `eligible` 3, the note beside the reasons as `override {note, by, at}`, an `audit_log` line on `application_entry`, written only when the row changed (a second press writes none).
 
 ## How does a programme open and close?
 - "Open for entries" refuses while `pg_application_program_missing()` lists `period` (no closing time) or `criteria` (no round, or weights not 100), or another programme of the same form is open.
 - "Add programme" opens a drawer on the list (name and form; a refused add reopens it with `?add=1`); the programme starts as a draft.
+- A press of "Open for entries" or "Close" on a page drawn before the status changed ends with an error and a redirect. Until the hunt of 2026-11-26 it fell through to the Set-up save, drew the Set-up form blank, and a Save from it wiped the rounds, rules and texts.
 - "Close" sets status 2. Delete is in the list row's "more" menu, last and danger with a confirm, only for a draft with no entries. Each create, save, status change and delete is an `audit_log` line on `application_program`.
 
 Related: docs/memory/core/application-review-rules.md, docs/memory/core/application-review-store.md, docs/memory/core/application-review.md

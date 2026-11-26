@@ -58,7 +58,7 @@ function test_designer_page_tabs_take_every_page_field_from_the_server()
 
 	pg_assert_true(in_array('page_publish_at', $fields, true), 'the field list is found');
 
-	foreach (array('_pgTabsInit', '_pgTabsAttachLoaded') as $name) {
+	foreach (array('_pgPageFromRow', '_pgTabsAttachLoaded') as $name) {
 		$body = designer_page_tabs_test_body($name);
 		pg_assert_true($body !== '', $name . ' is found');
 

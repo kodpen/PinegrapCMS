@@ -15,6 +15,9 @@ description: Application review desk tables (11.0.258, #10832): defaults, person
 - The scope's `application_entry_ids` also finds the trail's `application_entry` lines; their label is cleared (`pg_privacy_erase_audit_row()`).
 - Each table has a line in `pg_privacy_inventory()`.
 
+## What happens when a submission is deleted?
+- `pg_submitted_form_delete()` calls `pg_application_entry_delete_for_form()`: the entry and the reviews given on it, every round, go as in the erasure; its `audit_log` lines stay. Before the hunt of 2026-11-26 they stayed: reviewers kept scoring answers that were gone, and a blank entry was ranked, decided and counted in the report.
+
 ## What does the personal data export give?
 - Section `applications`, after `signatures`, for the person's submissions: id, form, programme name, category, round, eligible, shortlisted, decision, decided_at, score_raw, score_adjusted, and `reviews` (round, total, criterion => score) of submitted reviews (`status` 2).
 - Never the reviewer or a note (owner, poll 200, `workflow/decisions-made-product-91.md`): the reviewers' table is not read, `eligibility_note` is not read, and `pg_application_export_review()` keeps only each criterion's whole `score`. The test pins the two SELECT column lists.
