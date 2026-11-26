@@ -361,6 +361,16 @@ function test_product_insights_script_retries_the_period_shown()
 	pg_assert_same(1, substr_count($js, 'load(storedPeriod())'), 'only the first load reads storage');
 }
 
+// A server's refusal is shown for that read only: written over the card's
+// default line, it stayed for every later failure (a lost connection too).
+function test_product_insights_script_keeps_the_default_failure_line()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/product_insights.js');
+
+	pg_assert_true(strpos($js, "setAttribute('data-failed'") === false, 'the default line is never overwritten');
+	pg_assert_true(strpos($js, 'failed(answer && answer.message') !== false, 'the server message goes to this failure only');
+}
+
 function test_product_insights_head_pills()
 {
 	$pills = pg_product_insights_head_pills(array('enabled' => '1', 'inventory' => '1', 'inventory_quantity' => '14', 'backorder' => '0'));
