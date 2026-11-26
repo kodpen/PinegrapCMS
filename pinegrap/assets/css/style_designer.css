@@ -5352,6 +5352,15 @@ body.sd-resizing * { cursor: col-resize !important; }
 }
 .sd-recent-clear-btn:hover { color: #e05c5c; }
 .sd-recent-item { border-left: 2px solid rgba(88,166,255,.3); }
+/* The one star moved to the row under the pointer or in focus. */
+.sd-fav-btn {
+    background: none; border: none; padding: 0 .15rem; cursor: pointer; flex-shrink: 0;
+    color: var(--sd-text-muted, #8b9ab0); font-size: .72rem; line-height: 1; opacity: 0;
+}
+.sd-drag-item:hover > .sd-fav-btn,
+.sd-drag-item:focus-visible > .sd-fav-btn,
+.sd-fav-btn.sd-fav-on { opacity: 1; }
+.sd-fav-btn:hover, .sd-fav-btn.sd-fav-on { color: #e3b341; }
 
 /* ========================= HTML VALIDATION PANEL ========================= */
 .sd-validation-panel {
