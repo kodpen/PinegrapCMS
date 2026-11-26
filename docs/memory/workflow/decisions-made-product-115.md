@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-115
-description: Decisions made, product part 115 (2026-11-26 on): the spreadsheet and document editors get all eight abilities offered; simple formulas change the no-formula-engine scope of 2026-11-19; "Preview on a phone" shows the live page's QR code in a design with no draft
+description: Decisions made, product part 115 (2026-11-26 on): the office editors get all eight abilities, simple formulas included; the phone preview shows the live page's QR code in a design with no draft
 ---
 
 ## Where are the rules and the earlier parts?
