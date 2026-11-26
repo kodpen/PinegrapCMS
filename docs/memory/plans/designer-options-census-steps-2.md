@@ -26,5 +26,5 @@ priority: 7
 ## Which steps add motion? (line "motion")
 - DO18 (S) done #11572: Entrance motion: "Zoom out", "Blur in", "Rotate in" and "Reveal" beside the six, with the same Duration, Delay, Easing, Distance and Stagger (`designer/designer-interactions-part.md`), on the site and in the Preview.
 - DO19 (M) done #11739: the easing curve drawn and dragged, offered wherever Easing is chosen (Interactions, DO11's Transition); a curve is kept in the stored list under a name.
-- DO20 (M) after DO19: page transitions: one "Page transition" for the design (None, Fade, Slide), written as `@view-transition`, and "Keep across pages" on an element (the same `view-transition-name` on both pages).
+- DO20 (M) done #11755: page transitions: one "Page transition" for the design (None, Fade, Slide), written as `@view-transition`, and "Keep across pages" on an element (the same `view-transition-name` on both pages).
   - A browser without view transitions, and reduced motion, draw as today.
