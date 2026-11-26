@@ -68,6 +68,7 @@ function test_settings_workspace_agents_names_read_alike()
 		'kind' => 'model', 'handle' => 'koordinator', 'name' => 'Koordinatör', 'role' => 'coordinator', 'duty' => "Keep the board.\nAnswer in Turkish.", 'app_id' => '4', 'provider' => 'azure', 'model' => 'gpt-x',
 		'status' => 'paused', 'door_kind' => 'poll', 'door_url' => '', 'base' => 'https://x.openai.azure.com/openai/v1', 'wake_every' => '30',
 		'wake_note' => 'Look at the board', 'key' => 'sk-1', 'key_clear' => '', 'door_secret' => '', 'door_secret_clear' => '1', 'token_limit' => '5000',
+		'context_size' => '250000',
 	);
 	$old = array('ws_action' => 'agent_save', 'agent_id' => '3', 'token' => 'csrf');
 
@@ -100,6 +101,7 @@ function test_settings_workspace_agents_form_shows_the_kind_fields()
 	pg_assert_contains("\$field('wake_every',", $advanced, 'the wake interval');
 	pg_assert_contains("\$field('wake_note',", $advanced, 'the wake note');
 	pg_assert_contains("\$advanced .= \$field('token_limit',", $form, 'the token limit');
+	pg_assert_contains("\$rows .= \$field('context_size', lang('Context window (tokens)')", $form, 'an application agent\'s context window');
 	pg_assert_contains("h(lang('Advanced'))", $form, 'a closed Advanced part');
 	pg_assert_false(strpos($form, ' required') !== false, 'nothing required: the pane\'s Save would be blocked');
 

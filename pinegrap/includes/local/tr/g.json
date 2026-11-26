@@ -367,6 +367,7 @@
     "Give the client the key": "Anahtarı istemciye ver",
     "Give the client the site address": "İstemciye site adresini ver",
     "Give the collection a name.": "Koleksiyona bir ad verin.",
+    "Give the context window as a whole number of tokens up to 10,000,000, or leave it empty.": "Bağlam penceresini 10.000.000'a kadar tam sayı token olarak girin ya da boş bırakın.",
     "Give the copy-code button a sample code of at most {var:1} letters and digits, without spaces.": "Kodu kopyala düğmesine boşluksuz, en çok {var:1} harf ve rakamdan oluşan bir örnek kod verin.",
     "Give the course a name.": "Kursa bir ad verin.",
     "Give the curve a name.": "Eğriye bir ad verin.",

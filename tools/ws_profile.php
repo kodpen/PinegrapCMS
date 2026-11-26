@@ -11,15 +11,17 @@
  *
  * Usage:  php tools/ws_profile.php [--model=NAME]
  *                                  [--windows=NAME:PERCENT:RESETS[,…]]
- *                                  [--context=USED:SIZE]
+ *                                  [--context=USED]
  *                                  [--project=NAME] [--branch=NAME]
  *                                  [--skip-missing]
  *         NAME of a window is five_hour, daily, weekly, weekly_model or
  *         monthly; PERCENT a whole number 0-100; RESETS ISO-8601 or a unix
  *         timestamp, e.g. --windows=five_hour:42:2026-11-13T22:00:00Z,weekly:61:1795000000
- *         USED and SIZE of --context are whole numbers of tokens (used at
- *         most size), e.g. --context=412000:1000000; a project is at most 80
- *         characters, a branch at most 120.
+ *         USED of --context is the whole number of tokens the session uses,
+ *         e.g. --context=412000; the window's size is typed on the agent's
+ *         form, never guessed (USED:SIZE is still sent for a harness that
+ *         reads its own). A project is at most 80 characters, a branch at
+ *         most 120.
  *         A report needs one of them; leave out what cannot be read.
  * Exit:   0 reported (or skipped with --skip-missing while settings are
  *         missing); 1 the site refused or could not be reached; 2 usage or
@@ -91,12 +93,13 @@ function ws_profile_body($options)
 
 	if ($context !== '') {
 		$fields = explode(':', $context);
+		$sized = (count($fields) === 2);
 
-		if (count($fields) !== 2 || !ctype_digit($fields[0]) || !ctype_digit($fields[1]) || (int) $fields[1] < 1 || (int) $fields[0] > (int) $fields[1]) {
-			return array('body' => null, 'error' => 'the context is USED:SIZE in tokens, used at most size, e.g. 412000:1000000');
+		if ((count($fields) > 2) || !ctype_digit($fields[0]) || ($sized && (!ctype_digit($fields[1]) || (int) $fields[1] < 1 || (int) $fields[0] > (int) $fields[1]))) {
+			return array('body' => null, 'error' => 'the context is USED, the whole number of tokens in use, e.g. 412000');
 		}
 
-		$body['context'] = array('used' => (int) $fields[0], 'size' => (int) $fields[1]);
+		$body['context'] = $sized ? array('used' => (int) $fields[0], 'size' => (int) $fields[1]) : array('used' => (int) $fields[0]);
 	}
 
 	// The route's own limits (80 and 120 characters).

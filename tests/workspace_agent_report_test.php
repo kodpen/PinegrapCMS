@@ -182,6 +182,8 @@ function test_workspace_agent_report_brief_line()
 
 	pg_assert_contains('"model": "<the model you run on>"', ws_agent_report_brief_line($agent, true, $now), 'no report yet');
 	pg_assert_contains('POST /workspace/agent-report', ws_agent_report_brief_line($agent, true, $now));
+	pg_assert_contains('"context": {"used"', ws_agent_report_brief_line($agent, true, $now), 'asks for the tokens used');
+	pg_assert_contains('never guess', ws_agent_report_brief_line($agent, true, $now));
 	pg_assert_contains('"model"', ws_agent_report_brief_line(array('report_at' => $now - WS_AGENT_REPORT_ASK_AFTER) + $agent, true, $now), 'an hour old');
 	pg_assert_same('', ws_agent_report_brief_line(array('report_at' => $now - 600) + $agent, true, $now), 'fresh: no line');
 	pg_assert_same('', ws_agent_report_brief_line($agent, false, $now), 'outside an agent channel');
@@ -251,7 +253,8 @@ function test_workspace_agent_report_fields_refused()
 
 	$refused(array('context' => 'big'), 'context', 'a context that is no object');
 	$refused(array('context' => array(10, 20)), 'context', 'a context that is a list');
-	$refused(array('context' => array('used' => 10)), 'context', 'a context without its size');
+	$refused(array('context' => array('size' => 10)), 'context', 'a context without its used');
+	$refused(array('context' => array('used' => 10000001)), 'context', 'a used over ten million');
 	$refused(array('context' => array('used' => 10, 'size' => 20, 'left' => 10)), 'context', 'a context with a field more');
 	$refused(array('context' => array('used' => '10', 'size' => 20)), 'context', 'a used that is text');
 	$refused(array('context' => array('used' => 10.5, 'size' => 20)), 'context', 'a used that is not whole');
@@ -404,16 +407,75 @@ function test_workspace_agent_report_fields_reach_the_routes()
 
 	$lines = implode("\n", ws_agent_instructions_request_lines());
 	pg_assert_contains('"context": {"used"', $lines, 'the instructions name the context');
+	pg_assert_contains('never guess the window', $lines, 'the instructions forbid a guessed size');
+	pg_assert_true(strpos($lines, '"size"') === false, 'the instructions ask for no size');
 	pg_assert_contains('"project"', $lines);
 	pg_assert_contains('"branch"', $lines);
 
 	pg_assert_contains('ws_agent_report_context(', pg_test_function_source('ws_agent_card'), 'the card carries the context');
 
 	require_once(dirname(PG_FUNCTIONS_DIR) . '/tools/ws_profile.php');
-	$built = ws_profile_body(array('context' => '412345:1000000', 'project' => 'Pinegrap', 'branch' => 'feature/x'));
-	pg_assert_same(array('context' => array('used' => 412345, 'size' => 1000000), 'project' => 'Pinegrap', 'branch' => 'feature/x'), $built['body'], $built['error']);
-	pg_assert_same(null, ws_profile_body(array('context' => '412345'))['body'], 'a context without its size');
+	$built = ws_profile_body(array('context' => '412345', 'project' => 'Pinegrap', 'branch' => 'feature/x'));
+	pg_assert_same(array('context' => array('used' => 412345), 'project' => 'Pinegrap', 'branch' => 'feature/x'), $built['body'], $built['error']);
+	pg_assert_same(array('used' => 5, 'size' => 10), ws_profile_body(array('context' => '5:10'))['body']['context'], 'a harness that reads its size still sends it');
+	pg_assert_same(null, ws_profile_body(array('context' => '1.5'))['body'], 'a used that is not whole');
 	pg_assert_same(null, ws_profile_body(array('context' => '5:1.5'))['body'], 'a size that is not whole');
+	pg_assert_true(strpos(file_get_contents(dirname(PG_FUNCTIONS_DIR) . '/tools/ws_profile.php'), '1000000') === false, 'the help names no window size');
 	pg_assert_same(null, ws_profile_body(array('project' => str_repeat('p', 81)))['body'], 'a project over 80 characters');
 	pg_assert_same(null, ws_profile_body(array('branch' => str_repeat('b', 121)))['body'], 'a branch over 120 characters');
+}
+
+// The context with used alone, the size typed on the form
+// (ws_agents.context_size) before a reported one, none drawn without a size.
+function test_workspace_agent_report_context_used_alone()
+{
+	$check = ws_agent_report_check(null, null, array('context' => array('used' => 412345)));
+	pg_assert_true($check['ok'], $check['error']);
+	pg_assert_same(array('used' => 412345), $check['values']['context'], 'kept without a size');
+	pg_assert_same(array('used' => 412345), ws_agent_report_read($check['values']['usage'])['context'], 'reads back');
+	pg_assert_same(array('used' => 7), ws_agent_report_read(ws_agent_report_usage_with_context($check['values']['usage'], array('used' => 7)))['context'], 'an answer\'s used alone');
+
+	// No size anywhere: the used tokens alone, no percent.
+	$none = ws_agent_report_context(array('report_usage' => $check['values']['usage']));
+	pg_assert_same(412345, $none['used']);
+	pg_assert_same(null, $none['size']);
+	pg_assert_same(null, $none['percent']);
+	pg_assert_contains('412k', $none['words']);
+	pg_assert_true(strpos($none['words'], '%') === false, 'no percent in the words');
+	pg_assert_same($none, ws_agent_report_context(array('report_usage' => $check['values']['usage'], 'context_size' => 0)), 'a field left empty');
+
+	// The form's size.
+	$form = ws_agent_report_context(array('report_usage' => $check['values']['usage'], 'context_size' => 1000000));
+	pg_assert_same(1000000, $form['size']);
+	pg_assert_same(41, $form['percent']);
+	pg_assert_contains('1M', $form['words']);
+
+	// A reported size is used only while the form's field is empty.
+	$both = ws_agent_report_check(null, null, array('context' => array('used' => 100000, 'size' => 200000)))['values']['usage'];
+	pg_assert_same(50, ws_agent_report_context(array('report_usage' => $both))['percent'], 'the reported size');
+	pg_assert_same(40, ws_agent_report_context(array('report_usage' => $both, 'context_size' => 250000))['percent'], 'the form goes first');
+
+	// Used above the size is drawn as full.
+	$over = ws_agent_report_context(array('report_usage' => $check['values']['usage'], 'context_size' => 250000));
+	pg_assert_same(100, $over['percent']);
+	pg_assert_same(412345, $over['used']);
+}
+
+// The form's field, read as the monthly token limit is.
+function test_workspace_agent_context_size_check()
+{
+	pg_assert_same(array('ok' => true, 'value' => 0, 'error' => ''), ws_agent_context_size_check(''), 'empty is 0');
+	pg_assert_same(250000, ws_agent_context_size_check(' 250.000 ')['value'], 'dots and spaces dropped');
+	pg_assert_same(1000000, ws_agent_context_size_check('1,000,000')['value'], 'commas dropped');
+	pg_assert_same(0, ws_agent_context_size_check('0')['value']);
+	pg_assert_same(10000000, ws_agent_context_size_check('10000000')['value']);
+	pg_assert_false(ws_agent_context_size_check('10000001')['ok'], 'over ten million');
+	pg_assert_false(ws_agent_context_size_check('-5')['ok'], 'negative');
+	pg_assert_false(ws_agent_context_size_check('1M')['ok'], 'not a number');
+	pg_assert_same(250000, ws_agent_shape(array('context_size' => '250000'))['context_size'], 'the shaped row carries it');
+
+	$check = pg_test_function_source('ws_agents_settings_check');
+	pg_assert_contains('ws_agent_context_size_check(', $check);
+	pg_assert_contains('ws_agent_context_size_save(', pg_test_function_source('ws_agents_settings_write'));
+	pg_assert_contains("'context_size'", pg_test_function_source('ws_agents_settings_input'));
 }

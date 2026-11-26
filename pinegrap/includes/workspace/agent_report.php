@@ -4,7 +4,8 @@
  *
  * Workspace - an application agent's report about itself: the model it runs
  * on, its plan's usage windows as it reads them (percent used, reset time),
- * its context (tokens used and the window's size), the project and the git
+ * its context (the tokens it uses; the window's size is typed on its form,
+ * ws_agents.context_size), the project and the git
  * branch it works on, sent with its own key (POST /workspace/agent-report).
  * The site cannot check any of it: it is kept as the agent's report, the
  * last one only (ws_agents.report_model, report_at, and report_usage holding
@@ -79,12 +80,15 @@ function ws_agent_report_window_labels()
 }
 
 /**
- * Checks a context as a report gives it: exactly {used, size}, whole
- * numbers of tokens, used from 0 to size, size from 1 to
- * WS_AGENT_REPORT_CONTEXT_MAX. Pure but for lang().
+ * Checks a context as a report gives it: {used} or {used, size}, whole
+ * numbers of tokens, used from 0 to WS_AGENT_REPORT_CONTEXT_MAX; a size, when
+ * given, from 1 to WS_AGENT_REPORT_CONTEXT_MAX with used at most size. An
+ * agent sends the tokens it uses; the window's size is typed on its form
+ * (ws_agents.context_size), a reported size is kept for a harness that reads
+ * its own. Pure but for lang().
  *
  * @param mixed $context
- * @return array ok, error, context (used, size)
+ * @return array ok, error, context (used, and size when given)
  */
 function ws_agent_report_context_check($context)
 {
@@ -92,12 +96,39 @@ function ws_agent_report_context_check($context)
     sort($keys);
     $used = $context['used'] ?? null;
     $size = $context['size'] ?? null;
+    $sized = ($keys === array('size', 'used'));
 
-    if (($keys !== array('size', 'used')) || !is_int($used) || !is_int($size) || ($size < 1) || ($size > WS_AGENT_REPORT_CONTEXT_MAX) || ($used < 0) || ($used > $size)) {
-        return array('ok' => false, 'error' => lang('The context is {used, size}: whole numbers of tokens, used at most size, size at most 10,000,000.'), 'context' => null);
+    $ok = ($sized || ($keys === array('used'))) && is_int($used) && ($used >= 0) && ($used <= WS_AGENT_REPORT_CONTEXT_MAX)
+        && (!$sized || (is_int($size) && ($size >= 1) && ($size <= WS_AGENT_REPORT_CONTEXT_MAX) && ($used <= $size)));
+
+    if (!$ok) {
+        return array('ok' => false, 'error' => lang('The context is {used}, or {used, size}: whole numbers of tokens, used at most size, at most 10,000,000.'), 'context' => null);
     }
 
-    return array('ok' => true, 'error' => '', 'context' => array('used' => $used, 'size' => $size));
+    return array('ok' => true, 'error' => '', 'context' => $sized ? array('used' => $used, 'size' => $size) : array('used' => $used));
+}
+
+/**
+ * An agent's context window size as typed on its form: empty is 0 (not
+ * entered), spaces, dots and commas dropped, otherwise a whole number up to
+ * WS_AGENT_REPORT_CONTEXT_MAX. Pure but for lang().
+ *
+ * @param mixed $raw
+ * @return array ok, value (int), error
+ */
+function ws_agent_context_size_check($raw)
+{
+    $text = str_replace(array(' ', '.', ','), '', trim((string) $raw));
+
+    if ($text === '') {
+        return array('ok' => true, 'value' => 0, 'error' => '');
+    }
+
+    if ((preg_match('/^[0-9]{1,8}$/', $text) !== 1) || ((int) $text > WS_AGENT_REPORT_CONTEXT_MAX)) {
+        return array('ok' => false, 'value' => 0, 'error' => lang('Give the context window as a whole number of tokens up to 10,000,000, or leave it empty.'));
+    }
+
+    return array('ok' => true, 'value' => (int) $text, 'error' => '');
 }
 
 /**
@@ -328,7 +359,7 @@ function ws_agent_report_windows($usage)
 function ws_agent_report_usage_with_context($usage, $context)
 {
     $read = ws_agent_report_read($usage);
-    $read['context'] = array('used' => (int) $context['used'], 'size' => (int) $context['size']);
+    $read['context'] = isset($context['size']) ? array('used' => (int) $context['used'], 'size' => (int) $context['size']) : array('used' => (int) $context['used']);
 
     return (string) json_encode($read, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 }
@@ -359,11 +390,13 @@ function ws_agent_report_tokens($tokens)
 }
 
 /**
- * An agent's reported context: tokens used, the window's size, the percent
- * used and its words. Null when its last report names none. Pure but for
- * lang().
+ * An agent's reported context: tokens used, the window's size (the one typed
+ * on its form, ws_agents.context_size, else the one it reported, else none),
+ * the percent used and its words. Without a size the words are the used
+ * tokens alone and size and percent are null; used above the size is drawn
+ * as full. Null when its last report names no context. Pure but for lang().
  *
- * @param array $agent ws_agent_shape() or the raw row: report_usage
+ * @param array $agent ws_agent_shape() or the raw row: report_usage, context_size
  * @return array|null used, size, percent, words
  */
 function ws_agent_report_context($agent)
@@ -374,12 +407,59 @@ function ws_agent_report_context($agent)
         return null;
     }
 
-    $percent = (int) round($context['used'] * 100 / $context['size']);
+    $used = (int) $context['used'];
+    $form = (int) ($agent['context_size'] ?? 0);
+    $size = ($form > 0) ? $form : (int) ($context['size'] ?? 0);
 
-    return $context + array(
+    if ($size <= 0) {
+        return array(
+            'used'    => $used,
+            'size'    => null,
+            'percent' => null,
+            'words'   => lang(array('string' => 'Context {var:1} tokens', 'vars' => ws_agent_report_tokens($used))),
+        );
+    }
+
+    $percent = min(100, (int) round($used * 100 / $size));
+
+    return array(
+        'used'    => $used,
+        'size'    => $size,
         'percent' => $percent,
-        'words'   => lang(array('string' => 'Context {var:1} of {var:2} tokens ({var:3}%)', 'vars' => array(ws_agent_report_tokens($context['used']), ws_agent_report_tokens($context['size']), $percent))),
+        'words'   => lang(array('string' => 'Context {var:1} of {var:2} tokens ({var:3}%)', 'vars' => array(ws_agent_report_tokens($used), ws_agent_report_tokens($size), $percent))),
     );
+}
+
+/**
+ * Whether the schema step that added ws_agents.context_size has run.
+ *
+ * @return bool
+ */
+function ws_agent_context_size_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = ws_agents_ready() && pg_schema_has('ws_agents', 'context_size');
+    }
+
+    return $ready;
+}
+
+/**
+ * Stores an application agent's context window size, 0 for not entered.
+ *
+ * @param int $agent_id
+ * @param int $size
+ * @return void
+ */
+function ws_agent_context_size_save($agent_id, $size)
+{
+    if (((int) $agent_id <= 0) || !ws_agent_context_size_ready()) {
+        return;
+    }
+
+    db_q("UPDATE ws_agents SET context_size = ? WHERE id = ? AND kind = 'app'", array(max(0, (int) $size), (int) $agent_id));
 }
 
 /**
@@ -509,7 +589,7 @@ function ws_agent_report_brief_line($agent, $agent_channel, $now)
         return '';
     }
 
-    return 'Your model: the site has no report of it from the last hour. Add "model": "<the model you run on>" to this answer (or report it with POST /workspace/agent-report).';
+    return 'Your model: the site has no report of it from the last hour. Add "model": "<the model you run on>" and "context": {"used": <the tokens you use>} to this answer (or report them with POST /workspace/agent-report); never guess your context window\'s size.';
 }
 
 /**
