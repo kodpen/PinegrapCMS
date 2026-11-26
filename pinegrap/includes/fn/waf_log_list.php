@@ -297,7 +297,7 @@ function pg_waf_log_list_row(array $event, $now)
             ? '<div class="fg-secondary" style="font-size:.7rem;" title="' . h(lang('Reference')) . '">' . h($event['reference']) . '</div>'
             : '');
 
-    $request = '<span class="fg-secondary">' . h($event['method']) . '</span> ' . h($event['request_url'])
+    $request = '<span class="fg-secondary">' . h($event['method']) . '</span> ' . h(waf_mask_request_url($event['request_url']))
         . '<div class="fg-secondary" style="font-size:.75rem;">' . h(mb_substr((string) $event['user_agent'], 0, 90)) . '</div>';
 
     $match = '<span class="fg-secondary">' . h($event['target']) . '</span><div><code>' . h($event['matched']) . '</code></div>';

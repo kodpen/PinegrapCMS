@@ -391,14 +391,48 @@ function pg_ad_conversion_marketing_refused($changes)
 }
 
 /**
- * The statement that takes the ids and the person off an order's rows not
- * sent yet; one placeholder, the order id.
+ * What a refusal of marketing does to an order's rows that carry the
+ * person, keyed by row id. Pure.
+ * - waiting for the order (0): clear (the ids and the person go;
+ *   completion then gives it up or sends it without the person)
+ * - due (1): clear only for a purchase the service sends without the
+ *   person ("Send events without the person", never Meta); any other row
+ *   is given up, so a visitor's event or a purchase the shop did not allow
+ *   without the person is never sent after the refusal
+ * - sent, given up, or without the person: left as it is
  *
- * @return string
+ * @param array[] $rows     id, service, event, status, person
+ * @param array   $settings service => pg_ad_conversion_settings_parse()
+ * @return array id => clear | give_up
  */
-function pg_ad_conversion_withdraw_sql()
+function pg_ad_conversion_withdraw_plan(array $rows, array $settings)
 {
-    return "UPDATE ad_conversion_events SET ids = NULL, person = 0 WHERE order_id = ? AND status IN (0, 1)";
+    $plan = array();
+
+    foreach ($rows as $row) {
+        $status = (int) ($row['status'] ?? -1);
+
+        if (((int) ($row['person'] ?? 0) !== 1) || !in_array($status, array(0, 1), true)) {
+            continue;
+        }
+
+        $id = (int) ($row['id'] ?? 0);
+        $service = (string) ($row['service'] ?? '');
+
+        if ($status === 0) {
+            $plan[$id] = 'clear';
+            continue;
+        }
+
+        $without_person = (($row['event'] ?? '') === 'purchase')
+            && pg_ad_conversion_without_person_offered($service)
+            && !empty($settings[$service]['connected'])
+            && in_array('purchase', (array) ($settings[$service]['without_person'] ?? array()), true);
+
+        $plan[$id] = $without_person ? 'clear' : 'give_up';
+    }
+
+    return $plan;
 }
 
 /**
@@ -864,8 +898,9 @@ function pg_ad_conversion_counter_sale_completed($order_id, $total, $order_numbe
 
 /**
  * A cookie notice answer that refused marketing takes the ids off the rows
- * of this visitor's order not sent yet: the cart's and the one just
- * completed.
+ * of this visitor's order not sent yet, the cart's and the one just
+ * completed, and gives up a due row that may not go without the person
+ * (pg_ad_conversion_withdraw_plan()).
  *
  * @param array[]|null $changes pg_consent_answer_changes()
  * @return void
@@ -881,8 +916,28 @@ function pg_ad_conversion_consent_changed($changes)
         (int) ($_SESSION['ecommerce']['completed_order_id'] ?? 0),
     )));
 
+    $settings = pg_ad_conversion_settings_all();
+
     foreach ($order_ids as $order_id) {
-        db_q(pg_ad_conversion_withdraw_sql(), array($order_id));
+        $rows = array();
+        $statuses = array();
+        $result = db_q("SELECT id, service, event, status, person FROM ad_conversion_events WHERE order_id = ? AND status IN (0, 1) AND person = 1", array($order_id));
+
+        while ($result && ($row = mysqli_fetch_assoc($result))) {
+            $rows[] = $row;
+            $statuses[(int) $row['id']] = (int) $row['status'];
+        }
+
+        foreach (pg_ad_conversion_withdraw_plan($rows, $settings) as $id => $action) {
+            if ($action === 'clear') {
+                // Only in the status read, so a waiting row completion made
+                // due in between is never cleared into a bare due row.
+                db_q("UPDATE ad_conversion_events SET ids = NULL, person = 0 WHERE id = ? AND status = ?", array($id, $statuses[$id]));
+            } else {
+                db_q("UPDATE ad_conversion_events SET status = 3, ids = NULL, person = 0, last_error = ? WHERE id = ? AND status = 1",
+                    array('No consent', $id));
+            }
+        }
     }
 }
 
@@ -1342,8 +1397,30 @@ function pg_ad_conversion_add_to_cart($order_id, $sku, $quantity, $unit_price)
 }
 
 /**
+ * What a begin checkout says: the cart's lines and their value (price times
+ * quantity, minor units). The order's total column is written only when the
+ * payment starts or the order completes, after the payment step, so it is
+ * not read. Pure.
+ *
+ * @param array  $lines    product_name, quantity, price
+ * @param string $currency
+ * @param int    $time
+ * @return array as pg_ad_conversion_purchase_detail()
+ */
+function pg_ad_conversion_begin_checkout_detail(array $lines, $currency, $time)
+{
+    $value = 0;
+
+    foreach ($lines as $line) {
+        $value += (int) round((float) ($line['price'] ?? 0)) * (int) ($line['quantity'] ?? 0);
+    }
+
+    return pg_ad_conversion_purchase_detail($value, $currency, '', $time, $lines);
+}
+
+/**
  * Begin checkout, at the payment step: once per order (the event id is the
- * order's), with the cart's lines and total.
+ * order's), with the cart's lines and their value.
  *
  * @param int $order_id
  * @return void
@@ -1369,10 +1446,7 @@ function pg_ad_conversion_begin_checkout($order_id)
         $lines[] = $line;
     }
 
-    $result = db_q("SELECT total FROM orders WHERE id = ?", array((int) $order_id));
-    $row = $result ? mysqli_fetch_row($result) : null;
-    $total = (int) round((float) ($row[0] ?? 0));
-    $detail = pg_ad_conversion_purchase_detail($total, defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : '', '', time(), $lines);
+    $detail = pg_ad_conversion_begin_checkout_detail($lines, defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : '', time());
 
     pg_ad_conversion_visitor_write('begin_checkout', array_fill_keys($services, pg_ad_conversion_visitor_event_id('begin_checkout', $order['reference_code'])), (int) $order_id, $detail);
 }

@@ -18,6 +18,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - `addon-hook-*`: 11 files.
 - `automation-platforms-*`: 6 files; start at `automation-platforms.md`.
 - `integrations-census-*`: 12 files; start at `integrations-census.md`.
+- `settings-crossings-*`: 7 files.
 - `storefront-api-*`: 9 files.
 
 ## Files

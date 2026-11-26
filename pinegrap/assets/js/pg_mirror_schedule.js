@@ -16,6 +16,12 @@
  *   badge) are not.
  * - fit(): the scale that fits a mirror's width into its box, and the
  *   height its frame takes so the scaled picture fills the box.
+ * - sizes(): a mirror's list of widths, the one it shows ticked and those
+ *   the canvas or the other mirror show dimmed; pick() the widths after a
+ *   choice in it; swap() the widths after "Edit at this size".
+ * - selectionMoved(): whether a canvas change moved the selection mark, so
+ *   the mirrors' frames follow; follow() where a mirror scrolls to bring
+ *   the chosen element into view.
  *
  * Nothing runs at load but the definition of window.PGMirrorSchedule. It is
  * the first source of the designer part 'mirror'
@@ -38,7 +44,9 @@
 
     // Classes the editor puts on a canvas element to show its own state.
     var STATE_CLASSES = ['sd-selected', 'sd-multi-selected', 'sd-drop-hl', 'sd-ghost', 'sd-resizing',
-        'sd-ctrl-flash', 'sd-tree-drag-src', 'sd-validate-warn', 'sd-tb-inside', 'sd-tb-below', 'sd-tb-end'];
+        'sd-ctrl-flash', 'sd-tree-drag-src', 'sd-validate-warn', 'sd-tb-inside', 'sd-tb-below', 'sd-tb-end',
+        // The Outline lines and the snap grid drawn over the canvas body.
+        'sd-outline-grid', 'sd-grid-overlay'];
     // Elements the editor adds to the canvas around the design: element
     // toolbars, notes, badges, chips, drop zones, the align guide.
     var CHROME_CLASSES = ['sd-tb', 'sd-persistent-note', 'sd-issue-badge', 'sd-chip-row', 'sd-dz', 'sd-align-guide'];
@@ -132,7 +140,78 @@
         return { scale: scale, height: Math.round(boxH / scale) };
     }
 
+    // The canvas bar's five widths, the ones a mirror's list offers.
+    var SIZES = [375, 576, 768, 992, 1200];
+
+    // The list of mirror `index` of `widths`: each of SIZES with `on` for
+    // the width it shows and `where` 'canvas' or 'other' for a width the
+    // canvas (at `canvasW`, 0 for Full width) or another mirror shows.
+    function sizes(widths, index, canvasW) {
+        widths = widths || [];
+        return SIZES.map(function (w) {
+            var where = '';
+            if (w === canvasW) where = 'canvas';
+            else if (widths.some(function (o, i) { return i !== index && o === w; })) where = 'other';
+            return { w: w, on: widths[index] === w, where: where };
+        });
+    }
+
+    // The widths after `w` was chosen in mirror `index`'s list; a width
+    // dimmed there changes nothing.
+    function pick(widths, index, w, canvasW) {
+        var out = (widths || []).slice();
+        var row = sizes(out, index, canvasW).filter(function (r) { return r.w === w; })[0];
+        if (!row || row.where || index < 0 || index >= out.length) return out;
+        out[index] = w;
+        return out;
+    }
+
+    // "Edit at this size" on mirror `index`: the canvas takes that mirror's
+    // width and the mirror the canvas's (`canvasW`, 0 for Full width, which
+    // hands over 1200). The other mirror never shows the width the swapped
+    // one now shows: it takes the first free width of SIZES instead.
+    // Null for a mirror that is not there.
+    function swap(widths, index, canvasW) {
+        var out = (widths || []).slice();
+        if (index < 0 || index >= out.length) return null;
+        var canvas = out[index];
+        var mirror = canvasW > 0 ? canvasW : 1200;
+        out[index] = mirror;
+        out.forEach(function (w, i) {
+            if (i === index || w !== mirror) return;
+            out[i] = SIZES.filter(function (s) { return s !== mirror && s !== canvas && out.indexOf(s) === -1; })[0] || w;
+        });
+        return { widths: out, canvas: canvas };
+    }
+
+    // Whether a canvas change put the selection mark on an element or took
+    // it off (a mutation record in the shape matters() reads).
+    function selectionMoved(rec) {
+        if (!rec || rec.type !== 'attributes' || String(rec.name || '').toLowerCase() !== 'class') return false;
+        var had = tokens(rec.old).indexOf('sd-selected') !== -1;
+        return had !== (tokens(rec.now).indexOf('sd-selected') !== -1);
+    }
+
+    // Where a mirror `viewH` px high, scrolled to `scrollY`, scrolls to show
+    // an element at `top`..`bottom` (its view's coordinates): null while it
+    // is in view or takes no room (that width hides it), else the scroll
+    // that brings it a third of the way down.
+    function follow(top, bottom, viewH, scrollY) {
+        top = Number(top) || 0;
+        bottom = Number(bottom) || 0;
+        viewH = Math.max(0, Number(viewH) || 0);
+        if (bottom <= top) return null;
+        if (top >= 0 && bottom <= viewH) return null;
+        return Math.max(0, Math.round((Number(scrollY) || 0) + top - viewH / 3));
+    }
+
     window.PGMirrorSchedule = {
+        swap: swap,
+        selectionMoved: selectionMoved,
+        follow: follow,
+        SIZES: SIZES,
+        sizes: sizes,
+        pick: pick,
         REST: REST,
         HOLD_MAX: HOLD_MAX,
         STATE_CLASSES: STATE_CLASSES,

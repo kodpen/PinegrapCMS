@@ -2660,14 +2660,34 @@
     }
 
     // A canvas in another language: the smallest share of the source's text
-    // size a translation is drawn at.
-    var LANGUAGE_FLOOR = 0.7;
+    // size a translation is drawn at, for a text up to LANGUAGE_FLOOR_SMALL
+    // of the picture's shorter side; from LANGUAGE_FLOOR_LARGE of it a text
+    // may shrink to LANGUAGE_FLOOR_MIN, on a straight line between.
+    var LANGUAGE_FLOOR = 0.7, LANGUAGE_FLOOR_MIN = 0.5, LANGUAGE_FLOOR_SMALL = 0.04, LANGUAGE_FLOOR_LARGE = 0.08;
+
+    // The floor of a text of size px on a picture whose shorter side is
+    // side px, rounded to four places; LANGUAGE_FLOOR without either.
+    function languageFloor(size, side) {
+        size = Number(size) || 0;
+        side = Number(side) || 0;
+
+        if ((size <= 0) || (side <= 0)) {
+            return LANGUAGE_FLOOR;
+        }
+
+        var t = (size / side - LANGUAGE_FLOOR_SMALL) / (LANGUAGE_FLOOR_LARGE - LANGUAGE_FLOOR_SMALL);
+
+        t = Math.max(0, Math.min(1, t));
+
+        return Math.round((LANGUAGE_FLOOR - (LANGUAGE_FLOOR - LANGUAGE_FLOOR_MIN) * t) * 10000) / 10000;
+    }
 
     // How much a translated text (w1 x h1 at the source's size) shrinks to
-    // fit the source's box (w0 x h0): never grown, never under the floor;
+    // fit the source's box (w0 x h0): never grown, never under the floor of
+    // the source's size on the picture's shorter side (languageFloor());
     // mark when it still does not fit there.
-    function languageFit(w0, h0, w1, h1) {
-        var scale = 1;
+    function languageFit(w0, h0, w1, h1, size, side) {
+        var scale = 1, floor = languageFloor(size, side);
 
         if ((w0 > 0) && (w1 > w0)) {
             scale = Math.min(scale, w0 / w1);
@@ -2677,8 +2697,8 @@
             scale = Math.min(scale, h0 / h1);
         }
 
-        if (scale < LANGUAGE_FLOOR - 1e-9) {
-            return { scale: LANGUAGE_FLOOR, mark: true };
+        if (scale < floor - 1e-9) {
+            return { scale: floor, mark: true };
         }
 
         return { scale: Math.round(scale * 10000) / 10000, mark: false };
@@ -2772,7 +2792,7 @@
     }
 
     var ARTBOARD = {
-        LANGUAGE_FLOOR: LANGUAGE_FLOOR, languageFit: languageFit, languageDoc: languageDoc, languageDrawable: languageDrawable, languagesToDraw: languagesToDraw,
+        LANGUAGE_FLOOR: LANGUAGE_FLOOR, languageFloor: languageFloor, languageFit: languageFit, languageDoc: languageDoc, languageDrawable: languageDrawable, languagesToDraw: languagesToDraw,
         languageRowPlan: languageRowPlan, languageRowStatus: languageRowStatus, languagesWaiting: languagesWaiting,
         BOARD_PRESETS: BOARD_PRESETS, BOARD_BACKGROUNDS: BOARD_BACKGROUNDS, boardSide: boardSide, boardPreset: boardPreset,
         boardDrag: boardDrag, boardAnchored: boardAnchored, boardAround: boardAround, applyBoard: applyBoard,

@@ -18,4 +18,4 @@ description: Paraşüt's Developer Portal (DevHub) client as its guide describes
 - The API is unchanged: `https://api.parasut.com/v4/{company}`. The free "Temel" package: one company, 10 requests in 10 s, 25,000 a month; a 429 says how long to wait; a client answering many 401 or 403 may be switched off.
 
 ## What does Pinegrap do with it?
-- Nothing yet: the connection card knows the older client only (`erp-parasut-connection.md`). Plan `plans/parasut-devhub-connection.md` adds it.
+- Since #11694 a portal client is the connected accounts' provider `parasut` (`erp-parasut-devhub-connection.md`). Not yet tried against Paraşüt: what the live answers show is added here once dev is connected (plan `plans/parasut-devhub-connection.md`).

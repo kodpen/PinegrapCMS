@@ -113,3 +113,33 @@ function pg_panel_actions_audience_row()
 
 	return array('handler' => $m[1], 'token' => $m[2] === 'true', 'write' => $m[3] === 'true');
 }
+
+// Two passes of one group at once (the job's tick and Refresh now, or two
+// open screens) read the same page and both insert its new rule rows: the
+// xref has no unique key, so a contact got two rows and two "joined" runs.
+function test_audiences_recompute_lock_name_is_per_database_and_group()
+{
+	$a = pg_audience_lock_name(7, 'shop@localhost');
+
+	pg_assert_same($a, pg_audience_lock_name('7', 'shop@localhost'), 'the same group, the same name');
+	pg_assert_true($a !== pg_audience_lock_name(8, 'shop@localhost'), 'another group, another lock');
+	pg_assert_true($a !== pg_audience_lock_name(7, 'other@localhost'), 'locks belong to the whole server: the database is in the name');
+	pg_assert_true(strlen(pg_audience_lock_name(4294967295, str_repeat('x', 300))) <= 64, 'within the 64 characters GET_LOCK takes');
+}
+
+function test_audiences_recompute_holds_the_group_lock_while_it_reads_and_writes()
+{
+	$source = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/includes/fn/audiences.php');
+	$start = strpos($source, 'function pg_audience_recompute(');
+	$body = substr($source, $start, strpos($source, "\nfunction ", $start + 10) - $start);
+	$lock = strpos($body, 'GET_LOCK(');
+	$read = strpos($body, 'pg_audience_recompute_pass(');
+
+	pg_assert_true(($lock !== false) && ($read !== false) && ($lock < $read), 'the lock is taken before the cursor is read and the pass runs');
+	pg_assert_true(strpos($body, 'RELEASE_LOCK(') !== false, 'and given back after it');
+	pg_assert_same(
+		array('done' => false, 'added' => 0, 'removed' => 0, 'cursor' => 0, 'busy' => true),
+		pg_audience_busy_answer(),
+		'a group another run holds answers not done, so the job ends its turn and the screen asks again'
+	);
+}

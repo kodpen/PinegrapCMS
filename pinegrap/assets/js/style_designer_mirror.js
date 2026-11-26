@@ -14,6 +14,19 @@
  * is window.PGMirrorSchedule's (the first source of this part). With the
  * last mirror closed nothing of the part is left listening.
  *
+ * side() lays out "Side by side" (the View menu's switch, _sdSideSync() in
+ * the core): the canvas column holds the canvas and, right of it, one box
+ * per mirror under a head with the width and its list of sizes. The core
+ * says how wide each box is and whether the row has room; the boxes
+ * follow the column's height here.
+ *
+ * The chosen element is framed in every mirror and brought into view
+ * there when it is out of it; a click in a mirror chooses the element on
+ * the canvas (cfg.select), a dashed frame shows what a click would choose,
+ * and "Edit at this size" in a head swaps that mirror's width with the
+ * canvas's (cfg.swap). The frames sit in the mirror's own document over
+ * the picture and go with every redraw; while a redraw waits none is shown.
+ *
  * Not needed to open a page: the core runs this file the first time a
  * mirror is asked for (pg_designer_parts()); when the canvas document is
  * written anew the core calls rebind().
@@ -49,8 +62,10 @@ StyleDesigner.definePart('mirror', function (K) {
 
     // ── When to draw ─────────────────────────────────────────────────────
     function note(kind) {
+        var waited = S.due(plan) !== null;
         plan = S.step(plan, kind, clock());
         schedule();
+        if (!waited && S.due(plan) !== null) marks();
     }
 
     function schedule() {
@@ -97,10 +112,18 @@ StyleDesigner.definePart('mirror', function (K) {
         return { type: r.type, cls: ownerClass(r.target), nodes: nodes };
     }
 
+    // A change a mirror shows waits for the hand to rest; the selection
+    // mark moving is followed at the next frame.
     function observed(records) {
-        for (var i = 0; i < records.length; i++) {
-            if (S.matters(shape(records[i]))) { note('change'); return; }
+        var changed = false, moved = false;
+        for (var i = 0; i < records.length && !(changed && moved); i++) {
+            var r = records[i];
+            if (!moved && r.type === 'attributes' && r.attributeName === 'class'
+                && S.selectionMoved({ type: 'attributes', name: 'class', old: r.oldValue, now: r.target.getAttribute('class') })) moved = true;
+            if (!changed && S.matters(shape(r))) changed = true;
         }
+        if (changed) note('change');
+        if (moved) markSoon();
     }
 
     function bind() {
@@ -133,6 +156,7 @@ StyleDesigner.definePart('mirror', function (K) {
     }
 
     function unbind() {
+        if (markFrame) { cancelAnimationFrame(markFrame); markFrame = 0; }
         if (!watch) return;
         watch.offs.forEach(function (off) { off(); });
         watch = null;
@@ -175,9 +199,15 @@ StyleDesigner.definePart('mirror', function (K) {
             d.write('<!DOCTYPE html><html><head></head><body></body></html>');
             d.close();
             var stop = function (e) { e.preventDefault(); };
-            d.addEventListener('click', stop, true);
+            d.addEventListener('click', function (e) {
+                e.preventDefault();
+                var w = wrapOf(e.target);
+                if (w && row && row.cfg.select) row.cfg.select(w.getAttribute('data-sd-id'), w.getAttribute('data-sw-sid') || '');
+            }, true);
             d.addEventListener('submit', stop, true);
             d.addEventListener('dragstart', stop, true);
+            d.addEventListener('mouseover', function (e) { hover(m, wrapOf(e.target)); }, true);
+            d.addEventListener('mouseleave', function () { hover(m, null); }, true);
             d._sdMirror = true;
             m.head = null;
         }
@@ -206,6 +236,7 @@ StyleDesigner.definePart('mirror', function (K) {
             m.head = head;
         }
         var y = d.scrollingElement ? d.scrollingElement.scrollTop : 0;
+        unmark(d);
         var nb = d.importNode(body, true);
         if (d.body) d.documentElement.replaceChild(nb, d.body); else d.documentElement.appendChild(nb);
         if (y && d.scrollingElement) d.scrollingElement.scrollTop = y;
@@ -217,6 +248,91 @@ StyleDesigner.definePart('mirror', function (K) {
         if (!src || !src.body || !mirrors.length) return;
         var body = strip(src.body.cloneNode(true));
         mirrors.forEach(function (m) { fill(m, src, body); });
+        marks();
+    }
+
+    // ── The chosen element ───────────────────────────────────────────────
+    // The element a mirror's frame or click stands for: the nearest one
+    // the editor drew with an id.
+    function wrapOf(t) {
+        return t && t.closest ? t.closest('[data-sd-id]') : null;
+    }
+
+    // Its box in its document's view: the wrapper's own, or that of the
+    // element it holds when the wrapper is see-through (display: contents).
+    function boxOf(w) {
+        var r = w.getBoundingClientRect();
+        if (r.width || r.height || !w.firstElementChild) return r;
+        return w.firstElementChild.getBoundingClientRect();
+    }
+
+    // A frame over `w` in mirror `m`'s document: 2 px on the screen at the
+    // mirror's scale, solid for the chosen element, dashed under the
+    // pointer. Null when that width hides the element.
+    function frameOver(m, d, w, kind) {
+        var r = boxOf(w);
+        if (!r.width || !r.height) return null;
+        var win = d.defaultView;
+        var b = Math.max(1, Math.round(2 / (m.scale || 1) * 10) / 10);
+        var f = d.createElement('div');
+        f.setAttribute('data-sd-mirror-mark', kind);
+        f.style.cssText = 'position:absolute;pointer-events:none;box-sizing:border-box;z-index:2147483647;margin:0;'
+            + 'border:' + b + 'px ' + (kind === 'hover' ? 'dashed' : 'solid') + ' #0d6efd;'
+            + 'left:' + (r.left + win.scrollX) + 'px;top:' + (r.top + win.scrollY) + 'px;width:' + r.width + 'px;height:' + r.height + 'px;';
+        d.documentElement.appendChild(f);
+        return { el: f, top: r.top, bottom: r.bottom };
+    }
+
+    function unmark(d, kind) {
+        var all = d.querySelectorAll(kind ? '[data-sd-mirror-mark="' + kind + '"]' : '[data-sd-mirror-mark]');
+        for (var i = 0; i < all.length; i++) all[i].parentNode.removeChild(all[i]);
+    }
+
+    function hover(m, w) {
+        var d = m.frame.contentDocument;
+        if (!d || !d.documentElement) return;
+        unmark(d, 'hover');
+        if (w && !S.due(plan)) frameOver(m, d, w, 'hover');
+    }
+
+    var markFrame = 0;
+    // The ids last framed, so a mirror scrolls only when the choice moved.
+    var markKey = '';
+
+    function markSoon() {
+        if (markFrame) return;
+        markFrame = requestAnimationFrame(function () { markFrame = 0; marks(); });
+    }
+
+    // Frames the canvas's chosen elements in every mirror; a mirror whose
+    // element is out of view scrolls it a third of the way down when the
+    // choice is a new one. No frame while a redraw waits.
+    function marks() {
+        var src = K.canvasDoc;
+        var chosen = (src && src.body) ? Array.prototype.slice.call(src.querySelectorAll('.sd-selected[data-sd-id]')) : [];
+        var waits = S.due(plan) !== null;
+        var key = chosen.map(function (c) { return (c.getAttribute('data-sw-sid') || '') + ':' + c.getAttribute('data-sd-id'); }).join(',');
+        // A choice made while a redraw waits is followed once it is drawn.
+        var moved = key !== markKey;
+        if (!waits) markKey = key;
+        mirrors.forEach(function (m) {
+            var d = m.frame.contentDocument;
+            if (!d || !d.documentElement || !d._sdMirror) return;
+            unmark(d, 'chosen');
+            if (waits) return;
+            var first = null;
+            chosen.forEach(function (c) {
+                var sid = c.getAttribute('data-sw-sid');
+                var q = '[data-sd-id="' + CSS.escape(c.getAttribute('data-sd-id')) + '"]' + (sid ? '[data-sw-sid="' + CSS.escape(sid) + '"]' : ':not([data-sw-sid])');
+                var w = d.querySelector(q);
+                var f = w ? frameOver(m, d, w, 'chosen') : null;
+                if (f && !first) first = f;
+            });
+            if (!first || !moved) return;
+            var win = d.defaultView;
+            var y = S.follow(first.top, first.bottom, win.innerHeight, win.scrollY);
+            if (y !== null) win.scrollTo(0, y);
+        });
     }
 
     // ── Size ─────────────────────────────────────────────────────────────
@@ -248,6 +364,8 @@ StyleDesigner.definePart('mirror', function (K) {
         bind();
         var src = K.canvasDoc;
         if (src && src.body) fill(m, src, strip(src.body.cloneNode(true)));
+        markKey = '';
+        marks();
         return m.id;
     }
 
@@ -257,6 +375,7 @@ StyleDesigner.definePart('mirror', function (K) {
         if (!m) return false;
         m.width = Math.max(1, parseInt(w, 10) || m.width);
         size(m);
+        markSoon();
         return true;
     }
 
@@ -277,6 +396,7 @@ StyleDesigner.definePart('mirror', function (K) {
             unbind();
             if (timer) { clearTimeout(timer); timer = null; }
             plan = S.initial();
+            markKey = '';
         }
     }
 
@@ -288,7 +408,264 @@ StyleDesigner.definePart('mirror', function (K) {
         note('change');
     }
 
+    // ── Side by side ─────────────────────────────────────────────────────
+    // The bar's icon and name of each width the list offers.
+    var SIZE_LOOK = {
+        375: { icon: 'bi-phone', name: _sdT('Mobile (XS)') },
+        576: { icon: 'bi-phone-landscape', name: _sdT('Small (SM)') },
+        768: { icon: 'bi-tablet', name: _sdT('Tablet (MD)') },
+        992: { icon: 'bi-laptop', name: _sdT('Laptop (LG)') },
+        1200: { icon: 'bi-display', name: _sdT('Desktop (XL)') }
+    };
+    var TIP = 'side-by-side';
+
+    // The row while it is shown: { cfg, el, area, cols: [{ id, w, col,
+    // head, btn, host }], ro, menu }.
+    var row = null;
+
+    function el(tag, cls, text) {
+        var e = document.createElement(tag);
+        if (cls) e.className = cls;
+        if (text !== undefined) e.textContent = text;
+        return e;
+    }
+
+    function icon(name) {
+        var i = el('span', 'bi ' + name);
+        i.setAttribute('aria-hidden', 'true');
+        return i;
+    }
+
+    // The strip of mirrors sits at the column's right edge, as high as the
+    // canvas area with 12 px above and below; the area keeps the rest
+    // (style_designer.css, .sd-side-on), so Fit and the canvas's own
+    // measures read the canvas alone.
+    function place() {
+        if (!row || !row.area) return;
+        var a = row.area, col = row.cfg.column, st = row.el.style;
+        var parent = row.el.offsetParent;
+        var right = parent ? parent.clientWidth - (col.offsetLeft + col.offsetWidth) : 0;
+        var set = function (k, v) { if (st[k] !== v) st[k] = v; };
+        set('top', Math.max(0, a.offsetTop - 12) + 'px');
+        set('height', (a.offsetHeight + 24) + 'px');
+        set('right', Math.max(0, right) + 'px');
+        resize();
+    }
+
+    function head(c, index) {
+        var h = c.head;
+        h.textContent = '';
+        var look = SIZE_LOOK[c.w] || { icon: 'bi-aspect-ratio', name: '' };
+        var label = _sdT('{var:1} px', c.w);
+        if (row.cfg.email) {
+            // An e-mail design's one mirror has no list.
+            var name = el('span', 'sd-side-w');
+            name.appendChild(icon(look.icon));
+            name.appendChild(el('span', '', label));
+            h.appendChild(name);
+            c.btn = null;
+            return;
+        }
+        var btn = el('button', 'sd-side-w');
+        btn.type = 'button';
+        btn.setAttribute('aria-haspopup', 'menu');
+        btn.setAttribute('aria-expanded', 'false');
+        btn.setAttribute('title', look.name);
+        btn.appendChild(icon(look.icon));
+        btn.appendChild(el('span', '', label));
+        btn.appendChild(icon('bi-chevron-down sd-side-caret'));
+        btn.addEventListener('click', function () { list(index); });
+        h.appendChild(btn);
+        c.btn = btn;
+        var swap = el('button', 'sd-side-swap');
+        swap.type = 'button';
+        swap.setAttribute('title', _sdT('Edit at this size'));
+        swap.setAttribute('aria-label', _sdT('Edit at this size'));
+        swap.appendChild(icon('bi-arrow-left-right'));
+        swap.addEventListener('click', function () {
+            listClose(false);
+            var canvasW = row.cfg.canvasWidth ? row.cfg.canvasWidth() : 0;
+            if (row.cfg.swap) row.cfg.swap(S.swap(row.cfg.widths, index, canvasW));
+        });
+        h.appendChild(swap);
+    }
+
+    function build(cfg) {
+        var strip = el('div', 'sd-side');
+        strip.setAttribute('role', 'group');
+        strip.setAttribute('aria-label', _sdT('Side by side'));
+        cfg.column.appendChild(strip);
+        row = { cfg: cfg, el: strip, area: cfg.column.querySelector('.sd-iframe-area'), cols: [], ro: null, menu: null };
+        if (window.ResizeObserver && row.area) {
+            row.ro = new ResizeObserver(place);
+            row.ro.observe(row.area);
+        }
+        tip(cfg);
+    }
+
+    // Lays the row out as `cfg` says: the area's room, a box per width.
+    function apply(cfg) {
+        row.cfg = cfg;
+        var column = cfg.column;
+        column.classList.add('sd-side-on');
+        column.style.setProperty('--sd-side-w', cfg.layout.side + 'px');
+        cfg.widths.forEach(function (w, i) {
+            var c = row.cols[i];
+            if (!c) {
+                c = { id: null, w: w, col: el('div', 'sd-side-col'), head: el('div', 'sd-side-head'), host: el('div', 'sd-side-box') };
+                c.col.appendChild(c.head);
+                c.col.appendChild(c.host);
+                row.el.appendChild(c.col);
+                row.cols.push(c);
+            }
+            c.col.style.width = cfg.layout.boxes[i] + 'px';
+            c.w = w;
+            head(c, i);
+            if (c.id === null) c.id = open(c.host, w);
+            else width(c.id, w);
+        });
+        row.cols.splice(cfg.widths.length).forEach(function (c) {
+            if (c.id !== null) close(c.id);
+            if (c.col.parentNode) c.col.parentNode.removeChild(c.col);
+        });
+        place();
+    }
+
+    function side(cfg) {
+        if (row && (!cfg || row.cfg.column !== cfg.column || !row.el.isConnected)) sideClose();
+        if (!cfg || !cfg.column) return;
+        if (!row) build(cfg);
+        apply(cfg);
+    }
+
+    function sideClose() {
+        if (!row) return;
+        listClose(false);
+        row.cols.forEach(function (c) { if (c.id !== null) close(c.id); });
+        if (row.ro) row.ro.disconnect();
+        if (row.el.parentNode) row.el.parentNode.removeChild(row.el);
+        row.cfg.column.classList.remove('sd-side-on');
+        row.cfg.column.style.removeProperty('--sd-side-w');
+        if (row.tip && row.tip.parentNode) row.tip.parentNode.removeChild(row.tip);
+        row = null;
+    }
+
+    // ── A head's list of sizes ───────────────────────────────────────────
+    // A menu under the head's width: the bar's five widths, the one shown
+    // ticked, those the canvas or the other mirror show dimmed with where
+    // they are. Arrows move, Enter chooses, Escape closes.
+    function list(index) {
+        if (row.menu && row.menu.index === index) { listClose(true); return; }
+        listClose(false);
+        var c = row.cols[index];
+        if (!c || !c.btn) return;
+        var menu = el('div', 'sd-vb-menu sd-side-menu');
+        menu.setAttribute('role', 'menu');
+        menu.setAttribute('aria-label', _sdT('Screen size'));
+        var canvasW = row.cfg.canvasWidth ? row.cfg.canvasWidth() : 0;
+        S.sizes(row.cfg.widths, index, canvasW).forEach(function (r) {
+            var look = SIZE_LOOK[r.w];
+            var b = el('button', 'sd-vb-row');
+            b.type = 'button';
+            b.setAttribute('role', 'menuitemradio');
+            b.setAttribute('aria-checked', r.on ? 'true' : 'false');
+            b.appendChild(icon(look.icon));
+            b.appendChild(el('span', 'sd-vb-row-lbl', look.name));
+            var note = r.where === 'canvas' ? _sdT('on the canvas') : (r.where === 'other' ? _sdT('in the other mirror') : String(r.w));
+            b.appendChild(el('span', 'sd-side-note', note));
+            b.appendChild(icon(r.on ? 'bi-check2 sd-side-tick' : 'sd-side-tick'));
+            if (r.where) {
+                b.setAttribute('aria-disabled', 'true');
+                b.classList.add('sd-vb-row-off');
+            }
+            b.addEventListener('click', function () {
+                if (r.where) return;
+                listClose(true);
+                if (!r.on) row.cfg.choose(S.pick(row.cfg.widths, index, r.w, canvasW));
+            });
+            menu.appendChild(b);
+        });
+        menu.addEventListener('keydown', listKey);
+        document.body.appendChild(menu);
+        var at = c.btn.getBoundingClientRect();
+        menu.style.top = Math.round(at.bottom + 4) + 'px';
+        menu.style.left = Math.round(Math.max(8, Math.min(at.left, window.innerWidth - menu.offsetWidth - 8))) + 'px';
+        c.btn.setAttribute('aria-expanded', 'true');
+        row.menu = { el: menu, index: index, btn: c.btn };
+        document.addEventListener('mousedown', listOutside, true);
+        var first = menu.querySelector('[aria-checked="true"]') || menu.querySelector('button');
+        if (first) first.focus();
+    }
+
+    function listKey(e) {
+        var rows = Array.prototype.slice.call(row.menu.el.querySelectorAll('button'));
+        var at = rows.indexOf(document.activeElement);
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            e.stopPropagation();
+            listClose(true);
+        } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            var n = rows.length;
+            rows[((at === -1 ? 0 : at) + (e.key === 'ArrowDown' ? 1 : n - 1)) % n].focus();
+        } else if (e.key === 'Tab') {
+            listClose(false);
+        }
+    }
+
+    function listOutside(e) {
+        if (!row || !row.menu) return;
+        if (row.menu.el.contains(e.target) || row.menu.btn.contains(e.target)) return;
+        listClose(false);
+    }
+
+    function listClose(focusBack) {
+        if (!row || !row.menu) return;
+        var m = row.menu;
+        row.menu = null;
+        document.removeEventListener('mousedown', listOutside, true);
+        if (m.el.parentNode) m.el.parentNode.removeChild(m.el);
+        m.btn.setAttribute('aria-expanded', 'false');
+        if (focusBack && m.btn.isConnected) m.btn.focus();
+    }
+
+    // ── The first-use line ───────────────────────────────────────────────
+    // Once per person, under the canvas bar; "Got it" ends it for good
+    // (the tour's tip state, PGDesignerTour, which comes with the part
+    // 'bands': cfg.tour() runs it when it has not run yet).
+    function tip(cfg) {
+        var T = window.PGDesignerTour;
+        if (!row) return;
+        if (!T) {
+            if (cfg.tour && !tip.asked) {
+                tip.asked = true;
+                cfg.tour().then(function () { if (row && !row.tip) tip(row.cfg); }, function () {});
+            }
+            return;
+        }
+        var key = T.key(cfg.userId), state = null;
+        if (!key) return;
+        try { state = T.read(window.localStorage.getItem(key)); } catch (e) { return; }
+        if (!T.tipDue(state, TIP)) return;
+        var bar = cfg.column.querySelector('#sd-bp-bar');
+        if (!bar) return;
+        var line = el('div', 'sd-cgb-first');
+        line.appendChild(icon('bi-info-circle'));
+        line.appendChild(el('span', '', _sdT('Side by side shows this page on a phone and a tablet while you edit. Click anything there to select it here.')));
+        var got = el('button', 'sd-cgb-got', _sdT('Got it'));
+        got.type = 'button';
+        got.addEventListener('click', function () {
+            try { window.localStorage.setItem(key, T.write(T.tipSeen(T.read(window.localStorage.getItem(key)), TIP))); } catch (e) { /* shown again next time */ }
+            if (line.parentNode) line.parentNode.removeChild(line);
+            if (row) row.tip = null;
+        });
+        line.appendChild(got);
+        bar.insertAdjacentElement('afterend', line);
+        row.tip = line;
+    }
+
     return {
+        side: side,
         open: open,
         width: width,
         resize: resize,

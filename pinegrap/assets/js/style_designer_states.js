@@ -6,8 +6,11 @@
  * background, Border and corner and Shadow and effect show and write the
  * state's rule on the element's custom style class in User Styles
  * (window.PGOptionStates); Text, Spacing and Size and display stay closed
- * and dimmed, the same in every state. The canvas shows the state on the
- * selected element. On Normal it rings the section heads a state changes.
+ * and dimmed, the same in every state; Transition stays open, one value
+ * for every state; Transform and the effects show the state's own
+ * values. The canvas shows the state on the selected element, and while
+ * a Transform row is used the place the element keeps. On Normal it rings
+ * the section heads a state changes.
  * Not needed to open a page: the core runs this file the first time a
  * state is chosen or an element holding a state's rule is shown
  * (_sdPartLoad(), pg_designer_parts()) and hands it the panel through a
@@ -42,6 +45,7 @@ StyleDesigner.definePart('states', function (K) {
     }
 
     function hintSeen() {
+        if (K._sdTipsOff()) return true;
         try { return localStorage.getItem(HINT_KEY) === '1'; } catch (e) { return true; }
     }
 
@@ -156,6 +160,17 @@ StyleDesigner.definePart('states', function (K) {
         var map = cls ? S.read(host.text(), cls, host.state) : {};
         if (!pane) return;
         host.panel.classList.add('sd-state-on');
+        // Transform and the effects: the state's own values, Normal's in
+        // grey until set.
+        var tfBox = pane.querySelector('[data-sd-tf-box]');
+        if (tfBox && cls) {
+            var text = host.text();
+            tfBox.insertAdjacentHTML('afterend', host.tfHtml(host.node, S.tfRead(text, cls, host.state), S.tfRead(text, cls, ''),
+                S.fxRead(text, cls, host.state), S.fxRead(text, cls, '')));
+            tfBox.parentNode.removeChild(tfBox);
+            tfBox = pane.querySelector('[data-sd-tf-box]');
+            if (tfBox) host.tfMark(tfBox);
+        }
         var row = pane.querySelector('[data-sd-state-row]');
         if (row) row.insertAdjacentHTML('afterend', lineHtml(host, S.count(map)));
         pane.querySelectorAll('[data-sd-key]').forEach(function (card) {
@@ -166,9 +181,22 @@ StyleDesigner.definePart('states', function (K) {
             // The corners as five rows (the corner box writes classes).
             var rd = card.querySelector('.sd-rd-rows');
             if (rd) rd.hidden = false;
-            card.querySelectorAll('.sd-bg-img-grp, #sd-bcp-row').forEach(dimRow);
+            // The background layers are the same in every state.
+            card.querySelectorAll('[data-sd-bgl-box]').forEach(function (box) {
+                dimRow(box);
+                var note = box.querySelector('.sd-bgl-same');
+                if (note) note.hidden = false;
+            });
             card.querySelectorAll('.sd-prop-row').forEach(function (r) {
                 if (r.closest('.sd-state-off')) return;
+                // Transition is one value for every state: open, its changed
+                // dot on Normal only (the sub-head's mark says so, CSS).
+                if (r.closest('[data-sd-trans-box]')) { unmark(r); return; }
+                // Transform rows are drawn for the state above.
+                if (r.closest('[data-sd-tf-box]')) {
+                    if (r.querySelector('.sd-prop-modified')) set++;
+                    return;
+                }
                 var c = ctrlOf(r);
                 if (!writable(c)) { dimRow(r); return; }
                 var lbl = r.querySelector('.sd-prop-label');
@@ -224,6 +252,71 @@ StyleDesigner.definePart('states', function (K) {
     function leave(doc) {
         var el = doc ? doc.getElementById(VIEW_ID) : null;
         if (el && el.parentNode) el.parentNode.removeChild(el);
+        tfHide(doc);
+    }
+
+    // ── Transform on the canvas ──
+    // While a Transform row is dragged or holds the focus: a dashed
+    // outline of the place the element keeps in the layout (its box with
+    // no transform of its own), named, and the row's value as a tip. A
+    // dragged slider shows its value on the element at once (inline, with
+    // !important over the state's view); the next drawing drops it.
+    var TF_PROP = { s: 'scale', r: 'rotate' };
+    var GHOST_ID = 'sd-tf-ghost';
+    var tfDragged = null;
+
+    function tfTip(host, key, v) {
+        var dash = function (x) { return String(x).replace(/^-/, '\u2212'); };
+        var t = S.tfRead(host.text(), host.cls() || '', host.state || '');
+        var get = function (k, d) { return k === key && v !== '' && v !== undefined ? v : (t[k] !== '' ? t[k] : d); };
+        if (key === 's') return _sdT('Scale') + ' ' + get('s', 1);
+        if (key === 'r') return _sdT('Rotate') + ' ' + dash(get('r', 0)) + '\u00b0';
+        if (key === 'tx' || key === 'ty') return _sdT('Move') + ' ' + dash(String(get('tx', '0px')).replace(/px$/, '')) + ' \u00b7 ' + dash(String(get('ty', '0px')).replace(/px$/, ''));
+        if (key === 'skx' || key === 'sky') return _sdT('Skew') + ' ' + dash(get('skx', 0)) + '\u00b0 \u00b7 ' + dash(get('sky', 0)) + '\u00b0';
+        return _sdT('Origin') + ' ' + host.tfOrigins()[Number(get('o', 4))];
+    }
+
+    function tfShow(host, key, v) {
+        var doc = host.canvasDoc, el = host.canvasEl ? host.canvasEl() : null;
+        if (!doc || !doc.body || !el || !el.getBoundingClientRect) return;
+        var win = doc.defaultView || window;
+        if (TF_PROP[key] && v !== '' && v !== undefined && isFinite(Number(v))) {
+            el.style.setProperty(TF_PROP[key], Number(v) + (key === 'r' ? 'deg' : ''), 'important');
+            tfDragged = { el: el, prop: TF_PROP[key] };
+        }
+        // The box with no transform: read with the element's own turned off.
+        var keep = ['transform', 'translate', 'rotate', 'scale'].map(function (p) {
+            var was = [p, el.style.getPropertyValue(p), el.style.getPropertyPriority(p)];
+            el.style.setProperty(p, 'none', 'important');
+            return was;
+        });
+        var r = el.getBoundingClientRect();
+        keep.forEach(function (w) { if (w[1]) el.style.setProperty(w[0], w[1], w[2]); else el.style.removeProperty(w[0]); });
+        var g = doc.getElementById(GHOST_ID);
+        if (!g) {
+            g = doc.createElement('div');
+            g.id = GHOST_ID;
+            g.setAttribute('aria-hidden', 'true');
+            g.style.cssText = 'position:absolute;z-index:2147483000;pointer-events:none;border:1.5px dashed rgba(37,99,235,.85);border-radius:4px;box-sizing:border-box;';
+            g.innerHTML = '<span style="position:absolute;left:0;top:100%;margin-top:4px;padding:1px 6px;font:600 10px/16px system-ui,sans-serif;color:#1e3a8a;background:rgba(219,234,254,.95);border-radius:4px;white-space:nowrap"></span>' +
+                '<span style="position:absolute;right:0;bottom:100%;margin-bottom:6px;padding:2px 7px;font:600 11px/16px system-ui,sans-serif;color:#fff;background:#111827;border-radius:5px;white-space:nowrap"></span>';
+            doc.body.appendChild(g);
+        }
+        g.style.left = (r.left + win.pageXOffset) + 'px';
+        g.style.top = (r.top + win.pageYOffset) + 'px';
+        g.style.width = r.width + 'px';
+        g.style.height = r.height + 'px';
+        g.firstChild.textContent = _sdT('The place it keeps');
+        g.lastChild.textContent = tfTip(host, key, v);
+    }
+
+    function tfHide(doc) {
+        var g = doc ? doc.getElementById(GHOST_ID) : null;
+        if (g && g.parentNode) g.parentNode.removeChild(g);
+        if (tfDragged) {
+            tfDragged.el.style.removeProperty(tfDragged.prop);
+            tfDragged = null;
+        }
     }
 
     // Once per panel: under a state a change of a writable row writes the
@@ -307,5 +400,5 @@ StyleDesigner.definePart('states', function (K) {
         return n;
     }
 
-    return { after: after, leave: leave, resetRow: resetRow, review: review, clearAll: clearAll };
+    return { after: after, leave: leave, resetRow: resetRow, review: review, clearAll: clearAll, tfShow: tfShow, tfHide: tfHide };
 });

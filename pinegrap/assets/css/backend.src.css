@@ -13274,72 +13274,268 @@ body.workspace_channels .software-content:not(:has(.ws-home)) > #footer {
 .ws-info-panel > .ws-panel-body[hidden] {
   display: none;
 }
-/* The Activity tab: the summary line and the project, a row each agent,
-   label and value lines, linked lines with their age at the right, and the
-   bars of context and plan usage. */
-.ws-act-summary {
-  margin-top: var(--ws-space-3);
-}
+/* The Activity pane under the agents block: the project, label and value
+   lines, linked lines with their age at the right, and the bars of context
+   and plan usage. */
 .ws-act-project {
-  margin-top: .15rem;
+  margin-top: var(--ws-space-3);
   overflow-wrap: anywhere;
 }
 .ws-act-count {
   margin-inline-start: .4rem;
   vertical-align: baseline;
 }
-.ws-act-agent {
+/* Channel info's agents block (workspace_channel_activity.js), the same
+   under both tabs: a head with the count, the states that ask for a look
+   and the manager's icon button; a two-line row each agent, 8 above and
+   below, 10 at the sides, reaching 10 past the text column, corner 12, 2
+   between rows and no line; pointed at it takes the hover ground, opened
+   the inset card ground with a hairline and its facts under it. */
+.ws-agents {
+  margin-top: 1.15rem;
+}
+.ws-agents-head {
   display: flex;
-  align-items: flex-start;
-  gap: .65rem;
-  padding: .45rem 0;
-}
-.ws-act-agent + .ws-act-agent {
-  border-top: 1px solid var(--pg-field-line);
-}
-.ws-act-agent.is-stale .ws-act-report,
-.ws-act-agent.is-stale .ws-act-context {
-  opacity: .5;
-}
-.ws-act-face {
-  position: relative;
-  flex: none;
-}
-.ws-act-face > .avatar {
-  --bs-avatar-size: 1.75rem;
-}
-.ws-act-dot {
-  position: absolute;
-  right: -2px;
-  bottom: -2px;
-}
-.ws-act-agent-main {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-.ws-act-agent-top {
-  display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: .25rem .4rem;
-  font-size: var(--pg-text-2);
+  gap: 7px;
+  min-height: 24px;
 }
-.ws-act-agent-name {
+.ws-agents-head > .ws-panel-kicker {
+  margin: 0;
+  white-space: nowrap;
+}
+.ws-agents-count {
+  font-size: var(--pg-text-count);
+  font-weight: var(--pg-weight-medium);
+  color: var(--pg-fg-3);
+  font-variant-numeric: tabular-nums;
+}
+.ws-agents-sum {
   min-width: 0;
+  margin-inline-start: auto;
   overflow: hidden;
-  font-weight: var(--pg-weight-strong);
+  font-size: var(--pg-text-meta);
+  color: var(--pg-fg-3);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.ws-act-state {
-  margin-inline-start: auto;
+.ws-agents-manage {
+  flex: none;
+  margin: -2px -6px -2px 4px;
 }
-.ws-act-agent-line {
-  margin-top: .15rem;
-  overflow-wrap: anywhere;
+.ws-agents-rows {
+  display: grid;
+  gap: 2px;
+  margin: 6px -10px 0;
 }
-.ws-act-context {
-  margin-top: .25rem;
+.ws-agents-row {
+  padding: 8px 10px;
+  border-radius: 12px;
+}
+.ws-agents-row:hover {
+  background: var(--pg-hover);
+}
+.ws-agents-row.is-open {
+  background: var(--pg-surface-inset);
+  box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent);
+}
+.ws-agents-row:has(> .ws-agents-rowhead:focus-visible) {
+  box-shadow: 0 0 0 2px var(--pg-accent);
+}
+.ws-agents-row.is-paused {
+  opacity: .5;
+}
+.ws-agents-rowhead {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  column-gap: 10px;
+  align-items: center;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: start;
+}
+.ws-agents-rowhead:focus-visible {
+  outline: 0;
+}
+.ws-agents-face {
+  position: relative;
+  display: inline-flex;
+}
+.ws-agents-face > .avatar {
+  --bs-avatar-size: 1.75rem;
+}
+.ws-agents-face > .ws-agent-dot {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+}
+.ws-agents-text {
+  display: block;
+  min-width: 0;
+}
+.ws-agents-l1 {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  white-space: nowrap;
+}
+.ws-agents-name {
+  flex: none;
+  max-width: 100%;
+  overflow: hidden;
+  font-size: var(--pg-text-base);
+  font-weight: var(--pg-weight-strong);
+  line-height: 18px;
+  text-overflow: ellipsis;
+}
+.ws-agents-role {
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--pg-text-meta);
+  color: var(--pg-fg-3);
+  text-overflow: ellipsis;
+}
+.ws-agents-l2 {
+  display: block;
+  margin-top: 1px;
+  overflow: hidden;
+  font-size: var(--pg-text-meta);
+  line-height: 17px;
+  color: var(--pg-fg-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-agents-word {
+  font-style: normal;
+  font-weight: var(--pg-weight-strong);
+}
+.ws-agents-word.is-blue {
+  color: var(--pg-tone-blue);
+}
+.ws-agents-word.is-amber,
+.ws-agents-warn {
+  color: var(--pg-tone-amber);
+}
+.ws-agents-end {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ws-agents-ring {
+  display: block;
+  flex: none;
+}
+.ws-agents-ring circle {
+  fill: none;
+  stroke-width: 2.5;
+}
+.ws-agents-ring-track {
+  stroke: color-mix(in srgb, var(--pg-fg-body) 13%, transparent);
+}
+.ws-agents-ring-arc {
+  stroke: var(--pg-fg-2);
+  stroke-linecap: round;
+}
+.ws-agents-ring.is-high .ws-agents-ring-arc {
+  stroke: var(--pg-tone-amber);
+}
+/* The chevron only while the row is pointed at, holds the focus or is open. */
+.ws-agents-chev {
+  font-size: .72em;
+  color: var(--pg-fg-3);
+  visibility: hidden;
+}
+.ws-agents-row:hover .ws-agents-chev,
+.ws-agents-row.is-open .ws-agents-chev,
+.ws-agents-rowhead:focus-visible .ws-agents-chev {
+  visibility: visible;
+}
+/* An opened row's facts, 10 under the second line in the text column:
+   labels 76 wide in the third ink, values in the first, 7 between facts. */
+.ws-agents-facts {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 7px 0;
+  margin: 10px 0 2px 38px;
+  font-size: var(--pg-text-meta);
+  line-height: 17px;
+}
+.ws-agents-facts[hidden] {
+  display: none;
+}
+.ws-agents-facts > dt {
+  font-weight: var(--pg-weight-regular);
+  color: var(--pg-fg-3);
+}
+.ws-agents-facts > dd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-agents-facts > .ws-agents-fact-doing {
+  display: block;
+  white-space: normal;
+}
+.ws-agents-facts > .ws-agents-fact-asked {
+  display: block;
+}
+.ws-agents-cut {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ws-agents-facts .ws-act-link {
+  text-decoration: underline;
+  text-decoration-color: var(--pg-fg-3);
+  text-underline-offset: 3px;
+}
+.ws-agents-facts .ws-act-bar {
+  flex: 0 1 52px;
+  min-width: 20px;
+  height: 4px;
+  margin-top: 0;
+}
+.ws-agents-facts .ws-act-bar > span {
+  background: var(--pg-fg-2);
+}
+.ws-agents-facts .ws-act-bar.is-high > span {
+  background: var(--pg-tone-amber);
+}
+.ws-agents-facts .ws-act-bar.is-high + span {
+  color: var(--pg-tone-amber);
+}
+.ws-agents-more {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 7px 10px 7px 48px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  font-size: var(--pg-text-meta);
+  color: var(--pg-fg-2);
+}
+.ws-agents-more:hover {
+  background: var(--pg-hover);
+}
+.ws-agents-more > .bi {
+  font-size: .84em;
+  color: var(--pg-fg-3);
+}
+/* On a phone a row is 52 high, for the finger. */
+@media (max-width: 767.98px) {
+  .ws-agents-rowhead {
+    min-height: 36px;
+  }
 }
 .ws-act-bar {
   height: 6px;
@@ -25907,8 +26103,118 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
         flex: 1 1 0;
     }
     .ws-cb-bar > .ws-cb-chip,
-    .ws-cb-bar > .ws-bar-filter {
+    .ws-cb-bar > .ws-bar-filter,
+    .ws-cb-bar > .ws-cb-auto {
         order: 4;
+    }
+}
+/* "Automations" on the board's bar: the automations' violet bolt and the
+   count of the rules that are on in a pill. */
+.ws-cb-auto > .bi {
+    color: color-mix(in srgb, var(--pg-tone-violet) 70%, var(--pg-fg-emphasis));
+}
+.ws-cb-auto-count {
+    height: 18px;
+    padding: 0 7px;
+    font-size: .6875rem;
+}
+/* A status column's rule line (a rule that is on and tied to the column):
+   one quiet line under the head, in the automations' violet tone. */
+.ws-cb-rule {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin: 0 2px 10px;
+    padding: 6px 9px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--pg-tone-violet) var(--pg-tint-to), transparent);
+    color: color-mix(in srgb, var(--pg-tone-violet) 70%, var(--pg-fg-emphasis));
+    font-size: .75rem;
+    font-weight: var(--pg-weight-medium);
+}
+.ws-cb-rule > span {
+    min-width: 0;
+}
+/* The Automations drawer: the rules as Switch rows, a rule that is on
+   with the primary line around it; a row asking for its answer opens
+   under its words; the dashed "Build your own flow"; the last runs. */
+.ws-cb-rule-row.is-on,
+.ws-cb-rule-row.is-asking {
+    box-shadow: inset 0 0 0 1px var(--pg-primary);
+}
+.ws-cb-rule-row {
+    flex-wrap: wrap;
+}
+.ws-cb-rule-row .ws-cb-rule-when {
+    margin-top: 0;
+    font-size: var(--pg-text-meta);
+}
+.ws-cb-rule-row .ws-cb-rule-ran {
+    color: var(--pg-fg-3);
+    font-size: var(--pg-text-meta);
+}
+.ws-cb-ask {
+    display: flex;
+    flex: 1 0 100%;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding-inline-start: 57px;
+}
+.ws-cb-ask > .pg-field-label {
+    margin-inline-end: auto;
+}
+.ws-cb-ask > .pg-input {
+    flex: 1 1 10rem;
+}
+.ws-cb-own {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    width: 100%;
+    padding: 12px 16px;
+    border: 1.5px dashed var(--pg-border-color);
+    border-radius: var(--pg-radius-card);
+    background: none;
+    color: inherit;
+    text-align: start;
+}
+.ws-cb-own:hover {
+    background: var(--pg-hover);
+}
+.ws-cb-own:focus-visible {
+    outline: 2px solid var(--pg-accent);
+    outline-offset: 2px;
+}
+.ws-cb-own-go {
+    color: var(--pg-fg-3);
+}
+.ws-cb-runs {
+    margin: 0;
+    padding: 0;
+    color: var(--pg-fg-2);
+    font-size: var(--pg-text-meta);
+    list-style: none;
+}
+.ws-cb-run {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 3px 0;
+}
+.ws-cb-run > .bi {
+    flex: none;
+    color: var(--pg-fg-3);
+}
+.ws-cb-run-done > .bi {
+    color: var(--pg-tone-teal);
+}
+.ws-cb-run-failed > .bi {
+    color: var(--pg-tone-rose);
+}
+@media (max-width: 575.98px) {
+    .ws-cb-ask {
+        padding-inline-start: 0;
     }
 }
 /* The board's choices as chips (toolbar() in workspace_board_channel.js):
@@ -25981,18 +26287,16 @@ html[data-bs-theme="dark"] .ws-cb-chip.active {
     border-color: rgba(var(--ws-accent-rgb), .55);
     background: rgba(var(--ws-accent-rgb), .07);
 }
-/* On the channel's Board tab a column is a card like the panes' others; the
-   workflow table's board (.ws-wt-board) keeps its own columns. */
+/* On the channel's Board tab a column is a gray surface the cards stand on;
+   a card over it shows the column's drop place (.ws-cb-slot). The workflow
+   table's board (.ws-wt-board) keeps its own columns. */
 .ws-pane-board .ws-cb-col {
     flex: 1 1 17rem;
     max-width: 34rem;
-    border: 1px solid var(--pg-border-color);
-    border-radius: 1rem;
-    background: var(--pg-card-bg);
-}
-.ws-pane-board .ws-cb-col.ws-cb-drop {
-    border-color: rgba(var(--ws-accent-rgb), .55);
-    background: rgba(var(--ws-accent-rgb), .07);
+    padding: 10px;
+    border: 0;
+    border-radius: 16px;
+    background: var(--pg-bg-1);
 }
 .ws-cb-col-head {
     display: flex;
@@ -26085,6 +26389,8 @@ html[data-bs-theme="dark"] .ws-cb-chip.active {
 }
 .ws-cb-closed .ws-cb-title {
     color: var(--pg-fg-2);
+}
+.ws-cb-s-cancelled .ws-cb-title {
     text-decoration: line-through;
 }
 .ws-cb-card-top {
@@ -26098,12 +26404,54 @@ html[data-bs-theme="dark"] .ws-cb-chip.active {
 .ws-cb-number {
     font-weight: 600;
 }
+.ws-cb-card-end {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    margin-inline-start: auto;
+}
+/* Urgent (rose) and high (amber) as a small chip with a flag. */
 .ws-cb-priority {
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+    padding: 1px 8px;
+    border-radius: 999px;
+    font-weight: var(--pg-weight-strong);
+}
+.ws-cb-priority-urgent {
     background: var(--pg-danger-bg-subtle);
     color: var(--pg-danger-fg-emphasis);
 }
-.ws-cb-status {
-    margin-left: auto;
+.ws-cb-priority-high {
+    background: var(--pg-warning-bg-subtle);
+    color: var(--pg-warning-fg-emphasis);
+}
+.ws-cb-done-mark {
+    color: var(--pg-success-fg-emphasis);
+}
+/* The due date as a chip: gray for a later day, amber for today and
+   tomorrow, rose when late, green on a closed task. */
+.ws-cb-due {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    padding: 2px 8px;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--pg-tone-gray) 12%, transparent);
+    font-weight: var(--pg-weight-medium);
+}
+.ws-cb-due-soon {
+    background: var(--pg-warning-bg-subtle);
+    color: var(--pg-warning-fg-emphasis);
+}
+.ws-cb-due-late {
+    background: var(--pg-danger-bg-subtle);
+    color: var(--pg-danger-fg-emphasis);
+}
+.ws-cb-due-done {
+    background: var(--pg-success-bg-subtle);
+    color: var(--pg-success-fg-emphasis);
 }
 .ws-cb-title {
     font-weight: 500;
@@ -26169,9 +26517,7 @@ html[data-bs-theme="dark"] .ws-cb-chip.active {
     box-shadow: var(--ws-shadow-soft);
 }
 .ws-pane-board .ws-cb-card::before {
-    inset-inline-start: 0;
-    top: .55rem;
-    bottom: .55rem;
+    content: none;
 }
 .ws-pane-board .ws-cb-card:hover {
     border-color: rgba(var(--ws-accent-rgb), .45);
@@ -26193,6 +26539,173 @@ html[data-bs-theme="dark"] .ws-cb-chip.active {
     }
     .ws-cb-col.ws-cb-col-current {
         display: flex;
+    }
+}
+/* The channel's Board tab: the four figures above both views (buttons that
+   filter, the chosen one in the primary's subtle fill), the columns on the
+   gray surface with the status's dot and the count in a pill, the cards,
+   and the dashed drop place of the column a card is over. At phone width
+   the figures are one row and the columns scroll sideways. */
+.ws-cb-figures {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: .75rem;
+}
+.ws-cb-figure {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    padding: 12px 14px;
+    border: 1px solid var(--pg-border-color);
+    border-radius: 14px;
+    background: var(--pg-card-bg);
+    color: inherit;
+    text-align: start;
+}
+.ws-cb-figure:hover {
+    border-color: color-mix(in srgb, var(--pg-primary) 55%, transparent);
+}
+.ws-cb-figure.active {
+    border-color: var(--pg-primary-border-subtle);
+    background: var(--pg-primary-bg-subtle);
+}
+.ws-cb-figure:focus-visible {
+    outline: 2px solid var(--ws-accent);
+    outline-offset: 1px;
+}
+.ws-cb-figure-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+.ws-cb-figure-value {
+    font-size: var(--pg-text-figure-sm);
+    font-weight: var(--pg-weight-title);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.05;
+}
+.ws-cb-figure-label {
+    overflow: hidden;
+    color: var(--pg-fg-2);
+    font-size: var(--pg-text-2);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ws-pane-board .ws-cb-col-head {
+    padding: 4px 6px 10px;
+    font-size: var(--pg-text-base);
+    font-weight: var(--pg-weight-title);
+}
+.ws-cb-dot {
+    flex: none;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--pg-tone-gray);
+}
+.ws-cb-dot-doing {
+    background: var(--pg-tone-blue);
+}
+.ws-cb-dot-waiting {
+    background: var(--pg-tone-amber);
+}
+.ws-cb-dot-done {
+    background: var(--pg-tone-teal);
+}
+.ws-cb-dot-cancelled {
+    background: var(--pg-tone-rose);
+}
+.ws-pane-board .ws-cb-col-title {
+    flex: 0 1 auto;
+}
+.ws-pane-board .ws-cb-col-count {
+    margin-inline-end: auto;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--pg-tone-gray) 16%, transparent);
+    font-variant-numeric: tabular-nums;
+    font-weight: var(--pg-weight-strong);
+}
+.ws-pane-board .ws-cb-list {
+    gap: 9px;
+    padding: 0;
+}
+.ws-pane-board .ws-cb-card {
+    padding: 11px 12px 10px;
+    border-radius: 13px;
+}
+.ws-pane-board .ws-cb-card-top {
+    gap: 7px;
+    margin-bottom: 5px;
+    font-size: var(--pg-text-meta);
+}
+.ws-pane-board .ws-cb-title {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: var(--pg-text-base);
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+}
+.ws-pane-board .ws-cb-meta {
+    gap: .3rem 10px;
+    margin-top: 10px;
+    font-size: var(--pg-text-meta);
+}
+.ws-pane-board .ws-cb-progress-bar {
+    --bs-progress-bar-bg: var(--pg-primary);
+    width: 34px;
+}
+.ws-pane-board .ws-cb-card.ws-cb-lifted {
+    box-shadow: var(--pg-shadow-float);
+    transform: rotate(-2deg);
+}
+.ws-cb-slot {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: .35rem;
+    min-height: 54px;
+    padding: 6px 10px;
+    border: 1.5px dashed var(--pg-primary);
+    border-radius: 13px;
+    background: var(--pg-primary-bg-subtle);
+    color: var(--pg-primary-fg-emphasis);
+    font-size: var(--pg-text-meta);
+    font-weight: var(--pg-weight-medium);
+    text-align: center;
+}
+.ws-cb-col.ws-cb-drop .ws-cb-slot {
+    display: flex;
+}
+.ws-cb-col.ws-cb-drop .ws-cb-empty {
+    display: none;
+}
+.ws-cb-add-foot {
+    align-self: flex-start;
+    margin-top: 6px;
+    color: var(--pg-fg-3);
+}
+@media (max-width: 767.98px) {
+    .ws-pane-board .ws-cb-cols {
+        display: flex;
+    }
+    .ws-pane-board .ws-cb-col,
+    .ws-pane-board .ws-cb-col.ws-cb-col-current {
+        display: flex;
+        flex: 0 0 min(292px, 82vw);
+    }
+}
+@media (max-width: 575.98px) {
+    .ws-cb-figures {
+        display: flex;
+        gap: 10px;
+        overflow-x: auto;
+    }
+    .ws-cb-figure {
+        flex: 0 0 168px;
     }
 }
 /* Workspace: the site's events (includes/workspace/watch.php, assets/js/workspace_events.js) */

@@ -88,6 +88,13 @@
         var at = 0;
         var all = false;
         var a = { brand: '', accent: 'auto', look: '', type: '', room: '' };
+        // Answers given before the questions (the Canva start's colours):
+        // a colour of the form #rrggbb only.
+        if (host.start) {
+            ['brand', 'accent'].forEach(function (k) {
+                if (/^#[0-9a-f]{6}$/i.test(String(host.start[k] || ''))) a[k] = String(host.start[k]).toLowerCase();
+            });
+        }
         var state = {};
         var b = host.btn || {};
 

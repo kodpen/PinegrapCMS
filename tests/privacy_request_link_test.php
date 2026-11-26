@@ -173,3 +173,61 @@ function privacy_request_form_link_test_sensitive_scripts()
 
 	return waf_sensitive_scripts();
 }
+
+// An erasure ends the person's link: the anonymised request no longer serves
+// its file, and the erasure deletes the file with the row's address.
+function test_privacy_request_link_ends_with_erasure()
+{
+	$key = 'test-key';
+	$nonce = str_repeat('ab', 16);
+	$now = 1800000000;
+	$end = $now + 3600;
+	$link = pg_privacy_link_parse(privacy_request_link_test_query(7, $end, $nonce, pg_privacy_link_signature(7, $nonce, $end, $key)));
+
+	pg_assert_true(pg_privacy_link_valid($link, array('kind' => 'information', 'status' => 'answered', 'email' => 'a@example.com'), $key, $now, true), 'the address kept');
+	pg_assert_false(pg_privacy_link_valid($link, array('kind' => 'information', 'status' => 'answered', 'email' => pg_privacy_person_token('a@example.com', $key)), $key, $now, true), 'the person erased');
+
+	pg_assert_true(function_exists('_pg_privacy_erase_apply_privacy_requests'), 'the erasure has its own step for requests');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/privacy.php');
+	$start = strpos($source, 'function _pg_privacy_erase_apply_privacy_requests(');
+	$body = ($start === false) ? '' : substr($source, $start, strpos($source, "\n}\n", $start) - $start);
+	pg_assert_true(strpos($body, 'pg_privacy_link_delete(') !== false, 'it deletes the files');
+	pg_assert_true(strpos($body, 'pg_privacy_link_delete(') < strpos($body, '_pg_privacy_erase_write('), 'before the rows lose what finds them');
+
+	$page = (string) file_get_contents(PG_FUNCTIONS_DIR . '/privacy_download.php');
+	pg_assert_contains('SELECT id, kind, status, email FROM privacy_requests', $page, 'the page reads the address');
+}
+
+// "Send a new link" whose e-mail fails leaves the earlier link working: the
+// old file goes only once the new link has been sent, and a failed send
+// deletes the new file alone.
+function test_privacy_request_link_resend_keeps_old_until_sent()
+{
+	$dir = pg_privacy_link_dir();
+	$made = !is_dir($dir) && @mkdir($dir, 0700, true);
+	$old = pg_privacy_link_file_name(999999901, 1800000000, str_repeat('ab', 16));
+	$new = pg_privacy_link_file_name(999999901, 1800003600, str_repeat('cd', 16));
+
+	@file_put_contents($dir . '/' . $old, '{}');
+	@file_put_contents($dir . '/' . $new, '{}');
+
+	pg_assert_same(1, pg_privacy_link_delete(999999901, $new), 'all but the new file');
+	pg_assert_false(is_file($dir . '/' . $old), 'the old link ends');
+	pg_assert_true(is_file($dir . '/' . $new), 'the new link works');
+	pg_assert_same(1, pg_privacy_link_delete(999999901), 'every file');
+
+	if ($made) {
+		@rmdir($dir);
+	}
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/privacy_request_link.php');
+	$start = strpos($source, 'function pg_privacy_link_prepare(');
+	$prepare = substr($source, $start, strpos($source, "\n}\n", $start) - $start);
+	pg_assert_false(strpos($prepare, 'pg_privacy_link_delete(') !== false, 'preparing deletes no earlier file');
+
+	$start = strpos($source, 'function pg_privacy_link_resend(');
+	$resend = substr($source, $start, strpos($source, "\n}\n", $start) - $start);
+	pg_assert_contains('pg_privacy_link_discard($prepared)', $resend, 'a failed send deletes the new file alone');
+	pg_assert_true(strpos($resend, "pg_privacy_link_delete((int) \$request['id'], \$prepared['name'])") > strpos($resend, 'email('), 'the old file goes after the e-mail');
+}

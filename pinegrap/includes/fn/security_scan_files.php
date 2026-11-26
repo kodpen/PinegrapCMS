@@ -7,6 +7,9 @@
  * (includes/fn/security_scan.php):
  *
  *   - file_php_unknown        a PHP file the release does not carry
+ *   - file_php_retired        such a file at a place an earlier release
+ *                             carried, on the Cleanup tool's list
+ *                             (pg_clean_up_file_list())
  *   - file_upload_executable  a name in the upload folders the server may run
  *                             (.php, .phtml, .phar, a double extension)
  *   - file_picture_php        PHP tags inside a picture in the upload folders
@@ -46,6 +49,7 @@ function pg_security_file_kinds()
 {
     return array(
         'file_php_unknown' => PG_SECURITY_SEVERITY_HIGH,
+        'file_php_retired' => PG_SECURITY_SEVERITY_MEDIUM,
         'file_upload_executable' => PG_SECURITY_SEVERITY_CRITICAL,
         'file_picture_php' => PG_SECURITY_SEVERITY_HIGH,
         'file_server_config' => PG_SECURITY_SEVERITY_MEDIUM,
@@ -64,6 +68,8 @@ function pg_security_file_reason($kind)
     switch ((string) $kind) {
         case 'file_php_unknown':
             return lang('A PHP file the release does not carry.');
+        case 'file_php_retired':
+            return lang('A file of an earlier version that this version no longer uses.');
         case 'file_upload_executable':
             return lang('A file in the upload folders whose name lets the server run it.');
         case 'file_picture_php':
@@ -88,6 +94,8 @@ function pg_security_file_advice($kind)
     switch ((string) $kind) {
         case 'file_php_unknown':
             return lang('If nobody on your team put this file here, quarantine it and change the passwords of the staff and hosting accounts.');
+        case 'file_php_retired':
+            return lang('The update leaves the files of earlier versions in place. Run Clean Up in System tools to delete them, or quarantine this one.');
         case 'file_upload_executable':
             return lang('Uploads never need a name the server can run: quarantine the file, then look at who uploaded it.');
         case 'file_picture_php':
@@ -229,9 +237,10 @@ function pg_security_php_shipped_outside_reference()
 
 /**
  * Is a PHP place outside the reference's scope one this software puts there:
- * a file the release ships (pg_security_php_shipped_outside_reference()) or
+ * a file the release ships (pg_security_php_shipped_outside_reference()),
  * the compiled language cache, data/temp/lang_<code>.php
- * (pg_lang_cache_path())?
+ * (pg_lang_cache_path()), or the new config.php while it is written,
+ * data/config.tmp<uniqid>.php (pg_write_config_file()).
  *
  * @param string $place
  * @return bool
@@ -239,7 +248,8 @@ function pg_security_php_shipped_outside_reference()
 function pg_security_php_known_outside_reference($place)
 {
     return in_array((string) $place, pg_security_php_shipped_outside_reference(), true)
-        || (preg_match('#^data/temp/lang_[A-Za-z0-9_-]{1,32}\.php$#', (string) $place) === 1);
+        || (preg_match('#^data/temp/lang_[A-Za-z0-9_-]{1,32}\.php$#', (string) $place) === 1)
+        || (preg_match('#^data/config\.tmp[0-9a-f]{13}\.php$#', (string) $place) === 1);
 }
 
 /**
@@ -347,6 +357,51 @@ function pg_security_config_verdict($baseline, $place, $digest)
 }
 
 /**
+ * Does a server settings file only shut its folder to the web? An .htaccess
+ * of nothing but "deny from all", "Require all denied", their "Order" and
+ * "<IfModule>" lines, "Options -Indexes", comments and blank lines can only
+ * take access away. This software writes such a file into every folder it
+ * makes for private data (data/, includes/, a backup or mailbox folder), so
+ * one that is new or changed is no finding.
+ *
+ * @param string $place
+ * @param string $text The file's content
+ * @return bool
+ */
+function pg_security_config_denies_only($place, $text)
+{
+    if (pg_security_file_name($place) !== '.htaccess') {
+        return false;
+    }
+
+    $denies = false;
+
+    foreach (preg_split('/\r\n|\r|\n/', (string) $text) as $line) {
+        $line = strtolower(preg_replace('/\s+/', ' ', trim($line)));
+
+        if (($line === '') || ($line[0] === '#')) {
+            continue;
+        }
+
+        if (in_array($line, array('deny from all', 'require all denied'), true)) {
+            $denies = true;
+            continue;
+        }
+
+        if (
+            in_array($line, array('order deny,allow', 'order allow,deny', 'options -indexes', '</ifmodule>'), true)
+            || (preg_match('/^<ifmodule !?[a-z0-9_.]+>$/', $line) === 1)
+        ) {
+            continue;
+        }
+
+        return false;
+    }
+
+    return $denies;
+}
+
+/**
  * The content checks a file needs: 'shell' (shell marks), 'php_tag' (a
  * picture in the upload folders), 'digest' (a server settings file).
  *
@@ -403,10 +458,12 @@ function pg_security_file_sightings($place, $in_reference, array $facts)
             $found['file_upload_executable'] = '.' . $extension;
         }
     } elseif ($area === 'layouts') {
-        // A custom layout is the page's id with .php: data/layouts/12.php.
+        // A custom layout is the page's id with .php: data/layouts/12.php;
+        // the 2017.2.2 password pages step kept the earlier one as 12.bak.php
+        // (includes/migrations/legacy.php).
         $extension = pg_security_name_executable($place);
 
-        if (($extension !== '') && (preg_match('#^data/layouts/[1-9][0-9]*\.php$#', $place) !== 1)) {
+        if (($extension !== '') && (preg_match('#^data/layouts/[1-9][0-9]*(?:\.bak)?\.php$#', $place) !== 1)) {
             $found['file_upload_executable'] = '.' . $extension;
         }
     } elseif (pg_security_name_is_php($place)) {
@@ -414,8 +471,13 @@ function pg_security_file_sightings($place, $in_reference, array $facts)
             ? ($in_reference === false)
             : !pg_security_php_known_outside_reference($place);
 
+        // A place an earlier release carried is reported as retired: the
+        // update writes over the files and deletes none, and Clean Up removes
+        // them. It is still reported, since a file left callable is a risk
+        // and a retired name can be a planted file; its content is read for
+        // shell marks as any file outside the reference.
         if ($unknown) {
-            $found['file_php_unknown'] = '';
+            $found[pg_clean_up_place_listed($place) ? 'file_php_retired' : 'file_php_unknown'] = '';
         }
     }
 
@@ -531,6 +593,7 @@ function pg_security_files_state($stored)
         'reference' => '',
         'baseline' => null,
         'configs' => array(),
+        'unread' => array(),
         'last_finished' => 0,
         'last_files' => 0,
         'last_reference' => '',
@@ -548,6 +611,10 @@ function pg_security_files_state($stored)
         $state['configs'] = array();
     }
 
+    if (!is_array($state['unread'])) {
+        $state['unread'] = array();
+    }
+
     if (($state['baseline'] !== null) && !is_array($state['baseline'])) {
         $state['baseline'] = null;
     }
@@ -556,7 +623,7 @@ function pg_security_files_state($stored)
 }
 
 /**
- * The kinds a finished run may mark gone: the file kinds, without the two
+ * The kinds a finished run may mark gone: the file kinds, without the three
  * that need the release reference when the run had none.
  *
  * @param string $reference 'local', 'github' or ''
@@ -567,7 +634,7 @@ function pg_security_files_judged_kinds($reference)
     $kinds = array_keys(pg_security_file_kinds());
 
     if ((string) $reference === '') {
-        $kinds = array_values(array_diff($kinds, array('file_php_unknown', 'file_shell_mark')));
+        $kinds = array_values(array_diff($kinds, array('file_php_unknown', 'file_php_retired', 'file_shell_mark')));
     }
 
     return $kinds;
@@ -637,6 +704,30 @@ function pg_security_files_roots()
 }
 
 /**
+ * The root folder on disk a file place lies in and the place's part inside
+ * it, or null when it is not a file place.
+ *
+ * @param string $place
+ * @return array|null array(folder, relative)
+ */
+function pg_security_place_disk_parts($place)
+{
+    $place = pg_security_place_path($place);
+
+    if ($place === '') {
+        return null;
+    }
+
+    foreach (array_reverse(pg_security_files_roots(), true) as $prefix => $folder) {
+        if (($prefix !== '') && (strpos($place, $prefix . '/') === 0)) {
+            return array(rtrim($folder, '/\\'), substr($place, strlen($prefix) + 1));
+        }
+    }
+
+    return array(rtrim(PG_FUNCTIONS_DIR, '/\\'), $place);
+}
+
+/**
  * The file on disk a file finding's place names (for the section's
  * Quarantine), '' when it is not a file place.
  *
@@ -645,19 +736,39 @@ function pg_security_files_roots()
  */
 function pg_security_place_disk_path($place)
 {
-    $place = pg_security_place_path($place);
+    $parts = pg_security_place_disk_parts($place);
 
-    if ($place === '') {
-        return '';
+    return ($parts === null) ? '' : $parts[0] . '/' . $parts[1];
+}
+
+/**
+ * Is the folder a file place names on disk still the folder the walk found
+ * it in: no segment of it turned into a symbolic link since? A folder
+ * swapped for a link between the scan and a click would let Quarantine move
+ * a file from anywhere, or Restore write one there.
+ *
+ * @param string $place
+ * @return bool
+ */
+function pg_security_place_folder_real($place)
+{
+    $parts = pg_security_place_disk_parts($place);
+
+    if ($parts === null) {
+        return false;
     }
 
-    foreach (array_reverse(pg_security_files_roots(), true) as $prefix => $folder) {
-        if (($prefix !== '') && (strpos($place, $prefix . '/') === 0)) {
-            return rtrim($folder, '/\\') . '/' . substr($place, strlen($prefix) + 1);
-        }
+    $root = realpath($parts[0]);
+    $slash = strrpos($parts[1], '/');
+    $folder = realpath(($slash === false) ? $parts[0] : $parts[0] . '/' . substr($parts[1], 0, $slash));
+
+    if (!is_string($root) || !is_string($folder)) {
+        return false;
     }
 
-    return rtrim(PG_FUNCTIONS_DIR, '/\\') . '/' . $place;
+    $expected = rtrim(str_replace('\\', '/', $root), '/') . (($slash === false) ? '' : '/' . substr($parts[1], 0, $slash));
+
+    return str_replace('\\', '/', $folder) === $expected;
 }
 
 /**
@@ -667,13 +778,20 @@ function pg_security_place_disk_path($place)
  * @param string $folder Folder on disk
  * @param string $prefix Its place, '' for the software folder
  * @param string $cursor Last place done
+ * @param callable|null $unread Given the place of a folder that is there but cannot be listed
  * @return Generator
  */
-function pg_security_files_walk($folder, $prefix, $cursor)
+function pg_security_files_walk($folder, $prefix, $cursor, $unread = null)
 {
     $names = @scandir($folder);
 
     if (!is_array($names)) {
+        // A folder that is there but cannot be listed was not looked at; an
+        // upload folder that does not exist has nothing in it.
+        if (is_callable($unread) && is_dir($folder)) {
+            $unread($prefix);
+        }
+
         return;
     }
 
@@ -693,7 +811,7 @@ function pg_security_files_walk($folder, $prefix, $cursor)
 
         if (is_dir($path)) {
             if (!pg_security_walk_skipped($place) && !pg_security_folder_done($place, $cursor)) {
-                foreach (pg_security_files_walk($path, $place, $cursor) as $inner_place => $inner_path) {
+                foreach (pg_security_files_walk($path, $place, $cursor, $unread) as $inner_place => $inner_path) {
                     yield $inner_place => $inner_path;
                 }
             }
@@ -717,11 +835,17 @@ function pg_security_files_walk($folder, $prefix, $cursor)
  */
 function pg_security_files_read($path, array $reads)
 {
-    $facts = array('shell' => '', 'php_tag' => false, 'digest' => '');
+    $facts = array('shell' => '', 'php_tag' => false, 'digest' => '', 'denies_only' => false);
 
     if (in_array('digest', $reads, true)) {
         $digest = @sha1_file($path);
         $facts['digest'] = is_string($digest) ? $digest : '';
+
+        // A server settings file is a few lines; one over 64 KB is never
+        // only a deny.
+        if (($facts['digest'] !== '') && (@filesize($path) <= 65536)) {
+            $facts['denies_only'] = pg_security_config_denies_only($path, (string) @file_get_contents($path));
+        }
     }
 
     $shell = in_array('shell', $reads, true);
@@ -771,6 +895,93 @@ function pg_security_files_read($path, array $reads)
 }
 
 /**
+ * Check one file: the reads its place needs, then its sightings. A server
+ * settings file also gives its digest for the run's baseline.
+ *
+ * @param string $place
+ * @param string $path
+ * @param bool|null $in_reference As for pg_security_file_reads()
+ * @param array|null $baseline The last finished run's server settings digests
+ * @return array digest (string), sightings (array[])
+ */
+function pg_security_files_check($place, $path, $in_reference, $baseline)
+{
+    $reads = pg_security_file_reads($place, $in_reference);
+    $facts = empty($reads) ? array('shell' => '', 'php_tag' => false, 'digest' => '', 'denies_only' => false) : pg_security_files_read($path, $reads);
+
+    if ($facts['digest'] !== '') {
+        $facts['config'] = $facts['denies_only'] ? '' : pg_security_config_verdict($baseline, $place, $facts['digest']);
+    }
+
+    $sightings = pg_security_file_sightings($place, $in_reference, $facts);
+
+    // A finding carries the file's digest, so an ignored one opens again
+    // when the file changes (pg_security_finding_merge()). Only a file with
+    // a finding is hashed: they are few.
+    if (!empty($sightings)) {
+        $digest = ($facts['digest'] !== '') ? $facts['digest'] : @sha1_file($path);
+
+        foreach ($sightings as $index => $sighting) {
+            $sightings[$index]['detail'] = pg_security_detail_with_digest($sighting['detail'], is_string($digest) ? $digest : '');
+        }
+    }
+
+    return array('digest' => (string) $facts['digest'], 'sightings' => $sightings);
+}
+
+/**
+ * Walk on from the state's root and cursor, checking each file, until every
+ * root is done or $stop answers true before a file. The state comes back
+ * with the place to go on from, so the next call resumes there.
+ *
+ * @param array $state From pg_security_files_state()
+ * @param array<string, string> $roots From pg_security_files_roots()
+ * @param array|null $places The reference's places (place => true), null when the run has none
+ * @param callable $stop Asked before each file
+ * @param callable $found Given each sighting
+ * @return array state, stopped (bool), files (checked this call)
+ */
+function pg_security_files_advance(array $state, array $roots, $places, callable $stop, callable $found)
+{
+    $folders = array_values($roots);
+    $prefixes = array_keys($roots);
+    $files = 0;
+
+    $unread = function ($place) use (&$state) {
+        if (!in_array((string) $place, $state['unread'], true)) {
+            $state['unread'][] = (string) $place;
+        }
+    };
+
+    for ($root = (int) $state['root']; $root < count($folders); $root++) {
+        foreach (pg_security_files_walk($folders[$root], $prefixes[$root], (string) $state['cursor'], $unread) as $place => $path) {
+            if ($stop()) {
+                return array('state' => $state, 'stopped' => true, 'files' => $files);
+            }
+
+            $check = pg_security_files_check($place, $path, is_array($places) ? isset($places[$place]) : null, $state['baseline']);
+
+            if ($check['digest'] !== '') {
+                $state['configs'][$place] = $check['digest'];
+            }
+
+            foreach ($check['sightings'] as $sighting) {
+                $found($sighting);
+            }
+
+            $state['cursor'] = $place;
+            $state['files']++;
+            $files++;
+        }
+
+        $state['root'] = $root + 1;
+        $state['cursor'] = '';
+    }
+
+    return array('state' => $state, 'stopped' => false, 'files' => $files);
+}
+
+/**
  * Write a sighting: a new row, or the stored one merged.
  *
  * @param array $sighting
@@ -801,24 +1012,19 @@ function pg_security_finding_record(array $sighting, $now)
 
 /**
  * End a full run: what the run did not see becomes gone (a quarantined
- * finding stays quarantined, pg_security_state_unseen()), and gone rows past
- * their 90 days are removed.
+ * finding stays quarantined, pg_security_state_unseen()), but for the places
+ * under a folder it could not list, and gone rows past their 90 days are
+ * removed.
  *
  * @param int $started When the run started
  * @param string $reference The run's reference source
  * @param int $now
+ * @param string[] $unread Folder places the walk could not list
  * @return void
  */
-function pg_security_files_close($started, $reference, $now)
+function pg_security_files_close($started, $reference, $now, array $unread = array())
 {
-    $kinds = pg_security_files_judged_kinds($reference);
-
-    if (!empty($kinds)) {
-        db_q(
-            "UPDATE security_finding SET state = ? WHERE state IN (?, ?) AND last_seen < ? AND kind IN ('" . implode("', '", array_map('e', $kinds)) . "')",
-            array(PG_SECURITY_STATE_GONE, PG_SECURITY_STATE_OPEN, PG_SECURITY_STATE_IGNORED, (int) $started)
-        );
-    }
+    pg_security_scan_close_kinds(pg_security_files_judged_kinds($reference), (int) $started, $unread);
 
     db_q(
         "DELETE FROM security_finding WHERE state = ? AND last_seen < ?",
@@ -855,50 +1061,32 @@ function pg_security_files_run($budget)
         $state['cursor'] = '';
         $state['files'] = 0;
         $state['configs'] = array();
+        $state['unread'] = array();
         $state['reference'] = $reference['source'];
     }
 
     // A pass that started without a reference, or lost it on the way, does
     // not judge by one: its unknown-PHP and shell findings are not marked
     // gone either (pg_security_files_judged_kinds()).
-    $places = $reference['places'];
     $has_reference = ($reference['source'] !== '') && ($state['reference'] !== '');
-    $roots = array_values(pg_security_files_roots());
-    $prefixes = array_keys(pg_security_files_roots());
-    $stopped = false;
-
-    for ($root = (int) $state['root']; $root < count($roots); $root++) {
-        foreach (pg_security_files_walk($roots[$root], $prefixes[$root], (string) $state['cursor']) as $place => $path) {
-            if (microtime(true) >= $deadline) {
-                $stopped = true;
-                break 2;
-            }
-
-            $in_reference = $has_reference ? isset($places[$place]) : null;
-            $reads = pg_security_file_reads($place, $in_reference);
-            $facts = empty($reads) ? array('shell' => '', 'php_tag' => false, 'digest' => '') : pg_security_files_read($path, $reads);
-
-            if ($facts['digest'] !== '') {
-                $state['configs'][$place] = $facts['digest'];
-                $facts['config'] = pg_security_config_verdict($state['baseline'], $place, $facts['digest']);
-            }
-
-            foreach (pg_security_file_sightings($place, $in_reference, $facts) as $sighting) {
-                pg_security_finding_record($sighting, $now);
-                $result['findings']++;
-            }
-
-            $state['cursor'] = $place;
-            $state['files']++;
-            $result['files']++;
+    $walk = pg_security_files_advance(
+        $state,
+        pg_security_files_roots(),
+        $has_reference ? $reference['places'] : null,
+        function () use ($deadline) {
+            return microtime(true) >= $deadline;
+        },
+        function (array $sighting) use ($now, &$result) {
+            pg_security_finding_record($sighting, $now);
+            $result['findings']++;
         }
-
-        $state['root'] = $root + 1;
-        $state['cursor'] = '';
-    }
+    );
+    $state = $walk['state'];
+    $stopped = $walk['stopped'];
+    $result['files'] = $walk['files'];
 
     if (!$stopped) {
-        pg_security_files_close((int) $state['started'], $has_reference ? $state['reference'] : '', $now);
+        pg_security_files_close((int) $state['started'], $has_reference ? $state['reference'] : '', $now, $state['unread']);
 
         // The first finished run sets the baseline; later ones only drop the
         // files that are gone, so a changed file stays reported until a
@@ -917,6 +1105,7 @@ function pg_security_files_run($budget)
         $state['cursor'] = '';
         $state['files'] = 0;
         $state['configs'] = array();
+        $state['unread'] = array();
         $result['done'] = true;
     }
 

@@ -9,10 +9,12 @@
  *   by its place (`#` and its child indexes from the top); a second element
  *   with the same id is matched by its order (`id#2`, `id#3`…).
  * - A change: { kind, code, node, key, text, what, name, side, parent,
- *   section, count, before, after }. `kind` is added, removed, moved,
+ *   section, place, words, count, before, after }. `kind` is added, removed, moved,
  *   words, picture, link, look or other; `side` says on which picture the
  *   place is found ('after' the draft, 'before' the live page, 'both');
- *   `section` is the id of the page section around it; `count` the
+ *   `section` is the id of the page section around it, `place` its words
+ *   ("Section: Welcome", empty for a section itself), `words` the
+ *   element's own short words ("Full"); `count` the
  *   elements an added or removed subtree holds; `before` / `after` the old
  *   and new words, picture or link.
  * - An added or removed subtree is one change at its top. A prop the reader
@@ -215,6 +217,19 @@
         return fill(texts, 'kind_' + kindOf(n), {});
     }
 
+    // The words naming a section as a place: "Section: Welcome", "Header".
+    function placeOf(n, texts) {
+        var label = str(props(n)._label);
+        return label ? fill(texts, 'place_named', { what: what(n, texts), name: label }) : what(n, texts);
+    }
+
+    // An element's own short words: its label, else its text, cut.
+    function wordsOf(n) {
+        var p = props(n);
+        var w = plain(p._label || p.text || p.html || p.title || p.alt || '');
+        return w.length > 40 ? w.slice(0, 39) + '\u2026' : w;
+    }
+
     function size(e, map) {
         var c = 1;
         for (var i = 0; i < e.kids.length; i++) c += size(map[e.kids[i]], map);
@@ -260,13 +275,16 @@
         function add(kind, code, e, side, vars, extra) {
             var n = e.node;
             var p = props(n);
+            var tree = (side === 'before' ? old : now);
+            var sec = tree.map[e.section];
             var v = { what: what(n, texts), name: str(p._label) };
             for (var k in vars) v[k] = vars[k];
             var c = {
                 kind: kind, code: code, node: e.id !== '' ? e.id : e.key, key: e.key,
                 text: fill(texts, code, v), what: v.what, name: v.name, side: side,
                 parent: e.parent === '' ? '' : (side === 'before' ? old : now).map[e.parent].id || e.parent,
-                section: (side === 'before' ? old : now).map[e.section].id || e.section,
+                section: sec.id || e.section,
+                place: (e.section === e.key) ? '' : placeOf(sec.node, texts), words: wordsOf(n),
                 count: 1, before: '', after: '', seq: e.seq
             };
             for (var x in extra) c[x] = extra[x];
@@ -372,15 +390,16 @@
                     grouped[c.kind] = {
                         kind: c.kind, code: c.kind + '_rows',
                         text: fill(texts, c.kind + '_rows', { count: counts[c.kind] }),
-                        nodes: [], changes: []
+                        place: c.place, nodes: [], changes: []
                     };
                     out.push(grouped[c.kind]);
                 }
+                if (grouped[c.kind].place !== c.place) grouped[c.kind].place = '';
                 grouped[c.kind].nodes.push(c.node);
                 grouped[c.kind].changes.push(c);
                 return;
             }
-            out.push({ kind: c.kind, code: c.code, text: c.text, nodes: [c.node], changes: [c] });
+            out.push({ kind: c.kind, code: c.code, text: c.text, place: c.place, nodes: [c.node], changes: [c] });
         });
         return out;
     }

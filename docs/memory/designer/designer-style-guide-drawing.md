@@ -4,7 +4,7 @@ description: The drawing of the designer's Style guide: the Preview menu row, th
 ---
 
 ## Where is the drawing?
-- `designer/designer-style-guide-drawing/style-guide.html` on `ui/look-sheet/sheet.css` with its own `drawing.css`; pictures `style-guide-dark.jpg` and `style-guide-light.jpg`. Seven boards, G1 to G7, for `plans/designer-style-guide.md`: G1 to G5 and G7 hold step SG2, G6 and G7 hold SG3.
+- `designer/designer-style-guide-drawing/style-guide.html` on `ui/look-sheet/sheet.css` with its own `drawing.css`; pictures `style-guide-dark.jpg` and `style-guide-light.jpg`. Seven boards, G1 to G7: G1 to G5 and G7 were built in SG2 (#11656), G6 and G7 in SG3 (#11678); what binds the feature: `designer-style-guide-rules.md`.
 - The blocks Type, Spacing, Shape, Controls and Components, the click through and the print sheet: `designer-style-guide-blocks-drawing.md`. The rows of every block come from the model (`design-style-guide-model.md`).
 
 ## How is it opened? (G1)

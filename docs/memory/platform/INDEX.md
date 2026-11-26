@@ -33,7 +33,7 @@
 - ca-store-choice.md: pg_ca_bundle_effective() chooses the CA store: the CURL_CA_BUNDLE override, the shipped data/cacert.pem when PHP has no store or the probe failed, else the server's store; the probe record. [decision: decisions-made-product-19.md]
 - cache-control-shared-caches.md: Which answers may carry a Cache-Control a CDN or proxy keeps; pg_cache_control_shared_safe() and the guard test over literal header('Cache-Control: …') lines
 - chat-attachment-access.md: Panel team chat attachments open only for the conversation's sides or a role-0 administrator, served private, no-store, whatever their folder allows (#5973)
-- clean-up-tool-file-list.md: clean_up.php $file_list and data/temp sweep: never list a live file name, how to verify before adding, and $temp_keep for non-regenerable temp files. [decision: decisions-made.md]
+- clean-up-tool-file-list.md: The Cleanup tool's list (pg_clean_up_file_list()) and data/temp sweep: never list a live file name, how to verify before adding, and $temp_keep for non-regenerable temp files. [decision: decisions-made.md]
 - cloud-file-picker-onedrive.md: OneDrive in Upload File's cloud picker (#3261): the v8 picker with OneDrive/SharePoint tokens per resource, the Graph download through its pre-authenticated address, the Entra setup
 - cloud-file-picker.md: Upload File's cloud picker (#3238, #3261): Google, OneDrive and Dropbox pickers hand back only an id or link; the server downloads within the upload limit and stores through pg_file_store_upload() [decision: decisions-made-product-5.md]
 - cloudflare-dns-dialog.md: Cloudflare Tools Add/Edit DNS Record dialogs (#3628): hidden type groups are disabled so only the visible priority box is posted, MX priority is carried into Edit, Content is required where shown
@@ -295,7 +295,7 @@
 - whatsapp-template-authentication.md: Why the WhatsApp template designer does not offer the Authentication type (#10356): Meta's fixed code shape, no sender of codes; saved ones still list and read
 - whatsapp-template-designer.md: WhatsApp template designer, first half (WA8, #9350): whatsapp_template.php, drafts in whatsapp_templates, the draft check, samples column, phone preview and its JS twin, Send myself a test [decision: here]
 - whatsapp-templates.md: WhatsApp templates (whatsapp_templates, step 11.0.197, WA3): read from Meta page by page, the refresh plan, the job every six hours and after a card save, the readers
-- whatsapp-webhook-events.md: whatsapp_webhook.php events (WA4, #9351): delivery states, template changes, a customer's message into whatsapp_inbox (11.0.198), its bell notice and customer-history line
+- whatsapp-webhook-events.md: whatsapp_webhook.php events (WA4, #9351): delivery states, template changes, a customer's message into whatsapp_inbox (11.0.198), its bell notice and customer-history line [decision: decisions-made-workspace-23.md]
 - windows-folder-is-writable.md: Ask pg_dir_writable(), never is_writable(), about a folder: PHP on Windows reads its read-only attribute (OneDrive, Explorer), which stops nothing; where it bit, how each check asks now
 - x-rewrite-url-iis-only.md: The request's address is read by pg_request_uri_from_server(): X-Rewrite-URL counts on IIS only, else a client header could replace the routed address and slip past the firewall
 - xlsx-workbook-part.md: Where .xlsx readers and editors find the workbook part: through _rels/.rels (pg_sheet_xlsx_workbook(), PR #10905), else xl/workbook.xml; which editor refuses one kept elsewhere

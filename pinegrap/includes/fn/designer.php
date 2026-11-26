@@ -4487,6 +4487,29 @@ function pg_designer_css_length($value)
 }
 
 /**
+ * The Aspect Ratio prop as CSS aspect-ratio, as the editor writes it
+ * (_sdRatioCss()): '16:9', '16x9' and '16/9' give '16 / 9', one number and
+ * auto stay; anything else (a zero side, a unit, a second value) is ''.
+ */
+function pg_designer_css_ratio($value)
+{
+    $value = trim((string) $value);
+    if ($value === '' || $value === 'auto') {
+        return $value;
+    }
+
+    $num = '([0-9]+(?:\.[0-9]+)?|\.[0-9]+)';
+    if (!preg_match('~^' . $num . '(?:\s*[:x/]\s*' . $num . ')?$~i', $value, $m)) {
+        return '';
+    }
+    if (!((float) $m[1] > 0) || (isset($m[2]) && !((float) $m[2] > 0))) {
+        return '';
+    }
+
+    return isset($m[2]) ? $m[1] . ' / ' . $m[2] : $m[1];
+}
+
+/**
  * A designer prop as the editor reads it, trimmed: '' for what JavaScript
  * takes as false (no value, false, the number 0, '') and for a list. The
  * string '0' is a value, as in the editor's `if (p.width)`, so the page and
@@ -4548,6 +4571,8 @@ function _pg_node_sizing_decls($props, $size = null)
     if (!empty($props['aspectRatioEnabled']) && $val('aspectRatio') === 'custom' && $val('aspectRatioCustom') !== '') {
         $out[] = '--bs-aspect-ratio:' . $val('aspectRatioCustom');
     }
+    $ratio = pg_designer_css_ratio($val('aspect'));
+    if ($ratio !== '') $out[] = 'aspect-ratio:' . $ratio;
 
     return $out;
 }
@@ -6141,6 +6166,13 @@ function _render_component_html($props, $pad, $kids = '')
             // saved page's: a placeholder the page's last pass draws the
             // switcher into (pg_language_switcher_expand()).
             $html .= $pad . pg_language_switcher_placeholder($props) . "\n";
+            break;
+
+        case 'markdown':
+            // The text drawn by the Markdown reader (includes/fn/markdown.php):
+            // no HTML the author wrote passes. One string after the indent, so
+            // a code block keeps its lines.
+            $html .= pg_markdown_component_html($props, $pad) . "\n";
             break;
 
         case 'badge':
@@ -10643,6 +10675,10 @@ function pg_designer_preview_override_rows($widgets)
             'cfg'       => is_array($cfg) ? _pg_preview_drop_tab_refs($cfg) : null,
             // The Preview's case for this widget alone ("Check all cases").
             'case'      => (isset($w['case']) && is_string($w['case'])) ? $w['case'] : '',
+            // The record chosen for this widget alone, 0 none (the "Record"
+            // chooser of a page with more than one single-record widget).
+            'record'    => (isset($w['record']) && (is_int($w['record']) || (is_string($w['record']) && ctype_digit($w['record']) && strlen($w['record']) <= 18)))
+                ? max(0, (int)$w['record']) : 0,
         );
     }
     return $overrides;
@@ -10672,20 +10708,21 @@ function pg_designer_preview_override_rows($widgets)
  *
  * "Preview as" ($preview_as, with the operator in $user): the page's
  * choice of record, visitor and case (pg_preview_as_choice()), a widget
- * row's own 'case' over the page's. Each widget is drawn with its setup
+ * row's own 'case' and 'record' over the page's. Each widget is drawn with its setup
  * (pg_preview_as_setup()) held for its renderers in pg_preview_as_while(),
  * which also puts the session back after it; a single-record widget draws
  * the record of its pick (pg_preview_as_record_target()), within what the
  * operator may open. With no operator the default pick is drawn, as before.
- * $setups, when given, receives sid => {case, record} of what was drawn.
+ * $setups, when given, receives sid => {case, record, source, cases}: the
+ * case and record drawn, and what the "Preview as" bar offers the widget.
  *
  * @param int        $page_id          the page, 0 when it has not been saved
- * @param array      $widgets          [{id, tree_json, system_region_config, case}]
+ * @param array      $widgets          [{id, tree_json, system_region_config, case, record}]
  * @param array      $comment_settings the page's comment settings as the editor
  *                                     holds them (pg_comment_editor_keys())
  * @param mixed      $preview_as       {record, visitor, case, page: {access_rules, audience}}
  * @param array|null $user             validate_user(), null for no operator
- * @param array|null $setups           out: sid => {case, record}
+ * @param array|null $setups           out: sid => {case, record, source, cases}
  * @return array sid => html
  */
 function pg_designer_preview_widgets($page_id, $widgets, $comment_settings = array(), $preview_as = null, $user = null, &$setups = null)
@@ -10743,6 +10780,7 @@ function pg_designer_preview_widgets($page_id, $widgets, $comment_settings = arr
             $type = pg_sw_widget_kind($cfg);
             $own  = $choice;
             if ($ov['case'] !== '') $own['case'] = $ov['case'];
+            if (!empty($ov['record'])) $own['record'] = (int)$ov['record'];
             $setup = pg_preview_as_setup($type, $own);
 
             $target = array('get' => array(), 'address' => '', 'id' => 0);
@@ -10761,7 +10799,14 @@ function pg_designer_preview_widgets($page_id, $widgets, $comment_settings = arr
                 if ($target['address'] !== '') $_GET['page'] = $page_name . '/' . $target['address'];
             }
             foreach ($target['get'] as $k => $v) $_GET[$k] = $v;
-            $setups[(int)$sid] = array('case' => $setup['case'], 'record' => (int)$target['id']);
+            // What the "Preview as" bar offers for this widget: its record
+            // source ('' none) and its cases (pg_preview_as_kind_cases()).
+            $setups[(int)$sid] = array(
+                'case'   => $setup['case'],
+                'record' => (int)$target['id'],
+                'source' => pg_preview_as_record_source($type),
+                'cases'  => pg_preview_as_kind_cases($type),
+            );
 
             $html = pg_preview_as_while($setup, function () use ($sid) {
                 ob_start();

@@ -1711,6 +1711,29 @@ if (is_array($flash)) {
 		$liveform->add_notice(h($flash['text']));
 	}
 
+	// Back from Paraşüt's sign-in: the company is read once, now, and its
+	// number fills the box under Advanced.
+	$flash_account = (($flash['kind'] === 'notice') && ((int) $flash['connection_id'] > 0)) ? pg_connect_account((int) $flash['connection_id']) : null;
+
+	if (is_array($flash_account) && ($flash_account['provider'] === 'parasut') && ((int) $flash_account['user_id'] === 0) && connections_accounting_may_manage($user)) {
+
+		$parasut_answer = parasut_devhub_after_connect((int) $flash_account['id']);
+
+		// The messages carry Paraşüt's own words, so they are escaped.
+		foreach ($parasut_answer['notices'] as $parasut_line) {
+			$liveform->add_notice(h($parasut_line));
+		}
+
+		foreach ($parasut_answer['warnings'] as $parasut_line) {
+			$liveform->add_warning(h($parasut_line));
+		}
+
+		if ($parasut_answer['log'] !== '') {
+			log_activity($parasut_answer['log'], $_SESSION['sessionusername']);
+		}
+
+	}
+
 }
 
 $can_seal = pg_connect_can_seal();
@@ -1910,6 +1933,12 @@ foreach ($facts['accounts'] as $account) {
 $provider_apps = array();
 
 foreach ($providers as $provider_key => $provider) {
+
+	// A provider set up on its service's own page (listed => false:
+	// Paraşüt) is no row of Account providers.
+	if (isset($provider['listed']) && ($provider['listed'] === false)) {
+		continue;
+	}
 
 	$app = pg_connect_app($provider_key);
 	$provider_apps[$provider_key] = $app;
@@ -3833,7 +3862,7 @@ function connections_edoc_fields($id) {
    Disconnect; "Where it is used" leads to the card, which picks the
    provider, and for Paraşüt to the order screen's own buttons. */
 
-function connections_edoc_page($page, $id, $may_manage) {
+function connections_edoc_page($page, $id, $may_manage, $draft = null, $can_seal = false, $redirect_uri = '') {
 
 	require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
 
@@ -3846,7 +3875,7 @@ function connections_edoc_page($page, $id, $may_manage) {
 	$own = ($id === 'parasut');
 	$active = (erp_edoc_active() === $id);
 	// Something to disconnect: a token or a secret kept, or any stored box.
-	$kept = $own ? (erp_edoc_connected($id) || (implode('', _parasut_credentials()) !== '')) : (array_filter(array_map('strval', erp_edoc_credentials($id)), 'strlen') !== array());
+	$kept = $own ? (erp_edoc_connected($id) || (implode('', _parasut_credentials()) !== '') || is_array(parasut_devhub_connection())) : (array_filter(array_map('strval', erp_edoc_credentials($id)), 'strlen') !== array());
 	$row = erp_edoc_provider_row($id);
 	$environment = erp_edoc_environment($id);
 
@@ -3873,7 +3902,8 @@ function connections_edoc_page($page, $id, $may_manage) {
 		<section class="pg-card p-5 mb-6" id="connections-details" aria-labelledby="connections-page-details">
 			<h2 class="pg-title-section mb-1" id="connections-page-details">' . h(lang('Connection details')) . '</h2>
 			<p class="pg-card-sub mb-4">' . h(lang(array('string' => 'The site\'s {var:1} connection. Which provider carries the documents is picked on the E-Invoice card of Site Settings › Accounting.', 'vars' => $info['label']))) . ' ' . h($info['settings_note']) . '</p>
-			<form method="post" action="connections.php" class="connections-app-form d-flex flex-column gap-5">
+			' . ($own ? connections_parasut_devhub_part($draft, $can_seal, $redirect_uri) : '') . '
+			<form method="post" action="connections.php" class="connections-app-form d-flex flex-column gap-5' . ($own ? ' mt-6' : '') . '">
 				' . get_token_field() . '
 				<input type="hidden" name="connections_action" value="' . ($own ? 'parasut_save' : 'edoc_save') . '">
 				<input type="hidden" name="connections_return" value="' . h($id) . '">
@@ -3922,6 +3952,43 @@ function connections_edoc_page($page, $id, $may_manage) {
 	}
 
 	return $page;
+
+}
+
+/* Paraşüt's client from the Developer Portal, first in its "Connection
+   details": the application boxes as every provider's page draws them
+   (Client ID, Client secret, the read-only Redirect address with Copy),
+   then Connect, which sends the browser to Paraşüt and brings it back to
+   this page (connect.php). The older way's form follows it. */
+
+function connections_parasut_devhub_part($draft, $can_seal, $redirect_uri) {
+
+	$provider = pg_connect_provider('parasut');
+
+	if (!is_array($provider)) {
+		return '';
+	}
+
+	$app = pg_connect_app('parasut');
+	$ready = pg_connect_app_ready($app);
+	$hint = connections_app_hint($app);
+	$connection = parasut_devhub_connection();
+
+	$connect = $ready
+		? '
+			<form method="post" action="connect.php" class="mt-4">
+				' . pg_connect_start_fields('parasut', 'parasut', 'connections.php?service=parasut') . '
+				<button type="submit" class="pg-button pg-button-sm pg-button-fill"' . ($can_seal ? '' : ' disabled') . '>
+					<i class="bi bi-plug me-1" aria-hidden="true"></i>' . h(is_array($connection) ? lang('Connect again') : lang('Connect')) . '</button>
+				<div class="pg-field-help">' . h(lang('Paraşüt asks you to sign in and to allow the application, then brings you back here.')) . '</div>
+			</form>'
+		: '';
+
+	return '
+			<div class="pg-field-label mb-3">' . h(lang('A client from the Developer Portal')) . '</div>
+			' . (($hint === '') ? '' : '<p class="pg-field-help mt-0">' . h($hint) . '</p>') . '
+			' . connections_app_form('parasut', $provider, $app, (is_array($draft) && ($draft['provider'] === 'parasut')) ? $draft : null, $can_seal, $redirect_uri, 'parasut') . '
+			' . $connect;
 
 }
 
@@ -4041,6 +4108,7 @@ function connections_app_form($provider_key, $provider, $app, $provider_draft, $
 						<i class="bi bi-clipboard me-1" aria-hidden="true"></i>' . h(lang('Copy')) . '</button>
 				</div>
 				<div class="pg-field-help connections-copy-status" role="status" aria-live="polite" data-copied="' . h(lang('Copied')) . '" data-refused="' . h(lang('The browser did not let the text be copied. Select it and copy it from here.')) . '"></div>
+				' . (!empty($provider['redirect_help']) ? '<div class="pg-field-help">' . h($provider['redirect_help']) . '</div>' : '') . '
 			</div>';
 
 	}
@@ -5026,7 +5094,7 @@ if ($provider_page !== '') {
 	// An e-document provider's page: its connection and the card that picks
 	// it.
 	if (in_array($page_id, pg_connections_screen_accounting_pages(), true)) {
-		$page = connections_edoc_page($page, $page_id, connections_accounting_may_manage($user));
+		$page = connections_edoc_page($page, $page_id, connections_accounting_may_manage($user), $draft, $can_seal, $redirect_uri);
 	}
 
 	// Google reviews' page: its key and Place ID, and what reads them.

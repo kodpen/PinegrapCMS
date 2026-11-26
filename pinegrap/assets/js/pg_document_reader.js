@@ -25,6 +25,10 @@
  *   is a table, or price columns when it holds prices; an e-mail, a phone
  *   number or an address is the contact section; pictures alone are a
  *   picture or a gallery; the rest is text.
+ * - Nothing is lost to a reading: the paragraphs a section of a list kind
+ *   (cards, questions, figures, a table…) did not take as items stay among
+ *   its items as text items ({type, text, lead}), those before the first
+ *   item first, the rest after them; a card past its word limit is one.
  * - A section the rules cannot decide is never guessed in silence: it
  *   carries unsure: true, the reason ('mixed' two readings fit, 'words'
  *   the heading names another kind), the best guess as its kind and the
@@ -304,11 +308,20 @@
     }
 
     // The contact lines of a group: {type: 'email'|'phone'|'address', value}.
-    function contactsOf(body) {
+    // An address line is one item with all its words; with `every` its
+    // e-mail and phone are listed too (to weigh the reading, not to show).
+    function contactsOf(body, every) {
         var found = [];
 
         body.forEach(function (e) {
             if (e.type !== 'paragraph' && e.type !== 'item') {
+                return;
+            }
+
+            var address = ADDRESS.test(e.text) && words(e.text) <= 25;
+
+            if (address && !every) {
+                found.push({type: 'address', value: e.text, i: e.i});
                 return;
             }
 
@@ -324,7 +337,7 @@
                 found.push({type: 'phone', value: trim(m[0]), i: e.i});
             }
 
-            if (ADDRESS.test(e.text) && words(e.text) <= 25) {
+            if (address) {
                 found.push({type: 'address', value: e.text, i: e.i});
             }
         });
@@ -350,7 +363,7 @@
                 continue;
             }
 
-            var quote = e.text, name = '', tail = NAME_DASH_TAIL.exec(quote), next = body[k + 1];
+            var quote = e.text, name = '', tail = NAME_DASH_TAIL.exec(quote), next = body[k + 1], of = [e.i];
 
             if (tail) {
                 name = trim(tail[0]).replace(/^(?:—|–|~)\s*/, '');
@@ -360,6 +373,7 @@
 
                 if (dash || (words(next.text) <= 8 && !/[.!?]$/.test(next.text))) {
                     name = trim(dash ? dash[1] : next.text);
+                    of.push(next.i);
                     k++;
                 }
             }
@@ -371,7 +385,7 @@
                 name = trim(name.slice(0, comma));
             }
 
-            out.push({quote: quote, name: name, role: role, i: e.i});
+            out.push({quote: quote, name: name, role: role, i: e.i, of: of});
         }
 
         return out;
@@ -383,10 +397,11 @@
 
         body.forEach(function (e) {
             if (isQuestion(e)) {
-                current = {question: e.text, answer: '', i: e.i};
+                current = {question: e.text, answer: '', i: e.i, of: [e.i]};
                 out.push(current);
             } else if (current && (e.type === 'paragraph' || e.type === 'item')) {
                 current.answer = current.answer === '' ? e.text : current.answer + '\n' + e.text;
+                current.of.push(e.i);
             }
         });
 
@@ -402,12 +417,13 @@
 
         body.forEach(function (e) {
             if (e.type === 'heading' && words(e.text) <= LEAD_WORDS) {
-                current = {title: e.text, text: '', i: e.i, sub: true};
+                current = {title: e.text, text: '', i: e.i, of: [e.i], sub: true};
                 out.push(current);
             } else if (current && current.sub && (e.type === 'paragraph' || e.type === 'item')) {
                 current.text = current.text === '' ? e.text : current.text + '\n' + e.text;
+                current.of.push(e.i);
             } else if (e.lead !== '' && words(e.lead) <= LEAD_WORDS && (e.type === 'item' || e.type === 'paragraph')) {
-                current = {title: e.lead, text: e.rest, i: e.i, sub: false};
+                current = {title: e.lead, text: e.rest, i: e.i, of: [e.i], sub: false};
                 out.push(current);
             } else {
                 current = null;
@@ -417,7 +433,7 @@
         return out.filter(function (c) {
             return words(c.text) <= CARD_WORDS;
         }).map(function (c) {
-            return {title: c.title, text: c.text, i: c.i};
+            return {title: c.title, text: c.text, i: c.i, of: c.of};
         });
     }
 
@@ -477,7 +493,15 @@
             out.push({kind: 'questions', items: q, score: q.length * 2 / Math.max(all, 1)});
         }
 
-        figures = body.map(figureOf).filter(Boolean);
+        figures = body.map(function (e) {
+            var f = figureOf(e);
+
+            if (f) {
+                f.i = e.i;
+            }
+
+            return f;
+        }).filter(Boolean);
 
         if (figures.length >= 2 && figures.length >= all * 0.6) {
             out.push({kind: 'figures', items: figures, score: figures.length / Math.max(all, 1)});
@@ -497,13 +521,17 @@
             out.push({kind: 'cards', items: cards, score: cards.length * 2 / Math.max(all, 1)});
         }
 
-        contacts = contactsOf(body);
+        contacts = contactsOf(body, true);
 
         if (contacts.length && (contacts.some(function (c) {
             return c.type !== 'address';
         }) || contacts.length >= 2) && all <= 8) {
-            out.push({kind: 'contact', items: contacts, score: Math.min(1, contacts.length * 2 / Math.max(all, 1))});
+            out.push({kind: 'contact', items: contactsOf(body, false), score: Math.min(1, contacts.length * 2 / Math.max(all, 1))});
         }
+
+        out.forEach(function (r) {
+            r.items = withLoose(body, r.items);
+        });
 
         out.sort(function (a, b) {
             return b.score - a.score;
@@ -512,9 +540,38 @@
         return out;
     }
 
+    // A reading's items with the paragraphs it did not take as text items
+    // ({type, text…}, as a text section's): those before its first item
+    // above the items, the rest under them, each in the document's order.
+    // Nothing of the section is lost to the reading.
+    function withLoose(body, items) {
+        var taken = {}, first = Infinity;
+
+        items.forEach(function (item) {
+            (item.of || [item.i]).forEach(function (i) {
+                taken[i] = true;
+                first = Math.min(first, i);
+            });
+        });
+
+        var loose = body.filter(function (e) {
+            return !taken[e.i];
+        });
+
+        return textItems(loose.filter(function (e) {
+            return e.i < first;
+        })).concat(items, textItems(loose.filter(function (e) {
+            return e.i > first;
+        })));
+    }
+
     function textItems(body) {
         return body.map(function (e) {
             var item = {type: e.type, text: e.text, i: e.i};
+
+            if (e.lead !== '') {
+                item.lead = e.lead;
+            }
 
             if (e.type === 'heading') {
                 item.level = e.level;
@@ -550,7 +607,7 @@
                 var copy = {}, key;
 
                 for (key in item) {
-                    if (Object.prototype.hasOwnProperty.call(item, key) && key !== 'i') {
+                    if (Object.prototype.hasOwnProperty.call(item, key) && key !== 'i' && key !== 'of') {
                         copy[key] = item[key];
                     }
                 }
@@ -771,8 +828,55 @@
         return out;
     }
 
+    // Every kind a section's words can fill, with its items: the section's
+    // own kind first, the other readings of its body (the heading left
+    // out), then text, which any words fill. The rows' kind list offers
+    // these and nothing else.
+    var fitsMemo = {paragraphs: null, entries: []};
+
+    function fits(paragraphs, sec) {
+        if (!sec || !Array.isArray(sec.paragraphs)) {
+            return [];
+        }
+
+        var at = {}, out = [], seen = {};
+
+        sec.paragraphs.forEach(function (i) {
+            at[i] = true;
+        });
+
+        // The paragraphs are prepared once for all the sections of a reading.
+        if (fitsMemo.paragraphs !== paragraphs) {
+            fitsMemo = {paragraphs: paragraphs, entries: prepare(paragraphs, [])};
+        }
+
+        var body = fitsMemo.entries.filter(function (e) {
+            return at[e.i];
+        });
+
+        if (sec.heading && body.length && body[0].type === 'heading') {
+            body.shift();
+        }
+
+        var add = function (kind, items) {
+            if (!seen[kind]) {
+                seen[kind] = true;
+                out.push({kind: kind, items: section(kind, null, [], items, false).items});
+            }
+        };
+
+        add(sec.kind, sec.items || []);
+        (sec.kind === 'intro' ? [] : readingsOf(body)).forEach(function (r) {
+            add(r.kind, r.items);
+        });
+        add('text', textItems(body));
+
+        return out;
+    }
+
     window.PGDocumentReader = {
         KINDS: KINDS.slice(),
+        fits: fits,
         fold: fold,
         wordKinds: wordKinds,
         paragraphs: paragraphsOf,

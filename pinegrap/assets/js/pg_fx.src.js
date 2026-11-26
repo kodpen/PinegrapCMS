@@ -92,6 +92,7 @@
         'scroll-zoom', 'scroll-fade', 'scroll-rise', 'count', 'autoplay', 'chapter', 'scene'];
     var TRIGGERS = ['view', 'load', 'hover', 'click'];
     var EASINGS  = ['ease-out', 'ease', 'ease-in', 'ease-in-out', 'linear'];
+    var CURVE    = /^(var\(--pg-var-c-[a-z0-9-]+, )?cubic-bezier\([-0-9., ]+\)\)?$/;
     var NUMBERS  = {
         duration: [100, 5000, 600], delay: [0, 5000, 0], stagger: [0, 1000, 0],
         distance: [0, 400, 0], offset: [0, 1000, 0], speed: [5, 100, 20]
@@ -135,7 +136,8 @@
         o.entrance = o.trigger === 'load' || o.trigger === 'view';
         o.duration = num('duration');
         o.delay    = num('delay');
-        o.easing   = EASINGS.indexOf(easing) !== -1 ? easing : EASINGS[0];
+        // A named easing, or a curve as pg_fx_easing_clean() writes it.
+        o.easing   = (EASINGS.indexOf(easing) !== -1 || CURVE.test(easing)) ? easing : EASINGS[0];
         o.stagger  = o.entrance ? num('stagger') : 0;
         var own = OWN_DISTANCE[effect] || [24, 6];
         o.distance = num('distance') || (o.entrance ? own[0] : own[1]);
@@ -371,9 +373,21 @@
         return out.length ? out : [el];
     }
 
-    // The node's own values, kept the first time it is touched.
+    // The node's own values, kept the first time it is touched. `own` is
+    // the transform its stylesheet gives it (a skew from the Options
+    // panel, a centring class) when it has no inline one: the effect's
+    // inline transform would replace it, so the effect is composed after
+    // it. translate, rotate and scale need nothing: they are properties of
+    // their own and apply under any inline transform.
     function base(t) {
-        if (!t.pgFxBase) t.pgFxBase = { opacity: t.style.opacity, transform: t.style.transform, transition: t.style.transition };
+        if (!t.pgFxBase) {
+            var own = '';
+            if (!t.style.transform && window.getComputedStyle) {
+                own = window.getComputedStyle(t).transform;
+                if (!own || own === 'none') own = '';
+            }
+            t.pgFxBase = { opacity: t.style.opacity, transform: t.style.transform, transition: t.style.transition, own: own };
+        }
         return t.pgFxBase;
     }
 
@@ -383,7 +397,8 @@
         var b = base(t);
         t.style.transition = move || 'none';
         t.style.opacity = s.opacity !== '' ? s.opacity : b.opacity;
-        t.style.transform = s.transform ? (b.transform ? b.transform + ' ' : '') + s.transform : b.transform;
+        var mine = b.transform || b.own;
+        t.style.transform = s.transform ? (mine ? mine + ' ' : '') + s.transform : b.transform;
         if (s.filter !== undefined) {
             if (b.filter === undefined) b.filter = t.style.filter || '';
             t.style.filter = s.filter ? (b.filter ? b.filter + ' ' : '') + s.filter : b.filter;

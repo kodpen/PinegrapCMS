@@ -17,7 +17,7 @@
  * a sibling gap as wide as the one being changed is marked with the same
  * number and the handle holds there a moment (equal gaps). The geometry is
  * window.PGCanvasBands; the first-use line is kept as the tour's tips are
- * (window.PGDesignerTour).
+ * (window.PGDesignerTour, from the part 'tour').
  *
  * Nothing of it enters the page: while a side is dragged the element on the
  * canvas carries the value inline, taken off again before the change is
@@ -47,7 +47,7 @@ StyleDesigner.definePart('bands', function (K) {
     // the host of the last draw and the layer's place it gave, the drag or
     // key change under way, and the listeners held while the bands are
     // shown.
-    var S = { layer: null, bands: {}, handles: {}, col: null, grid: null, gaps: null, label: null, host: null, g: null, live: null, area: null, doc: null, tip: null };
+    var S = { layer: null, bands: {}, handles: {}, col: null, grid: null, gaps: null, label: null, host: null, g: null, live: null, area: null, doc: null, tip: null, tipAsked: false };
     var COLS = 12;
     // How far past the next step (screen pixels) the pointer goes before a
     // step with an equal gap lets go.
@@ -545,9 +545,19 @@ StyleDesigner.definePart('bands', function (K) {
     }
 
     // The first-use line under the canvas bar, once per person.
+    // The tips' state is kept by the tour's model, which comes with the part
+    // 'tour'; its first use here runs that part (nothing of it is shown).
     function _bdTip(host) {
+        if (S.tip || !S.g) return;
+        if (!window.PGDesignerTour) {
+            if (S.tipAsked) return;
+            S.tipAsked = true;
+            K._sdPartCall('tour', 'model', []).then(function () {
+                if (S.host === host) _bdTip(host);
+            }).catch(function () { /* the line waits for the next visit */ });
+            return;
+        }
         var T = window.PGDesignerTour;
-        if (S.tip || !T || !S.g) return;
         var key = T.key(host.userId), state = null;
         if (!key) return;
         try { state = T.read(window.localStorage.getItem(key)); } catch (e) { return; }

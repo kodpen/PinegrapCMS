@@ -449,7 +449,7 @@ StyleDesigner.definePart('mylibrary', function (K) {
 
     // What a copy brings with it: its rules and variables into the User
     // Styles (inside the insert's undo step), and a line only when a class
-    // was renamed or a binding cleared.
+    // was renamed, a binding cleared or pictures are missing.
     function _settle(res) {
         if (res.css) {
             var css = _userStyles();
@@ -466,7 +466,14 @@ StyleDesigner.definePart('mylibrary', function (K) {
                 renamed.map(function (c) { return '.' + res.renamed[c]; }).join(', ')]));
         }
         if (res.cleared) {
-            lines.push(_sdT('Added from my library. This site lacks what a widget of the copy was bound to: choose a form, collection or group for it.'));
+            lines.push(_sdT('Added from my library. This site lacks what a widget of the copy was bound to: choose a form, collection, group, product group, calendar, menu or component for it.'));
+        }
+        // A picture's address stays as written: the file put at that
+        // place in the file manager repairs it.
+        if (res.pictures_missing === 1) {
+            lines.push(_sdT('Added from my library. One picture of the copy is not on this site: put it in the file manager at the same place or choose another picture.'));
+        } else if (res.pictures_missing > 1) {
+            lines.push(_sdT('Added from my library. {var} pictures of the copy are not on this site: put them in the file manager at the same place or choose other pictures.', res.pictures_missing));
         }
         lines.forEach(function (l) { K.sdToast(esc(l), 'warning', 9000); });
     }

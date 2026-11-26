@@ -123,21 +123,24 @@ function test_designer_parts_files_describe_every_part()
 // editor, 'off' ones never, the others while their condition is true.
 function test_designer_parts_for_follow_their_condition()
 {
-	$every = array('bands', 'code', 'focus', 'fonts', 'grid', 'guides', 'import', 'interactions', 'move', 'mylibrary', 'optsearch', 'overrides', 'pages', 'questions', 'review', 'sketchdetails', 'sketchread', 'spacing', 'states', 'theme', 'treesearch', 'variables');
+	// Read from the files, so a new 'always' part edits no list here.
+	$every = array_keys(array_filter(pg_designer_part_files(), function ($part) {
+		return $part['when'] === 'always';
+	}));
+	pg_assert_true(count(array_intersect(array('code', 'move', 'treesearch'), $every)) === 3, 'the parts of every editor include the always ones');
 	pg_assert_same($every, pg_designer_parts_for(array()), 'nothing holds: the parts of every editor');
 	pg_assert_same($every, pg_designer_parts_for(array('always' => false, 'off' => true, 'nope' => true)), 'always and off cannot be turned');
 
 	$all = array_fill_keys(pg_designer_part_conditions(), true);
 	$given = pg_designer_parts_for($all);
-	pg_assert_false(in_array('mirror', $given, true), 'mirror is off');
-	pg_assert_same(array_values(array_diff(array_keys(pg_designer_part_files()), array('mirror'))), $given, 'everything else holds');
+	pg_assert_same(array_keys(pg_designer_part_files()), $given, 'everything holds');
 
-	$expect = array('ai' => 'ai', 'comments' => 'comments', 'phone' => 'phone', 'publishcheck' => 'publishcheck', 'libraryfile' => 'designer', 'librarymanage' => 'designer', 'cleanup' => 'designer', 'clicks' => 'clicks', 'mirror' => 'off');
+	$expect = array('ai' => 'ai', 'comments' => 'comments', 'phone' => 'phone', 'publishcheck' => 'publishcheck', 'libraryfile' => 'designer', 'librarymanage' => 'designer', 'styleguide' => 'designer', 'cleanup' => 'designer', 'clicks' => 'clicks');
 	foreach ($expect as $part => $condition) {
 		pg_assert_same($condition, pg_designer_part_files()[$part]['when'], $part . ' is handed on ' . $condition);
 	}
 
-	pg_assert_same(array('cleanup', 'libraryfile', 'librarymanage'), array_values(array_diff(pg_designer_parts_for(array('designer' => true)), $every)), 'designer adds Clean up and My library\'s file');
+	pg_assert_same(array('cleanup', 'libraryfile', 'librarymanage', 'styleguide'), array_values(array_diff(pg_designer_parts_for(array('designer' => true)), $every)), 'designer adds Clean up, My library\'s file and the Style guide');
 	pg_assert_same(array('ai'), array_values(array_diff(pg_designer_parts_for(array('ai' => true)), $every)), 'ai adds the assistant only');
 }
 

@@ -482,14 +482,16 @@ function test_designer_activity_rights()
 		array('key' => 'verdict:1', 'kind' => 'share', 'page_id' => 4, 'folder_id' => 9),
 		array('key' => 'audit:1', 'kind' => 'file', 'page_id' => 0, 'folder_id' => 0),
 		array('key' => 'audit:2', 'kind' => 'page', 'page_id' => 4, 'folder_id' => 9),
+		array('key' => 'comment:1', 'kind' => 'share', 'page_id' => 4, 'folder_id' => 9),
 	);
 
 	// The designer roles see every event of the design.
-	pg_assert_same(6, count(pg_designer_activity_visible($events, true, $mine)));
+	pg_assert_same(7, count(pg_designer_activity_visible($events, true, $mine)));
 
-	// A content editor: the page events of pages that are theirs, no
-	// design-level event (a share link, a design file).
-	pg_assert_same(array('revision:1', 'verdict:1', 'audit:2'),
+	// A content editor: the versions and the moves on and off the site of
+	// pages that are theirs; no design-level event, and no customer's
+	// answer or comment, which belong to the prototype review.
+	pg_assert_same(array('revision:1', 'audit:2'),
 		array_column(pg_designer_activity_visible($events, false, $mine), 'key'));
 }
 
@@ -499,6 +501,189 @@ function test_designer_activity_panel_action()
 
 	pg_assert_contains("'import_fragment', 'activity_list',", $panel, 'content-level operators may ask');
 	pg_assert_contains("case 'activity_list':", $panel, 'the sub action');
-	pg_assert_contains('pg_designer_activity_read($ac_style, $user, $ac_before)', $panel, 'answered by the reader');
+	pg_assert_contains('pg_designer_activity_read($ac_style, $user, $ac_before, $ac_filter)', $panel, 'answered by the reader');
+	pg_assert_contains("pg_designer_activity_filter(", $panel, 'the three choosers go with the request');
 	pg_assert_true(in_array('activity_list', pg_page_cache_panel_sub_actions()['designer']['clean'], true), 'a read: the page cache stays');
+}
+
+function test_designer_activity_filter_reads_the_three_choosers()
+{
+	$user = array('id' => 7, 'role' => 1);
+
+	// Nothing chosen: everything.
+	pg_assert_same(array('person' => '', 'user_id' => 0, 'page_id' => 0, 'kind' => ''),
+		pg_designer_activity_filter('', '', '', $user));
+
+	// "Me" is the person asking; a user id is that person.
+	pg_assert_same(array('person' => 'user', 'user_id' => 7, 'page_id' => 0, 'kind' => ''),
+		pg_designer_activity_filter('me', '', '', $user));
+	pg_assert_same(array('person' => 'user', 'user_id' => 12, 'page_id' => 4, 'kind' => 'version'),
+		pg_designer_activity_filter('12', '4', 'version', $user));
+	pg_assert_same('customers', pg_designer_activity_filter('customers', '', '', $user)['person']);
+	pg_assert_same('schedule', pg_designer_activity_filter('schedule', '', '', $user)['person']);
+
+	// Junk widens, never narrows to an injected value.
+	pg_assert_same(array('person' => '', 'user_id' => 0, 'page_id' => 0, 'kind' => ''),
+		pg_designer_activity_filter("1' OR 1=1", '-3', 'nokind', $user));
+
+	// The six kinds.
+	foreach (array('version', 'page', 'share', 'design', 'component', 'file') as $kind) {
+		pg_assert_same($kind, pg_designer_activity_filter('', '', $kind, $user)['kind']);
+	}
+}
+
+function test_designer_activity_filter_is_narrowed()
+{
+	pg_assert_false(pg_designer_activity_filter_narrowed(pg_designer_activity_filter('', '', '', array('id' => 1))));
+	pg_assert_true(pg_designer_activity_filter_narrowed(pg_designer_activity_filter('', '', 'page', array('id' => 1))));
+}
+
+function test_designer_activity_filter_sql_per_part()
+{
+	$none = pg_designer_activity_filter('', '', '', array('id' => 7));
+
+	// Nothing chosen: every part reads all its rows.
+	foreach (array('revision', 'audit_page', 'audit_file', 'audit_style', 'audit_component', 'link', 'revoke', 'verdict', 'comment') as $part) {
+		pg_assert_same('1', pg_designer_activity_filter_sql($part, $none), $part);
+	}
+
+	// Kind: a part of another kind reads nothing.
+	$versions = pg_designer_activity_filter('', '', 'version', array('id' => 7));
+	pg_assert_same('1', pg_designer_activity_filter_sql('revision', $versions));
+	pg_assert_same(false, pg_designer_activity_filter_sql('audit_page', $versions));
+	pg_assert_same(false, pg_designer_activity_filter_sql('comment', $versions));
+	$share = pg_designer_activity_filter('', '', 'share', array('id' => 7));
+	foreach (array('link', 'revoke', 'verdict', 'comment') as $part) {
+		pg_assert_same('1', pg_designer_activity_filter_sql($part, $share), $part);
+	}
+	pg_assert_same('1', pg_designer_activity_filter_sql('audit_style', pg_designer_activity_filter('', '', 'design', array())));
+	pg_assert_same('1', pg_designer_activity_filter_sql('audit_component', pg_designer_activity_filter('', '', 'component', array())));
+	pg_assert_same('1', pg_designer_activity_filter_sql('audit_file', pg_designer_activity_filter('', '', 'file', array())));
+
+	// Page: the part's page column; a design-level part reads nothing.
+	$page = pg_designer_activity_filter('', '4', '', array('id' => 7));
+	pg_assert_same('(r.page_id = 4)', pg_designer_activity_filter_sql('revision', $page));
+	pg_assert_same('(a.entity_id = 4)', pg_designer_activity_filter_sql('audit_page', $page));
+	pg_assert_same('(v.page_id = 4)', pg_designer_activity_filter_sql('verdict', $page));
+	pg_assert_same('(c.page_id = 4)', pg_designer_activity_filter_sql('comment', $page));
+	foreach (array('audit_file', 'audit_style', 'audit_component', 'link', 'revoke') as $part) {
+		pg_assert_same(false, pg_designer_activity_filter_sql($part, $page), $part);
+	}
+
+	// A person: the part's user column; a trail line written by the
+	// schedule is never a person's.
+	$me = pg_designer_activity_filter('me', '', '', array('id' => 7));
+	pg_assert_same('(r.user_id = 7)', pg_designer_activity_filter_sql('revision', $me));
+	pg_assert_same("(a.user_id = 7 AND a.source <> 'job')", pg_designer_activity_filter_sql('audit_style', $me));
+	pg_assert_same('(l.created_by = 7)', pg_designer_activity_filter_sql('link', $me));
+	pg_assert_same('(l.revoked_by = 7)', pg_designer_activity_filter_sql('revoke', $me));
+	pg_assert_same('(c.user_id = 7)', pg_designer_activity_filter_sql('comment', $me));
+	pg_assert_same(false, pg_designer_activity_filter_sql('verdict', $me));
+
+	// Customers: the answers and a guest's comments.
+	$guests = pg_designer_activity_filter('customers', '', '', array('id' => 7));
+	pg_assert_same('1', pg_designer_activity_filter_sql('verdict', $guests));
+	pg_assert_same('(c.user_id = 0)', pg_designer_activity_filter_sql('comment', $guests));
+	pg_assert_same(false, pg_designer_activity_filter_sql('revision', $guests));
+	pg_assert_same(false, pg_designer_activity_filter_sql('audit_page', $guests));
+
+	// The schedule: the trail's job lines only.
+	$job = pg_designer_activity_filter('schedule', '', '', array('id' => 7));
+	pg_assert_same("(a.source = 'job')", pg_designer_activity_filter_sql('audit_page', $job));
+	pg_assert_same(false, pg_designer_activity_filter_sql('revision', $job));
+	pg_assert_same(false, pg_designer_activity_filter_sql('link', $job));
+
+	// The three together.
+	$all = pg_designer_activity_filter('12', '4', 'version', array('id' => 7));
+	pg_assert_same('(r.page_id = 4) AND (r.user_id = 12)', pg_designer_activity_filter_sql('revision', $all));
+
+	// An unknown part reads nothing.
+	pg_assert_same(false, pg_designer_activity_filter_sql('nopart', $none));
+}
+
+// A version whose version before was trimmed by the page's retention names
+// none, so its row does not open Compare on a revision that is gone.
+function test_designer_activity_revision_names_the_version_before()
+{
+	$row = array(
+		'revision_id' => 21, 'page_id' => 4, 'revision_no' => 31, 'source' => 'publish',
+		'created_at' => 1700, 'user_id' => 2, 'user_username' => 'ayse', 'page_name' => 'Prices',
+		'page_folder' => 9, 'editor' => '',
+	);
+
+	pg_assert_same(30, pg_designer_activity_from_revision($row + array('oldest_no' => 2))['before_no']);
+	pg_assert_same(0, pg_designer_activity_from_revision($row + array('oldest_no' => 31))['before_no']);
+	pg_assert_same(30, pg_designer_activity_from_revision($row)['before_no']);
+
+	$row['revision_no'] = 1;
+	pg_assert_same(0, pg_designer_activity_from_revision($row + array('oldest_no' => 1))['before_no']);
+}
+
+// A content editor's page is cut to fifty before the events of pages that
+// are not theirs are taken out: the reader goes on reading until fifty of
+// their own are found or nothing older remains, so a page never comes back
+// empty while their events lie further back.
+function test_designer_activity_fill_reads_on_past_hidden_events()
+{
+	$all = array();
+	for ($i = 1; $i <= 130; $i++) {
+		$event = _designer_activity_test_event('revision', $i, 10000 - $i);
+		// Only every tenth event, and none of the newest sixty, is theirs.
+		$event['mine'] = ($i > 60 && $i % 10 === 0);
+		$all[] = $event;
+	}
+
+	$read = function ($before) use ($all) {
+		$cursor = pg_designer_activity_cursor_parse($before);
+		$list = array();
+		foreach ($all as $event) {
+			if (pg_designer_activity_is_after($event, $cursor)) {
+				$list[] = $event;
+			}
+		}
+		return pg_designer_activity_merge(array(array_slice($list, 0, 4)), 3);
+	};
+	$visible = function ($events) {
+		return array_values(array_filter($events, function ($e) { return $e['mine']; }));
+	};
+
+	$seen = array();
+	$before = '';
+	for ($round = 0; $round < 20; $round++) {
+		list($events, $more, $next) = pg_designer_activity_fill($read, $visible, 3, $before, 50);
+		pg_assert_true(count($events) <= 3, 'a page holds at most the page size');
+		if ($more) {
+			pg_assert_true(count($events) > 0, 'a page with more after it is never empty');
+		}
+		foreach ($events as $event) {
+			$seen[] = $event['key'];
+		}
+		if (!$more) {
+			break;
+		}
+		$before = $next;
+	}
+
+	pg_assert_same(array('revision:70', 'revision:80', 'revision:90', 'revision:100', 'revision:110', 'revision:120', 'revision:130'), $seen);
+}
+
+// A full read (the designer roles) is one round, as before.
+function test_designer_activity_fill_one_round_when_all_visible()
+{
+	$calls = 0;
+	$read = function ($before) use (&$calls) {
+		$calls++;
+		return pg_designer_activity_merge(array(array(
+			_designer_activity_test_event('audit', 1, 30),
+			_designer_activity_test_event('audit', 2, 20),
+			_designer_activity_test_event('audit', 3, 10),
+		)), 2);
+	};
+
+	list($events, $more, $next) = pg_designer_activity_fill($read, null, 2, '', 10);
+
+	pg_assert_same(1, $calls);
+	pg_assert_same(2, count($events));
+	pg_assert_true($more);
+	pg_assert_same('20:audit:2', $next);
 }

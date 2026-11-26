@@ -15,6 +15,15 @@
  *   PGGridTracks.edit(current, field, text, axis) // the value after a field's change
  *   PGGridTracks.track(token)              // one track size as CSS, '' refused
  *
+ * A grid child's place (Span columns, Span rows, Start at), the values of
+ * `grid-column` and `grid-row`: a start line and a span, each empty for
+ * the browser's own placement.
+ *
+ *   PGGridTracks.PLACE
+ *   PGGridTracks.parsePlace(value)         // { start, span, typed, value }
+ *   PGGridTracks.buildPlace(spec)          // the CSS value, '' for none, null refused
+ *   PGGridTracks.editPlace(current, field, text) // field 'start', 'span' or 'typed'
+ *
  * `axis` is 'columns' or 'rows'; `mode` '', 'equal', 'fixed', 'fit' or
  * 'typed'. Equal tracks are `minmax(0, 1fr)` so a long word does not widen
  * one column; "As many as fit" is `min(<width>, 100%)` so one column never
@@ -180,7 +189,74 @@
         return null;
     }
 
-    var api = { CSS: CSS, MAX: MAX, parse: parse, build: build, pick: pick, edit: edit, track: track };
+    var PLACE = { columns: 'grid-column', rows: 'grid-row' };
+    var LINE = /^\d+$/;
+
+    // A start line or a span: a whole number, 1 to MAX; '' stays ''.
+    function placeNum(v) {
+        var s = String(v == null ? '' : v).trim();
+        if (!s) return '';
+        return LINE.test(s) && +s >= 1 && +s <= MAX ? String(+s) : null;
+    }
+
+    // Reads `<start>`, `span <n>`, `<start> / span <n>`, `<start> / <end>`
+    // (end after start) and `auto / span <n>`; anything else is typed.
+    function parsePlace(value) {
+        var v = String(value == null ? '' : value).replace(/\s+/g, ' ').trim();
+        var out = { start: '', span: '', typed: false, value: v };
+        if (!v || v === 'auto') return out;
+        var parts = v.split(/ ?\/ ?/);
+        var a = parts[0], b = parts.length === 2 ? parts[1] : 'auto';
+        var spanOf = function (t) { var m = /^span (\d+)$/.exec(t); return m ? m[1] : ''; };
+        var start = '', span = '';
+        if (parts.length > 2) {
+            start = null;
+        } else if (LINE.test(a)) {
+            start = a;
+            if (spanOf(b)) span = spanOf(b);
+            else if (LINE.test(b)) span = +b > +a ? String(+b - +a) : null;
+            else if (b !== 'auto') span = null;
+        } else if (spanOf(a) && b === 'auto') {
+            span = spanOf(a);
+        } else if (a === 'auto' && spanOf(b)) {
+            span = spanOf(b);
+        } else {
+            start = null;
+        }
+        start = start === null ? null : placeNum(start);
+        span = span === null ? null : placeNum(span);
+        if (start === null || span === null) {
+            out.typed = true;
+            return out;
+        }
+        out.start = start;
+        out.span = span;
+        return out;
+    }
+
+    function buildPlace(spec) {
+        spec = spec || {};
+        var start = placeNum(spec.start), span = placeNum(spec.span);
+        if (start === null || span === null) return null;
+        if (start && span) return start + ' / span ' + span;
+        if (span) return 'span ' + span;
+        return start;
+    }
+
+    function editPlace(current, field, text) {
+        var cur = current || parsePlace('');
+        if (field === 'typed') {
+            var t = String(text == null ? '' : text).replace(/\s+/g, ' ').trim();
+            return bad(t) ? null : t;
+        }
+        if (field !== 'start' && field !== 'span') return null;
+        var spec = { start: cur.typed ? '' : cur.start, span: cur.typed ? '' : cur.span };
+        spec[field] = text;
+        return buildPlace(spec);
+    }
+
+    var api = { CSS: CSS, MAX: MAX, parse: parse, build: build, pick: pick, edit: edit, track: track,
+        PLACE: PLACE, parsePlace: parsePlace, buildPlace: buildPlace, editPlace: editPlace };
 
     root.PGGridTracks = api;
 

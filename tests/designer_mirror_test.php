@@ -183,3 +183,139 @@ function test_mirror_is_a_part()
 	$core = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_false(strpos($core, 'PGMirrorSchedule') !== false, 'the core holds no scheduling');
 }
+
+// Every editor gets the part's address; it runs only when the switch is on.
+function test_mirror_is_handed_to_every_editor()
+{
+	pg_assert_true(in_array('mirror', pg_designer_parts_for(array()), true), 'handed with no condition');
+}
+
+// One function of style_designer.src.js, from its declaration to its
+// closing brace.
+function mirror_test_core_fn($name)
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$start = strpos($js, "\n    function " . $name . '(');
+	$end = ($start === false) ? false : strpos($js, "\n    }\n", $start);
+
+	return (($start === false) || ($end === false)) ? '' : substr($js, $start, $end - $start + 6);
+}
+
+// The mirrors' widths: a phone and a tablet unless two of the bar's five
+// differing widths are kept; an e-mail design has the phone alone.
+function test_mirror_side_widths()
+{
+	$fn = mirror_test_core_fn('_sdSideWidths');
+	pg_assert_true($fn !== '', 'style_designer.src.js has _sdSideWidths()');
+	$out = mirror_test_node($fn . "\nout = [_sdSideWidths('', false), _sdSideWidths('576,992', false), _sdSideWidths('768,768', false), _sdSideWidths('375,1400', false), _sdSideWidths('576,992', true), _sdSideWidths(null, false)];");
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(array(375, 768), array(576, 992), array(375, 768), array(375, 768), array(375), array(375, 768)), $out, 'widths');
+}
+
+// The row's room: boxes of 200 and 280, 12 px around and between, a canvas
+// of at least 400; three need a column of 928 px, an e-mail design 636.
+function test_mirror_side_layout_needs_room()
+{
+	$fn = mirror_test_core_fn('_sdSideLayout');
+	pg_assert_true($fn !== '', 'style_designer.src.js has _sdSideLayout()');
+	$out = mirror_test_node($fn . "\nout = [_sdSideLayout(930, [375, 768]), _sdSideLayout(927, [375, 768]), _sdSideLayout(928, [375, 768]), _sdSideLayout(636, [375]), _sdSideLayout(635, [375]), _sdSideLayout(2000, [992, 1200]), _sdSideLayout(1000, [])];");
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('boxes' => array(200, 280), 'side' => 516, 'canvas' => 402, 'fits' => true), $out[0], 'the drawing\'s 1440 px window');
+	pg_assert_false($out[1]['fits'], 'one pixel short');
+	pg_assert_true($out[2]['fits'], 'three fit in 928');
+	pg_assert_same(array('boxes' => array(200), 'side' => 224, 'canvas' => 400, 'fits' => true), $out[3], 'an e-mail design in 636');
+	pg_assert_false($out[4]['fits'], 'an e-mail design one pixel short');
+	pg_assert_same(array(280, 280), $out[5]['boxes'], 'wide widths take 280');
+	pg_assert_false($out[6]['fits'], 'no mirror, no row');
+}
+
+// A head's list: the five widths, the shown one ticked, the canvas's and the
+// other mirror's dimmed; choosing a dimmed one changes nothing.
+function test_mirror_size_list()
+{
+	$out = mirror_test_node("out = { list: M.sizes([375, 768], 0, 1200), full: M.sizes([375, 768], 1, 0), pick: M.pick([375, 768], 0, 576, 1200), other: M.pick([375, 768], 0, 768, 1200), canvas: M.pick([375, 768], 1, 1200, 1200), outline: M.clean('a sd-outline-grid sd-grid-overlay b') };");
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		array('w' => 375, 'on' => true, 'where' => ''),
+		array('w' => 576, 'on' => false, 'where' => ''),
+		array('w' => 768, 'on' => false, 'where' => 'other'),
+		array('w' => 992, 'on' => false, 'where' => ''),
+		array('w' => 1200, 'on' => false, 'where' => 'canvas'),
+	), $out['list'], 'the phone mirror\'s list beside a 1200 canvas');
+	pg_assert_same('other', $out['full'][0]['where'], 'Full width dims none for the canvas');
+	pg_assert_same('', $out['full'][4]['where'], 'Full width is not 1200');
+	pg_assert_same(array(576, 768), $out['pick'], 'a free width is taken');
+	pg_assert_same(array(375, 768), $out['other'], 'the other mirror\'s width is refused');
+	pg_assert_same(array(375, 768), $out['canvas'], 'the canvas\'s width is refused');
+	pg_assert_same('a b', $out['outline'], 'Outline and the grid are not drawn in a mirror');
+}
+
+// The chosen element is followed: a class change that adds or takes off
+// the selection mark counts, any other does not.
+function test_mirror_selection_moved()
+{
+	$out = mirror_test_node("out = ["
+		. "M.selectionMoved({ type: 'attributes', name: 'class', old: 'sd-wrap', now: 'sd-wrap sd-selected' }),"
+		. "M.selectionMoved({ type: 'attributes', name: 'class', old: 'sd-wrap sd-selected', now: 'sd-wrap' }),"
+		. "M.selectionMoved({ type: 'attributes', name: 'class', old: 'sd-wrap sd-selected', now: 'sd-wrap sd-selected sd-tb-below' }),"
+		. "M.selectionMoved({ type: 'attributes', name: 'style', old: '', now: 'color:red' }),"
+		. "M.selectionMoved({ type: 'childList', nodes: ['sd-selected'] }),"
+		. "M.selectionMoved(null)"
+		. "];");
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(true, true, false, false, false, false), $out, 'only the selection mark moving counts');
+}
+
+// A mirror scrolls only when the element is out of its view, and then
+// brings it a third of the way down; a hidden element moves nothing.
+function test_mirror_follow_scroll()
+{
+	$out = mirror_test_node("out = ["
+		. "M.follow(100, 200, 600, 0),"
+		. "M.follow(700, 800, 600, 0),"
+		. "M.follow(-300, -200, 600, 900),"
+		. "M.follow(550, 650, 600, 0),"
+		. "M.follow(50, 100, 600, 10),"
+		. "M.follow(0, 0, 600, 0)"
+		. "];");
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(null, 500, 400, 350, null, null), $out, 'scroll only when out of view, to a third');
+}
+
+// "Edit at this size": the canvas takes the mirror's width and the mirror
+// the canvas's; Full width hands over 1200; pressed again it swaps back.
+function test_mirror_swap()
+{
+	$out = mirror_test_node("var a = M.swap([375, 768], 0, 1200), b = M.swap(a.widths, 0, a.canvas);"
+		. "out = [a, b, M.swap([375, 768], 1, 0), M.swap([375, 1200], 0, 0), M.swap([375, 768], 5, 1200)];");
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('widths' => array(1200, 768), 'canvas' => 375), $out[0], 'the phone mirror swaps with a 1200 canvas');
+	pg_assert_same(array('widths' => array(375, 768), 'canvas' => 1200), $out[1], 'pressed again it swaps back');
+	pg_assert_same(array('widths' => array(375, 1200), 'canvas' => 768), $out[2], 'Full width hands over 1200');
+	pg_assert_same(array('widths' => array(1200, 576), 'canvas' => 375), $out[3], 'the other mirror never shows the same width');
+	pg_assert_same(null, $out[4], 'no such mirror');
+}

@@ -6,23 +6,23 @@ module: product_insights
 
 ## What is it and why?
 - Owner (2026-11-22): Edit Product shows the product's figures, units sold and the times it was left in a cart his two examples; the drawing was accepted with "onay" (`workflow/decisions-made-panel-15.md`).
-- Built in #11094 (readers, `product-insights-module.md`) and #11138 (head and card, `product-insights-card.md`). The drawing: `commerce-screens-drawing/product.html` with `product-dark.jpg` and `product-light.jpg`.
+- Built in #11094 (readers, `product-insights-module.md`) and #11138 (head and card, `product-insights-card.md`). Drawing: `commerce-screens-drawing/product.html`.
 - Edit Product (`edit_product.php`, drawn by `product_builder.php`) is a kept screen: only the head and the card were let into its file (`ui/look-kept-screens.md`).
 
 ## What is on the screen?
 - A head under the breadcrumb: cover, title, status and stock pills, SKU with copy, price, first group, last change; Duplicate, Product Form, View on site.
 - "Performance": the first section and rail entry, on Edit Product only. Period 30 days, 12 months or All; eight figures, a bar chart of units sold, "Carts and interest", the foot "Orders of this product".
-- Read only: it writes nothing and is no part of Save. It loads after the page has opened; a failed read shows one line and Try again.
+- Read only, no part of Save; it loads after the page has opened.
 
 ## Which sales count?
-- Lines of the product (`order_items.product_id`) on orders with status complete or exported, by order date in the period. Cancelled and incomplete orders are left out; a product sold inside a bundle counts by its own line only.
-- Units sold: sum of quantity. Orders: different orders. Revenue: price times quantity as the line shows it, store currency. Last sale: the newest order date, whatever the period.
+- Lines of the product (`order_items.product_id`) on orders `pg_customer_value_order_counts()` counts (complete or exported, no `cancelled_at`, not refunded in full; `pg_product_insights_counted_sql()`), by order date in the period. Cancelled and fully refunded orders are out (#11815); a partly refunded one counts in full. A product sold inside a bundle counts by its own line only.
+- Units sold: sum of quantity. Orders: different orders. Revenue: price times quantity as the line shows it, base-currency orders only (`pg_customer_value_order_unit()`): a marketplace order in another currency adds units, no money (#11815). Last sale: the newest order date, whatever the period.
 - The change line compares with the period of the same length right before; All has none, nor a figure whose earlier value is zero.
 
 ## What are Views, Conversion, Returns and Margin?
 - Views: the product's rows of `visitor_content_hourly` (`visitors/visitors-content.md`). With visitor statistics off, or before the rollup's first day, Views and Conversion are left out.
 - Conversion: orders divided by views, one decimal, shown from 20 views.
-- Returns: units on returns not rejected, counted as Sales watch counts them (`sales-watch-returns.md`), with their share of units sold.
+- Returns: units on returns that hold goods (`pg_return_holds_goods()`: open, refunded, or closed after something was sent, received or paid back), with their share of units sold. A request withdrawn before that, or rejected, is no return (#11815).
 - Margin: profit's share of revenue, the cost taken as the order's Profit card takes it; left out with no cost known. Shown only where the Profit card would show (`erp/erp-order-profit-screens.md`).
 
 ## What counts under "Carts and interest"?

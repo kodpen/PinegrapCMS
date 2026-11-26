@@ -20,7 +20,7 @@ description: A guest in a Workspace call (CL5): the guest page's bar with Join (
 
 ## What changes on the staff's side?
 - A guest room (kind `guest`) with one member or more carries the head's Voice call and Video call (`callable()`); its call is a group's (`isGroup()`): named by the room, waits alone up to 5 minutes, Join in the head while it runs.
-- It rings nobody (`ws_call_rings_for()` leaves out kind `guest`) and cannot be declined (`ws_call_decline()` refuses): a decline would end a call the guest is in.
+- It rings nobody (`ws_call_rings_for()` leaves out kind `guest`) and cannot be declined (`ws_call_decline()` refuses): a decline would end a call the guest is in. A conversation of two shared with a guest who came into the call cannot be declined either (`ws_call_has_guest()`, #11765).
 
 ## How was it checked?
 - Unit tests: `tests/workspace_calls_guest_test.php` (Join only under node, the bar's wiring, texts, bundle, no ring), `tests/workspace_calls_screen_test.php`, `tests/standalone_css_tokens_test.php`.

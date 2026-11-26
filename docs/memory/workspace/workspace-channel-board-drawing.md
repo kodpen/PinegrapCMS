@@ -1,13 +1,13 @@
 ---
 name: workspace-channel-board-drawing
-description: The drawing of a channel's Board tab (plan workspace-channel-board, BM1 to BM5): one sheet of four boards, the board view, the list view, the Automations drawer, phone width
+description: The drawing of a channel's Board tab (BM1 to BM5, built): one sheet of four boards, the board view, the list view, the Automations drawer, phone width
 ---
 
 ## Where is the drawing?
 - `workspace/workspace-channel-board-drawing/`: `board.html` with `board-light.jpg` and `board-dark.jpg`. The sheet draws itself with a script from sample tasks; `?theme=dark` gives the dark look, `?f=A` (B, C, D) one board.
 - It carries the look's tokens in its own style block, not `ui/look-sheet/sheet.css`, and reads the panel's Inter and icon fonts from `pinegrap/assets/fonts/`.
 - The owner chose from these boards on 2026-11-24 (workspace part 51 of the decisions list). He saw them with Turkish labels; the sheet carries the English ones the steps write.
-- Where the plan's screens file and the sheet differ the sheet wins (`workflow/architect-draws-new-part.md`). Sample tasks, names and counts are examples.
+- Where words and the sheet differ the sheet wins (`workflow/architect-draws-new-part.md`). Sample tasks, names and counts are examples. What was built: `workspace-channel-board-tab.md`, `-look.md`, `-automations.md`.
 
 ## Which board belongs to which step?
 - A, the board view: BM1 the tab, the Segmented control and the toolbar; BM2 the three groupings; BM3 the four figures, the columns, the cards, the drop place; BM5 the "Automations" button and a column's rule line.

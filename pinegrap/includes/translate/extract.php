@@ -96,6 +96,9 @@ function pg_tr_node_fields($type, $props)
                 case 'navbar':
                     $add('brand', 'text');
                     break;
+                case 'markdown':
+                    $add('markdown', 'text');
+                    break;
             }
             break;
     }

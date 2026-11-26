@@ -255,7 +255,8 @@ function pg_feedback_delay_split($minutes)
  * @param array  $known     users, channels (id lists) and languages (codes,
  *                          the site's first one first); wa_offered
  *                          (pg_whatsapp_message_offered()) and wa_before
- *                          (the stored WhatsApp choice), both optional
+ *                          (the stored WhatsApp choice), both optional;
+ *                          kind, the stored kind of a survey already sent
  * @param string $touchpoint the survey's touchpoint (fixed once made)
  * @return array survey, errors (list of sentences)
  */
@@ -278,6 +279,13 @@ function pg_feedback_survey_input(array $post, array $known, $touchpoint)
     $survey['name'] = $string('name', 150);
     $kind = (int) ($post['kind'] ?? 0);
     $survey['kind'] = isset(pg_feedback_kind_names()[$kind]) ? $kind : $points[$touchpoint]['kind'];
+
+    // Once something went out the kind stays: the stored scores and bands,
+    // the report's sums and the buttons of the mails already sent are of it.
+    if (!empty($known['kind']) && ((int) $known['kind'] !== $survey['kind'])) {
+        $survey['kind'] = (int) $known['kind'];
+        $errors[] = lang('The score cannot be changed once the survey has been sent. Make a new survey for another score.');
+    }
     $channel = (string) ($post['channel'] ?? '');
     $survey['channel'] = isset(pg_feedback_channel_names()[$channel]) ? $channel : 'email';
     $survey['purpose'] = (($touchpoint === 'periodic') || (($post['purpose'] ?? '') === '1')) ? 1 : 0;

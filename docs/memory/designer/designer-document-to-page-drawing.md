@@ -1,6 +1,6 @@
 ---
 name: designer-document-to-page-drawing
-description: The drawing of the "From a document" start (plan designer-document-to-page, FD3 and FD4): boards F1 what opens it, F2 the form, F3 the sections as rows
+description: The drawing of the "From a document" start (`document-to-page.md`): boards F1 what opens it, F2 the form, F3 the sections as rows
 ---
 
 ## Where is the drawing?

@@ -952,7 +952,9 @@ function pg_messages_sends_tiles(array $user, $now)
  * @param array  $user
  * @param string $action 'retry:<sid>' or 'delete:<sid>'
  * @return string the outcome: '', 'queued' (an e-mail), 'queued_sms' (a
- *                text or WhatsApp message), 'sent', 'unsent', 'deleted'
+ *                text or WhatsApp message), 'sent', 'unsent', 'deleted',
+ *                'offer_key' (a failed WhatsApp message whose single-use
+ *                offer key was switched off, not put back)
  */
 function pg_messages_sends_action(array $user, $action)
 {
@@ -982,7 +984,11 @@ function pg_messages_sends_action(array $user, $action)
         }
 
         if ($parts['branch'] === 'whatsapp') {
-            return pg_messages_sends_whatsapp_retry($parts['id']) ? 'queued_sms' : '';
+            if (pg_messages_sends_whatsapp_retry($parts['id'])) {
+                return 'queued_sms';
+            }
+
+            return ((int) db_value("SELECT key_code_id FROM whatsapp_outbox WHERE (id = '" . (int) $parts['id'] . "') AND (status = 'failed')") > 0) ? 'offer_key' : '';
         }
 
         return '';
@@ -1135,7 +1141,9 @@ function pg_messages_sends_whatsapp_delivery_row(array $row)
 /**
  * Puts a WhatsApp message back in the queue at once, under the SMS queue's
  * rule: one waiting, failed or of unknown outcome and not expired. One
- * being sent, one that was sent and one past its expiry are left alone.
+ * being sent, one that was sent and one past its expiry are left alone, and
+ * so is a failed one holding a single-use offer key: the key was switched
+ * off when it failed, so its code would no longer work.
  *
  * @param int $id
  * @return bool whether the message was put back in the queue
@@ -1148,7 +1156,8 @@ function pg_messages_sends_whatsapp_retry($id)
         WHERE
             (id = '" . (int) $id . "')
             AND (status IN ('queued', 'failed', 'uncertain'))
-            AND ((expires_at = 0) OR (expires_at > UNIX_TIMESTAMP()))");
+            AND ((expires_at = 0) OR (expires_at > UNIX_TIMESTAMP()))
+            AND NOT ((status = 'failed') AND (key_code_id > 0))");
 
     return mysqli_affected_rows(db::$con) > 0;
 }

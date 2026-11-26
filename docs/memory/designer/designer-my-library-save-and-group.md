@@ -20,8 +20,8 @@ description: "Save to my library" (element menu, command palette) and its window
 
 ## What happens when a copy is added?
 - `createFromPalette('library')` asks the part (`_sdLibNode()`). An item without rows is made ready while its card shows; then the copy lands at once. Otherwise a placeholder ("Adding …") stands in the spot until `library_prepare` answers, and is swapped in the same undo step.
-- The prepared `css` is appended to the User Styles. A line only when a class was renamed (named, or a count over three) or a binding cleared.
-- A node or widget placement with `props._libraryUnbound` draws an amber outline on the canvas (`.sd-lib-unbound`) and a line under the Options panel's element row; `_sdLibUnbound()` drops the mark once every cleared kind has a record again.
+- The prepared `css` is appended to the User Styles. A line only when a class was renamed (named, or a count over three), a binding cleared or pictures are missing (`designer-library-missing-pictures.md`).
+- A node or widget placement with `props._libraryUnbound` draws an amber outline on the canvas (`.sd-lib-unbound`) and a line under the Options panel's element row; `_sdLibUnbound()` drops it once each cleared kind (`pg_library_ref_kind()`, `menu_name`, `shared`) has a record again.
 
 ## What is measured?
 - `node tests/js/designer_render_timing.js` before and after (median of 25 runs, three runs each): unchanged within spread. The core bundle grew about 2.2 KB (0.8 KB gzip); the part is its own 13.7 KB bundle.

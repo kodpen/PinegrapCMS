@@ -556,7 +556,31 @@ function pg_whatsapp_inbox_receive($event, $now)
     // webhooks; the payload names the message's type as type.
     pg_announce('whatsapp.received', pg_whatsapp_received_event($inbox_id, array('type' => (string) $event['kind']) + $event, $contact_id));
 
+    // A stop word refuses marketing as an SMS one does (the consent is the
+    // number's SMS marketing consent); a message Meta delivers again never
+    // gets here, so it writes one refusal.
+    if (pg_whatsapp_inbox_stops($event)) {
+        pg_sms_stop_refusal((string) $event['from'], $now);
+    }
+
     return true;
+}
+
+/**
+ * Whether a customer's message is a stop word alone (pg_sms_is_stop_word())
+ * from a number, which refuses marketing messages to that number. A user
+ * known only by a username has no number whose consent could be refused.
+ * Pure.
+ *
+ * @param array $event pg_whatsapp_webhook_events()'s message
+ * @return bool
+ */
+function pg_whatsapp_inbox_stops($event)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms_inbox.php');
+
+    return ((string) ($event['kind'] ?? '') === 'text') && ((string) ($event['from'] ?? '') !== '')
+        && pg_sms_is_stop_word((string) ($event['body'] ?? ''));
 }
 
 /**

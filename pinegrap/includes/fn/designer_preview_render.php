@@ -408,3 +408,421 @@ function pg_preview_as_record_target($setup, $cfg, $page_id, $user)
     }
     return $out;
 }
+
+// ---------------------------------------------------------------------------
+// What a renderer reads of the case it is drawn in. Outside a Preview widget
+// no flag is held, so each of these gives back what the renderer had: a live
+// visitor sees exactly what they saw before.
+// ---------------------------------------------------------------------------
+
+/**
+ * The condition a list's statements add for the case "Empty": no record
+ * matches, so the list draws its own "no record" state, count and pages
+ * from nothing. '' outside that case.
+ *
+ * @return string
+ */
+function pg_preview_as_empty_where()
+{
+    return pg_preview_as_flag('empty') ? ' AND (TRUE = FALSE) ' : '';
+}
+
+/**
+ * The ORDER BY head a list's statement puts first while the widget is
+ * drawn with $flag: the rows whose $expr is greatest come first ("Long":
+ * the most characters, "Sold out": the products that cannot be bought).
+ * '' outside that case. $expr is the renderer's own SQL, never input.
+ *
+ * @param string $flag 'long' | 'sold_out'
+ * @param string $expr an SQL expression over the list's tables
+ * @return string "<expr> DESC, " or ''
+ */
+function pg_preview_as_order($flag, $expr)
+{
+    return ($expr !== '' && pg_preview_as_flag($flag)) ? '(' . $expr . ') DESC, ' : '';
+}
+
+/**
+ * The characters of a row's text: its string values, or those named in
+ * $keys. Pure.
+ *
+ * @param mixed    $row
+ * @param string[] $keys empty: every string value
+ * @return int
+ */
+function pg_preview_as_row_length($row, $keys = array())
+{
+    if (!is_array($row)) return 0;
+    $len = 0;
+    foreach ($keys ? $keys : array_keys($row) as $key) {
+        if (!isset($row[$key]) || !is_string($row[$key])) continue;
+        $len += function_exists('mb_strlen') ? mb_strlen(strip_tags($row[$key]), 'UTF-8') : strlen(strip_tags($row[$key]));
+    }
+    return $len;
+}
+
+/**
+ * Rows a renderer has already read, as the case draws them: none for
+ * "Empty"; for "Long" the rows with the most characters first (stable, so
+ * equal rows keep their order); as they are otherwise. Pure but for the
+ * held setup.
+ *
+ * @param array    $rows
+ * @param string[] $keys the text keys measured for "Long" (empty: all)
+ * @return array
+ */
+function pg_preview_as_rows($rows, $keys = array())
+{
+    if (!is_array($rows)) return $rows;
+    if (pg_preview_as_flag('empty')) return array();
+    if (!pg_preview_as_flag('long') || count($rows) < 2) return $rows;
+    $order = array();
+    $i = 0;
+    foreach ($rows as $k => $row) {
+        $order[] = array(pg_preview_as_row_length($row, $keys), $i++, $k);
+    }
+    usort($order, function ($a, $b) {
+        if ($a[0] !== $b[0]) return ($a[0] > $b[0]) ? -1 : 1;
+        return ($a[1] < $b[1]) ? -1 : 1;
+    });
+    $list = array_keys($rows) === range(0, count($rows) - 1);
+    $out  = array();
+    foreach ($order as $o) {
+        if ($list) {
+            $out[] = $rows[$o[2]];
+        } else {
+            $out[$o[2]] = $rows[$o[2]];
+        }
+    }
+    return $out;
+}
+
+/**
+ * The field a built-in form marks for the case "Error" and the message
+ * its own handler gives when that required field is left empty; null for
+ * a form with no such field. Pure.
+ *
+ * @param string $form the liveform name
+ * @return array|null {field, message}
+ */
+function pg_preview_as_form_error_field($form)
+{
+    switch ((string)$form) {
+        case 'login':
+            return array('field' => 'email', 'message' => lang('Email or username is required.'));
+        case 'forgot_password':
+            return array('field' => 'email', 'message' => lang(array('string' => '{var:1} is required.', 'vars' => lang('Email'))));
+        case 'register':
+        case 'affiliate_sign_up_form':
+        case 'shipping_address_and_arrival':
+            return array('field' => 'first_name', 'message' => lang('First Name is required.'));
+        case 'billing_information':
+            return array('field' => 'billing_first_name', 'message' => lang('First Name is required.'));
+    }
+    return null;
+}
+
+/**
+ * For the case "Error": the form drawn as after a submission with its
+ * first required field left empty. The mark is written to the form's
+ * liveform in the session, which pg_preview_as_while() puts back after the
+ * widget. Nothing outside that case.
+ *
+ * @param mixed  $lf   the widget's liveform
+ * @param string $form the liveform name
+ * @return void
+ */
+function pg_preview_as_form_error($lf, $form)
+{
+    if (!is_object($lf) || !pg_preview_as_flag('form_error')) return;
+    $mark = pg_preview_as_form_error_field($form);
+    if ($mark !== null) $lf->mark_error($mark['field'], $mark['message']);
+}
+
+/**
+ * The field of a custom form the case "Error" marks: the first required
+ * one a visitor fills in (office use only is left out). Pure.
+ *
+ * @param array $field_map pg_cf_field_map()
+ * @return array|null the form_fields row
+ */
+function pg_preview_as_custom_form_required($field_map)
+{
+    foreach (is_array($field_map) ? $field_map : array() as $row) {
+        if (!is_array($row) || empty($row['required']) || !empty($row['office_use_only'])) continue;
+        return $row;
+    }
+    return null;
+}
+
+/**
+ * For the case "Error" on a custom form: its first required field marked
+ * with the message custom_form.php gives it (pg_cf_required_message()).
+ *
+ * @param mixed $lf        the form's liveform
+ * @param array $field_map pg_cf_field_map()
+ * @return void
+ */
+function pg_preview_as_custom_form_error($lf, $field_map)
+{
+    if (!is_object($lf) || !pg_preview_as_flag('form_error')) return;
+    $row = pg_preview_as_custom_form_required($field_map);
+    if ($row === null) return;
+    $label = function_exists('pg_tr_label') ? pg_tr_label((string)$row['label']) : (string)$row['label'];
+    $lf->mark_error($row['id'], pg_cf_required_message((string)$row['type'], $label, 0));
+}
+
+/**
+ * The sample account the Preview draws a signed-in visitor as: the values
+ * the designer canvas draws (_sdAccountSample(), _sdOrderAddress() in
+ * style_designer.src.js), so the canvas and the Preview tell one person.
+ * It has no user row and gets none: a renderer that reads rows by the
+ * visitor's id draws these rows instead of running its statement. A list
+ * not held here (orders, invoices, bookings, tickets) is drawn empty, as a
+ * new account's. Pure.
+ *
+ * @return array {account: array, contact: array, recipients: array[]}
+ */
+function pg_preview_as_sample_account()
+{
+    // A name is split as the canvas splits it: the last word is the last name.
+    $split = function ($full) {
+        $parts = preg_split('/\s+/', trim((string)$full));
+        $last  = count($parts) > 1 ? array_pop($parts) : '';
+        return array(implode(' ', $parts), $last);
+    };
+    $bill = $split(lang('Alex Morgan'));
+    $ship = $split(lang('Sam Carter'));
+    return array(
+        'account' => array(
+            'username'   => 'alex',
+            'email'      => 'alex@example.com',
+            'first_name' => $bill[0],
+            'last_name'  => $bill[1],
+            'member_id'  => 'M-1042',
+        ),
+        // The contact row, in the columns of contacts: the sample order's
+        // billing person.
+        'contact' => array(
+            'salutation' => '', 'first_name' => $bill[0], 'last_name' => $bill[1], 'suffix' => '',
+            'title' => '', 'company' => lang('Example Ltd.'), 'email_address' => 'alex@example.com',
+            'business_address_1' => lang('Sample Street 1'), 'business_address_2' => lang('Flat 4'),
+            'business_city' => lang('Springfield'), 'business_state' => lang('Illinois'),
+            'business_zip_code' => '62701', 'business_country' => 'US', 'business_phone' => '',
+            'mobile_phone' => '+90 555 000 00 00', 'home_phone' => '', 'business_fax' => '',
+            'tax_number' => '', 'tax_office' => '', 'member_id' => 'M-1042', 'lead_source' => '', 'opt_in' => 0,
+        ),
+        // The address book: the order's shipping address first, as on the
+        // canvas, and a second saved recipient.
+        'recipients' => array(
+            array(
+                'id' => 1, 'ship_to_name' => lang('Studio'), 'salutation' => lang('Mr.'),
+                'first_name' => $ship[0], 'last_name' => $ship[1], 'company' => lang('Cooper Studio'),
+                'address_1' => lang('Harbour Road 12'), 'address_2' => lang('Floor 2'), 'city' => lang('Portland'),
+                'state' => lang('Oregon'), 'zip_code' => '97201', 'country' => 'US',
+                'address_verified' => 0, 'address_type' => 'business', 'phone_number' => '+90 555 111 22 33',
+                'arrival_date' => '', 'user' => 0,
+            ),
+            array(
+                'id' => 2, 'ship_to_name' => lang('Home'), 'salutation' => '',
+                'first_name' => $bill[0], 'last_name' => $bill[1], 'company' => '',
+                'address_1' => lang('Sample Street 1'), 'address_2' => lang('Flat 4'), 'city' => lang('Springfield'),
+                'state' => lang('Illinois'), 'zip_code' => '62701', 'country' => 'US',
+                'address_verified' => 0, 'address_type' => 'residential', 'phone_number' => '+90 555 000 00 00',
+                'arrival_date' => '', 'user' => 0,
+            ),
+        ),
+    );
+}
+
+/**
+ * The sample account's saved recipient of that name, or null. Pure.
+ *
+ * @param string $ship_to_name
+ * @return array|null
+ */
+function pg_preview_as_sample_recipient($ship_to_name)
+{
+    foreach (pg_preview_as_sample_account()['recipients'] as $row) {
+        if ((string)$row['ship_to_name'] === (string)$ship_to_name) return $row;
+    }
+    return null;
+}
+
+/**
+ * Who the widget being drawn now is drawn for: the one reader the
+ * renderers ask in place of the USER_LOGGED_IN family of constants.
+ *
+ * Outside a Preview widget (pg_preview_as_current() empty) it gives the
+ * request's own constants back, read with defined(), so a live visit draws
+ * as before. Inside one it gives the setup's visitor: signed out (nobody),
+ * signed in (the sample account: id 0, a plain user's role, no user row),
+ * member (the sample account let in by the page's access rules), first
+ * visit and returning (signed out). No constant is redefined. The operator's own rights (an edit link) are no
+ * visitor's and are not read here.
+ *
+ * preview: whether a Preview visitor is drawn; sample: the sample account,
+ * whose rows come from pg_preview_as_sample_account(), never from a
+ * statement; role: null when not signed in; returning: whether the browser
+ * was seen before this visit, the pg_ret cookie's answer outside a Preview
+ * widget (pg_audience_returning()) and the chosen visitor's inside one, so
+ * the audience conditions never read the operator's own cookie there.
+ *
+ * @return array {preview, sample, signed_in, id, contact_id, role, member, username, email, first_name, last_name, returning}
+ */
+function pg_preview_as_viewer()
+{
+    $current = pg_preview_as_current();
+    if (empty($current)) {
+        $signed_in = defined('USER_LOGGED_IN') && USER_LOGGED_IN === true;
+        return array(
+            'preview'    => false,
+            'sample'     => false,
+            'signed_in'  => $signed_in,
+            'id'         => defined('USER_ID') && is_scalar(USER_ID) ? (int)USER_ID : 0,
+            'contact_id' => defined('USER_CONTACT_ID') && is_scalar(USER_CONTACT_ID) ? (int)USER_CONTACT_ID : 0,
+            'role'       => defined('USER_ROLE') ? USER_ROLE : null,
+            'member'     => defined('USER_MEMBER') && USER_MEMBER === true,
+            'username'   => defined('USER_USERNAME') ? (string)USER_USERNAME : '',
+            'email'      => defined('USER_EMAIL_ADDRESS') ? (string)USER_EMAIL_ADDRESS : '',
+            'first_name' => '',
+            'last_name'  => '',
+            'returning'  => function_exists('pg_audience_returning') && defined('PG_AUDIENCE_RETURNING_COOKIE')
+                && pg_audience_returning(isset($_COOKIE[PG_AUDIENCE_RETURNING_COOKIE]) ? $_COOKIE[PG_AUDIENCE_RETURNING_COOKIE] : null, time()) === '1',
+        );
+    }
+    $visitor   = isset($current['visitor']) ? $current['visitor'] : 'signed_out';
+    $signed_in = ($visitor === 'signed_in' || $visitor === 'member');
+    $sample    = pg_preview_as_sample_account();
+    $account   = $sample['account'];
+    return array(
+        'preview'    => true,
+        'sample'     => $signed_in,
+        'signed_in'  => $signed_in,
+        'id'         => 0,
+        'contact_id' => 0,
+        'role'       => $signed_in ? 3 : null,
+        'member'     => $visitor === 'member',
+        'username'   => $signed_in ? $account['username'] : '',
+        'email'      => $signed_in ? $account['email'] : '',
+        'first_name' => $signed_in ? $account['first_name'] : '',
+        'last_name'  => $signed_in ? $account['last_name'] : '',
+        'returning'  => $visitor === 'returning',
+    );
+}
+
+/**
+ * The value of an audience kind (pg_audience_token_kind()) for the visitor
+ * of a Preview widget, in place of what pg_audience_value() reads of the
+ * request: returning from the chosen case, never the pg_ret cookie; member
+ * from the chosen member. Every other kind reads '': the sample account is
+ * in no contact group, and the operator's country, device, UTM values and
+ * experiment buckets are no visitor's. Pure.
+ *
+ * @param string $kind
+ * @param array  $viewer pg_preview_as_viewer()
+ * @return string '1' or ''
+ */
+function pg_preview_as_audience_value($kind, $viewer)
+{
+    if ($kind === 'returning') return !empty($viewer['returning']) ? '1' : '';
+    if ($kind === 'member') return (!empty($viewer['signed_in']) && !empty($viewer['member'])) ? '1' : '';
+    return '';
+}
+
+/**
+ * Whether the visitor of pg_preview_as_viewer() may view a folder, as
+ * check_view_access() answers for the request's own visitor. Inside a
+ * Preview widget the answer is the chosen visitor's, by the folder's access
+ * control type: public for anybody, guest and registration when signed in
+ * or when $always_grant (anybody can get in), membership and private only
+ * for the member, whom the page's access rules let in.
+ *
+ * @param int  $folder_id
+ * @param bool $always_grant check_view_access()'s second argument
+ * @return bool
+ */
+function pg_preview_as_view_access($folder_id, $always_grant = false)
+{
+    $viewer = pg_preview_as_viewer();
+    if (!$viewer['preview']) return (bool)check_view_access($folder_id, $always_grant);
+    return pg_preview_as_view_rule(get_access_control_type($folder_id), $viewer, $always_grant);
+}
+
+/**
+ * pg_preview_as_view_access()'s rule from the folder's access control
+ * type. Pure.
+ *
+ * @param string $type   get_access_control_type()
+ * @param array  $viewer pg_preview_as_viewer()
+ * @param bool   $always_grant
+ * @return bool
+ */
+function pg_preview_as_view_rule($type, $viewer, $always_grant = false)
+{
+    $signed_in = !empty($viewer['signed_in']);
+    if ($type === 'public') return true;
+    if ($type === 'guest' || $type === 'registration') return $always_grant || $signed_in;
+    if ($type === 'membership' || $type === 'private') return $signed_in && !empty($viewer['member']);
+    return false;
+}
+
+/**
+ * Which mask a record's field takes in a signed-in Preview: 'email',
+ * 'phone', 'address' or '' (shown as it is), by the field's type and the
+ * contact column it fills. Pure.
+ *
+ * @param string $type    form_fields.type
+ * @param string $contact form_fields.contact_field
+ * @return string
+ */
+function pg_preview_as_mask_kind($type, $contact)
+{
+    $contact = (string)$contact;
+    if ((string)$type === 'email address' || $contact === 'email_address') return 'email';
+    if (strpos($contact, 'phone') !== false || strpos($contact, 'fax') !== false) return 'phone';
+    if (preg_match('/(address_[12]|_city|_state|_zip_code)$/', $contact)) return 'address';
+    return '';
+}
+
+/**
+ * A record's form_data rows with a real customer's e-mail, phone and
+ * address masked (pg_preview_as_mask()). Pure.
+ *
+ * @param array $rows {data, field_type, field_contact, ...}
+ * @return array
+ */
+function pg_preview_as_mask_rows($rows)
+{
+    foreach ($rows as $i => $row) {
+        if (!is_array($row)) continue;
+        $kind = pg_preview_as_mask_kind(isset($row['field_type']) ? $row['field_type'] : '',
+            isset($row['field_contact']) ? $row['field_contact'] : '');
+        if ($kind !== '' && isset($row['data'])) $rows[$i]['data'] = pg_preview_as_mask($row['data'], $kind);
+    }
+    return $rows;
+}
+
+/**
+ * A real customer's e-mail address, phone or address as the Preview shows
+ * it to a signed-in visitor: the first character and, for an e-mail, the
+ * domain kept, the rest dotted. Pure.
+ *
+ * @param string $value
+ * @param string $kind 'email', 'phone' or 'address'
+ * @return string
+ */
+function pg_preview_as_mask($value, $kind)
+{
+    $value = trim((string)$value);
+    if ($value === '') return '';
+    if ($kind === 'email' && strpos($value, '@') !== false) {
+        $at = strrpos($value, '@');
+        return mb_substr($value, 0, 1) . '•••' . substr($value, $at);
+    }
+    if ($kind === 'phone') {
+        $digits = preg_replace('/\D+/', '', $value);
+        return '•••' . substr($digits, -2);
+    }
+    return mb_substr($value, 0, 1) . '•••';
+}

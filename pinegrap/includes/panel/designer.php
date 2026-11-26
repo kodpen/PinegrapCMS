@@ -233,6 +233,9 @@ function pg_panel_designer($request, $action)
         // calls check pg_library_may() themselves.
         $content_ok[] = 'library_list';
         $content_ok[] = 'library_prepare';
+        // A bound element's row "Edit this record's content" / "Open the
+        // record": the answer checks the record's own rights.
+        $content_ok[] = 'preview_record_open';
         if (pg_designer_access($user) === PG_DESIGNER_ACCESS_NONE
             || !in_array($sub, $content_ok, true)) {
             respond(array('status' => 'error', 'message' => lang('Permission denied.')));
@@ -502,6 +505,15 @@ function pg_panel_designer($request, $action)
                 isset($request['folder_id']) ? (int)$request['folder_id'] : 0,
                 isset($request['exclude_style_id']) ? (int)$request['exclude_style_id'] : 0
             ));
+            break;
+
+        // "New collection with pages" (includes/fn/collection_pages.php):
+        // the collections there are, which addresses are taken, and one of
+        // the collection, its list page and its detail page made. Design-
+        // level, like adding a page.
+        case 'collection_pages':
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/collection_pages.php');
+            respond(pg_coll_pages_panel($request, $user));
             break;
 
         // "Page details" of a sketch page in the Prototype view: the menus,
@@ -964,15 +976,24 @@ function pg_panel_designer($request, $action)
             );
             // "Preview as": the page's record, visitor and case, read back
             // against the page's widgets; a record only the user may open.
+            // "Edit content here" asks for the widgets' node marks
+            // (data-pg-node), by which the Preview finds the elements of a
+            // record to frame; this answer only, never a stored page.
+            $pv_marks = !empty($request['marks']);
             $pv_setups = array();
-            $pv_html   = pg_designer_preview_widgets(
-                $pv['page_id'],
-                (isset($request['widgets']) && is_array($request['widgets'])) ? $request['widgets'] : array(),
-                $pv['comment_settings'],
-                (isset($request['preview_as']) && is_array($request['preview_as'])) ? $request['preview_as'] : null,
-                $user,
-                $pv_setups
-            );
+            if ($pv_marks) pg_designer_audit_render(true);
+            try {
+                $pv_html = pg_designer_preview_widgets(
+                    $pv['page_id'],
+                    (isset($request['widgets']) && is_array($request['widgets'])) ? $request['widgets'] : array(),
+                    $pv['comment_settings'],
+                    (isset($request['preview_as']) && is_array($request['preview_as'])) ? $request['preview_as'] : null,
+                    $user,
+                    $pv_setups
+                );
+            } finally {
+                if ($pv_marks) pg_designer_audit_render(false);
+            }
             respond(array(
                 'status' => 'success',
                 'html'   => $pv_html,
@@ -998,6 +1019,24 @@ function pg_panel_designer($request, $action)
                 'status' => 'success',
                 'rows'   => pg_preview_as_record_search(is_array($pr_cfg) ? $pr_cfg : array(), $pr_page, isset($request['q']) ? $request['q'] : '', $user),
             ));
+            break;
+
+        // A bound element's canvas row: the record its widget shows in the
+        // Preview (the one kept in "Preview as", else the default) and
+        // whether it is edited in place or opened on its own screen
+        // (pg_rec_edit_open()).
+        case 'preview_record_open':
+            $po_page = isset($request['page_id']) ? (int)$request['page_id'] : 0;
+            if ($po_page > 0 && pg_designer_page_access($po_page, $user) === 'hidden') $po_page = 0;
+            $po_widget = (isset($request['widget']) && is_array($request['widget'])) ? $request['widget'] : array();
+            $po_rows   = pg_designer_preview_override_rows(array($po_widget));
+            $po_sid    = isset($po_widget['id']) ? (int)$po_widget['id'] : 0;
+            $po_cfg    = isset($po_rows[$po_sid]) ? $po_rows[$po_sid]['cfg'] : null;
+            if (!is_array($po_cfg) && $po_sid > 0) {
+                $po_cfg = json_decode((string)db_value("SELECT system_region_config FROM shared_components WHERE id = '" . $po_sid . "' LIMIT 1"), true);
+            }
+            $po_record = (isset($request['record']) && is_scalar($request['record'])) ? (int)$request['record'] : 0;
+            respond(array('status' => 'success', 'open' => pg_rec_edit_open($user, $po_cfg, $po_page, $po_record)));
             break;
 
         case 'template_prepare':
@@ -1144,6 +1183,63 @@ function pg_panel_designer($request, $action)
                 : array('status' => 'success', 'key' => $fg_link['key'], 'pictures' => (object)$fg_read['pictures']));
             break;
 
+        // The Canva start of the New design window: one exported page a
+        // request, stored in the file manager as an upload and measured
+        // (canva_page); then the colours of all the pages added, for the
+        // colours card (canva_colors). No Canva call. A designer's own.
+        case 'canva_page':
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/canva_start.php');
+            respond(pg_canva_store_page(isset($_FILES['file']) ? $_FILES['file'] : null));
+            break;
+        // The pages a Canva start leaves (the bin, Cancel, the window's
+        // close): only ids this session's start stored, never one a saved
+        // page uses (pg_canva_drop_pages()).
+        case 'canva_drop':
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/canva_start.php');
+            respond(array('status' => 'success', 'deleted' => pg_canva_drop_pages(isset($request['ids']) ? $request['ids'] : array())));
+            break;
+        case 'canva_colors':
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/canva_start.php');
+            respond(array(
+                'status' => 'success',
+                'colors' => pg_canva_pick_colors((isset($request['lists']) && is_array($request['lists'])) ? array_slice($request['lists'], 0, pg_canva_max_pages()) : array(), pg_canva_max_colors()),
+            ));
+            break;
+
+        // The Figma start's import, in steps the window drives so it can
+        // show progress: start (the ticked frames read and converted, the
+        // variables found), frame (one frame's pictures fetched into the
+        // file manager), finish (shared components, pages, the report),
+        // stop (what was fetched removed). The token stays on the server.
+        case 'figma_import':
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/figma.php');
+            $fg_step = isset($request['step']) && is_string($request['step']) ? $request['step'] : '';
+            $fg_id = isset($request['id']) && is_string($request['id']) ? $request['id'] : '';
+            if ($fg_step === 'start') {
+                $fg_link = pg_figma_file_link(isset($request['link']) ? $request['link'] : null);
+                $fg_run = $fg_link ? pg_figma_import_start($fg_link['key'], isset($request['ids']) && is_array($request['ids']) ? $request['ids'] : array())
+                                   : array('ok' => false, 'error' => array('kind' => 'other', 'retry' => 0));
+                if (!$fg_run['ok']) {
+                    respond(pg_figma_refusal($fg_run['error']));
+                }
+                respond(array('status' => 'success', 'id' => $fg_run['id'], 'frames' => $fg_run['frames'], 'found' => $fg_run['found']));
+            }
+            if ($fg_step === 'frame') {
+                $fg_run = pg_figma_import_frame($fg_id, isset($request['index']) ? (int)$request['index'] : -1, $user);
+            } elseif ($fg_step === 'finish') {
+                $fg_run = pg_figma_import_finish($fg_id, $user, !empty($request['variables']));
+            } elseif ($fg_step === 'stop') {
+                $fg_run = array('ok' => pg_figma_import_stop($fg_id));
+            } else {
+                $fg_run = array('ok' => false);
+            }
+            if (!$fg_run['ok']) {
+                respond(array('status' => 'error', 'code' => 'gone', 'message' => lang('The import was not found. Start it again.')));
+            }
+            unset($fg_run['ok']);
+            respond(array('status' => 'success') + $fg_run);
+            break;
+
         // A design renamed from the designs list (pg_designer_rename_design()).
         case 'design_rename':
             $dr = pg_designer_rename_design(
@@ -1195,7 +1291,7 @@ function pg_panel_designer($request, $action)
         // The design's events for History's Activity tab
         // (includes/fn/designer_activity.php), fifty at a time. Every role
         // that opens the editor may ask; the reader keeps a content editor
-        // to the pages they may edit.
+        // to the pages they may edit. `person`, `page` and `kind` narrow it.
         case 'activity_list':
             $ac_style = isset($request['style_id']) ? (int)$request['style_id'] : 0;
             if ($ac_style <= 0 || !db_value("SELECT COUNT(*) FROM style WHERE style_id = '$ac_style'")) {
@@ -1203,7 +1299,14 @@ function pg_panel_designer($request, $action)
             }
             require_once(PG_FUNCTIONS_DIR . '/includes/fn/designer_activity.php');
             $ac_before = isset($request['before']) ? (string)$request['before'] : '';
-            respond(array('status' => 'success') + pg_designer_activity_read($ac_style, $user, $ac_before));
+            // The tab's three choosers: person, page, kind.
+            $ac_filter = pg_designer_activity_filter(
+                isset($request['person']) ? (string)$request['person'] : '',
+                isset($request['page']) ? (string)$request['page'] : '',
+                isset($request['kind']) ? (string)$request['kind'] : '',
+                $user
+            );
+            respond(array('status' => 'success') + pg_designer_activity_read($ac_style, $user, $ac_before, $ac_filter));
             break;
 
         case 'revision_get':
@@ -1220,6 +1323,31 @@ function pg_panel_designer($request, $action)
             unset($rv['tree_json'], $rv['revision_id']);
             $rv['tree'] = is_object($rv_tree) ? $rv_tree : null;
             respond(array('status' => 'success', 'revision' => $rv));
+            break;
+
+        // One picture of Compare's Look tab: a tree of the page (the page on
+        // the site, a revision or the draft) drawn as a whole page the way a
+        // signed-out visitor is served it, with each element's tree id
+        // (data-pg-node), through the SEO check's draft render. Nothing is
+        // written and no visit is counted. An empty html tells the editor to
+        // draw the picture itself (a page it may only view, a tree the save
+        // would refuse, a render that failed).
+        case 'compare_render':
+            $cr_page = isset($request['page_id']) ? (int)$request['page_id'] : 0;
+            $cr_tree = (isset($request['tree_json']) && is_string($request['tree_json'])) ? $request['tree_json'] : '';
+            if ($cr_page <= 0 || !pg_designer_revision_page_ok($cr_page, $user)) {
+                respond(array('status' => 'error', 'message' => lang('Page not found.')));
+            }
+            $cr_html = '';
+            if ($cr_tree !== '' && strlen($cr_tree) <= 4000000) {
+                require_once(PG_FUNCTIONS_DIR . '/includes/fn/seo_draft.php');
+                $cr_render = pg_seo_check_draft_render($cr_page, array(), $cr_tree,
+                    (isset($request['widgets']) && is_array($request['widgets'])) ? $request['widgets'] : array(), $user);
+                if ($cr_render !== null && $cr_render['error'] === '' && stripos((string)$cr_render['html'], '<html') !== false) {
+                    $cr_html = (string)$cr_render['html'];
+                }
+            }
+            respond(array('status' => 'success', 'html' => $cr_html));
             break;
 
         // Save a stylesheet as a theme: a design CSS file in the file
@@ -1333,9 +1461,23 @@ function pg_panel_designer($request, $action)
                 $state = pg_design_variables_state(pg_design_variables_from_answers($state['model'],
                     pg_design_variables_answers($request['answers']), $state['defaults']), $look, $palette);
             }
+            // Export: the model as a Design Tokens file the editor offers
+            // as a download. Import: the text of a file, read in the
+            // browser since api.php reads JSON only, answered with the
+            // model it gives and what it would change, or the reason it is
+            // refused; the tab asks before it uses the model.
+            $extra = array();
+            if (!empty($request['export'])) {
+                $extra['export'] = array('text' => pg_design_variables_tokens_text($state['model']),
+                    'count' => pg_design_variables_tokens_export($state['model'])['count'],
+                    'name' => pg_design_variables_tokens_file_name(isset($request['name']) ? (string)$request['name'] : ''));
+            }
+            if (isset($request['tokens']) && is_string($request['tokens'])) {
+                $extra['import'] = pg_design_variables_tokens_import($request['tokens'], $state['model'], $state['defaults']);
+            }
             respond(array('status' => 'success', 'model' => $state['model'], 'defaults' => $state['defaults'],
                 'css' => $state['css'], 'contrast' => $state['contrast'], 'stored' => $model !== null,
-                'list' => pg_design_variables_client_list())
+                'list' => pg_design_variables_client_list()) + $extra
                 + (empty($request['questions']) ? array() : array('questions' => pg_design_variables_questions())));
             break;
 
@@ -1352,6 +1494,34 @@ function pg_panel_designer($request, $action)
                 $lists['files']['rows'][$i]['url'] = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/') . rawurlencode($f['name']) . '?v=' . $f['time'];
             }
             respond(array('status' => 'success') + $lists);
+            break;
+
+        // The Style guide sheet of the Preview menu
+        // (includes/fn/design_style_guide.php): the model of what the
+        // design is made of, from the variables the editor holds (or, with
+        // none sent, the stored file), the look and palette of the moment,
+        // the canvas's own stylesheet text and the shared components with
+        // the pages each is on. Reads only.
+        case 'style_guide':
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/design_variables.php');
+            $look    = isset($request['look']) ? (string)$request['look'] : '';
+            $palette = isset($request['palette']) ? (string)$request['palette'] : '';
+            $model   = null;
+            if (isset($request['model']) && is_array($request['model'])) {
+                $model = $request['model'];
+            } elseif (isset($request['style_id']) && (int)$request['style_id'] > 0) {
+                $model = pg_design_variables_stored((int)$request['style_id']);
+            }
+            $state = pg_design_variables_state($model, $look, $palette);
+            $css = (isset($request['css']) && is_string($request['css'])) ? substr($request['css'], 0, PG_STYLE_GUIDE_CSS_MAX) : '';
+            $sg_rows = db_items("SELECT id, name, system_region_config FROM shared_components");
+            $sg_rows = is_array($sg_rows) ? $sg_rows : array();
+            $guide = pg_style_guide_model($model === null ? null : $state['model'], $state['defaults'], $css, $sg_rows);
+            $sg_ids = array();
+            foreach ($guide['blocks']['components']['rows'] as $sg_row) $sg_ids[] = $sg_row['id'];
+            $guide['blocks']['components']['rows'] = pg_style_guide_component_pages($guide['blocks']['components']['rows'],
+                $sg_ids ? pg_shared_component_usage($sg_ids) : array());
+            respond(array('status' => 'success', 'guide' => $guide));
             break;
 
         // ── MY LIBRARY'S FILE ────────────────────────────────────────

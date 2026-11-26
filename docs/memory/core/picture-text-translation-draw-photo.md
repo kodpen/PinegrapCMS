@@ -18,4 +18,4 @@ module: picture_translation
 - The picture keeps the photo's format (`summer-de.jpg`), or the export's; a later draw in another format makes a new row and deletes the old one.
 
 ## What was checked?
-- `tests/picture_translation_test.php` (`test_picture_translation_photo_kinds`). In a sandbox: a JPEG with two text layers saved by the editor, Draw all giving JPEGs on the base, German at the 70% floor marked Look by hand. Not run: a redacted or erased photo, a server without Imagick.
+- `tests/picture_translation_test.php` (`test_picture_translation_photo_kinds`). In a sandbox: a JPEG with two text layers saved by the editor, Draw all giving JPEGs on the base, German at the floor marked Look by hand. Not run: a redacted or erased photo, a server without Imagick.

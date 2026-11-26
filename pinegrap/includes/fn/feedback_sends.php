@@ -735,7 +735,13 @@ function pg_feedback_send_due(array $row, $now, $sender)
         return 'lost';
     }
 
-    if (!call_user_func($sender, array_merge($row, array('status' => PG_FEEDBACK_SENT, 'sent_at' => (int) $now)), $survey, false)) {
+    // The link is signed again at the send: a row sent long after its due
+    // time (a WhatsApp survey waiting for its template) would otherwise carry
+    // a link that runs out before the 30 days the reminder and the
+    // no-answer rule count from the send.
+    pg_feedback_set_due($row['id'], (int) $now, pg_feedback_key());
+
+    if (!call_user_func($sender, array_merge($row, array('status' => PG_FEEDBACK_SENT, 'sent_at' => (int) $now, 'due_at' => (int) $now)), $survey, false)) {
         db("UPDATE feedback_responses SET status = " . PG_FEEDBACK_CANCELLED . " WHERE id = '" . (int) $row['id'] . "'");
 
         return 'cancelled';

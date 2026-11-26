@@ -105,7 +105,7 @@ function _render_system_widget_menu_region($tree_json, $widget_id, $cfg = array(
             foreach ($level as $item) $items[] = $item;
         }
         $by_parent = pg_sw_list_menu_rows($items, _pg_sa_page_id(),
-            function ($folder_id) { return check_view_access($folder_id) == true; },
+            function ($folder_id) { return pg_preview_as_view_access($folder_id) == true; },
             defined('FRONTEND_LANGUAGE') ? function ($name) { return pg_tr_text($name, 'text'); } : null,
             'pg_menu_page_offline');
         // The items' addresses for the page's prefetch list (speculation.php).

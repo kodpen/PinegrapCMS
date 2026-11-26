@@ -73,10 +73,12 @@ function pg_sm_chosen_method($method_ids, $posted, $stored)
  * @param int  $methods         number of methods offered
  * @param bool  $has_arrival     the recipient asked for an arrival date
  * @param array $currencies      pg_sw_currency_rows()
+ * @param array $recipient       ship_tos columns (company, address_2)
  * @return array
  */
-function pg_sm_flags($has_recipient, $multi_recipient, $methods, $has_arrival, $currencies = array())
+function pg_sm_flags($has_recipient, $multi_recipient, $methods, $has_arrival, $currencies = array(), $recipient = array())
 {
+    $line = function ($k) use ($recipient) { return trim((string)($recipient[$k] ?? '')) !== ''; };
     $sm_flags = array(
         'has_recipient'        => (bool)$has_recipient,
         'no_recipient'         => !$has_recipient,
@@ -85,6 +87,10 @@ function pg_sm_flags($has_recipient, $multi_recipient, $methods, $has_arrival, $
         'no_shipping_methods'  => $has_recipient && $methods === 0,
         'has_arrival_date'     => $has_recipient && $has_arrival,
         'has_currency_choice'  => count((array)$currencies) > 1,
+        // A classic layout's address lines and its plural heading.
+        'has_several_shipping_methods' => $has_recipient && $methods > 1,
+        'recipient_has_company'        => $has_recipient && $line('company'),
+        'recipient_has_address_2'      => $has_recipient && $line('address_2'),
     );
     return $sm_flags;
 }
@@ -138,7 +144,8 @@ function _pg_sm_items_html($ship_to_id, $order_id, $country, $state)
 // Row flag: shipping_method_discounted.
 // Tokens: ^^__recipient_name^^ (ship-to name), ^^__recipient_full_name^^,
 // ^^__recipient_address^^ (one line), ^^__recipient_address_html^^ (lines),
-// ^^__requested_arrival_date^^, ^^__change_address_url^^ (the shipping
+// ^^__recipient_salutation^^ ... ^^__recipient_country^^ (the address's
+// parts), ^^__requested_arrival_date^^, ^^__change_address_url^^ (the shipping
 // address step for this recipient), ^^__no_shipping_methods_message^^,
 // ^^__cart_url^^.
 // Section: recipient_items (the recipient's items; a product that cannot go
@@ -234,7 +241,7 @@ function _render_system_widget_shipping_method($tree_json, $widget_id, $cfg = ar
 
     // A method row's own flag is decided per row, below.
     $currencies = pg_sw_currency_rows();
-    $sm_flags = pg_sm_flags($has_recipient, $multi, count($methods), $arrival !== '', $currencies);
+    $sm_flags = pg_sm_flags($has_recipient, $multi, count($methods), $arrival !== '', $currencies, $has_recipient ? $recipient : array());
     _eo_apply_visibility_bindings($tree, $sm_flags + array('shipping_method_discounted' => true));
     pg_sw_currency_picker($tree, $widget_id, $currencies, defined('VISITOR_CURRENCY_ID') ? (int)VISITOR_CURRENCY_ID : 0);
     pg_cf_apply_section_bindings($tree, array('recipient_items' => $items_html));
@@ -280,6 +287,17 @@ function _render_system_widget_shipping_method($tree_json, $widget_id, $cfg = ar
         '__recipient_full_name'        => h($full_name),
         '__recipient_address'          => h(implode(', ', $lines)),
         '__recipient_address_html'     => implode('<br>', array_map('h', $lines)),
+        // The address's own parts, for a classic layout's lines.
+        '__recipient_salutation'       => h($has_recipient ? (string)$recipient['salutation'] : ''),
+        '__recipient_first_name'       => h($has_recipient ? (string)$recipient['first_name'] : ''),
+        '__recipient_last_name'        => h($has_recipient ? (string)$recipient['last_name'] : ''),
+        '__recipient_company'          => h($has_recipient ? (string)$recipient['company'] : ''),
+        '__recipient_address_1'        => h($has_recipient ? (string)$recipient['address_1'] : ''),
+        '__recipient_address_2'        => h($has_recipient ? (string)$recipient['address_2'] : ''),
+        '__recipient_city'             => h($has_recipient ? (string)$recipient['city'] : ''),
+        '__recipient_state'            => h($has_recipient ? (string)$recipient['state'] : ''),
+        '__recipient_zip'              => h($has_recipient ? (string)$recipient['zip_code'] : ''),
+        '__recipient_country'          => h($country_name !== '' ? $country_name : ($has_recipient ? (string)$recipient['country'] : '')),
         '__requested_arrival_date'     => h($arrival),
         '__change_address_url'         => h($change_url),
         '__no_shipping_methods_message' => h($none_message),

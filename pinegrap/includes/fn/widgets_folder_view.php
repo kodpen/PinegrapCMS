@@ -225,7 +225,7 @@ function _pg_fv_read($root_id, $include_pages, $include_files)
             if (empty($f['archived'])) $queue[] = (int)$f['id'];
         }
         $data['folders'][$id] = $folders;
-        $data['view'][$id] = (check_view_access($id, true) == true);
+        $data['view'][$id] = (pg_preview_as_view_access($id, true) == true);
         if (!$data['view'][$id]) continue;
         if ($include_pages) {
             $data['pages'][$id] = (array)db_items(
@@ -280,10 +280,13 @@ function _render_system_widget_folder_view($tree_json, $widget_id, $cfg = array(
             $page_id, defined('OUTPUT_PATH') ? OUTPUT_PATH : '/');
     }
     $top = isset($by_folder[$folder_id]) ? $by_folder[$folder_id] : array();
+    // The Preview's cases "Empty" and "Long".
+    $top = pg_preview_as_rows($top);
 
-    // The visitor's start page, unless it is this one.
+    // The visitor's start page, unless it is this one; the sample account
+    // of a Preview has none.
     $start_url = '';
-    if (defined('USER_START_PAGE_ID') && USER_START_PAGE_ID != 0 && USER_START_PAGE_ID != $page_id) {
+    if (!pg_preview_as_viewer()['preview'] && defined('USER_START_PAGE_ID') && USER_START_PAGE_ID != 0 && USER_START_PAGE_ID != $page_id) {
         $start_name = get_page_name(USER_START_PAGE_ID);
         if ($start_name != '') $start_url = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/') . encode_url_path($start_name);
     }

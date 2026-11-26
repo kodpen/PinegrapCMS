@@ -507,6 +507,11 @@ function pg_layout_widget_seed($page_type, array $row, array $field_names = arra
             }
             break;
 
+        case 'update address book':
+            // The address type radios, asked for by the page's switch.
+            $cfg['address_type'] = ($int('address_type') === 1);
+            break;
+
         case 'form list view':
             $cfg['form_page_id'] = $int('custom_form_page_id');
             $cfg['detail_page_id'] = $int('form_item_view_page_id');
@@ -740,6 +745,10 @@ function pg_layout_convert_state($type, $row)
             'multi_recipient'  => !empty($row['multi_recipient']),
         );
     }
+    if ((string)$type === 'view order') {
+        // The page has no description setting: the short one is drawn.
+        return array('full_description' => false, 'multi_recipient' => !empty($row['multi_recipient']));
+    }
     if ((string)$type === 'express order') {
         // The cart's two, the extras the page asks for and the parts the
         // widget has not (a quick add box, the page's own billing form).
@@ -757,6 +766,18 @@ function pg_layout_convert_state($type, $row)
             'custom_field_2_label'    => $text('custom_field_2_label'),
             'custom_field_2_required' => !empty($row['custom_field_2_required']),
         );
+    }
+    if (in_array((string)$type, array('billing information', 'shipping address and arrival', 'shipping method'), true)) {
+        // The button's words, and the billing step's required marks.
+        return array(
+            'submit_button_label'     => trim((string)($row['submit_button_label'] ?? '')),
+            'custom_field_1_required' => !empty($row['custom_field_1_required']),
+            'custom_field_2_required' => !empty($row['custom_field_2_required']),
+        );
+    }
+    if ((string)$type === 'update address book') {
+        // The page "What is this?" opens: the link goes without one.
+        return array('address_type_page_id' => (int)($row['address_type_page_id'] ?? 0));
     }
     if ((string)$type !== 'form list view') return array();
     $on = function ($key) use ($row) {
@@ -957,6 +978,10 @@ function _pg_widget_type_facts(array $page_ids, array $kinds)
         'form item view' => array('form_item_view_pages', " AND collection = 'a'"),
         'shopping cart'  => array('shopping_cart_pages', ''),
         'express order'  => array('express_order_pages', ''),
+        'billing information'          => array('billing_information_pages', ''),
+        'shipping address and arrival' => array('shipping_address_and_arrival_pages', ''),
+        'shipping method'              => array('shipping_method_pages', ''),
+        'update address book'          => array('update_address_book_pages', ''),
     );
     $out = array();
 
@@ -976,7 +1001,7 @@ function _pg_widget_type_facts(array $page_ids, array $kinds)
             $row = is_array($found) ? $found : array();
         }
 
-        if ($type === 'shopping cart' || $type === 'express order') {
+        if ($type === 'shopping cart' || $type === 'express order' || $type === 'view order') {
             // A heading per recipient: only a site that ships to several.
             $row['multi_recipient'] = (!defined('ECOMMERCE_SHIPPING') || ECOMMERCE_SHIPPING)
                 && defined('ECOMMERCE_RECIPIENT_MODE') && ECOMMERCE_RECIPIENT_MODE === 'multi-recipient';

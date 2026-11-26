@@ -1115,7 +1115,7 @@ function pg_comments_recent_sources($ids, $show, $viewer, $fetch = 'db_items', $
             'binned' => in_array($folder, $bin, true),
             'archived' => ((string) $row['folder_archived'] === '1'),
             'staff' => $staff,
-            'view' => $live ? (check_view_access($folder) == true) : (get_access_control_type($folder) === 'public'),
+            'view' => $live ? (pg_preview_as_view_access($folder) == true) : (get_access_control_type($folder) === 'public'),
             'sign_in_page' => $sign_in_page,
             'comments_on' => $settings['enabled'],
             // A designed page showing one product holds item threads, as
@@ -1480,14 +1480,20 @@ function _render_system_widget_comments_recent($tree, $widget_id, $cfg, $mode = 
     }
 
     $background = function_exists('pg_seo_rendering') && pg_seo_rendering();
+    $as = pg_preview_as_viewer();
     $audience = pg_comments_widget_audience(false, $background, false, _pg_acct_signed_in());
-    $user_id = ($audience['signed_in'] && defined('USER_ID') && is_scalar(USER_ID)) ? (int) USER_ID : 0;
+    // A Preview widget draws for the visitor the operator chose; the sample
+    // account (id 0) wrote no comment of its own.
+    if ($as['preview']) $audience['signed_in'] = $as['signed_in'];
+    $user_id = $audience['signed_in'] ? $as['id'] : 0;
     $signed_in = $audience['signed_in'] && ($user_id > 0);
     $since = ($signed_in && $audience['session'] && ($options['show'] === 'mine')) ? pg_comments_recent_account_since($user_id) : 0;
     $viewer = array('signed_in' => $signed_in, 'user_id' => $user_id, 'live' => $audience['session'], 'since' => $since);
 
     $sources = pg_comments_recent_sources($options['page_ids'], $options['show'], $viewer, 'db_items', $options['filters']);
     $read = pg_comments_recent_read($sources, $options, $viewer);
+    // The Preview's case "Empty": no recent comment.
+    if (pg_preview_as_flag('empty')) $read = array('entries' => array(), 'more' => false) + $read;
     $audience_sql = pg_comments_recent_audience_sql($options['show'], $viewer['signed_in'] ? $user_id : 0, $since);
     $ids = array();
 

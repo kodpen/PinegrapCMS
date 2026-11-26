@@ -35,7 +35,7 @@ $pd_request = null;
 $pd_path = '';
 
 if (($pd_link !== null) && pg_privacy_requests_ready()) {
-    $pd_request = db_item("SELECT id, kind, status FROM privacy_requests WHERE id = '" . (int) $pd_link['r'] . "'");
+    $pd_request = db_item("SELECT id, kind, status, email FROM privacy_requests WHERE id = '" . (int) $pd_link['r'] . "'");
     $pd_path = pg_privacy_link_dir() . '/' . pg_privacy_link_file_name($pd_link['r'], $pd_link['e'], $pd_link['n']);
 }
 

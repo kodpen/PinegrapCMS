@@ -288,3 +288,38 @@ function test_design_variables_load_after_the_palette()
 	pg_assert_same(array('pg-theme-bridge', 'pg-theme-palette'),
 		$ids(pg_design_theme_assets('', 'ocean', 'bootstrap5')), 'a palette alone as before');
 }
+
+// A bare 0 is a length only where the row's bounds start at 0: a base size
+// of 0 sets --pg-font-size: 0 and hides every page's text.
+function test_design_variables_zero_only_where_the_row_starts_at_zero()
+{
+	$d = pg_design_variables_defaults('', '');
+	$in = $d;
+	$in['values']['size_base'] = '0';
+	$in['values']['space_unit'] = '0';
+	$in['values']['space_section'] = '0';
+	$in['values']['radius'] = '0';
+	$in['values']['border_width'] = '0';
+	$m = pg_design_variables_normalize($in, $d);
+	pg_assert_same('1rem', $m['values']['size_base'], 'base size 0 refused');
+	pg_assert_same('1rem', $m['values']['space_unit'], 'base unit 0 refused');
+	pg_assert_same('4rem', $m['values']['space_section'], 'section rhythm 0 refused');
+	pg_assert_same('0', $m['values']['radius'], 'square corners kept');
+	pg_assert_same('0', $m['values']['border_width'], 'no lines kept');
+}
+
+// A font stack's names are bare or in one pair of quotes: an open quote
+// runs on over the next declaration and the next variable is lost.
+function test_design_variables_font_quotes_are_closed()
+{
+	$d = pg_design_variables_defaults('', '');
+	$in = $d;
+	$in['values']['font_heading'] = '"Inter';
+	$in['values']['font_body'] = "Inter, 'Segoe UI\", Arial";
+	$m = pg_design_variables_normalize($in, $d);
+	pg_assert_same($d['values']['font_heading'], $m['values']['font_heading'], 'an open quote refused');
+	pg_assert_same($d['values']['font_body'], $m['values']['font_body'], 'mixed quotes refused');
+	$in['values']['font_body'] = "Inter, 'Segoe UI', \"Noto Sans\", sans-serif";
+	$m = pg_design_variables_normalize($in, $d);
+	pg_assert_same("Inter, 'Segoe UI', \"Noto Sans\", sans-serif", $m['values']['font_body'], 'closed quotes kept');
+}

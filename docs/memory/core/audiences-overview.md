@@ -20,6 +20,7 @@ module: audiences
 ## Where is each part?
 - Columns, catalogue, SQL builder: [[audiences-rules]] (11.0.155, #6158).
 - Recompute in the general job, Refresh now: [[audiences-recompute]] (#6181, #6307).
+- A rule on its own group refused, one pass of a group at a time: [[audiences-group-loop]] (#11789).
 - Rule editor, count preview, switch review: `ui/contact-group-rules.md` (#6223, #6418).
 - Doors that refuse a dynamic group, readers, merge: [[audiences-doors]] (#6249, #6307, #6418).
 - Page condition `__audience_group_<id>`: `designer/audience-conditions.md` (#6598).

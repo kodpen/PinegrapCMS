@@ -31,6 +31,11 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 define('WS_BOARD_RULE_PREFIX', 'board_');
 
 /**
+ * How many last runs the Automations drawer shows at its foot.
+ */
+define('WS_BOARD_RULE_RUNS', 5);
+
+/**
  * The task events a board rule starts on. Pure.
  *
  * @return string[]
@@ -457,19 +462,31 @@ function ws_board_rule_flows($viewer, $channel)
 }
 
 /**
- * The rules of a channel's board for the person.
+ * The rules of a channel's board for the person, with the columns' rule
+ * lines; with $runs (the Automations drawer) also how often each rule ran
+ * this week and the last runs.
  *
  * @param array $viewer
  * @param array $channel
- * @return array ok, error, ready, flows, on
+ * @param bool  $runs
+ * @return array ok, error, ready, flows, on, lines, and with $runs runs
  */
-function ws_board_rules_for($viewer, $channel)
+function ws_board_rules_for($viewer, $channel, $runs = false)
 {
     if (!ws_board_rules_gate($viewer, $channel)) {
         return array('ok' => false, 'error' => lang('You cannot set the automations of this board.'));
     }
 
-    return array('ok' => true, 'error' => '') + ws_board_rules((int) $channel['id'], ws_board_rule_flows($viewer, $channel), ws_task_statuses());
+    $flows = ws_board_rule_flows($viewer, $channel);
+    $rules = ws_board_rules((int) $channel['id'], $flows, ws_task_statuses());
+    $rules['lines'] = ws_board_rule_lines($rules);
+
+    if ($runs) {
+        $rules = ws_board_rules_ran($rules, ws_board_rule_week_counts(ws_board_rule_flow_ids($rules), strtotime(ws_board_rule_week_start(date('Y-m-d')) . ' 00:00:00')));
+        $rules['runs'] = ws_board_rule_last_runs($viewer, $channel, $rules, $flows);
+    }
+
+    return array('ok' => true, 'error' => '') + $rules;
 }
 
 /**
@@ -579,4 +596,248 @@ function ws_board_rule_set($viewer, $channel, $data)
     }
 
     return array('ok' => true, 'error' => '', 'status' => 200, 'field' => '', 'flow_id' => (int) $flow['id']);
+}
+
+/**
+ * The quiet line a rule that is on draws under its column's head: what
+ * happens to a task that comes there. A ready rule says it in its own
+ * words, another flow by its name. Pure.
+ *
+ * @param string $key  a ws_board_rule_templates() key, '' for another flow
+ * @param string $name the flow's name
+ * @return string
+ */
+function ws_board_rule_line($key, $name)
+{
+    switch ((string) $key) {
+        case 'done_post':
+            return lang('A task that comes here: it is written in the channel');
+
+        case 'waiting_approval':
+            return lang('A task that comes here: its approval is asked');
+
+        case 'done_next_task':
+            return lang('A task that comes here: the next task is made');
+    }
+
+    return lang(array('string' => 'A task that comes here: “{var:1}” runs', 'vars' => (string) $name));
+}
+
+/**
+ * The rule lines of the board's columns: for each status column, the lines
+ * of the rules that are on and are tied to it (an overdue task's rule has
+ * no column). Pure.
+ *
+ * @param array $rules ws_board_rules()
+ * @return array status => string[]
+ */
+function ws_board_rule_lines($rules)
+{
+    $lines = array();
+
+    foreach ((array) ($rules['ready'] ?? array()) as $rule) {
+        if (!empty($rule['on']) && ((string) $rule['column'] !== '')) {
+            $lines[(string) $rule['column']][] = ws_board_rule_line((string) $rule['key'], '');
+        }
+    }
+
+    foreach ((array) ($rules['flows'] ?? array()) as $flow) {
+        if (!empty($flow['on']) && ((string) $flow['column'] !== '')) {
+            $lines[(string) $flow['column']][] = ws_board_rule_line('', (string) $flow['name']);
+        }
+    }
+
+    return $lines;
+}
+
+/**
+ * The Monday a day's week starts on. Pure.
+ *
+ * @param string $today Y-m-d
+ * @return string Y-m-d
+ */
+function ws_board_rule_week_start($today)
+{
+    $noon = strtotime($today . ' 12:00:00');
+
+    return date('Y-m-d', strtotime('-' . ((int) date('N', $noon) - 1) . ' days', $noon));
+}
+
+/**
+ * The flows the rules are, made ready rules and the other flows. Pure.
+ *
+ * @param array $rules ws_board_rules()
+ * @return int[]
+ */
+function ws_board_rule_flow_ids($rules)
+{
+    $ids = array();
+
+    foreach ((array) ($rules['ready'] ?? array()) as $rule) {
+        if (is_array($rule['flow'] ?? null)) {
+            $ids[] = (int) $rule['flow']['flow_id'];
+        }
+    }
+
+    foreach ((array) ($rules['flows'] ?? array()) as $flow) {
+        $ids[] = (int) $flow['flow_id'];
+    }
+
+    return array_values(array_unique(array_filter($ids)));
+}
+
+/**
+ * How often each rule ran this week, on its row: ran on a made ready rule
+ * and on another flow; 0 for a ready rule not made yet. Pure.
+ *
+ * @param array $rules  ws_board_rules()
+ * @param array $counts flow id => runs started this week
+ * @return array the rules with ran
+ */
+function ws_board_rules_ran($rules, $counts)
+{
+    foreach ((array) ($rules['ready'] ?? array()) as $index => $rule) {
+        $rules['ready'][$index]['ran'] = is_array($rule['flow'] ?? null) ? (int) ($counts[(int) $rule['flow']['flow_id']] ?? 0) : 0;
+    }
+
+    foreach ((array) ($rules['flows'] ?? array()) as $index => $flow) {
+        $rules['flows'][$index]['ran'] = (int) ($counts[(int) $flow['flow_id']] ?? 0);
+    }
+
+    return $rules;
+}
+
+/**
+ * The runs each flow started since a moment.
+ *
+ * @param int[] $flow_ids
+ * @param int   $since
+ * @return array flow id => count
+ */
+function ws_board_rule_week_counts($flow_ids, $since)
+{
+    $flow_ids = array_values(array_filter(array_map('intval', (array) $flow_ids)));
+    $out = array();
+
+    if (empty($flow_ids)) {
+        return $out;
+    }
+
+    foreach ((array) db_items("SELECT flow_id, COUNT(*) AS n FROM ws_flow_runs
+        WHERE flow_id IN (" . implode(',', $flow_ids) . ") AND started_at >= '" . (int) $since . "'
+        GROUP BY flow_id") as $row) {
+        $out[(int) $row['flow_id']] = (int) $row['n'];
+    }
+
+    return $out;
+}
+
+/**
+ * The lines of the drawer's last runs, newest first. A run names its task
+ * only when the task is one of this channel's (its title read here); what
+ * was done is the run's result, else what its status says. Pure.
+ *
+ * @param array[] $runs    ws_flow_runs rows, newest first
+ * @param array   $results run id => the result's sentence
+ * @param array   $titles  task id => title, the channel's tasks only
+ * @param array   $names   flow id => the flow's name
+ * @param int     $limit
+ * @return array[] id, flow_id, flow, at, task, text, status
+ */
+function ws_board_rule_run_lines($runs, $results, $titles, $names, $limit = WS_BOARD_RULE_RUNS)
+{
+    $lines = array();
+
+    foreach ((array) $runs as $run) {
+        if (count($lines) >= (int) $limit) {
+            break;
+        }
+
+        $id = (int) $run['id'];
+        $status = (string) $run['status'];
+        $task_id = ((string) ($run['subject_type'] ?? '') === 'task') ? (int) ($run['subject_id'] ?? 0) : 0;
+        $text = trim((string) ($results[$id] ?? ''));
+
+        if ($text === '') {
+            $text = ws_flow_run_statuses()[$status] ?? $status;
+        }
+
+        $lines[] = array(
+            'id'      => $id,
+            'flow_id' => (int) $run['flow_id'],
+            'flow'    => (string) ($names[(int) $run['flow_id']] ?? ''),
+            'at'      => (int) $run['started_at'],
+            'task'    => ($task_id > 0) ? (string) ($titles[$task_id] ?? '') : '',
+            'text'    => $text,
+            'status'  => $status,
+        );
+    }
+
+    return $lines;
+}
+
+/**
+ * The last runs of the board's rules as the person reaches them
+ * (ws_flow_run_access()), from the flows' own record.
+ *
+ * @param array   $viewer
+ * @param array   $channel
+ * @param array   $rules ws_board_rules()
+ * @param array[] $flows ws_board_rule_flows()
+ * @return array[] ws_board_rule_run_lines()
+ */
+function ws_board_rule_last_runs($viewer, $channel, $rules, $flows)
+{
+    $by_id = array();
+    $names = array();
+
+    foreach ((array) $flows as $flow) {
+        $by_id[(int) $flow['id']] = $flow;
+    }
+
+    $ids = array_values(array_filter(ws_board_rule_flow_ids($rules), function ($id) use ($by_id) {
+        return isset($by_id[$id]);
+    }));
+
+    if (empty($ids)) {
+        return array();
+    }
+
+    foreach ($ids as $id) {
+        $names[$id] = (string) $by_id[$id]['name'];
+    }
+
+    $runs = array();
+
+    foreach ((array) db_items("SELECT * FROM ws_flow_runs WHERE flow_id IN (" . implode(',', $ids) . ") ORDER BY id DESC LIMIT " . (WS_BOARD_RULE_RUNS * 4)) as $run) {
+        $access = ws_flow_run_access($viewer, $by_id[(int) $run['flow_id']], $run);
+
+        if ($access !== '') {
+            $run['access'] = $access;
+            $runs[(int) $run['id']] = $run;
+        }
+
+        if (count($runs) >= WS_BOARD_RULE_RUNS) {
+            break;
+        }
+    }
+
+    $task_ids = array();
+
+    foreach ($runs as $run) {
+        if (((string) $run['subject_type'] === 'task') && ((int) $run['subject_id'] > 0)) {
+            $task_ids[] = (int) $run['subject_id'];
+        }
+    }
+
+    $titles = array();
+
+    if ($task_ids) {
+        foreach ((array) db_items("SELECT id, title FROM ws_tasks WHERE id IN (" . implode(',', array_unique($task_ids)) . ")
+            AND channel_id = '" . (int) $channel['id'] . "'") as $task) {
+            $titles[(int) $task['id']] = (string) $task['title'];
+        }
+    }
+
+    return ws_board_rule_run_lines(array_values($runs), ws_flow_runs_results($runs), $titles, $names);
 }

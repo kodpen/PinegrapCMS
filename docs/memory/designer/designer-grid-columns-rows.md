@@ -4,8 +4,8 @@ description: Advanced › Layout's Columns and Rows on a grid box (DO4): modes (
 ---
 
 ## Where do the rows sit?
-- Style tab › Advanced › Layout, on an element whose Display is Grid or Inline Grid at any size (`_sdGridBox()`, context key `gridBox` of `_sdOptCtx()`; several elements: all of them). Plan `designer-options-census-steps.md` DO4.
-- They stand before Gap: "Screen size", "Columns" with its field, "Rows" with its field. Gap is the same Gap row (gap-* classes); on a grid box it shows without being held (`also: 'gridBox'` in `_SD_LAY_ROWS`), so the note no longer names gap as hidden there.
+- Style tab › Advanced › Layout, on an element whose Display is Grid or Inline Grid at any size (`_sdGridBox()`, context key `gridBox` of `_sdOptCtx()`; several elements: all of them). Options census DO4 (`options-panel-census.md`).
+- They stand before Gap: "Screen size", "Columns" with its field, "Rows" with its field, then "Areas" (`designer-grid-areas.md`); a changed count cuts the box's areas at that size. Gap is the same Gap row (gap-* classes); on a grid box it shows without being held (`also: 'gridBox'` in `_SD_LAY_ROWS`), so the note no longer names gap as hidden there.
 - No button in a bar or a head. A flex box gets no grid rows.
 
 ## What does each mode write?
@@ -22,7 +22,7 @@ description: Advanced › Layout's Columns and Rows on a grid box (DO4): modes (
 - Where a custom style is off (system widget, shared component, component placement) the rows are not drawn: there is no class to write to.
 
 ## How is it loaded?
-- Part `grid` (`style_designer_grid.min.js`: pg_grid_tracks.js, style_designer_grid.js), handed to every editor. A source sits in one bundle only, so PGSizeStyle comes from the part `spacing`: `_sdSpBoxBind()` loads `spacing`, then runs `_sdPartCall('grid', 'draw', [_sdSzHost(…)])` into Layout's `<div data-sd-gridbox hidden>` once the section is shown. Core grew about 0.4 KB (#11611).
+- Part `grid` (`style_designer_grid.min.js`: pg_grid_tracks.js, pg_grid_areas.js, style_designer_grid.js), handed to every editor. A source sits in one bundle only, so PGSizeStyle comes from the part `spacing`: `_sdSpBoxBind()` loads `spacing`, then runs `_sdPartCall('grid', 'draw', [_sdSzHost(…)])` into Layout's `<div data-sd-gridbox hidden>` once the section is shown. Core grew about 0.4 KB (#11611).
 
 ## Where is it tested?
 - `tests/designer_grid_tracks_test.php`: parse, build, pick, edit, the per size rule, Layout's plan, the wiring. Not unit-tested: the fields in a browser.

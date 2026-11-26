@@ -196,9 +196,11 @@ function pg_sa_date_input_value($value)
  * @param bool $has_arrival_dates at least one arrival date can be requested
  * @param bool $has_custom_form  the page has a custom shipping form
  * @param bool $has_verified     the site has verified shipping addresses to pick from
+ * @param bool $address_type     the page asks for the address type
+ * @param bool $same_as_billing  the "billing address is the same" box is offered
  * @return array
  */
-function pg_sa_flags($has_recipient, $multi_recipient, $has_arrival_dates, $has_custom_form, $has_verified = false)
+function pg_sa_flags($has_recipient, $multi_recipient, $has_arrival_dates, $has_custom_form, $has_verified = false, $address_type = false, $same_as_billing = false)
 {
     $sa_flags = array(
         'has_recipient'      => (bool)$has_recipient,
@@ -207,6 +209,10 @@ function pg_sa_flags($has_recipient, $multi_recipient, $has_arrival_dates, $has_
         'has_arrival_dates'  => $has_recipient && $has_arrival_dates,
         'has_custom_form'    => $has_recipient && $has_custom_form,
         'has_verified_addresses' => $has_recipient && $has_verified,
+        // A classic layout's words around the address type radios and the
+        // billing box.
+        'has_address_type'       => $has_recipient && $address_type,
+        'offers_same_as_billing' => $has_recipient && $same_as_billing,
     );
     return $sa_flags;
 }
@@ -470,8 +476,11 @@ function _pg_sa_start_values($lf, $recipient, $ship_to_id, $arrival_dates)
     }
     $row = null;
     $ghost = !empty($_SESSION['software']['ghost']);
-    if (defined('USER_LOGGED_IN') && USER_LOGGED_IN && !$ghost && $recipient) {
-        $row = db_item("SELECT * FROM address_book WHERE user = '" . e(USER_ID) . "' AND ship_to_name = '" . e($recipient['ship_to_name']) . "' LIMIT 1");
+    $viewer = pg_preview_as_viewer();
+    if ($viewer['signed_in'] && !$ghost && $recipient) {
+        // The sample account of a Preview: its own saved recipients.
+        $row = $viewer['sample'] ? pg_preview_as_sample_recipient($recipient['ship_to_name'])
+            : db_item("SELECT * FROM address_book WHERE user = '" . $viewer['id'] . "' AND ship_to_name = '" . e($recipient['ship_to_name']) . "' LIMIT 1");
     }
     if (!is_array($row)) $row = is_array($recipient) ? $recipient : array();
     foreach (pg_sa_address_fields() as $f) $values[$f] = isset($row[$f]) ? (string)$row[$f] : '';
@@ -666,8 +675,9 @@ function _pg_sa_state_list_insert(&$node, $name)
 // loop_area: one row per arrival date that can be requested: a radio named
 // arrival_date (its value set per row) and, for a date with a custom day, a
 // date box named custom_arrival_date (renamed per row; dropped otherwise).
-// Row tokens: ^^__arrival_date_name^^, ^^__arrival_date_description^^ (the
-// operator's HTML). Row flag: arrival_is_custom.
+// Row tokens: ^^__arrival_date_id^^, ^^__arrival_date_name^^,
+// ^^__arrival_date_description^^ (the operator's HTML). Row flags:
+// arrival_is_custom, arrival_is_standard (its opposite).
 // Tokens: ^^__recipient_name^^ (ship-to name), ^^__address_type_url^^ (the
 // address type help page; a link bound to it drops when there is none),
 // ^^__custom_form_title^^, ^^__cart_url^^.
@@ -722,6 +732,9 @@ function _render_system_widget_shipping_address_and_arrival($tree_json, $widget_
     $type_on = !empty($settings['address_type']);
 
     $lf = new liveform('shipping_address_and_arrival');
+    // The Preview's case "Error": as after a submission with a required
+    // field left empty.
+    pg_preview_as_form_error($lf, 'shipping_address_and_arrival');
     if ($custom_form && $ship_to_id > 0 && !$lf->field_in_session('first_name')) {
         _pg_sa_prefill_custom_form($lf, "form_data.ship_to_id = '" . $ship_to_id . "'");
     }
@@ -751,8 +764,8 @@ function _render_system_widget_shipping_address_and_arrival($tree_json, $widget_
     _pg_member_drop_empty_links($tree, array('__address_type_url' => $type_url, '__cart_url' => $cart_url));
 
     // An arrival date row's own flag is decided per row, below.
-    $sa_flags = pg_sa_flags($has_recipient, $multi, count($arrival_dates) > 0, $custom_form, count($verified) > 0);
-    _eo_apply_visibility_bindings($tree, $sa_flags + array('arrival_is_custom' => true));
+    $sa_flags = pg_sa_flags($has_recipient, $multi, count($arrival_dates) > 0, $custom_form, count($verified) > 0, $type_on, $same_as_billing);
+    _eo_apply_visibility_bindings($tree, $sa_flags + array('arrival_is_custom' => true, 'arrival_is_standard' => true));
 
     // The optional district box: a layout designed before it gets one after
     // City, none while ship_tos.district is missing.
@@ -820,7 +833,7 @@ function _render_system_widget_shipping_address_and_arrival($tree_json, $widget_
         foreach ($arrival_dates as $d) {
             $did = (int)$d['id'];
             $t = $row_tree;
-            _eo_apply_visibility_bindings($t, array('arrival_is_custom' => (bool)$d['custom']));
+            _eo_apply_visibility_bindings($t, array('arrival_is_custom' => (bool)$d['custom'], 'arrival_is_standard' => !$d['custom']));
             _pg_sa_name_arrival_row($t, $did);
             _pg_acct_check_value($t, 'arrival_date', $values['arrival_date']);
             if ($d['custom']) {
@@ -832,6 +845,7 @@ function _render_system_widget_shipping_address_and_arrival($tree_json, $widget_
             $html = '';
             foreach ($t['children'] as $child) $html .= _render_tree_node($child, 0, 0);
             $html = _pg_sw_fill_tokens($html, array(
+                '__arrival_date_id'          => (string)$did,
                 '__arrival_date_name'        => h((string)$d['name']),
                 '__arrival_date_description' => (string)$d['description'],
             ));

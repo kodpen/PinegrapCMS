@@ -266,7 +266,11 @@ function mp_repricer_day($rows, $current)
 
 /**
  * A wanted price after the day's limits: the old price once the day has had
- * its changes, else at most 10% from the day's first price.
+ * its changes, else at most 10% from the day's first price. The limit only
+ * holds a move short, never turns it round or past what was wanted: the old
+ * price can sit outside the day's 10% when the rules' price or the floor
+ * moved since the day's first change, and a cut taken back into the window
+ * from over it would go under the floor.
  *
  * @param int   $old
  * @param int   $new
@@ -285,7 +289,11 @@ function mp_repricer_limit($old, $new, $day)
     $base = (int) $day['base'];
     $room = (int) pg_percent_of($base, MP_REPRICER_DAY_PERCENT / 100);
 
-    return max($base - $room, min($base + $room, $new));
+    if ($new < $old) {
+        return min($old, max($new, $base - $room));
+    }
+
+    return max($old, min($new, $base + $room));
 }
 
 /**

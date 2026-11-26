@@ -1,6 +1,6 @@
 ---
 name: figma-canva-census
-description: Figma and Canva API census for the designer's Figma and Canva starts (read 2026-11-24): what each gives, where it differs from plans/designer-start-import.md, and which file holds each topic
+description: Figma and Canva API census for the designer's Figma and Canva starts (read 2026-11-24): what each gives, where it differed from the start plan, which file holds each topic
 ---
 
 ## Which file holds what?
@@ -13,7 +13,7 @@ description: Figma and Canva API census for the designer's Figma and Canva start
 - Canva gives no layers: whole pages as png or jpg through an export job. The owner's "pictures and brand" ground stands.
 - Both are OAuth with PKCE and server-side secrets, so tokens stay on the server.
 
-## Where does it differ from the plan?
+## Where did it differ from the start plan (`designer/designer-start-import.md`)?
 - Figma variables: the Variables API is Enterprise only. On other plans colours and text styles come from the values on the nodes and the style names in the file, not from Figma variables.
 - Figma sign-in: a public OAuth app needs Figma's review and fixed redirect addresses; a private app reaches only its own team. A self-hosted site has its own address, so each site registers its own app, pastes a personal access token, or goes through a shared broker.
 - Figma limits: file, node and picture reads are Tier 1: 10 to 20 a minute on Dev/Full seats, about 20 a month on View/Collab seats. The import must be few calls, and a viewer may not be able to import at all.

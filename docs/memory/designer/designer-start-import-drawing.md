@@ -1,6 +1,6 @@
 ---
 name: designer-start-import-drawing
-description: The drawing of the Figma and Canva starts (plans/designer-start-import.md, ST3, ST5a, ST5b and ST6): the three sheets, where each part is described, and which board belongs to which step
+description: The drawing of the Figma and Canva starts (`designer-start-import.md`, built in ST3, ST5 and ST6): the three sheets, where each part is described, and which board belongs to which step
 ---
 
 ## Where is the drawing?

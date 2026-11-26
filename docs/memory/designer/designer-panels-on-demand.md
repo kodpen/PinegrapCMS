@@ -25,4 +25,4 @@ description: The designer draws only the panels that can be seen, debounces them
 ## How is it tested?
 - `tests/designer_panels_on_demand_test.php` runs the section between `// ── Panels on demand` and `// ── end of panels on demand` under Node with stand-ins, and checks the wiring.
 
-Related: docs/memory/designer/designer-incremental-canvas.md, docs/memory/designer/designer-performance.md
+Related: docs/memory/designer/designer-incremental-canvas.md, docs/memory/designer/designer-performance.md, docs/memory/designer/designer-selection-in-place.md
