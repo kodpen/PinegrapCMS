@@ -118,6 +118,19 @@ function test_api_app_access_log_time_type()
 	pg_assert_same(array('type' => '', 'year' => true), api_app_log_time_type(mktime(12, 0, 0, 12, 31, 2025), $now), 'last year');
 }
 
+// The day is told in the zone the label is printed in: a person whose own
+// zone is behind the site's saw a call made late yesterday (their time) as
+// a time alone, read as today's.
+function test_api_app_access_log_time_type_in_the_label_zone()
+{
+	$now = gmmktime(10, 0, 0, 11, 26, 2026);
+	$late_yesterday = gmmktime(2, 0, 0, 11, 26, 2026);
+
+	pg_assert_same(array('type' => 'time', 'year' => false), api_app_log_time_type($late_yesterday, $now, 'Europe/Istanbul'), 'today in Istanbul');
+	pg_assert_same(array('type' => '', 'year' => false), api_app_log_time_type($late_yesterday, $now, 'America/New_York'), 'yesterday in New York');
+	pg_assert_same(array('type' => '', 'year' => true), api_app_log_time_type(gmmktime(3, 0, 0, 1, 1, 2027), gmmktime(6, 0, 0, 1, 1, 2027), 'America/New_York'), 'last year in New York');
+}
+
 // Application Access reads its log per application and refuses a second
 // active OAuth application before api_app_create() runs.
 function test_api_app_access_screen_wiring()
