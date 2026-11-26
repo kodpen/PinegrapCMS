@@ -664,6 +664,51 @@ function test_workspace_memory_digest_count_line_inside_the_bound()
 	pg_assert_same($whole, ws_memory_digest($few, array(), 100, mb_strlen($whole) + 2));
 }
 
+// Past WS_MEMORY_DIGEST_LINES records a memory's index is its pinned
+// records, then its projects with their counts and the reads that list one.
+function test_workspace_memory_digest_by_projects()
+{
+	$entries = array(array('id' => 1, 'project' => 'Rules', 'title' => 'House rule', 'tags' => 'ci', 'pinned' => 1, 'expires_at' => 0, 'updated_at' => 1));
+
+	for ($i = 2; $i <= 41; $i++) {
+		$entries[] = array('id' => $i, 'project' => ($i % 2) ? 'beta' : 'Alpha', 'title' => 'Entry ' . $i, 'tags' => '', 'pinned' => 0, 'expires_at' => 0, 'updated_at' => $i);
+	}
+
+	$entries[] = array('id' => 50, 'project' => '', 'title' => 'Loose', 'tags' => '', 'pinned' => 0, 'expires_at' => 0, 'updated_at' => 60);
+	$entries[] = array('id' => 51, 'project' => 'Gone', 'title' => 'Expired', 'tags' => '', 'pinned' => 1, 'expires_at' => 50, 'updated_at' => 70);
+
+	$pinned = 'Channel memory, pinned (read an entry with workspace.memory.get, its id without the #):';
+	$by = 'Channel memory by project, 42 records (list a project\'s index with workspace.memory.list and project=<name>, the counts with workspace.memory.projects and channel_id, or find an entry with search=<words>):';
+	$expect = $pinned . "\n- #1 House rule [ci]\n\n" . $by . "\n- Alpha: 20\n- beta: 20\n- Rules: 1\n- (no project): 1";
+	pg_assert_same($expect, ws_memory_digest($entries, array(), 100));
+
+	// Counts read from the database (more records than the rows given) win
+	// over the rows', and with no pinned record only the projects are told.
+	$counts = array('memory' => array(array('project' => 'Alpha', 'count' => 900), array('project' => '', 'count' => 3)));
+	pg_assert_same(str_replace('42 records', '903 records', $by) . "\n- Alpha: 900\n- (no project): 3",
+		ws_memory_digest(array_slice($entries, 1, 40), array(), 100, WS_MEMORY_DIGEST_MAX, null, array(), false, $counts));
+
+	// The general memory is told the same way, its own reads named; the
+	// channel's 40 or fewer records keep their lines.
+	$general = $entries;
+	$own = array(array('id' => 70, 'title' => 'Own', 'tags' => '', 'pinned' => 0, 'expires_at' => 0, 'updated_at' => 1));
+	$general_pinned = 'General memory, shared by the agent channels, pinned (read an entry with workspace.memory.get, its id without the #):';
+	$general_by = 'General memory by project, 42 records (list a project\'s index with workspace.memory.general.list and project=<name>, the counts with workspace.memory.projects, or find an entry with search=<words>):';
+	pg_assert_same($general_pinned . "\n- #1 Rules: House rule [ci]\n\n" . $general_by . "\n- Alpha: 20\n- beta: 20\n- Rules: 1\n- (no project): 1\n\nChannel memory (read an entry with workspace.memory.get, its id without the #):\n- #70 Own",
+		ws_memory_digest($own, array(), 100, WS_MEMORY_DIGEST_MAX, null, $general));
+
+	// Forty records stay as they were: every line.
+	$forty = array_slice($entries, 0, 40);
+	pg_assert_contains('Channel memory (read an entry', ws_memory_digest($forty, array(), 100));
+	pg_assert_false(strpos(ws_memory_digest($forty, array(), 100), 'by project') !== false, 'forty records, no projects');
+
+	// The size bound holds: a project line left out is counted, the general
+	// list named for a general one.
+	$cut = ws_memory_digest($own, array(), 100, 300, null, $general);
+	pg_assert_true(mb_strlen($cut) <= 300, 'within 300, was ' . mb_strlen($cut));
+	pg_assert_contains('more not shown: list them with workspace.memory.general.list, ', $cut);
+}
+
 function test_workspace_memory_unchanged()
 {
 	$row = array('id' => 7, 'channel_id' => 3, 'title' => 'Merge window', 'text' => "Trains land at 08:00.\nNot on Fridays.", 'tags' => 'merge,iade', 'pinned' => '1', 'expires_at' => '0', 'project' => 'Release train', 'updated_at' => '500');
