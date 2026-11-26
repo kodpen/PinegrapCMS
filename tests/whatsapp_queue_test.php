@@ -100,6 +100,21 @@ function test_whatsapp_queue_refusal_at_send()
 
 	$refusal = pg_whatsapp_queue_refusal(array('payload' => '{broken') + $row, $app, true);
 	pg_assert_true(is_array($refusal), 'unreadable payload');
+
+	// Queued as utility, but Meta moved its template to marketing since, or
+	// the row holds a single-use offer key: the consent is asked as for
+	// marketing, and its absence fails the row.
+	$refusal = pg_whatsapp_queue_refusal($row, $app, false, true);
+	pg_assert_true(is_array($refusal) && !$refusal['ok'] && !$refusal['retry'], 'gated as marketing at the send without consent fails');
+	pg_assert_same(null, pg_whatsapp_queue_refusal($row, $app, true, true), 'gated as marketing with consent goes');
+}
+
+function test_whatsapp_queue_run_passes_the_marketing_gate()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp.php');
+
+	pg_assert_true(strpos($source, 'pg_whatsapp_queue_refusal($row, $app, $consent, $marketing)') !== false,
+		'the run hands the marketing gate it computed to the refusal');
 }
 
 function test_whatsapp_queue_outcome_follows_the_sms_rules()

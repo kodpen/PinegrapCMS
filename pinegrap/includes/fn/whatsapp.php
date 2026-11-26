@@ -1240,14 +1240,17 @@ function pg_whatsapp_enqueue($to, $template, $options = array())
  * marketing consent, which is asked again here because it may have been
  * withdrawn since the message was queued.
  *
- * @param array $row      kind, recipient, category, template_name,
- *                        template_language, payload
- * @param array $app      pg_whatsapp_app()
- * @param bool  $consent  whether a marketing template may go to this number
+ * @param array $row       kind, recipient, category, template_name,
+ *                         template_language, payload
+ * @param array $app       pg_whatsapp_app()
+ * @param bool  $consent   whether a marketing template may go to this number
+ * @param bool  $marketing gated as marketing whatever the row's own category
+ *                         says (pg_whatsapp_queue_row_marketing(): Meta moved
+ *                         its template to marketing since, or it holds a key)
  * @return array|null null when the row should be sent; else a refusal in
  *                    pg_whatsapp_cloud_send_parse()'s shape
  */
-function pg_whatsapp_queue_refusal($row, $app, $consent)
+function pg_whatsapp_queue_refusal($row, $app, $consent, $marketing = false)
 {
     $refuse = function ($error) {
         return array('ok' => false, 'id' => '', 'code' => '', 'error' => (string) $error, 'retry' => false, 'uncertain' => false);
@@ -1257,7 +1260,7 @@ function pg_whatsapp_queue_refusal($row, $app, $consent)
         return $refuse(lang('WhatsApp is not set up.'));
     }
 
-    if (($row['category'] === 'MARKETING') && !$consent) {
+    if ((($row['category'] === 'MARKETING') || $marketing) && !$consent) {
         return $refuse(lang('This number has no marketing consent for WhatsApp messages.'));
     }
 
@@ -1419,8 +1422,9 @@ function pg_whatsapp_queue_run($limit = 10, $seconds = 15)
         $send = null;
 
         if (!$expired) {
-            $consent = !pg_whatsapp_queue_row_marketing($id, $row['category']) || (pg_sms_marketing_permission($row['recipient']) === '');
-            $send = pg_whatsapp_queue_refusal($row, $app, $consent);
+            $marketing = pg_whatsapp_queue_row_marketing($id, $row['category']);
+            $consent = !$marketing || (pg_sms_marketing_permission($row['recipient']) === '');
+            $send = pg_whatsapp_queue_refusal($row, $app, $consent, $marketing);
 
             if ($send === null) {
                 if (!$driver) {
