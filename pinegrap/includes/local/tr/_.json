@@ -1007,6 +1007,7 @@
     "{var:1} could not be read: {var:2}": "{var:1} okunamadı: {var:2}",
     "{var:1} could not be removed: you can no longer react in that conversation.": "{var:1} vurgulama kaldırılamadı: o konuşmada artık tepki veremiyorsunuz.",
     "{var:1} could not be taken (each larger than 2 MB)": "{var:1} tanesi alınamadı (her biri 2 MB'tan büyük)",
+    "{var:1} could not be taken (larger than 2 MB, or of a kind a browser does not show)": "{var:1} tanesi alınamadı (2 MB'tan büyük ya da tarayıcının göstermediği bir türde)",
     "{var:1} could not be uploaded. It may be larger than this server takes.": "{var:1} yüklenemedi. Bu sunucunun kabul ettiğinden büyük olabilir.",
     "{var:1} could not be written to disk.": "{var:1} diske yazılamadı.",
     "{var:1} could not do it": "{var:1} yapamadı",

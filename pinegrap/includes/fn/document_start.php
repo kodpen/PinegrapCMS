@@ -80,7 +80,7 @@ function pg_document_start_texts()
         'buildingPage' => lang('Building the page…'),
         'cut' => lang('The first {var:1} paragraphs, about {var:2}%, were read'),
         'pictures' => lang('{var:1} pictures go to the file manager'),
-        'picturesLost' => lang('{var:1} could not be taken (each larger than 2 MB)'),
+        'picturesLost' => lang('{var:1} could not be taken (larger than 2 MB, or of a kind a browser does not show)'),
         'noHeadings' => lang('No headings were found'),
         'noHeadingsText' => lang('The text is one section of the kind Text and can be built as it is.'),
         'tooLong' => lang('The text is longer than 600,000 characters.'),

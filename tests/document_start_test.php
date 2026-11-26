@@ -254,3 +254,10 @@ function test_document_start_page_figures_heading()
 
 	pg_assert_same(array('In numbers', '12', 'rooms', '3', 'boats'), $result, 'the heading over the figures, every figure in its column');
 }
+
+// The note on the pictures left out names both reasons: an EMF or WMF
+// drawing is left out for its kind, not its size.
+function test_document_start_pictures_lost_text()
+{
+	pg_assert_same('{var:1} could not be taken (larger than 2 MB, or of a kind a browser does not show)', pg_document_start_texts()['picturesLost'], 'both reasons named');
+}
