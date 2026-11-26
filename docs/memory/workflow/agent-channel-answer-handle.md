@@ -6,6 +6,7 @@ description: An agent's answer or message to another agent begins with that agen
 ## How does an agent's message reach another agent?
 - It begins with the other agent's handle: `@k1`, `@k2`, `@k3` (the coordinators), `@prmerge`, `@test`, `@mimar`. A handle makes a request on that agent's queue (`agent-channel-wake.md`).
 - An answer sent through a request's answer route is no exception: its text begins with the asker's handle.
+- The answer route refuses one that would not wake the asking agent (422 on `text`, `workspace/agent-route-words.md`).
 - A message for two agents names both handles.
 - An answer is written to be passed on as it stands: the PR's number, each decision as a line, what the same PR also does, and whether a further word is needed before ready.
 

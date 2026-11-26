@@ -666,6 +666,55 @@ function ws_agent_request_asker_app($row)
 }
 
 /**
+ * The asking agent's row in the channel an answer goes to, read as requests
+ * are made (ws_agent_reach_rows()): null when a person asked, when the asker
+ * is the answering agent itself, or when it is paused or no longer allowed
+ * there (an answer would wake it nowhere, and nothing is refused).
+ *
+ * @param array $channel where the answer is written
+ * @param array $row     ws_ai_requests
+ * @param array $agent   the answering agent
+ * @return array|null
+ */
+function ws_agent_answer_asker_row($channel, $row, $agent)
+{
+    $app_id = ((int) ($row['message_id'] ?? 0) > 0) ? ws_agent_asker_app(ws_message($row['message_id'])) : 0;
+
+    if (($app_id <= 0) || ($app_id === (int) ($agent['app_id'] ?? 0))) {
+        return null;
+    }
+
+    foreach (ws_agent_reach_rows($channel) as $reach) {
+        if ((int) $reach['app_id'] === $app_id) {
+            return $reach;
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Why an application agent's answer to another agent is refused: the words
+ * would not wake the agent that asked. Asked of the rule that makes requests
+ * (ws_agent_wake_matches()), as an answer to the asker's message written by
+ * an application, so the refusal and the wake cannot disagree: an asker
+ * under "When mentioned" needs its name, one under "Replies to its
+ * messages" is reached without it. Pure.
+ *
+ * @param array|null $asker the asker's channel-agent row (ws_agent_answer_asker_row()), null for none
+ * @param string     $body  the answer, tags normalised
+ * @return string '' when the answer may be written
+ */
+function ws_agent_answer_wake_refusal($asker, $body)
+{
+    if (!is_array($asker) || ws_agent_wake_matches($asker, $body, true, true)) {
+        return '';
+    }
+
+    return lang(array('string' => 'This answer would not wake @{var:1}, which asked: it wakes only when it is named. Begin the answer with @{var:1}, or close the request with no_answer.', 'vars' => (string) $asker['handle']));
+}
+
+/**
  * The text an agent's answer (or its reason for giving up) is written with:
  * the person who asked is mentioned in front unless the text names them; a
  * wake and an application's request mention nobody, as the asking agent is
