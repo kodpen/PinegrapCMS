@@ -1370,7 +1370,8 @@ function ws_voice_speech_answer($status, $body, $type, $error = '')
     $out = array('ok' => false, 'error' => '', 'refused' => false);
 
     if ((int) $status === 200) {
-        if (($body !== '') && !is_array($json) && (stripos((string) $type, 'json') === false)) {
+        // An error page (text/html, text/plain) answered with 200 is no sound.
+        if (($body !== '') && !is_array($json) && (stripos((string) $type, 'json') === false) && (stripos(ltrim((string) $type), 'text/') !== 0)) {
             $out['ok'] = true;
 
             return $out;
@@ -2061,6 +2062,13 @@ function ws_voice_ask($message_id)
         return;
     }
 
+    // A recording posted through an OAuth connection speaks for the person
+    // as a tool does: its route asked nobody (ws_api_message_asks_assistants()),
+    // and its transcript does not either.
+    if ((int) ($message['via_client_id'] ?? 0) > 0) {
+        return;
+    }
+
     $channel = ws_channel((int) $message['channel_id']);
     $viewer = function_exists('ws_ai_viewer') ? ws_ai_viewer((int) $message['sender_id']) : null;
 
@@ -2270,6 +2278,12 @@ function ws_voice_run($row)
         return ws_voice_finish($row, 'failed', lang('The recording could not be read.'));
     }
 
+    // Only the name says it is a recording (an API upload can be anything
+    // named voice-….mp3): bytes that are no sound never leave the site.
+    if (!ws_voice_sound_rule($bytes)) {
+        return ws_voice_finish($row, 'failed', lang('The file is not a sound recording.'));
+    }
+
     $config = ws_voice_config();
     $model = ($config['model'] !== '') ? $config['model'] : ws_voice_default_model();
     $answer = ws_voice_call($bytes, (string) $message['file_name'], $model);
@@ -2280,16 +2294,30 @@ function ws_voice_run($row)
             db("UPDATE ws_voice SET status = 'done', transcript = '" . e($outcome['text']) . "', language = '" . e(mb_substr($outcome['language'], 0, 16)) . "',
                     provider = '" . e(mb_substr($config['provider'], 0, 100)) . "', model = '" . e(mb_substr($model, 0, 100)) . "', error = '',
                     updated_at = '" . time() . "', transcribed_at = '" . time() . "'
-                WHERE id = '" . (int) $row['id'] . "'");
+                WHERE id = '" . (int) $row['id'] . "' AND status = 'running'");
+
+            if ($config['error'] !== '') {
+                pg_config_text_save('ws_voice_error', '');
+            }
+
+            // The recording was deleted for everyone while the service wrote
+            // it out: its row is gone, and the text goes nowhere.
+            if (!ws_voice_changed()) {
+                return 'skipped';
+            }
+
+            // Read again after the call: a message deleted meanwhile whose
+            // row moved to a copy is neither announced nor asked for.
+            $message = ws_message((int) $row['message_id']);
+
+            if (!$message || ((int) $message['deleted_at'] > 0)) {
+                return 'done';
+            }
 
             // Screens and apps holding the message read it again.
             ws_message_touch((int) $row['message_id']);
             ws_voice_announce($message, $channel, $row, $outcome, $config['provider'], $model);
             ws_voice_ask((int) $row['message_id']);
-
-            if ($config['error'] !== '') {
-                pg_config_text_save('ws_voice_error', '');
-            }
 
             return 'done';
 
@@ -2314,6 +2342,34 @@ function ws_voice_run($row)
         default:
             return ws_voice_finish($row, 'failed', $outcome['error']);
     }
+}
+
+/**
+ * Do these bytes start as a sound file of a kind the recorder or a phone
+ * makes? WebM/Matroska, Ogg, MP4/M4A, WAV, MP3 (with an ID3 tag or a frame
+ * header) and AAC (ADTS). Pure.
+ *
+ * @param string $bytes
+ * @return bool
+ */
+function ws_voice_sound_rule($bytes)
+{
+    $bytes = (string) $bytes;
+
+    if (strlen($bytes) < 4) {
+        return false;
+    }
+
+    if ((substr($bytes, 0, 4) === "\x1A\x45\xDF\xA3") || (substr($bytes, 0, 4) === 'OggS') || (substr($bytes, 0, 3) === 'ID3')) {
+        return true;
+    }
+
+    if ((substr($bytes, 4, 4) === 'ftyp') || ((substr($bytes, 0, 4) === 'RIFF') && (substr($bytes, 8, 4) === 'WAVE'))) {
+        return true;
+    }
+
+    // An MPEG audio frame or an ADTS header: eleven bits of sync.
+    return (ord($bytes[0]) === 0xFF) && ((ord($bytes[1]) & 0xE0) === 0xE0);
 }
 
 /**
@@ -2464,6 +2520,14 @@ function ws_voice_answer($status, $body, $error = '')
     $out = array('outcome' => 'fail', 'text' => '', 'language' => '', 'error' => '');
 
     if ((int) $status === 200) {
+        if (is_array($json) && isset($json['text']) && is_string($json['text']) && (trim($json['text']) === '')) {
+            // Silence, or a sound it could not make out: kept as no text, so
+            // an assistant is told it was not heard rather than given nothing.
+            $out['error'] = lang('The transcription service heard no words in the recording.');
+
+            return $out;
+        }
+
         if (is_array($json) && isset($json['text']) && is_string($json['text'])) {
             $out['outcome'] = 'done';
             $out['text'] = mb_substr(trim($json['text']), 0, 100000);
