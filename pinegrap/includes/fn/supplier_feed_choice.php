@@ -117,9 +117,9 @@ function pg_supplier_feed_buy_home($buy, $currency)
 
 /**
  * Chooses the item each product of these items follows, before they write
- * (F9). This pull's own values count for this feed's items; the other feeds'
- * items count with what their last pull kept; only feeds that are on take
- * part. When the choice moves to another feed's item, the product is written
+ * (F9). This pull's own values count for the step's items; other items (other
+ * feeds', and this feed's outside the step) count with what was kept; only
+ * feeds that are on take part. When the choice moves to another feed's item, the product is written
  * from that item's kept stock at once and its feed is pulled next, so its
  * price follows too. The item that closed the product hands that over, so the
  * new one may reopen it.
@@ -148,23 +148,25 @@ function pg_supplier_feed_choose($feed, &$state, $context, &$items, $values, $pr
         return;
     }
 
-    $others = array();
     $current = array();
+    $own = array();
 
-    foreach ((array) db_items("SELECT supplier_feed_items.*, supplier_feeds.status AS feed_status
+    foreach ($items as $item) {
+        $own[] = (int) $item['id'];
+    }
+
+    $rows = (array) db_items("SELECT supplier_feed_items.*, supplier_feeds.status AS feed_status
         FROM supplier_feed_items INNER JOIN supplier_feeds ON supplier_feeds.id = supplier_feed_items.feed_id
         WHERE supplier_feed_items.product_id IN ('" . implode("', '", array_keys($mine)) . "') AND supplier_feed_items.dismissed = 0
-            AND (supplier_feeds.status = 1 OR supplier_feed_items.active = 1)") as $row) {
-        $product_id = (int) $row['product_id'];
+            AND (supplier_feeds.status = 1 OR supplier_feed_items.active = 1)");
 
+    foreach ($rows as $row) {
         if (!empty($row['active'])) {
-            $current[$product_id] = $row;
-        }
-
-        if (((int) $row['feed_id'] !== (int) $feed['id']) && ((int) $row['feed_status'] === 1)) {
-            $others[$product_id][(int) $row['id']] = $row;
+            $current[(int) $row['product_id']] = $row;
         }
     }
+
+    $others = pg_supplier_feed_choice_others($rows, $feed['id'], $own);
 
     foreach ($mine as $product_id => $keys) {
         $candidates = array();
@@ -215,6 +217,35 @@ function pg_supplier_feed_choose($feed, &$state, $context, &$items, $values, $pr
             }
         }
     }
+}
+
+/**
+ * The kept items a product's choice weighs beside the step's own, pure: the
+ * items of feeds that are on, this feed's included when the step does not
+ * bring them (two records of one feed on one product, in different steps);
+ * without them each step would take the product from the other, closing and
+ * reopening it on every pull.
+ *
+ * @param array $rows    items with feed_id, product_id, feed_status
+ * @param int   $feed_id the feed pulling
+ * @param array $own     ids of the items the step brings
+ * @return array product id => item id => row
+ */
+function pg_supplier_feed_choice_others($rows, $feed_id, $own)
+{
+    $others = array();
+    $own = array_map('intval', (array) $own);
+
+    foreach ((array) $rows as $row) {
+        if (((int) $row['feed_status'] !== 1)
+            || (((int) $row['feed_id'] === (int) $feed_id) && in_array((int) $row['id'], $own, true))) {
+            continue;
+        }
+
+        $others[(int) $row['product_id']][(int) $row['id']] = $row;
+    }
+
+    return $others;
 }
 
 /**
