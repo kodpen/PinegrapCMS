@@ -233,6 +233,17 @@ function pg_api_refusals_guides() {
 
 }
 
+// The topic a guide section (topic#section) is read in, when it is one of
+// the $listed topics the viewer may read (pg_agent_guide_listed()), or '':
+// the Refused calls card links only a topic agent_guide.php answers for them.
+function pg_api_refusals_guide_topic($guide, $listed) {
+
+	$topic = strtok((string)$guide, '#');
+
+	return (($topic !== false) && ($topic !== '') && in_array($topic, (array)$listed, true)) ? $topic : '';
+
+}
+
 // The report for the last $days days against $routes; a log that cannot be
 // read reports nothing refused (db_items() answers an empty list).
 function pg_api_refusals_report($routes, $days = 30, $now = null) {

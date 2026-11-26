@@ -111,6 +111,31 @@ function test_api_refusals_fold_rows()
 	pg_assert_same(4, $folded[3]['app_id'], 'another application is its own row');
 }
 
+// The Refused calls card links a code's guide section only to a topic the
+// viewer may read (agent_guide.php answers 404 for any other): a manager
+// sees a designer's design_* refusals but not the designer topic.
+function test_api_refusals_guide_topic_for_the_viewer()
+{
+	pg_assert_same('designer', pg_api_refusals_guide_topic('designer#page', array('start', 'designer', 'panel')), 'listed');
+	pg_assert_same('', pg_api_refusals_guide_topic('designer#page', array('start', 'content', 'panel')), 'not listed: no link');
+	pg_assert_same('start', pg_api_refusals_guide_topic('start#calls', array('start')), 'start');
+	pg_assert_same('', pg_api_refusals_guide_topic('', array('start')), 'no guide');
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/agent_guide.php');
+
+	$routes = array(
+		array('id' => 'design.pages.get', 'scope' => 'design:read'),
+		array('id' => 'pages.get', 'scope' => 'pages:read'),
+		array('id' => 'guide.read', 'scope' => '')
+	);
+
+	pg_assert_same(array('pages.get', 'guide.read'), pg_agent_guide_route_ids($routes, array('pages:read')), 'the routes the scopes cover');
+
+	$listed = pg_agent_guide_listed(pg_agent_guide_registry(), pg_agent_guide_route_ids($routes, array('pages:read')), array());
+
+	pg_assert_same('', pg_api_refusals_guide_topic('designer#page', $listed), 'a manager\'s scopes: no designer link');
+}
+
 // The one read takes refused rows in the window, grouped, busiest first,
 // capped; and every code in the hints registry has a guide.
 function test_api_refusals_sql_and_guides()

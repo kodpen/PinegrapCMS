@@ -1728,8 +1728,15 @@ if ((int)$user['role'] <= 1) {
 // with the agent guide section that explains it. GET /reports/api-refusals
 // answers the same rows.
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/api_refusals.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/agent_guide.php');
 
 $refusal_rows = pg_api_refusals_report(api_schema(), pg_api_refusals_days_max());
+
+// The guide topics this viewer reads at agent_guide.php, as that door lists
+// them: a topic outside them would answer 404, so its section is not linked.
+$refusal_registry = pg_agent_guide_registry();
+
+$refusal_topics = pg_agent_guide_listed($refusal_registry, pg_agent_guide_route_ids(api_schema(), api_owner_scopes($user)), pg_agent_guide_modules_on());
 
 $refusal_lines = '';
 
@@ -1747,11 +1754,15 @@ foreach (array_slice($refusal_rows, 0, 20) as $refusal) {
 
 	$refusal_guide = '<span class="fg-2">&ndash;</span>';
 
-	if ($refusal['guide'] !== '') {
+	$refusal_topic = pg_api_refusals_guide_topic($refusal['guide'], $refusal_topics);
 
-		$refusal_topic = strtok($refusal['guide'], '#');
+	if ($refusal_topic !== '') {
 
 		$refusal_guide = '<a href="agent_guide.php?topic=' . rawurlencode($refusal_topic) . '" target="_blank" rel="noopener"><code>' . h($refusal['guide']) . '</code></a>';
+
+	} elseif ($refusal['guide'] !== '') {
+
+		$refusal_guide = '<code>' . h($refusal['guide']) . '</code>';
 
 	}
 
