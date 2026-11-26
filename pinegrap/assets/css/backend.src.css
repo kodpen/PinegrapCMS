@@ -21905,6 +21905,41 @@ button.ws-file-name {
   line-height: 1.5;
   background: var(--pg-bg-body);
 }
+/* A Word document (renderDocument()) is drawn as a white sheet on the
+   window's quiet ground: a page wide at most, its side margins those of a
+   page, narrow on a phone. The sheet carries data-bs-theme="light", so its
+   tokens are the light theme's in both: file content, like a mail's body. */
+.office-doc-paged {
+  container: office-doc / inline-size;
+  padding: 1.5rem 1rem;
+  background: var(--pg-bg-2);
+}
+.office-paper {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 816px;
+  min-height: 100%;
+  margin: 0 auto;
+  padding: 72px 96px;
+  color: var(--pg-fg-body);
+  background: var(--pg-bg-body);
+  color-scheme: light;
+  border-radius: .25rem;
+  box-shadow: 0 0 0 1px var(--pg-border-color-translucent), 0 .25rem .75rem color-mix(in srgb, var(--pg-fg-body) 10%, transparent);
+}
+@container office-doc (max-width: 600px) {
+  .office-paper {
+    padding: 24px 16px;
+  }
+}
+@media (max-width: 599.98px) {
+  .office-doc-paged {
+    padding: .5rem 0;
+  }
+  .office-paper {
+    border-radius: 0;
+  }
+}
 .office-doc h1, .office-doc h2, .office-doc h3, .office-doc h4, .office-doc h5, .office-doc h6 {
   margin: 1rem 0 .4rem;
   font-weight: 600;
@@ -22017,8 +22052,10 @@ button.ws-file-name {
   border-left: 3px solid var(--pg-border-color);
   color: var(--pg-fg-2);
 }
-/* A document offered for editing (pg_office_view.js): a paragraph is
-   picked, then typed in a box that takes the place of its text. */
+/* A document offered for editing (pg_office_view.js): a paragraph that
+   may change is typed where it stands (contenteditable, .office-typing),
+   with no box or ring; one that may not is picked and ringed. Spaces and
+   line ends show as they are typed, and an empty one keeps a line. */
 .office-doc [data-p] {
   border-radius: .2rem;
 }
@@ -22036,10 +22073,17 @@ button.ws-file-name {
 .office-doc-edit .office-para {
   cursor: text;
 }
-.office-doc-edit .office-para:hover {
-  background: var(--pg-bg-1);
+.office-doc-edit .office-typing {
+  min-height: 1.5em;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  tab-size: 4;
+  outline: 0;
 }
-.office-doc .office-selected {
+.office-view .office-doc .office-typing:focus-visible {
+  outline: 0;
+}
+.office-doc .office-selected:not(.office-typing) {
   box-shadow: 0 0 0 2px var(--pg-primary);
 }
 .office-doc .office-edited,
@@ -22057,15 +22101,6 @@ button.ws-file-name {
 .office-doc .office-deleted {
   text-decoration: line-through;
   opacity: .55;
-}
-.office-doc .office-para-editor {
-  min-width: 0;
-  padding: 0;
-  outline-offset: 2px;
-  text-align: inherit;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  tab-size: 4;
 }
 .office-note {
   padding: .5rem .75rem;
