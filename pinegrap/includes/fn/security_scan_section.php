@@ -284,7 +284,9 @@ function pg_security_section_detail($kind, $detail)
     }
 
     if ($kind === 'file_server_config') {
-        return ($detail === 'new') ? lang('New since the first scan') : lang('Changed since the first scan');
+        $words = pg_security_detail_parts($detail);
+
+        return ($words[0] === 'new') ? lang('New since the first scan') : lang('Changed since the first scan');
     }
 
     return '';

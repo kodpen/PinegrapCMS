@@ -555,6 +555,20 @@ function test_security_scan_round_a_folder_that_cannot_be_read_is_kept_out_of_th
 	_test_scan_round_remove($site);
 }
 
+function test_security_scan_round_a_file_finding_carries_the_file_digest()
+{
+	$site = _test_scan_round_folder('digest');
+	_test_scan_round_plant($site, array('a.php' => 'x', '.htaccess' => 'AddHandler php-script .jpg'));
+
+	$check = pg_security_files_check('data/files/a.php', $site . '/a.php', null, array());
+	pg_assert_same('.php sha1:' . sha1('x'), $check['sightings'][0]['detail']);
+
+	$check = pg_security_files_check('data/files/.htaccess', $site . '/.htaccess', null, array());
+	pg_assert_same('new sha1:' . sha1('AddHandler php-script .jpg'), $check['sightings'][0]['detail']);
+
+	_test_scan_round_remove($site);
+}
+
 function test_security_scan_round_fifty_thousand_files_inside_the_budget()
 {
 	// 10,000 files are walked and the time is scaled to 50,000: the walk is

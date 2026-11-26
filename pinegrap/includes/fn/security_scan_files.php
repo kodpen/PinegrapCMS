@@ -913,7 +913,20 @@ function pg_security_files_check($place, $path, $in_reference, $baseline)
         $facts['config'] = $facts['denies_only'] ? '' : pg_security_config_verdict($baseline, $place, $facts['digest']);
     }
 
-    return array('digest' => (string) $facts['digest'], 'sightings' => pg_security_file_sightings($place, $in_reference, $facts));
+    $sightings = pg_security_file_sightings($place, $in_reference, $facts);
+
+    // A finding carries the file's digest, so an ignored one opens again
+    // when the file changes (pg_security_finding_merge()). Only a file with
+    // a finding is hashed: they are few.
+    if (!empty($sightings)) {
+        $digest = ($facts['digest'] !== '') ? $facts['digest'] : @sha1_file($path);
+
+        foreach ($sightings as $index => $sighting) {
+            $sightings[$index]['detail'] = pg_security_detail_with_digest($sighting['detail'], is_string($digest) ? $digest : '');
+        }
+    }
+
+    return array('digest' => (string) $facts['digest'], 'sightings' => $sightings);
 }
 
 /**
