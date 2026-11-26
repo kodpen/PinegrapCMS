@@ -1481,6 +1481,21 @@ function pg_panel_designer($request, $action)
                 + (empty($request['questions']) ? array() : array('questions' => pg_design_variables_questions())));
             break;
 
+        // "Clean up" (includes/fn/design_cleanup_list.php): the saved
+        // design's style rules, files, shared components and variables
+        // nothing uses, each with what the window shows. Read only.
+        case 'cleanup_list':
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/design_cleanup_list.php');
+            $lists = pg_cleanup_design_lists(isset($request['style_id']) ? (int)$request['style_id'] : 0);
+            if ($lists === null) {
+                respond(array('status' => 'error', 'message' => lang('Not found.')));
+            }
+            foreach ($lists['files']['rows'] as $i => $f) {
+                $lists['files']['rows'][$i]['url'] = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/') . rawurlencode($f['name']) . '?v=' . $f['time'];
+            }
+            respond(array('status' => 'success') + $lists);
+            break;
+
         // The Style guide sheet of the Preview menu
         // (includes/fn/design_style_guide.php): the model of what the
         // design is made of, from the variables the editor holds (or, with

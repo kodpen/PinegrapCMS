@@ -2622,6 +2622,7 @@
     "from {var:1}": "{var:1} itibarıyla",
     "from {var:1} files": "{var:1} dosyadan",
     "from {var}": "{var} boyutundan",
+    "from {var} px": "{var} px ve üzeri",
     "from {var}.": "{var} dosyasından.",
     "fuel, diesel, petrol, pump-out, waste, boatyard, crane, travel lift, repairs, engineer, chandlery, sails, provisioning": "akaryakıt, mazot, benzin, pis su boşaltma, atık, tekne bakım, vinç, travel lift, onarım, makinist, denizcilik malzemeleri, yelken, kumanya",
     "fuel, diesel, pump-out, boatyard, crane, travel lift, chandlery": "akaryakıt, mazot, pis su boşaltma, tekne bakım, vinç, travel lift, denizcilik malzemeleri",

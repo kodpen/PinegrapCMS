@@ -531,7 +531,18 @@ StyleDesigner.definePart('publishcheck', function (K) {
             if (r.media) line.appendChild(_pcEl('small', '', r.media));
             fold.appendChild(line);
         });
-        fold.appendChild(_pcEl('p', 'sd-pc-bar-note', _sdT('Listed for you to look at; nothing is removed by itself.')));
+        var end = _pcEl('div', 'sd-pc-unused-end');
+        end.appendChild(_pcEl('p', 'sd-pc-bar-note', _sdT('Listed for you to look at; nothing is removed by itself.')));
+        // "Clean up" opens its window over the sheet with the rules open;
+        // closing it gives the sheet back.
+        if (K._sdPartUrls('cleanup')) {
+            var clean = _pcEl('button', 'pg-button pg-button-quiet pg-button-sm');
+            clean.type = 'button';
+            clean.innerHTML = '<span class="bi bi-stars me-1" aria-hidden="true"></span>' + K.esc(_sdT('Clean up'));
+            clean.addEventListener('click', function () { K._sdCleanupOpen('publishcheck'); });
+            end.appendChild(clean);
+        }
+        fold.appendChild(end);
         return fold;
     }
 

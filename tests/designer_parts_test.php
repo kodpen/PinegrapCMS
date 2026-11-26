@@ -135,12 +135,12 @@ function test_designer_parts_for_follow_their_condition()
 	$given = pg_designer_parts_for($all);
 	pg_assert_same(array_keys(pg_designer_part_files()), $given, 'everything holds');
 
-	$expect = array('ai' => 'ai', 'comments' => 'comments', 'phone' => 'phone', 'publishcheck' => 'publishcheck', 'libraryfile' => 'designer', 'librarymanage' => 'designer', 'styleguide' => 'designer', 'clicks' => 'clicks');
+	$expect = array('ai' => 'ai', 'comments' => 'comments', 'phone' => 'phone', 'publishcheck' => 'publishcheck', 'libraryfile' => 'designer', 'librarymanage' => 'designer', 'styleguide' => 'designer', 'cleanup' => 'designer', 'clicks' => 'clicks');
 	foreach ($expect as $part => $condition) {
 		pg_assert_same($condition, pg_designer_part_files()[$part]['when'], $part . ' is handed on ' . $condition);
 	}
 
-	pg_assert_same(array('libraryfile', 'librarymanage', 'styleguide'), array_values(array_diff(pg_designer_parts_for(array('designer' => true)), $every)), 'designer adds My library\'s file and the Style guide');
+	pg_assert_same(array('cleanup', 'libraryfile', 'librarymanage', 'styleguide'), array_values(array_diff(pg_designer_parts_for(array('designer' => true)), $every)), 'designer adds Clean up, My library\'s file and the Style guide');
 	pg_assert_same(array('ai'), array_values(array_diff(pg_designer_parts_for(array('ai' => true)), $every)), 'ai adds the assistant only');
 }
 

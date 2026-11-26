@@ -90867,6 +90867,36 @@ const StyleDesigner = (function () {
         };
     }
 
+    // "Clean up" (the `cleanup` part): what nothing in the saved design
+    // uses, listed. Opened from the command palette and from the Publish
+    // check's list of unused rules (from 'publishcheck', over the sheet).
+    function _sdCleanupReady() {
+        return !!(_sdPartUrls('cleanup') && !_sdComponentOnly() && _design && parseInt(_design.styleId, 10) > 0 && _collab.mayEdit);
+    }
+
+    function _sdCleanupOpen(from) {
+        if (!_sdCleanupReady()) return;
+        _sdPartCall('cleanup', 'open', [_sdCleanupHost(), from || '']).catch(_sdPartFailed);
+    }
+
+    // What the window reads the editor through: the design, whether
+    // anything is unsaved, the designer's own save, a shared component's
+    // HTML and the canvas's stylesheets to draw it with.
+    function _sdCleanupHost() {
+        var phone = _sdPhoneHost();
+        return {
+            styleId: _design.styleId,
+            dirty: function () { return isDirty() || Object.keys(_sharedDirty).some(function (k) { return !!_sharedDirty[k]; }); },
+            save: phone.save,
+            draw: function (tree) { try { return _sdEmitNode(tree, 0, 0); } catch (e) { return ''; } },
+            styles: function () {
+                var out = '';
+                if (canvasDoc) canvasDoc.querySelectorAll('head link[rel="stylesheet"], head style').forEach(function (el) { out += el.outerHTML; });
+                return out;
+            }
+        };
+    }
+
     // Opens or closes the Preview menu under its button, its right edge on
     // the button's (`open` omitted: toggles). The rows are brought up to
     // date first, as a draft can change state without a tab switch.
@@ -92406,6 +92436,11 @@ const StyleDesigner = (function () {
             items.push({ id: 'act_library_import', label: _sdT('Import to my library'), icon: 'bi-box-arrow-in-down', action: function () {
                 _sdPartCall('libraryfile', 'importFile', []).catch(_sdPartFailed);
             }});
+        }
+
+        // Clean up, for whoever may save the design: no bar button.
+        if (_sdCleanupReady()) {
+            items.push({ id: 'act_cleanup', label: _sdT('Clean up'), icon: 'bi-stars', hint: _sdT('Design'), action: function () { _sdCleanupOpen(''); } });
         }
 
         // A draft has its second action here too: put it on the site.
@@ -98382,6 +98417,7 @@ const StyleDesigner = (function () {
             _sdBlockSketch: _sdBlockSketch,
             _sdCanEditNode: _sdCanEditNode,
             _sdCanvasInnerOf: _sdCanvasInnerOf,
+            _sdCleanupOpen: _sdCleanupOpen,
             _sdCoEditComponent: _sdCoEditComponent,
             _sdCoWrite: _sdCoWrite,
             _sdCode: _sdCode,
