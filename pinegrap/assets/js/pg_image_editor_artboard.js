@@ -1768,9 +1768,9 @@
     }
 
     // One language's picture: its words in the layers, each changed text
-    // fitted to its source's box (smaller, never under the floor of its size
-    // on the picture's shorter side; the middle kept upright, the aligned
-    // side kept across), drawn and posted.
+    // fitted by M.languageFitted() (grown into its free room, smaller only
+    // past it, never under the floor of its size on the picture's shorter
+    // side), drawn and posted.
     Editor.prototype.drawLanguage = function (data, lang) {
         var self = this, photo = (data.kind === 'photo');
         var opened = photo ? M.versionOpenDoc(data.doc, this.langFileId) : M.canvasOpenDoc(data.doc);
@@ -1781,7 +1781,6 @@
         }
 
         var painter = Object.create(Editor.prototype), mark = false, size = M.docSize(put.doc);
-        var side = Math.min(Number(size.w) || 0, Number(size.h) || 0);
 
         painter.doc = put.doc;
         painter.opts = { fileId: this.langFileId, fileName: data.name || '' };
@@ -1796,26 +1795,9 @@
 
             return painter.layersReady();
         }).then(function () {
-            put.doc.layers.forEach(function (l) {
-                var src = put.source[l.id];
+            var fitted = M.languageFitted(put, function (l) { return painter.textLayout(l); }, size);
 
-                if (!src) {
-                    return;
-                }
-
-                var before = painter.textLayout(src), wide = painter.textLayout(l);
-                var fit = M.languageFit(before.w, before.h, wide.w, wide.h, src.size, side);
-
-                l.size = Math.round((Number(src.size) || 1) * fit.scale * 100) / 100;
-
-                var after = painter.textLayout(l), box = M.textFit(src, after);
-
-                l.x = box.x;
-                l.w = box.w;
-                l.h = box.h;
-                l.y = Math.round(((Number(src.y) || 0) + (before.h - after.h) / 2) * 100) / 100;
-                mark = mark || fit.mark;
-            });
+            mark = !!(fitted && fitted.fit);
 
             return painter.layersReady();
         }).then(function () {
