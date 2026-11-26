@@ -462,8 +462,22 @@ function pg_product_insights_views($product_id, $window)
 }
 
 /**
- * Units of the product's lines asked back, for orders of the period: any
- * request but a rejected one, as the sales watch counts them.
+ * The returns whose goods count as back: pg_return_holds_goods() in SQL.
+ * Every open status and refunded; a closed one only when something was sent,
+ * received or paid back (a request withdrawn before that is no return);
+ * rejected never. Pure.
+ *
+ * @return string  SQL for a WHERE
+ */
+function pg_product_insights_returns_held_sql()
+{
+    return "(order_returns.status IN ('requested', 'approved', 'shipped', 'received', 'refunded')
+            OR (order_returns.status = 'closed' AND (order_returns.shipped_at > 0 OR order_returns.received_at > 0 OR order_returns.refunded_at > 0)))";
+}
+
+/**
+ * Units of the product's lines asked back, for orders of the period: the
+ * returns that hold goods (pg_product_insights_returns_held_sql()).
  *
  * @param int   $product_id
  * @param array $window
@@ -481,7 +495,7 @@ function pg_product_insights_returns($product_id, $window)
         INNER JOIN order_return_items ON order_return_items.order_item_id = order_items.id
         INNER JOIN order_returns ON order_returns.id = order_return_items.return_id
         WHERE " . pg_product_insights_sales_where($product_id, (int) $window['start']) . "
-            AND order_returns.status <> 'rejected'");
+            AND " . pg_product_insights_returns_held_sql());
 }
 
 /**
