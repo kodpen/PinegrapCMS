@@ -8943,7 +8943,10 @@ button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible, bu
     color: var(--sd-text); outline: none;
 }
 .sd-sketch-mode .sd-sketch-box { cursor: move; }
-.sd-sketch-box.sd-sketch-on { border-style: solid; border-color: var(--sd-accent); background: color-mix(in srgb, var(--sd-accent) 10%, transparent); }
+/* The selected box lies over the others with an opaque ground, so its
+   handles stay reachable and an overlapped box's words do not show
+   through it. */
+.sd-sketch-box.sd-sketch-on { z-index: 1; border-style: solid; border-color: var(--sd-accent); background: color-mix(in srgb, var(--sd-accent) 10%, var(--sd-panel-bg)); }
 .sd-sketch-box:focus-visible { box-shadow: 0 0 0 2px var(--sd-accent); }
 .sd-sketch-box.sd-sketch-ghost { border-color: var(--sd-accent); background: color-mix(in srgb, var(--sd-accent) 12%, transparent); pointer-events: none; }
 .sd-sketch-chip {
