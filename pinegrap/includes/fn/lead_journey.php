@@ -501,3 +501,18 @@ function pg_lead_sync_plan($consent, $cookie, $session_browser_id, $panel_user)
 
     return $plan;
 }
+
+/**
+ * Whether the person of a request counts as staff for the journey: a panel
+ * role, or staff browsing as a customer (the panel's "Log in as this user",
+ * which leaves logged_in_as_different_user in the session, or a ghost
+ * session). Their browsing is never the customer's own.
+ *
+ * @param array $software     $_SESSION['software']
+ * @param bool  $panel_access pg_user_has_panel_access()
+ * @return bool
+ */
+function pg_lead_session_is_staff(array $software, $panel_access)
+{
+    return !empty($software['ghost']) || !empty($software['logged_in_as_different_user']) || (bool) $panel_access;
+}

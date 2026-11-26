@@ -61,11 +61,9 @@ function pg_lead_request_consent()
  */
 function pg_lead_request_panel_user()
 {
-    if (!empty($_SESSION['software']['ghost'])) {
-        return true;
-    }
+    $software = (isset($_SESSION['software']) && is_array($_SESSION['software'])) ? $_SESSION['software'] : array();
 
-    return function_exists('pg_user_has_panel_access') && pg_user_has_panel_access();
+    return pg_lead_session_is_staff($software, function_exists('pg_user_has_panel_access') && pg_user_has_panel_access());
 }
 
 /**

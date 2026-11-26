@@ -392,3 +392,13 @@ function test_lead_journey_key_is_synced_before_the_page_prints()
 	pg_assert_contains('pg_lead_request_browser();', substr($seo, (int) $start, (int) $end - (int) $start), 'init_tracking() writes the cookie before output');
 	pg_assert_contains('$browser = pg_lead_request_browser();', lead_journey_test_source('includes/fn/lead_journey_store.php'), 'the visit uses the same synced browser');
 }
+
+function test_lead_journey_staff_browsing_as_a_customer_is_a_panel_user()
+{
+	pg_assert_true(pg_lead_session_is_staff(array('logged_in_as_different_user' => true), false), 'Log in as this user from the panel: staff browsing as the customer');
+	pg_assert_true(pg_lead_session_is_staff(array('ghost' => true), false), 'a ghost session');
+	pg_assert_true(pg_lead_session_is_staff(array(), true), 'a panel role');
+	pg_assert_false(pg_lead_session_is_staff(array(), false), 'the customer on their own');
+	pg_assert_false(pg_lead_session_is_staff(array('logged_in_as_different_user' => false), false), 'the flag off');
+	pg_assert_contains('pg_lead_session_is_staff(', lead_journey_test_source('includes/fn/lead_journey_store.php'), 'the store asks the rule');
+}
