@@ -8,7 +8,9 @@
  * Changed, Draft and Recently opened narrow the list. Up and Down walk the
  * rows, Enter opens one, F2 renames it, and a row dragged onto a group
  * moves the page into it (the strip's layout, saved through
- * designer/tab_layout). On a phone the window is a sheet from the bottom.
+ * designer/tab_layout). The list's last row, "New collection with pages",
+ * turns the window to the part 'collection'. On a phone the window is a
+ * sheet from the bottom.
  * Not needed to open a page: the core runs this file the first time the
  * window is asked for (_sdPartLoad(), pg_designer_parts()) and hands it the
  * pages through a host (_pgPagesHost()).
@@ -140,7 +142,7 @@ StyleDesigner.definePart('pages', function (K) {
                (r.locked ? ' aria-disabled="true"' : '') +
                (h.canMove() && !r.locked ? ' draggable="true"' : '') + '>' +
                '<span class="sd-pw-dirty"' + (r.dirty ? ' title="' + esc(_sdT('Unsaved Changes')) + '"' : '') + ' aria-hidden="true"></span>' +
-               '<span class="bi ' + (r.home ? 'bi-house' : 'bi-file-earmark') + ' sd-pw-icon"' + (r.home ? ' title="' + esc(_sdT('Home page')) + '"' : '') + ' aria-hidden="true"></span>' +
+               '<span class="bi ' + (r.home ? 'bi-house' : r.coll ? 'bi-collection' : 'bi-file-earmark') + ' sd-pw-icon"' + (r.home ? ' title="' + esc(_sdT('Home page')) + '"' : '') + ' aria-hidden="true"></span>' +
                '<span class="sd-pw-name">' + esc(r.name || _sdT('New Page')) + '</span>' +
                '<span class="sd-pw-addr">' + esc(r.address) + (r.active ? ' · ' + esc(_sdT('open')) : '') + '</span>' +
                '<span class="sd-pw-state">' +
@@ -194,8 +196,16 @@ StyleDesigner.definePart('pages', function (K) {
             }
             html += '</div>';
         });
+        if (!html) html = '<div class="sd-pw-empty">' + esc(_sdT('No page matches.')) + '</div>';
+        // In every filter and search: found where a page is looked for and
+        // not found.
+        if (h.canAdd()) {
+            html += '<div class="sd-pw-row sd-pw-newcoll" role="option" id="sd-pw-row-' + drawn.length + '" data-i="' + drawn.length + '">' +
+                    '<span class="bi bi-collection sd-pw-icon" aria-hidden="true"></span><span class="sd-pw-name">' + esc(_sdT('New collection with pages')) + '</span></div>';
+            drawn.push({ key: '', newColl: true });
+        }
         var box = win.querySelector('.sd-pw-list');
-        box.innerHTML = html || '<div class="sd-pw-empty">' + esc(_sdT('No page matches.')) + '</div>';
+        box.innerHTML = html;
         state.rows = drawn;
         if (state.active >= drawn.length) state.active = Math.max(0, drawn.length - 1);
         _pwActive(state.active, false);
@@ -219,6 +229,7 @@ StyleDesigner.definePart('pages', function (K) {
 
     function _pwOpenRow(i) {
         var r = state.rows[i];
+        if (r && r.newColl) { _pwCollOpen(); return; }
         if (!r || r.locked) return;
         var h = state.host;
         close();
@@ -229,7 +240,7 @@ StyleDesigner.definePart('pages', function (K) {
     // Escape keeps the name.
     function _pwRename(i) {
         var r = state.rows[i], h = state.host;
-        if (!r || r.locked || !h.canRename()) return;
+        if (!r || r.locked || r.newColl || !h.canRename()) return;
         var el = state.win.querySelector('#sd-pw-row-' + i + ' .sd-pw-name');
         if (!el || el.querySelector('input')) return;
         var inp = document.createElement('input');
@@ -379,7 +390,7 @@ StyleDesigner.definePart('pages', function (K) {
                 var cur = state.rows[state.active];
                 e.preventDefault();
                 e.stopPropagation();
-                if (cur && !cur.locked) { close(); h.pageMenu(cur.key, null); }
+                if (cur && !cur.locked && !cur.newColl) { close(); h.pageMenu(cur.key, null); }
                 return;
             }
             var a = _pwKeyAction(e.key, state.active, state.rows.length, h.canRename());
@@ -414,7 +425,7 @@ StyleDesigner.definePart('pages', function (K) {
         // Right-click on a row: the strip's page menu, as the list before it.
         win.addEventListener('contextmenu', function (e) {
             var row = e.target.closest('.sd-pw-row');
-            if (!row || row.classList.contains('sd-pw-locked')) return;
+            if (!row || row.classList.contains('sd-pw-locked') || row.classList.contains('sd-pw-newcoll')) return;
             e.preventDefault();
             var key = row.getAttribute('data-key');
             close();
@@ -471,12 +482,26 @@ StyleDesigner.definePart('pages', function (K) {
         handle.addEventListener('pointerup', function (e) { if (y0 !== null && e.clientY - y0 > 60) close(); y0 = null; });
     }
 
+    // The window's second view, "New collection with pages", drawn by the
+    // part 'collection' in the window; its way back shows the list again.
+    function _pwCollOpen() {
+        var win = state.win;
+        if (!win || !state.host.canAdd()) return;
+        win.classList.add('sd-pw-second');
+        state.host.collection(win, function () {
+            if (state.win !== win) return;
+            win.classList.remove('sd-pw-second');
+            _pwDraw();
+            win.querySelector('.sd-pw-search').focus({ preventScroll: true });
+        });
+    }
+
     function _pwOutside(e) {
         if (state.win && !state.win.contains(e.target) && !(state.host.anchor() && state.host.anchor().contains(e.target))) close();
     }
     function _pwResize() { if (state.win) _pwPlace(); }
 
-    function open(host) {
+    function open(host, view) {
         state.host = host;
         if (state.win) { close(); return; }
         state.q = '';
@@ -490,6 +515,7 @@ StyleDesigner.definePart('pages', function (K) {
         var a = host.anchor();
         if (a) a.setAttribute('aria-expanded', 'true');
         state.win.querySelector('.sd-pw-search').focus({ preventScroll: true });
+        if (view === 'collection') _pwCollOpen();
         setTimeout(function () { document.addEventListener('mousedown', _pwOutside, true); }, 0);
         window.addEventListener('resize', _pwResize);
     }

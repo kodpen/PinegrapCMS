@@ -115,3 +115,149 @@ function test_collection_pages_endpoint()
 	$res = pg_coll_pages_panel(array('op' => 'nothing'), array('id' => 1, 'role' => 1));
 	pg_assert_same('error', $res['status'], 'an unknown op is refused');
 }
+
+// Runs a Node script after the named functions of the part (with _sdT, esc
+// and its kind table) and returns its JSON output. Null without Node.
+function collection_pages_node($names, $script)
+{
+	if (!function_exists('exec')) {
+		return null;
+	}
+
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		return null;
+	}
+
+	$js = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_collection.js'));
+	preg_match('/\n    var FIELD_TYPES = \{.*?\n    \};\n/s', $js, $m);
+	$src = "var _sdT = function (s) { return s; };\nvar esc = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/\"/g, '&quot;'); };\n"
+		. (isset($m[0]) ? $m[0] : '') . "\n";
+
+	foreach ($names as $name) {
+		$start = strpos($js, "\n    function " . $name . '(');
+		$end = ($start === false) ? false : strpos($js, "\n    }\n", $start);
+
+		if (!pg_assert_true($end !== false, 'the part has ' . $name . '()')) {
+			return null;
+		}
+
+		$src .= substr($js, $start, $end - $start + 6) . "\n";
+	}
+
+	$tmp = tempnam(sys_get_temp_dir(), 'pgcollpages');
+	file_put_contents($tmp, $src . $script . "\n");
+	$out = array();
+	exec('node ' . escapeshellarg($tmp) . ' 2>&1', $out, $code);
+	unlink($tmp);
+	pg_assert_same(0, $code, 'the Node script runs: ' . implode("\n", array_slice($out, 0, 8)));
+	$res = json_decode(implode("\n", $out), true);
+
+	return is_array($res) ? $res : null;
+}
+
+function test_collection_pages_part_addresses()
+{
+	$res = collection_pages_node(array('_ncSlug', '_ncFree', '_ncKey'),
+		'var used = ["title"];'
+		. 'console.log(JSON.stringify({ a: _ncSlug("Öğretmen Listesi!"), b: _ncSlug("  Teachers  collection "), c: _ncSlug("???"),'
+		. ' d: _ncFree("teachers", ["Teachers", "teachers-2"]), e: _ncFree("x", []), f: _ncFree("", ["page"]),'
+		. ' g: [_ncKey("Photo", used), _ncKey("photo", used), _ncKey("Title", used), _ncKey("!!", used)] }));');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same('ogretmen-listesi', $res['a'], 'Turkish letters folded, a hyphen between words');
+	pg_assert_same('teachers-collection', $res['b']);
+	pg_assert_same('', $res['c'], 'nothing left to make an address of');
+	pg_assert_same('teachers-3', $res['d'], 'the first free address, case folded');
+	pg_assert_same('x', $res['e']);
+	pg_assert_same('page-2', $res['f'], 'an empty name is a page');
+	pg_assert_same(array('photo', 'photo_2', 'title_2', 'field'), $res['g'], 'field names kept apart');
+}
+
+function test_collection_pages_part_step1()
+{
+	$res = collection_pages_node(array('_ncCheck'),
+		'var colls = [{ name: "Workshops", page_id: 4 }];'
+		. 'function C(s) { return _ncCheck(s, colls); }'
+		. 'console.log(JSON.stringify({'
+		. ' none: C({ choice: "new", name: " ", fields: [] }),'
+		. ' ok: C({ choice: "new", name: "Teachers", fields: [{ name: "Photo" }, { name: "" }] }),'
+		. ' taken: C({ choice: "new", name: "workshops", fields: [] }),'
+		. ' dup: C({ choice: "new", name: "T", fields: [{ name: "Photo" }, { name: " photo " }] }),'
+		. ' title: C({ choice: "new", name: "T", fields: [{ name: "Title" }] }),'
+		. ' there: C({ choice: "there", chosen: null }), chosen: C({ choice: "there", chosen: colls[0] }) }));');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(false, $res['none']['next'], 'Next is off without a name');
+	pg_assert_same(true, $res['ok']['next'], 'a name and fields; a line without a name is no field');
+	pg_assert_same(4, $res['taken']['taken']['page_id'], 'a taken collection name names the collection');
+	pg_assert_same(false, $res['taken']['next']);
+	pg_assert_same('photo', $res['dup']['dup'], 'a field name used twice');
+	pg_assert_same('Title', $res['title']['dup'], 'the Title is a field already');
+	pg_assert_same(false, $res['there']['next'], 'one that is there: Next waits for a choice');
+	pg_assert_same(true, $res['chosen']['next']);
+}
+
+function test_collection_pages_part_field_defs()
+{
+	$res = collection_pages_node(array('_ncSlug', '_ncKey', '_ncFieldDefs', '_ncListDefs', '_ncShowDef'),
+		'var d = _ncFieldDefs([{ name: "Photo", kind: "image" }, { name: "Bio", kind: "rich" }, { name: "Styles", kind: "option", options: "Hatha, Yin, ,Hatha" },'
+		. ' { name: "Teaches", kind: "reference", ref: "9" }, { name: "Lost", kind: "reference", ref: "" }, { name: "Age", kind: "number" }, { name: "Since", kind: "date" }, { name: "" }]);'
+		. 'console.log(JSON.stringify({ d: d, l: _ncListDefs(d).map(function (x) { return [x.name, x.rss_field || ""]; }), stored: d[1].rss_field || "" }));');
+
+	if ($res === null) {
+		return;
+	}
+
+	$d = $res['d'];
+	pg_assert_same(8, count($d), 'the Title and seven named lines');
+	pg_assert_same(array('title', 'text box', 'title', true), array($d[0]['name'], $d[0]['type'], $d[0]['rss_field'], $d[0]['required']), 'the Title first, required, the record\'s title');
+	pg_assert_same(array('file upload', 'image'), array($d[1]['type'], $d[1]['kind']));
+	pg_assert_same(array('text area', 1), array($d[2]['type'], $d[2]['wysiwyg']));
+	pg_assert_same(array(array('value' => 'Hatha', 'label' => 'Hatha'), array('value' => 'Yin', 'label' => 'Yin')), $d[3]['options'], 'options split, blanks and repeats dropped');
+	pg_assert_same(array('pick list', 'reference', 9), array($d[4]['type'], $d[4]['kind'], $d[4]['reference_page_id']));
+	pg_assert_same(array('text box', false), array($d[5]['type'], isset($d[5]['kind'])), 'a reference without a collection is text');
+	pg_assert_same('number', $d[6]['kind']);
+	pg_assert_same('date', $d[7]['type']);
+	pg_assert_same(array(array('title', 'title'), array('photo', 'media'), array('bio', '')), $res['l'], 'a card: the Title, the first image, the first text');
+	pg_assert_same('', $res['stored'], 'the image reads as media only for the layout');
+}
+
+function test_collection_pages_part_closing_line()
+{
+	$res = collection_pages_node(array('_ncMadeHtml'),
+		'var made = { collection: { page_id: 3 }, list: { page_id: 4, title: "Teachers" }, detail: { page_id: 5, title: "<b>" } };'
+		. 'console.log(JSON.stringify({ all: _ncMadeHtml(made, { name: "Teachers", page_id: 3 }, 5, true),'
+		. ' half: _ncMadeHtml({ collection: made.collection, list: made.list }, { name: "Teachers", page_id: 3 }, 5, true),'
+		. ' there: _ncMadeHtml({ list: made.list, detail: made.detail }, { name: "Workshops", page_id: 8 }, 5, false),'
+		. ' none: _ncMadeHtml({}, { name: "T" }, 1, true) }));');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same('Made the collection <a href="#" data-open="3">“Teachers”</a> with 5 fields, the list page <a href="#" data-open="4">“Teachers”</a> and the detail page <a href="#" data-open="5">“&lt;b>”</a>.', $res['all'], 'one line, each name a link, names escaped');
+	pg_assert_same('Made the collection <a href="#" data-open="3">“Teachers”</a> with 5 fields and the list page <a href="#" data-open="4">“Teachers”</a>.', $res['half'], 'after a stop: what there is');
+	pg_assert_contains('for the collection <a href="#" data-open="8">“Workshops”</a>.', $res['there'], 'a collection that is there');
+	pg_assert_same('', $res['none']);
+}
+
+function test_collection_pages_part_wiring()
+{
+	$pages = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_pages.js');
+	pg_assert_contains("_sdT('New collection with pages')", $pages, 'the Pages window has the row');
+	pg_assert_contains('if (r && r.newColl) { _pwCollOpen(); return; }', $pages, 'Enter on the row opens the second view');
+	$core = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	pg_assert_contains("id: 'act_new_collection'", $core, 'a command palette row');
+	pg_assert_contains("_sdPartCall('collection', 'open'", $core, 'the core loads the part on first use');
+	pg_assert_true(strpos($core, "function _ncSlug(") === false, 'the part is not in the core');
+}

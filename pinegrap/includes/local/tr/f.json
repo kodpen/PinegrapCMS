@@ -378,6 +378,7 @@
     "Field teams in every region we work in": "Çalıştığımız her bölgede saha ekipleri",
     "Field to set": "Ayarlanacak alan",
     "Field to show": "Gösterilecek alan",
+    "Field {i} of {n}, {name}, {kind}": "Alan {i} / {n}, {name}, {kind}",
     "Field · no label": "Alan · etiketi yok",
     "Fields": "Alanlar",
     "Fields ({var})": "Alanlar ({var})",

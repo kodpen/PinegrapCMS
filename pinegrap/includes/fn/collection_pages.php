@@ -165,7 +165,8 @@ function pg_coll_pages_page_fields($name, $title, $folder, $tree, $draft)
  * its items and the pages that list or show it.
  *
  * @return array rows: page_id, name, fields (name, label, type, kind,
- *               rss_field, wysiwyg, reference_page_id), items, pages
+ *               rss_field, wysiwyg, reference_page_id), items, pages (the
+ *               names of the pages listing or showing it)
  */
 function pg_coll_pages_collections()
 {
@@ -206,7 +207,7 @@ function pg_coll_pages_collections()
 
         foreach (array('form_list_view', 'form_item_view') as $kind) {
             foreach (pg_sw_widget_pages($kind, $shows) as $p) {
-                $pages[(int) $p['page_id']] = true;
+                $pages[(int) $p['page_id']] = ((string) $p['page_title'] !== '') ? (string) $p['page_title'] : (string) $p['page_name'];
             }
         }
 
@@ -215,7 +216,7 @@ function pg_coll_pages_collections()
             'name'    => ((string) $row['form_name'] !== '') ? (string) $row['form_name'] : (string) $row['page_name'],
             'fields'  => $fields,
             'items'   => (int) db_value("SELECT COUNT(*) FROM forms WHERE page_id = '$pid'"),
-            'pages'   => count($pages),
+            'pages'   => array_values($pages),
         );
     }
 
