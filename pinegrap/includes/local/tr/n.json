@@ -2196,6 +2196,7 @@
     "No path from {var:1} to {var:2}: no link leads there.": "{var:1} sayfasından {var:2} sayfasına yol yok: oraya giden bağlantı yok.",
     "No payment is required for this order.": "Bu sipariş için ödeme gerekmiyor.",
     "No payment methods are configured. Please contact the site administrator.": "Hiçbir ödeme yöntemi yapılandırılmamış. Lütfen site yöneticisi ile iletişime geçin.",
+    "No payment way that is switched on is in test mode.": "Açık olan hiçbir ödeme yolu test modunda değil.",
     "No performance of this production to come yet.": "Bu yapımın henüz yaklaşan temsili yok.",
     "No performance played yet.": "Henüz oynanmış temsil yok.",
     "No performance to come in this list. Choose another, or see every performance.": "Bu listede yaklaşan temsil yok. Başka birini seçin ya da tüm temsilleri görün.",

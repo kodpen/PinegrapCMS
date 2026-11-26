@@ -361,9 +361,9 @@ function pg_launch_journey_go_live($user, $request)
         log_activity($line);
     }
 
-    // System Status reads maintenance mode and robots.txt: told at once
-    // rather than after its ten-minute cache.
-    if ($applied && function_exists('pg_system_status_forget')) {
+    // System Status reads maintenance mode, robots.txt and the go-live time
+    // (Payment Mode): told at once rather than after its ten-minute cache.
+    if (($applied || $first) && function_exists('pg_system_status_forget')) {
         pg_system_status_forget();
     }
 

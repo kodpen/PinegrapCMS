@@ -210,6 +210,38 @@ function pg_launch_journey_payment_live($driver, $settings, $gateway_mode)
 }
 
 /**
+ * The System Status row "Payment Test Mode": null when the row is not drawn
+ * (the shop is off, or the site has not gone live), else the drivers of the
+ * switched-on ways in test by pg_launch_journey_payment_live(), the card's
+ * own rule, so the row and the card never disagree. An empty list passes;
+ * a way whose mode cannot be read is not counted. Pure.
+ *
+ * @param bool   $shop_on      ECOMMERCE
+ * @param int    $live_at      the launch journey's go-live time, 0 before
+ * @param array  $payments     pg_launch_journey_payment_facts()
+ * @param string $gateway_mode ECOMMERCE_PAYMENT_GATEWAY_MODE
+ * @return array|null
+ */
+function pg_launch_journey_payment_test_ways($shop_on, $live_at, $payments, $gateway_mode)
+{
+    if (!$shop_on || ((int) $live_at < 1)) {
+        return null;
+    }
+
+    $test = array();
+
+    foreach ((is_array($payments) ? $payments : array()) as $payment) {
+        $driver = isset($payment['driver']) ? (string) $payment['driver'] : '';
+
+        if (pg_launch_journey_payment_live($driver, isset($payment['settings']) ? $payment['settings'] : array(), (string) $gateway_mode) === 'test') {
+            $test[] = $driver;
+        }
+    }
+
+    return $test;
+}
+
+/**
  * A payment way no driver takes, as the payment-live rule reads it: the
  * card method's classic gateway by its name, PayPal Express Checkout with
  * its own mode, the classic Stripe gateway with its secret key (a test key
