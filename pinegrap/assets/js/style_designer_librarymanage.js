@@ -81,7 +81,7 @@ StyleDesigner.definePart('librarymanage', function (K) {
                     '<div class="small fg-secondary" data-mg-count></div></div>' +
                 '<button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' + esc(_sdT('Close')) + '"></button></div>' +
             '<div class="dialog-body small">' +
-                '<input type="search" class="form-control form-control-sm" data-mg-search autocomplete="off" placeholder="' + esc(_sdT('Search the library…')) + '" aria-label="' + esc(_sdT('Search the library…')) + '">' +
+                '<input type="search" class="pg-input" data-mg-search autocomplete="off" placeholder="' + esc(_sdT('Search the library…')) + '" aria-label="' + esc(_sdT('Search the library…')) + '">' +
                 '<p class="fg-secondary mt-2 mb-0" data-mg-none hidden>' + esc(_sdT('No item matches')) + '</p>' +
                 '<div class="fg-danger mt-2" data-mg-error role="alert" hidden></div>' +
                 '<div class="sd-lib-mlist mt-2" data-mg-list role="listbox" aria-multiselectable="true" aria-label="' + esc(_sdT('My library')) + '"></div>' +
@@ -125,7 +125,7 @@ StyleDesigner.definePart('librarymanage', function (K) {
             '<span class="sd-lib-thumb" aria-hidden="true">' + (K._sdBlockSketch(it.tree) || '') + '</span>' +
             '<span class="sd-lib-mtext"><span class="sd-lib-mname">' + esc(it.name) + '</span>' +
                 '<span class="sd-lib-mmeta">' + esc(L.countLine(it.kind, it.count)) + '</span></span>' +
-            '<button type="button" class="btn btn-sm btn-text theme-secondary sd-lib-mmore" data-mg-more tabindex="-1" aria-label="' + esc(_sdT('More for "{var}"', it.name)) + '">' +
+            '<button type="button" class="pg-button pg-button-ghost pg-button-icon sd-lib-mmore" data-mg-more tabindex="-1" aria-label="' + esc(_sdT('More for "{var}"', it.name)) + '">' +
                 '<span class="bi bi-three-dots" aria-hidden="true"></span></button>' +
         '</div>';
     }
@@ -188,14 +188,14 @@ StyleDesigner.definePart('librarymanage', function (K) {
         var n = _chosenIds().length;
         var file = _hasFile();
         var btn = function (act, label, cls) {
-            return '<button type="button" class="btn btn-sm ' + (cls || 'btn-outline theme-secondary') + '" data-mg="' + act + '">' + esc(label) + '</button>';
+            return '<button type="button" class="pg-button ' + (cls || 'pg-button-quiet') + '" data-mg="' + act + '">' + esc(label) + '</button>';
         };
         var html = n
             ? '<span class="sd-lib-mnote me-auto fw-semibold">' + esc(n === 1 ? _sdT('1 selected') : _sdT('{var} selected', n)) + '</span>' +
-                (file ? btn('export', _sdT('Export')) : '') + btn('move', _sdT('Move to group')) + btn('delete', _sdT('Delete'), 'btn-outline theme-danger')
+                (file ? btn('export', _sdT('Export')) : '') + btn('move', _sdT('Move to group')) + btn('delete', _sdT('Delete'), 'pg-button-danger')
             : '<span class="sd-lib-mnote me-auto small fg-secondary">' + esc(_sdT('Changes are saved as you make them.')) + '</span>' +
                 (file ? btn('import', _sdT('Import')) + (L.items().length ? btn('export-all', _sdT('Export all')) : '') : '');
-        mg.el.querySelector('[data-mg-foot]').innerHTML = html + btn('done', _sdT('Done'), 'btn-solid theme-primary sd-lib-mdone');
+        mg.el.querySelector('[data-mg-foot]').innerHTML = html + btn('done', _sdT('Done'), 'pg-button-fill sd-lib-mdone');
     }
 
     function _mgFoot(e) {
@@ -411,7 +411,7 @@ StyleDesigner.definePart('librarymanage', function (K) {
         _mgPopClose();
         var input = document.createElement('input');
         input.type = 'text';
-        input.className = 'form-control form-control-sm sd-lib-mrename';
+        input.className = 'pg-input sd-lib-mrename';
         input.maxLength = L.NAME_MAX;
         input.value = it.name;
         input.setAttribute('aria-label', _sdT('Name'));
@@ -516,7 +516,7 @@ StyleDesigner.definePart('librarymanage', function (K) {
         var rows = _groupsOf(L.items()).map(function (g) { return { label: g, act: function () { move(g); } }; });
         rows.push({ label: _sdT('No group'), act: function () { move(''); } });
         rows.push({ label: _sdT('New group…'), icon: 'bi-plus', act: function (pop) {
-            pop.innerHTML = '<div class="p-2"><input type="text" class="form-control form-control-sm" maxlength="' + L.NAME_MAX + '" aria-label="' + esc(_sdT('Group')) + '"></div>';
+            pop.innerHTML = '<div class="p-2"><input type="text" class="pg-input" maxlength="' + L.NAME_MAX + '" aria-label="' + esc(_sdT('Group')) + '"></div>';
             var input = pop.querySelector('input');
             input.focus();
             input.addEventListener('keydown', function (e) {

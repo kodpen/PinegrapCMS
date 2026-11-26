@@ -9440,13 +9440,13 @@ button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible, bu
 .sd-lib-offers {
     position: absolute; z-index: 5; left: 0; right: 0; top: calc(100% + 2px);
     max-height: 180px; overflow: auto; margin: 0; padding: 4px 0; list-style: none;
-    border: 1px solid var(--bs-border-color, #d0d7de); border-radius: 6px;
-    background: var(--bs-body-bg, #fff); box-shadow: 0 6px 18px rgba(0, 0, 0, .18);
+    border: 1px solid var(--pg-border-color); border-radius: 6px;
+    background: var(--pg-bg-body); box-shadow: var(--pg-shadow-float);
 }
 .sd-lib-offers[hidden] { display: none; }
 .sd-lib-offers li { padding: 5px 10px; cursor: pointer; }
 .sd-lib-offers li:hover,
-.sd-lib-offers li.active { background: rgba(13, 110, 253, .12); }
+.sd-lib-offers li.active { background: color-mix(in srgb, var(--pg-primary) 12%, transparent); }
 /* "Manage library": the group's last row in the Blocks list; the window's
    rows (grip, checkbox, drawing, name, what it is), group heads, the drop
    line, the rows' menu; full screen at phone width. */
@@ -9460,40 +9460,41 @@ button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible, bu
 .sd-lib-mlist { display: flex; flex-direction: column; gap: 2px; }
 .sd-lib-mgroup {
     display: flex; align-items: center; gap: .4rem; padding: .6rem .25rem .2rem;
-    font-size: .7rem; font-weight: 600; color: var(--bs-secondary-color, #6c757d);
+    font-size: .7rem; font-weight: 600; color: var(--pg-fg-2);
 }
-.sd-lib-mgroup .sd-lib-count { margin-left: 0; }
+/* The window is the panel's light or dark dialog, not the dark chrome. */
+.sd-lib-mgroup .sd-lib-count { margin-left: 0; color: var(--pg-fg-2); background: var(--pg-bg-2); }
 .sd-lib-mgroup[hidden], .sd-lib-mrow[hidden] { display: none; }
 .sd-lib-mrow {
     display: flex; align-items: center; gap: .55rem; padding: .35rem .4rem; border-radius: 6px;
     border: 1px solid transparent;
 }
-.sd-lib-mrow:hover { background: rgba(13, 110, 253, .05); }
-.sd-lib-mrow:focus-visible { outline: 2px solid rgba(13, 110, 253, .55); outline-offset: -1px; }
-.sd-lib-mrow.is-chosen { background: rgba(13, 110, 253, .1); border-color: rgba(13, 110, 253, .25); }
+.sd-lib-mrow:hover { background: color-mix(in srgb, var(--pg-primary) 6%, transparent); }
+.sd-lib-mrow:focus-visible { outline: 2px solid var(--pg-primary); outline-offset: -1px; }
+.sd-lib-mrow.is-chosen { background: color-mix(in srgb, var(--pg-primary) 12%, transparent); border-color: color-mix(in srgb, var(--pg-primary) 35%, transparent); }
 .sd-lib-mrow.is-dragged { opacity: .45; }
-.sd-lib-grip { cursor: grab; touch-action: none; padding: .25rem 0; color: var(--bs-secondary-color, #6c757d); }
+.sd-lib-grip { cursor: grab; touch-action: none; padding: .25rem 0; color: var(--pg-fg-3); }
 .is-searching .sd-lib-grip { visibility: hidden; }
 .sd-lib-thumb {
     flex: 0 0 64px; height: 40px; overflow: hidden; border-radius: 4px;
-    border: 1px solid var(--bs-border-color, #d0d7de); background: var(--bs-body-bg, #fff);
+    border: 1px solid var(--pg-border-color); background: #fff;
 }
 .sd-lib-thumb svg { display: block; width: 100%; height: 100%; }
 .sd-lib-mtext { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
 .sd-lib-mname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
-.sd-lib-mmeta { font-size: .68rem; color: var(--bs-secondary-color, #6c757d); }
+.sd-lib-mmeta { font-size: .68rem; color: var(--pg-fg-2); }
 .sd-lib-mrename { flex: 1 1 auto; min-width: 0; }
-.sd-lib-mdrop { height: 2px; margin: -1px 0; border-radius: 1px; background: var(--bs-primary, #0d6efd); }
+.sd-lib-mdrop { height: 2px; margin: -1px 0; border-radius: 1px; background: var(--pg-primary); }
 .sd-lib-pop {
     position: absolute; z-index: 10; min-width: 180px; max-height: 260px; overflow: auto; padding: 4px 0;
-    border: 1px solid var(--bs-border-color, #d0d7de); border-radius: 6px;
-    background: var(--bs-body-bg, #fff); box-shadow: 0 6px 18px rgba(0, 0, 0, .18);
+    border: 1px solid var(--pg-border-color); border-radius: 6px;
+    background: var(--pg-bg-body); box-shadow: var(--pg-shadow-float);
 }
 .sd-lib-popitem {
     display: flex; align-items: center; width: 100%; padding: 5px 12px; border: 0;
     background: none; font-size: .78rem; text-align: left; color: inherit;
 }
-.sd-lib-popitem:hover, .sd-lib-popitem:focus-visible { background: rgba(13, 110, 253, .12); outline: 0; }
+.sd-lib-popitem:hover, .sd-lib-popitem:focus-visible { background: color-mix(in srgb, var(--pg-primary) 12%, transparent); outline: 0; }
 .sd-lib-manage .dialog-footer { gap: .4rem; }
 @media (max-width: 575.98px) {
     .sd-lib-manage { width: 100vw; max-width: none; height: 100dvh; max-height: none; margin: 0; border-radius: 0; }

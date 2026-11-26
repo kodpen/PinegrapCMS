@@ -139,6 +139,8 @@ function test_library_io_export_and_import_round_trip()
 
 	pg_assert_same('studio-calm-library.json', pg_library_export_file_name('Studio Calm'), 'named after the site');
 	pg_assert_same('library.json', pg_library_export_file_name(''));
+	pg_assert_same('musteri-hizmetleri-library.json', pg_library_export_file_name('Müşteri Hizmetleri'), 'a Turkish name keeps its letters as plain ones');
+	pg_assert_same('cafe-isik-library.json', pg_library_export_file_name('Café IŞIK'), 'accents and the dotted capital');
 
 	$read = pg_library_import_read($text);
 	pg_assert_true(isset($read['items']), 'an export reads back');

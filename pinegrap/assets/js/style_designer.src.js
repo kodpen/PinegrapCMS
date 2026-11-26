@@ -98584,6 +98584,7 @@ const StyleDesigner = (function () {
             _sdCurveSign: _sdCurveSign,
             _sdDecodeEntities: _sdDecodeEntities,
             _sdDocLang: _sdDocLang,
+            _sdDockSetOpen: _sdDockSetOpen,
             _sdEaseHtml: _sdEaseHtml,
             _sdEaseWire: _sdEaseWire,
             _sdEditRun: _sdEditRun,

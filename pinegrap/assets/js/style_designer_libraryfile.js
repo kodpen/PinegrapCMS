@@ -103,7 +103,7 @@ StyleDesigner.definePart('libraryfile', function (K) {
 
     function _lfFoot(el, label, solid) {
         el.querySelector('[data-lf-foot]').innerHTML =
-            '<button type="button" class="btn btn-sm ' + (solid ? 'btn-solid theme-primary' : 'btn-outline theme-secondary') + '" data-bs-dismiss="dialog">' + esc(label) + '</button>';
+            '<button type="button" class="pg-button ' + (solid ? 'pg-button-fill' : 'pg-button-quiet') + '" data-bs-dismiss="dialog">' + esc(label) + '</button>';
     }
 
     function _lfChecking(el) {

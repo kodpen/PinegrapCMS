@@ -813,7 +813,10 @@
             }
 
             var joined = boldLead(parts.join(' '));
-            var alone = (k >= lines.length || trim(lines[k]) === '') && (out.length === 0 || trim(lines[k - parts.length - 1]) === '');
+            // A block's first line: a blank line (or the text's start)
+            // stands over it. A heading copied with no blank line under it
+            // is such a line the next one does not continue.
+            var alone = out.length === 0 || trim(lines[k - parts.length - 1]) === '';
 
             if (!marked && parts.length === 1 && alone && k < lines.length && plainHeading(t)) {
                 push({style: 'heading', level: out.some(function (p) {

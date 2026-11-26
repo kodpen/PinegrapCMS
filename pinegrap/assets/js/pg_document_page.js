@@ -83,13 +83,27 @@
         return n;
     }
 
-    // Takes out the starter's sample words left unfilled, then the marks.
-    function clean(root) {
-        walk(root, function (n) {
-            n.children = (n.children || []).filter(function (c) {
-                return !(c.type === 'content' && c.props && SAMPLE[c.props.contentType] && !c._filled);
-            });
+    function sample(c) {
+        return !c._filled && c.props && ((c.type === 'content' && SAMPLE[c.props.contentType])
+            || (c.type === 'component' && c.props.componentType === 'btn'));
+    }
+
+    // Takes out the starter's sample words left unfilled (a hero's buttons
+    // too: a document names no button), a group they leave empty, then the
+    // marks.
+    function prune(n) {
+        n.children = (n.children || []).filter(function (c) {
+            if (sample(c)) {
+                return false;
+            }
+            var had = (c.children || []).length;
+            prune(c);
+            return !(c.type === 'semantic' && had && !c.children.length);
         });
+    }
+
+    function clean(root) {
+        prune(root);
         walk(root, function (n) { delete n._filled; });
         return root;
     }
