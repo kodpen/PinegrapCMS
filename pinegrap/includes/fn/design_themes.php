@@ -990,7 +990,8 @@ function pg_design_variables_stored($style_id)
 }
 
 // Writes a design's variables file for its look and palette and keeps its
-// file manager row. $model null rewrites the stored model on the current
+// file manager row. A page-only model (pg_design_variables_page_only())
+// sets the page transition on the stored model. $model null rewrites the stored model on the current
 // choice (a changed palette carries the untouched colours along) and
 // writes nothing when there is none. Returns true or an error message.
 function pg_design_variables_save($style_id, $model, $look, $palette, $user_id)
@@ -998,6 +999,12 @@ function pg_design_variables_save($style_id, $model, $look, $palette, $user_id)
     $name = pg_design_variables_file_name($style_id);
     if ($name === '') return lang('The design could not be saved. Please try again.');
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/design_variables.php');
+    if (pg_design_variables_page_only($model)) {
+        // The page transition alone (Settings, Theme, "Page transition"
+        // while the Variables tab never ran): the stored values stay.
+        $model = pg_design_variables_with_page(pg_design_variables_stored($style_id), $model);
+        if ($model === null) return true;
+    }
     if ($model === null) {
         $model = pg_design_variables_stored($style_id);
         if ($model === null) return true;
