@@ -2241,6 +2241,7 @@
     "The agent @{var:1} was saved.": "@{var:1} ajanı kaydedildi.",
     "The agent answered.": "Ajan cevap verdi.",
     "The agent asks the site for work itself. Nothing on its side has to be reachable.": "Ajan işi siteden kendisi sorar. Onun tarafında erişilebilir bir şey olması gerekmez.",
+    "The agent did not finish it within a day.": "Ajan bunu bir gün içinde bitirmedi.",
     "The agent did not take it within a day.": "Ajan bunu bir gün içinde almadı.",
     "The agent gave no answer within {var:1} hours.": "Ajan {var:1} saat içinde cevap vermedi.",
     "The agent gave no answer.": "Ajan cevap vermedi.",

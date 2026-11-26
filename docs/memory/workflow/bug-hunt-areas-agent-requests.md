@@ -14,9 +14,8 @@ description: The bug hunt in the agents' request queue and wakes (architect, 202
 - Expiry: `ws_agent_queue_expire()` cancelled in one bulk update and stamped no message, so open screens kept the line "asked" until a reload. Each cancelled request now stamps its message (`ws_message_touch()`), as Claude's and Pinegrap AI's expiry do.
 - Tests: `tests/workspace_agent_queue_test.php`, `tests/workspace_agent_wake_test.php`.
 
-## What is asked, not built?
-- A claimed (`running`) app agent request whose agent stopped stays running for ever: the eye and "is working on it" stay, and a flow's agent box waits for its own look. Claude and Pinegrap AI fail theirs after 15 minutes (`WS_CLAUDE_STALE`, `WS_AI_STALE`), but an app agent may legitimately work for hours (the progress note's "back by 22:30"), so the limit is a product choice for the architect.
-- An agent removed from every channel keeps its schedule: each wake is made with channel 0 and its brief names no channel. Whether removing the last channel row clears the schedule is a product choice.
+## What was decided after the hunt?
+- A claimed request whose agent went silent for a day is closed as failed (`agent-request-closed-by-site.md`); an agent in no channel gets no wake and keeps its schedule (`agent-wakes.md`). Architect, 2026-11-26.
 
 ## What was read and found clean?
 - Every route reads the request through `ws_api_agent_request_or_404()` with the caller's own `agent:<id>`: another agent's key gets 404 on claim, answer, fail, progress and brief, and the list shows only its own.

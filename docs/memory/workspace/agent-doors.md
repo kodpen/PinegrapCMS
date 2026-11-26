@@ -17,7 +17,8 @@ description: The agents' request queue: wake rules make one ws_ai_requests row p
 - A 2xx clears `door_failures` and `door_error`; anything else counts a failure with `ws_agent_knock_refusal()`'s sentence (a routine's 401/403/404/429 in `ws_claude_fire()`'s words; else the status and the answer's reason, ≤120 chars), `door_last_knock` the time.
 - `ws_agent_knocks_retry()` (top of `ws_ai_kick()`, so screens and the hourly job) knocks again for the newest queued request after `ws_model_hold_seconds(failures)` has passed (1 min doubling, 1 h at most). The request stays queued for a poll meanwhile.
 - A poll door gets no knock: it reads the list.
-- A request whose message is being edited is held (no knock, not listed, `409 editing`): [[agent-edit-hold]].
+
+- A request closed by the site, unclaimed or silent for a day: [[agent-request-closed-by-site]].
 
 ## Which routes does an app agent use?
 - `api_agent_requests.php`, `'mcp' => 'agent'` (the key used as itself, `ws_api_agent_caller()`: an active `app` row whose `app_id` is the caller, no device): `GET /workspace/agent-requests` (open, or a status, or all).

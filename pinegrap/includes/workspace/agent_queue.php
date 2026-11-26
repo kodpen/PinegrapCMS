@@ -757,9 +757,44 @@ function ws_agent_queue_expired_where($now)
 }
 
 /**
+ * The app agents' claimed requests claimed a day ago or more: the rows
+ * ws_agent_request_stalled() then decides by their last note. Pure.
+ *
+ * @param int $now
+ * @return string SQL condition on ws_ai_requests
+ */
+function ws_agent_queue_stalled_where($now)
+{
+    return "agent LIKE 'agent:%' AND status = 'running' AND claimed_at < '" . ((int) $now - WS_AI_QUEUE_TTL) . "'";
+}
+
+/**
+ * Whether a claimed request's agent has been silent for a day: no sign of
+ * life since the later of the claim and its last progress note. An agent may
+ * work for hours, and each note starts the day again, so only one that is
+ * gone is closed. Pure.
+ *
+ * @param array $row ws_ai_requests: status, claimed_at, ai_state
+ * @param int   $now
+ * @return bool
+ */
+function ws_agent_request_stalled($row, $now)
+{
+    if (((string) ($row['status'] ?? '') !== 'running') || ((int) ($row['claimed_at'] ?? 0) <= 0)) {
+        return false;
+    }
+
+    $note = ws_agent_progress_of($row);
+    $last = max((int) $row['claimed_at'], $note ? (int) $note['at'] : 0);
+
+    return $last < ((int) $now - WS_AI_QUEUE_TTL);
+}
+
+/**
  * Cancels the app agents' requests no one claimed within a day, as the
  * other assistants' are: under a message the line says so; a wake has no
- * message and closes silently.
+ * message and closes silently. Then closes as failed the claimed ones whose
+ * agent has been silent for a day (ws_agent_request_stalled()).
  *
  * @param int|null $now
  */
@@ -776,6 +811,38 @@ function ws_agent_queue_expire($now = null)
         // the message is stamped.
         if ((mysqli_affected_rows(db::$con) > 0) && ((int) $row['message_id'] > 0)) {
             ws_message_touch((int) $row['message_id']);
+        }
+    }
+
+    foreach ((array) db_items("SELECT id, agent, message_id, status, claimed_at, ai_state FROM ws_ai_requests WHERE " . ws_agent_queue_stalled_where($now) . " LIMIT 200") as $row) {
+        if (!ws_agent_request_stalled($row, $now)) {
+            continue;
+        }
+
+        // Closed only over the state it was decided on: a note, an answer
+        // or a person's Cancel since the read wins, and a late answer then
+        // gets 409 closed.
+        $state = ($row['ai_state'] === null) ? 'ai_state IS NULL' : "ai_state = '" . e((string) $row['ai_state']) . "'";
+
+        db("UPDATE ws_ai_requests SET status = 'failed', error = '" . e(lang('The agent did not finish it within a day.')) . "', reply_message_id = 0, answered_at = '" . $now . "'
+            WHERE id = '" . (int) $row['id'] . "' AND status = 'running' AND " . $state);
+
+        if (mysqli_affected_rows(db::$con) < 1) {
+            continue;
+        }
+
+        ws_agent_progress_clear((int) $row['id']);
+
+        // The eye off, which stamps the message so open screens redraw its
+        // line; a wake or a task run has no message and closes silently.
+        if ((int) $row['message_id'] > 0) {
+            $parsed = ws_agent_request_parse((string) $row['agent']);
+            $app_id = $parsed ? (int) db_value("SELECT app_id FROM ws_agents WHERE id = '" . (int) $parsed['id'] . "'") : 0;
+            ws_agent_react($app_id, (int) $row['message_id'], '👀', false);
+        }
+
+        if (function_exists('ws_step_agent_request_closed')) {
+            ws_step_agent_request_closed((int) $row['id']);
         }
     }
 }
