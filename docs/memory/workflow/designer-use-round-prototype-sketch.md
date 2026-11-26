@@ -20,7 +20,7 @@ description: Use round UR3 (PR #11884): the Prototype view's Sketch tool used in
 
 ## What was left, and why?
 - No box can be drawn by the keyboard alone: drawing needs a pointer. A new way to draw is the architect's (asked in the PR).
-- With a sketch page selected the links panel says "Select a page to see its links." A reworded line is the architect's (asked in the PR).
+- With a sketch page selected the links panel said "Select a page to see its links."; since SX1 (#11907) it says "A sketch page has no links until it is built."
 - At 390 px a frame zoomed to is at 48 %: the chips and the head's "Build the page" are about 6 px text; two fingers zoom in.
 - Each build on a new design makes a new shared "Header [n]" / "Footer [n]" (names are site-wide): "Build again" lists "Footer [2]".
 - An unsaved open tab is "Untitled page" on the map while its tab says "New Page".

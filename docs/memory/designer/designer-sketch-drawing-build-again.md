@@ -16,7 +16,7 @@ description: "Build again" as drawn (build.html, boards B6 to B8): when it asks,
 - The blue tile and the filled button are "Confirm with its effects" in a tone and with a button the examples already hold; step SK4 adds that state to the example on the Design examples screen.
 
 ## What when there is nothing to build?
-- A page with no box: "Build the page" is dimmed, its title says "Draw a box first"; the body keeps today's line "Drag here to draw a box".
+- A page with no box: "Build the page" is dimmed, its title says "Draw a box first"; the body keeps its line, "Drag to draw a box, or press B" since #11907.
 
 ## What when boxes are left out?
 - The page is built without the boxes the reader skips: "**Page 7** is built: 7 sections. 2 boxes were left out: too small, or half outside the page." with "Show them" (quiet, small), which selects them in the sketch.

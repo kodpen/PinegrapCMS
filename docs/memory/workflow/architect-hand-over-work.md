@@ -4,7 +4,7 @@ description: Hand-over of the architect session of 2026-11-24 to 26, the work in
 ---
 
 ## What of that session's work has landed?
-- All of its PRs: #11898 (the editor's frame sheet and plan `designer-frame-tidy`), #11901 (FR5 no longer waits: poll 234, "Evet, tek çubuk") and #11903 (DD4, the Sketch tool, with plan `designer-sketch-keys`, step SX1).
+- All of its PRs: #11898 (the editor's frame sheet and plan `designer-frame-tidy`), #11901 (FR5 no longer waits: poll 234, "Evet, tek çubuk") and #11903 (DD4, the Sketch tool, whose fix step SX1 landed as #11907).
 - Coordinator k3 was told both lanes (messages 14338 and 14355). Since 2026-11-26 (owner, message 14372) only the architect, the merging session and k3 work: k1 and k2 are out of the agent channel.
 
 ## What is still to do with the sheets?
@@ -22,6 +22,8 @@ description: Hand-over of the architect session of 2026-11-24 to 26, the work in
 ## What is still the architect's own?
 - After MS4 has landed: the merging session's rule for the memory mirror.
 - AC1's census may show that shared component and theme changes need a store, a schema question for the owner.
+- The office editors (owner 2026-11-26, `decisions-made-product-115.md`): the steps of `plans/office-sheet-abilities.md`, `office-sheet-formulas.md` and `office-document-abilities.md` are not free; the architect marks their lines `free` when OF4, SA5 and OP3 have landed, each by a docs PR, and tells k3.
+- Bug issue #11921 (the canvas's spacing handles dead with Side by side on, three smaller faults): the owner waits for the fix; k3 was told (message 14442).
 
 ## What is watched?
 - k3's own tasks: the context size on the agent form.

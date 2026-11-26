@@ -181,29 +181,12 @@ if ($erp_credit_ready || $erp_storefront_prices_ready || $erp_open_account_ready
                 ' . lang('Customer accounts') . '
             </div>
             <div class="card-body">
-                <div class="row gy-5">' . ($erp_credit_ready ? '
-                    <div class="pg-f-md">
-                        <label class="form-label" for="erp_credit_limit_mode">' . lang('A sale past a customer\'s credit limit') . '</label>
-                        <select class="form-control" id="erp_credit_limit_mode" name="erp_credit_limit_mode">
-                            <option value="warn"' . (($erp_credit_limit_mode === 'warn') ? ' selected' : '') . '>' . lang('Is issued, with a warning') . '</option>
-                            <option value="block"' . (($erp_credit_limit_mode === 'block') ? ' selected' : '') . '>' . lang('Is refused until a payment comes in') . '</option>
-                        </select>
-                        <div class="form-text">' . lang('The limit is set on each account card. Weighed on invoices typed in the ERP; an order\'s invoice is never held back.') . '</div>
-                    </div>' : '') . ($erp_storefront_prices_ready ? '
-                    <div class="col-12">
-                        <div class="form-field">
-                            <div class="switch"><input value="1"' . $erp_storefront_account_prices_checked . ' class="" type="checkbox" id="erp_storefront_account_prices" name="erp_storefront_account_prices" /></div>
-                            <label class="" for="erp_storefront_account_prices">' . lang('Account prices in the store') . '</label>
-                        </div>
-                        <div class="form-text">' . lang('A customer whose contact is linked to an account sees and pays that account\'s prices in the store while signed in: its own price for a product, or its discount on the list price. A campaign that goes lower still wins; the two never add up. Off, everyone sees the list price.') . '</div>
-                    </div>' : '') . ($erp_open_account_ready ? '
-                    <div class="col-12">
-                        <div class="form-field">
-                            <div class="switch"><input value="1"' . $erp_open_account_payment_checked . ' class="" type="checkbox" id="erp_open_account_payment" name="erp_open_account_payment" /></div>
-                            <label class="" for="erp_open_account_payment">' . lang('Put it on my account at checkout') . '</label>
-                        </div>
-                        <div class="form-text">' . lang('A signed-in customer whose account has a credit limit can put an order on the account instead of paying: it is billed to the account with the account\'s payment terms. Refused when the order would take the account past its limit, counting the orders on account not invoiced yet. The order counts as paid for an invoice issued on its own and is never cancelled for an unpaid transfer.') . '</div>
-                    </div>' : '') . '
+                <div class="row gy-5">' . ($erp_credit_ready ? pg_accounting_settings_choice('erp_credit_limit_mode', lang('A sale past a customer\'s credit limit'), array(
+                        array('value' => 'warn', 'label' => lang('Is issued, with a warning'), 'line' => '', 'on' => $erp_credit_limit_mode === 'warn'),
+                        array('value' => 'block', 'label' => lang('Is refused until a payment comes in'), 'line' => '', 'on' => $erp_credit_limit_mode === 'block'),
+                    ), lang('The limit is set on each account card. Weighed on invoices typed in the ERP; an order\'s invoice is never held back.')) : '')
+                    . ($erp_storefront_prices_ready ? pg_accounting_settings_switch('erp_storefront_account_prices', $erp_storefront_account_prices_checked !== '', lang('Account prices in the store'), lang('A customer whose contact is linked to an account sees and pays that account\'s prices in the store while signed in: its own price for a product, or its discount on the list price. A campaign that goes lower still wins; the two never add up. Off, everyone sees the list price.')) : '')
+                    . ($erp_open_account_ready ? pg_accounting_settings_switch('erp_open_account_payment', $erp_open_account_payment_checked !== '', lang('Put it on my account at checkout'), lang('A signed-in customer whose account has a credit limit can put an order on the account instead of paying: it is billed to the account with the account\'s payment terms. Refused when the order would take the account past its limit, counting the orders on account not invoiced yet. The order counts as paid for an invoice issued on its own and is never cancelled for an unpaid transfer.')) : '') . '
                 </div>
             </div>
         </div>
@@ -215,6 +198,7 @@ if ($erp_credit_ready || $erp_storefront_prices_ready || $erp_open_account_ready
 }
 
 // ── Foreign currency ──
+// The switch, then what it governs under it, shown whatever its state.
 $accounting_parts['erp-currency'] = array('html' => '
     <div id="pgset-erp-currency" class="pg-set-card">
         <div class="card">
@@ -222,40 +206,20 @@ $accounting_parts['erp-currency'] = array('html' => '
                 ' . lang('Foreign currency') . '
             </div>
             <div class="card-body">
-                <div class="row gy-5">
-                    <div class="col-12">
-                        <div class="form-field">
-                            <div class="switch"><input value="1"' . $erp_fx_enabled_checked . ' class="collapse-switcher" type="checkbox" id="erp_fx_enabled" name="erp_fx_enabled" data-bs-target="#erp_fx_row" /></div>
-                            <label class="" for="erp_fx_enabled">' . lang('Enable foreign-currency invoices and accounts') . '</label>
-                        </div>
-                        <div class="form-text">' . lang('Off, everything in the ERP is in the store\'s base currency. On, an invoice, an account or a till may be kept in one of the currencies below; amounts stay in that currency and the day\'s exchange rate converts them for the ledger.') . '</div>
-                        <div class="collapse popover fade bs-popover-bottom p-0 " id="erp_fx_row">
-                            <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
-                            <div class="popover-body">
-                                <div class="row gy-5">
-                                    <div class="col-12" role="group" aria-labelledby="erp_fx_currencies_title">
-                                        <div class="form-label" id="erp_fx_currencies_title">' . lang('Currencies allowed on documents') . '</div>
-                                        ' . $output_erp_fx_currencies . '
-                                        <div class="form-text">' . lang('The base currency is always allowed. Daily rates for these come from the Exchange rates job; run Update Exchange Rates on the currencies screen to fetch today\'s.') . '</div>
-                                    </div>
-                                    <div class="col-12">
-                                        <div class="form-field">
-                                            <div class="switch"><input value="1"' . $erp_fx_auto_diff_checked . ' class="" type="checkbox" id="erp_fx_auto_diff" name="erp_fx_auto_diff" /></div>
-                                            <label class="" for="erp_fx_auto_diff">' . lang('Post the exchange difference automatically when a foreign-currency invoice is paid off') . '</label>
-                                        </div>
-                                        <div class="form-text">' . lang('The invoice went on the account at the rate of its issue date and the receipts came off at the rate of their own day. When the invoice is paid, one movement in the base currency settles the gap so the account closes to zero.') . '</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                <div class="row gy-5">' . pg_accounting_settings_switch('erp_fx_enabled', $erp_fx_enabled === 1, lang('Enable foreign-currency invoices and accounts'), lang('Off, everything in the ERP is in the store\'s base currency. On, an invoice, an account or a till may be kept in one of the currencies below; amounts stay in that currency and the day\'s exchange rate converts them for the ledger.')) . '
+                    <div class="col-12" role="group" aria-labelledby="erp_fx_currencies_title">
+                        <div class="form-label" id="erp_fx_currencies_title">' . lang('Currencies allowed on documents') . '</div>
+                        ' . $output_erp_fx_currencies . '
+                        <p class="pg-field-help pg-text-meta fg-secondary mb-0">' . lang('The base currency is always allowed. Daily rates for these come from the Exchange rates job; run Update Exchange Rates on the currencies screen to fetch today\'s.') . '</p>
+                    </div>' . pg_accounting_settings_switch('erp_fx_auto_diff', $erp_fx_auto_diff_checked !== '', lang('Post the exchange difference automatically when a foreign-currency invoice is paid off'), lang('The invoice went on the account at the rate of its issue date and the receipts came off at the rate of their own day. When the invoice is paid, one movement in the base currency settles the gap so the account closes to zero.')) . '
                 </div>
             </div>
         </div>
     </div>') + pg_accounting_fold_currency($erp_fx_enabled === 1, BASE_CURRENCY_CODE, $erp_fx_selected);
 
 // ── Reminders and notices ──
-// Overdue receivable reminders, then the notices as they happen.
+// Overdue receivable reminders, then the notices as they happen, each under
+// its group label: the row holds more than eight fields.
 $accounting_notices = null;
 
 if ($erp_alerts_ready) {
@@ -271,94 +235,50 @@ $accounting_parts['erp-notices'] = array('html' => '
             </div>
             <div class="card-body">
                 <div class="row gy-5">
-                    <div class="col-12" role="group" aria-labelledby="erp_overdue_notify_title">
-                        <div class="form-label" id="erp_overdue_notify_title">' . lang('Overdue receivable reminders') . '</div>
-                        <div class="form-text mb-3">' . lang('Sales invoices that pass this many days overdue are announced in the panel bell, by e-mail and on a subscribed device, and once more if still open a month later. An account can carry a threshold of its own. 0 turns the reminders off.') . '</div>
+                    <div class="col-12"><h3 class="pg-group-label mb-0">' . lang('Overdue receivable reminders') . '</h3></div>
+                    <div class="pg-f-sm">
+                        <label class="form-label" for="erp_overdue_notify_days">' . lang('Reminder threshold (days)') . '</label>
+                        <input type="number" class="form-control" id="erp_overdue_notify_days" name="erp_overdue_notify_days" value="' . (int) $erp_overdue_notify_days . '" min="0" max="3650" step="1" inputmode="numeric" autocomplete="off" aria-describedby="erp_overdue_notify_days_help" />
+                        <div class="form-text" id="erp_overdue_notify_days_help">' . lang('Sales invoices that pass this many days overdue are announced in the panel bell, by e-mail and on a subscribed device, and once more if still open a month later. An account can carry a threshold of its own. 0 turns the reminders off.') . '</div>
+                    </div>
+                    <div class="col-12">
                         <div class="row gy-5">
-                            <div class="col-12 md:col-4">
-                                <label class="form-label" for="erp_overdue_notify_days">' . lang('Reminder threshold (days)') . '</label>
-                                <input type="number" class="form-control" id="erp_overdue_notify_days" name="erp_overdue_notify_days" value="' . (int) $erp_overdue_notify_days . '" min="0" max="3650" step="1" inputmode="numeric" autocomplete="off" />
-                            </div>
-                            <div class="col-6 md:col-4">
+                            <div class="col-6">
                                 <label class="form-label" for="erp_overdue_notify_frequency">' . lang('Frequency') . '</label>
                                 <select class="form-control" id="erp_overdue_notify_frequency" name="erp_overdue_notify_frequency">
                                     <option value="daily"' . (($erp_overdue_notify_frequency === 'daily') ? ' selected="selected"' : '') . '>' . lang('Daily') . '</option>
                                     <option value="weekly"' . (($erp_overdue_notify_frequency === 'weekly') ? ' selected="selected"' : '') . '>' . lang('Weekly') . '</option>
                                 </select>
                             </div>
-                            <div class="col-6 md:col-4">
+                            <div class="col-6">
                                 <label class="form-label" for="erp_overdue_notify_hour">' . lang('Hour') . '</label>
                                 <select class="form-control" id="erp_overdue_notify_hour" name="erp_overdue_notify_hour">' . $output_erp_overdue_hours . '</select>
                             </div>
-                            <div class="col-12">
-                                <div class="form-field">
-                                    <div class="switch"><input value="1"' . $erp_overdue_notify_panel_checked . ' class="" type="checkbox" id="erp_overdue_notify_panel" name="erp_overdue_notify_panel" /></div>
-                                    <label class="" for="erp_overdue_notify_panel">' . lang('Panel notification') . '</label>
-                                </div>
-                                <div class="form-field">
-                                    <div class="switch"><input value="1"' . $erp_overdue_notify_email_checked . ' class="" type="checkbox" id="erp_overdue_notify_email" name="erp_overdue_notify_email" /></div>
-                                    <label class="" for="erp_overdue_notify_email">' . lang('E-mail') . '</label>
-                                </div>
-                                <div class="form-field">
-                                    <div class="switch"><input value="1"' . $erp_overdue_notify_push_checked . ' class="" type="checkbox" id="erp_overdue_notify_push" name="erp_overdue_notify_push" /></div>
-                                    <label class="" for="erp_overdue_notify_push">' . lang('Device notification') . '</label>
-                                </div>' . $output_erp_overdue_push_hint . '
-                            </div>
-                            <div class="col-12">
-                                <div class="form-field">
-                                    <div class="switch"><input value="1"' . $erp_overdue_notify_customer_checked . ' class="" type="checkbox" id="erp_overdue_notify_customer" name="erp_overdue_notify_customer" /></div>
-                                    <label class="" for="erp_overdue_notify_customer">' . lang('Reminder e-mail to the customer') . '</label>
-                                </div>
-                                <div class="form-text">' . lang('When a customer\'s invoices pass the threshold, a short reminder listing them goes to the e-mail address on their account, from the store address, with a second one a month later. Off for a single account on its card.') . '</div>
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label" for="erp_overdue_notify_recipients">' . lang('Recipients') . '</label>
-                                <input type="text" inputmode="email" spellcheck="false" autocapitalize="off" class="form-control" id="erp_overdue_notify_recipients" name="erp_overdue_notify_recipients" value="' . h($erp_overdue_notify_recipients) . '" maxlength="500" autocomplete="off" placeholder="' . h($erp_overdue_notify_default_recipient) . '" />
-                                <div class="form-text">' . lang('Comma-separated. Empty uses the store e-mail address.') . '</div>
-                            </div>
                         </div>
-                    </div>' . ($erp_alerts_ready ? '
+                    </div>' . pg_accounting_settings_ticks('erp_overdue_notify_channels', lang('Send through'),
+                        pg_accounting_settings_tick('erp_overdue_notify_panel', $erp_overdue_notify_panel_checked !== '', lang('Panel notification'))
+                        . pg_accounting_settings_tick('erp_overdue_notify_email', $erp_overdue_notify_email_checked !== '', lang('E-mail'))
+                        . pg_accounting_settings_tick('erp_overdue_notify_push', $erp_overdue_notify_push_checked !== '', lang('Device notification'))
+                        . $output_erp_overdue_push_hint)
+                    . pg_accounting_settings_switch('erp_overdue_notify_customer', $erp_overdue_notify_customer_checked !== '', lang('Reminder e-mail to the customer'), lang('When a customer\'s invoices pass the threshold, a short reminder listing them goes to the e-mail address on their account, from the store address, with a second one a month later. Off for a single account on its card.')) . '
                     <div class="col-12">
-                        <div class="form-label">' . lang('Notices as they happen') . '</div>
-                        <div class="form-text mb-3">' . lang('On the panel bell and on the devices that subscribed to notifications. The person who recorded it is not told.') . '</div>
-                        <div class="row gy-3 align-items-end">
-                            <div class="col-12 md:col-7">
-                                <div class="form-field">
-                                    <div class="switch"><input value="1"' . $erp_notify_collections_checked . ' class="" type="checkbox" id="erp_notify_collections" name="erp_notify_collections" /></div>
-                                    <label class="" for="erp_notify_collections">' . lang('A collection is recorded') . '</label>
-                                </div>
-                            </div>
-                            <div class="col-12 md:col-5">
-                                <label class="form-label" for="erp_notify_collection_min">' . h(lang(array('string' => 'From this amount up ({var:1})', 'vars' => html_entity_decode(BASE_CURRENCY_SYMBOL, ENT_QUOTES | ENT_HTML5, 'UTF-8')))) . '</label>
-                                <input type="number" class="form-control" id="erp_notify_collection_min" name="erp_notify_collection_min" value="' . (int) $erp_notify_collection_min . '" min="0" max="100000000" step="1" inputmode="numeric" autocomplete="off" />
-                            </div>
-                            <div class="col-12">
-                                <div class="form-field">
-                                    <div class="switch"><input value="1"' . $erp_notify_low_stock_checked . ' class="" type="checkbox" id="erp_notify_low_stock" name="erp_notify_low_stock" /></div>
-                                    <label class="" for="erp_notify_low_stock">' . lang('A product drops to its minimum stock') . '</label>
-                                </div>
-                                <div class="form-text">' . lang('Checked every hour; each product is announced once each time it drops.') . '</div>' . $output_erp_overdue_push_hint . '
-                            </div>' . ($erp_quote_alert_ready ? '
-                            <div class="col-12 md:col-7">
-                                <div class="form-field">
-                                    <div class="switch"><input value="1"' . $erp_notify_quote_expiry_checked . ' class="" type="checkbox" id="erp_notify_quote_expiry" name="erp_notify_quote_expiry" /></div>
-                                    <label class="" for="erp_notify_quote_expiry">' . lang('Announce quotes about to expire') . '</label>
-                                </div>
-                                <div class="form-text">' . lang('Checked every hour; each open quote is announced once, and again after it is opened again or its date changes.') . '</div>
-                            </div>
-                            <div class="col-12 md:col-5">
-                                <label class="form-label" for="erp_notify_quote_expiry_days">' . lang('Days before it expires') . '</label>
-                                <input type="number" class="form-control pg-f-xs" id="erp_notify_quote_expiry_days" name="erp_notify_quote_expiry_days" value="' . (int) $erp_notify_quote_expiry_days . '" min="1" max="30" step="1" inputmode="numeric" autocomplete="off" />
-                            </div>' . ($erp_quote_followup_ready ? '
-                            <div class="col-12">
-                                <div class="form-field">
-                                    <div class="switch"><input value="1"' . $erp_quote_expiry_followup_checked . ' class="" type="checkbox" id="erp_quote_expiry_followup" name="erp_quote_expiry_followup" /></div>
-                                    <label class="" for="erp_quote_expiry_followup">' . lang('Open a Workspace follow-up for each quote announced') . '</label>
-                                </div>
-                                <div class="form-text">' . lang('A task for the person who made the quote, due on its last day. Needs the notice above and the Workspace.') . '</div>
-                            </div>' : '') : '') . '
-                        </div>
-                    </div>' : '') . '
+                        <label class="form-label" for="erp_overdue_notify_recipients">' . lang('Recipients') . '</label>
+                        <input type="text" inputmode="email" spellcheck="false" autocapitalize="off" class="form-control" id="erp_overdue_notify_recipients" name="erp_overdue_notify_recipients" value="' . h($erp_overdue_notify_recipients) . '" maxlength="500" autocomplete="off" placeholder="' . h($erp_overdue_notify_default_recipient) . '" aria-describedby="erp_overdue_notify_recipients_help" />
+                        <div class="form-text" id="erp_overdue_notify_recipients_help">' . lang('Comma-separated. Empty uses the store e-mail address.') . '</div>
+                    </div>' . ($erp_alerts_ready ? '
+                    <div class="col-12"><h3 class="pg-group-label mb-0">' . lang('Notices as they happen') . '</h3>
+                        <p class="pg-field-help pg-text-meta fg-secondary mb-0">' . lang('On the panel bell and on the devices that subscribed to notifications. The person who recorded it is not told.') . '</p>
+                    </div>' . pg_accounting_settings_switch('erp_notify_collections', $erp_notify_collections_checked !== '', lang('A collection is recorded')) . '
+                    <div class="pg-f-sm">
+                        <label class="form-label" for="erp_notify_collection_min">' . h(lang(array('string' => 'From this amount up ({var:1})', 'vars' => html_entity_decode(BASE_CURRENCY_SYMBOL, ENT_QUOTES | ENT_HTML5, 'UTF-8')))) . '</label>
+                        <input type="number" class="form-control" id="erp_notify_collection_min" name="erp_notify_collection_min" value="' . (int) $erp_notify_collection_min . '" min="0" max="100000000" step="1" inputmode="numeric" autocomplete="off" />
+                    </div>' . pg_accounting_settings_switch('erp_notify_low_stock', $erp_notify_low_stock_checked !== '', lang('A product drops to its minimum stock'), lang('Checked every hour; each product is announced once each time it drops.')) . (($output_erp_overdue_push_hint !== '') ? '
+                    <div class="col-12 mt-0">' . $output_erp_overdue_push_hint . '</div>' : '')
+                    . ($erp_quote_alert_ready ? pg_accounting_settings_switch('erp_notify_quote_expiry', $erp_notify_quote_expiry_checked !== '', lang('Announce quotes about to expire'), lang('Checked every hour; each open quote is announced once, and again after it is opened again or its date changes.')) . '
+                    <div class="pg-f-sm">
+                        <label class="form-label" for="erp_notify_quote_expiry_days">' . lang('Days before it expires') . '</label>
+                        <input type="number" class="form-control" id="erp_notify_quote_expiry_days" name="erp_notify_quote_expiry_days" value="' . (int) $erp_notify_quote_expiry_days . '" min="1" max="30" step="1" inputmode="numeric" autocomplete="off" />
+                    </div>' . ($erp_quote_followup_ready ? pg_accounting_settings_switch('erp_quote_expiry_followup', $erp_quote_expiry_followup_checked !== '', lang('Open a Workspace follow-up for each quote announced'), lang('A task for the person who made the quote, due on its last day. Needs the notice above and the Workspace.')) : '') : '') : '') . '
                 </div>
             </div>
         </div>
@@ -395,43 +315,23 @@ $accounting_invoice_card = '
                         <button type="button" class="pg-button pg-button-quiet pg-button-sm pg-edoc-test" data-pg-action="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY) . '/get_erp_edoc_test.php"><i class="bi bi-plug" aria-hidden="true"></i>' . lang('Test the connection') . '</button>
                         <div class="form-text">' . lang('Tries the provider picked above with the connection kept on its page of Connections.') . '</div>
                         <div class="pg-edoc-test-result mt-3" role="status" aria-live="polite"></div>
+                    </div>' . pg_accounting_settings_switch('erp_edoc_autosend', $erp_edoc_autosend_checked !== '', lang('Hand the document to GİB in the same step'), lang('A document created through a provider\'s API is only a draft there; it becomes a legal document when it is handed to the tax authority. Left on, one click does both. Turned off, the invoice screen gets a second button for the hand-over, so the draft can be looked over at the provider first.')) : '') . pg_accounting_settings_switch('enable_parasut', $enable_parasut_checked !== '', lang('Enable Parasut Configuration')) . '
+                    <div class="col-12">' . $parasut_card_connection . '
                     </div>
-                    <div class="col-12">
-                        <div class="form-field">
-                            <div class="switch"><input value="1"' . $erp_edoc_autosend_checked . ' class="" type="checkbox" id="erp_edoc_autosend" name="erp_edoc_autosend" /></div>
-                            <label class="" for="erp_edoc_autosend">' . lang('Hand the document to GİB in the same step') . '</label>
-                        </div>
-                        <div class="form-text">' . lang('A document created through a provider\'s API is only a draft there; it becomes a legal document when it is handed to the tax authority. Left on, one click does both. Turned off, the invoice screen gets a second button for the hand-over, so the draft can be looked over at the provider first.') . '</div>
-                    </div>' : '') . '
-                    <div class="col-12">
-                                                            <div class="form-field">
-                                                                <div class="switch"><input value="1"' . $enable_parasut_checked . ' class="collapse-switcher" type="checkbox" id="enable_parasut" name="enable_parasut" data-bs-target="#ecommerce_parasut_configration_row"/></div>
-                                                                <label class="" for="enable_parasut">' . lang('Enable Parasut Configuration') . '</label>
-                                                            </div>
-                                                            <div class="collapse popover fade bs-popover-bottom p-0  w-100" id="ecommerce_parasut_configration_row">
-                                                            <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
-                                                            <div class="popover-body">
-                                                               <div class="row gy-5">
-                                                                    <div class="col-12">' . $parasut_card_connection . '
-                                                                    </div>
-                                                                    <div class="col-12 "><h3 class="pg-group-label mb-0">' . lang('Invoice Settings') . '</h3></div>
-                                                                    <div class="pg-f-md">
-                                                                        <label class="form-label" for="parasut_tc_in_field">' . lang('Select field to used as Republic of Turkey identification number') . '</label>
-                                                                        <select class="form-control" id="parasut_tc_in_field" name="parasut_tc_in_field">' . $parasut_tc_in_field_options . '</select>
-                                                                    </div>
-                                                                    <div class="pg-f-md">
-                                                                        <label class="form-label" for="parasut_default_product_id">' . lang('Default Product/Service ID') . ' <span class="pg-field-label-note">(' . lang(array('string' => 'Parasut field: {var:1}', 'vars' => array('Varsayılan Ürün/Hizmet'))) . ')</span></label>
-                                                                        <input type="text" class="form-control" id="parasut_default_product_id" name="parasut_default_product_id" value="' . h($parasut_default_product_id) . '" autocomplete="off" />
-                                                                        <div class="form-text">' . lang('Used for the invoice lines that have no Paraşüt product card of their own: shipping, charges, free-text lines and rounding. Each Pinegrap product gets its own card. Without this ID an invoice with such a line is refused. Create a generic product/service in Paraşüt and enter its ID here.') . '</div>
-                                                                    </div>
-                                                                    <div class="pg-f-md">
-                                                                        <label class="form-label" for="parasut_default_warehouse_id">' . lang('Default Warehouse ID') . ' <span class="pg-field-label-note">(' . lang(array('string' => 'Parasut field: {var:1}', 'vars' => array('Varsayılan Depo'))) . ')</span></label>
-                                                                        <input type="text" class="form-control" id="parasut_default_warehouse_id" name="parasut_default_warehouse_id" value="' . h($parasut_default_warehouse_id) . '" autocomplete="off" />
-                                                                        <div class="form-text">' . lang('Fetched automatically from Parasut on first use. Override here if you have multiple warehouses.') . '</div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                            </div>
+                    <div class="col-12"><h3 class="pg-group-label mb-0">' . lang('Invoice Settings') . '</h3></div>
+                    <div class="pg-f-md">
+                        <label class="form-label" for="parasut_tc_in_field">' . lang('Select field to used as Republic of Turkey identification number') . '</label>
+                        <select class="form-control" id="parasut_tc_in_field" name="parasut_tc_in_field">' . $parasut_tc_in_field_options . '</select>
+                    </div>
+                    <div class="pg-f-md">
+                        <label class="form-label" for="parasut_default_product_id">' . lang('Default Product/Service ID') . ' <span class="pg-field-label-note">(' . lang(array('string' => 'Parasut field: {var:1}', 'vars' => array('Varsayılan Ürün/Hizmet'))) . ')</span></label>
+                        <input type="text" class="form-control" id="parasut_default_product_id" name="parasut_default_product_id" value="' . h($parasut_default_product_id) . '" autocomplete="off" aria-describedby="parasut_default_product_id_help" />
+                        <div class="form-text" id="parasut_default_product_id_help">' . lang('Used for the invoice lines that have no Paraşüt product card of their own: shipping, charges, free-text lines and rounding. Each Pinegrap product gets its own card. Without this ID an invoice with such a line is refused. Create a generic product/service in Paraşüt and enter its ID here.') . '</div>
+                    </div>
+                    <div class="pg-f-md">
+                        <label class="form-label" for="parasut_default_warehouse_id">' . lang('Default Warehouse ID') . ' <span class="pg-field-label-note">(' . lang(array('string' => 'Parasut field: {var:1}', 'vars' => array('Varsayılan Depo'))) . ')</span></label>
+                        <input type="text" class="form-control" id="parasut_default_warehouse_id" name="parasut_default_warehouse_id" value="' . h($parasut_default_warehouse_id) . '" autocomplete="off" aria-describedby="parasut_default_warehouse_id_help" />
+                        <div class="form-text" id="parasut_default_warehouse_id_help">' . lang('Fetched automatically from Parasut on first use. Override here if you have multiple warehouses.') . '</div>
                     </div>
                 </div>
             </div>

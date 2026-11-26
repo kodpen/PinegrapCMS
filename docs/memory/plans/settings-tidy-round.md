@@ -23,7 +23,7 @@ priority: 6
 - TR3a Done #11862 (`ui/connections-return-to-card.md`). The return: the helper every lead uses, the key check as a pure function, "Back to {card}", the return after Save and Connect and through the sign-in, the two old parameters folded in. Every lead to the service's page in the same tab: E-mail sending's and Backups' leads that land on the list, MCP servers' new tab.
 - TR3b Done #11880 (`ui/connections-lead-keeps-pane.md`): nothing is lost: the pane's unsaved fields kept and put back, the assistant's drawer opened again (paths 7 and 8 of `settings-crossings-census-worst.md`).
 - TR3c Done #11894 (`ui/connections-page-finishes.md`): the page finishes it: the application's fields on the page of a Google or Microsoft account service, the drives' two answers made one, Sign in with Microsoft given its anchor and button (paths 1 to 6).
-- TR3d (S) after TR3c: no empty page: the list opens the card for the status-only services (path 9); the census files corrected where a path changed.
+- TR3d Done #11911 (`ui/connections-list-opens-card.md`): no empty page: the list opens the card for the status-only services (path 9); the census files corrected where a path changed.
 - TR4 Done by the architect (2026-11-26): Ecommerce's plan is `settings-ecommerce-tidy.md`, steps EC1 to EC6, free beside TR3 (another file).
 - TR5 Done by the architect (2026-11-26): Accounting's plan is `settings-accounting-tidy.md` (SA1 to SA4), Updates and maintenance's `settings-maintenance-tidy.md` (SM1 to SM4; SM3 after TR3a). The two S3 sets stay apart.
 - TR6 (S) Close-out: the rule into `ui/`, the survey files corrected or deleted, this file deleted.

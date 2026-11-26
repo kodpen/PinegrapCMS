@@ -2584,6 +2584,7 @@
     "Price change notice": "Fiyat değişikliği bildirimi",
     "Price drop on {var:1} products; a campaign?": "{var:1} üründe fiyat düştü; bir kampanya mı?",
     "Price error below %": "Fiyat hatası eşiği %",
+    "Price errors": "Fiyat hataları",
     "Price filter": "Fiyat filtresi",
     "Price from the feed": "Fiyat beslemeden",
     "Price log": "Fiyat kaydı",

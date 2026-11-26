@@ -14,18 +14,18 @@ description: Crossings census, the pages: for each service page of Connections t
 
 ## Which pages only show a state and say "Open its settings"?
 - Those whose settings stay on a card or screen: Pinegrap AI, Pinegrap licence, ShipWorks, OpenAI product feed, VIES, DB-IP, Frankfurter, HexaRate, StopForumSpam, ActivityPub, the seven mail routes, Sign in with Google and with Microsoft, Google and Outlook Calendar, Google Drive, OneDrive, Dropbox, n11, Trendyol, Search Console, Cloudflare.
-- Their "Where it is used" row repeats the same link (`connections.php:4390-4420`).
+- Their "Where it is used" row repeats the same link. Since TR3d the list opens their card straight away (`ui/connections-list-opens-card.md`); the page answers only its address. The drives connect their account in Status, and an account service whose application is missing asks for it on its page (TR3c), so those stay pages.
 
 ## Where does the person stand after each action?
 - Save, Save and try, Generate (IndexNow), Disconnect, Remove: the same page (`connections_return`). For Google's application, `?service=google`; for its sign-in application, `?service=google#connections-signin`.
 - Connect an account (Google, Microsoft, GitHub, Merchant Center, Analytics, Paraşüt's OAuth, an MCP connector's sign-in): back on the page it started from. The MCP connector lands on `#connections-details`.
-- Connect for backups from the Backups card: the Backups card (`settings_maintenance.php?backup_connect=<type>#pgset-backup`). Connect for mailboxes from the Mailboxes card: the card (`mail_return`). Started on the page itself (no parameter), both stay on the page.
-- `mail_return` and `backup_return` live only in the address the card opened: a Save on the page (it redirects to `?service=<key>`) or a detour to Google's page drops them, and the later Connect comes back to the page, not the card.
+- Connect for backups from the Backups card: the Backups card (`settings_maintenance.php?backup_connect=<type>#pgset-backup`). Connect for mailboxes from the Mailboxes card: the card. Started on the page itself (no `from=`), both stay on the page.
+- Since TR3a every lead carries `from=` and keeps it through a Save and the sign-in; `mail_return` and `backup_return` are read only from old links (`ui/connections-return-to-card.md`).
 
 ## Which pages send the person on to a third page?
-- Google Analytics and Merchant Center without Google's application: "Connections › Google" (`connections.php:3295`, `3683`).
-- Every page of a Google or Microsoft account service with no Connection details of its own (the calendars, the drives, Gmail and Microsoft 365 mail, OneNote): "Accounts are connected on the Google (Microsoft) page of Connections, where its application is set up." (`connections.php:4376`); Dropbox's says its panel of the Connections list.
-- Google Drive, OneDrive, Dropbox show that sentence and, below it, their own "Connect a … account for backups" button: two answers on one card.
+- Since TR3c none while the application is missing: the service's page asks for it (`ui/connections-page-finishes.md`).
+- Once it is ready, the calendars, Gmail and Microsoft 365 mail and OneNote say "Accounts are connected on the Google (Microsoft) page of Connections, where its application is set up."; the drives connect their own.
+- Google Drive, OneDrive, Dropbox: one answer since TR3c, their own "Connect a … account for backups" (`ui/connections-page-finishes.md`).
 - The GA4 Measurement Protocol: the Measurement ID is on Google Analytics' page (`ad_conversions_ga4.php:714`).
 - Google's page: its sign-in part leads to "Accounts and sign-in ›"; its "Where it is used" lists each served service's page, never a card.
 

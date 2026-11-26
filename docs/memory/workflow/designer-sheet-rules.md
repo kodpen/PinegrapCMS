@@ -11,6 +11,6 @@ description: What a designer plan's drawing sheet holds (boards for every screen
 
 ## What waits for a sheet?
 - A screen step names its sheet after "after" and starts when that drawing has landed; it never waits for a yes (`decisions-made-product-106.md`). A step with no screen (a model, a server step, a census, a close-out) waits for no drawing.
-- What the owner asks to change on a sheet after its step was built is a fix step. A tool built before its sheet keeps its build; what the sheet shows otherwise is one fix step (the Sketch tool: `plans/designer-sketch-keys.md`).
+- What the owner asks to change on a sheet after its step was built is a fix step. A tool built before its sheet keeps its build; what the sheet shows otherwise is one fix step (the Sketch tool: SX1, `designer/prototype-sketch-keys.md`).
 
 Related: docs/memory/workflow/design-work-session.md, docs/memory/workflow/decisions-made-product-106.md, docs/memory/workflow/architect-draws-new-part.md

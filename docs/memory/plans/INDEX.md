@@ -43,7 +43,6 @@
 - designer-drawings.md: Plan (owner 2026-11-24): the designer plans' screens are drawn first, DD1 to DD11, by the design session or the architect; a screen step waits for its drawing's merge, never for a yes
 - designer-frame-tidy.md: Plan (owner 2026-11-26): the Page Design Studio editor's frame made plain: one bar over the page, plainer heads in the left column and the bottom panel; steps FR1 to FR6
 - designer-home-tidy.md: Plan (owner 2026-11-26): the New design window and the Page Design Studio home made plain: one icon a start, a grouped rail, start cards only on the first visit; steps HT1 to HT4
-- designer-sketch-keys.md: Plan (architect 2026-11-26): the Sketch tool's fix step SX1 after its sheet: a box by the keyboard, a size by the keyboard, the line in an empty sketch page, the links panel's sentence
 - designer-use-round.md: Plan (owner 2026-11-26): the Page Design Studio's features of 2026-11 used in a browser as a first-time person, their faults fixed, their look brought to the chrome's rules; steps UR1 to UR8
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), the queue worker, incoming e-invoices; where to start
@@ -67,6 +66,11 @@
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer
 - mobile-api-shelved-m8.md: Plan mobile-api-shelved, steps M8a to M8d (owner 2026-11-22, beside the other plans): sort=newest on the remaining lists, several reads in one request, a list of deleted records, a CORS allow-list
 - mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what exists (M1–M7), M8 given out beside the other plans, decisions, how its needs arrive
+- office-document-abilities.md: Plan (owner 2026-11-26, poll 235): the document editor's new abilities once it is typed on a page: alignment, text and highlight colour, font size, links, tables, pictures from Files; steps DA1 to DA8
+- office-document-page.md: Plan (owner 2026-11-26): the document editor typed on a page, not in a box: paragraphs written where they stand, Enter and Backspace as in a word processor, Undo and Redo; steps OP1 to OP4
+- office-sheet-abilities.md: Plan (owner 2026-11-26, poll 235): the steady spreadsheet editor's new abilities: more formats, column widths, row heights, a frozen top row, copy, paste, fill down, clear; steps SA1 to SA6
+- office-sheet-formulas.md: Plan (owner 2026-11-26, poll 235): simple formulas in the spreadsheet editor: SUM, AVERAGE, MIN, MAX, COUNT and the four operations, worked out again when a cell changes; steps SF1 to SF4
+- office-sheet-steady.md: Plan (owner 2026-11-26): the spreadsheet editor made steady: every change of a workbook taken at once and saved together, no "save first" refusal, Undo and Redo; steps OF1 to OF5
 - parasut-devhub-connection.md: Plan (2026-11-25): connecting Paraşüt with a client from its Developer Portal (DevHub): the registered redirect address, sign-in at id.parasut.com with PKCE, short tokens; step PD1
 - parasut-devhub-staging.md: Plan (owner 2026-11-26): Paraşüt's test environment (staging) for a Developer Portal client: the choice on Paraşüt's page of Connections, the sign-in host, the mark on the status line; step PS1
 - picture-text-fit-rules.md: Plan picture-text-fit, the fit's rules (architect 2026-11-26): a text's room from the picture's edges and the other layers, the order grow, wrap, shrink, what stays of the old rule

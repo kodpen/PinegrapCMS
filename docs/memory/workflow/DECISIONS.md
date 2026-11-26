@@ -184,6 +184,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-114.md: Where are the rules and the earlier parts?
 - decisions-made-product-114.md: Which ready content does the Artifact Canvas get, and in which order? (owner, 2026-11-26, agent channel poll 231, message 14182)
 - decisions-made-product-114.md: How does a Site Settings card hand over to its Connections page and back? (owner, 2026-11-26, agent channel poll 232, message 14187)
+- decisions-made-product-115.md: Where are the rules and the earlier parts?
+- decisions-made-product-115.md: Which abilities do the spreadsheet and document editors get? (owner, 2026-11-26, agent channel poll 235, message 14401)
+- decisions-made-product-115.md: Is a formula engine built after all? (owner, 2026-11-26, the same poll)
 - decisions-made-product-12.md: Where are the rules and the earlier parts?
 - decisions-made-product-12.md: Where does a role-3 user edit the ERP settings cards? (#3828)
 - decisions-made-product-12.md: Trendyol import: which column holds the province? (#3835)
@@ -1291,7 +1294,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/designer-sketch-drawing-build-again.md: "Build again" as drawn (build.html, boards B6 to B8): when it asks, the question's rows and "More", boxes left out, a failed or refused build, zoomed out and on a phone
 - designer/designer-sketch-drawing-check.md: The boxes the Sketch reader is not sure of, as drawn (build.html, board B4): the quiet mark on the chip, the chip's menu that settles one early, and the one list "Build the page" opens
 - designer/designer-sketch-drawing-details.md: "Page details" as drawn (details.html, boards D1 to D4): the window's seven rows with their sentences and defaults, what each choice says, errors, saving, read-only, phone
-- designer/designer-sketch-tool-drawing.md: Drawing of the Sketch tool itself (DD4, 2026-11-26): the switch and a new page, a box drawn and named, the chip's kinds, every key; what the fix step SX1 adds for the keyboard and the links panel
+- designer/designer-sketch-tool-drawing.md: Drawing of the Sketch tool (DD4, 2026-11-26): switch, new page, a box drawn and named, the chip's kinds, every key; what SX1 (#11907) added for the keyboard and links panel
 - designer/designer-start-import.md: The Figma and Canva starts of the New design window (2026-11): what the owner asked, where each part is written, and what was left unbuilt
 - designer/designer-style-guide-rules.md: What binds the designer's Style guide (Preview menu, "Style guide", "Print or save as PDF"): why it exists, what it may never do, which file holds each part; landed in SG1 to SG3
 - designer/designer-variables-drawing-computed-rows.md: The computed rows a bound control's list offers in Options (boards B6 and B7 of the variables drawing, DV3): the type scale's steps and the base unit's multiples, their names, the chip, the order
@@ -1410,7 +1413,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - platform/messages-area-sends-speed.md: How fast Communication › Sends reads 500,000 rows a queue (MA2 #9252, MA2b #9275): the architect's 300 ms, keyset bounds per branch, measured batches, the slow search and heading sorts left open
 - platform/messages-area-sends.md: Communication › Sends (MA2 #9252, MA2b #9275, WA2b #9409): the list of six branches, row ids, filters, buttons, e-mail sources, measured batch times, what the old queue screen left to it
 - platform/notification-channels.md: Chat notification channels (includes/fn/notify_channels.php): Slack, Teams and Telegram targets, the pure builders, the settings card and the Test button
-- platform/office-files-scope.md: How far the own Word and Excel code goes and why: what is edited, what is only shown, what is never built (formula engine, charts, layout), the rules every edit keeps
+- platform/office-files-scope.md: How far the own Word and Excel code goes and why: what is edited, what is only shown, what is never built (charts, pivots, layout; formulas beyond the simple ones), the rules every edit keeps
 - platform/office-files.md: Word and Excel previews (includes/fn/office.php, pg_office_view.js): read on the server without a library, drawn in the file manager and the Workspace; limits, security, what is not read
 - platform/office-overview.md: Start file for the office-* files: Office files shown and edited by own code in the File Manager and channels; decisions, parts by screen label, which file holds what
 - platform/office-sheet-format-controls.md: The sheet editor's format bar (OE3b) for the selected cells, its colour swatches, one format change a save, and how the preview draws each cell's look and number format

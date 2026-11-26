@@ -59,7 +59,9 @@ function designer_sketch_test_node($script)
 		. designer_sketch_test_js('function _sdSketchClean(')
 		. designer_sketch_test_js('function _sdSketchBodyH(')
 		. designer_sketch_test_js('function _sdSketchNearSide(')
-		. designer_sketch_test_js('function _sdSketchRect(');
+		. designer_sketch_test_js('function _sdSketchRect(')
+		. designer_sketch_test_js('function _sdSketchAddRect(')
+		. designer_sketch_test_js('function _sdSketchSize(');
 	$file = tempnam(sys_get_temp_dir(), 'pgsk') . '.js';
 	file_put_contents($file, "var window = {}; var document = {};\n" . $core . "\nfunction _sdT(text) { return text; }\nvar _sdProto = { view: { x: 0, y: 0, k: 1 } };\n" . $parts . "\n" . $script);
 	$lines = array();
@@ -361,4 +363,71 @@ function test_designer_sketch_feel()
 	pg_assert_contains('}, SD_SKETCH.rest);', $soon, 'after the rest');
 	pg_assert_contains('if (_sdProto.sk.soon) { clearTimeout(_sdProto.sk.soon); _sdProto.sk.soon = 0; }', $mount, 'a full draw makes the waiting one needless');
 	pg_assert_contains('.sd-sketch-box.sd-sketch-on { z-index: 1;', $css, 'the selected box and its handles over the others');
+}
+
+// A box added by the keyboard (B, "Add a box"): as wide as the page, 96
+// units high, 16 under the lowest box, at the top of an empty page.
+function test_designer_sketch_add_rect()
+{
+	$result = designer_sketch_test_node(<<<'JS'
+var out = {};
+out.empty = _sdSketchAddRect({ boxes: [] });
+out.under = _sdSketchAddRect({ boxes: [{ x: 0, y: 300, w: 100, h: 60 }, { x: 200, y: 40, w: 200, h: 400 }, { x: 40, y: 0, w: 80, h: 24 }] });
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('x' => 0, 'y' => 0, 'w' => 480, 'h' => 96), $result['empty'], 'at the top of an empty page, as wide as the page');
+	pg_assert_same(array('x' => 0, 'y' => 456, 'w' => 480, 'h' => 96), $result['under'], '16 under the lowest box');
+}
+
+// A box sized by the keyboard (Alt and an arrow): its right or bottom edge
+// moves, never under 24 by 24, never past the page's width.
+function test_designer_sketch_size()
+{
+	$result = designer_sketch_test_node(<<<'JS'
+var out = {};
+var b = { x: 100, y: 40, w: 200, h: 96 };
+out.wider = _sdSketchSize(b, 8, 0);
+out.lower = _sdSketchSize(b, 0, 32);
+out.past = _sdSketchSize(b, 400, 0);
+out.small = _sdSketchSize({ x: 0, y: 0, w: 32, h: 30 }, -32, -32);
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('w' => 208, 'h' => 96), $result['wider'], 'the right edge by 8');
+	pg_assert_same(array('w' => 200, 'h' => 128), $result['lower'], 'the bottom edge by 32');
+	pg_assert_same(array('w' => 380, 'h' => 96), $result['past'], 'never past the page\'s width');
+	pg_assert_same(array('w' => 24, 'h' => 24), $result['small'], 'never under 24 by 24');
+}
+
+// The keys and rows that make a box without a pointer, the empty page's
+// line and the links panel's sentence for a sketch page.
+function test_designer_sketch_keyboard_wiring()
+{
+	$key = designer_sketch_test_js('function _sdSketchKey(');
+	$more = designer_sketch_test_js('function _sdSketchMoreRows(');
+	$fill = designer_sketch_test_js('function _sdSketchFill(');
+	$list = designer_sketch_test_js('function _sdProtoListDraw(');
+	$palette = designer_sketch_test_js('function _getCpActionItems(');
+	$help = designer_sketch_test_js('function openShortcutsModal(');
+
+	pg_assert_contains("return _sdSketchAddBox(", $key, 'B adds a box');
+	pg_assert_contains('_sdSketchSize(b, ', $key, 'Alt and an arrow size a box');
+	pg_assert_contains("text: _sdT('Add a box'), key: 'B'", $more, 'the first row of More');
+	pg_assert_true(strpos($more, "_sdT('Add a box')") < strpos($more, "_sdT('Reference picture')"), 'before the picture rows');
+	pg_assert_contains("_sdT('Drag to draw a box, or press B')", $fill, 'the empty page\'s line');
+	pg_assert_contains("_sdT('A sketch page has no links until it is built.')", $list, 'the links panel\'s sentence');
+	pg_assert_contains("id: 'act_sketch_add_box'", $palette, 'a row of the command palette');
+	pg_assert_contains("_sdT('Add a box to the selected sketch page')", $help, 'B in the shortcuts help');
+	pg_assert_contains("_sdT('Size the selected sketch box by 8 / 32 units')", $help, 'Alt and the arrows in the shortcuts help');
 }

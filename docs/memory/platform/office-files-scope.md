@@ -1,6 +1,6 @@
 ---
 name: office-files-scope
-description: How far the own Word and Excel code goes and why: what is edited, what is only shown, what is never built (formula engine, charts, layout), the rules every edit keeps
+description: How far the own Word and Excel code goes and why: what is edited, what is only shown, what is never built (charts, pivots, layout; formulas beyond the simple ones), the rules every edit keeps
 ---
 
 ## How far does it go?
@@ -15,7 +15,8 @@ description: How far the own Word and Excel code goes and why: what is edited, w
 - No library for any of them (SheetJS, docx-preview, mammoth, JSZip, PhpSpreadsheet, PHPWord) and none from a CDN: the readers and writers are the product's own (`office-files.md`). PHPExcel is removed (#10528): importers read through `sheet-reader.md`, the Paraşüt exports are written by the xlsx writer (`erp/parasut-import-sheets.md`).
 
 ## What is never built, and why?
-- A formula engine (a formula is kept with its last stored result and loses it when a cell it may depend on changes), charts, pivot tables, tracked changes, comments, page layout.
+- Charts, pivot tables, tracked changes, comments, page layout.
+- A formula engine beyond simple formulas. Owner (2026-11-26, `workflow/decisions-made-product-115.md`): simple ones (one sheet's references, the four operations, SUM, AVERAGE, MIN, MAX, COUNT) are built by `plans/office-sheet-formulas.md`. Until it lands, and for every other formula after it, a formula is kept with its last stored result and loses it when a cell it may depend on changes.
 - An editor that keeps a document's whole layout: it needs a document server such as OnlyOffice, which shared hosting cannot run.
 
 ## Which rules does every edit keep?

@@ -8,7 +8,7 @@ description: Crossings census, the round trips with nothing to do at one end: a 
 - Decided as such: the card stays and leads (poll 146, `decisions-made-product-76.md`); what TR2 may weigh is whether the page then offers the trip back.
 
 ## Where is there nothing to do on the page?
-- Status-only pages opened from the list: 28 services whose settings stay on a card or a screen (`settings-crossings-census-pages.md`). List › page › "Open its settings" › card, where list › card would do; their "Where it is used" row repeats the same link.
+- Status-only pages opened from the list: 28 services whose settings stay on a card or a screen (`settings-crossings-census-pages.md`). Was list › page › "Open its settings" › card; since TR3d the list opens the card (`ui/connections-list-opens-card.md`).
 - Gmail and Microsoft 365 mail: folded into "E-mail sending" on the list (decided, poll 148), still a status page each when reached from Google's or Microsoft's page.
 - Sign in with Google and Sign in with Microsoft: a status page beside the provider's page that holds the application; reached from Google's or Microsoft's "Where it is used", it only says "Open its settings".
 - n11, Trendyol: Marketplace settings does it all; the page is a state.
