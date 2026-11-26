@@ -73,22 +73,11 @@
 - parasut-devhub-connection.md: Plan (2026-11-25): connecting Paraşüt with a client from its Developer Portal (DevHub): the registered redirect address, sign-in at id.parasut.com with PKCE, short tokens; step PD1
 - parasut-devhub-staging.md: Plan (owner 2026-11-26): Paraşüt's test environment (staging) for a Developer Portal client: the choice on Paraşüt's page of Connections, the sign-in host, the mark on the status line; step PS1
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
-- settings-accounting-tidy.md: Plan (step TR5 of settings-tidy-round): Site Settings › Accounting as folded rows, the flat ERP card cut into six by topic, steps SA1 to SA4
-- settings-crossings-census-leads.md: Crossings census, the leads: every Site Settings card (and other screen) that leads to a Connections page, the page and anchor it opens, its label, same or new tab, when the lead shows
-- settings-crossings-census-names.md: Crossings census, the names at both ends: the lead's label words, what the Connections page calls the card it leads back to, and where the two differ
-- settings-crossings-census-pages.md: Crossings census, the pages: for each service page of Connections the way back to its card, and where the person stands after Connect, Save and Disconnect
-- settings-crossings-census-roundtrips.md: Crossings census, the round trips with nothing to do at one end: a card that only points to a page, a page that only points back, a lead that lands on the list, a way back that names the wrong place
-- settings-crossings-census-setups.md: Crossings census, first set-ups: for each feature, the hops from its card to working on a new site, counted as moves between card, Connections page and outside service
-- settings-crossings-census-worst.md: Crossings census, the ten worst paths between Site Settings and Connections, ranked by hops, lost work and dead ends, each with what makes it bad; the examples TR2 asks the owner with
-- settings-crossings-census.md: Census of the crossings between Site Settings cards and Connections pages (plan settings-tidy-round, TR1): their shared shape, what is decided, which file holds what
-- settings-crossings-rule.md: Plan settings-tidy-round, step TR2: the one rule for a hand-over between a Site Settings card and its Connections page (owner, poll 232), and what the return may never be
 - settings-ecommerce-tidy-rows.md: Plan settings-ecommerce-tidy: the eleven folded rows of Site Settings › Ecommerce, what each says closed (line, pill, attention) and what it holds when open
-- settings-ecommerce-tidy.md: Plan (step TR4 of settings-tidy-round): Site Settings › Ecommerce redrawn as folded rows, its ten cards without popovers or plain radios, steps EC1 to EC6
-- settings-maintenance-tidy.md: Plan (step TR5 of settings-tidy-round): Site Settings › Updates and maintenance as folded rows, the cron card as a list of jobs, the sales watch a row of its own, steps SM1 to SM4
-- settings-scan-findings.md: Faults found by the 2026-11-21 scan of the Site Settings panes and the step or PR that takes each; a step strikes its lines, the file is deleted when none is left
-- settings-tidy-census-order.md: Survey of the Site Settings categories, its second part: how old each category looks, what is already planned or decided, and the order of the per-category tidy plans
-- settings-tidy-census.md: Survey of the Site Settings categories (owner 2026-11-21: tidy every settings screen, e-mail first): the contradictions and scattered settings found, ranked, with file and line
-- settings-tidy-round.md: Plan (owner 2026-11-26): the settings tidy round: first the crossings between Site Settings and Connections, then the categories the 2026-11-21 survey left; steps TR1 to TR6
+- settings-ecommerce-tidy.md: Plan (step TR4 of the settings tidy round): Site Settings › Ecommerce redrawn as folded rows, its ten cards without popovers or plain radios, steps EC1 to EC6
+- settings-scan-findings.md: Faults the 2026-11-21 scan of the Site Settings panes left on SEO, Languages, Channels, Team and Maintenance; a step deletes its lines, the last one the file
+- settings-tidy-census-order.md: Survey of the Site Settings categories, its second part: which categories still look old, their plans, and what is decided for every tidy
+- settings-tidy-census.md: Survey of the Site Settings categories (owner 2026-11-21: tidy every settings screen): the contradictions and scattered settings still open, with the plan that takes each
 - storefront-api-acp-ucp.md: Storefront API design note: OpenAI ACP checkout_sessions mapped onto the storefront routes, the UCP manifest after checkout exists, MCP tools under the customer's consent, WAF agent verification
 - storefront-api-agentic-commerce.md: Plan (approved 2026-10-19; design note first, code after 2026.11.0 ships, #3798): public storefront API (cart, checkout, customer auth), base for OpenAI ACP and Google UCP bindings
 - storefront-api-callers.md: Storefront API design note: who calls it (application key + optional cart or customer token), the storefront:* scopes, rate buckets, Idempotency-Key and dry-run rules shared by every route
