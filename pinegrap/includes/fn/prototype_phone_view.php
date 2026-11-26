@@ -156,6 +156,9 @@ function pg_proto_phone_shell_html($view)
         'ago' => lang('Updated {n} min ago'),
         'paused' => lang('Paused'),
         'offline' => lang('No connection. Trying again…'),
+        // How long one watch lasts (pg_proto_phone_watch_window()): the page
+        // stops by itself then when no answer can say so.
+        'window' => function_exists('pg_proto_phone_watch_window') ? (int) pg_proto_phone_watch_window() : 3600,
     );
 
     return '<!DOCTYPE html>
@@ -222,7 +225,9 @@ body.pp { display: flex; flex-direction: column; margin: 0; overflow: hidden; ba
  * The asking runs only while the tab is seen; it waits as long as the
  * answer's `next` says and stops at its `stop` ("Paused", with "Update").
  * Coming back to the tab asks at once. A failed request says "No
- * connection" and tries again after the same wait. A save draws the page
+ * connection" and tries again after the same wait, 30 seconds once ten
+ * minutes have passed since the drawing, and pauses an hour after it, as
+ * the answers would have said. A save draws the page
  * again by opening the viewer's address of it in place (the history entry is
  * replaced, and an address naming a page counts no use of the link), which
  * signs a new frame and a new watch; the place scrolled to is asked of the
@@ -324,6 +329,13 @@ function pg_proto_phone_shell_script()
             schedule();
         }).catch(function () {
             pending = false;
+            // No answer brings the server\'s pace or its stop: kept here
+            // from the drawing (no save was seen since, or the page would
+            // have been drawn again), 30 s after ten minutes, paused after
+            // the watch\'s hour.
+            var age = Date.now() - drawn;
+            if (age >= Math.max(60, +cfg.window || 3600) * 1000) { pause(); return; }
+            if (age >= 600000) wait = Math.max(wait, 30);
             say(cfg.offline, true);
             schedule();
         });

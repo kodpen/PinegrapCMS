@@ -420,3 +420,32 @@ function test_prototype_phone_view_asks_once_at_a_time()
 
 	pg_assert_same(1, $got['asked']);
 }
+
+// Requests that keep failing (no network, a 500, the firewall's 429) never
+// bring the answer's stop: the page itself goes slower after ten minutes and
+// pauses an hour after the drawing, as the server's answers would have it.
+function test_prototype_phone_view_failing_asks_slow_down_and_stop_after_the_hour()
+{
+	$got = prototype_phone_view_test_run(prototype_phone_view_test_config_js(), null, '
+		var start = clock, times = [];
+		global.fetch = function (url) { asked.push(url); times.push(clock - start); return Promise.resolve({ status: 429, ok: false, json: function () { return Promise.resolve({}); } }); };
+		for (var i = 0; i < 1000 && waiting() > 0; i++) await next();
+		console.log(JSON.stringify({ s: state(), times: times }));
+	');
+
+	if ($got === null) {
+		return;
+	}
+
+	$times = $got['times'];
+	$last = end($times);
+
+	pg_assert_true($got['s']['asked'] <= 160, 'at most 60 + 100 asks in the hour, got ' . $got['s']['asked']);
+	pg_assert_true($last <= 3600000, 'nothing asked after the hour');
+	pg_assert_same('Paused', $got['s']['words']);
+	pg_assert_true($got['s']['update'], '"Update" shows');
+	pg_assert_same(0, $got['s']['wait'], 'no more asking');
+
+	$late = array_values(array_filter($times, function ($t) { return $t > 700000; }));
+	pg_assert_same(30000, $late[1] - $late[0], 'every 30 s after ten minutes');
+}
