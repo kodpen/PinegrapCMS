@@ -187,6 +187,10 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-115.md: Where are the rules and the earlier parts?
 - decisions-made-product-115.md: Which abilities do the spreadsheet and document editors get? (owner, 2026-11-26, agent channel poll 235, message 14401)
 - decisions-made-product-115.md: Is a formula engine built after all? (owner, 2026-11-26, the same poll)
+- decisions-made-product-115.md: What does "Preview on a phone" show in a design with no draft? (owner, 2026-11-26, agent channel poll 243, message 14627)
+- decisions-made-product-116.md: Where are the rules and the earlier parts?
+- decisions-made-product-116.md: How is a new version of a live page prepared? (owner, 2026-11-26, agent channel poll 244, message 14639)
+- decisions-made-product-116.md: What is the architect's reading, not his words?
 - decisions-made-product-12.md: Where are the rules and the earlier parts?
 - decisions-made-product-12.md: Where does a role-3 user edit the ERP settings cards? (#3828)
 - decisions-made-product-12.md: Trendyol import: which column holds the province? (#3835)
@@ -1674,6 +1678,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/coordinator-worker-steps.md: A worker does one task and ends at the ready label (since 2026-11-19; three steps before); every step goes to a new session, never to an idle or ended worker; work in one file or screen is one task
 - workflow/design-template-owner-line.md: Owner (2026-11-11): during the template pause his own line polishes the shipped templates, bolder and with motion, appstudio and dealership first; two workers of one more coordinator take the rest
 - workflow/design-work-session.md: Where a screen's look is designed: in a design session of its own while one runs (2026-11-23); since 2026-11-25 none runs and the architect draws the designer plans' sheets; keeping the cost down
+- workflow/designer-faults-first.md: Owner 2026-11-26: the Page Design Studio's faults come first; its open bug issues are given out ahead of plan steps
 - workflow/git-branches-and-shared-files.md: Branch policy (development vs main), who does git, commit author, the PR footer (pointer), shared files without conflicts, generated files a PR leaves out, API vs ERP files
 - workflow/held-file-allowed-2.md: Held files, what the architect allowed from 2026-11-20 on: auth.php, image_editor.php and custom_form.php beside their holders; one call line in a root script's top-level code
 - workflow/held-file-bundled-sources.md: A script or stylesheet under assets/ (backend.src.js, backend.src.css, style_designer.src.js, style_designer.css) is held by the functions and rule blocks a PR changes, not as a whole file

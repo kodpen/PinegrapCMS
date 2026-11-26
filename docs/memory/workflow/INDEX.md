@@ -212,7 +212,8 @@
 - decisions-made-product-112.md: Decisions made, product part 112 (2026-11-26 on): a My library item says how many pictures the site lacks; a payment way in test on a live shop gets a System Status warning row
 - decisions-made-product-113.md: Decisions made, product part 113 (2026-11-26 on): a translated picture text grows, wraps, then shrinks, corrected by hand per language; a Canva .pptx opens in the Artifact Canvas by a page chooser
 - decisions-made-product-114.md: Decisions made, product part 114 (2026-11-26 on): all ten kinds of ready content for the Artifact Canvas, the basics first; a settings card and its Connections page hand over in one trip
-- decisions-made-product-115.md: Decisions made, product part 115 (2026-11-26 on): the spreadsheet and document editors get all eight abilities offered; simple formulas change the no-formula-engine scope of 2026-11-19
+- decisions-made-product-115.md: Decisions made, product part 115 (2026-11-26 on): the office editors get all eight abilities, simple formulas included; the phone preview shows the live page's QR code in a design with no draft
+- decisions-made-product-116.md: Decisions made, product part 116 (2026-11-26 on): a live page's new version is prepared in a draft that replaces it ("Save as a new version"); a live page still has no working copy
 - decisions-made-product-12.md: Decisions list, product part 12 (2026-10-31 on): ERP settings cards for role 3, Trendyol address order, old n11 rows data step, phone toolbar, Trendyol Luxe, shipment rules confirmed
 - decisions-made-product-13.md: Decisions list, product part 13 (2026-10-31 on): Site Settings group headings, no notes secret feed, no hint on forgot password, IIS preflight nudge
 - decisions-made-product-14.md: Decisions list, product part 14 (2026-10-31 on): own image editor, nothing alone under a screen's title, no PDF of ours for a purchase invoice, Site Settings regrouped
@@ -422,6 +423,7 @@
 - decisions-made.md: The decisions list: places reviewed and kept as they are on purpose; how to treat it and who adds to it, then the code and files that look dead or wrong but stay.
 - design-template-owner-line.md: Owner (2026-11-11): during the template pause his own line polishes the shipped templates, bolder and with motion, appstudio and dealership first; two workers of one more coordinator take the rest [decision: here]
 - design-work-session.md: Where a screen's look is designed: in a design session of its own while one runs (2026-11-23); since 2026-11-25 none runs and the architect draws the designer plans' sheets; keeping the cost down [decision: decisions-made-product-110.md]
+- designer-faults-first.md: Owner 2026-11-26: the Page Design Studio's faults come first; its open bug issues are given out ahead of plan steps [decision: here]
 - designer-sheet-rules.md: What a designer plan's drawing sheet holds (boards for every screen and state, English labels, button ranks), where it is kept, which steps wait for it and which do not [decision: decisions-made-product-106.md, decisions-made-product-110.md]
 - designer-use-round-component-overrides.md: Use round UR5 (PR #11853): a shared component's fields per place and its variants used in a browser; the eight faults fixed, what was left and what could not be run
 - designer-use-round-design-variables.md: Designer use round UR1 (#11835): design variables used in a browser as a first-time person; faults found, fixed and left
