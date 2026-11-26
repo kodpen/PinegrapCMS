@@ -14,12 +14,12 @@ description: A role-3 member's own flows (#3345 narrow, R1 #3397, flow_member.ph
 - Reach inside an allowed box is the existing check with the owner's rights: `ws_step_check()` at publish and in `ws_step_run()` (a channel they post in, counts their rights read, tasks to people they may give work to, tables they edit through `ws_wtable_flow_check()`), `ws_flow_condition_check()`, `ws_flow_anchor_check()` (an event their rights see; own events again per event through `ws_events_creator_sees()`).
 
 ## Where is it checked?
-- Save and publish: `ws_flow_member_flow_refusal()` in `ws_flow_save_check()` and `ws_flow_publish_check()` (field `channel_id` for a home channel, `graph` for a box, named "The box …: …"). The panel and the external API both save through `ws_flow_save()`.
+- Save and publish: `ws_flow_member_flow_refusal()` in `ws_flow_save_check()` and `ws_flow_publish_check()` (field `channel_id` for a home channel, `graph` for a box, named "The box …: …"). Asked with the owner's kind now (`ws_flow_owner_builder_kind()`), whoever saves or publishes. The panel and the external API both save through `ws_flow_save()`.
 - Run: `ws_flow_step_run()` asks `ws_flow_member_box_refusal()` with the owner (`actor_id`) as they stand now, so a flow built on the staff stops at a refused box once its owner is role 3; the box fails as any refused box. Box try (`ws_flow_box_try()`) asks it too. Every run path accepts a role-3 owner through `ws_flow_builder($owner)`; `ws_scheduled_execute()` accepts one only for a flow's anchor row.
 - Anchor start (`ws_flow_anchor_start()`): a role-3 owner's event box is checked again with `ws_scheduled_rule_input()` (a right lost meanwhile starts nothing).
 
 ## Owner-only?
-- No home channel (save and publish refuse `channel_id` > 0), no shares (`ws_flow_share_set_check()` refuses the role-3 owner), and `ws_flow_run_start_check()` refuses anybody but the owner (`ws_flow_member_starter_refusal()`), whatever home or share a flow kept from its owner's staff days.
+- No home channel (save and publish refuse `channel_id` > 0), no shares (`ws_flow_share_set_check()` refuses the role-3 owner), and `ws_flow_run_start_check()` refuses anybody but the owner (`ws_flow_member_starter_refusal()`), whatever home or share a flow kept from its owner's staff days. So is another flow's Start a flow box, which counts in the hourly cap (`ws_flow_chain_start()`).
 
 ## Which limits?
 - `WS_FLOW_MEMBER_MAX_PER_OWNER` 10 flows kept (`ws_flow_max_per_owner()`; staff `WS_FLOW_MAX_PER_OWNER` 200).

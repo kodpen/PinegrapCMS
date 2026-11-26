@@ -56,6 +56,67 @@ StyleDesigner.definePart('variables', function (K) {
         return esc(String(v == null ? '' : v)).replace(/"/g, '&quot;');
     }
 
+    // ── Pure helpers (tests/design_variables_tab_test.php) ───────────────
+
+    // The bounds of an own size (pg_design_variables_normalize()).
+    var OWN_SIZE = { kind: 'length', rem: [0, 20], px: [0, 320] };
+
+    // Whether a typed value is one the model keeps, twin of
+    // pg_design_variable_value() for the kinds typed in a field. The server
+    // puts the default in place of a refused value and drops an own size
+    // whose value it refuses, with every place that reads it. A bare 0 only
+    // where each unit's bounds start at 0: a base size of 0 hides the text.
+    function _sdVarsTypedOk(row, v) {
+        v = String(v == null ? '' : v).trim();
+        var b = row.kind === 'size' ? OWN_SIZE : row;
+        if (b.kind === 'length') {
+            if (v === '0') return (!b.rem || b.rem[0] === 0) && (!b.px || b.px[0] === 0);
+            var m = /^(\d{1,3}(?:\.\d{1,4})?)(rem|px)$/.exec(v);
+            if (!m || !b[m[2]]) return false;
+            var n = parseFloat(m[1]);
+            return n >= b[m[2]][0] && n <= b[m[2]][1];
+        }
+        if (b.kind === 'number') {
+            if (!/^\d(?:\.\d{1,3})?$/.test(v)) return false;
+            var x = parseFloat(v);
+            return x >= b.min && x <= b.max;
+        }
+        if (b.kind === 'font') {
+            // Names, each bare or in one pair of quotes: an open quote
+            // would run on over the next declaration of the stylesheet.
+            if (!/^[A-Za-z0-9 ,"'\-]{1,200}$/.test(v)) return false;
+            return v.split(',').every(function (part) {
+                return /^(?:[A-Za-z0-9 \-]+|"[A-Za-z0-9 \-]+"|'[A-Za-z0-9 \-]+')$/.test(part.trim());
+            });
+        }
+        return true;
+    }
+
+    // The line under a field that holds a refused value.
+    function _sdVarsTypedHint(row) {
+        var b = row.kind === 'size' ? OWN_SIZE : row;
+        if (b.kind === 'number') return _sdT('A number from {var:1} to {var:2}.', [b.min, b.max]);
+        if (b.kind === 'font') return _sdT('Font names, separated by commas.');
+        var rem = b.rem ? b.rem[0] + 'rem' : '', px = b.px ? b.px[0] + 'px' : '';
+        if (rem && px) return _sdT('From {var:1} to {var:2}, or from {var:3} to {var:4}.', [rem, b.rem[1] + 'rem', px, b.px[1] + 'px']);
+        return _sdT('From {var:1} to {var:2}.', rem ? [rem, b.rem[1] + 'rem'] : [px, b.px[1] + 'px']);
+    }
+
+    // The token a variable writes (pg_design_variable_token()).
+    function _sdVarsToken(key, custom) {
+        return (custom ? 'c-' : '') + String(key).replace(/_/g, '-');
+    }
+
+    // The elements whose style reads an own colour or size: Remove leaves
+    // them without a value, so a used one is asked about first. A curve's
+    // places keep their numbers (the fallback written with it).
+    function _sdVarsUsedBy(c, used) {
+        if (!c || c.kind === 'curve') return 0;
+        return (used || {})[_sdVarsToken(c.key, true)] || 0;
+    }
+
+    // ── end of the pure helpers ──────────────────────────────────────────
+
     // Asks the server for the state of a model (null: the stored one, or
     // the defaults) on the look and palette of the moment.
     function ask(model, extra) {
@@ -122,10 +183,7 @@ StyleDesigner.definePart('variables', function (K) {
         return '<span class="sd-vars-sample" aria-hidden="true"></span>';
     }
 
-    // The token a variable writes (pg_design_variables_token()).
-    function tokenOf(key, custom) {
-        return (custom ? 'c-' : '') + String(key).replace(/_/g, '-');
-    }
+    var tokenOf = _sdVarsToken;
 
     // "Used in n places", words and never a button.
     function usedHtml(used, token) {
@@ -211,14 +269,19 @@ StyleDesigner.definePart('variables', function (K) {
 
     // ── Changing ─────────────────────────────────────────────────────────
 
+    // Changes made, so the answer to an older one is not taken once a
+    // newer one is in the hidden input.
+    var edits = 0;
+
     // A change: the model goes into the hidden input at once (Save posts
     // it), the server's stylesheet follows when the hand rests.
     function change(m, redraw) {
+        var mine = ++edits;
         H.setModel(m);
         clearTimeout(timer);
         timer = setTimeout(function () {
             ask(m).then(function (res) {
-                if (!res) return;
+                if (!res || mine !== edits) return;
                 H.setModel(res.model);
                 H.tryCss(res.css);
                 if (redraw) draw(); else redrawContrast();
@@ -256,6 +319,13 @@ StyleDesigner.definePart('variables', function (K) {
             // Text waits for the field to be left; a list answers at once.
             inp.addEventListener('change', function () {
                 var m = copyModel();
+                var row = inp.hasAttribute('data-var') ? rowOf(inp.getAttribute('data-var')) : m.custom[+inp.getAttribute('data-custom')];
+                if (row && row.kind !== 'curve' && inp.tagName === 'INPUT') {
+                    var ok = _sdVarsTypedOk(row, inp.value);
+                    inp.classList.toggle('is-invalid', !ok);
+                    inp.title = ok ? '' : _sdVarsTypedHint(row);
+                    if (!ok) return;
+                }
                 if (inp.hasAttribute('data-var')) {
                     m.values[inp.getAttribute('data-var')] = inp.value.trim();
                 } else {
@@ -308,9 +378,11 @@ StyleDesigner.definePart('variables', function (K) {
             open.custom = true;
         } else if (what === 'remove') {
             var gone = m.custom[+b.getAttribute('data-custom')];
-            var n = gone && gone.kind === 'curve' ? (H.usage ? H.usage() : {})[tokenOf(gone.key, true)] || 0 : 0;
-            // A used curve is asked about: each element keeps its numbers
-            // (the fallback written with the variable).
+            var used = H.usage ? H.usage() : {};
+            var n = gone && gone.kind === 'curve' ? used[tokenOf(gone.key, true)] || 0 : _sdVarsUsedBy(gone, used);
+            // A used variable is asked about: a curve's elements keep its
+            // numbers (the fallback written with it), a colour's or a
+            // size's are left without the value.
             if (n && !b.hasAttribute('data-sure')) { askRemove(b, gone, n); return; }
             m.custom.splice(+b.getAttribute('data-custom'), 1);
         } else {
@@ -330,7 +402,10 @@ StyleDesigner.definePart('variables', function (K) {
         q.className = 'sd-vars-sure';
         q.setAttribute('data-vars-sure', '');
         q.setAttribute('role', 'alert');
-        q.innerHTML = '<span>' + esc(_sdT('“{var:1}” is used in {var:2} places. Each keeps the curve as its own.', [c.name, n])) + '</span>' +
+        var line = c.kind === 'curve'
+            ? _sdT('“{var:1}” is used in {var:2} places. Each keeps the curve as its own.', [c.name, n])
+            : _sdT('“{var:1}” is used in {var:2} places. They lose its value.', [c.name, n]);
+        q.innerHTML = '<span>' + esc(line) + '</span>' +
             '<button type="button" class="btn btn-sm btn-outline theme-danger" data-sure>' + esc(_sdT('Remove')) + '</button>' +
             '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-cancel>' + esc(_sdT('Cancel')) + '</button>';
         row.parentNode.insertBefore(q, row.nextSibling);
@@ -630,6 +705,11 @@ StyleDesigner.definePart('variables', function (K) {
             { head: _sdT('Your own'), items: own },
             { head: host.kind === 'space' ? _sdT('Units') : _sdT('Type scale'), items: computed }
         ].filter(function (g) { return g.items.length; });
+    }
+
+    // The tab's row of a built-in variable, or null.
+    function rowOf(key) {
+        return ((S && S.list && S.list.rows) || []).filter(function (vr) { return vr.key === key; })[0] || null;
     }
 
     function labelOf(key) {

@@ -31,6 +31,7 @@
 - bug-hunt-areas-3.md: The areas given to a bug hunt from 2026-11-20 on (the own sheet reader and its importers; Incoming e-mail and Mailboxes at phone width), what each fixed, the issues it opened and what it read clean
 - bug-hunt-areas-4.md: Bug hunt areas beside bug-hunt-areas-3: the fifteen panel screens hunted on 2026-11-19 and the two areas given on 2026-11-20 (prototype comments' guest side, picture text translation's server side)
 - bug-hunt-areas-5.md: Bug hunt areas given on the evening of 2026-11-20: order profit and shipping labels (K3), the bookings' visitor side and stock per location (K2); files, what to look at, what is left alone [decision: here]
+- bug-hunt-areas-ad-conversions.md: The bug hunt in the ad conversions (agent channel request 3045, 2026-11-26): what was fixed, what was read clean against the consent rule, what is left
 - bug-hunt-areas-agent-requests.md: The bug hunt in the agents' request queue and wakes (architect, 2026-11-26, request 3016): what was fixed, what was read clean, what is asked and left [decision: here]
 - bug-hunt-areas-ai-connections.md: The bug hunt in the AI provider connections (agent channel message 10241, area b, #10616): the faults fixed, the issues opened and what was read clean
 - bug-hunt-areas-api-new-routes.md: The bug hunt of the API routes and MCP tools new in 2026.11.0 (VS8, WQ8, LJ6, SJ6, DV6, share links; PR of 2026-11-24): the two queue faults fixed, what was read clean, what was not run [decision: here]
@@ -57,12 +58,14 @@
 - bug-hunt-areas-customer-accounts-addresses.md: Bug hunt area 37, the shop customer's account (2026-11-24): address book, order history ownership, guest orders, erasure; what was fixed, the issue opened, what read clean [decision: decisions-made-product-109.md]
 - bug-hunt-areas-customer-rhythm.md: Bug hunt of customer rhythm (agent channel request 3034, PR #11767): what was read, the four faults fixed, what was found clean, what was asked and left
 - bug-hunt-areas-customer-value.md: Bug hunt of the customer value summary counts (agent channel message 10367, #10667): what was read, the four faults fixed, what was found clean
+- bug-hunt-areas-design-variables.md: The bug hunt in a design's variables (2026-11-26, PR #11770): the Variables tab, the start questions, "Ask me again", Export and Import; what was read, fixed, seen and left
 - bug-hunt-areas-designer-activity.md: Bug hunt of the designer's History "Activity" tab and its audit lines (2026-11-26, PR #11762): three faults fixed, what was read clean [decision: here]
 - bug-hunt-areas-designer-import.md: The bug hunt of the designer's HTML, ZIP and paste importers on the server (hunt 55, 2026-11-24, #11501): the seven faults fixed, what was read clean, what was not run
 - bug-hunt-areas-designer-shared-components.md: Bug hunt of the designer's shared components, server side (area 54, 2026-11-24): four faults fixed in the hunt's PR #11498, two issues, what was read clean [decision: decisions-made-product-109.md]
 - bug-hunt-areas-document-to-page.md: Bug hunt "Page from a document" (2026-11-26, PR #11769): seven faults fixed (file pick, pictures, words, how much was read), what read clean, two faults left as one task [decision: here]
 - bug-hunt-areas-figma-canva-starts.md: The bug hunt of the Figma and Canva starts of the New design window (hunt 57, 2026-11-25): what was given, what was found and fixed, what read clean, issues opened
 - bug-hunt-areas-file-manager-permissions.md: Bug hunt 53, File Manager permissions (2026-11-24, PR #11492): who sees, moves, renames and deletes a file or folder, the Recycle Bin, design files, path checks; three faults fixed
+- bug-hunt-areas-flows-outside-doors.md: The bug hunt in Workspace flows reached from outside and by another hand (web address start, shares, a role-3 member's flows; architect 2026-11-26, request 3045): fixed, read clean, left [decision: here]
 - bug-hunt-areas-form-submissions.md: The bug hunt of site form submissions (area 18, 2026-11-24): the three faults fixed, what was read clean, what was not run
 - bug-hunt-areas-gift-cards-store-credit.md: The bug hunt of gift cards and store credit (area 52, 2026-11-24): partial redemption, the cancelled credit refund's gift card part, the cancel refund line; what was read clean
 - bug-hunt-areas-image-pipeline.md: The bug hunt of the image pipeline (2026-11-24, #11449): the two faults fixed, the finding left for a decision, what was read clean
@@ -90,6 +93,7 @@
 - bug-hunt-areas-picture-translation.md: The bug hunt of picture text translation, the server's side (#10569, 2026-11-20): the seven faults fixed, what was read clean [decision: here]
 - bug-hunt-areas-price-rounding.md: The bug hunt of price rounding (area 17, 2026-11-24): money in checkout, cart, offers, tax, shipping, refunds, the payment request and the ERP; four faults fixed, what was read clean
 - bug-hunt-areas-privacy-new-tables.md: Bug hunt of erasure, export, inventory, merge and keep periods over the 2026.11.0 tables (area 11, #11381): three faults fixed, what was read clean
+- bug-hunt-areas-privacy-requests.md: Bug hunt of the Privacy centre's request side (#11779: proof link, public form, 30 days, Send, download link, API): four faults fixed, two asked, what was read clean
 - bug-hunt-areas-private-content-access.md: The bug hunt in private content access (area 26, #11408): pages, folders and files for members or groups; the faults fixed and what was read clean
 - bug-hunt-areas-product-form-uploads.md: The bug hunt of product form file uploads (#10782, 2026-11-20): the two faults fixed, the issue opened, what was read clean [decision: here]
 - bug-hunt-areas-product-variants-stock.md: The bug hunt of product variants and stock (area 30, 2026-11-24): three faults fixed, what was left for a decision, what was read clean
@@ -183,6 +187,7 @@
 - decisions-made-product-11.md: Decisions list, product part 11 (2026-10-30 night on): CRM shape, storefront API timing, the two support e-mail fields, slash commands over the API, e-mail-a-friend limit off the log
 - decisions-made-product-110.md: Decisions made, product part 110 (2026-11-25 on): all eleven packages of the Options panel census go into the designer; the architect draws the designer plans' sheets while no design session runs
 - decisions-made-product-111.md: Decisions made, product part 111 (2026-11-25 on): the Sketch tool's "Read the picture" runs on the browser's built-in model; no picture path to Pinegrap AI until the owner says it is good enough
+- decisions-made-product-112.md: Decisions made, product part 112 (2026-11-26 on): a My library item added on a site that lacks its pictures says how many are missing; the addresses stay, the export carries no picture files
 - decisions-made-product-12.md: Decisions list, product part 12 (2026-10-31 on): ERP settings cards for role 3, Trendyol address order, old n11 rows data step, phone toolbar, Trendyol Luxe, shipment rules confirmed
 - decisions-made-product-13.md: Decisions list, product part 13 (2026-10-31 on): Site Settings group headings, no notes secret feed, no hint on forgot password, IIS preflight nudge
 - decisions-made-product-14.md: Decisions list, product part 14 (2026-10-31 on): own image editor, nothing alone under a screen's title, no PDF of ours for a purchase invoice, Site Settings regrouped

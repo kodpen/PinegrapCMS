@@ -2045,6 +2045,29 @@ function _pg_privacy_erase_write($table, $where, array $fields, $name)
 }
 
 /**
+ * An erasure's step for privacy_requests: an answered information request
+ * keeps the person's export as a file behind its signed link for 7 days
+ * (includes/fn/privacy_request_link.php). The files of the rows found are
+ * deleted before the rows lose the address that finds them, then the rows
+ * are anonymised as every other table.
+ *
+ * @param string $where
+ * @param array  $fields
+ * @param array  $scope
+ * @param string $name
+ */
+function _pg_privacy_erase_apply_privacy_requests($where, array $fields, array $scope, $name)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/privacy_request_link.php');
+
+    foreach (db_values("SELECT id FROM privacy_requests WHERE " . $where) as $id) {
+        pg_privacy_link_delete((int) $id);
+    }
+
+    _pg_privacy_erase_write('privacy_requests', $where, $fields, $name);
+}
+
+/**
  * The person's live bookings still to come are cancelled first, the way the
  * agenda cancels one (status and slot in one UPDATE, so the slot opens
  * again, and hold_until 0, so a deposit paid later never books it again),

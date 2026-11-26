@@ -5348,6 +5348,31 @@ body.sd-resizing * { cursor: col-resize !important; }
     background: #3b82f6; border-color: #3b82f6;
 }
 .sd-fr-btn-primary:hover { background: #2563eb; border-color: #2563eb; }
+.sd-fr-btn:disabled { opacity: .5; cursor: default; }
+/* Where to look: This page, All pages, Code files. */
+.sd-fr-scope { display: flex; border: 1px solid #2d3648; border-radius: 4px; overflow: hidden; margin-bottom: 4px; }
+.sd-fr-scope button {
+    flex: 1 1 0; background: transparent; border: 0; color: #9ca3af;
+    padding: 5px 8px; font-size: .8rem; cursor: pointer;
+}
+.sd-fr-scope button + button { border-left: 1px solid #2d3648; }
+.sd-fr-scope button.is-active { background: #2d3648; color: #e5e7eb; }
+.sd-fr-scope button:focus-visible, .sd-fr-row-name:focus-visible { outline: 2px solid #60a5fa; outline-offset: -2px; }
+.sd-fr-status.is-bad { color: #fca5a5; }
+/* What would change, one row a page or file. */
+.sd-fr-list { list-style: none; margin: 4px 0 0; padding: 0; max-height: 220px; overflow-y: auto; font-size: .8rem; }
+.sd-fr-list[hidden] { display: none; }
+.sd-fr-row { display: flex; align-items: center; gap: 6px; padding: 2px 0; }
+.sd-fr-row-name {
+    flex: 1 1 auto; min-width: 0; text-align: left;
+    background: transparent; border: 0; color: #e5e7eb; padding: 3px 4px; border-radius: 4px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer;
+}
+.sd-fr-row-name .bi { margin-right: 6px; color: #9ca3af; }
+.sd-fr-row-name:hover { background: #2d3648; }
+.sd-fr-row-why { flex: 0 1 auto; color: #fbbf24; font-size: .75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sd-fr-row-n { flex: 0 0 auto; min-width: 2em; text-align: right; color: #9ca3af; font-variant-numeric: tabular-nums; }
+.sd-fr-row.is-left .sd-fr-row-name, .sd-fr-row.is-left .sd-fr-row-n { color: #6b7280; text-decoration: line-through; }
 
 /* ========================= HISTORY (revisions + snapshots) ========================= */
 /* The panel grows for two lists; the revision rows carry a number, a source

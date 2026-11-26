@@ -13,7 +13,7 @@ module: ad_conversions
 - Lead: `custom_form.php` after the `form.submitted` webhook (a saved-for-later record never), for a form page listed in the service's `lead_forms`. Event id `lead-<record reference>`.
 - CompleteRegistration: `pg_member_register()`, `pg_member_activate()` (`auth.php`), `pg_signin_create_member()` (`signin.php`) and a form's auto-registration in `custom_form.php`. Event id `reg-<user id>`. An account opened at checkout by `order_completion.php` sends none: a payment service's message may complete it without the visitor.
 - Add to cart: `cart_action.php`'s quick add calls `pg_ad_conversion_add_to_cart()`, which returns at once when no service takes it. At most `PG_AD_CONVERSION_CART_ADDS` (20) per cart and service. Event id `cart-<order reference>-<n>`; the line (SKU, quantity, unit price in minor units) in `detail`.
-- Begin checkout: `pg_ad_conversion_payment_step()` calls `pg_ad_conversion_begin_checkout()` first; event id `checkout-<order reference>`, so the unique key keeps it once per order. Its `detail` is the cart's total and lines.
+- Begin checkout: `pg_ad_conversion_payment_step()` calls `pg_ad_conversion_begin_checkout()` first; event id `checkout-<order reference>`, so the unique key keeps it once per order. Its `detail` is the cart's lines and their value, price times quantity (`pg_ad_conversion_begin_checkout_detail()`): `orders.total` is written only after the payment step, so it was 0 before the bug hunt.
 - Marketplace and counter sale orders never send add to cart or begin checkout.
 
 ## Where is the person's e-mail for a Lead or a registration?

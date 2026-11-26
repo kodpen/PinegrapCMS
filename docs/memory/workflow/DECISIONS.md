@@ -175,6 +175,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-111.md: What follows for the step? (architect, 2026-11-25, agent channel message 13373)
 - decisions-made-product-111.md: How are shared components and system widgets marked on the designer's canvas? (owner, 2026-11-25, in the architect's window)
 - decisions-made-product-111.md: What follows for the canvas? (architect, 2026-11-25)
+- decisions-made-product-112.md: Where are the rules and the earlier parts?
+- decisions-made-product-112.md: What does a My library item do about pictures the site lacks? (owner, 2026-11-26, agent channel poll 224, message 13858)
 - decisions-made-product-12.md: Where are the rules and the earlier parts?
 - decisions-made-product-12.md: Where does a role-3 user edit the ERP settings cards? (#3828)
 - decisions-made-product-12.md: Trendyol import: which column holds the province? (#3835)
@@ -1244,6 +1246,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/designer-first-tour-card.md: The designer's first card "New here? A one-minute tour" and its tour (FT2): the part 'tour', when the card shows, the ring and the bubble, the keys, the phone's sheet, "Take the tour"
 - designer/designer-home-pictures.md: The Page Design Studio home's and Choose a Template's pictures: a design's real page, templates' home pages, the theme picker that redraws them, the drawings as the fallback
 - designer/designer-image-focus-drawing-frames.md: Board F5 of the image focus drawing (2026-11-25): the Focus control's phone, tablet and desktop frames stand under the whole picture, large, with their names; one frame when all three are the same
+- designer/designer-library-missing-pictures.md: My library, a copy whose pictures this site lacks (owner poll 224): the line on adding says how many are missing, addresses stay, no picture files in the export; decided, not built
 - designer/designer-light-and-simple.md: Every feature added to the visual designer keeps it simple and quick (owner 2026-11-24): where it may sit, how it loads and runs, what is measured, what a step's PR shows
 - designer/designer-my-library-overview.md: My library in the designer: a section saved as the site's own start, inserted as a copy, managed, exported and imported as a file; what binds it and which file holds which part
 - designer/designer-options-narrow.md: The Options panel under 300 px (drawn at 240, owner 2026-11-17): widths, the identity row, tabs, wrapped labels, stacked rows, quick strip, closed sections, the size chooser, shorter texts
@@ -1585,6 +1588,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/bug-hunt-areas-click-scroll-map.md: The bug hunt of the click and scroll map (architect 2026-11-20, channel message 10776): the three faults fixed, what was read clean, what is no fault
 - workflow/bug-hunt-areas-designer-activity.md: Bug hunt of the designer's History "Activity" tab and its audit lines (2026-11-26, PR #11762): three faults fixed, what was read clean
 - workflow/bug-hunt-areas-document-to-page.md: Bug hunt "Page from a document" (2026-11-26, PR #11769): seven faults fixed (file pick, pictures, words, how much was read), what read clean, two faults left as one task
+- workflow/bug-hunt-areas-flows-outside-doors.md: The bug hunt in Workspace flows reached from outside and by another hand (web address start, shares, a role-3 member's flows; architect 2026-11-26, request 3045): fixed, read clean, left
 - workflow/bug-hunt-areas-marketplace-repricer.md: The bug hunt in the marketplace repricer RP1 to RP5 (architect, 2026-11-26, request 3034): what was fixed, what was read clean, what is left
 - workflow/bug-hunt-areas-my-library.md: Bug hunt of the designer's My library (2026-11-26): an item saved, inserted as a copy, managed, exported and imported as a file; what was fixed, what read clean, what was left
 - workflow/bug-hunt-areas-notifications-bell.md: The bug hunt of the panel's bell and the mails it sends (2026-11-24, #11438): the seven faults fixed, what was read clean, what was judged decided

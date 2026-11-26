@@ -13,6 +13,11 @@ module: design_themes
 - The part asks `designer/variables_state` (`includes/panel/designer.php`, designers only, a clean sub-action of `page_cache.php`) with the model, look and palette; the first time with `style_id` only, and the server reads the stored file. It answers `pg_design_variables_state()`: the model made safe (rebased when it was made from another look or palette), the defaults, the stylesheet, the contrast rows and the tab's rows (`pg_design_variables_client_list()`).
 - A colour answers as it moves, a text field when it is left; the request waits 300 ms of rest. The stylesheet is tried on as `_sdThemeTry.variables` and `_sdThemeAssets()` puts it last, as a `<style id="pg-theme-variables">`, on the canvas and in the Preview.
 
+## What happens to a refused typed value or a used own variable?
+- A field's value the model would refuse is marked red with the row's bounds as its title and not sent (`_sdVarsTypedOk()`, twin of `pg_design_variable_value()`); a bare 0 only where the row starts at 0 (PR #11770).
+- "Remove" on an own colour or size that elements read asks first: those elements lose the value, as `var(--pg-var-c-…)` has no fallback. A curve's elements keep its numbers.
+- An answer to an older change never replaces a newer one in `style_variables`.
+
 ## Where is it kept, without a column?
 - One design CSS file per design, `design-variables-<style id>.css` (`pg_design_variables_file_name()`), with a `files` row (`design = 1`). Found by its name; a file of that name without the variables head (`pg_design_variables_head_ok()`, the first 32 bytes) is never loaded and is not overwritten: the save warns.
 - The tab writes the model as JSON into the hidden input `style_variables` (in `_pgStyleJSON()`, so Save sees the change); empty means unchanged. The design save (`designer_screen.php`, after `save_system_style()`) calls `pg_design_variables_save()`: the posted model, or with none the stored one rebased onto the look and palette just saved. No file and nothing posted: nothing is written.

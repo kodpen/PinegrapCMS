@@ -180,6 +180,26 @@ function ws_flow_member_flow_refusal($builder, $channel_id, $graph)
 }
 
 /**
+ * The builder kind a flow's settings are kept to: its owner's
+ * (ws_flow_builder_kind()). The saver's own for a new flow or their own; a
+ * colleague who changes somebody else's flow (a share at edit kept from the
+ * owner's staff days, a converted flow) is held to what the owner's flow
+ * may hold, the owner read as they stand now.
+ *
+ * @param array      $viewer the person saving or publishing
+ * @param array|null $flow   null for a new flow
+ * @return string staff | member | ''
+ */
+function ws_flow_owner_builder_kind($viewer, $flow)
+{
+    if (!is_array($flow) || ((int) ($flow['owner_id'] ?? 0) === (int) ($viewer['id'] ?? 0))) {
+        return ws_flow_builder_kind($viewer);
+    }
+
+    return ws_flow_builder_kind(ws_change_viewer_for_id((int) $flow['owner_id']));
+}
+
+/**
  * The most flows the person keeps. Pure.
  *
  * @param string $builder ws_flow_builder_kind()

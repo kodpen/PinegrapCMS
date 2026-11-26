@@ -8,7 +8,7 @@ module: privacy_requests
 - `privacy_requests` (step 11.0.260, `workflow/decisions-made-schema-36.md`): kind (information, correction, erasure, objection, other), status (unproven, open, answered, refused), source (form, account, staff), result (sent, erased, refused), contact_id, user_id, assigned_user_id, created_by, email and name VARCHAR(100), message TEXT, answer MEDIUMTEXT, verified_at, received_at, due_at, closed_at, reminded.
 - `received_at` is the proof of the address (a staff request: when it was typed in); `due_at` is 30 days after it. An unproven row has `received_at` 0 and its sweep moment in `due_at` (7 days after it came), so no extra column is needed.
 - Architect (2026-11-20, channel message 11044): the list, the Requests count, one request and the reminders read only rows with `received_at > 0`, never `due_at` alone, so an unproven row never shows as due (`tests/privacy_requests_test.php` pins it).
-- "Add a request" has "Received on" (today by default, never future): a letter or call of some days ago starts its 30 days that day (midnight), `due_at` follows.
+- "Add a request" has "Received on" (today by default, never future, never before 1970: `received_at` 0 would hide it): a letter or call of some days ago starts its 30 days that day (midnight), `due_at` follows.
 - `verified_at` is staff's tick "I checked who asks" (step 1); Send refuses without it. `reminded` holds the last reminder sent (7 or 2).
 - A request's steps are `audit_log` lines (`entity_type = 'privacy_request'`, actions create, update, answer, refuse) with kind, status, result, handler and dates only: no address, name or text.
 
@@ -29,6 +29,6 @@ module: privacy_requests
 - `pg_privacy_erase_tables()` `privacy_requests`: anonymise (name, email as token, message, answer, contact and user links), found by `request_ids`, `contact_ids`, `user_ids`, `emails`. The inventory line keeps it under `closed_requests`; the rule `requests` anonymises closed ones after 3 years (`privacy-retention-rules.md`).
 
 ## Tests?
-- `tests/privacy_requests_test.php`: the due date, days left and tone, the reminder stages, the sweep query, the views, a staff request, the erase entry and the closed-requests rule. Seen on a sandbox in #10894.
+- `tests/privacy_requests_test.php`: the due date, days left and tone, the reminder stages, the sweep query, the views, a staff request, the erase entry and the closed-requests rule.
 
 Related: [[privacy-centre-screen]], [[privacy-retention-rules]], [[personal-data-erasure]]
