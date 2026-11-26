@@ -107,6 +107,7 @@
 - connections-google-reviews-page.md: Google reviews' page on Connections (CX11i): the Places API key and Place ID typed there under the Integrations gate; the Google Reviews card shows the connection
 - connections-google-translate-page.md: Google Cloud Translation's page on Connections (CX11c): the API key typed there under the Languages and Translation gate; the Translation Engines card shows the connection [decision: here]
 - connections-indexnow-page.md: IndexNow's page on Connections (CX11a): its key typed or generated there under the SEO gate, the key file, Disconnect; the SEO card shows the connection; what of SEO stayed and why
+- connections-lead-keeps-pane.md: A lead from the Site Settings dialog to a Connections service page keeps the pane's unsaved fields and open drawers in sessionStorage and puts them back when the pane comes again (TR3b)
 - connections-mailboxes-accounts.md: Accounts that read mailboxes (CX11e): Connect an account for mailboxes on Google's and Microsoft's pages, the return to Site Settings, the card without a Connect button [decision: here]
 - connections-mailchimp-page.md: Mailchimp's page on Connections (EM6): sync switch, key, list, store and limits set there under E-mail › Sending's gate; Campaign mail shows the connection; old anchors open the page [decision: here]
 - connections-mcp-connector-page.md: A ready-made MCP connector's page on Connections (CX11k3): Add, the server's address and sign-in, Connect and Disconnect; Site Settings' MCP servers row keeps the tools and leads there [decision: here]
