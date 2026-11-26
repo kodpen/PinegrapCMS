@@ -157,3 +157,19 @@ function test_feedback_surveys_mail_has_every_score()
 	pg_assert_same(5, substr_count(pg_feedback_mail_html(PG_FEEDBACK_CSAT, 'Q', 'C'), '<td'), 'five CSAT buttons');
 	pg_assert_false(strpos($html, '<a ') !== false, 'a preview leads nowhere');
 }
+
+// A survey something went out with keeps its kind: its stored scores, its
+// bands and the buttons of the mails already sent are of that kind.
+function test_feedback_surveys_input_keeps_a_sent_kind()
+{
+	$known = feedback_surveys_test_known() + array('kind' => PG_FEEDBACK_NPS);
+	$input = pg_feedback_survey_input(array('name' => 'X', 'kind' => (string) PG_FEEDBACK_CSAT), $known, 'booking');
+	pg_assert_same(PG_FEEDBACK_NPS, $input['survey']['kind'], 'the sent kind stays');
+	pg_assert_same(1, count($input['errors']), 'the change is refused with a reason');
+
+	$same = pg_feedback_survey_input(array('name' => 'X', 'kind' => (string) PG_FEEDBACK_NPS), $known, 'booking');
+	pg_assert_same(array(), $same['errors'], 'the same kind saves');
+
+	$fresh = pg_feedback_survey_input(array('name' => 'X', 'kind' => (string) PG_FEEDBACK_CSAT), feedback_surveys_test_known(), 'booking');
+	pg_assert_same(PG_FEEDBACK_CSAT, $fresh['survey']['kind'], 'an unsent survey may change its kind');
+}
