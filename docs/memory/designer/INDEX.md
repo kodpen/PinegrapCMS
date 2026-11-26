@@ -383,6 +383,7 @@
 - designer-body-tag-merge.md: Designer <body> tag: class/style/id from Body Settings and the Attributes panel are merged, not dropped; three lockstep code paths; page_tree_code is a snapshot.
 - designer-bootstrap-vocabulary.md: The Bootstrap 5 vocabulary of the designer's smart completion (assets/js/designer_vocab/bootstrap5.json): how it is generated and kept, its keys and what each entry holds
 - designer-canvas-absolute-position.md: Where the designer canvas places an absolutely positioned element (sd-fx-abs, sd-fx-unpos), which wrappers stop the walk, and how the chrome of see-through wrappers is placed.
+- designer-canvas-bands-drag-start.md: Why canvas spacing handles take a drag (#11921): PGSpacingBox read late (Side by side), hit areas, auto and off-scale start values, bands back after Prototype
 - designer-canvas-bar-prototype.md: The canvas bar's Prototype mode (DP24, #10507): its zones, where each control of the Prototype view's old bar went, zoom per mode, keys, folding, the Comments button (PN6) [decision: here]
 - designer-canvas-bar.md: The canvas bar above the Page Design Studio's canvas (DP22, #10205): the Design | Prototype switch, screen sizes and zoom, the View menu (Shared parts…) and badge, Find and History; its measures
 - designer-canvas-chrome-placement.md: Designer chrome that must not move or cover the canvas: the context bar's reserved row, the toolbar spot above/below/inside (_sdTbSpot), the page root's name tag at the bottom-left, the size badge.

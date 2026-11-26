@@ -732,6 +732,7 @@
 - settings-crossings-rule.md: The rule for a hand-over between a Site Settings card and its Connections page (owner, poll 232): one trip, the page finishes it, it returns by itself, nothing lost, no empty page [decision: decisions-made-product-114.md]
 - settings-dashboard-card.md: Dashboard row of Site Settings > Appearance (pgset-dashboard): Card style, Panel backdrop, Reset widgets, Refresh every per sign-in; role < 2 gate; a save shown on the dashboard [decision: decisions-made-access.md]
 - settings-drawer-card-form.md: A settings drawer that edits a record (a department): fields and a named button joined to the settings form by its id, saved by the pane's Save
+- settings-ecommerce-giftcards-rewards.md: Site Settings › Ecommerce, the Gift cards, Rewards and Reference price rows opened (EC4): groups, the radio rows helper, the labels and help lines
 - settings-ecommerce-shipping-stock.md: Site Settings › Ecommerce, the Shipping, Address autocomplete and Stock locations rows opened (EC3): groups, the carriers' and label services' drawing, Add a location, the default as a list
 - settings-ecommerce-store-payments.md: Site Settings › Ecommerce, the Store and Payment methods rows opened (EC2): groups, the pane's drawing helpers, what moved into Store, the gateway script kept
 - settings-ecommerce.md: Site Settings › Ecommerce as eleven folded rows under Enable Commerce: order, names, each row's line and pill, Gift cards and Rewards as two cards, anchors, what stayed
