@@ -765,11 +765,14 @@ StyleDesigner.definePart('overrides', function (K) {
             var t = e.target;
             if (!t.getAttribute || !t.getAttribute('data-co-field')) return;
             if (e.key === 'Escape') {
-                // Leaves the field with what it held.
+                // Leaves the field with what it held, the refusal's message
+                // gone with its mark.
                 e.preventDefault();
                 e.stopPropagation();
                 t.value = t.defaultValue;
                 t.classList.remove('is-invalid');
+                var why = holder.querySelector('[data-co-why="' + t.getAttribute('data-co-field') + '"]');
+                if (why) { why.textContent = ''; why.style.display = ''; }
                 t.blur();
             } else if (e.key === 'Enter' && t.tagName === 'INPUT') {
                 e.preventDefault();
