@@ -350,6 +350,17 @@ function test_product_insights_base_unit_sql()
 	pg_assert_true(strpos(pg_product_insights_base_unit_sql("X'Y", true), "= 'XY'") !== false, 'only the letters of the code reach the SQL');
 }
 
+// Try again reads the period on screen: with storage blocked the stored one
+// is always 30 days, so it used to answer another period than the pressed one.
+function test_product_insights_script_retries_the_period_shown()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/product_insights.js');
+
+	pg_assert_true(strpos($js, 'load(shown);') !== false, 'Try again loads the period shown');
+	pg_assert_true(strpos($js, 'shown = period;') !== false, 'load() remembers the period it asks for');
+	pg_assert_same(1, substr_count($js, 'load(storedPeriod())'), 'only the first load reads storage');
+}
+
 function test_product_insights_head_pills()
 {
 	$pills = pg_product_insights_head_pills(array('enabled' => '1', 'inventory' => '1', 'inventory_quantity' => '14', 'backorder' => '0'));
