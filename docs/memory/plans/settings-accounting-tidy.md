@@ -31,7 +31,7 @@ priority: 6
 - As `ui/settings-fold-rows.md`: one column, a group label where a row passes eight fields, every switch `pg-switch`, the three-way choices (the web order's invoice, till prices, the limit, tax on shipping) as radio rows with their one line each, a field that depends on a switch shown under it, never in a popover. Reminder channels as ticked chips; Frequency and Hour side by side.
 
 ## Which steps? (one at a time: one file; tests red first)
-- SA1 (M) The fold and the cut: the ERP card's fields into the six cards, the rows' order, names, icons, lines and pills as pure functions in `includes/fn/accounting_settings_fold.php` with `tests/settings_accounting_fold_test.php`; anchors and registry.
+- SA1 (M) Done (#11875). The fold and the cut: the ERP card's fields into the six cards, the rows' order, names, icons, lines and pills as pure functions in `includes/fn/accounting_settings_fold.php` with `tests/settings_accounting_fold_test.php`; anchors and registry.
 - SA2 (M) after SA1: Documents, Sales and Web orders opened.
 - SA3 (M) after SA2: Customer accounts, Foreign currency, Reminders and notices opened; the six short rows' buttons and labels.
 - SA4 (S) Close-out: `ui/settings-accounting.md`, the survey's lines corrected, this file deleted.
