@@ -6,7 +6,7 @@ priority: 6
 
 ## What is asked?
 - Owner (2026-11-26, in the architect's window): "yeni tablo ve word belgesi ekleme ekranları çok kararsız. word ekranı bir word yazma alanı gibi değil input gibi. […] her ikisi için yeteneklerini genişletelim, stabiliteyi artıralım."
-- The workbook's half is `plans/office-sheet-steady.md`. Which abilities come on top is his answer to poll 235 (agent channel message 14401, several answers); their steps are written after it, and no step below waits for it.
+- The workbook's half is `plans/office-sheet-steady.md`. The abilities on top (his answer to poll 235, agent channel message 14401: all eight) start when OP3 has landed: `plans/office-document-abilities.md`.
 
 ## What is wrong today? (read in memory and the code, 2026-11-26; not tried in a browser)
 - A paragraph opens in a box at the click and closes with Enter (`platform/office-paragraph-edits.md`): it reads as a form field. A new paragraph is a button of the bar (`platform/office-docx-add-delete.md`), not the Enter key.

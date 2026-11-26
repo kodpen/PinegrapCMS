@@ -6,7 +6,7 @@ priority: 6
 
 ## What is asked?
 - Owner (2026-11-26, in the architect's window): "yeni tablo ve word belgesi ekleme ekranları çok kararsız. […] excel tablosu arkaplan, eğik yazı veya bold renk değiştirme vs. alanları çalışmıyor, ayrıca bir belgede tablo satırlarını düzenleyemedim kapatıp yeni açınca düzeldi. her ikisi için yeteneklerini genişletelim, stabiliteyi artıralım."
-- The document's half is `plans/office-document-page.md`. Which abilities come on top is his answer to poll 235 (agent channel message 14401, several answers); their steps are written after it, and no step below waits for it.
+- The document's half is `plans/office-document-page.md`. The abilities on top (his answer to poll 235, agent channel message 14401: all eight) start when OF4 has landed: `plans/office-sheet-abilities.md`, then `plans/office-sheet-formulas.md`.
 
 ## What is wrong today? (read in the code, 2026-11-26; not tried in a browser)
 - A workbook takes one kind of change a save (`platform/office-overview.md`). `setFormat()` in `pg_office_view.js` does nothing while a typed cell, a row, a column or a sheet change waits: only the status line says "Save the other changes first, then change the format." A second range is refused the same way.
