@@ -1279,16 +1279,18 @@ function pg_supplier_feed_temp_file($id)
  * Downloads a feed into its file under data/temp/, never past
  * PG_SUPPLIER_FEED_MAX_BYTES.
  *
- * @param int   $id
- * @param array $secret
- * @param bool  $allow_http
+ * @param int         $id
+ * @param array       $secret
+ * @param bool        $allow_http
+ * @param string|null $file where to write; null for the screen's file
+ *                          (pg_supplier_feed_temp_file()), a pull names its own
  * @return array 'ok', 'error' (text), 'file'
  */
-function pg_supplier_feed_download($id, $secret, $allow_http)
+function pg_supplier_feed_download($id, $secret, $allow_http, $file = null)
 {
     require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/http.php');
 
-    $file = pg_supplier_feed_temp_file($id);
+    $file = ($file === null) ? pg_supplier_feed_temp_file($id) : (string) $file;
     $fail = function ($error) use ($file) {
         if (is_file($file)) {
             @unlink($file);

@@ -26,6 +26,7 @@ module: supplier_feed
 - XML (XMLReader, `LIBXML_NONET`, no entity loading): the cursor is `index`, the records already read; the next tick skips them with `next()` without expanding.
 - CSV (`pg_csv_open()`, `pg_csv_read_separator()`): the cursor holds the byte offset, the separator and the headings. A value that is not valid UTF-8 is read as Windows-1254 (Turkish Excel).
 - JSON: decoded whole each call, 64 MB at most (`PG_SUPPLIER_FEED_JSON_MAX_BYTES`, else `too_large`); the cursor is the next index.
+- A JSON number with exactly three decimals is written with a fourth zero (`12.375` as `12.3750`), so the amount reader never takes its point for a thousands mark (bug hunt #11784; before, 12.375 was read as 12,375.00).
 
 ## How are the fields proposed? (F2)
 - `pg_supplier_feed_propose_fields($records)` gives each field (`supplier_key`, `barcode`, `model_code`, `buy_price`, `stock`, `currency`, `vat`, `name`, `brand`, `category`, `description`, `image`) a source key or `''`. Names (Turkish and English: stok kodu, barkod, alış fiyatı, model kodu, sku, ean, cost…) are in `pg_supplier_feed_field_names()`, folded by `pg_supplier_feed_fold()` (Turkish letters to ASCII, letters and digits only).
