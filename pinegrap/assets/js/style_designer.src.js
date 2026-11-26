@@ -87224,10 +87224,70 @@ const StyleDesigner = (function () {
     }
     function _pgPagesButton() { return document.getElementById('sd-tabs-all-btn'); }
 
-    // Opens the Pages window, or closes it when it is open.
-    function _pgPagesOpen() {
+    // Opens the Pages window, or closes it when it is open. `view`
+    // 'collection' opens it on "New collection with pages" (the palette's
+    // row); a click hands an event, which opens the list.
+    function _pgPagesOpen(view) {
         if (_sdComponentOnly()) return;
-        _sdPartCall('pages', 'open', [_pgPagesHost()]).catch(_sdPartFailed);
+        _sdPartCall('pages', 'open', [_pgPagesHost(), view === 'collection' ? view : '']).catch(_sdPartFailed);
+    }
+
+    // What "New collection with pages" (the part 'collection') reads and
+    // calls: the endpoint, the design's addresses and groups, the core's
+    // layouts of a form, a list and a detail, and the tabs it adds. `back`
+    // turns the Pages window back to its list.
+    function _pgCollectionHost(back) {
+        return {
+            back: back,
+            styleId: (_design && _design.styleId) || 0,
+            draft: _pgNewPageDraft(),
+            api: function (op, extra) {
+                var body = { op: op };
+                Object.keys(extra || {}).forEach(function (k) { body[k] = extra[k]; });
+                return _pgApiPost('collection_pages', body);
+            },
+            addresses: function () { return _pages.map(function (p) { return String(p.page_name || '').toLowerCase(); }); },
+            groups: function () { return _pgPagesHost().groups().filter(function (g) { return g.id; }); },
+            config: function (kind) { return _swTypeDefaults({}, kind); },
+            formTree: function (fields, name) { return _ensureMessagesNode(_cfBuildFromFields(fields, 0, name)); },
+            starter: function (kind, fields) { return _buildStarterTree(kind, { formFields: fields }); },
+            node: createNode,
+            // A page made on the server opens as a saved tab of this design,
+            // in the group asked for ({id} or {name} for a new one). Answers
+            // the group's id.
+            add: function (pageId, group) {
+                return _pgApiPost('page_load', { page_id: pageId }).then(function (res) {
+                    if (!res || res.status !== 'success' || !res.page) throw new Error((res && res.message) || 'page_load');
+                    return _pgTabsAddSaved(res.page, group || {});
+                });
+            },
+            open: function (pageId) { var k = 'p' + pageId; if (_pgPageByKey(k) && k !== _activeKey) _pgTabsSwitch(k); },
+            itemUrl: function (pageId) {
+                return (window.OUTPUT_PATH || '/') + (typeof software_directory !== 'undefined' ? software_directory : 'pinegrap') + '/add_submitted_form.php?page_id=' + pageId;
+            }
+        };
+    }
+
+    // A saved page of this design added as a tab at the end of `group`'s
+    // pages ({id}; {name}: a new group so named; else none), unchanged.
+    function _pgTabsAddSaved(sp, group) {
+        var key = 'p' + sp.page_id;
+        var had = _pgPageByKey(key);
+        if (had) return had.tabGroup || '';
+        var p = _pgPageFromRow(sp);
+        p.key = key;
+        p.baseline = _pgBaselineOf(p);
+        var gid = (group.id && _pgTabGroups[group.id]) ? group.id : '';
+        if (!gid && group.name && _pgTabLayoutEditable()) {
+            for (var n = 1; !gid; n++) if (!_pgTabGroups['g' + n]) gid = 'g' + n;
+            _pgTabGroups[gid] = { name: String(group.name), color: _pgTabGroupNextColor() };
+        }
+        var members = gid ? _pgTabGroupMembers(gid) : [];
+        p.tabGroup = gid;
+        if (members.length) _pages.splice(_pages.indexOf(members[members.length - 1]) + 1, 0, p);
+        else _pages.push(p);
+        _pgTabsLayoutChanged();
+        return gid;
     }
 
     // A page's address on the site: the home page's is "/".
@@ -87277,7 +87337,8 @@ const StyleDesigner = (function () {
                         home: !!p.page_home, active: p.key === _activeKey, locked: locked,
                         group: (p.tabGroup && _pgTabGroups[p.tabGroup]) ? p.tabGroup : '',
                         dirty: !!_pgPageDirty(p), draft: !!(_pgDraftsReady() && p.page_draft),
-                        holder: locked ? '' : _pgTabHolder(p), badge: _pgContentChangeBadge(p, true)
+                        holder: locked ? '' : _pgTabHolder(p), badge: _pgContentChangeBadge(p, true),
+                        coll: !!(p.formSettings && parseInt(p.formSettings.collection, 10) === 1)
                     };
                 });
             },
@@ -87305,6 +87366,10 @@ const StyleDesigner = (function () {
             canAdd: function () { return !!document.getElementById('sd-tab-new-page') && !_sdIsContentLevel(); },
             canRename: function () { return !_sdComponentOnly(); },
             canMove: _pgTabLayoutEditable,
+            // "New collection with pages": the window's second view.
+            collection: function (win, back) {
+                _sdPartCall('collection', 'open', [win, _pgCollectionHost(back)]).catch(_sdPartFailed);
+            },
             open: function (key) { if (key !== _activeKey) _pgTabsSwitch(key); },
             add: function () { _pgTabsAddNew(); },
             rename: function (key, val) {
@@ -91636,54 +91701,58 @@ const StyleDesigner = (function () {
         sync();
     }
 
+    // A tab's page from a stored row, as the editor's start and
+    // designer/page_load give it.
+    function _pgPageFromRow(sp) {
+        var p = {
+            key: sp.key, page_id: sp.page_id || 0, page_name: sp.page_name || '',
+            page_folder: sp.page_folder || 0, page_title: sp.page_title || '',
+            page_meta_description: sp.page_meta_description || '',
+            page_meta_tags: sp.page_meta_tags || '', page_custom_jsonld: sp.page_custom_jsonld || '',
+            page_canonical_url: sp.page_canonical_url || '', page_noarchive: sp.page_noarchive ? 1 : 0,
+            page_max_snippet: (sp.page_max_snippet == null) ? '' : String(sp.page_max_snippet),
+            page_search: sp.page_search ? 1 : 0, page_search_keywords: sp.page_search_keywords || '',
+            page_sitemap: sp.page_sitemap ? 1 : 0, page_home: sp.page_home ? 1 : 0,
+            page_noindex: sp.page_noindex ? 1 : 0, page_nofollow: sp.page_nofollow ? 1 : 0,
+            page_draft: sp.page_draft ? 1 : 0,
+            page_publish_at: sp.page_publish_at || '', page_unpublish_at: sp.page_unpublish_at || '',
+            pg_comments: sp.pg_comments ? 1 : 0, pg_comments_label: sp.pg_comments_label || '',
+            pg_comments_allow_new: sp.pg_comments_allow_new ? 1 : 0, pg_comments_rating: sp.pg_comments_rating ? 1 : 0,
+            pg_comments_auto_publish: sp.pg_comments_auto_publish ? 1 : 0, pg_comments_show_date: sp.pg_comments_show_date ? 1 : 0,
+            pg_comments_login: sp.pg_comments_login ? 1 : 0,
+            pg_comments_email_page: sp.pg_comments_email_page || 0, pg_comments_email_subject: sp.pg_comments_email_subject || '',
+            pg_comments_notify_email: sp.pg_comments_notify_email || '',
+            pg_comments_attachments: sp.pg_comments_attachments ? 1 : 0, pg_comments_select_name: sp.pg_comments_select_name ? 1 : 0,
+            pg_comments_message: sp.pg_comments_message || '', pg_comments_closed_message: sp.pg_comments_closed_message || '',
+            pg_comments_watchers_managed: sp.pg_comments_watchers_managed ? 1 : 0,
+            // A page of a classic style just opened in the editor: its
+            // tree is not saved yet, so it starts unsaved.
+            converted: sp.converted ? 1 : 0,
+            tree: sp.tree || null, undoStack: [], redoStack: [], nodeIdCounter: 0,
+            baseline: null, treeLoadWarning: !!sp.treeLoadWarning,
+            // Hash of the stored tree loaded (pg_page_base_hash()).
+            baseHash: sp.baseHash || '',
+            // The page's form-level settings, as stored; written back
+            // with the page. The fields are the widget's controls.
+            formSettings: (sp.formSettings && typeof sp.formSettings === 'object') ? sp.formSettings : {},
+            // The columns marked as written with AI; _pgAiMarksInit()
+            // remembers the text of each.
+            ai_fields: sp.ai_fields || []
+        };
+        _pgAiMarksInit(p, p.ai_fields);
+        if (p.tree) { _sdTreeObjects(p.tree); _normalizeToggleableShowState(p.tree); p.nodeIdCounter = reindex(p.tree); }
+        else p.tree = createDefaultTree();
+        // The address the page is reachable at NOW — a rename in the
+        // tab only takes effect on save.
+        p.savedName = p.page_id > 0 ? p.page_name : '';
+        return p;
+    }
+
     function _pgTabsInit(design) {
         _design = design || null;
         _pages  = [];
         var src = (design && Array.isArray(design.pages)) ? design.pages : [];
-        src.forEach(function (sp) {
-            var p = {
-                key: sp.key, page_id: sp.page_id || 0, page_name: sp.page_name || '',
-                page_folder: sp.page_folder || 0, page_title: sp.page_title || '',
-                page_meta_description: sp.page_meta_description || '',
-                page_meta_tags: sp.page_meta_tags || '', page_custom_jsonld: sp.page_custom_jsonld || '',
-                page_canonical_url: sp.page_canonical_url || '', page_noarchive: sp.page_noarchive ? 1 : 0,
-                page_max_snippet: (sp.page_max_snippet == null) ? '' : String(sp.page_max_snippet),
-                page_search: sp.page_search ? 1 : 0, page_search_keywords: sp.page_search_keywords || '',
-                page_sitemap: sp.page_sitemap ? 1 : 0, page_home: sp.page_home ? 1 : 0,
-                page_noindex: sp.page_noindex ? 1 : 0, page_nofollow: sp.page_nofollow ? 1 : 0,
-                page_draft: sp.page_draft ? 1 : 0,
-                page_publish_at: sp.page_publish_at || '', page_unpublish_at: sp.page_unpublish_at || '',
-                pg_comments: sp.pg_comments ? 1 : 0, pg_comments_label: sp.pg_comments_label || '',
-                pg_comments_allow_new: sp.pg_comments_allow_new ? 1 : 0, pg_comments_rating: sp.pg_comments_rating ? 1 : 0,
-                pg_comments_auto_publish: sp.pg_comments_auto_publish ? 1 : 0, pg_comments_show_date: sp.pg_comments_show_date ? 1 : 0,
-                pg_comments_login: sp.pg_comments_login ? 1 : 0,
-                pg_comments_email_page: sp.pg_comments_email_page || 0, pg_comments_email_subject: sp.pg_comments_email_subject || '',
-                pg_comments_notify_email: sp.pg_comments_notify_email || '',
-                pg_comments_attachments: sp.pg_comments_attachments ? 1 : 0, pg_comments_select_name: sp.pg_comments_select_name ? 1 : 0,
-                pg_comments_message: sp.pg_comments_message || '', pg_comments_closed_message: sp.pg_comments_closed_message || '',
-                pg_comments_watchers_managed: sp.pg_comments_watchers_managed ? 1 : 0,
-                // A page of a classic style just opened in the editor: its
-                // tree is not saved yet, so it starts unsaved.
-                converted: sp.converted ? 1 : 0,
-                tree: sp.tree || null, undoStack: [], redoStack: [], nodeIdCounter: 0,
-                baseline: null, treeLoadWarning: !!sp.treeLoadWarning,
-                // Hash of the stored tree loaded (pg_page_base_hash()).
-                baseHash: sp.baseHash || '',
-                // The page's form-level settings, as stored; written back
-                // with the page. The fields are the widget's controls.
-                formSettings: (sp.formSettings && typeof sp.formSettings === 'object') ? sp.formSettings : {},
-                // The columns marked as written with AI; _pgAiMarksInit()
-                // remembers the text of each.
-                ai_fields: sp.ai_fields || []
-            };
-            _pgAiMarksInit(p, p.ai_fields);
-            if (p.tree) { _sdTreeObjects(p.tree); _normalizeToggleableShowState(p.tree); p.nodeIdCounter = reindex(p.tree); }
-            else p.tree = createDefaultTree();
-            // The address the page is reachable at NOW — a rename in the
-            // tab only takes effect on save.
-            p.savedName = p.page_id > 0 ? p.page_name : '';
-            _pages.push(p);
-        });
+        src.forEach(function (sp) { _pages.push(_pgPageFromRow(sp)); });
         _pgTabsApplyLayout(design && design.tabLayout ? design.tabLayout.layout : null);
         if (!_pages.length) {
             _pages.push({
@@ -92512,6 +92581,7 @@ const StyleDesigner = (function () {
             { id: 'act_preview', label: _sdT('Preview'), icon: 'bi-box-arrow-up-right', hint: 'Ctrl+Alt+P', action: function() { openPreview(); } },
             (_sdStyleGuideReady() ? { id: 'act_style_guide', label: _sdT('Style guide'), icon: 'bi-journal-richtext', hint: _sdT('Preview'), action: function() { _sdStyleGuideOpen(); } } : null),
             { id: 'act_pages', label: _sdT('Pages'), icon: 'bi-files', hint: 'Ctrl+P', action: function() { _pgPagesOpen(); } },
+            (_pgPagesHost().canAdd() ? { id: 'act_new_collection', label: _sdT('New collection with pages'), icon: 'bi-collection', meta: _sdT('Pages'), action: function() { _pgPagesOpen('collection'); } } : null),
             { id: 'act_snapshot', label: _sdT('Take a Snapshot'), icon: 'bi-camera', action: function() { var n = window.prompt(_sdT('Snapshot name:')); if (n && n.trim()) saveSnapshot(n.trim()); } },
             // ── Selection ───────────────────────────────────────────
             { id: 'act_select_body', label: _sdT('Select the Body'), icon: 'bi-filetype-html', action: function() {

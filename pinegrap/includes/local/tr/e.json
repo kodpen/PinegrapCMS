@@ -1722,6 +1722,7 @@
     "Every imported user gets this role and these rights.": "İçe aktarılan her kullanıcı bu rolü ve bu yetkileri alır.",
     "Every issue": "Tüm sayılar",
     "Every issue of this magazine starts with a list on the wall of our office. This time the list was short and oddly specific: a counter with twelve stools, a library in a rail car, a street that ends at the last lamp post.": "Bu derginin her sayısı, ofisimizin duvarındaki bir listeyle başlar. Bu kez liste kısaydı ve tuhaf biçimde ayrıntılıydı: on iki tabureli bir tezgâh, bir vagondaki kütüphane, son sokak lambasında biten bir cadde.",
+    "Every item has a Title: it is the item’s name in lists and makes its address.": "Her öğenin bir Başlığı vardır: listelerde öğenin adıdır ve adresini oluşturur.",
     "Every item in the structured data of {var:1} needs an @type.": "{var:1} sayfasının yapılandırılmış verisindeki her öğenin bir @type'ı olmalı.",
     "Every item is done.": "Tüm maddeler bitti.",
     "Every item needs an @type, for example \"@type\": \"FAQPage\".": "Her öğenin bir @type'ı olmalı, örneğin \"@type\": \"FAQPage\".",
