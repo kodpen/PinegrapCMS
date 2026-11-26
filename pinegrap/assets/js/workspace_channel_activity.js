@@ -119,7 +119,9 @@
 
     // The block's rows: the agents the channel holds (channelAgents() of
     // workspace.js: the assistants, then the registry agents), each joined
-    // by id with the read's agent, the read's row winning; then in the
+    // by id with the read's agent, the read's row winning; once the read
+    // has landed, its agents replace the registry agents the page kept;
+    // then in the
     // order working, waiting, not seen, ready, paused, the assistants last,
     // the order they came in within each. Pure.
     function agentsRows(base, read) {
@@ -131,7 +133,29 @@
             }
         });
 
-        var rows = (base || []).map(function (agent, index) {
+        // Once the read has landed it decides the registry agents: one it
+        // no longer returns loses its row, one the page did not know yet
+        // (added while the page was open) gets one. The assistants, which
+        // the read does not carry, stay.
+        var list = (base || []).filter(function (agent) {
+            return !read || !agent.id || !!byId[agent.id];
+        });
+        var known = {};
+
+        list.forEach(function (agent) {
+            if (agent.id) {
+                known[agent.id] = true;
+            }
+        });
+
+        (read || []).forEach(function (agent) {
+            if (agent && agent.id && !known[agent.id]) {
+                known[agent.id] = true;
+                list.push({ key: 'agent-' + agent.id, id: agent.id, tone: agent.id, name: agent.name || ('@' + (agent.handle || '')) });
+            }
+        });
+
+        var rows = list.map(function (agent, index) {
             var row = Object.assign({}, agent);
             var fresh = agent.id ? byId[agent.id] : null;
 

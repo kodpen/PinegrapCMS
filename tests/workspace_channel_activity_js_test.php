@@ -257,7 +257,7 @@ function test_workspace_channel_activity_js_agents_rows()
 	$result = workspace_channel_activity_js_test_node(workspace_channel_activity_js_test_block_parts() . '
 function row(id, state) { return { key: "agent-" + id, id: id, tone: id, name: "A" + id, state: state, state_words: state }; }
 var base = [{ key: "claude", name: "Claude", assistant: true, tone: 3 }, row(1, "idle"), row(2, "paused"), row(3, "late"), row(4, "waiting"), row(5, "working"), row(6, "idle"), row(7, "working"), row(8, "idle")];
-var read = [{ id: 1, name: "", state: "working", state_words: "Working", model: "opus" }];
+var read = [{ id: 1, name: "", state: "working", state_words: "Working", model: "opus" }, { id: 2 }, { id: 3 }, { id: 4 }, { id: 5 }, { id: 6 }, { id: 7 }, { id: 8 }];
 var rows = agentsRows(base, read);
 var six = agentsRows(base.slice(0, 6), null);
 console.log(JSON.stringify({
@@ -279,6 +279,39 @@ console.log(JSON.stringify({
 	pg_assert_same(array(6, 3), $result['nine'], 'nine rows show six and "3 more"');
 	pg_assert_same(array(9, 0), $result['pressed'], 'pressed, all of them');
 	pg_assert_same(array(6, 0), $result['six'], 'six rows show six and no such row');
+}
+
+// The landed read decides the registry agents' rows: one added while the
+// page is open gets a row, a removed one loses its row, the assistants stay.
+function test_workspace_channel_activity_js_agents_rows_follow_read()
+{
+	$result = workspace_channel_activity_js_test_node(workspace_channel_activity_js_test_block_parts() . '
+var base = [{ key: "claude", name: "Claude", assistant: true, tone: 3 }, { key: "ai", name: "Pinegrap AI", assistant: true, tone: 1 },
+	{ key: "agent-1", id: 1, tone: 1, name: "Mimar", handle: "mimar", state: "idle", active: true }, { key: "agent-2", id: 2, tone: 2, name: "K2", handle: "k2", state: "idle", active: true }];
+var read = [{ id: 1, name: "Mimar", handle: "mimar", kind: "app", state: "working", state_words: "Working", active: true },
+	{ id: 9, name: "", handle: "k3", kind: "app", state: "idle", state_words: "Ready", active: true },
+	{ id: 10, name: "Helper", handle: "helper", kind: "model", state: "idle", active: true }];
+var rows = agentsRows(base, read);
+var early = agentsRows(base, null);
+var empty = agentsRows(base, []);
+var added = rows.filter(function (r) { return r.id === 9; })[0];
+console.log(JSON.stringify({
+	keys: rows.map(function (r) { return r.key; }),
+	added: added ? { name: added.name, tone: added.tone, read: added.read, assistant: added.assistant, state: added.state } : null,
+	model: rows.some(function (r) { return r.id === 10 && r.assistant; }),
+	early: early.map(function (r) { return r.key; }),
+	empty: empty.map(function (r) { return r.key; })
+}));');
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('agent-1', 'agent-9', 'claude', 'ai', 'agent-10'), $result['keys'], 'the read adds agent 9 and 10, drops agent 2, keeps the assistants');
+	pg_assert_same(array('name' => '@k3', 'tone' => 9, 'read' => true, 'assistant' => false, 'state' => 'idle'), $result['added'], 'an agent only in the read is drawn from the read');
+	pg_assert_true($result['model'], 'a model agent only in the read is an assistant row');
+	pg_assert_same(array('agent-1', 'agent-2', 'claude', 'ai'), $result['early'], 'before the read lands the rows are the channel\'s');
+	pg_assert_same(array('claude', 'ai'), $result['empty'], 'a read with no agent leaves the assistants alone');
 }
 
 // 4. The context ring.
