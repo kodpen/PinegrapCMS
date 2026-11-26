@@ -386,3 +386,33 @@ function test_designer_a11y_view_tip_goes_with_its_place()
 
 	pg_assert_same(array(true, null, false, true, null), $res, 'a draw hides the tip; leaving the canvas hides it, moving inside it does not');
 }
+
+// The card is drawn again on each reading: the heading outline keeps where
+// it was scrolled to and the row that had the focus, not the first row.
+function test_designer_a11y_view_outline_keeps_its_place()
+{
+	$res = designer_a11y_view_run('style_designer_accessview.js', array('drawCard'),
+		'function Btn(av, i) { this.attrs = { "data-av": av, "data-i": i }; }' . "\n"
+		. 'Btn.prototype.getAttribute = function (n) { return this.attrs.hasOwnProperty(n) && this.attrs[n] !== null ? this.attrs[n] : null; };' . "\n"
+		. 'Btn.prototype.focus = function () { focused = this; };' . "\n"
+		. 'var focused = null, rows = [new Btn("heading", "0"), new Btn("heading", "1"), new Btn("heading", "2")];' . "\n"
+		. 'var outline = { scrollTop: 0 };' . "\n"
+		. 'var card = { setAttribute: function () {}, addEventListener: function () {}, contains: function (e) { return rows.indexOf(e) !== -1; },' . "\n"
+		. '  querySelector: function (sel) { if (sel === ".sd-av-outline") return outline;' . "\n"
+		. '    return rows.filter(function (r) { return sel.indexOf(\'[data-av="heading"]\') === 0 && (sel.indexOf("data-i") === -1 || sel.indexOf(\'[data-i="\' + r.attrs["data-i"] + \'"]\') !== -1); })[0] || null; } };' . "\n"
+		. 'Object.defineProperty(card, "innerHTML", { set: function () { var t = outline.scrollTop; outline = { scrollTop: 0 }; rows = [new Btn("heading", "0"), new Btn("heading", "1"), new Btn("heading", "2")]; } });' . "\n"
+		. 'var document = { createElement: function () { return card; } };' . "\n"
+		. 'function narrow() { return false; } function cardHTML() { return ""; } function placeCard() {} function view() { return null; }' . "\n"
+		. 'function onCardClick() {} function onCardChange() {}' . "\n"
+		. 'var V = { host: { state: { fold: false } }, doc: {} };' . "\n"
+		. 'drawCard();' . "\n"
+		. 'outline.scrollTop = 240; document.activeElement = rows[2];' . "\n"
+		. 'drawCard();' . "\n"
+		. 'console.log(JSON.stringify([outline.scrollTop, focused === rows[2]]));');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array(240, true), $res, 'the outline\'s scroll and the focused row survive a redraw');
+}

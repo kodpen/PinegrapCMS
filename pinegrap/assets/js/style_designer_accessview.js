@@ -495,11 +495,20 @@ StyleDesigner.definePart('accessview', function (K) {
             });
         }
         V.card.className = 'sd-av-card' + (narrow() ? ' sd-av-bar' : '') + (V.host.state.fold ? ' sd-av-fold' : '');
-        var keep = document.activeElement && V.card.contains(document.activeElement) ? document.activeElement.getAttribute('data-av') + '|' + (document.activeElement.getAttribute('data-kind') || '') : '';
+        // The control that had the focus (a kind's row, a heading's row of
+        // the outline) and where the outline was scrolled to come back after
+        // the card is drawn again, as it is on every reading.
+        var a = document.activeElement;
+        var keep = (a && V.card.contains(a)) ? '[data-av="' + a.getAttribute('data-av') + '"]' +
+            (a.getAttribute('data-kind') ? '[data-kind="' + a.getAttribute('data-kind') + '"]' : '') +
+            (a.getAttribute('data-i') ? '[data-i="' + a.getAttribute('data-i') + '"]' : '') : '';
+        var ol = V.card.querySelector('.sd-av-outline');
+        var olTop = ol ? ol.scrollTop : 0;
         V.card.innerHTML = cardHTML();
+        ol = olTop ? V.card.querySelector('.sd-av-outline') : null;
+        if (ol) ol.scrollTop = olTop;
         if (keep) {
-            var p = keep.split('|');
-            var back = V.card.querySelector('[data-av="' + p[0] + '"]' + (p[1] ? '[data-kind="' + p[1] + '"]' : ''));
+            var back = V.card.querySelector(keep);
             if (back) back.focus();
         }
         placeCard(view(V.doc));
