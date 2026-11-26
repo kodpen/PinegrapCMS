@@ -2450,6 +2450,44 @@
   }
 }
 
+/* -- Resize to other sizes (pg_image_editor_resize.js) --
+   Under the canvas size: the button, the sizes as tick rows, the custom
+   size's fields, Make, and the line saying what was made. */
+.pgie-resize {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 12px 0 0;
+}
+
+.pgie .pgie-resize-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pgie-resize-list {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+}
+
+.pgie-resize-list .pgie-check {
+  margin: 8px 0 0;
+}
+
+.pgie-resize-custom {
+  margin: 8px 0 0 24px;
+}
+
+.pgie-resize-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
 /* The window "Open a design file": the pages as tiles that scroll, the foot
    always in view; two tiles a row on a phone. */
 .pgie-confirm-box.pgie-designbox {

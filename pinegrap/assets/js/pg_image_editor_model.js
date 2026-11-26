@@ -14126,6 +14126,217 @@
     var STARTS = { START_PURPOSES: START_PURPOSES, START_MAX: START_MAX, START_PICTURE_SIDE: START_PICTURE_SIDE, startIndex: startIndex, startDesign: startDesign,
         startPurposeList: startPurposeList, startText: startText, startTextFit: startTextFit, startTextPlace: startTextPlace, startSlotLayer: startSlotLayer, startCover: startCover };
 
+    // -- resize to other sizes (pg_image_editor_resize.js) --
+
+    // A unit (a layer, or an outermost group as one) spans a side of the
+    // board when its box covers RESIZE_SPAN of it. A text drawn under
+    // RESIZE_FLOOR px after a resize, when it was not before, is named. At
+    // most RESIZE_MAX sizes at a time: the five presets and a custom one.
+    var RESIZE_SPAN = 0.9, RESIZE_FLOOR = 12, RESIZE_MAX = 6;
+
+    // Layer types whose drawing follows their box, so a bar or a
+    // background of them may stretch; a picture, a text or an icon never
+    // does.
+    var RESIZE_STRETCH = ['rect', 'ellipse', 'svg'];
+
+    // The sizes to make: the ticked presets in their order, then the
+    // custom size when it is ticked and both sides are whole numbers of
+    // SIZE_MIN to SIZE_MAX; a size twice once. [[key, w, h]], 'custom' as
+    // the custom one's key.
+    function resizeSizes(ticks, custom) {
+        var out = [], seen = {}, side = function (v) {
+            var n = Number(v);
+
+            return ((String(v).trim() !== '') && (n === Math.round(n)) && (n >= SIZE_MIN) && (n <= SIZE_MAX)) ? n : 0;
+        };
+        var put = function (key, w, h) {
+            if (w && h && !seen[w + 'x' + h] && (out.length < RESIZE_MAX)) {
+                seen[w + 'x' + h] = true;
+                out.push([key, w, h]);
+            }
+        };
+
+        BOARD_PRESETS.forEach(function (p) {
+            if ((ticks || []).indexOf(p[0]) >= 0) {
+                put(p[0], p[1], p[2]);
+            }
+        });
+
+        if (custom && custom.on) {
+            put('custom', side(custom.w), side(custom.h));
+        }
+
+        return out;
+    }
+
+    // A made canvas's name: the canvas's name without its extension, then
+    // the size ("Poster 1080x1920"); the size alone for an unnamed one.
+    function resizeName(name, w, h) {
+        var stem = String(name || '').split(/[\\/]/).pop().replace(/\.[a-z0-9]{2,5}$/i, '').trim();
+
+        return (stem ? stem + ' ' : '') + w + 'x' + h;
+    }
+
+    // The units of a layer list: each outermost group as one, every other
+    // layer alone, in the order their first layer comes. { list, box }.
+    function resizeUnits(layers) {
+        var units = [], byGroup = {};
+
+        (layers || []).forEach(function (l) {
+            var g = groupPath(l)[0];
+
+            if (g && byGroup.hasOwnProperty(g)) {
+                byGroup[g].list.push(l);
+                return;
+            }
+
+            var u = { list: [l] };
+
+            if (g) {
+                byGroup[g] = u;
+            }
+
+            units.push(u);
+        });
+
+        units.forEach(function (u) {
+            u.box = bounds(u.list);
+        });
+
+        return units;
+    }
+
+    // One side of a unit on the new board: a unit whose middle lies in the
+    // first third keeps its distance from that edge times k, one in the
+    // last third its distance from the far edge, one between keeps its
+    // middle at the same share of the side. a and len on the old side
+    // `from`, len1 its new length on the side `to`; answers the new start.
+    function resizeAxis(a, len, from, to, k, len1) {
+        var mid = a + len / 2;
+
+        if (mid < from / 3) {
+            return a * k;
+        }
+
+        if (mid > from * 2 / 3) {
+            return to - (from - a - len) * k - len1;
+        }
+
+        return mid / from * to - len1 / 2;
+    }
+
+    // Where a unit's box (on a W x H board) goes on a w x h board, and its
+    // scale on each axis: { x, y, sx, sy }. Every unit scales by k, the
+    // scale that fits the old board in the new one. A unit spanning both
+    // sides is a background: it stretches when it may (stretch), else it
+    // covers the new board (the larger scale), centred. A unit spanning
+    // one side that may stretch is a bar: that side stretches with the
+    // board, the other scales by k. The rest is placed by resizeAxis().
+    function resizePlace(box, W, H, w, h, stretch) {
+        var k = Math.min(w / W, h / H), spanX = box.w >= RESIZE_SPAN * W, spanY = box.h >= RESIZE_SPAN * H;
+        var sx = k, sy = k, x, y;
+
+        if (spanX && spanY && !stretch) {
+            sx = sy = Math.max(w / W, h / H);
+        } else {
+            sx = (stretch && spanX) ? w / W : k;
+            sy = (stretch && spanY) ? h / H : k;
+        }
+
+        x = (stretch && spanX) ? box.x * sx : resizeAxis(box.x, box.w, W, w, k, box.w * sx);
+        y = (stretch && spanY) ? box.y * sy : resizeAxis(box.y, box.h, H, h, k, box.h * sy);
+
+        return { x: x, y: y, sx: sx, sy: sy };
+    }
+
+    // Layer l of a unit whose box goes to place: its middle carried, its
+    // box scaled on each axis; a text's letters, a stroke, a rectangle's
+    // corners by the smaller scale; motion keys' moves by the axes' scales.
+    function resizeLayer(l, box, place) {
+        var c = clone(l), s = Math.min(place.sx, place.sy);
+        var mx = place.x + (l.x + l.w / 2 - box.x) * place.sx, my = place.y + (l.y + l.h / 2 - box.y) * place.sy;
+
+        c.w = textRound(l.w * place.sx);
+        c.h = textRound(l.h * place.sy);
+        c.x = textRound(mx - c.w / 2);
+        c.y = textRound(my - c.h / 2);
+
+        if (l.type === 'text') {
+            c.size = textRound(clamp((Number(l.size) || 1) * s, 2, 4000));
+        }
+
+        if (Number(l.stroke) > 0) {
+            c.stroke = textRound(Number(l.stroke) * s);
+        }
+
+        if ((l.type === 'rect') && (Number(l.radius) > 0)) {
+            c.radius = textRound(Number(l.radius) * s);
+        }
+
+        if (c.anim && Array.isArray(c.anim.keys)) {
+            c.anim.keys = c.anim.keys.map(function (key) {
+                return (key && (typeof key === 'object')) ? Object.assign({}, key, { x: keyNumber(key.x, 0) * place.sx, y: keyNumber(key.y, 0) * place.sy }) : key;
+            });
+        }
+
+        return c;
+    }
+
+    // layers from a W x H board placed on a w x h one (resizePlace() per
+    // unit). Texts that fall under RESIZE_FLOOR there are added to small.
+    function resizeLayers(layers, W, H, w, h, small) {
+        var out = [];
+
+        resizeUnits(layers).forEach(function (u) {
+            var one = u.list[0], stretch = (u.list.length === 1) && !groupPath(one).length && (RESIZE_STRETCH.indexOf(one.type) >= 0) && !Number(one.rot);
+            var place = u.box ? resizePlace(u.box, W, H, w, h, stretch) : null;
+
+            u.list.forEach(function (l) {
+                var c = place ? resizeLayer(l, u.box, place) : clone(l);
+
+                if ((l.type === 'text') && (Number(l.size) >= RESIZE_FLOOR) && (c.size < RESIZE_FLOOR)) {
+                    small.push(l.id);
+                }
+
+                out.push(c);
+            });
+        });
+
+        // The units are walked in order, so a group's layers, which lie
+        // next to each other (groupTidy()), keep the document's order.
+        return out;
+    }
+
+    // A copy of a canvas (doc with an artboard) at w x h: every scene's
+    // layers placed by resizeLayers(), the background kept. small lists
+    // the texts under the floor: { id, scene } ('' the open scene's).
+    function resizeDoc(doc, w, h) {
+        var d = clone(doc), W = Number(doc.artboard.width) || 1, H = Number(doc.artboard.height) || 1, small = [], list;
+
+        w = boardSide(w);
+        h = boardSide(h);
+        list = [];
+        d.layers = resizeLayers(d.layers || [], W, H, w, h, list);
+        list.forEach(function (id) { small.push({ id: id, scene: '' }); });
+
+        (d.scenes || []).forEach(function (s) {
+            if ((s.id !== d.scene) && Array.isArray(s.layers)) {
+                list = [];
+                s.layers = resizeLayers(s.layers, W, H, w, h, list);
+                list.forEach(function (id) { small.push({ id: id, scene: s.id }); });
+            }
+        });
+
+        d.artboard.width = w;
+        d.artboard.height = h;
+        delete d.selection;
+
+        return { doc: d, small: small };
+    }
+
+    var RESIZE = { RESIZE_SPAN: RESIZE_SPAN, RESIZE_FLOOR: RESIZE_FLOOR, RESIZE_MAX: RESIZE_MAX, RESIZE_STRETCH: RESIZE_STRETCH, resizeSizes: resizeSizes,
+        resizeName: resizeName, resizeUnits: resizeUnits, resizeAxis: resizeAxis, resizePlace: resizePlace, resizeLayer: resizeLayer, resizeLayers: resizeLayers, resizeDoc: resizeDoc };
+
     var api = {
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,
         flipRot: flipRot, coverScale: coverScale, fitZoom: fitZoom, centred: centred, fitView: fitView, zoomAt: zoomAt,
@@ -14143,7 +14354,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, FOLLOW, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU, VIDEO, SOUND, CLIP, MIX, UPLOAD, PHONE, GROUP, ATTACH, DATA, SEND, SITECOLORS, TEXTSTYLES, ELEMENTS, STARTS].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, FOLLOW, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU, VIDEO, SOUND, CLIP, MIX, UPLOAD, PHONE, GROUP, ATTACH, DATA, SEND, SITECOLORS, TEXTSTYLES, ELEMENTS, STARTS, RESIZE].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');
