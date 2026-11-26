@@ -17,7 +17,8 @@
 - agent-channel-steps-7.md: Step A22 of plans/agent-channel.md (owner 2026-11-12, #8880): a channel's agents among its members in the head's faces and in Channel info, last seen for people and agents
 - agent-channel-trial.md: Live trial of the agent channel on dev (2026-11-10): what is still to try and what the trial found wrong, fixed or not
 - agent-channel.md: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
-- agent-memory-search.md: Plan (owner 2026-11-23), held until he opens it: text search and a per-project index in the channel and general memory for agents, this repository's memory mirrored there; steps MS1 to MS4
+- agent-memory-search.md: Plan (owner 2026-11-23, opened 2026-11-26): text search and a per-project index in the channel and general memory for agents, this repository's memory mirrored there; steps MS1 to MS4
+- artifact-canvas-content.md: Plan (owner 2026-11-26): the Artifact Canvas gets ready content and a way to open a design made in Canva as editable layers, from the person's own exported file; census steps AC1 and AC2 first
 - automation-platforms-features.md: Plan automation-platforms, features A1 to A13: the contract the apps rely on, newest-first lists, the subscription limit, event fields and samples, the panel's subscription form, the guide
 - automation-platforms-rules.md: Plan automation-platforms: what the API and Application Access do today that no step may lose (K1 to K9), the rules every step keeps, what a step's PR body carries
 - automation-platforms-steps-2.md: Plan automation-platforms, steps AU8 to AU10 and the order of all ten: the panel's sheet for the owner, the panel build (starting point, subscription form, sample, guide), the pages and close-out
@@ -35,6 +36,7 @@
 - designer-component-overrides.md: Plan (owner 2026-11-24): a shared component's open fields changed per place (text, picture, link, shown) and named variants, the rest following the component; steps CO1 to CO6
 - designer-drawings.md: Plan (owner 2026-11-24): the designer plans' screens are drawn first, DD1 to DD11, by the design session or the architect; a screen step waits for its drawing's merge, never for a yes
 - designer-sketch.md: Plan (owner 2026-11-24, before the launch): the Prototype view as a drawing board: a page sketched as boxes is read, built from blocks and filled with the variables; SK1 to SK9
+- designer-use-round.md: Plan (owner 2026-11-26): the Page Design Studio's features of 2026-11 used in a browser as a first-time person, their faults fixed, their look brought to the chrome's rules; steps UR1 to UR8
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), the queue worker, incoming e-invoices; where to start
 - github-channel-connection.md: Plan (owner 2026-11-08): connect GitHub with OAuth from Settings › Connections, the site sets its own webhook on chosen repositories and writes CI, pull request and label lines into a channel
@@ -63,8 +65,18 @@
 - office-own-code.md: Plan (owner 2026-11-19, poll 156 "Tam kapsam"): the own Office code grows after PHPExcel goes: more previews, wider editing, shared Excel export and import; order and rules
 - parasut-devhub-connection.md: Plan (2026-11-25): connecting Paraşüt with a client from its Developer Portal (DevHub): the registered redirect address, sign-in at id.parasut.com with PKCE, short tokens; step PD1
 - parasut-devhub-staging.md: Plan (owner 2026-11-26): Paraşüt's test environment (staging) for a Developer Portal client: the choice on Paraşüt's page of Connections, the sign-in host, the mark on the status line; step PS1
+- picture-text-fit-rules.md: Plan picture-text-fit, the fit's rules (architect 2026-11-26): a text's room from the picture's edges and the other layers, the order grow, wrap, shrink, what stays of the old rule
+- picture-text-fit-screens.md: Plan picture-text-fit, one language's texts corrected by hand: what a correction keeps, the Languages list's rows and the language view of the Artifact Canvas, described for PF3 and PF4
+- picture-text-fit.md: Plan (owner 2026-11-26, poll 229): a translated picture text grows into the free room, then wraps, then shrinks; one language's texts corrected by hand in the Artifact Canvas; steps PF1 to PF5
 - plan-state-channel.md: Plan (owner 2026-11-23): what slows the work with memory and plans in git: a docs-only PR's full check, the plan file shared with workers; a light check, step state as channel tasks; PS1-PS3
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
+- settings-crossings-census-leads.md: Crossings census, the leads: every Site Settings card (and other screen) that leads to a Connections page, the page and anchor it opens, its label, same or new tab, when the lead shows
+- settings-crossings-census-names.md: Crossings census, the names at both ends: the lead's label words, what the Connections page calls the card it leads back to, and where the two differ
+- settings-crossings-census-pages.md: Crossings census, the pages: for each service page of Connections the way back to its card, and where the person stands after Connect, Save and Disconnect
+- settings-crossings-census-roundtrips.md: Crossings census, the round trips with nothing to do at one end: a card that only points to a page, a page that only points back, a lead that lands on the list, a way back that names the wrong place
+- settings-crossings-census-setups.md: Crossings census, first set-ups: for each feature, the hops from its card to working on a new site, counted as moves between card, Connections page and outside service
+- settings-crossings-census-worst.md: Crossings census, the ten worst paths between Site Settings and Connections, ranked by hops, lost work and dead ends, each with what makes it bad; the examples TR2 asks the owner with
+- settings-crossings-census.md: Census of the crossings between Site Settings cards and Connections pages (plan settings-tidy-round, TR1): their shared shape, what is decided, which file holds what
 - settings-scan-findings.md: Faults found by the 2026-11-21 scan of the Site Settings panes and the step or PR that takes each; a step strikes its lines, the file is deleted when none is left
 - settings-tidy-census-order.md: Survey of the Site Settings categories, its second part: how old each category looks, what is already planned or decided, and the order of the per-category tidy plans
 - settings-tidy-census.md: Survey of the Site Settings categories (owner 2026-11-21: tidy every settings screen, e-mail first): the contradictions and scattered settings found, ranked, with file and line

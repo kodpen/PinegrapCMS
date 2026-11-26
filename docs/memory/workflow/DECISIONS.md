@@ -178,6 +178,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-112.md: Where are the rules and the earlier parts?
 - decisions-made-product-112.md: What does a My library item do about pictures the site lacks? (owner, 2026-11-26, agent channel poll 224, message 13858)
 - decisions-made-product-112.md: Does a payment way in test mode on a live shop show on System Status? (owner, 2026-11-26, agent channel poll 225, message 14071)
+- decisions-made-product-113.md: Where are the rules and the earlier parts?
+- decisions-made-product-113.md: What does a translated picture text do when it does not fit its source's box? (owner, 2026-11-26, agent channel poll 229, message 14130)
 - decisions-made-product-12.md: Where are the rules and the earlier parts?
 - decisions-made-product-12.md: Where does a role-3 user edit the ERP settings cards? (#3828)
 - decisions-made-product-12.md: Trendyol import: which column holds the province? (#3835)
