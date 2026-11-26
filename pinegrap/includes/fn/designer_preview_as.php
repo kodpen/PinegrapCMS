@@ -203,6 +203,25 @@ function pg_preview_as_choice($input, $kinds, $page)
 }
 
 /**
+ * The choice one widget is drawn with: the page's, with the widget row's
+ * own case ("Check all cases") and record (the "Record" chooser of that
+ * widget) over it. A row with neither keeps the page's choice.
+ *
+ * @param array      $choice pg_preview_as_choice()
+ * @param array|null $row    pg_designer_preview_override_rows() row {case, record}
+ * @return array
+ */
+function pg_preview_as_row_choice($choice, $row)
+{
+    $own = is_array($choice) ? $choice : array();
+    if (!is_array($row)) return $own;
+    if (isset($row['case']) && is_string($row['case']) && $row['case'] !== '') $own['case'] = $row['case'];
+    $id = _pg_preview_as_id(isset($row['record']) ? $row['record'] : 0);
+    if ($id > 0) $own['record'] = $id;
+    return $own;
+}
+
+/**
  * What the page's choice sets for one widget of kind $kind. A case the
  * kind does not have draws the widget as on a typical visit.
  *

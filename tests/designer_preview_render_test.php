@@ -599,3 +599,22 @@ function test_preview_render_audience_value()
 		pg_assert_same('', pg_preview_as_audience_value($kind, array('returning' => true, 'signed_in' => true, 'member' => true)), $kind);
 	}
 }
+
+// A comments widget on a record page shows the thread of the record the
+// page's record widget draws: that widget's own chosen record and case
+// count, not only the page's.
+function test_preview_render_row_choice()
+{
+	$page = array('record' => 0, 'visitor' => 'signed_in', 'case' => 'typical');
+	pg_assert_same(array('record' => 42, 'visitor' => 'signed_in', 'case' => 'typical'), pg_preview_as_row_choice($page, array('record' => 42, 'case' => '')));
+	pg_assert_same(array('record' => 0, 'visitor' => 'signed_in', 'case' => 'long'), pg_preview_as_row_choice($page, array('record' => 0, 'case' => 'long')));
+	pg_assert_same($page, pg_preview_as_row_choice($page, array()), 'no row: the page\'s choice');
+	pg_assert_same($page, pg_preview_as_row_choice($page, null));
+	pg_assert_same(7, pg_preview_as_row_choice(array('record' => 7), array('record' => 0))['record'], 'no record of its own: the page\'s');
+
+	$designer = designer_preview_render_test_source('includes/fn/designer.php');
+	$start    = (int) strpos($designer, 'function pg_designer_preview_widgets(');
+	$body     = substr($designer, $start, (int) strpos($designer, "\nfunction ", $start + 10) - $start);
+	pg_assert_contains('$own  = pg_preview_as_row_choice($choice, $ov);', $body, 'a widget\'s own record and case');
+	pg_assert_contains("pg_preview_as_setup('form_item_view', pg_preview_as_row_choice(\$choice, isset(\$overrides[(int)\$fiv['id']]) ? \$overrides[(int)\$fiv['id']] : null))", $body, 'the thread follows the record widget\'s row');
+}

@@ -50,7 +50,7 @@ function test_preview_as_bar_answer_says_what_each_widget_offers()
 {
 	$src = preview_as_bar_test_source('includes/fn/designer.php');
 	$fn  = substr($src, (int) strpos($src, 'function pg_designer_preview_widgets('), 7000);
-	pg_assert_contains("if (!empty(\$ov['record'])) \$own['record'] = (int)\$ov['record'];", $fn, 'the row\'s record over the page\'s');
+	pg_assert_contains('$own  = pg_preview_as_row_choice($choice, $ov);', $fn, 'the row\'s record over the page\'s');
 	pg_assert_contains("'source' => pg_preview_as_record_source(\$type),", $fn);
 	pg_assert_contains("'cases'  => pg_preview_as_kind_cases(\$type),", $fn);
 }
