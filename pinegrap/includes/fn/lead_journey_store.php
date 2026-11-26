@@ -348,6 +348,7 @@ function pg_lead_tie($act, $contact_id, $ref_id = 0)
         'has_key' => $browser !== null,
         'browser_contact_id' => $browser ? $browser['contact_id'] : 0,
         'contact_id' => (int) $contact_id,
+        'contact_gone' => ((int) $contact_id > 0) && ((int) db_value("SELECT COUNT(*) FROM contacts WHERE id = '" . (int) $contact_id . "'") === 0),
         'act' => (string) $act,
         'panel_user' => pg_lead_request_panel_user(),
     ));

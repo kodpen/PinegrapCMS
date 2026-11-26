@@ -68,7 +68,8 @@ function pg_lead_tie_acts()
  * $facts: 'consent' (as pg_lead_key_verdict()), 'has_key' (bool),
  * 'browser_contact_id' (the contact the key points at, 0 for none),
  * 'contact_id' (the contact of the act), 'act' (one of pg_lead_tie_acts()),
- * 'panel_user' (bool, the person has a panel role).
+ * 'panel_user' (bool, the person has a panel role), 'contact_gone' (bool,
+ * the act's contact no longer exists; optional).
  *
  * Verdicts: 'tie' (first contact), 'same' (already this contact), 'move'
  * (another contact on the same browser: the key points at the new one, the
@@ -103,7 +104,9 @@ function pg_lead_tie_decision(array $facts)
     }
 
     $contact_id = isset($facts['contact_id']) ? (int) $facts['contact_id'] : 0;
-    if ($contact_id <= 0) {
+    // A record can still name a contact deleted since (a campaign recipient,
+    // an old form): tying to it would move the browser away from a real one.
+    if (($contact_id <= 0) || !empty($facts['contact_gone'])) {
         return $refuse('no_contact');
     }
 

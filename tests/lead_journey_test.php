@@ -402,3 +402,12 @@ function test_lead_journey_staff_browsing_as_a_customer_is_a_panel_user()
 	pg_assert_false(pg_lead_session_is_staff(array('logged_in_as_different_user' => false), false), 'the flag off');
 	pg_assert_contains('pg_lead_session_is_staff(', lead_journey_test_source('includes/fn/lead_journey_store.php'), 'the store asks the rule');
 }
+
+function test_lead_journey_no_tie_to_a_deleted_contact()
+{
+	$facts = array('consent' => 'yes', 'has_key' => true, 'browser_contact_id' => 4, 'contact_id' => 9, 'act' => 'campaign_click', 'panel_user' => false);
+
+	pg_assert_same('move', pg_lead_tie_decision($facts)['verdict'], 'a contact that is there');
+	pg_assert_same('no_contact', pg_lead_tie_decision(array('contact_gone' => true) + $facts)['verdict'], 'a recipient whose contact was deleted moves nobody');
+	pg_assert_contains("'contact_gone' =>", lead_journey_test_source('includes/fn/lead_journey_store.php'), 'the store reads whether the contact is there');
+}
