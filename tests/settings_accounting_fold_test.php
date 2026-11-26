@@ -53,9 +53,15 @@ function settings_accounting_fold_test_card($id)
 
 function settings_accounting_fold_test_names($html)
 {
-	preg_match_all('/\bname="([a-z0-9_]+)(?:\[\])?"/', $html, $match);
+	// A field drawn by the pane's switch or radio rows is named in the call.
+	preg_match_all('/\bname="([a-z0-9_]+)(?:\[\])?"|pg_accounting_settings_(?:switch|choice)\(\'([a-z0-9_]+)\'/', $html, $match);
+	$names = array();
 
-	return array_values(array_unique($match[1]));
+	foreach ($match[1] as $index => $name) {
+		$names[] = ($name !== '') ? $name : $match[2][$index];
+	}
+
+	return array_values(array_unique($names));
 }
 
 function test_settings_accounting_fold_order_and_names()

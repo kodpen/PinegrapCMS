@@ -519,6 +519,7 @@
     "On, Block": "Açık, Engelle",
     "On, Monitor": "Açık, İzle",
     "On, a purchase invoice adds its products to stock and a sales invoice typed in the ERP takes them out; a return or a cancellation moves them back. An invoice raised from an order leaves stock alone, because the order already took the goods out. Only products that track stock and whole quantities are counted. Off, only the costs are kept.": "Açıkken alış faturası ürünlerini stoğa ekler, ERP'de elle kesilen satış faturası stoktan düşer; iade ya da iptal geri alır. Siparişten kesilen fatura stoğa dokunmaz, çünkü sipariş malı zaten stoktan düştü. Yalnız stok takibi açık ürünler ve tam sayı miktarlar sayılır. Kapalıyken yalnız maliyetler tutulur.",
+    "On, a purchase invoice adds its products to stock and a sales invoice typed in the ERP takes them out; an order's invoice leaves stock alone, as the order already took them. Off, only the costs are kept.": "Açıkken alış faturası ürünlerini stoka ekler, ERP'de yazılan satış faturası stoktan düşer; siparişin faturası stoka dokunmaz, çünkü sipariş ürünleri zaten düşmüştür. Kapalıyken yalnızca maliyetler tutulur.",
     "On, answered by {var:1}": "Açık, {var:1} yanıtlıyor",
     "On, nothing added up yet": "Açık, henüz bir şey toplanmadı",
     "On, sent through {var:1}": "Açık, {var:1} üzerinden gönderiliyor",

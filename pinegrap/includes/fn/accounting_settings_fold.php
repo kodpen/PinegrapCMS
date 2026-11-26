@@ -422,3 +422,62 @@ function pg_accounting_fold_templates($saved, $total)
         'attention' => false,
     );
 }
+
+/* ---------------------------------------------------------------------------
+   Inside the rows: the pane's switch and radio rows
+   --------------------------------------------------------------------------- */
+
+/**
+ * A pg-switch with its label and at most one line of help, as every switch
+ * inside an Accounting row is drawn. Pure.
+ *
+ * @param string $name  the field's name and id
+ * @param bool   $on    it is on
+ * @param string $label plain text
+ * @param string $help  plain text, '' for none
+ * @return string HTML, a full-width cell
+ */
+function pg_accounting_settings_switch($name, $on, $label, $help = '')
+{
+    return '
+                    <div class="col-12">
+                        <div class="d-flex align-items-center gap-5">
+                            <input type="checkbox" class="pg-switch" value="1"' . ($on ? ' checked="checked"' : '') . ' id="' . h($name) . '" name="' . h($name) . '"' . (($help !== '') ? ' aria-describedby="' . h($name) . '_help"' : '') . '/>
+                            <label class="pg-text-2" for="' . h($name) . '">' . h($label) . '</label>
+                        </div>' . (($help !== '') ? '
+                        <p class="pg-field-help pg-text-meta fg-secondary mb-0" id="' . h($name) . '_help">' . h($help) . '</p>' : '') . '
+                    </div>';
+}
+
+/**
+ * A choice of a few as radio rows under their legend, each with its one
+ * line, posting the values the select did; the choice's own line follows.
+ * A radio's id is the name and its value, "default" for the empty one. Pure.
+ *
+ * @param string $name    the radios' name
+ * @param string $legend  plain text
+ * @param array  $options each value, label and line (plain text, '' for none), on
+ * @param string $help    plain text, '' for none
+ * @return string HTML, a full-width cell
+ */
+function pg_accounting_settings_choice($name, $legend, $options, $help = '')
+{
+    $rows = '';
+
+    foreach ($options as $option) {
+        $id = $name . '_' . (($option['value'] !== '') ? $option['value'] : 'default');
+        $rows .= '
+                            <div class="form-field">
+                                <input value="' . h($option['value']) . '" class="radio" type="radio" id="' . h($id) . '" name="' . h($name) . '"' . (($option['line'] !== '') ? ' aria-describedby="' . h($id) . '_help"' : '') . ($option['on'] ? ' checked="checked"' : '') . '/>
+                                <label for="' . h($id) . '">' . h($option['label']) . '</label>
+                            </div>' . (($option['line'] !== '') ? '
+                            <div class="form-text mb-3" id="' . h($id) . '_help">' . h($option['line']) . '</div>' : '');
+    }
+
+    return '
+                    <div class="col-12">
+                        <fieldset' . (($help !== '') ? ' aria-describedby="' . h($name) . '_help"' : '') . '><legend class="form-label pg-field-label">' . h($legend) . '</legend>' . $rows . '
+                        </fieldset>' . (($help !== '') ? '
+                        <p class="pg-field-help pg-text-meta fg-secondary mb-0" id="' . h($name) . '_help">' . h($help) . '</p>' : '') . '
+                    </div>';
+}

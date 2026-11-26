@@ -15,7 +15,7 @@ module: accounting_settings_fold
 - Web orders (`pgset-erp-orders`): the invoice of a web order, its two filters, marketplace orders, the invoice e-mail and its message, tax on shipping and surcharges.
 - Customer accounts (`pgset-erp-accounts`, drawn once one of its columns exists): credit limit, account prices in the store, Put it on my account.
 - Foreign currency (`pgset-erp-currency`): the switch, the currencies, the exchange difference. Reminders and notices (`pgset-erp-notices`): overdue reminders, then notices as they happen.
-- Field markup moved as it was (old `div.switch`, the currency popover): SA2 and SA3 redraw the opened rows.
+- Documents, Sales and Web orders are drawn open since SA2 (`ui/settings-accounting-open-rows.md`); the other three rows keep the old markup (`div.switch`, the currency popover) until SA3.
 
 ## What does each row say closed?
 - Documents "Series PGF · numbers by year · due in 30 days". Sales "Till prices with tax · invoices change stock · <walk-in account>". Web orders "Invoiced from the order screen" / "once paid" / "once shipped", "· e-mailed to the customer".
@@ -23,6 +23,6 @@ module: accounting_settings_fold
 - E-Invoice: "No e-document provider" (Off), "<name> · connected" (On), "<name> is not connected" (pill Not connected, attention: the pane opens on it). Late payment fee: rate or "No fee", e-Fatura threshold: the two amounts or "No warning", both with On/Off. Accounting rules, Stock planning, Document templates: a line, no pill.
 
 ## What stayed?
-- Field names, ids, values, `accounting.save.php`, one Save. Old links: `pgset-erp` lands on Documents; each field that left it has its line in `pg_settings_legacy_anchors()` to its new row. Create Order's "Sales settings" opens Sales.
+- Field names, values, `accounting.save.php`, one Save; ids too, but the three selects that became radio rows (`ui/settings-accounting-open-rows.md`). Old links: `pgset-erp` lands on Documents; each field that left it has its line in `pg_settings_legacy_anchors()` to its new row. Create Order's "Sales settings" opens Sales.
 
 Related: docs/memory/ui/settings-fold-rows.md, docs/memory/erp/erp-edoc-settings-card.md, docs/memory/erp/erp-settings-cards.md
