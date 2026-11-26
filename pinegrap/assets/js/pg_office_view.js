@@ -3038,6 +3038,28 @@
         return list;
     }
 
+    // A paragraph cut where Enter is pressed: the text selected (start to
+    // end, UTF-16 units) is taken out, the text before stays, the text
+    // after goes on into a new paragraph; each character keeps its look.
+    function cutLook(text, bits, start, end) {
+        return {
+            head: text.slice(0, start),
+            tail: text.slice(end),
+            headBits: bits.slice(0, start),
+            tailBits: bits.slice(end, text.length)
+        };
+    }
+
+    // A base look that differs from the one asked for in every bit, so the
+    // save sends bold, italic and underline on or off for each character:
+    // text moved into a new run whose own look is the paragraph mark's,
+    // which the view does not know.
+    function exactBase(want) {
+        return want.map(function (bits) {
+            return (bits || 0) ^ 7;
+        });
+    }
+
     // A document as the safe HTML the server made, drawn on a white sheet.
     // Read for editing, the paragraphs it marked (data-p) may be given a new
     // text, except those it marked as holding more than text (data-lock);
@@ -4514,7 +4536,9 @@
         docMarks: {
             expandMarks: expandMarks,
             carryMarks: carryMarks,
-            formatRanges: formatRanges
+            formatRanges: formatRanges,
+            cutLook: cutLook,
+            exactBase: exactBase
         },
         // A paragraph's text read from its drawing while it is typed in,
         // and a point of that text found in the drawing again.

@@ -143,6 +143,33 @@ JS
 	pg_assert_same(array('P', 0), $result['empty'], 'an empty paragraph holds its own start');
 }
 
+// Enter splits a paragraph at the caret, a selection taken out first: the
+// text and the look of each character go with their half.
+function test_office_document_page_cut_look()
+{
+	$result = office_document_page_test_node(<<<'JS'
+var M = window.pgOfficeView.docMarks;
+var out = {};
+out.middle = M.cutLook('Hello world', [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1], 5, 5);
+out.selection = M.cutLook('Hello world', [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1], 4, 7);
+out.end = M.cutLook('Hi', [2, 2], 2, 2);
+out.start = M.cutLook('Hi', [4, 0], 0, 0);
+out.exact = M.exactBase([0, 1, 7, 5]);
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('head' => 'Hello', 'tail' => ' world', 'headBits' => array(0, 0, 0, 0, 0), 'tailBits' => array(0, 1, 1, 1, 1, 1)), $result['middle'], 'the text and its look are cut at the caret');
+	pg_assert_same(array('head' => 'Hell', 'tail' => 'orld', 'headBits' => array(0, 0, 0, 0), 'tailBits' => array(1, 1, 1, 1)), $result['selection'], 'a selection is taken out before the cut');
+	pg_assert_same(array('head' => 'Hi', 'tail' => '', 'headBits' => array(2, 2), 'tailBits' => array()), $result['end'], 'at the end the new paragraph is empty');
+	pg_assert_same(array('head' => '', 'tail' => 'Hi', 'headBits' => array(), 'tailBits' => array(4, 0)), $result['start'], 'at the start all goes on');
+	pg_assert_same(array(7, 6, 0, 2), $result['exact'], 'a base differing in every bit makes a save send each one');
+}
+
 // What a unit test cannot type: each paragraph that may change is typed
 // where it stands (no textarea), paste is plain text, the sheet is white in
 // both themes.
