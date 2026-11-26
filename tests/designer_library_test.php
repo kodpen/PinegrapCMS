@@ -382,3 +382,28 @@ function test_library_hunt_product_group_and_calendar_refs()
 	pg_assert_same(array(6, ''), $cfg['calendar_ids'], 'a calendar the site lacks is cleared, not another one');
 	pg_assert_same(array('calendar'), $out['widgets']['w4']['cleared']);
 }
+
+function test_library_hunt_menu_by_name()
+{
+	$item = array('format' => PG_LIBRARY_FORMAT, 'version' => 1, 'name' => 'Header',
+		'tree' => array('type' => 'section', 'children' => array(
+			array('type' => 'shared_ref', 'props' => array('libraryWidget' => 'w5')),
+			array('type' => 'shared_ref', 'props' => array('libraryWidget' => 'w6')),
+		)),
+		'widgets' => array(
+			'w5' => array('name' => 'Main menu', 'kind' => 'menu', 'tree' => array('type' => 'div'), 'config' => array('menu_name' => 'Main')),
+			'w6' => array('name' => 'Footer menu', 'kind' => 'menu', 'tree' => array('type' => 'div'), 'config' => array('menu_name' => 'Footer links')),
+		));
+	$out = pg_library_item_into_design($item, array(), array('menus' => array(3 => 'main', 4 => 'Shop')));
+	pg_assert_same('Main', $out['widgets']['w5']['config']['menu_name'], 'the site has a menu of that name');
+	pg_assert_same(array(), $out['widgets']['w5']['cleared']);
+	pg_assert_same('', $out['widgets']['w6']['config']['menu_name'], 'no menu of that name: cleared');
+	pg_assert_same(array('menu'), $out['widgets']['w6']['cleared']);
+	pg_assert_same(array('menu'), $out['tree']['children'][1]['props']['_libraryUnbound'], 'the placement is marked');
+	pg_assert_false(isset($out['tree']['children'][0]['props']['_libraryUnbound']));
+	pg_assert_same(1, $out['cleared']);
+
+	$saved = pg_library_item_from_subtree(array('type' => 'div', 'props' => array('menu_name' => 'Main')), array('name' => 'x'), array(), array());
+	pg_assert_same('Main', $saved['tree']['props']['menu_name'], 'saving keeps the name');
+	pg_assert_false(isset($saved['refs']['menu']));
+}

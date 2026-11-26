@@ -18,6 +18,7 @@ module: designer_library
 - A reference keeps its id when the site has that record under the same name, takes the id of the only record of that name otherwise, and is cleared (`''`) when there is none or two. The node or the widget placement gets `props._libraryUnbound` (the kinds cleared); a widget entry lists them in `cleared`.
 - A widget is always made anew (the copy is the page's own). A shared component the site has (same row id and name) is placed again by `sharedId`; another is returned in `shared` for the caller to make.
 - A `shared_ref` carrying a `sharedId` (only a hand-made file) loses it and is marked `['shared']`.
+- A `menu_name` (menus go by name) is kept when the site has a menu of that name, else cleared and marked `menu`.
 
 ## Where is the library kept?
 - One design file per item in the file manager's root folder: `library-<slug>.json`, `files.type = 'json'`, `design = 1`, the way a theme is a design CSS file; no table, no column. It shows in the Design Files list.

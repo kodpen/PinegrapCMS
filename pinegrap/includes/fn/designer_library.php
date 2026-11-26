@@ -343,7 +343,8 @@ function pg_library_ref_kind($key)
 /**
  * Calls $fn($kind, $id, $raw) for every record id a settings array or a
  * node's props name; the value is replaced by what $fn returns. A node's
- * form reference field (_cf.ref) points at a page.
+ * form reference field (_cf.ref) points at a page. A menu is named, not
+ * numbered (menu_name): $fn('menu', 0, $name).
  */
 function _pg_library_map_refs($arr, $fn, $parent_key = '', $depth = 0)
 {
@@ -353,6 +354,10 @@ function _pg_library_map_refs($arr, $fn, $parent_key = '', $depth = 0)
         if ($name === '_bindings') continue;
         if (is_array($v)) {
             $arr[$k] = _pg_library_map_refs($v, $fn, $name, $depth + 1);
+            continue;
+        }
+        if ($name === 'menu_name' && is_string($v) && trim($v) !== '') {
+            $arr[$k] = $fn('menu', 0, $v);
             continue;
         }
         $kind = ($parent_key === '_cf' && $k === 'ref') ? 'page' : pg_library_ref_kind($name);
@@ -481,6 +486,7 @@ function pg_library_item_from_subtree($node, $meta, $design, $site)
     );
     $refs = array();
     $collect = function ($kind, $id, $raw) use (&$refs, $names) {
+        if ($kind === 'menu') return $raw;
         $refs[$kind][$id] = isset($names[$kind][$id]) ? (string)$names[$kind][$id] : '';
         return $raw;
     };
@@ -504,6 +510,7 @@ function pg_library_item_from_subtree($node, $meta, $design, $site)
  *          'framework' set of framework classes, as for the item
  * $site    'pages', 'groups', 'folders'  id => name of the records it has
  *          'shared' sid => name of its shared components
+ *          'menus' id => name of its menus (a menu widget names its menu)
  *
  * The design's own wins: a class rule it has the same stays as it is; one
  * of the same name that differs stays too, and the item's class gets a new
@@ -619,6 +626,12 @@ function pg_library_item_into_design($item, $design, $site)
         'product_group' => isset($site['product_groups']) ? (array)$site['product_groups'] : array(),
         'calendar' => isset($site['calendars']) ? (array)$site['calendars'] : array(),
     );
+    // A menu is kept by its name when the site has one of that name (the
+    // menu widget looks it up by name, case aside).
+    $menus = array();
+    foreach ((isset($site['menus']) ? (array)$site['menus'] : array()) as $menu) {
+        $menus[strtolower(trim((string)$menu))] = true;
+    }
     $resolve = function ($kind, $id) use ($refs, $site_names) {
         $name = isset($refs[$kind][$id]) ? (string)$refs[$kind][$id] : '';
         $have = isset($site_names[$kind]) ? $site_names[$kind] : array();
@@ -633,7 +646,12 @@ function pg_library_item_into_design($item, $design, $site)
         return count($found) === 1 ? (int)$found[0] : 0;
     };
     $cleared_kinds = array();
-    $map = function ($kind, $id, $raw) use ($resolve, &$cleared_kinds) {
+    $map = function ($kind, $id, $raw) use ($resolve, $menus, &$cleared_kinds) {
+        if ($kind === 'menu') {
+            if (isset($menus[strtolower(trim((string)$raw))])) return $raw;
+            $cleared_kinds['menu'] = true;
+            return '';
+        }
         $new = $resolve($kind, $id);
         if ($new <= 0) {
             $cleared_kinds[$kind] = true;
@@ -1165,12 +1183,14 @@ function pg_library_site_rows($node)
 // The site's records an item may point at, id => name, by kind.
 function pg_library_site_records()
 {
-    $out = array('pages' => array(), 'groups' => array(), 'folders' => array(), 'product_groups' => array(), 'calendars' => array());
+    $out = array('pages' => array(), 'groups' => array(), 'folders' => array(), 'product_groups' => array(), 'calendars' => array(),
+                 'menus' => array());
     foreach ((array)db_items("SELECT page_id, page_name FROM page") as $r) $out['pages'][(int)$r['page_id']] = (string)$r['page_name'];
     foreach ((array)db_items("SELECT id, name FROM contact_groups") as $r) $out['groups'][(int)$r['id']] = (string)$r['name'];
     foreach ((array)db_items("SELECT folder_id, folder_name FROM folder") as $r) $out['folders'][(int)$r['folder_id']] = (string)$r['folder_name'];
     foreach ((array)(db_items("SELECT id, name FROM product_groups") ?: array()) as $r) $out['product_groups'][(int)$r['id']] = (string)$r['name'];
     foreach ((array)(db_items("SELECT id, name FROM calendars") ?: array()) as $r) $out['calendars'][(int)$r['id']] = (string)$r['name'];
+    foreach ((array)(db_items("SELECT id, name FROM menus") ?: array()) as $r) $out['menus'][(int)$r['id']] = (string)$r['name'];
     return $out;
 }
 
