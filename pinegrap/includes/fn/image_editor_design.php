@@ -184,7 +184,7 @@ function pg_image_editor_design_redraw($bytes, $type, $picture)
     imagesavealpha($cut, true);
     imagefill($cut, 0, 0, imagecolorallocatealpha($cut, 0, 0, 0, 127));
     imagecopy($cut, $image, 0, 0, $x, $y, $w, $h);
-    imagedestroy($image);
+    pg_image_destroy($image);
 
     if (!empty($picture['flip_h']) && !empty($picture['flip_v'])) {
         imageflip($cut, IMG_FLIP_BOTH);
@@ -198,7 +198,7 @@ function pg_image_editor_design_redraw($bytes, $type, $picture)
     ob_start();
     $written = ($out === 'jpg') ? imagejpeg($cut, null, 92) : imagepng($cut);
     $result = (string) ob_get_clean();
-    imagedestroy($cut);
+    pg_image_destroy($cut);
 
     return ($written && ($result !== '')) ? array($result, $out) : null;
 }

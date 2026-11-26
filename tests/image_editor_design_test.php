@@ -67,7 +67,7 @@ function image_editor_design_png($w, $h)
 	imagefilledrectangle($image, (int) ($w / 2), 0, $w - 1, $h - 1, $blue);
 	ob_start();
 	imagepng($image);
-	imagedestroy($image);
+	pg_image_destroy($image);
 
 	return (string) ob_get_clean();
 }
@@ -77,7 +77,7 @@ function image_editor_design_pixel($bytes, $x, $y)
 {
 	$image = imagecreatefromstring($bytes);
 	$c = imagecolorsforindex($image, imagecolorat($image, $x, $y));
-	imagedestroy($image);
+	pg_image_destroy($image);
 
 	return $c['red'] . ',' . $c['green'] . ',' . $c['blue'];
 }
@@ -202,7 +202,7 @@ function test_image_editor_design_redraw()
 	ob_start();
 	imagejpeg($image, null, 95);
 	$jpeg = (string) ob_get_clean();
-	imagedestroy($image);
+	pg_image_destroy($image);
 	pg_assert_same('jpg', pg_image_editor_design_redraw($jpeg, 'jpg', array('crop' => array('t' => 0.5) + $none, 'flip_h' => false, 'flip_v' => false))[1], 'a JPEG stays a JPEG');
 	pg_assert_same(null, pg_image_editor_design_redraw('not a picture', 'png', array('crop' => $none, 'flip_h' => true, 'flip_v' => false)), 'bytes no picture: null');
 }
