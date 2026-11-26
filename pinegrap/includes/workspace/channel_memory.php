@@ -50,6 +50,19 @@ define('WS_MEMORY_NOTE_BURST', 300);
 define('WS_MEMORY_NOTE_MAX', 3000);
 
 /**
+ * One tag as stored and as a filter compares it: trimmed, without a leading
+ * #, lower case. A dotted capital I is folded to a plain i first: lowered
+ * alone it becomes an i with a combining dot, which no tag may hold. Pure.
+ *
+ * @param mixed $tag
+ * @return string
+ */
+function ws_memory_tag($tag)
+{
+    return mb_strtolower(str_replace("\u{0130}", 'i', ltrim(trim((string) $tag), '#')));
+}
+
+/**
  * An entry's tags as stored: trimmed, lower case, without a leading #,
  * each once, in the order given. Pure.
  *
@@ -65,7 +78,7 @@ function ws_memory_tags($tags)
     $out = array();
 
     foreach ($tags as $tag) {
-        $tag = mb_strtolower(ltrim(trim((string) $tag), '#'));
+        $tag = ws_memory_tag($tag);
 
         if (($tag !== '') && !in_array($tag, $out, true)) {
             $out[] = $tag;
@@ -272,51 +285,64 @@ function ws_memory_digest($entries, $decisions, $now, $max = WS_MEMORY_DIGEST_MA
         'memory'    => 'Channel memory (read an entry with workspace.memory.get, its id without the #):',
         'decisions' => $across ? 'Decisions in the agent channels (one made in another channel names it first):' : 'Decisions in this channel:',
     );
-    $out = array();
-    $used = 0;
-    $left = 0;
-    $left_general = false;
-    $full = false;
+    $decisions_list = $across ? 'workspace.decisions.list (agent_channels only)' : 'workspace.decisions.list';
 
-    foreach ($headings as $key => $heading) {
-        if (empty($sections[$key])) {
-            continue;
-        }
+    // Lays the lines out within a budget for them; the closing count is not
+    // in it, so a digest that runs past $max is laid out again with less.
+    $lay = function ($budget) use ($headings, $sections, $older, $decisions_list) {
+        $out = array();
+        $used = 0;
+        $left = 0;
+        $left_general = false;
+        $full = false;
 
-        $kept = array();
-
-        foreach ($sections[$key] as $line) {
-            $cost = mb_strlen($line) + 1 + ($kept ? 0 : mb_strlen($heading) + 2);
-
-            // Once a line does not fit, the lines after it wait too, so a
-            // short old line never takes the place of a newer one.
-            if ($full || ($used + $cost > $max)) {
-                $full = true;
-                $left++;
-                $left_general = $left_general || ($key === 'general');
+        foreach ($headings as $key => $heading) {
+            if (empty($sections[$key])) {
                 continue;
             }
 
-            $kept[] = $line;
-            $used += $cost;
+            $kept = array();
+
+            foreach ($sections[$key] as $line) {
+                $cost = mb_strlen($line) + 1 + ($kept ? 0 : mb_strlen($heading) + 2);
+
+                // Once a line does not fit, the lines after it wait too, so a
+                // short old line never takes the place of a newer one.
+                if ($full || ($used + $cost > $budget)) {
+                    $full = true;
+                    $left++;
+                    $left_general = $left_general || ($key === 'general');
+                    continue;
+                }
+
+                $kept[] = $line;
+                $used += $cost;
+            }
+
+            if ($kept) {
+                $out[] = $heading . "\n" . implode("\n", $kept);
+            }
         }
 
-        if ($kept) {
-            $out[] = $heading . "\n" . implode("\n", $kept);
+        // One count closes the digest: the lines the size left out and the
+        // older decisions together, or the older decisions alone.
+        if ($left > 0) {
+            $out[] = '(' . ($left + $older) . ' more not shown: list them with ' . ($left_general ? 'workspace.memory.general.list, ' : '') . 'workspace.memory.list and ' . $decisions_list . '.)';
+        } elseif ($older > 0) {
+            $out[] = '(' . $older . ' older decisions not shown: list them with ' . $decisions_list . '.)';
         }
+
+        return implode("\n\n", $out);
+    };
+
+    $digest = $lay($max);
+
+    for ($budget = $max; (mb_strlen($digest) > $max) && ($budget > 0);) {
+        $budget -= mb_strlen($digest) - $max;
+        $digest = $lay($budget);
     }
 
-    // One count closes the digest: the lines the size left out and the
-    // older decisions together, or the older decisions alone.
-    $decisions_list = $across ? 'workspace.decisions.list (agent_channels only)' : 'workspace.decisions.list';
-
-    if ($left > 0) {
-        $out[] = '(' . ($left + $older) . ' more not shown: list them with ' . ($left_general ? 'workspace.memory.general.list, ' : '') . 'workspace.memory.list and ' . $decisions_list . '.)';
-    } elseif ($older > 0) {
-        $out[] = '(' . $older . ' older decisions not shown: list them with ' . $decisions_list . '.)';
-    }
-
-    return implode("\n\n", $out);
+    return $digest;
 }
 
 /* ---------------------------------------------------------------------------
@@ -357,14 +383,38 @@ function ws_memory_project_ready()
 }
 
 /**
- * Whether this person reads and writes the general memory: they may post in
- * an agent channel (the channel memory's rule carried over). An application
- * acts as the person who owns it.
+ * Whether one of these agent channels opens the general memory: the keeper
+ * may post in it and, where $allowed is given (the application Claude works
+ * through), Claude may be asked in it too. Pure but for the callables.
  *
- * @param array $viewer
+ * @param array[]       $channels ws_channels rows
+ * @param callable      $can_post channel => bool
+ * @param callable|null $allowed  channel => bool, null for no further limit
  * @return bool
  */
-function ws_memory_general_can($viewer)
+function ws_memory_general_reached($channels, $can_post, $allowed = null)
+{
+    foreach ((array) $channels as $channel) {
+        if ($can_post($channel) && (($allowed === null) || $allowed($channel))) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Whether this person reads and writes the general memory: they may post in
+ * an agent channel (the channel memory's rule carried over). An application
+ * acts as the person who owns it; the application Claude works through
+ * ($claude) only while Claude may be asked in such a channel, as it reads a
+ * channel only where it may be asked (ws_api_channel_or_404()).
+ *
+ * @param array $viewer
+ * @param bool  $claude the caller is the application Claude works through
+ * @return bool
+ */
+function ws_memory_general_can($viewer, $claude = false)
 {
     static $cache = array();
 
@@ -372,17 +422,17 @@ function ws_memory_general_can($viewer)
         return false;
     }
 
-    $key = (int) ($GLOBALS['ws_membership_generation'] ?? 0) . ':' . (int) ($viewer['id'] ?? 0);
+    $claude = $claude && function_exists('ws_claude_channel_allowed');
+    $key = (int) ($GLOBALS['ws_membership_generation'] ?? 0) . ':' . (int) ($viewer['id'] ?? 0) . ($claude ? ':claude' : '');
 
     if (!array_key_exists($key, $cache)) {
-        $cache[$key] = false;
-
-        foreach ((array) db_items("SELECT * FROM ws_channels WHERE agent_channel = 1 AND kind IN ('public', 'private', 'guest') AND archived_at = 0 ORDER BY id LIMIT 200") as $channel) {
-            if (ws_can_post_channel($viewer, $channel)) {
-                $cache[$key] = true;
-                break;
-            }
-        }
+        $cache[$key] = ws_memory_general_reached(
+            (array) db_items("SELECT * FROM ws_channels WHERE agent_channel = 1 AND kind IN ('public', 'private', 'guest') AND archived_at = 0 ORDER BY id LIMIT 200"),
+            function ($channel) use ($viewer) {
+                return ws_can_post_channel($viewer, $channel);
+            },
+            $claude ? 'ws_claude_channel_allowed' : null
+        );
     }
 
     return $cache[$key];
