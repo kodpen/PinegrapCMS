@@ -5,7 +5,7 @@ description: Drawing of the New design window and the Page Design Studio home (2
 
 ## Where is it?
 - `docs/memory/designer/designer-home-tidy-drawing/`: `new-design.html`, `home.html`, `drawing.css`, and a `-dark.jpg` and `-light.jpg` picture of each sheet. The HTML reads the look's `ui/look-sheet/sheet.css`.
-- Drawn by the architect for `plans/designer-home-tidy.md`. Owner (2026-11-26, agent channel message 14316): "ikonlar anlaşılmayacak karışık ve arayüzü modern değil … kargaşa azalmalı … liste ana sayfası dahil. bunları sen çiz".
+- Drawn by the architect for plan designer-home-tidy (#11905, #11920, #11934). Owner (2026-11-26, agent channel message 14316): "ikonlar anlaşılmayacak karışık ve arayüzü modern değil … kargaşa azalmalı … liste ana sayfası dahil. bunları sen çiz".
 
 ## Which board belongs to which step?
 - HT1: N1 the window with Blank chosen, N2 Template, N3 ZIP file and Pasted markup, N4 the icons and a row's states.
@@ -30,4 +30,4 @@ description: Drawing of the New design window and the Page Design Studio home (2
 - Menus keep their rows, in groups with dividers: Edit, Open in a new tab, Add page; View on site, Put on or Take off the site; Rename, Turn into a template; Delete in rose. No icons; a row that does not apply is left out.
 - The right-click hint line is gone; right click and long press still work.
 
-Related: docs/memory/plans/designer-home-tidy.md, docs/memory/designer/new-design-window.md, docs/memory/designer/designer-home-screen.md, docs/memory/designer/designer-home-colours.md
+Related: docs/memory/designer/new-design-window.md, docs/memory/designer/designer-home-screen.md, docs/memory/designer/designer-home-colours.md

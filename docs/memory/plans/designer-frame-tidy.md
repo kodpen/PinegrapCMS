@@ -38,4 +38,4 @@ priority: 8
 - Clicks is a switch over the canvas, so it is a row of the View menu; no entry of `workflow/DECISIONS.md` binds the button's place.
 - The title rows of the palette and the Overview leave; the list switch stays (owner, 2026-11-11). The bottom panel keeps its three parts side by side.
 
-Related: docs/memory/designer/designer-frame-tidy-drawing.md, docs/memory/designer/designer-panels-keep.md, docs/memory/plans/designer-home-tidy.md
+Related: docs/memory/designer/designer-frame-tidy-drawing.md, docs/memory/designer/designer-panels-keep.md, docs/memory/designer/designer-home-tidy-drawing.md
