@@ -65,8 +65,7 @@ function test_preview_as_bar_is_a_part()
 
 	$part = preview_as_bar_test_source('assets/js/style_designer_previewas.js');
 	pg_assert_contains("StyleDesigner.definePart('previewas',", $part);
-	pg_assert_contains('return { answer: answer, attach: attach, failed: failed, inject: inject, note: note, redraw: render };', $part);
-	pg_assert_false(strpos($part, 'Check all cases') !== false, 'the run of every case is a later step');
+	pg_assert_contains('return { answer: answer, attach: attach, check: check, failed: failed, inject: inject, note: note, redraw: render };', $part);
 }
 
 // The core sends the kept choice with the Preview's widgets and hands each
@@ -89,7 +88,7 @@ function test_preview_as_bar_core_hooks()
 	$ans = substr($core, (int) strpos($core, 'function _sdPvAsAnswered(setups) {'), 1200);
 	pg_assert_contains("if (!offers && !_sdPartLoaded('previewas')) return;", $ans, 'no choice, no part');
 
-	$apply = substr($core, (int) strpos($core, 'function _sdPvAsApply(payload) {'), 900);
+	$apply = substr($core, (int) strpos($core, 'function _sdPvAsApply(payload, given) {'), 900);
 	pg_assert_contains('access_rules: false', $apply, 'the editor knows no access rule yet');
 }
 

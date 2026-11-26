@@ -246,6 +246,7 @@ StyleDesigner.definePart('activity', function (K) {
         var host = s.host;
         var html;
         var narrowed = A.narrowed(s.choice);
+        var blank = A.blank(s.events.length, s.more, narrowed);
         if (s.state === 'loading') {
             html = choosersHtml(true) + '<div class="sd-act-list" aria-busy="true">' +
                 [1, 2, 3, 4, 5].map(function () { return '<div class="sd-act-ghost"><span></span><span></span></div>'; }).join('') + '</div>';
@@ -253,12 +254,12 @@ StyleDesigner.definePart('activity', function (K) {
             html = choosersHtml(true) + '<div class="sd-act-list"><div class="sd-act-blank"><span class="bi bi-exclamation-circle"></span>' +
                 '<div class="sd-act-blank-t">' + esc(_sdT('The activity could not be read.')) + '</div>' +
                 '<button type="button" class="sd-act-btn" data-act="retry">' + esc(_sdT('Try again')) + '</button></div></div>';
-        } else if (!s.events.length && narrowed) {
+        } else if (blank === 'narrowed') {
             html = choosersHtml(false) + '<div class="sd-act-list"><div class="sd-act-blank"><span class="bi bi-funnel"></span>' +
                 '<div class="sd-act-blank-t">' + esc(_sdT('Nothing matches the three.')) + '</div>' +
                 '<div class="sd-act-blank-s">' + esc(_sdT('No such event is kept for this design.')) + '</div>' +
                 '<button type="button" class="sd-act-btn" data-act="all">' + esc(_sdT('Show everything')) + '</button></div></div>';
-        } else if (!s.events.length) {
+        } else if (blank === 'none') {
             html = choosersHtml(true) + '<div class="sd-act-list"><div class="sd-act-blank"><span class="bi bi-clock"></span>' +
                 '<div class="sd-act-blank-t">' + esc(_sdT('Nothing has happened in this design yet.')) + '</div>' +
                 '<div class="sd-act-blank-s">' + esc(_sdT('Publishing a page, importing one or sharing a link shows here, with who did it.')) + '</div></div></div>';
@@ -278,6 +279,9 @@ StyleDesigner.definePart('activity', function (K) {
         var lastKey = days.length ? days[days.length - 1].dataset.day : null;
         end.insertAdjacentHTML('beforebegin', rowsHtml(events, s.events.length - events.length, lastKey));
         end.innerHTML = endHtml();
+        // A short page that still does not fill the list cannot be
+        // scrolled to the end: the next one is asked for at once.
+        if (s.more && !s.loading && !s.failedMore && A.near(list.scrollTop, list.clientHeight, list.scrollHeight)) load(true);
     }
 
     function drawEnd() {
@@ -436,7 +440,7 @@ StyleDesigner.definePart('activity', function (K) {
         if (!A.opens(e)) return;
         var no = Number(e.revision_no);
         K._sdPartCall('compare', 'open', [{
-            pageId: Number(e.page_id), left: 'rev:' + (no - 1), right: 'rev:' + no, history: no, done: s.done
+            pageId: Number(e.page_id), left: 'rev:' + A.before(e), right: 'rev:' + no, history: no, done: s.done
         }]).catch(K._sdPartFailed);
     }
 
@@ -474,8 +478,7 @@ StyleDesigner.definePart('activity', function (K) {
         s.counting = true;
         s.counts[key] = null;
         K._sdPartLoad('compare').then(function () {
-            var no = Number(e.revision_no);
-            return Promise.all([tree(e.page_id, no - 1), tree(e.page_id, no)]);
+            return Promise.all([tree(e.page_id, A.before(e)), tree(e.page_id, Number(e.revision_no))]);
         }).then(function (trees) {
             var C = window.PgCompareChanges;
             if (!C || !trees[1]) return null;
