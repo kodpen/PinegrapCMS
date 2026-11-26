@@ -5,7 +5,7 @@ module: lead_journey_store
 ---
 
 ## Which tables hold the journey?
-- Step 11.0.265 (`upgrade_2026_11_0_lead_journey()`), owner poll 194, columns in `workflow/decisions-made-schema-42.md`: `lead_browsers`, `lead_visits`, `contact_journey`, `contact_scores`. No column on `visitors` or `contacts`; no IP, user agent or form content. All four are in `get_tables()`.
+- Step 11.0.265 (`upgrade_2026_11_0_lead_journey()`), columns in `workflow/decisions-made-schema-42.md`: `lead_browsers`, `lead_visits`, `contact_journey`, `contact_scores`. No column on `visitors` or `contacts`; no IP, user agent or form content. All four are in `get_tables()`.
 - Until the step runs `pg_lead_ready()` is false and nothing is written or listed.
 
 ## When is the browser key written?
@@ -14,7 +14,7 @@ module: lead_journey_store
 - Catalogue row under marketing while visitor tracking is on and the tables exist; in `pg_consent_revoke_names()` too.
 
 ## How is a visit recorded?
-- The key is synced once per request at the end of `init_tracking()` (`pg_lead_request_browser()`), before the page prints: `update_visitor_page_data()` runs in `get_page.php` after output has started, so a cookie written there was never sent.
+- The key is synced once per request at the end of `init_tracking()` (`pg_lead_request_browser()`), before the page prints: `update_visitor_page_data()` runs after output has started.
 - `update_visitor_page_data()` calls `pg_lead_page_view()`: so only with `VISITOR_TRACKING` and a `visitors` row. The first page of a visit inserts a `lead_visits` row (channel by `pg_visitor_channel()`, campaign = UTM campaign else tracking code, referrer host, landing page);
 - Later pages update `pages` JSON `[page, seconds, at]`, at most 50 (`pg_lead_pages_add()`); a catalogue page adds `pg_track_content()`'s item: `[page, seconds, at, type, id]` (#11245). A tied browser's new visits carry its contact at once.
 
@@ -24,7 +24,7 @@ module: lead_journey_store
 - `campaign_click`: `view_email_campaign.php?r=<reference_code>` when the `email_recipients` row has a contact (`ref_id` = campaign). The `?t=` code ties nobody.
 - `order`: `submit_order.php` after `pg_order_complete()` returned a number, with the order's contact (`ref_id` = order).
 - A deleted contact ties nobody: `no_contact` (#11806).
-- On `tie`/`move`: `lead_browsers.contact_id`, `tied_at`; untied visits since the consent and inside the keep period get the contact (`pg_lead_tie_back_ids()`); one `contact_journey` row, kind 1 (tie), `detail` = act, `ref_id` = group or user.
+- On `tie`/`move`: `lead_browsers.contact_id`, `tied_at`; untied visits since the consent and inside the keep period get the contact (`pg_lead_tie_back_ids()`); one `contact_journey` row, kind 1 (tie), `detail` = act, `ref_id` = group or user. On `move` the open visit is split first and the tie row names the new row (`lead-journey-rules.md`).
 - `form`: `custom_form.php` right after `UPDATE forms SET contact_id`, so a form's group yes without double opt-in ties with it (`ref_id` = form).
 - No booking tie (a booking holds no contact).
 
