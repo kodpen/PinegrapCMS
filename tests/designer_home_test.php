@@ -193,15 +193,62 @@ function test_designer_home_design_picture_is_the_page_edit_opens()
 	pg_assert_contains('sdh-blank', $none);
 }
 
-// The New design window lists its starts in one order; a start a later step
-// adds takes its place in this list.
+// The New design window lists its starts in one order, in three groups; a
+// start a later step adds takes its place in this list.
 function test_designer_start_kinds_order()
 {
 	$keys = array_map(function ($k) { return $k['key']; }, pg_designer_start_kinds(true));
 	pg_assert_same(array('blank', 'template', 'canva', 'document', 'import', 'paste'), $keys, 'blank, template, Canva, from a document, ZIP file, pasted markup');
-	foreach (pg_designer_start_kinds(true) as $k) {
-		pg_assert_true($k['title'] !== '' && $k['line'] !== '' && $k['icon'] !== '', $k['key'] . ': a title, one line and an icon');
+	foreach (pg_designer_start_kinds(true, true) as $k) {
+		pg_assert_true($k['title'] !== '' && $k['line'] !== '' && $k['heading'] !== '' && $k['lead'] !== '', $k['key'] . ': a title, one line, a pane title and a pane sentence');
+		pg_assert_true($k['lead'] !== $k['line'], $k['key'] . ': the pane never repeats the row\'s line');
+		pg_assert_same(pg_designer_start_icon($k['key']), $k['icon'], $k['key'] . ': the start\'s one icon');
+		pg_assert_false(isset($k['drawing']), $k['key'] . ': no small drawing');
 		pg_assert_same(false, $k['disabled'], $k['key'] . ': open while there are templates');
+	}
+}
+
+function test_designer_start_kinds_groups()
+{
+	$groups = array();
+	foreach (pg_designer_start_kinds(true, true) as $k) {
+		$groups[$k['group']][] = $k['key'];
+	}
+	pg_assert_same(array(
+		'new'  => array('blank', 'template'),
+		'tool' => array('figma', 'canva'),
+		'have' => array('document', 'import', 'paste'),
+	), $groups, 'Start new, From a design tool, From what you have');
+}
+
+// One icon a start: the rail, the pane's head and the home's cards.
+function test_designer_start_icon()
+{
+	pg_assert_same(array(
+		'blank' => 'bi-plus-square', 'template' => 'bi-grid-1x2', 'figma' => 'bi-vector-pen', 'canva' => 'bi-images',
+		'document' => 'bi-file-earmark-text', 'import' => 'bi-file-zip', 'paste' => 'bi-code-slash',
+		'sketch' => 'bi-pencil', 'describe' => 'bi-stars',
+	), array_combine(
+		array('blank', 'template', 'figma', 'canva', 'document', 'import', 'paste', 'sketch', 'describe'),
+		array_map('pg_designer_start_icon', array('blank', 'template', 'figma', 'canva', 'document', 'import', 'paste', 'sketch', 'describe'))
+	));
+	pg_assert_same('', pg_designer_start_icon('nope'), 'an unknown start');
+	pg_assert_same('', pg_designer_start_icon(array('blank')), 'not text');
+}
+
+// The foot's one filled button says the act of the start.
+function test_designer_start_kinds_foot_words()
+{
+	$go = array();
+	foreach (pg_designer_start_kinds(true, true) as $k) {
+		$go[$k['key']] = $k['go'];
+	}
+	foreach (array('blank', 'import', 'paste') as $key) {
+		pg_assert_same(lang('Create design'), $go[$key], $key . ': Create design');
+	}
+	pg_assert_same(lang('Use this template'), $go['template'], 'template: Use this template');
+	foreach (array('figma', 'canva', 'document') as $key) {
+		pg_assert_same('', $go[$key], $key . ': its own words');
 	}
 }
 
@@ -235,20 +282,57 @@ function test_designer_start_go_href()
 	pg_assert_same('', pg_designer_start_go_href('template', 'bootstrap5', false), 'a template card carries its own address');
 }
 
-// The window: one tab a start, each with its drawing, title and line, each
-// pointing at its own pane; one filled button in the foot.
+// The window: one tab a start in three labelled groups, each row one icon
+// tile, its name and one line, each pointing at its own pane; the pane's
+// head is the icon, the act and one sentence; one filled button in the foot.
 function test_designer_start_window_markup()
 {
 	$html = pg_designer_start_window(array(), false);
 	pg_assert_true(strpos($html, 'id="sdStartModal"') !== false, 'the window');
 	pg_assert_same(1, preg_match_all('/role="tablist"/', $html), 'one list of starts');
+	foreach (array('Start new', 'From a design tool', 'From what you have') as $label) {
+		pg_assert_true(strpos($html, '>' . h(lang($label)) . '</') !== false, 'the group "' . $label . '"');
+	}
 	foreach (pg_designer_start_kinds(false) as $k) {
 		$tab = 'id="sd-ns-tab-' . $k['key'] . '"';
 		pg_assert_true(strpos($html, $tab) !== false, $k['key'] . ': its tab');
 		pg_assert_true(strpos($html, 'id="sd-ns-pane-' . $k['key'] . '"') !== false, $k['key'] . ': its pane');
-		pg_assert_true(preg_match('/<button[^>]*' . preg_quote($tab, '/') . '[^>]*>.*?<svg.*?<\/button>/s', $html) === 1, $k['key'] . ': a drawing in its tab');
+		pg_assert_true(preg_match('/<button[^>]*' . preg_quote($tab, '/') . '[^>]*>(.*?)<\/button>/s', $html, $m) === 1, $k['key'] . ': its row');
+		pg_assert_false(strpos($m[1], '<svg') !== false, $k['key'] . ': no small drawing in its row');
+		pg_assert_same(1, substr_count($m[1], 'class="bi '), $k['key'] . ': one icon in its row');
+		pg_assert_true(strpos($m[1], 'pg-icon-tile sd-ns-tile"><i class="bi ' . $k['icon'] . '"') !== false, $k['key'] . ': the icon as a tile');
+		pg_assert_true(preg_match('/id="sd-ns-pane-' . $k['key'] . '"[^>]*>\s*<div class="sd-ns-head"><span class="pg-icon-tile sd-ns-head-tile"[^>]*><i class="bi ' . $k['icon'] . '"/', $html) === 1, $k['key'] . ': the pane\'s head opens with the same icon');
 	}
 	pg_assert_same(1, preg_match_all('/pg-button-fill" id="sd-ns-go"/', $html), 'one filled button in the foot');
 	pg_assert_same(0, preg_match('/\bbtn btn-/', substr($html, 0, (int) strpos($html, 'id="sd-ns-pane-template"'))), 'look A buttons only');
 	pg_assert_true(strpos($html, 'data-href="add_system_style.php?framework=custom&amp;start=import"') !== false, 'a framework choice carries its address');
+}
+
+// "Built on": two cards named as things, a line and three ticks each; the
+// pill only on Blank's Bootstrap 5; the lock line once under the cards.
+function test_designer_start_framework_cards()
+{
+	foreach (array('blank', 'import', 'paste') as $key) {
+		$html = pg_designer_start_framework_choice($key, false);
+		pg_assert_true(strpos($html, '>' . h(lang('Built on')) . '</') !== false, $key . ': the label');
+		pg_assert_true(strpos($html, '<strong>' . h(lang('Bootstrap 5')) . '</strong>') !== false && strpos($html, '<strong>' . h(lang('Custom')) . '</strong>') !== false, $key . ': two cards named as things');
+		pg_assert_same(6, substr_count($html, 'bi-check-lg'), $key . ': three ticks a card');
+		pg_assert_same($key === 'blank' ? 1 : 0, substr_count($html, h(lang('Recommended'))), $key . ': the pill only on Blank');
+		pg_assert_same(1, substr_count($html, 'bi-lock'), $key . ': one lock line');
+		pg_assert_true(preg_match('/value="bootstrap5"[^>]*checked/', $html) === 1, $key . ': Bootstrap 5 comes chosen, as today');
+	}
+}
+
+// Template: a press on a card chooses it; no card has a button of its own,
+// the foot's "Use this template" uses the chosen one.
+function test_designer_start_template_cards_have_no_button()
+{
+	// The gallery reads the site's looks from the database: its source is read.
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
+	$gallery = substr($source, (int) strpos($source, 'function pg_designer_template_gallery('));
+	$gallery = substr($gallery, 0, (int) strpos($gallery, "\nfunction ", 10));
+	pg_assert_false(strpos($gallery, 'sd-tpl-use') !== false, 'no "Use This Template" on a card');
+	pg_assert_true(strpos($gallery, 'sd-tpl-card" tabindex="0" data-use="') !== false, 'a card is a stop and carries its address');
+	$win = pg_designer_start_window(array(), false);
+	pg_assert_true(preg_match('/id="sd-ns-pane-template"[^>]*data-go="' . preg_quote(h(lang('Use this template')), '/') . '"/', $win) === 1, 'the foot\'s words on the template start');
 }
