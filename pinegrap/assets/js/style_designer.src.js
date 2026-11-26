@@ -26428,8 +26428,7 @@ const StyleDesigner = (function () {
     // The stored curves, [{ key, name, value }]: from the model the
     // Variables tab holds, else the saved one (sdDesign.curves).
     function _sdCurves() {
-        var input = document.getElementById('sd-style-variables'), m = null;
-        try { m = input && input.value ? JSON.parse(input.value) : null; } catch (e) { m = null; }
+        var m = _sdVarsInputModel();
         var list = m ? m.custom || [] : (_design && _design.curves) || [];
         return list.filter(function (c) { return (!m || c.kind === 'curve') && _sdCurveNums(String(c.value)); });
     }
@@ -38863,6 +38862,48 @@ const StyleDesigner = (function () {
         return _sdSectKey(sect('bi-stars', _sdT('Interactions'), '<div data-sd-fx-body></div>'), 'interactions');
     }
 
+    // "Keep across pages" under Interactions (the part 'pagetrans'): the
+    // element's custom style body, which holds its view-transition-name,
+    // the classes of every page to list the design's names, and the
+    // writer. null when the element cannot have its own style.
+    function _sdKeepHost(n) {
+        if (typeof PgCustomStyle === 'undefined' || !window.PgUserStyles || _sdCustomStyleOff(n)) return null;
+        var kind = (n.type === 'content' && n.props.contentType) ? n.props.contentType : n.type;
+        kind = { image: 'picture', heading: 'title', paragraph: 'text' }[kind] || kind;
+        var section = '';
+        for (var cur = n, guard = 0; cur && guard < 500 && !section; guard++) {
+            var up = _sdAnyParent(cur);
+            cur = up ? up.parent : null;
+            if (cur && cur.type === 'semantic' && cur.props) section = cur.props.id || '';
+        }
+        var kh = {
+            kind: kind,
+            section: section,
+            inList: _sdFocusInLoop(n),
+            body: function () {
+                var cls = PgCustomStyle.classOf(n.props.cssClass);
+                return cls ? PgCustomStyle.body(_userStylesGet(), cls) : '';
+            },
+            bodyOf: function (cls) { return PgCustomStyle.body(_userStylesGet(), cls); },
+            classes: function () {
+                var out = [];
+                _pgAllPageTrees().forEach(function (pt) {
+                    var here = !pt.page || pt.page.key === _activeKey;
+                    var name = pt.page ? (pt.page.page_name || '') : '';
+                    _frWalk(pt.tree, function (x) {
+                        var cls = x.props ? PgCustomStyle.classOf(x.props.cssClass) : '';
+                        if (cls) out.push({ cls: cls, page: name, here: here });
+                    });
+                });
+                return out;
+            },
+            write: function (body) { _sdWriteCustomStyle(n, body); },
+            design: function () { return _sdPageTransHost(null); }
+        };
+        kh.draw = function (box) { _sdPartCall('pagetrans', 'keep', [box, kh]).catch(_sdPartFailed); };
+        return kh;
+    }
+
     // Fills the section's body once the panel is drawn. A collapsed
     // section waits for its header to open it before the part is loaded
     // for the first time; once the part has run it fills at once. A rule
@@ -38872,7 +38913,7 @@ const StyleDesigner = (function () {
         var body = panel ? panel.querySelector('[data-sd-fx-body]') : null;
         if (!body || !_sdFxTakes(n)) return;
         var fill = function () {
-            _sdPartCall('interactions', 'fill', [body, n]).then(function () {
+            _sdPartCall('interactions', 'fill', [body, n, _sdKeepHost(n)]).then(function () {
                 var srch = document.getElementById('sd-props-search');
                 if (body.isConnected && srch && srch.value.trim()) filterPropertiesPanel(srch.value.toLowerCase().trim());
             }).catch(_sdPartFailed);
@@ -78671,6 +78712,53 @@ const StyleDesigner = (function () {
         document.dispatchEvent(new CustomEvent('pg-design-theme-change'));
     }
 
+    // The hidden input style_variables as posted: the Variables tab's whole
+    // model, or { page_only, page } when only "Page transition" changed
+    // (pg_design_variables_page_only()); null when nothing changed.
+    function _sdVarsInputRaw() {
+        var input = document.getElementById('sd-style-variables');
+        try { return input && input.value ? JSON.parse(input.value) : null; } catch (e) { return null; }
+    }
+    // The Variables tab's model, null while the input holds none.
+    function _sdVarsInputModel() {
+        var m = _sdVarsInputRaw();
+        return (m && !m.page_only) ? m : null;
+    }
+
+    // "Page transition" (Settings, Theme): what the part 'pagetrans' reads
+    // and writes. The saved choice is in the design's variables file; a
+    // change goes into the Variables tab's model when it holds one, else
+    // into a page-only model the save sets on the stored file.
+    function _sdPageTransHost(el) {
+        var th = _sdThemes() || {};
+        return {
+            el: el,
+            url: th.variables || '',
+            posted: function () {
+                var m = _sdVarsInputRaw();
+                return m ? { page: m.page || null } : null;
+            },
+            set: function (page) {
+                var input = document.getElementById('sd-style-variables');
+                if (!input) return;
+                var m = _sdVarsInputModel();
+                if (m) { if (page) m.page = page; else delete m.page; }
+                else m = { page_only: 1, page: page || null };
+                input.value = JSON.stringify(m);
+                document.dispatchEvent(new CustomEvent('pg-design-theme-change'));
+            },
+            easeHtml: _sdEaseHtml,
+            easeWire: _sdEaseWire,
+            easeClean: _sdEaseClean,
+            lookMs: _sdTransLookMs
+        };
+    }
+    function _sdPageTransFill(host) {
+        var el = host ? host.querySelector('[data-sd-pagetrans]') : null;
+        if (!el) return;
+        _sdPartCall('pagetrans', 'fill', [_sdPageTransHost(el)]).catch(_sdPartFailed);
+    }
+
     function _sdThemeFind(kind, key) {
         var th = _sdThemes();
         if (!th || !key) return null;
@@ -79028,10 +79116,14 @@ const StyleDesigner = (function () {
         }
         h += '</div>';
 
+        // ── Page transition: drawn by the part 'pagetrans' ──
+        h += '<div class="sd-th-sec" data-sd-pagetrans></div>';
+
         h += '<p class="sd-th-note"><span class="bi bi-info-circle me-1"></span>' +
              esc(_sdT('The look and the palette apply to every page of the design and never change the pages themselves: switch as often as you like. The site shows the choice after you publish.')) + '</p>';
         host.innerHTML = h;
         _sdThemeBind(host);
+        _sdPageTransFill(host);
     }
 
     function _sdThemeLookBuilderHtml() {
@@ -79147,10 +79239,17 @@ const StyleDesigner = (function () {
             stored: !!th.variables,
             look: function () { return _sdThemeValue('look'); },
             palette: function () { return _sdThemeValue('palette'); },
-            model: function () {
-                try { return input && input.value ? JSON.parse(input.value) : null; } catch (e) { return null; }
+            model: _sdVarsInputModel,
+            // A page transition changed before the tab ran rides along.
+            setModel: function (m) {
+                if (!input) return;
+                var raw = _sdVarsInputRaw();
+                if (raw && raw.page_only) {
+                    if (!m) return;
+                    if (raw.page) m.page = raw.page; else delete m.page;
+                }
+                input.value = m ? JSON.stringify(m) : '';
             },
-            setModel: function (m) { if (input) input.value = m ? JSON.stringify(m) : ''; },
             tryCss: function (css) { _sdThemeTry.variables = css || ''; _sdThemeApply(); _sdLivePreviewSchedule(); },
             // Whether the canvas reads a variables stylesheet: the saved
             // file or one being tried.
@@ -91038,9 +91137,7 @@ const StyleDesigner = (function () {
             look: _sdThemeValue('look'),
             palette: _sdThemeValue('palette'),
             colorMode: _sdColorMode(),
-            model: function () {
-                try { return input && input.value ? JSON.parse(input.value) : null; } catch (e) { return null; }
-            },
+            model: _sdVarsInputModel,
             button: document.getElementById('sd-preview-menu-btn'),
             // A name of the sheet: its variable in Settings, Theme,
             // Variables, its fold open and its row marked.

@@ -6,7 +6,7 @@ module: designer_fx
 
 ## Where is the curve offered?
 - Every Easing row: Transition in Shadow and effect (core, `_sdTransRowsHtml()`) and Interactions (part `interactions`). Both draw `_sdEaseHtml()`: the list's lines (Transition first "Default"), the group "This design's curves", a "Custom curve" line when the element holds its own, then "Custom curve…", and the button "Edit the curve" at the row's end.
-- "Page transition" (DO20) is to use the same `_sdEaseHtml()` / `_sdEaseWire()` pair.
+- "Page transition" (DO20, `designer-options-page-transition.md`) uses the same `_sdEaseHtml()` / `_sdEaseWire()` pair.
 
 ## What is the editor?
 - The part `curve` (`includes/designer_parts/curve.php`, when `always`): `assets/js/pg_easing_curve.js` (`window.PGCurve`, pure) and `assets/js/style_designer_curve.js`. Opened under the row by the button or "Custom curve…" (`_sdEaseOpen()`); Esc or the button shuts it. No window, no bar button.
