@@ -10,7 +10,7 @@ description: ERP module switch and gate areas, the four permission columns, defe
 ## How is the module switched on and gated?
 - `config.erp_enabled` → `ERP_ENABLED`. Screens are `erp_*.php`, `add_erp_*.php`, `edit_erp_*.php`, `get_erp_*.php`; each gates with `validate_erp_access($user, $area)` (`includes/fn/auth.php`).
 - `$area`: `''` (the module), `'cash'` (`manage_erp_cash`), `'settings'` (`manage_erp_settings`); for the read-only right also `'read'` (a form that only reads, such as an export), `'accountant'` (the accountant's pack) and `'write'` (a change without a form, such as a job run by hand): erp-readonly-accountant-right.md.
-- Module off: not a 404. The gate prints "The ERP module is not switched on." with a link to the settings card (`pg_settings_return_url('commerce', 'pgset-erp')`): a screen that silently disappears gets reported as broken.
+- Module off: not a 404. The gate prints "The ERP module is not switched on." with a link to the settings card (`pg_settings_return_url('accounting', 'pgset-erp')`): a screen that silently disappears gets reported as broken.
 
 ## Which permission columns exist?
 - Four plain `TINYINT` columns: `manage_erp` (the module), `manage_erp_cash` (tills), `manage_erp_settings`, `manage_erp_readonly` (4.78). Roles 0–2 have the first three by role and are never read-only.

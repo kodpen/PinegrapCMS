@@ -18,7 +18,7 @@ description: ERP invoice document layer (includes/erp/document.php): template sy
 
 ## What is `erp_settings.php` now?
 - A template editor: save, preview, placeholder reference, back to default. An empty template or one equal to the default is written as `NULL`; "customized" means only "differs from the default".
-- Seller identity lives in the E-Ticaret `pgset-erp` card: `config.erp_seller_vkn` / `erp_seller_tax_office`, constants `ERP_SELLER_VKN` / `ERP_SELLER_TAX_OFFICE` (read defensively; may be undefined on old installs). Title and address come from `ORGANIZATION_NAME` / `merchant_*`.
+- Seller identity lives in Site Settings › General › Organization (`pgset-organization`): `config.erp_seller_vkn` / `erp_seller_tax_office`, constants `ERP_SELLER_VKN` / `ERP_SELLER_TAX_OFFICE` (read defensively; may be undefined on old installs). Title and address come from `ORGANIZATION_NAME` / `merchant_*`.
 
 ## What rules apply to the built-in template?
 - It has no vocabulary of its own (issue #109): every label is `{{label.*}}` from `tr.json`; `<html lang="{{language}}">` prints `SOFTWARE_LANGUAGE`; the file contains no Turkish literal or comment.

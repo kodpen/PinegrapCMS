@@ -22,6 +22,7 @@
     "VAT rate (number, without the % sign)": "KDV oranı (sayı, % işareti olmadan)",
     "VAT report": "KDV raporu",
     "VAT summary": "KDV özeti",
+    "VAT taken back is set with the expense categories": "İndirilecek KDV gider kategorilerinde belirlenir",
     "VAT withheld on purchases": "Alışlarda tevkif edilen KDV",
     "VAT withheld on sales": "Satışlarda tevkif edilen KDV",
     "VAT withheld on sales, declared by the buyer": "Satışta tevkif edilen KDV (alıcı beyan eder)",

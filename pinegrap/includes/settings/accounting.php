@@ -2,12 +2,18 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Site Settings - the Accounting cards: the ERP and the e-document provider.
+ * Site Settings - the Accounting pane: the ERP and the e-document provider.
  *
- * Fills $pg_settings_cards, one grid column per card, in reading order. Which
- * cards belong here is said once, in includes/settings/registry.php; this file
- * holds them, and accounting.save.php writes what they edit. The variables they
- * read are prepared by includes/settings/prep.php.
+ * Enable the ERP module stands at the pane's head; under it each part is one
+ * folded row (includes/settings/fold.php) holding its card, the rows' order,
+ * names and lines being includes/fn/accounting_settings_fold.php. The ERP's
+ * fields are cut by topic into Documents, Sales, Web orders, Customer
+ * accounts, Foreign currency and Reminders and notices; the module's other
+ * cards follow. Fills $pg_settings_cards with the head and the one list of
+ * rows. Which cards belong here is said once, in
+ * includes/settings/registry.php; this file holds them, and
+ * accounting.save.php writes what they edit, every field under its old name.
+ * The variables they read are prepared by includes/settings/prep.php.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -23,23 +29,39 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 // document templates are drawn by the ERP module, which draws them on the ERP
 // Settings screen too.
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/accounting_settings_fold.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/settings/fold.php');
 
-// ── ERP ──
-$pg_settings_cards[] = '
+// Each part's card and its line of state, by row key; drawn as rows at the
+// end in pg_accounting_fold_order(). A card the site does not show (the
+// Turkish e-document cards elsewhere) is drawn hidden after the rows, as
+// before, so a save still finds its fields.
+$accounting_parts = array();
+$accounting_hidden = '';
+
+// ── Enable the ERP module ──
+// Above the rows, in the same form as the invoice series: the save checks one
+// with the other and runs the module's setup after it.
+$accounting_head = '
+    <div class="d-flex flex-column gap-3 mb-5">
+        <div class="d-flex align-items-center gap-5">
+            <input type="checkbox" class="pg-switch" value="1"' . $erp_enabled_checked . ' id="erp_enabled" name="erp_enabled" aria-describedby="erp_enabled_help"/>
+            <label class="pg-text-2" for="erp_enabled">' . lang('Enable the ERP module') . '</label>
+        </div>
+        <p class="pg-field-help pg-text-meta fg-secondary mb-0" id="erp_enabled_help">' . lang('Adds accounts, cash and bank, invoices and delivery notes to the panel. Switching it off hides the screens; nothing that was entered is deleted.') . '</p>
+    </div>';
+
+// ── Documents ──
+// The series, numbers, tax names, the sale's address and the payment term.
+// Keeps the ERP card's id, so every link to that card lands on this row.
+$accounting_parts['erp'] = array('html' => '
     <div id="pgset-erp" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 pg-title-section">
-                ' . lang('ERP') . '
+                ' . lang('Documents') . '
             </div>
             <div class="card-body">
                 <div class="row gy-5">
-                    <div class="col-12">
-                        <div class="form-field">
-                            <div class="switch"><input value="1"' . $erp_enabled_checked . ' class="" type="checkbox" id="erp_enabled" name="erp_enabled" /></div>
-                            <label class="" for="erp_enabled">' . lang('Enable the ERP module') . '</label>
-                        </div>
-                        <div class="form-text">' . lang('Adds accounts, cash and bank, invoices and delivery notes to the panel. Switching it off hides the screens; nothing that was entered is deleted.') . '</div>
-                    </div>
                     <div class="pg-f-md">
                         <label class="form-label" for="erp_default_series">' . lang('Invoice series') . '</label>
                         <input type="text" class="form-control" id="erp_default_series" name="erp_default_series" value="' . h($erp_default_series) . '" maxlength="10" pattern="[A-Za-z0-9]{1,10}" autocapitalize="characters" spellcheck="false" autocomplete="off" />
@@ -70,11 +92,65 @@ $pg_settings_cards[] = '
                         <input type="number" class="form-control" id="erp_default_due_days" name="erp_default_due_days" value="' . (int) $erp_default_due_days . '" min="0" max="3650" step="1" inputmode="numeric" autocomplete="off" />
                         <div class="form-text">' . lang('A new invoice falls due this many days after its date, unless the account carries its own term. 0 means due on the invoice date.') . '</div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>') + pg_accounting_fold_documents($erp_default_series, $erp_number_style, $erp_default_due_days);
+
+// ── Sales ──
+// The walk-in sales account, the till's prices and whether invoices move stock.
+$accounting_walkin_name = '';
+
+foreach ($erp_walkin_accounts as $accounting_walkin) {
+    if ((int) $accounting_walkin['id'] === $erp_walkin_account_id) {
+        $accounting_walkin_name = (string) $accounting_walkin['title'];
+    }
+}
+
+$accounting_parts['erp-sales'] = array('html' => '
+    <div id="pgset-erp-sales" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 pg-title-section">
+                ' . lang('Sales') . '
+            </div>
+            <div class="card-body">
+                <div class="row gy-5">
                     <div class="pg-f-md">
                         <label class="form-label" for="erp_walkin_account_id">' . lang('Walk-in sales account') . '</label>
                         <select class="form-control" id="erp_walkin_account_id" name="erp_walkin_account_id">' . $erp_walkin_options . '</select>
                         <div class="form-text">' . lang('A local sale made without picking a customer is billed to this account when it is invoiced. Open an account named for the purpose, such as "Retail customer".') . '</div>
-                    </div>' . ($erp_auto_invoice_ready ? '
+                    </div>
+                    <div class="pg-f-md">
+                        <label class="form-label" for="local_sale_prices">' . lang('Prices on the till') . '</label>
+                        <select class="form-control" id="local_sale_prices" name="local_sale_prices">
+                            <option value="gross"' . (($local_sale_prices === 'gross') ? ' selected' : '') . '>' . lang('With tax included (VAT countries)') . '</option>
+                            <option value="net"' . (($local_sale_prices === 'net') ? ' selected' : '') . '>' . lang('Without tax, added at the total (sales-tax countries)') . '</option>
+                        </select>
+                        <div class="form-text">' . lang('Only what the local sale screen shows changes; product prices are kept without tax and the amount charged is the same.') . '</div>
+                    </div>
+                    <div class="col-12">
+                        <div class="form-field">
+                            <div class="switch"><input value="1"' . $erp_stock_documents_checked . ' class="" type="checkbox" id="erp_stock_documents" name="erp_stock_documents" /></div>
+                            <label class="" for="erp_stock_documents">' . lang('Invoices change stock') . '</label>
+                        </div>
+                        <div class="form-text">' . lang('On, a purchase invoice adds its products to stock and a sales invoice typed in the ERP takes them out; a return or a cancellation moves them back. An invoice raised from an order leaves stock alone, because the order already took the goods out. Only products that track stock and whole quantities are counted. Off, only the costs are kept.') . '</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>') + pg_accounting_fold_sales($local_sale_prices, $erp_stock_documents_checked !== '', $accounting_walkin_name);
+
+// ── Web orders ──
+// The invoice of a web order with its filters and the marketplaces, the
+// invoice e-mail, and how an order's shipping is written on its invoice.
+$accounting_parts['erp-orders'] = array('html' => '
+    <div id="pgset-erp-orders" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 pg-title-section">
+                ' . lang('Web orders') . '
+            </div>
+            <div class="card-body">
+                <div class="row gy-5">' . ($erp_auto_invoice_ready ? '
                     <div class="pg-f-md">
                         <label class="form-label" for="erp_auto_invoice_on">' . lang('The invoice of a web order') . '</label>
                         <select class="form-control" id="erp_auto_invoice_on" name="erp_auto_invoice_on">
@@ -106,22 +182,7 @@ $pg_settings_cards[] = '
                             <label class="" for="erp_auto_invoice_marketplace">' . lang('Also invoice marketplace orders (Trendyol, n11)') . '</label>
                         </div>
                         <div class="form-text">' . lang('A marketplace order is paid when it is imported and shipped when its tracking number arrives; the same moment and filters apply. Leave it off if you invoice them elsewhere. The invoice link is still typed on the Imported orders card.') . '</div>
-                    </div>' : '') . '
-                    <div class="pg-f-md">
-                        <label class="form-label" for="local_sale_prices">' . lang('Prices on the till') . '</label>
-                        <select class="form-control" id="local_sale_prices" name="local_sale_prices">
-                            <option value="gross"' . (($local_sale_prices === 'gross') ? ' selected' : '') . '>' . lang('With tax included (VAT countries)') . '</option>
-                            <option value="net"' . (($local_sale_prices === 'net') ? ' selected' : '') . '>' . lang('Without tax, added at the total (sales-tax countries)') . '</option>
-                        </select>
-                        <div class="form-text">' . lang('Only what the local sale screen shows changes; product prices are kept without tax and the amount charged is the same.') . '</div>
-                    </div>
-                    <div class="col-12">
-                        <div class="form-field">
-                            <div class="switch"><input value="1"' . $erp_stock_documents_checked . ' class="" type="checkbox" id="erp_stock_documents" name="erp_stock_documents" /></div>
-                            <label class="" for="erp_stock_documents">' . lang('Invoices change stock') . '</label>
-                        </div>
-                        <div class="form-text">' . lang('On, a purchase invoice adds its products to stock and a sales invoice typed in the ERP takes them out; a return or a cancellation moves them back. An invoice raised from an order leaves stock alone, because the order already took the goods out. Only products that track stock and whole quantities are counted. Off, only the costs are kept.') . '</div>
-                    </div>' . ($erp_invoice_mail_ready ? '
+                    </div>' : '') . ($erp_invoice_mail_ready ? '
                     <div class="col-12">
                         <div class="form-field">
                             <div class="switch"><input value="1"' . $erp_invoice_mail_auto_checked . ' class="" type="checkbox" id="erp_invoice_mail_auto" name="erp_invoice_mail_auto" /></div>
@@ -133,7 +194,33 @@ $pg_settings_cards[] = '
                         <label class="form-label" for="erp_invoice_mail_message">' . lang('Invoice e-mail message') . '</label>
                         <textarea class="form-control" id="erp_invoice_mail_message" name="erp_invoice_mail_message" rows="2" maxlength="2000" placeholder="' . h(lang('Thank you for your purchase. Your invoice is attached to this e-mail.')) . '">' . h($erp_invoice_mail_message) . '</textarea>
                         <div class="form-text">' . lang('The text above the invoice\'s figures in the e-mail. Empty uses the text shown.') . '</div>
-                    </div>' : '') . ($erp_credit_ready ? '
+                    </div>' : '') . '
+                    <div class="pg-f-md">
+                        <label class="form-label" for="erp_shipping_tax">' . lang('Tax on shipping and surcharges') . '</label>
+                        <select class="form-control" id="erp_shipping_tax" name="erp_shipping_tax">
+                            <option value=""' . (($erp_shipping_tax === '') ? ' selected' : '') . '>' . lang('By the store\'s country') . '</option>
+                            <option value="included"' . (($erp_shipping_tax === 'included') ? ' selected' : '') . '>' . lang('Included in the amount charged, at the rate of the goods') . '</option>
+                            <option value="none"' . (($erp_shipping_tax === 'none') ? ' selected' : '') . '>' . lang('Not taxed') . '</option>
+                        </select>
+                        <div class="form-text">' . lang('How an order\'s shipping, surcharge and installment charge are written on its invoice. The customer paid them with no tax added, so a taxed charge carries its tax inside the amount (50.00 at 20% is 41.67 + 8.33) and the invoice total stays the same; goods at several rates share the charge between them. By the store\'s country: untaxed in the United States, included everywhere else.') . '</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>') + pg_accounting_fold_orders($erp_auto_invoice_ready ? $erp_auto_invoice_on : null, $erp_invoice_mail_ready ? ($erp_invoice_mail_auto_checked !== '') : null, $erp_shipping_tax);
+
+// ── Customer accounts ──
+// The credit limit, account prices and paying on account; drawn once the
+// upgrade added one of them.
+if ($erp_credit_ready || $erp_storefront_prices_ready || $erp_open_account_ready) {
+    $accounting_parts['erp-accounts'] = array('html' => '
+    <div id="pgset-erp-accounts" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 pg-title-section">
+                ' . lang('Customer accounts') . '
+            </div>
+            <div class="card-body">
+                <div class="row gy-5">' . ($erp_credit_ready ? '
                     <div class="pg-f-md">
                         <label class="form-label" for="erp_credit_limit_mode">' . lang('A sale past a customer\'s credit limit') . '</label>
                         <select class="form-control" id="erp_credit_limit_mode" name="erp_credit_limit_mode">
@@ -156,15 +243,25 @@ $pg_settings_cards[] = '
                         </div>
                         <div class="form-text">' . lang('A signed-in customer whose account has a credit limit can put an order on the account instead of paying: it is billed to the account with the account\'s payment terms. Refused when the order would take the account past its limit, counting the orders on account not invoiced yet. The order counts as paid for an invoice issued on its own and is never cancelled for an unpaid transfer.') . '</div>
                     </div>' : '') . '
-                    <div class="pg-f-md">
-                        <label class="form-label" for="erp_shipping_tax">' . lang('Tax on shipping and surcharges') . '</label>
-                        <select class="form-control" id="erp_shipping_tax" name="erp_shipping_tax">
-                            <option value=""' . (($erp_shipping_tax === '') ? ' selected' : '') . '>' . lang('By the store\'s country') . '</option>
-                            <option value="included"' . (($erp_shipping_tax === 'included') ? ' selected' : '') . '>' . lang('Included in the amount charged, at the rate of the goods') . '</option>
-                            <option value="none"' . (($erp_shipping_tax === 'none') ? ' selected' : '') . '>' . lang('Not taxed') . '</option>
-                        </select>
-                        <div class="form-text">' . lang('How an order\'s shipping, surcharge and installment charge are written on its invoice. The customer paid them with no tax added, so a taxed charge carries its tax inside the amount (50.00 at 20% is 41.67 + 8.33) and the invoice total stays the same; goods at several rates share the charge between them. By the store\'s country: untaxed in the United States, included everywhere else.') . '</div>
-                    </div>
+                </div>
+            </div>
+        </div>
+    </div>') + pg_accounting_fold_accounts(
+        $erp_credit_ready ? $erp_credit_limit_mode : null,
+        $erp_storefront_prices_ready ? ($erp_storefront_account_prices_checked !== '') : null,
+        $erp_open_account_ready ? ($erp_open_account_payment_checked !== '') : null
+    );
+}
+
+// ── Foreign currency ──
+$accounting_parts['erp-currency'] = array('html' => '
+    <div id="pgset-erp-currency" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 pg-title-section">
+                ' . lang('Foreign currency') . '
+            </div>
+            <div class="card-body">
+                <div class="row gy-5">
                     <div class="col-12">
                         <div class="form-field">
                             <div class="switch"><input value="1"' . $erp_fx_enabled_checked . ' class="collapse-switcher" type="checkbox" id="erp_fx_enabled" name="erp_fx_enabled" data-bs-target="#erp_fx_row" /></div>
@@ -191,6 +288,28 @@ $pg_settings_cards[] = '
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>') + pg_accounting_fold_currency($erp_fx_enabled === 1, BASE_CURRENCY_CODE, $erp_fx_selected);
+
+// ── Reminders and notices ──
+// Overdue receivable reminders, then the notices as they happen.
+$accounting_notices = null;
+
+if ($erp_alerts_ready) {
+    $accounting_notices = (int) ($erp_notify_collections_checked !== '') + (int) ($erp_notify_low_stock_checked !== '')
+        + (int) ($erp_quote_alert_ready && ($erp_notify_quote_expiry_checked !== ''));
+}
+
+$accounting_parts['erp-notices'] = array('html' => '
+    <div id="pgset-erp-notices" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 pg-title-section">
+                ' . lang('Reminders and notices') . '
+            </div>
+            <div class="card-body">
+                <div class="row gy-5">
                     <div class="col-12" role="group" aria-labelledby="erp_overdue_notify_title">
                         <div class="form-label" id="erp_overdue_notify_title">' . lang('Overdue receivable reminders') . '</div>
                         <div class="form-text mb-3">' . lang('Sales invoices that pass this many days overdue are announced in the panel bell, by e-mail and on a subscribed device, and once more if still open a month later. An account can carry a threshold of its own. 0 turns the reminders off.') . '</div>
@@ -282,10 +401,25 @@ $pg_settings_cards[] = '
                 </div>
             </div>
         </div>
-    </div>';
+    </div>') + pg_accounting_fold_notices($erp_overdue_notify_days, $erp_overdue_notify_frequency, $erp_overdue_notify_hour, $accounting_notices);
 
 // ── E-Invoice ──
-$pg_settings_cards[] = '
+// The provider in use and its connection; a provider picked and not
+// connected asks for attention, so the pane arrives with this row open.
+$accounting_edoc_label = '';
+$accounting_edoc_connected = false;
+
+if ($erp_edoc_installed) {
+    $accounting_edoc_code = erp_edoc_active();
+    $accounting_edoc_info = ($accounting_edoc_code !== '') ? erp_edoc_info($accounting_edoc_code) : null;
+
+    if (is_array($accounting_edoc_info)) {
+        $accounting_edoc_label = (string) $accounting_edoc_info['label'];
+        $accounting_edoc_connected = erp_edoc_connected($accounting_edoc_code);
+    }
+}
+
+$accounting_invoice_card = '
     <div id="pgset-invoice" class="pg-set-card' . (pg_edoc_settings_shown() ? '' : ' d-none') . '">
         <div class="card">
             <div class="card-header bg-reset border-0 pg-title-section">
@@ -343,8 +477,15 @@ $pg_settings_cards[] = '
         </div>
     </div>';
 
+if (pg_edoc_settings_shown()) {
+    $accounting_parts['invoice'] = array('html' => $accounting_invoice_card) + pg_accounting_fold_edoc($accounting_edoc_label, $accounting_edoc_connected);
+} else {
+    $accounting_hidden .= $accounting_invoice_card;
+}
+
 // ── Accounting Rules ──
-$pg_settings_cards[] = '
+$accounting_rules = erp_rules();
+$accounting_parts['erp-rules'] = array('html' => '
     <div id="pgset-erp-rules" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 pg-title-section">
@@ -355,12 +496,14 @@ $pg_settings_cards[] = '
                         ' . erp_settings_rules_fields() . '
             </div>
         </div>
-    </div>';
+    </div>') + pg_accounting_fold_rules(erp_settings_rules_editable(), $accounting_rules['vat_net_withholding'], $accounting_rules['vat_exemption_code']);
 
 // ── Late Payment Fee ──
 // Drawn once the upgrade added its columns; the save writes it only then.
 if (erp_late_fee_ready()) {
-    $pg_settings_cards[] = '
+    $accounting_late_fee = erp_late_fee_settings();
+    $accounting_late_fee_mark = erp_decimal_comma() ? ',' : '.';
+    $accounting_parts['late-fee'] = array('html' => '
     <div id="pgset-late-fee" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 pg-title-section">
@@ -370,14 +513,14 @@ if (erp_late_fee_ready()) {
                         ' . erp_settings_late_fee_fields() . '
             </div>
         </div>
-    </div>';
+    </div>') + pg_accounting_fold_late_fee($accounting_late_fee['rate'], rtrim(rtrim(number_format((float) $accounting_late_fee['rate'], 3, $accounting_late_fee_mark, ''), '0'), $accounting_late_fee_mark));
 }
 
 // ── e-Fatura Threshold ──
 // A Turkish rule: outside Turkey the card is drawn hidden, like the E-Invoice
 // card, so a save finds the stored amounts and keeps them.
 if (erp_efatura_threshold_ready()) {
-    $pg_settings_cards[] = '
+    $accounting_threshold_card = '
     <div id="pgset-efatura-threshold" class="pg-set-card' . (erp_settings_efatura_threshold_shown() ? '' : ' d-none') . '">
         <div class="card">
             <div class="card-header bg-reset border-0 pg-title-section">
@@ -388,6 +531,18 @@ if (erp_efatura_threshold_ready()) {
             </div>
         </div>
     </div>';
+
+    if (erp_settings_efatura_threshold_shown()) {
+        $accounting_limits = erp_efatura_threshold_limits();
+        $accounting_parts['efatura-threshold'] = array('html' => $accounting_threshold_card) + pg_accounting_fold_threshold(
+            $accounting_limits['web'],
+            $accounting_limits['general'],
+            number_format(floor($accounting_limits['web'] / 100), 0, '', erp_decimal_comma() ? '.' : ',') . ' ' . html_entity_decode(BASE_CURRENCY_SYMBOL, ENT_QUOTES | ENT_HTML5, 'UTF-8'),
+            number_format(floor($accounting_limits['general'] / 100), 0, '', erp_decimal_comma() ? '.' : ',') . ' ' . html_entity_decode(BASE_CURRENCY_SYMBOL, ENT_QUOTES | ENT_HTML5, 'UTF-8')
+        );
+    } else {
+        $accounting_hidden .= $accounting_threshold_card;
+    }
 }
 
 // ── Stock Planning ──
@@ -395,29 +550,50 @@ if (erp_efatura_threshold_ready()) {
 $erp_stock_plan_fields = erp_settings_stock_plan_fields();
 
 if ($erp_stock_plan_fields !== '') {
-    $pg_settings_cards[] = '
+    $accounting_stock_plan = erp_stock_plan_settings();
+    $accounting_parts['stock-plan'] = array('html' => '
     <div id="pgset-stock-plan" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 pg-title-section">
-                ' . lang('Stock Planning') . '
+                ' . lang('Stock planning') . '
             </div>
             <div class="card-body">
                         ' . $erp_stock_plan_fields . '
             </div>
         </div>
-    </div>';
+    </div>') + pg_accounting_fold_stock_plan($accounting_stock_plan['safety'], $accounting_stock_plan['cover'], $accounting_stock_plan['dead']);
 }
 
 // ── Document Templates ──
 // The editor, with its preview and reset, stays on the ERP Settings screen.
-$pg_settings_cards[] = '
+$accounting_templates_saved = 0;
+$accounting_templates = erp_settings_documents();
+
+foreach ($accounting_templates as $accounting_template) {
+    if (str_replace("\r\n", "\n", (string) $accounting_template['current']) !== str_replace("\r\n", "\n", (string) $accounting_template['default'])) {
+        $accounting_templates_saved++;
+    }
+}
+
+$accounting_parts['erp-templates'] = array('html' => '
     <div id="pgset-erp-templates" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 pg-title-section">
-                ' . lang('Document Templates') . '
+                ' . lang('Document templates') . '
             </div>
             <div class="card-body">
                         ' . erp_settings_templates_status(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_settings.php') . '
             </div>
         </div>
-    </div>';
+    </div>') + pg_accounting_fold_templates($accounting_templates_saved, count($accounting_templates));
+
+// ── The rows ──
+$accounting_rows = array();
+
+foreach (pg_accounting_fold_order() as $accounting_key) {
+    if (isset($accounting_parts[$accounting_key])) {
+        $accounting_rows[] = array('key' => $accounting_key) + pg_accounting_fold_face($accounting_key) + $accounting_parts[$accounting_key];
+    }
+}
+
+$pg_settings_cards[] = $accounting_head . pg_settings_fold($accounting_rows) . $accounting_hidden;
