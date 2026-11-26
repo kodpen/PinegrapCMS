@@ -74,13 +74,13 @@ function pg_cleanup_framework_classes($css)
  * nor a framework row.
  *
  * @param string $json style_custom_css
- * @return array of array('name', 'css')
+ * @return array of array('name', 'css', 'index'): index is the row's place in the list
  */
 function pg_cleanup_own_sheets($json)
 {
     $rows = json_decode((string) $json, true);
     $out = array();
-    foreach (is_array($rows) ? $rows : array() as $row) {
+    foreach (is_array($rows) ? array_values($rows) : array() as $index => $row) {
         if (!is_array($row) || !isset($row['content']) || !is_string($row['content']) || trim($row['content']) === '') {
             continue;
         }
@@ -93,15 +93,30 @@ function pg_cleanup_own_sheets($json)
         if ($meta === 'user-styles') {
             $name = lang('Styles');
         }
-        $out[] = array('name' => $name !== '' ? $name : lang('Stylesheet'), 'css' => $row['content']);
+        $out[] = array('name' => $name !== '' ? $name : lang('Stylesheet'), 'css' => $row['content'], 'index' => $index);
     }
     return $out;
 }
 
 /**
+ * A rule's id in the window: its sheet's place, its start and its text, so
+ * a rule that moved or changed since the list was read is never matched.
+ *
+ * @param int    $index the sheet's place in style_custom_css
+ * @param int    $start
+ * @param string $text  the whole rule
+ * @return string
+ */
+function pg_cleanup_rule_id($index, $start, $text)
+{
+    return (int) $index . '-' . (int) $start . '-' . substr(md5((string) $text), 0, 10);
+}
+
+/**
  * The style rules list: every sheet's rules nothing uses, the largest
  * first, each with its sheet, the classes nothing uses, its media
- * condition, its size and its text (for "Show"). A sheet the finder could
+ * condition, its size, its text (for "Show") and its id and place (for
+ * the removal, design_cleanup_remove.php). A sheet the finder could
  * not tell about lists nothing and gets a note: its name, the reason
  * (bound_class, dynamic_class, unreadable, script_unread) and where.
  *
@@ -124,7 +139,12 @@ function pg_cleanup_rule_list($sheets, $state)
         }
         foreach ($found['rows'] as $row) {
             $text = substr($sheet['css'], $row['start'], $row['end'] - $row['start']);
+            $index = isset($sheet['index']) ? (int) $sheet['index'] : 0;
             $out['rows'][] = array(
+                'id'       => pg_cleanup_rule_id($index, $row['start'], $text),
+                'index'    => $index,
+                'start'    => $row['start'],
+                'end'      => $row['end'],
                 'sheet'    => $sheet['name'],
                 'selector' => $row['selector'],
                 'classes'  => $row['classes'],
