@@ -237,7 +237,9 @@ function pg_privacy_request_from_input(array $input, $now, $operator_id)
         $parts = (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $day, $match) === 1) && checkdate((int) $match[2], (int) $match[3], (int) $match[1]);
         $received = $parts ? mktime(0, 0, 0, (int) $match[2], (int) $match[3], (int) $match[1]) : 0;
 
-        if (!$parts || ($received > (int) $now)) {
+        // A day before 1970 has no timestamp above 0 and would read as a
+        // request never proven.
+        if (!$parts || ($received <= 86400) || ($received > (int) $now)) {
             $errors['received_on'] = true;
         }
     }
