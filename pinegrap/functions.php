@@ -186,6 +186,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/security_scan_accounts.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/security_scan_section.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_review_mails.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/config_text.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/ai_quota.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/legal_documents.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/geo.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/language_redirect.php');

@@ -6582,7 +6582,7 @@ function license_check($properties = false)
                              style="width:' . h($bar_progress) . '%"
                              aria-valuenow="' . (int) $countdown . '" aria-valuemin="0" aria-valuemax="365"></div>
                     </div>
-                </div>';
+                </div>' . pg_ai_quota_card_html(pg_ai_quota_view(pg_ai_quota(), time()));
             } elseif ($status === 'success' && $expiration_dt instanceof DateTime) {
                 // expired — show the date it expired
                 $bar_body = '

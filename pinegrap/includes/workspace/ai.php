@@ -398,6 +398,12 @@ function ws_ai_http($method, $path, $payload = null, $timeout = 15)
 
     if ($path === '/chat/completions') {
         ws_ai_usage_add($out);
+
+        // An answer, or the day's limit reached: the licence's count of the
+        // day has moved, so the figure under the licence card follows it.
+        if (in_array((int) $out['http'], array(200, 429), true)) {
+            ws_ai_quota_refresh();
+        }
     }
 
     return $out;
@@ -548,6 +554,7 @@ function ws_ai_license_check($force = false)
     }
 
     $response = ws_ai_http('GET', '/license', null, 15);
+    ws_ai_quota_keep($response, time());
     $verdict = ws_ai_license_verdict($response);
     $json = is_array($response['json']) ? $response['json'] : array();
 
@@ -592,6 +599,52 @@ function ws_ai_license_check($force = false)
     }
 
     return $config['license_state'];
+}
+
+/**
+ * Keeps the day's token count a licence answer carries (pg_ai_quota_from()).
+ * Only the gateway's own answer counts: a 200 that says whether the key is
+ * valid, or its refusal of the key. A page a network in between put up, or
+ * no answer, leaves the kept figure as it was.
+ *
+ * @param array $response ws_ai_http() of GET /license
+ * @param int   $now
+ */
+function ws_ai_quota_keep($response, $now)
+{
+    $json = is_array($response['json']) ? $response['json'] : null;
+
+    if ($json === null) {
+        return;
+    }
+
+    $licence_answer = (((int) $response['http'] === 200) && array_key_exists('valid', $json)) || (ws_ai_license_verdict($response) !== '');
+
+    if ($licence_answer) {
+        pg_ai_quota_save(pg_ai_quota_from($json, $now));
+    }
+}
+
+/**
+ * Asks the gateway for the licence's count of the day when the kept figure
+ * is older than PG_AI_QUOTA_TTL or from a day that has ended, at most once a
+ * PG_AI_QUOTA_TTL in one request (a long run reads config_text once).
+ *
+ * @param bool $force ask now
+ */
+function ws_ai_quota_refresh($force = false)
+{
+    static $asked = 0;
+
+    $now = time();
+
+    if (!$force && ((($now - $asked) < PG_AI_QUOTA_TTL) || !pg_ai_quota_due(pg_ai_quota(), $now))) {
+        return;
+    }
+
+    $asked = $now;
+
+    ws_ai_quota_keep(ws_ai_http('GET', '/license', null, 5), $now);
 }
 
 /**
@@ -5299,6 +5352,7 @@ function ws_ai_settings_card($self_url, $viewer, $form = null)
         'notices'     => $notices,
         'license'     => array('label' => $license['label'], 'tone' => ws_ai_license_tone($license['tone'])),
         'tokens'      => ws_ai_tokens_ready() ? ws_ai_tokens_line(ws_ai_read_tokens()) : '',
+        'quota'       => pg_ai_quota_view(pg_ai_quota(), time()),
         'last'        => empty($latest)
             ? lang('Nobody has asked Pinegrap AI yet.')
             : lang(array('string' => 'Last request {var:1}', 'vars' => ws_time_label($latest[0]['created_at']))) . ' · ' . ws_ai_request_state($viewer, $latest[0])['label'],
@@ -5367,6 +5421,11 @@ function ws_ai_row_html($v)
 
     if ((string) $v['tokens'] !== '') {
         $facts .= '<span aria-hidden="true">·</span><span>' . h($v['tokens']) . '</span>';
+    }
+
+    // The licence's count of the day, every site of the licence together.
+    if (!empty($v['quota'])) {
+        $facts .= '<span aria-hidden="true">·</span><span' . (($v['quota']['tone'] !== 'success') ? ' class="fg-' . h($v['quota']['tone']) . '"' : '') . '>' . h(lang(array('string' => 'Licence today: {var:1}', 'vars' => pg_ai_quota_line($v['quota'])))) . '</span>';
     }
 
     // The fold "Application": the application, or the button that makes it,
