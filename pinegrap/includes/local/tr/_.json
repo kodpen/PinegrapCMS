@@ -2634,6 +2634,7 @@
     "{var} changes this section": "{var} bu bölümü değiştiriyor",
     "{var} cm": "{var} cm",
     "{var} colours": "{var} renk",
+    "{var} colours, each with a light and a dark value": "{var} renk, her birinin açık ve koyu değeri var",
     "{var} come as your own variables": "{var} tanesi kendi değişkenlerin olarak gelir",
     "{var} copy": "{var} kopyası",
     "{var} could not be read.": "{var} okunamadı.",

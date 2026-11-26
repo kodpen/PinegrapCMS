@@ -78767,11 +78767,11 @@ const StyleDesigner = (function () {
             // its menu, never buttons of their own.
             var more = '<details class="sd-vars-more ms-auto position-relative">' +
                 '<summary class="btn btn-sm btn-link theme-secondary"><span class="bi bi-three-dots me-1" aria-hidden="true"></span>' + esc(_sdT('More')) + '</summary>' +
-                '<div class="dropdown-menu show end-0" role="menu"><button type="button" class="dropdown-item" role="menuitem" data-th-ask>' + esc(_sdT('Ask me again')) + '</button>' +
-                '<button type="button" class="dropdown-item" role="menuitem" data-th-file="importTokens">' + esc(_sdT('Import')) + '</button>' +
+                '<div class="dropdown-menu show end-0" role="menu"><button type="button" class="dropdown-item" role="menuitem" data-th-ask><span class="bi bi-chat-square-dots me-2" aria-hidden="true"></span>' + esc(_sdT('Ask me again')) + '</button>' +
+                '<button type="button" class="dropdown-item" role="menuitem" data-th-file="importTokens"><span class="bi bi-box-arrow-in-down me-2" aria-hidden="true"></span>' + esc(_sdT('Import')) + '</button>' +
                 // Grey while the design has no variables yet.
-                '<button type="button" class="dropdown-item" role="menuitem" data-th-file="exportTokens"' + (_sdVarsHost(null).hasCss() ? '' : ' disabled') + '>' + esc(_sdT('Export')) + '</button></div></details>';
-            host.innerHTML = '<div class="d-flex align-items-start gap-2">' + tabs + more + '</div><div id="sd-vars-pane"><p class="form-text small">' + esc(_sdT('Loading…')) + '</p></div>';
+                '<button type="button" class="dropdown-item" role="menuitem" data-th-file="exportTokens"' + (_sdVarsHost(null).hasCss() ? '' : ' disabled') + '><span class="bi bi-box-arrow-up me-2" aria-hidden="true"></span>' + esc(_sdT('Export')) + '</button></div></details>';
+            host.innerHTML = '<div class="d-flex flex-wrap align-items-start gap-2">' + tabs + more + '</div><div id="sd-vars-pane"><p class="form-text small">' + esc(_sdT('Loading…')) + '</p></div>';
             _sdThemeBindTabs(host);
             host.querySelector('[data-th-ask]').addEventListener('click', _sdVarsAskAgain);
             host.querySelectorAll('[data-th-file]').forEach(function (b) {
@@ -78782,6 +78782,7 @@ const StyleDesigner = (function () {
             host.querySelector('.sd-vars-more').addEventListener('toggle', function () {
                 var ex = host.querySelector('[data-th-file="exportTokens"]');
                 if (ex && this.open) ex.disabled = !_sdVarsHost(null).hasCss();
+                _sdVarsMoreWatch(this);
             });
             _sdPartCall('variables', 'render', [_sdVarsHost(document.getElementById('sd-vars-pane'))]).catch(_sdPartFailed);
             return;
@@ -79020,6 +79021,37 @@ const StyleDesigner = (function () {
                 while ((m = re.exec(text))) out[m[1]] = (out[m[1]] || 0) + 1;
                 return out;
             }
+        };
+    }
+
+    // The Variables tab's "More" menu closes as a menu does: on a click
+    // outside it and on Escape (which goes no further, so the Settings
+    // window stays), focus back on "More". Its two listeners live only while
+    // it is open.
+    var _sdVarsMoreOff = null;
+    function _sdVarsMoreWatch(more) {
+        if (_sdVarsMoreOff) { _sdVarsMoreOff(); _sdVarsMoreOff = null; }
+        if (!more.open) return;
+        // A redraw of the tab drops the menu without a toggle event.
+        var gone = function () {
+            if (more.isConnected) return false;
+            if (_sdVarsMoreOff) { _sdVarsMoreOff(); _sdVarsMoreOff = null; }
+            return true;
+        };
+        var onDown = function (e) { if (!gone() && !more.contains(e.target)) more.open = false; };
+        var onKey = function (e) {
+            if (e.key !== 'Escape' || gone()) return;
+            e.preventDefault();
+            e.stopPropagation();
+            more.open = false;
+            var s = more.querySelector('summary');
+            if (s) s.focus();
+        };
+        document.addEventListener('pointerdown', onDown, true);
+        document.addEventListener('keydown', onKey, true);
+        _sdVarsMoreOff = function () {
+            document.removeEventListener('pointerdown', onDown, true);
+            document.removeEventListener('keydown', onKey, true);
         };
     }
 

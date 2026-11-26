@@ -50,7 +50,8 @@ function pg_design_variable_groups()
 {
     return array(
         'color'   => lang('Colour'),
-        'type'    => lang('Type'),
+        // Not lang('Type'): that key already means "kind" in Turkish.
+        'type'    => lang('Typography'),
         'spacing' => lang('Spacing'),
         'shape'   => lang('Shape'),
     );
@@ -792,6 +793,22 @@ function pg_design_variables_start($raw, $look, $palette)
     $defaults = pg_design_variables_defaults($look, $palette);
     $model = pg_design_variables_from_answers(null, $a, $defaults);
     return array('look' => $look, 'model' => $model, 'css' => pg_design_variables_css($model, $defaults));
+}
+
+// What a new design's editor receives from its start (the questions or the
+// Figma import): the model as the hidden style_variables input's JSON, so
+// the Variables tab reads it and the first save writes the file, and its
+// stylesheet to try on the canvas at once. Empty strings when the start
+// gave no variables.
+function pg_design_variables_start_editor($start)
+{
+    if (!is_array($start) || empty($start['model']) || !is_array($start['model'])) {
+        return array('input' => '', 'try' => '');
+    }
+    return array(
+        'input' => (string)json_encode($start['model']),
+        'try'   => isset($start['css']) ? (string)$start['css'] : '',
+    );
 }
 
 // ── Export and Import: a Design Tokens file ─────────────────────────────
