@@ -151,6 +151,21 @@ function pg_lead_touch_earlier($kind, $contact_id, $act, $ref_id)
 }
 
 /**
+ * The name of the lock a contact's lead or customer mark is checked and
+ * written under. GET_LOCK names are server-wide, so the database name keeps
+ * two sites on one server apart; at most 64 characters. Pure.
+ *
+ * @param int    $contact_id
+ * @param int    $kind
+ * @param string $database
+ * @return string
+ */
+function pg_lead_became_lock_name($contact_id, $kind, $database)
+{
+    return 'pg_lead_became_' . substr(md5((string) $database), 0, 8) . '_' . (int) $kind . '_' . (int) $contact_id;
+}
+
+/**
  * A contact's act at its own save path: when it is the contact's first lead
  * or customer act and visits were tied to the contact before it, one
  * journey row keeps its first and last touch (pg_lead_touch_verdict()).
@@ -158,7 +173,8 @@ function pg_lead_touch_earlier($kind, $contact_id, $act, $ref_id)
  * @param string $act        form, booking, order or invoice
  * @param int    $contact_id
  * @param int    $ref_id     the act's record
- * @return string the verdict, 'not_ready' before the journey's tables
+ * @return string the verdict, 'not_ready' before the journey's tables, 'busy'
+ *                when another request held the contact's lock too long
  */
 function pg_lead_became($act, $contact_id, $ref_id)
 {
@@ -170,6 +186,19 @@ function pg_lead_became($act, $contact_id, $ref_id)
     $contact_id = (int) $contact_id;
     $kind = pg_lead_touch_act_kind($act);
     $facts = array('kind' => $kind, 'contact_id' => $contact_id, 'staff' => false, 'marked' => false, 'earlier' => false, 'touches' => null);
+
+    // Two acts of one contact at the same moment (a form sent twice, an order
+    // and a paid invoice) would both find no row and write two: the check
+    // and the write run under the contact's lock for the kind.
+    $lock = '';
+
+    if (($kind > 0) && ($contact_id > 0)) {
+        $lock = pg_lead_became_lock_name($contact_id, $kind, defined('DB_DATABASE') ? (string) DB_DATABASE : '');
+
+        if ((int) db_value("SELECT GET_LOCK('" . e($lock) . "', 5)") !== 1) {
+            return 'busy';
+        }
+    }
 
     // Each fact is read only while the verdict still needs it.
     if (($kind > 0) && ($contact_id > 0)) {
@@ -194,6 +223,10 @@ function pg_lead_became($act, $contact_id, $ref_id)
             "INSERT INTO contact_journey (contact_id, kind, at, visit_id, ref_id, detail, first_visit_id, last_visit_id) VALUES (?, ?, ?, 0, ?, ?, ?, ?)",
             array((string) $contact_id, (string) $kind, (string) $now, (string) max(0, (int) $ref_id), (string) $act, (string) $facts['touches']['first'], (string) $facts['touches']['last'])
         );
+    }
+
+    if ($lock !== '') {
+        db_value("SELECT RELEASE_LOCK('" . e($lock) . "')");
     }
 
     return $verdict;

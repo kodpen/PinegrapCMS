@@ -139,3 +139,17 @@ function test_lead_touch_screen_pinned()
 	pg_assert_contains("case 'lead_sources.php':", $menu, 'the Visitors menu is the active one');
 	pg_assert_contains("'lead_sources'", $help, 'a help row');
 }
+
+function test_lead_touch_became_runs_under_the_contacts_lock()
+{
+	$name = pg_lead_became_lock_name(42, PG_LEAD_JOURNEY_LEAD, 'shop_db');
+
+	pg_assert_true(strlen($name) <= 64, 'a lock name has at most 64 characters');
+	pg_assert_true($name !== pg_lead_became_lock_name(42, PG_LEAD_JOURNEY_CUSTOMER, 'shop_db'), 'a lead and a customer mark lock apart');
+	pg_assert_true($name !== pg_lead_became_lock_name(42, PG_LEAD_JOURNEY_LEAD, 'other_db'), 'two sites on one server lock apart');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/lead_touch.php');
+	$body = substr($source, strpos($source, 'function pg_lead_became($act'));
+	pg_assert_true(strpos($body, 'GET_LOCK') !== false && strpos($body, 'GET_LOCK') < strpos($body, 'FROM contact_journey'), 'the check and the write run under the lock');
+	pg_assert_contains('RELEASE_LOCK', $body);
+}
