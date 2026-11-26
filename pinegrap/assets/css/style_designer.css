@@ -9108,6 +9108,23 @@ button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible, bu
     .sd-skd-note { display: none; }
     .sd-skd-foot { justify-content: flex-end; }
 }
+/* The Sketch tool's buttons (its windows, the list of boxes to check, the
+   frame's head and foot) on the chrome's tokens: Bootstrap's own primary and
+   secondary follow the page theme and drew a pale blue Save beside a black
+   Cancel on the dark chrome. */
+.sd-skd .btn-solid.theme-primary, .sd-skb-check .btn-solid.theme-primary, .sd-sketch-act.btn-solid.theme-primary {
+    background: var(--sd-accent-strong); border-color: var(--sd-accent-strong); color: var(--sd-on-accent); border-radius: 8px;
+}
+.sd-skd .btn-solid.theme-primary:hover, .sd-skb-check .btn-solid.theme-primary:hover, .sd-sketch-act.btn-solid.theme-primary:hover {
+    background: color-mix(in srgb, var(--sd-on-accent) 10%, var(--sd-accent-strong)); border-color: color-mix(in srgb, var(--sd-on-accent) 10%, var(--sd-accent-strong));
+}
+.sd-skd .btn-outline.theme-secondary, .sd-skb-check .btn-outline.theme-secondary, .sd-sketch-act.btn-outline.theme-secondary {
+    background: var(--sd-raised-bg-2); color: var(--sd-text); border-color: var(--sd-border-strong); border-radius: 8px;
+}
+.sd-skd .btn-outline.theme-secondary:hover, .sd-skb-check .btn-outline.theme-secondary:hover, .sd-sketch-act.btn-outline.theme-secondary:hover {
+    background: color-mix(in srgb, var(--sd-text) 8%, var(--sd-raised-bg-2)); color: var(--sd-text);
+}
+.sd-skd .btn:disabled, .sd-skb-check .btn:disabled, .sd-sketch-act.btn:disabled { opacity: .45; cursor: default; }
 /* Read out by a screen reader only. */
 .sd-proto-sr { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 

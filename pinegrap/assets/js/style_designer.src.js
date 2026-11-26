@@ -80276,7 +80276,16 @@ const StyleDesigner = (function () {
                 if (event.key === 'Enter' && event.shiftKey && event.target.classList && event.target.classList.contains('sd-proto-frame')) return _sdProtoPathTo(event.target.getAttribute('data-node'));
                 // Enter on a frame zooms to it, as a double-click does; 0
                 // fits everything (the core's key), so the zoom is forgotten.
-                if (event.key === 'Enter' && event.target.classList && event.target.classList.contains('sd-proto-frame')) return _sdProtoZoomTo(event.target.getAttribute('data-node'));
+                // Selected first, or a frame reached by Tab is shown dimmed
+                // beside the one still selected.
+                if (event.key === 'Enter' && event.target.classList && event.target.classList.contains('sd-proto-frame')) {
+                    var zid = event.target.getAttribute('data-node');
+                    if (_sdProto.byId[zid] && String(_sdProto.canvas.focused()) !== zid) {
+                        _sdProto.canvas.focus(_sdProto.byId[zid].id);
+                        _sdProtoSelect({ type: 'node', id: _sdProto.byId[zid].id });
+                    }
+                    return _sdProtoZoomTo(zid);
+                }
                 if (event.key === '0') _sdProtoZoomForget();
                 // The open tab's undo history, as on the canvas; the map is
                 // read again after it.
@@ -80402,6 +80411,7 @@ const StyleDesigner = (function () {
         _sdProto.warned = {};
         _sdProto.focusOpen = true;
         _sdProto.ui.root.hidden = false;
+        _sdProtoInert(true);
         _sdProtoButtonState();
         _sdCanvasBarMode(true);
         _sdProtoCommentsTell();
@@ -80426,6 +80436,7 @@ const StyleDesigner = (function () {
         _sdProtoZoomBack(true);
         _sdProtoPicReset(true);
         if (_sdProto.ui) _sdProto.ui.root.hidden = true;
+        _sdProtoInert(false);
         _sdProtoCommentsTell();
         _sdProtoButtonState();
         // The bar's Prototype controls go with the mode: the focus goes to
@@ -80433,6 +80444,21 @@ const StyleDesigner = (function () {
         _sdCanvasBarMode(false);
         var btn = document.getElementById('sd-vb-design');
         if (btn) btn.focus();
+    }
+
+    // What the view lies over (the page's frame, the empty page's starts)
+    // is out of Tab's reach while it is open: Shift+Tab from the map went
+    // to hidden buttons and Enter ran them. Only what this set is undone.
+    function _sdProtoInert(on) {
+        var root = _sdProto.ui ? _sdProto.ui.root : null;
+        (_sdProto.inerted || []).forEach(function (el) { el.removeAttribute('inert'); });
+        _sdProto.inerted = [];
+        if (!on || !root || !root.parentNode) return;
+        Array.prototype.slice.call(root.parentNode.children).forEach(function (el) {
+            if (el === root || el.hasAttribute('inert')) return;
+            el.setAttribute('inert', '');
+            _sdProto.inerted.push(el);
+        });
     }
 
     // The tabs as the collector reads them: the open tab's live tree and
@@ -80897,16 +80923,28 @@ const StyleDesigner = (function () {
         if (_sdProto.sk.key === from) _sdProto.sk.key = to;
     }
 
-    // The Canva start (sdDesign.autoSketch): its pages wait as the new
-    // design's sketch, written by assets/js/designer_canva.js; the
-    // Prototype view opens on them with the Sketch switch on.
+    // The Canva start (sdDesign.autoSketch) and the empty page's "Sketch
+    // it": the Canva pages wait as the new design's sketch, written by
+    // assets/js/designer_canva.js; the Prototype view opens on the first
+    // sketch page with the Sketch switch on, or on a new one.
     function _sdSketchStart() {
-        if (!_sdProto.open) _sdProtoOpen();
-        if (!_sdProto.open) return;
-        if (!_sdProto.sketchOn) _sdSketchSwitch(true);
+        if (!_sdProto.open) {
+            _sdProtoOpen();
+            if (!_sdProto.open) return;
+            // The map is read first: a new page goes right of its frames,
+            // and the first drawing's Fit would undo the zoom.
+            _sdProto.afterDraw = { seq: _sdProto.seq, run: _sdSketchStart };
+            return;
+        }
         var first = _sdSketchData().pages[0];
+        // "Sketch it" on an empty page with no sketch yet: a page to draw
+        // in, not the map with nothing to draw on.
+        if (!first) { _sdSketchNewPage(); return; }
+        if (!_sdProto.sketchOn) _sdSketchSwitch(true);
         var item = first ? _sdProto.byId['k:' + first.id] : null;
-        if (item && _sdProto.canvas) _sdProto.canvas.view.reveal(item);
+        // Zoomed to the page (Esc or "All" goes back to the map): a frame
+        // taller than the view shows its head.
+        if (item) _sdProtoZoomTo(item.id);
     }
 
     // A stored sketch made safe to draw: numbers whole and finite, boxes
@@ -81134,6 +81172,8 @@ const StyleDesigner = (function () {
             canvas.focus(null);
         }
         _sdProtoSelect(_sdProto.selected);
+        // The zoom's crumb names its frame again: "Page details" renames it.
+        _sdProtoZoomShow();
         var sel = _sdSketchSelEl();
         if (sel && (refocus || had)) sel.focus({ preventScroll: true });
         else if (had && focused !== null && _sdProto.byId[focused]) {
@@ -81282,7 +81322,8 @@ const StyleDesigner = (function () {
     }
 
     // "New page": an empty sketch frame right of everything on the map,
-    // selected and brought into view; the switch goes on.
+    // selected and zoomed to as Enter does (its head and both edges in
+    // sight, ready to draw in; Esc goes back to the map); the switch goes on.
     function _sdSketchNewPage() {
         var data = _sdSketchData();
         if (data.pages.length >= SD_SKETCH.pages) {
@@ -81305,7 +81346,7 @@ const StyleDesigner = (function () {
         if (!item || !_sdProto.canvas) return;
         _sdProto.canvas.focus(item.id);
         _sdProtoSelect({ type: 'node', id: item.id });
-        _sdProto.canvas.view.reveal(item);
+        _sdProtoZoomTo(item.id);
         var node = _sdProto.ui.boxes.querySelector('[data-node="k:' + id + '"]');
         if (node) node.focus({ preventScroll: true });
     }
@@ -81397,6 +81438,9 @@ const StyleDesigner = (function () {
         var ddy = dy / k;
         var r;
         var sides = '';
+        var others = [{ x: 0, y: 0, w: SD_SKETCH.w, h: _sdSketchBodyH(drag.page) }];
+        var opts = { reach: SD_SKETCH.reach / k, grid: SD_SKETCH.grid, free: !!event.altKey };
+        drag.page.boxes.forEach(function (b) { if (b !== drag.box) others.push(b); });
         if (drag.kind === 'skmove') {
             r = { x: drag.start.x + ddx, y: drag.start.y + ddy, w: drag.start.w, h: drag.start.h };
         } else if (drag.kind === 'skresize') {
@@ -81408,15 +81452,16 @@ const StyleDesigner = (function () {
             if (sides.indexOf('n') !== -1) { r.y = s.y + ddy; r.h = s.h - ddy; }
             if (sides.indexOf('s') !== -1) r.h = s.h + ddy;
         } else {
-            var a = drag.local;
-            var bx = a.x + ddx;
-            var by = a.y + ddy;
+            // The corner pressed lines up as the corner dragged does, or
+            // boxes drawn side by side start off the grid.
+            var at = window.PGGraphCanvas.snapRect({ x: drag.local.x, y: drag.local.y, w: 0, h: 0 }, others, opts);
+            var a = { x: at.x, y: at.y };
+            var bx = drag.local.x + ddx;
+            var by = drag.local.y + ddy;
             sides = (bx < a.x ? 'w' : 'e') + (by < a.y ? 'n' : 's');
             r = { x: Math.min(a.x, bx), y: Math.min(a.y, by), w: Math.abs(bx - a.x), h: Math.abs(by - a.y) };
         }
-        var others = [{ x: 0, y: 0, w: SD_SKETCH.w, h: _sdSketchBodyH(drag.page) }];
-        drag.page.boxes.forEach(function (b) { if (b !== drag.box) others.push(b); });
-        var out = window.PGGraphCanvas.snapRect(r, others, { sides: sides, reach: SD_SKETCH.reach / k, grid: SD_SKETCH.grid, min: drag.kind === 'skdraw' ? 1 : SD_SKETCH.min, free: !!event.altKey });
+        var out = window.PGGraphCanvas.snapRect(r, others, { sides: sides, reach: opts.reach, grid: opts.grid, min: drag.kind === 'skdraw' ? 1 : SD_SKETCH.min, free: opts.free });
         if (drag.kind === 'skmove') {
             out.x = Math.max(0, Math.min(SD_SKETCH.w - out.w, out.x));
             out.y = Math.max(0, out.y);
@@ -83395,6 +83440,10 @@ const StyleDesigner = (function () {
         var goTo = _sdProto.goTo;
         _sdProto.goTo = null;
         if (goTo && goTo.seq === _sdProto.seq) _sdProtoBackPick(goTo.spot);
+        // A start that waited for this load's drawing (_sdSketchStart()).
+        var after = _sdProto.afterDraw;
+        _sdProto.afterDraw = null;
+        if (after && after.seq === _sdProto.seq) after.run();
     }
 
     // ── The page picture (F1, F3) ──

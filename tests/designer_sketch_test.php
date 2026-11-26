@@ -190,6 +190,26 @@ function test_designer_sketch_details_wiring()
 	pg_assert_same(array('assets/js/pg_sketch_details.js', 'assets/js/style_designer_sketchdetails.js'), $bundles[$parts['sketchdetails']], 'its pure values, then the window');
 }
 
+// "Sketch it" (the empty page's start) with no sketch page yet makes one to
+// draw in; "New page" and a start zoom to the frame, so a page taller than
+// the view still shows its head; the zoom's crumb follows a rename; the
+// Design canvas under the view takes no focus.
+function test_designer_sketch_start_new_page()
+{
+	$start = designer_sketch_test_js('function _sdSketchStart(');
+	$new = designer_sketch_test_js('function _sdSketchNewPage(');
+
+	pg_assert_contains("if (!first) { _sdSketchNewPage(); return; }", $start, 'no sketch page: a new one');
+	pg_assert_contains('_sdProto.afterDraw = { seq: _sdProto.seq, run: _sdSketchStart };', $start, 'a view just opened waits for its map');
+	pg_assert_contains('if (after && after.seq === _sdProto.seq) after.run();', designer_sketch_test_js('function _sdProtoDraw('), 'the drawing of that load runs it');
+	pg_assert_contains('if (item) _sdProtoZoomTo(item.id);', $start, 'a start zooms to its first page');
+	pg_assert_contains('_sdProtoZoomTo(item.id);', $new, 'New page zooms to the frame, Esc goes back');
+	pg_assert_same(false, strpos($new, 'view.reveal('), 'not centred whole when taller than the view');
+	pg_assert_contains('_sdProtoZoomShow();', designer_sketch_test_js('function _sdSketchMount('), 'a renamed page renames the zoom\'s crumb');
+	pg_assert_contains('_sdProtoInert(true);', designer_sketch_test_js('function _sdProtoOpen('), 'what the view lies over is out of Tab\'s reach');
+	pg_assert_contains('_sdProtoInert(false);', designer_sketch_test_js('function _sdProtoClose('), 'and back on close');
+}
+
 // A box's rectangle: a move lines it up with another box and stays inside
 // the frame, a resize from the left stops at the frame's edge, a drawing
 // goes either way, the zoom scales the drag.
@@ -205,6 +225,8 @@ out.move = _sdSketchRect(ev, { kind: 'skmove', page: page, box: mine, start: { x
 out.right = _sdSketchRect(ev, { kind: 'skmove', page: page, box: mine, start: { x: 300, y: 300, w: 100, h: 60 } }, 500, 0);
 out.west = _sdSketchRect(ev, { kind: 'skresize', side: 'w', page: page, box: mine, start: { x: 300, y: 300, w: 100, h: 60 } }, -400, 0);
 out.draw = _sdSketchRect(ev, { kind: 'skdraw', page: page, local: { x: 200, y: 400 } }, -100, -50);
+out.from = _sdSketchRect(ev, { kind: 'skdraw', page: page, local: { x: 17, y: 163 } }, 140, 115);
+out.edge = _sdSketchRect(ev, { kind: 'skdraw', page: page, local: { x: 243, y: 37 } }, 100, 60);
 _sdProto.view.k = 2;
 out.zoomed = _sdSketchRect(ev, { kind: 'skmove', page: page, box: mine, start: { x: 300, y: 300, w: 100, h: 60 } }, 32, 0);
 console.log(JSON.stringify(out));
@@ -220,6 +242,8 @@ JS
 	pg_assert_same(380, $result['right']['x'], 'kept inside the frame\'s width');
 	pg_assert_same(array(0, 400), array($result['west']['x'], $result['west']['w']), 'a left side stops at the frame');
 	pg_assert_same(array(104, 352, 96, 48), array($result['draw']['x'], $result['draw']['y'], $result['draw']['w'], $result['draw']['h']), 'drawn up and to the left, on the grid');
+	pg_assert_same(array(16, 160, 144, 120), array($result['from']['x'], $result['from']['y'], $result['from']['w'], $result['from']['h']), 'the corner pressed lines up on the grid too');
+	pg_assert_same(array(240, 40), array($result['edge']['x'], $result['edge']['y']), 'the corner pressed lines up with a near box');
 	pg_assert_same(320, $result['zoomed']['x'], 'a drag on a zoomed map moves the box by the map\'s units');
 }
 
