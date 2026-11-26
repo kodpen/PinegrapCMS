@@ -1506,6 +1506,42 @@
   width: 100%;
 }
 
+/* -- Element sets (pg_image_editor_elements.js) -- */
+
+.pgie-elbox {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pgie-els {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.pgie .pgie-elb {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  padding: 6px;
+  border: 1px solid var(--pgie-line);
+  border-radius: 12px;
+  background: var(--pgie-hover);
+  color: inherit;
+  cursor: pointer;
+}
+
+.pgie .pgie-elb:hover {
+  border-color: var(--pgie-pline);
+}
+
+.pgie-elb svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
 /* -- Text styles and font pairs (pg_image_editor_textstyles.js) -- */
 
 .pgie-tpresets {

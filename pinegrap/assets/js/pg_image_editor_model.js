@@ -13484,6 +13484,97 @@
 
     var TEXTSTYLES = { TEXT_PRESETS: TEXT_PRESETS, FONT_PAIR_MAX: FONT_PAIR_MAX, textPreset: textPreset, fontPairs: fontPairs, fontPairStyles: fontPairStyles, textStack: textStack };
 
+    // -- Element sets (pg_image_editor_elements.js) --
+
+    // The Sticker tool's element chips, in order; the file's limit; the
+    // range of a stroked element's width, in its own box's units.
+    var ELEMENT_SETS = ['lines', 'badges', 'ribbons', 'blobs', 'arrows', 'speech', 'ornaments'];
+    var ELEMENT_MAX = 60;
+    var ELEMENT_WIDTH = [1, 12];
+    // The share of the visible board a placed element fits into.
+    var ELEMENT_SHARE = 0.35;
+
+    // The checked elements of the elements file: an id [a-z0-9-] once, a set
+    // of ELEMENT_SETS, a label key element…, a box 1 to 1000 a side, a path
+    // of numbers and path commands only, starting with a move, a stroke
+    // width (0 filled) in the range; ELEMENT_MAX at most.
+    function elementSets(data) {
+        var out = [], seen = {}, list = (data && Array.isArray(data.elements)) ? data.elements : [];
+        var size = function (n) { return (typeof n === 'number') && isFinite(n) && (n >= 1) && (n <= 1000); };
+
+        list.forEach(function (e) {
+            if (!e || (out.length >= ELEMENT_MAX) || (typeof e.id !== 'string') || !/^[a-z0-9-]{1,40}$/.test(e.id) || seen[e.id]
+                || (ELEMENT_SETS.indexOf(e.set) < 0) || (typeof e.label !== 'string') || !/^element[A-Z][A-Za-z0-9]*$/.test(e.label)
+                || !size(e.w) || !size(e.h) || (typeof e.d !== 'string') || (e.d.length > 4000) || !/^M[MLHVCQZ0-9.,\s-]*$/.test(e.d)
+                || (typeof e.stroke !== 'number') || ((e.stroke !== 0) && ((e.stroke < ELEMENT_WIDTH[0]) || (e.stroke > ELEMENT_WIDTH[1])))) {
+                return;
+            }
+
+            seen[e.id] = true;
+            out.push({ id: e.id, set: e.set, label: e.label, w: e.w, h: e.h, d: e.d, stroke: e.stroke });
+        });
+
+        return out;
+    }
+
+    function elementWidth(n) {
+        return clamp(Math.round(Number(n) || 0), ELEMENT_WIDTH[0], ELEMENT_WIDTH[1]);
+    }
+
+    // An element's one path: a filled one takes the colour as its fill, a
+    // stroked one as its stroke, with its width and round ends.
+    function elementMarkup(e, color, width) {
+        var c = svgEscape(color);
+
+        return '<path d="' + svgEscape(e.d) + '"' + (e.stroke
+            ? ' fill="none" stroke="' + c + '" stroke-width="' + elementWidth((width === undefined) ? e.stroke : width) + '" stroke-linecap="round" stroke-linejoin="round"/>'
+            : ' fill="' + c + '" stroke="none"/>');
+    }
+
+    // The colour and width (null for a filled one) of an element's markup;
+    // null for markup elementMarkup() did not write.
+    function elementPaint(markup) {
+        var m = /^<path d="[^"]*" fill="([^"]*)" stroke="([^"]*)"(?: stroke-width="([0-9]+)")?/.exec(String(markup || ''));
+
+        if (!m) {
+            return null;
+        }
+
+        return (m[1] === 'none') ? { color: m[2], width: m[3] ? Number(m[3]) : null } : { color: m[1], width: null };
+    }
+
+    // The markup with a new colour (null keeps it) and, on a stroked one, a
+    // new width (undefined keeps it).
+    function elementRepaint(markup, color, width) {
+        var now = elementPaint(markup), c;
+
+        if (!now) {
+            return markup;
+        }
+
+        c = svgEscape((color === null) || (color === undefined) ? now.color : color);
+
+        if (now.width === null) {
+            return markup.replace(/ fill="[^"]*"/, ' fill="' + c + '"');
+        }
+
+        return markup.replace(/ stroke="[^"]*"/, ' stroke="' + c + '"')
+            .replace(/ stroke-width="[0-9]+"/, ' stroke-width="' + elementWidth((width === undefined) ? now.width : width) + '"');
+    }
+
+    // A placed element: one svg path layer, its box the element's
+    // proportions fitted into ELEMENT_SHARE of the visible board, its middle
+    // on the point given.
+    function elementLayer(e, vr, centre, color) {
+        var box = svgFit(e.w, e.h, vr, ELEMENT_SHARE, true);
+
+        return { type: 'svg', kind: 'path', element: e.id, markup: elementMarkup(e, color), vb: { x: 0, y: 0, w: e.w, h: e.h },
+            x: centre[0] - box.w / 2, y: centre[1] - box.h / 2, w: box.w, h: box.h, rot: 0, opacity: 1 };
+    }
+
+    var ELEMENTS = { ELEMENT_SETS: ELEMENT_SETS, ELEMENT_MAX: ELEMENT_MAX, ELEMENT_WIDTH: ELEMENT_WIDTH, elementSets: elementSets, elementMarkup: elementMarkup,
+        elementPaint: elementPaint, elementRepaint: elementRepaint, elementLayer: elementLayer };
+
     var api = {
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,
         flipRot: flipRot, coverScale: coverScale, fitZoom: fitZoom, centred: centred, fitView: fitView, zoomAt: zoomAt,
@@ -13501,7 +13592,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, FOLLOW, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU, VIDEO, SOUND, CLIP, MIX, UPLOAD, PHONE, GROUP, ATTACH, DATA, SEND, SITECOLORS, TEXTSTYLES].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, FOLLOW, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU, VIDEO, SOUND, CLIP, MIX, UPLOAD, PHONE, GROUP, ATTACH, DATA, SEND, SITECOLORS, TEXTSTYLES, ELEMENTS].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');
