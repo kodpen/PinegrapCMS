@@ -161,6 +161,108 @@ function pg_coll_pages_page_fields($name, $title, $folder, $tree, $draft)
 }
 
 /**
+ * The folder collections' pages are kept in, from the folders directly
+ * under the top folder: the first named $name with private access that is
+ * not in the recycle bin, else 0. Pure.
+ *
+ * @param array  $rows   folder_id, folder_name, folder_parent, folder_access_control_type
+ * @param string $name   the folder's name (lang('Collections'))
+ * @param int    $root   the top folder's id
+ * @param array  $binned folder ids in the recycle bin
+ * @return int
+ */
+function pg_coll_pages_folder_pick($rows, $name, $root, $binned)
+{
+    $found = 0;
+
+    foreach ((array) $rows as $row) {
+        $id = (int) $row['folder_id'];
+
+        if ((int) $row['folder_parent'] !== (int) $root || (string) $row['folder_name'] !== (string) $name
+            || (string) $row['folder_access_control_type'] !== 'private' || in_array($id, (array) $binned, true)) {
+            continue;
+        }
+
+        if ($found === 0 || $id < $found) {
+            $found = $id;
+        }
+    }
+
+    return $found;
+}
+
+/**
+ * The private folder "Collections" directly under the top folder, where a
+ * collection made here keeps its page: visitors never open it, staff add the
+ * items. Found by its name and access, made on first use the way the Drafts
+ * folder is (pg_page_draft_folder_id()); nothing in config names it, so a
+ * site whose language changed gets a second one, which harms nothing.
+ *
+ * @return int 0 when it could not be made
+ */
+function pg_coll_pages_folder_id()
+{
+    $root = (int) db_value("SELECT folder_id FROM folder WHERE folder_parent = '0' ORDER BY folder_id LIMIT 1");
+
+    if ($root <= 0) {
+        return 0;
+    }
+
+    $name = lang('Collections');
+    $rows = db_items("SELECT folder_id, folder_name, folder_parent, folder_access_control_type FROM folder
+        WHERE folder_parent = '$root' AND folder_name = '" . e($name) . "' AND folder_access_control_type = 'private'");
+    $id = pg_coll_pages_folder_pick($rows, $name, $root, pg_recycle_bin_folder_ids());
+
+    if ($id > 0) {
+        return $id;
+    }
+
+    $level = (int) db_value("SELECT folder_level FROM folder WHERE folder_id = '$root'");
+    db("INSERT INTO folder (folder_name, folder_parent, folder_level, folder_order, folder_access_control_type,
+            folder_archived, folder_style, mobile_style_id, folder_timestamp, folder_user)
+        VALUES ('" . e($name) . "', '$root', '" . ($level + 1) . "', '9997', 'private', '0', '0', '0', UNIX_TIMESTAMP(), '" . (defined('USER_ID') ? (int) USER_ID : 0) . "')");
+    $id = (int) mysqli_insert_id(db::$con);
+
+    if ($id > 0) {
+        log_activity(lang(array('string' => 'folder ({var:1}) was created', 'vars' => array($name))), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
+    }
+
+    return max(0, $id);
+}
+
+/**
+ * Every file control of a form's tree uploads into $folder: the folder the
+ * list and detail pages return to, never the collection's private one,
+ * where an upload stays closed to the readers of those pages. Pure.
+ *
+ * @param array $tree
+ * @param int   $folder
+ * @return array
+ */
+function pg_coll_pages_upload_folder($tree, $folder)
+{
+    if (isset($tree['props']['_attrs']) && is_array($tree['props']['_attrs'])) {
+        foreach ($tree['props']['_attrs'] as $attr) {
+            if (isset($attr['name'], $attr['value']) && $attr['name'] === 'type' && $attr['value'] === 'file') {
+                $cf = (isset($tree['props']['_cf']) && is_array($tree['props']['_cf'])) ? $tree['props']['_cf'] : array();
+                $cf['upload_folder_id'] = (int) $folder;
+                $tree['props']['_cf'] = $cf;
+            }
+        }
+    }
+
+    if (isset($tree['children']) && is_array($tree['children'])) {
+        foreach ($tree['children'] as $i => $child) {
+            if (is_array($child)) {
+                $tree['children'][$i] = pg_coll_pages_upload_folder($child, $folder);
+            }
+        }
+    }
+
+    return $tree;
+}
+
+/**
  * The site's collections, for "One that is there": each with its fields,
  * its items and the pages that list or show it.
  *
@@ -306,6 +408,24 @@ function pg_coll_pages_make($req, $user)
     }
 
     $style_id = isset($req['style_id']) ? (int) $req['style_id'] : 0;
+    // The collection's page is closed to visitors in the Collections folder
+    // and is no draft: it is never on the site, and staff add items at
+    // once. The two pages are drafts where "Add Page" makes drafts, in the
+    // folder it gives (0: the top folder), where the uploads go as well.
+    $folder = 0;
+    $draft = !empty($req['draft']);
+
+    if ($what === 'collection') {
+        $folder = pg_coll_pages_folder_id();
+
+        if ($folder <= 0) {
+            return $fail(lang('The operation failed.'), '');
+        }
+
+        $draft = false;
+        $check['tree'] = pg_coll_pages_upload_folder($check['tree'], (int) db_value("SELECT folder_id FROM folder WHERE folder_parent = '0' ORDER BY folder_id LIMIT 1"));
+    }
+
     $sname = _sc_unique_name($name . '-' . str_replace('_', '-', $check['config']['regionType']) . '-widget');
     $now = time();
     db("INSERT INTO shared_components (name, description, tree_json, system_region_config, category, created_by, created_at, updated_at)
@@ -317,7 +437,7 @@ function pg_coll_pages_make($req, $user)
     }
 
     $tree = pg_coll_pages_page_tree($what, $sid, $sname, $title);
-    $fields = pg_coll_pages_page_fields($name, $title, 0, $tree, !empty($req['draft']));
+    $fields = pg_coll_pages_page_fields($name, $title, $folder, $tree, $draft);
     $saved = pg_designer_save_page($style_id, $fields, $user, false);
 
     if (empty($saved['ok']) || (int) $saved['page_id'] <= 0) {

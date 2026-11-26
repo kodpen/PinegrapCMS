@@ -149,6 +149,7 @@ StyleDesigner.definePart('pages', function (K) {
                    (r.holder ? '<span class="sd-pw-holder"><span class="bi bi-lock" aria-hidden="true"></span>' + esc(_sdT('Open for editing by {name}').replace('{name}', r.holder)) + '</span>' : '') +
                    (r.draft ? '<span class="sd-tab-draft-badge">' + esc(_sdT('Draft')) + '</span>' : '') +
                    (r.badge || '') +
+                   (r.coll ? '<span class="bi bi-lock sd-pw-lock" title="' + esc(_sdT('Closed to visitors')) + '" aria-label="' + esc(_sdT('Closed to visitors')) + '"></span>' : '') +
                    (r.locked ? '<span class="bi bi-lock-fill sd-pw-lock" aria-hidden="true"></span>' : '') +
                    '<kbd class="sd-pw-enter" aria-hidden="true">Enter</kbd>' +
                '</span>' +

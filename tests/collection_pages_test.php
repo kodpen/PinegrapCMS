@@ -261,3 +261,46 @@ function test_collection_pages_part_wiring()
 	pg_assert_contains("_sdPartCall('collection', 'open'", $core, 'the core loads the part on first use');
 	pg_assert_true(strpos($core, "function _ncSlug(") === false, 'the part is not in the core');
 }
+
+// The folders directly under the top folder (12), as the finder reads them.
+function collection_pages_folders()
+{
+	return array(
+		array('folder_id' => 20, 'folder_name' => 'Collections', 'folder_parent' => 12, 'folder_access_control_type' => 'public'),
+		array('folder_id' => 21, 'folder_name' => 'Collections', 'folder_parent' => 12, 'folder_access_control_type' => 'private'),
+		array('folder_id' => 22, 'folder_name' => 'Collections', 'folder_parent' => 12, 'folder_access_control_type' => 'private'),
+		array('folder_id' => 23, 'folder_name' => 'Drafts', 'folder_parent' => 12, 'folder_access_control_type' => 'private'),
+	);
+}
+
+function test_collection_pages_folder_found()
+{
+	pg_assert_same(21, pg_coll_pages_folder_pick(collection_pages_folders(), 'Collections', 12, array()), 'the first private Collections folder');
+	pg_assert_same(22, pg_coll_pages_folder_pick(collection_pages_folders(), 'Collections', 12, array(21)), 'one in the recycle bin is not taken');
+	pg_assert_same(0, pg_coll_pages_folder_pick(collection_pages_folders(), 'Collections', 12, array(21, 22)), 'none left: one is made');
+	pg_assert_same(0, pg_coll_pages_folder_pick(array_slice(collection_pages_folders(), 0, 1), 'Collections', 12, array()), 'the same name but not private is not taken');
+	pg_assert_same(0, pg_coll_pages_folder_pick(collection_pages_folders(), 'Koleksiyonlar', 12, array()), 'another name is not taken');
+	pg_assert_same(0, pg_coll_pages_folder_pick(collection_pages_folders(), 'Collections', 13, array()), 'only directly under the top folder');
+
+	// Made once: the folder made is the one found the next time.
+	$rows = collection_pages_folders();
+	$rows[] = array('folder_id' => 30, 'folder_name' => 'Collections', 'folder_parent' => 12, 'folder_access_control_type' => 'private');
+	pg_assert_same(30, pg_coll_pages_folder_pick($rows, 'Collections', 12, array(21, 22)), 'the folder made is found again');
+}
+
+function test_collection_pages_upload_folder()
+{
+	$file = function ($cf) {
+		return array('_id' => 'f', 'type' => 'semantic', 'props' => array('tag' => 'input', '_attrs' => array(array('name' => 'type', 'value' => 'file'), array('name' => 'name', 'value' => 'photo')), '_cf' => $cf), 'children' => array());
+	};
+	$text = array('_id' => 't', 'type' => 'semantic', 'props' => array('tag' => 'input', '_attrs' => array(array('name' => 'type', 'value' => 'text'))), 'children' => array());
+	$tree = array('_id' => 'root', 'type' => 'root', 'props' => array(), 'children' => array(
+		array('_id' => 'c', 'type' => 'container', 'props' => array(), 'children' => array($file(array('kind' => 'image')), $text, $file(array()))),
+	));
+	$out = pg_coll_pages_upload_folder($tree, 7);
+	$kids = $out['children'][0]['children'];
+	pg_assert_same(7, $kids[0]['props']['_cf']['upload_folder_id'], 'an image field uploads into the pages\' folder');
+	pg_assert_same('image', $kids[0]['props']['_cf']['kind'], 'its kind is kept');
+	pg_assert_same(7, $kids[2]['props']['_cf']['upload_folder_id'], 'a file field too, from an empty record');
+	pg_assert_true(!isset($kids[1]['props']['_cf']), 'a text field is left alone');
+}
