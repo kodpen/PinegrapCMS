@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_image_editor_parts()
 {
-    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'sound', 'keyframes', 'render', 'scenes', 'present', 'access', 'record', 'follow', 'fonts', 'textstyles', 'glyph', 'data', 'warp', 'puppet', 'outline', 'builder', 'video', 'clip', 'mix', 'upload', 'phone', 'colors', 'actions', 'menu');
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'sound', 'keyframes', 'render', 'scenes', 'present', 'access', 'record', 'follow', 'fonts', 'textstyles', 'glyph', 'elements', 'data', 'warp', 'puppet', 'outline', 'builder', 'video', 'clip', 'mix', 'upload', 'phone', 'colors', 'actions', 'menu');
 }
 
 /**
@@ -205,6 +205,8 @@ function pg_image_editor_config()
         'icons'   => pg_image_editor_icon_urls(),
         // The Text panel's font pairs, read when the panel first opens.
         'fontPairs' => pg_image_editor_font_pairs_url(),
+        // The Sticker tool's element sets, read when the panel first opens.
+        'elements' => pg_image_editor_elements_url(),
         // The animation encoder's script, started as a worker.
         'encoder' => pg_js_bundle_urls('assets/js/pg_image_editor_encode.min.js'),
         // Select subject's cut, started as a worker.
@@ -7279,4 +7281,81 @@ function pg_image_editor_strings_textstyles()
 function pg_image_editor_font_pairs_url()
 {
     return OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/canvas/font-pairs.json?v=' . (int) @filemtime(PG_FUNCTIONS_DIR . '/assets/canvas/font-pairs.json');
+}
+
+// -- Element sets (pg_image_editor_elements.js) --
+
+/**
+ * The Sticker tool's element sets: the section, its chips, the colour and
+ * width of a placed element, and each element's name (keys named in
+ * assets/canvas/elements.json).
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_elements()
+{
+    return array(
+        'elements'               => lang('Elements'),
+        'elementsError'          => lang('The elements could not be loaded.'),
+        'elementColor'           => lang('Color'),
+        'elementWidth'           => lang('Width'),
+        'elementSet_lines'       => lang('Lines'),
+        'elementSet_badges'      => lang('Badges'),
+        'elementSet_ribbons'     => lang('Ribbons'),
+        'elementSet_blobs'       => lang('Blobs'),
+        'elementSet_arrows'      => lang('Arrows'),
+        'elementSet_speech'      => lang('Speech'),
+        'elementSet_ornaments'   => lang('Ornaments'),
+        'elementLineStraight' => lang('Straight line'),
+        'elementLineDashed' => lang('Dashed line'),
+        'elementLineDotted' => lang('Dotted line'),
+        'elementLineWave' => lang('Wavy line'),
+        'elementLineZigzag' => lang('Zigzag line'),
+        'elementLineDouble' => lang('Double line'),
+        'elementBadgeCircle' => lang('Circle badge'),
+        'elementBadgeSeal' => lang('Seal'),
+        'elementBadgeBurst' => lang('Starburst'),
+        'elementBadgeShield' => lang('Shield'),
+        'elementBadgeHexagon' => lang('Hexagon badge'),
+        'elementBadgeRosette' => lang('Rosette'),
+        'elementRibbonBanner' => lang('Banner'),
+        'elementRibbonFolded' => lang('Folded ribbon'),
+        'elementRibbonCorner' => lang('Corner ribbon'),
+        'elementRibbonTag' => lang('Tag ribbon'),
+        'elementRibbonBookmark' => lang('Bookmark'),
+        'elementBlob1' => lang('Blob 1'),
+        'elementBlob2' => lang('Blob 2'),
+        'elementBlob3' => lang('Blob 3'),
+        'elementBlob4' => lang('Blob 4'),
+        'elementBlob5' => lang('Blob 5'),
+        'elementBlob6' => lang('Blob 6'),
+        'elementArrowStraight' => lang('Straight arrow'),
+        'elementArrowDouble' => lang('Double arrow'),
+        'elementArrowCurved' => lang('Curved arrow'),
+        'elementArrowBent' => lang('Bent arrow'),
+        'elementArrowLoop' => lang('Looped arrow'),
+        'elementArrowSquiggle' => lang('Squiggly arrow'),
+        'elementSpeechRound' => lang('Rounded speech bubble'),
+        'elementSpeechOval' => lang('Oval speech bubble'),
+        'elementSpeechThought' => lang('Thought bubble'),
+        'elementSpeechShout' => lang('Shout bubble'),
+        'elementSpeechSquare' => lang('Square speech bubble'),
+        'elementOrnamentCorner' => lang('Corner ornament'),
+        'elementOrnamentDivider' => lang('Diamond divider'),
+        'elementOrnamentFlourish' => lang('Flourish'),
+        'elementOrnamentBracket' => lang('Curly bracket'),
+        'elementOrnamentSparkle' => lang('Sparkle'),
+        'elementOrnamentAsterisk' => lang('Eight-pointed star'),
+    );
+}
+
+/**
+ * The element sets file of the Sticker tool; the address carries the file's
+ * time so a changed file is fetched again.
+ *
+ * @return string address
+ */
+function pg_image_editor_elements_url()
+{
+    return OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/canvas/elements.json?v=' . (int) @filemtime(PG_FUNCTIONS_DIR . '/assets/canvas/elements.json');
 }
