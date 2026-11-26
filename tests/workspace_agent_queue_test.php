@@ -62,6 +62,28 @@ function test_workspace_agent_queue_expired_where()
 	pg_assert_contains("created_at < '" . (1700000000 - WS_AI_QUEUE_TTL) . "'", $where, 'a day old');
 }
 
+function test_workspace_agent_queue_stalled()
+{
+	$now = 1700000000;
+	$where = ws_agent_queue_stalled_where($now);
+	pg_assert_contains("agent LIKE 'agent:%'", $where, 'only app agents');
+	pg_assert_contains("status = 'running'", $where, 'only a claimed one');
+	pg_assert_contains("claimed_at < '" . ($now - WS_AI_QUEUE_TTL) . "'", $where, 'claimed a day ago or more');
+
+	$row = array('status' => 'running', 'claimed_at' => $now - WS_AI_QUEUE_TTL - 10, 'ai_state' => null);
+	pg_assert_true(ws_agent_request_stalled($row, $now), 'a day of silence since the claim');
+	pg_assert_true(!ws_agent_request_stalled(array('claimed_at' => $now - 60) + $row, $now), 'claimed a minute ago');
+
+	$noted = array('ai_state' => ws_agent_progress_state(null, 'back by 22:30', $now - 3600)) + $row;
+	pg_assert_true(!ws_agent_request_stalled($noted, $now), 'a note an hour ago starts the day again');
+
+	$old_note = array('ai_state' => ws_agent_progress_state(null, 'still on it', $now - WS_AI_QUEUE_TTL - 1)) + $row;
+	pg_assert_true(ws_agent_request_stalled($old_note, $now), 'the last note a day old too');
+
+	pg_assert_true(!ws_agent_request_stalled(array('status' => 'queued') + $row, $now), 'never one nobody claimed: that expiry is the other one');
+	pg_assert_true(!ws_agent_request_stalled(array('claimed_at' => 0) + $row, $now), 'no claim time read');
+}
+
 function test_workspace_agent_wake_matches()
 {
 	$row = array('handle' => 'ci', 'app_id' => 7, 'wake_rule' => 'mention', 'wake_prefix' => '');
@@ -318,4 +340,17 @@ function test_workspace_agent_queue_expire_redraws()
 	pg_assert_contains('ws_agent_queue_expired_where($now)', $expire);
 	pg_assert_contains('ws_message_touch(', $expire, 'the message is stamped');
 	pg_assert_true(strpos($expire, "status = 'cancelled'") < strpos($expire, 'ws_message_touch('), 'after the cancel');
+}
+
+function test_workspace_agent_queue_expire_closes_stalled()
+{
+	$expire = workspace_agent_queue_test_source('ws_agent_queue_expire');
+
+	pg_assert_contains('ws_agent_queue_stalled_where($now)', $expire);
+	pg_assert_contains('ws_agent_request_stalled($row, $now)', $expire, 'each row decided by its last note');
+	pg_assert_contains("status = 'failed'", $expire);
+	pg_assert_contains("status = 'running'", $expire, 'closed only while still running: a late answer or a Cancel wins');
+	pg_assert_contains("The agent did not finish it within a day.", $expire);
+	pg_assert_contains("'👀', false", $expire, 'the eye taken off');
+	pg_assert_contains('ws_step_agent_request_closed(', $expire);
 }

@@ -19,7 +19,8 @@ module: application_jurors
 - Stable: the same link is copied, mailed again and put in reminders. A site with no key has no juror link.
 
 ## Which states does the page have?
-- `pg_application_juror_link_state()`: `invalid` (404, no row; a removed juror with no sent reviews is deleted, so lands here), `withdrawn` (403, `revoked_at` > 0: Remove keeps the hash since AR4), `expired` (410, programme closed and its current round's end passed or unset), else `open`. A closed state writes nothing, autosave included (JSON 403).
+- `pg_application_juror_link_state()`: `invalid` (404, no row; a removed juror with no sent reviews is deleted, so lands here), `withdrawn` (403, `revoked_at` > 0: Remove keeps the hash since AR4), `expired` (410, programme closed and its current round's end set and passed, `pg_application_round_over()`), else `open`. A closed state writes nothing, autosave included (JSON 403).
+- A round with no end set stays open after Close. Until the hunt of 2026-11-26 it expired at Close, which locked jurors out of a closed programme's reviewing and of every round from the second (always run on a closed programme).
 - Opening the page sets `last_seen_at`.
 
 ## Where does the manager get the link?

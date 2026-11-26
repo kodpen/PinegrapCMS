@@ -60,10 +60,26 @@ function pg_application_link_token_valid($token, $stored)
 }
 
 /**
+ * Whether a programme's current round is over for its reviewers: the
+ * programme is closed and the round's end, when one is set, has passed.
+ * Closing alone stops the entries, not the reviewing, so a round with no
+ * end set runs until the programme moves on.
+ *
+ * @param int $status  the programme's status
+ * @param int $ends_at the current round's end, 0 for none
+ * @param int $now
+ * @return bool
+ */
+function pg_application_round_over($status, $ends_at, $now)
+{
+    return ((int) $status === 2) && ((int) $ends_at > 0) && ((int) $now >= (int) $ends_at);
+}
+
+/**
  * Where an outside juror's link stands: 'invalid' (no such link),
  * 'withdrawn' (the juror was removed), 'expired' (the programme is closed
- * and its current round has ended, so nothing can be scored any more) or
- * 'open'.
+ * and its current round has ended, so nothing can be scored any more,
+ * pg_application_round_over()) or 'open'.
  *
  * @param array|null $reviewer application_reviewers row, null when not found
  * @param int        $status   the programme's status
@@ -81,7 +97,7 @@ function pg_application_juror_link_state($reviewer, $status, $ends_at, $now)
         return 'withdrawn';
     }
 
-    if (((int) $status === 2) && (((int) $ends_at <= 0) || ((int) $now >= (int) $ends_at))) {
+    if (pg_application_round_over($status, $ends_at, $now)) {
         return 'expired';
     }
 

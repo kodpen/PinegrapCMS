@@ -1139,6 +1139,7 @@
     "Remove filter: {var:1}": "Filtreyi kaldır: {var:1}",
     "Remove from Contact Groups": "Rehber Gruplarından Kaldır",
     "Remove from Design": "Tasarımdan Çıkart",
+    "Remove from Favourites": "Favorilerden çıkar",
     "Remove from Favourites (loop_area)": "Favorilerden Çıkar (loop_area)",
     "Remove from all: {var}": "Tümünden kaldır: {var}",
     "Remove from cart URL": "Sepetten kaldır URL",

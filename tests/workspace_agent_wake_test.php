@@ -100,6 +100,11 @@ function test_workspace_agent_wake_channel_and_state()
 	pg_assert_same(0, ws_agent_wake_channel(array(4, 5)), 'several channels: none');
 	pg_assert_same(0, ws_agent_wake_channel(array()));
 
+	pg_assert_true(!ws_agent_wake_may_make(array()), 'no allowed channel: no wake, the schedule kept');
+	pg_assert_true(ws_agent_wake_may_make(array(4)), 'one channel');
+	pg_assert_true(ws_agent_wake_may_make(array(4, 5)), 'several channels');
+	pg_assert_true(!ws_agent_wake_may_make(array(0)), 'no real channel');
+
 	$row = array('agent' => 'agent:3', 'message_id' => 0, 'ai_state' => ws_agent_wake_state('every', 'look', 1700000000));
 	pg_assert_same(array('kind' => 'every', 'note' => 'look', 'due' => 1700000000), ws_agent_wake_of($row));
 	pg_assert_same(null, ws_agent_wake_of(array('message_id' => 9) + $row), 'a message\'s request is no wake');

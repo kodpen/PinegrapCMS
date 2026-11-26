@@ -296,6 +296,11 @@ function pg_submitted_form_delete($form_id)
 
     pg_signature_delete($form_id);
 
+    // Its application programme entry and the reviews given on it.
+    if (function_exists('pg_application_entry_delete_for_form')) {
+        pg_application_entry_delete_for_form($form_id);
+    }
+
     // Its earlier address names (form_old_address).
     pg_record_old_address_delete($form_id);
 

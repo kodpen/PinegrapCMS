@@ -293,6 +293,28 @@ function pg_application_juror_review($review_id, $reviewer_id)
 }
 
 /**
+ * Whether a review can still be changed: not sent, of the programme's
+ * current round, and that round not over (pg_application_round_over():
+ * closed and its end passed), the moment an outside juror's link expires,
+ * so a panel reviewer sends no late score either.
+ *
+ * @param array $review  status, round
+ * @param array $program decoded: status, round, rounds
+ * @param int   $now
+ * @return bool
+ */
+function pg_application_review_open(array $review, array $program, $now)
+{
+    $round = max(1, (int) ($program['round'] ?? 1));
+
+    if (((int) $review['status'] >= 2) || ((int) $review['round'] !== $round)) {
+        return false;
+    }
+
+    return !pg_application_round_over($program['status'] ?? 0, (int) ($program['rounds'][$round - 1]['ends_at'] ?? 0), $now);
+}
+
+/**
  * A review row with its entry and programme, as the scoring screen reads
  * it; null when the entry is gone or the programme is a draft.
  *
@@ -314,7 +336,7 @@ function _pg_application_review_context(array $review)
         'program'  => $program,
         'criteria' => $program['rounds'][max(1, (int) $review['round']) - 1]['criteria'] ?? array(),
         'scores'   => pg_application_review_scores_stored($review['scores']),
-        'open'     => ((int) $review['status'] < 2) && ((int) $review['round'] === max(1, $program['round'])),
+        'open'     => pg_application_review_open($review, $program, time()),
     );
 }
 
@@ -705,7 +727,7 @@ function pg_application_review_screen_html(array $mr, $action, $hidden, callable
             </section></div>
             <div class="col-12 lg:col-5"><section class="pg-card p-5 h-100" aria-labelledby="mr_scores_title">
                 <h2 class="pg-title-section mb-0" id="mr_scores_title">' . h(lang('Scores')) . '</h2>
-                <p class="pg-card-sub mb-4">' . h($open ? lang('Score each criterion from 1 to 10. Your scores are saved as you go; send the review once.') : lang('This review was sent.')) . '</p>
+                <p class="pg-card-sub mb-4">' . h($open ? lang('Score each criterion from 1 to 10. Your scores are saved as you go; send the review once.') : (((int) $review['status'] === 2) ? lang('This review was sent.') : lang('The round is over: this review can no longer be changed.'))) . '</p>
                 <div class="pg-card-inner mb-4">' . $criteria . '</div>
                 <div class="d-flex align-items-baseline gap-2"><span class="pg-text-2 flex-grow-1">' . h(lang('Weighted total')) . '</span><strong class="pg-tabular" data-pg-mr-total>' . (($total !== null) ? h(number_format($total, 2)) : '—') . '</strong></div>
             </section></div>

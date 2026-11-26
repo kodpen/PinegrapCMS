@@ -234,6 +234,19 @@ function ws_agent_wake_channel($channel_ids)
 }
 
 /**
+ * Whether a due wake makes a request: only while the agent is allowed in
+ * a channel. Removed from its last one, the schedule is kept (the agent's
+ * own setting) and moves on; added again, the next due time wakes it. Pure.
+ *
+ * @param int[] $channel_ids the channels the agent is allowed in
+ * @return bool
+ */
+function ws_agent_wake_may_make($channel_ids)
+{
+    return count(array_filter(array_map('intval', (array) $channel_ids))) > 0;
+}
+
+/**
  * The state a wake request carries in ws_ai_requests.ai_state. Pure.
  *
  * @param string $kind every | at
@@ -509,6 +522,16 @@ function ws_agent_wake_request($agent, $now)
         return 0;
     }
 
+    $channels = array_map(function ($row) {
+        return (int) $row['channel_id'];
+    }, (array) db_items("SELECT channel_id FROM ws_channel_agents WHERE agent_id = '" . (int) $agent['id'] . "' AND allowed = 1 LIMIT 2"));
+
+    // In no channel: the schedule has moved on and is kept for when the
+    // agent is added again.
+    if (!ws_agent_wake_may_make($channels)) {
+        return 0;
+    }
+
     // An earlier wake not yet claimed: the schedule has moved on, and a
     // second request would only queue behind it.
     if ((int) db_value("SELECT id FROM ws_ai_requests WHERE " . ws_agent_wake_waiting_where($value) . " LIMIT 1") > 0) {
@@ -521,9 +544,6 @@ function ws_agent_wake_request($agent, $now)
         return 0;
     }
 
-    $channels = array_map(function ($row) {
-        return (int) $row['channel_id'];
-    }, (array) db_items("SELECT channel_id FROM ws_channel_agents WHERE agent_id = '" . (int) $agent['id'] . "' AND allowed = 1 LIMIT 2"));
     $state = ws_agent_wake_state(((int) $agent['wake_every'] > 0) ? 'every' : 'at', (string) $agent['wake_note'], (int) $agent['wake_next_at']);
 
     list($pv_column, $pv_value) = pg_ai_prompt_version_insert();
