@@ -75,7 +75,7 @@ function designer_panels_on_demand_run($script)
 		. 'var _shared = {};'
 		. 'function _resolveSharedSid(n) { return _shared[n._id] || 0; }'
 		. 'var _sdSharedOpen = { 7: true };'
-		. 'var _sdEditEpoch = 5;'
+		. 'var _sdEditEpoch = 5, _sdMeasureBatch = null;'
 		. 'var tree = { _id: "root", children: [] };'
 		. 'function out(v) { console.log(JSON.stringify(v)); }'
 		. substr($source, $from, $to - $from)
@@ -256,7 +256,7 @@ function designer_panels_html_tree_js()
 		. ' if (m) return this.rows.filter(function (r) { return r.nid === m[1]; });'
 		. ' throw new Error("selector " + sel); };'
 		. 'var codeOn = false; function _sdCodeEnabled() { return codeOn; }'
-		. 'var selectedNode = null, selectedNodes = [];'
+		. 'var selectedNode = null, selectedNodes = [], _sdMeasureBatch = null;'
 		. 'function marked(p) { return p.rows.filter(function (r) { return r.classList.contains("sd-ht-selected"); }).map(function (r) { return r.nid; }); }';
 }
 
