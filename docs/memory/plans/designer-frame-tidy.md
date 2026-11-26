@@ -6,6 +6,7 @@ priority: 8
 
 ## What is asked?
 - Owner (2026-11-26, agent channel message 14316): "görsel sayfa tasarımcısı yazılımın kalbi kargaşa azalmalı, anlamlama ve kullanıcı deneyimi artmalı"; poll 233 (message 14326): "Evet, sırada o", the editor's frame after the New design window and the home.
+- Owner (2026-11-26, agent channel poll 234, message 14331): "Evet, tek çubuk": the panel's top bar is not drawn in the editor, its tools stand in the main menu's drawer (FR5); every other screen keeps its top bar.
 
 ## What is wrong today? (counted on dev at 1440, 1024 and 390 px, 2026-11-26)
 - Three bars stand over the page: the panel's top bar (50 px, nothing on it about the page), the page bar (47 px), the canvas bar (44 px).
@@ -27,15 +28,14 @@ priority: 8
 - FR2 (M) The left column's heads, board F4.
 - FR3 (S) The bottom panel and the status bar, board F5.
 - FR4 (S) Narrow, board F6; the PR shows each of the four areas beside its drawing at 1440, 1024 and 390 px.
-- FR5 (M, on the owner's yes to poll 234, agent channel message 14331) The panel's top bar not drawn in the editor: its five tools at the head of the main menu's drawer, "Go to site" and the account row at its foot, the dot on the menu button. `includes/fn/output.php`, `backend.src.css`, `backend.src.js`; tests `menu_drawer_screen_test.php`, `panel_header_phone_test.php`.
+- FR5 (M) The panel's top bar not drawn in the editor: its five tools at the head of the main menu's drawer, "Go to site" and the account row at its foot, the dot on the menu button. `includes/fn/output.php`, `backend.src.css`, `backend.src.js`; tests `menu_drawer_screen_test.php`, `panel_header_phone_test.php`.
 - FR6 (S) Close-out: `designer/designer-left-panel-hide.md`, `designer-sticky-panel-layout.md`, `designer-palette-tabs-and-blocks.md`, `visitors/page-clicks-designer-layer.md` and `ui/main-menu-drawer-only.md` corrected, the readings below moved there, this file deleted.
 
 ## Which files?
-- `includes/designer_screen.php`, `assets/js/style_designer.src.js`, `assets/css/style_designer.css`, `assets/js/style_designer_clicks.js`: one screen's files (`workflow/coordinator-worker-steps.md`). A step waits for the drawing's merge, never for a yes; FR5 alone waits for the owner, since it changes what a panel screen shows.
+- `includes/designer_screen.php`, `assets/js/style_designer.src.js`, `assets/css/style_designer.css`, `assets/js/style_designer_clicks.js`: one screen's files (`workflow/coordinator-worker-steps.md`). A step waits for the drawing's merge, never for a yes.
 
 ## Which readings does the architect fix? (2026-11-26, agent channel request 3176)
 - Clicks is a switch over the canvas, so it is a row of the View menu; no entry of `workflow/DECISIONS.md` binds the button's place.
 - The title rows of the palette and the Overview leave; the list switch stays (owner, 2026-11-11). The bottom panel keeps its three parts side by side.
-- On the owner's no to poll 234, FR5 is taken out and the sheet drawn again with the top bar over the bar; the other steps stand either way.
 
 Related: docs/memory/designer/designer-frame-tidy-drawing.md, docs/memory/designer/designer-panels-keep.md, docs/memory/plans/designer-home-tidy.md
