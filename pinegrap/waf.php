@@ -3591,6 +3591,107 @@ function waf_text_log_path()
 }
 
 /**
+ * The query parameters whose values are credentials, as lower-case whole
+ * names: the ones every script reads as a secret, plus the short names a
+ * given script reads as one (a token, a signature, an OAuth code) that are
+ * plain input elsewhere, such as the tracking code t on a site page.
+ *
+ * @param string $script the running script's file name (waf_script_name())
+ * @return array
+ */
+function waf_credential_params($script)
+{
+    $names = array('key', 'token', 'secret', 'signature', 'sig', 'password', 'access_token', 'refresh_token', 'id_token', 'api_key', 'client_secret');
+
+    $by_script = array(
+        'router.php'                => array('k'),
+        'get_set_password.php'      => array('k'),
+        'subscription_card.php'     => array('k'),
+        'confirm_subscription.php'  => array('s'),
+        'privacy_request.php'       => array('s'),
+        'connect.php'               => array('code', 'state'),
+        'get_oauth_token.php'       => array('code', 'state'),
+        'certificate.php'           => array('code'),
+        'volunteer_certificate.php' => array('code'),
+        'application_fix.php'       => array('t'),
+        'application_juror.php'     => array('t'),
+        'booking_manage.php'        => array('t'),
+        'cart_quote.php'            => array('t'),
+        'erp_accountant_download.php' => array('t'),
+        'erp_invoice.php'           => array('t'),
+        'erp_quote.php'             => array('t'),
+        'feedback.php'              => array('t'),
+        'launch_summary.php'        => array('t'),
+        'mail_webhook.php'          => array('t'),
+        'queue.php'                 => array('t'),
+        'tickets.php'               => array('t'),
+        'volunteer.php'             => array('t'),
+        'workspace_approval.php'    => array('t'),
+        'workspace_share.php'       => array('t'),
+    );
+
+    $script = strtolower((string) $script);
+
+    return isset($by_script[$script]) ? array_merge($names, $by_script[$script]) : $names;
+}
+
+/**
+ * A request address as the firewall log stores and shows it: the path and
+ * every parameter name stay, the value of a credential parameter
+ * (waf_credential_params()) becomes '*'. Names are compared as PHP reads
+ * them: decoded, case-insensitive, a dot or a space as '_', an array
+ * suffix ignored. Every other value is the refusal's evidence and stays as
+ * sent.
+ *
+ * @param string      $url    the request address (REQUEST_URI)
+ * @param string|null $script the script that ran it; null reads it from the
+ *                            address (a .php file name, else router.php)
+ * @return string
+ */
+function waf_mask_request_url($url, $script = null)
+{
+    $url = (string) $url;
+    $question = strpos($url, '?');
+
+    if ($question === false) {
+        return $url;
+    }
+
+    $path = substr($url, 0, $question);
+
+    if ($script === null) {
+        $last = strtolower(basename(rawurldecode($path)));
+        $script = (substr($last, -4) === '.php') ? $last : 'router.php';
+    }
+
+    $names = waf_credential_params($script);
+    $parts = explode('&', substr($url, $question + 1));
+
+    foreach ($parts as $i => $part) {
+        $equals = strpos($part, '=');
+
+        if (($equals === false) || ($equals === strlen($part) - 1)) {
+            continue;
+        }
+
+        $name = urldecode(substr($part, 0, $equals));
+        $bracket = strpos($name, '[');
+
+        if ($bracket !== false) {
+            $name = substr($name, 0, $bracket);
+        }
+
+        $name = strtolower(strtr(ltrim($name, ' '), ' .', '__'));
+
+        if (in_array($name, $names, true)) {
+            $parts[$i] = substr($part, 0, $equals) . '=*';
+        }
+    }
+
+    return $path . '?' . implode('&', $parts);
+}
+
+/**
  * The rule id of the last event this request logged.
  *
  * waf_deny() is handed a status and a reference, not the rule that decided
@@ -4664,7 +4765,7 @@ function waf_log_event($action, $rule_id, $category, $score, $target, $matched)
              '" . waf_escape(substr($category, 0, 32)) . "',
              " . (int) $score . ",
              '" . waf_escape(waf_log_text($method, 8)) . "',
-             '" . waf_escape(waf_log_text($url, 500)) . "',
+             '" . waf_escape(waf_log_text(waf_mask_request_url($url, waf_script_name()), 500)) . "',
              '" . waf_escape(waf_log_text($target, 64)) . "',
              '" . waf_escape(waf_log_text($matched, 250)) . "',
              '" . waf_escape(waf_log_text($agent, 250)) . "',
