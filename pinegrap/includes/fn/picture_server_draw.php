@@ -117,6 +117,233 @@ function pg_picture_tr_language_fit($w0, $h0, $w1, $h1, $size = 0.0, $side = 0.0
 }
 
 /**
+ * The balanced breaks of a line's words: best[k][j] the narrowest widest
+ * line of the first j words in k lines, from[k][j] where its last line
+ * starts; of two breaks as narrow the later is kept, so the last line is
+ * the shorter. Twin of the editor's wrapTable(). Pure but for $measure.
+ *
+ * @param array    $words
+ * @param callable $measure a string => its width
+ * @return array n, best, from, words
+ */
+function pg_picture_tr_wrap_table($words, $measure)
+{
+    $n = count($words);
+    $seen = array();
+    $best = array(1 => array());
+    $from = array(1 => array());
+    $seg = function ($i, $j) use (&$seen, $words, $measure) {
+        $key = $i . ':' . $j;
+
+        if (!isset($seen[$key])) {
+            $w = call_user_func($measure, implode(' ', array_slice($words, $i, $j - $i)));
+            $seen[$key] = is_numeric($w) ? (float) $w : 0.0;
+        }
+
+        return $seen[$key];
+    };
+
+    for ($j = 1; $j <= $n; $j++) {
+        $best[1][$j] = $seg(0, $j);
+        $from[1][$j] = 0;
+    }
+
+    for ($k = 2; $k <= $n; $k++) {
+        $best[$k] = array();
+        $from[$k] = array();
+
+        for ($j = $k; $j <= $n; $j++) {
+            for ($i = $k - 1; $i < $j; $i++) {
+                $v = max($best[$k - 1][$i], $seg($i, $j));
+
+                if (!isset($best[$k][$j]) || ($v <= $best[$k][$j])) {
+                    $best[$k][$j] = $v;
+                    $from[$k][$j] = $i;
+                }
+            }
+        }
+    }
+
+    return array('n' => $n, 'best' => $best, 'from' => $from, 'words' => $words);
+}
+
+/**
+ * The words of a line in $k lines, as the table broke them. Pure.
+ *
+ * @param array $t pg_picture_tr_wrap_table()
+ * @param int   $k
+ * @return string
+ */
+function pg_picture_tr_wrap_lines($t, $k)
+{
+    $out = array();
+    $j = $t['n'];
+
+    for (; $k >= 1; $k--) {
+        $i = $t['from'][$k][$j];
+        array_unshift($out, implode(' ', array_slice($t['words'], $i, $j - $i)));
+        $j = $i;
+    }
+
+    return implode("\n", $out);
+}
+
+/**
+ * A line's words, null when it is not broken: one word, or more than 40
+ * (the balanced break measures every run of its words). Pure.
+ *
+ * @param string $line
+ * @return array|null
+ */
+function pg_picture_tr_wrap_words($line)
+{
+    $words = array_values(array_filter(explode(' ', $line), function ($w) {
+        return $w !== '';
+    }));
+
+    return ((count($words) < 2) || (count($words) > 40)) ? null : $words;
+}
+
+/**
+ * A translated text wrapped to $max: each of its own lines wider than $max
+ * is broken between words into the fewest lines that fit, balanced (the
+ * narrowest widest line); a word is never broken, so a word wider than
+ * $max sets the width instead. Twin of M.languageWrap(), run on the same
+ * fixtures (tests/fixtures/picture_language/wrap.json). Pure but for
+ * $measure.
+ *
+ * @param string   $text
+ * @param float    $max
+ * @param callable $measure a string => its width
+ * @param array    $tables  a cache of pg_picture_tr_wrap_table() by line
+ * @return string
+ */
+function pg_picture_tr_language_wrap($text, $max, $measure, &$tables = array())
+{
+    $out = array();
+
+    foreach (explode("\n", (string) $text) as $line) {
+        $words = pg_picture_tr_wrap_words($line);
+        $w = call_user_func($measure, $line);
+
+        if (!$words || ((is_numeric($w) ? (float) $w : 0.0) <= $max + 1e-9)) {
+            $out[] = $line;
+
+            continue;
+        }
+
+        if (!isset($tables['=' . $line])) {
+            $tables['=' . $line] = pg_picture_tr_wrap_table($words, $measure);
+        }
+
+        $t = $tables['=' . $line];
+        // Every word on a line of its own: the widest word.
+        $limit = max($max, $t['best'][$t['n']][$t['n']]);
+        $k = 1;
+
+        while (($k < $t['n']) && ($t['best'][$k][$t['n']] > $limit + 1e-9)) {
+            $k++;
+        }
+
+        $out[] = pg_picture_tr_wrap_lines($t, $k);
+    }
+
+    return implode("\n", $out);
+}
+
+/**
+ * The wraps a translated text may be drawn in, the text as it is first:
+ * its widest own line balanced in 2, 3 ... lines, each width the whole
+ * text wrapped to by pg_picture_tr_language_wrap(); each wrap once. Twin of
+ * M.languageWraps(). Pure but for $measure.
+ *
+ * @param string   $text
+ * @param callable $measure a string => its width
+ * @return array strings
+ */
+function pg_picture_tr_language_wraps($text, $measure)
+{
+    $text = (string) $text;
+    $out = array($text);
+    $tables = array();
+    $widest = null;
+    $width = -1.0;
+
+    foreach (explode("\n", $text) as $line) {
+        $w = call_user_func($measure, $line);
+        $w = is_numeric($w) ? (float) $w : 0.0;
+
+        if ($w > $width) {
+            $width = $w;
+            $widest = $line;
+        }
+    }
+
+    $words = ($widest === null) ? null : pg_picture_tr_wrap_words($widest);
+
+    if (!$words) {
+        return $out;
+    }
+
+    $t = $tables['=' . $widest] = pg_picture_tr_wrap_table($words, $measure);
+
+    for ($k = 2; $k <= $t['n']; $k++) {
+        $next = pg_picture_tr_language_wrap($text, $t['best'][$k][$t['n']], $measure, $tables);
+
+        if (!in_array($next, $out, true)) {
+            $out[] = $next;
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * A translated text layer (laid out as $wide at the source's size) wider
+ * than its room ($w x $h): of its wraps (pg_picture_tr_language_wraps(),
+ * measured by $layout) the one that needs the least shrink, the fewer
+ * lines of two alike. Sets the layer's text and answers its layout. Twin
+ * of the editor's languageWrapped(). Pure but for $layout.
+ *
+ * @param array    $layer
+ * @param array    $wide   w, h
+ * @param callable $layout a text layer => its laid out box (w, h)
+ * @param float    $w
+ * @param float    $h
+ * @return array w, h
+ */
+function pg_picture_tr_language_wrapped(&$layer, $wide, $layout, $w, $h)
+{
+    $share = function ($b) use ($w, $h) {
+        return min(1.0, $w / $b['w'], $h / $b['h']);
+    };
+    $text = (string) $layer['text'];
+    $best = $share($wide);
+    $measure = function ($s) use ($layer, $layout) {
+        $layer['text'] = $s;
+        $b = call_user_func($layout, $layer);
+
+        return $b ? $b['w'] : INF;
+    };
+
+    foreach (array_slice(pg_picture_tr_language_wraps($text, $measure), 1) as $t) {
+        $copy = $layer;
+        $copy['text'] = $t;
+        $b = call_user_func($layout, $copy);
+
+        if ($b && ($share($b) > $best + 1e-9)) {
+            $best = $share($b);
+            $wide = $b;
+            $text = $t;
+        }
+    }
+
+    $layer['text'] = $text;
+
+    return $wide;
+}
+
+/**
  * A layer's box as numbers. Pure.
  *
  * @param mixed $l
@@ -530,7 +757,9 @@ function pg_picture_tr_language_doc($doc, $texts)
 /**
  * A language's document with each changed text fitted as the Design
  * Canvas's drawLanguage() fits it (M.languageFitted()): grown into its room
- * (pg_picture_tr_language_room(), read before any text moves), shrunk by
+ * (pg_picture_tr_language_room(), read before any text moves), wider than
+ * it wrapped between words (pg_picture_tr_language_wrapped(), its lines
+ * written into the layer's text, so the draw paints them), shrunk by
  * pg_picture_tr_language_fit() only past it, never under the floor of its
  * size on the artboard's shorter side, and put by
  * pg_picture_tr_language_place(). Pure but for $layout.
@@ -579,8 +808,14 @@ function pg_picture_tr_language_fitted($put, $layout)
 
         $w0 = (isset($src['w']) && is_numeric($src['w'])) ? (float) $src['w'] : 0.0;
         $h0 = (isset($src['h']) && is_numeric($src['h'])) ? (float) $src['h'] : 0.0;
-        $fit = pg_picture_tr_language_fit($before['w'], $before['h'], $wide['w'], $wide['h'], isset($src['size']) ? $src['size'] : 0, $side,
-            $room ? $before['w'] + $room['w'] - $w0 : 0.0, $room ? $before['h'] + $room['h'] - $h0 : 0.0);
+        $roomW = $room ? $before['w'] + $room['w'] - $w0 : 0.0;
+        $roomH = $room ? $before['h'] + $room['h'] - $h0 : 0.0;
+
+        if ($room && ($wide['w'] > $roomW + 1e-9)) {
+            $wide = pg_picture_tr_language_wrapped($layer, $wide, $layout, $roomW, $roomH);
+        }
+
+        $fit = pg_picture_tr_language_fit($before['w'], $before['h'], $wide['w'], $wide['h'], isset($src['size']) ? $src['size'] : 0, $side, $roomW, $roomH);
         $scale = (isset($src['size']) && is_numeric($src['size']) && ((float) $src['size'] != 0)) ? (float) $src['size'] : 1.0;
         $layer['size'] = pg_picture_tr_js_round($scale * $fit['scale'], 2);
         $after = call_user_func($layout, $layer);

@@ -1,0 +1,17 @@
+{
+	"wrap": [
+		{ "about": "a line wider than the room breaks into the fewest lines", "text": "Big summer sale today", "max": 120, "want": "Big summer\nsale today" },
+		{ "about": "a line that fits is kept", "text": "Hello world", "max": 200, "want": "Hello world" },
+		{ "about": "a word wider than the room is never broken", "text": "Sommerschlussverkauf heute", "max": 100, "want": "Sommerschlussverkauf\nheute" },
+		{ "about": "each of the text's own lines is broken by itself", "text": "New season\nFresh looks for every day", "max": 130, "want": "New season\nFresh looks\nfor every day" },
+		{ "about": "the lines are balanced, not filled one by one", "text": "aa bb cc dd ee ff", "max": 140, "want": "aa bb cc\ndd ee ff" },
+		{ "about": "of two balanced breaks the last line is the shorter", "text": "aa b cc", "max": 50, "want": "aa b\ncc" },
+		{ "about": "one word stays as it is", "text": "Hello", "max": 10, "want": "Hello" },
+		{ "about": "an empty text stays empty", "text": "", "max": 10, "want": "" }
+	],
+	"wraps": [
+		{ "about": "one line: the text, then each balanced count of lines", "text": "Big summer sale today", "want": ["Big summer sale today", "Big summer\nsale today", "Big\nsummer\nsale\ntoday"] },
+		{ "about": "two lines: every line wrapped to the widest line's width", "text": "New season\nFresh looks for every day", "want": ["New season\nFresh looks for every day", "New season\nFresh looks\nfor every day", "New\nseason\nFresh\nlooks for\nevery day", "New\nseason\nFresh\nlooks\nfor\nevery\nday"] },
+		{ "about": "one word: nothing to wrap", "text": "Angebot", "want": ["Angebot"] }
+	]
+}

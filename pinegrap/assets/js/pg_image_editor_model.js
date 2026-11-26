@@ -2710,6 +2710,134 @@
         return { scale: Math.round(scale * 10000) / 10000, mark: false };
     }
 
+    // A line of more words than this is not broken (the balanced break
+    // measures every run of its words).
+    var LANGUAGE_WRAP_WORDS = 40;
+
+    // The balanced breaks of a line's words (measure: a string's width):
+    // best[k][j] the narrowest widest line of the first j words in k lines,
+    // from[k][j] where its last line starts. Of two breaks as narrow the
+    // later is kept, so the last line is the shorter.
+    function wrapTable(words, measure) {
+        var n = words.length, seen = {}, best = [null, []], from = [null, []];
+        var seg = function (i, j) {
+            var key = i + ':' + j;
+
+            if (!seen.hasOwnProperty(key)) {
+                seen[key] = Number(measure(words.slice(i, j).join(' '))) || 0;
+            }
+
+            return seen[key];
+        };
+
+        for (var j = 1; j <= n; j++) {
+            best[1][j] = seg(0, j);
+            from[1][j] = 0;
+        }
+
+        for (var k = 2; k <= n; k++) {
+            best[k] = [];
+            from[k] = [];
+
+            for (j = k; j <= n; j++) {
+                for (var i = k - 1; i < j; i++) {
+                    var v = Math.max(best[k - 1][i], seg(i, j));
+
+                    if ((best[k][j] === undefined) || (v <= best[k][j])) {
+                        best[k][j] = v;
+                        from[k][j] = i;
+                    }
+                }
+            }
+        }
+
+        return { n: n, best: best, from: from, words: words };
+    }
+
+    // The words of a line in k lines, as the table broke them.
+    function wrapLines(t, k) {
+        var out = [], j = t.n;
+
+        for (; k >= 1; k--) {
+            out.unshift(t.words.slice(t.from[k][j], j).join(' '));
+            j = t.from[k][j];
+        }
+
+        return out.join('\n');
+    }
+
+    // A line's words, null when it is not broken (one word, or too many).
+    function wrapWords(line) {
+        var words = line.split(' ').filter(function (w) { return w !== ''; });
+
+        return ((words.length < 2) || (words.length > LANGUAGE_WRAP_WORDS)) ? null : words;
+    }
+
+    // A translated text wrapped to max (measure: a string's width): each
+    // of its own lines wider than max is broken between words into the
+    // fewest lines that fit, balanced (the narrowest widest line); a word
+    // is never broken, so a word wider than max sets the width instead.
+    // tables: a cache of wrapTable() by line. Twin of
+    // pg_picture_tr_language_wrap().
+    function languageWrap(text, max, measure, tables) {
+        tables = tables || {};
+
+        return String(text).split('\n').map(function (line) {
+            var words = wrapWords(line);
+
+            if (!words || ((Number(measure(line)) || 0) <= max + 1e-9)) {
+                return line;
+            }
+
+            var t = tables.hasOwnProperty('=' + line) ? tables['=' + line] : (tables['=' + line] = wrapTable(words, measure));
+            // Every word on a line of its own: the widest word.
+            var limit = Math.max(max, t.best[t.n][t.n]);
+
+            for (var k = 1; k < t.n; k++) {
+                if (t.best[k][t.n] <= limit + 1e-9) {
+                    return wrapLines(t, k);
+                }
+            }
+
+            return wrapLines(t, t.n);
+        }).join('\n');
+    }
+
+    // The wraps a translated text may be drawn in, the text as it is
+    // first: its widest own line balanced in 2, 3 ... lines, each width
+    // the whole text wrapped to by languageWrap(); each wrap once. Twin of
+    // pg_picture_tr_language_wraps().
+    function languageWraps(text, measure) {
+        var out = [String(text)], tables = {}, widest = null, width = -1;
+
+        String(text).split('\n').forEach(function (line) {
+            var w = Number(measure(line)) || 0;
+
+            if (w > width) {
+                width = w;
+                widest = line;
+            }
+        });
+
+        var words = (widest === null) ? null : wrapWords(widest);
+
+        if (!words) {
+            return out;
+        }
+
+        var t = tables['=' + widest] = wrapTable(words, measure);
+
+        for (var k = 2; k <= t.n; k++) {
+            var next = languageWrap(text, t.best[k][t.n], measure, tables);
+
+            if (out.indexOf(next) < 0) {
+                out.push(next);
+            }
+        }
+
+        return out;
+    }
+
     // A layer's box as numbers (x, y, w, h, rot), null without one.
     function roomBox(l) {
         var keys = ['x', 'y', 'w', 'h'], b = { rot: Number(l && l.rot) || 0 };
@@ -2934,8 +3062,50 @@
         };
     }
 
+    // A translated text layer l (laid out as wide at the source's size)
+    // wider than its room (w x h): of its wraps (languageWraps(), measured
+    // by layout) the one that needs the least shrink, the fewer lines of
+    // two alike; it fits whole at the source's size when one can. Sets
+    // l.text and answers its layout.
+    function languageWrapped(l, wide, layout, w, h) {
+        var copy = function (text) {
+            var c = {};
+
+            Object.keys(l).forEach(function (key) {
+                c[key] = l[key];
+            });
+            c.text = text;
+
+            return c;
+        };
+        var share = function (b) {
+            return Math.min(1, w / b.w, h / b.h);
+        };
+        var text = l.text, best = share(wide);
+
+        languageWraps(l.text, function (s) {
+            var b = layout(copy(s));
+
+            return b ? b.w : Infinity;
+        }).slice(1).forEach(function (t) {
+            var b = layout(copy(t));
+
+            if (b && (share(b) > best + 1e-9)) {
+                best = share(b);
+                wide = b;
+                text = t;
+            }
+        });
+
+        l.text = text;
+
+        return wide;
+    }
+
     // A language's document (languageDoc()) with each changed text fitted:
     // it grows into its room (languageRoom(), read before any text moves),
+    // wider than it is wrapped between words (languageWrapped(), its lines
+    // written into the layer's text, so every draw paints them), then
     // shrinks only past it, never under its floor (then the draw is marked,
     // fit 1), and is put by languagePlace(). layout: a text layer => its
     // laid out w, h (null: it cannot be; the answer is null); board: the
@@ -2966,8 +3136,13 @@
                 return;
             }
 
-            var fit = languageFit(before.w, before.h, wide.w, wide.h, src.size, side,
-                room ? before.w + room.w - (Number(src.w) || 0) : 0, room ? before.h + room.h - (Number(src.h) || 0) : 0);
+            var roomW = room ? before.w + room.w - (Number(src.w) || 0) : 0, roomH = room ? before.h + room.h - (Number(src.h) || 0) : 0;
+
+            if (room && (wide.w > roomW + 1e-9)) {
+                wide = languageWrapped(l, wide, layout, roomW, roomH);
+            }
+
+            var fit = languageFit(before.w, before.h, wide.w, wide.h, src.size, side, roomW, roomH);
 
             l.size = Math.round((Number(src.size) || 1) * fit.scale * 100) / 100;
 
@@ -3080,7 +3255,7 @@
 
     var ARTBOARD = {
         LANGUAGE_FLOOR: LANGUAGE_FLOOR, languageFloor: languageFloor, languageFit: languageFit, languageRoom: languageRoom, languagePlace: languagePlace,
-        languageFitted: languageFitted, languageDoc: languageDoc, languageDrawable: languageDrawable, languagesToDraw: languagesToDraw,
+        languageWrap: languageWrap, languageWraps: languageWraps, languageFitted: languageFitted, languageDoc: languageDoc, languageDrawable: languageDrawable, languagesToDraw: languagesToDraw,
         languageRowPlan: languageRowPlan, languageRowStatus: languageRowStatus, languagesWaiting: languagesWaiting,
         BOARD_PRESETS: BOARD_PRESETS, BOARD_BACKGROUNDS: BOARD_BACKGROUNDS, boardSide: boardSide, boardPreset: boardPreset,
         boardDrag: boardDrag, boardAnchored: boardAnchored, boardAround: boardAround, applyBoard: applyBoard,
