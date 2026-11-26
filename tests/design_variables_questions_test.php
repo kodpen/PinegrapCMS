@@ -112,3 +112,29 @@ function test_design_variables_start_from_answers()
 	pg_assert_same('#e11d48', $s['model']['values']['brand']['light'], 'brand in the model');
 	pg_assert_true(strpos($s['css'], '/*! pg-theme {"kind":"variables"') === 0, 'a variables stylesheet to try on');
 }
+
+function test_design_variables_start_reaches_the_editor()
+{
+	$start = pg_design_variables_start('{"brand":"#e11d48","accent":"","look":"minimal","type":"classic","room":"roomy"}', '', '');
+	$editor = pg_design_variables_start_editor($start);
+	pg_assert_same($start['model'], json_decode($editor['input'], true), 'the model rides in the hidden style_variables input');
+	pg_assert_same($start['css'], $editor['try'], 'its stylesheet is tried on the canvas at once');
+	pg_assert_true(strpos($editor['try'], '#e11d48') !== false, 'the brand answer is in the stylesheet');
+
+	$none = array('input' => '', 'try' => '');
+	pg_assert_same($none, pg_design_variables_start_editor(null), 'no start answers: nothing');
+	pg_assert_same($none, pg_design_variables_start_editor(pg_design_variables_start('{"look":"minimal"}', '', '')), 'only a feel: no variables');
+}
+
+// The editor's core declares `const StyleDesigner` at the top level, which is
+// a global binding but never a property of window: a part that looked for
+// window.StyleDesigner never registered, and "Ask me again" failed with
+// "This part of the editor could not be loaded".
+function test_design_variables_questions_part_registers_with_the_editor()
+{
+	$src = (string)file_get_contents(dirname(__DIR__) . '/pinegrap/assets/js/designer_questions.js');
+	pg_assert_true(strpos($src, 'window.StyleDesigner') === false, 'the part does not look for window.StyleDesigner');
+	pg_assert_true(strpos($src, "typeof StyleDesigner !== 'undefined' && StyleDesigner.definePart") !== false, 'the part registers through the global binding');
+	$core = (string)file_get_contents(dirname(__DIR__) . '/pinegrap/assets/js/style_designer.src.js');
+	pg_assert_true((bool)preg_match('/^const StyleDesigner = /m', $core), 'the core still declares StyleDesigner as a top-level const');
+}
