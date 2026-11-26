@@ -1,6 +1,6 @@
 ---
 name: artifact-canvas-content
-description: Plan (owner 2026-11-26): the Artifact Canvas gets ready content and a way to open a design made in Canva as editable layers, from the person's own exported file; census steps AC1 and AC2 first
+description: Plan (owner 2026-11-26): the Artifact Canvas gets ready content and opens a design made in Canva as editable layers from the exported file; content census AC1, design file steps DF1 to DF5
 priority: 6
 ---
 
@@ -24,14 +24,13 @@ priority: 6
 ## Which steps?
 - AC1 (S, no product code) The content census, into `plans/artifact-canvas-content-census.md`. What a person meets on an empty board, tool by tool. What Canva, Adobe Express and two other tools give at the same point: ready designs by purpose, text styles, sets of elements, a photo library, a brand's colours and fonts, one design in other sizes.
   - For each gap: what it takes in own code, where its content comes from and under which licence, a size. It ends with ten proposals, the most use for the least work first.
-- AC2 (S, no product code) after the owner's sample files: the Canva file census, into `plans/artifact-canvas-canva-census.md`. One design exported as .pptx, .pdf and .svg: what each keeps as text, picture, shape and group, with place, size, turn, opacity, font and colour; what it flattens into a picture; which fonts it names and whether the font catalogue has them.
-  - What the reader must learn per format; what Canva's Content License Agreement says of a design's elements used apart; one route proposed.
-- AC3 (architect) after AC1 and AC2: the owner's choices by poll (which content first, which import route); this file gains the build steps.
-- AC4 on: the build steps. Expected, not decided: "Open a design file" in Import (a slide's texts as text layers, its pictures as picture layers, its shapes as svg layers), an SVG's `<text>` turned into text layers by "Break apart", ready designs in the New image dialog.
+- AC2 Done by the architect on the owner's files (2026-11-26, agent channel request 3136): `plans/artifact-canvas-canva-census.md`. The route is the .pptx; the .pdf and the .svg are not read.
+- AC3 (architect) after AC1: the owner's choice of content by poll; this file gains its build steps.
+- The design file, free now: `plans/artifact-canvas-design-file.md`, steps DF1 to DF5 (owner, poll 230).
 - Last: the close-out; the rules into `ui/`, the census files and this file deleted.
 
 ## What waits for the owner?
-- The sample files of AC2: workers cannot sign in to Canva. Asked in the agent channel (request 3122).
+- Nothing now: the sample files came on 2026-11-26.
 - No schema change is planned.
 
 Related: docs/memory/api/figma-canva-census.md, docs/memory/designer/canva-start.md
