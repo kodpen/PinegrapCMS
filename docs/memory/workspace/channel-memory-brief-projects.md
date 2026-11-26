@@ -1,6 +1,6 @@
 ---
 name: channel-memory-brief-projects
-description: An agent's brief tells a memory of more than 40 live records by its pinned records and its projects with their counts (MS2): headings, the reads it names, the size bound
+description: An agent's brief tells a memory of more than 40 live records by its pinned records and its projects with their counts (MS2, #11866): headings, the reads it names, the size bound
 ---
 
 ## When does the brief tell a memory by its projects?
