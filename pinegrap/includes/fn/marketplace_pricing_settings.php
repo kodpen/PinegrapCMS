@@ -349,6 +349,27 @@ function mp_pricing_listing_parse($own_price, $strategy, $provider)
     return $answer;
 }
 
+/**
+ * Whether a listing's row save changes the price it sends, so it is queued
+ * again: a typed price set, changed or cleared, or the strategy changed
+ * while the robot holds a price for it (mp_repricer_send_price() sends that
+ * price only on Win and Grow while winning). A strategy changed with no
+ * robot price yet waits for the robot's next pass.
+ *
+ * @param array $before     mp_pricing_product_figures(): own_price, strategy, robot_price
+ * @param int   $own_price  as saved, 0 by the rules
+ * @param int   $strategy   as saved
+ * @return bool
+ */
+function mp_pricing_listing_moves($before, $own_price, $strategy)
+{
+    if ((int) ($before['own_price'] ?? 0) !== (int) $own_price) {
+        return true;
+    }
+
+    return ((int) ($before['strategy'] ?? 0) !== (int) $strategy) && ((int) ($before['robot_price'] ?? 0) > 0);
+}
+
 /* ------------------------------------------------------ readers and writers */
 
 /**

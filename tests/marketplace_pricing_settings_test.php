@@ -217,3 +217,23 @@ function test_marketplace_pricing_step_amount()
 	pg_assert_same(1, mp_pricing_step(10, 100, MP_PRICING_STEP_PERCENT), 'percent at least 1');
 	pg_assert_same(5, mp_pricing_step(1000, 50, MP_PRICING_STEP_PERCENT), '0.5% of 10.00');
 }
+
+// A listing's row save sends it again when what goes out changes: a typed
+// price, or a strategy switched while the robot holds a price for it (Win
+// or Grow while winning to Fixed sends the rules' price again, Fixed to
+// Win the robot's). A strategy alone with no robot price waits for the
+// robot's next pass.
+function test_marketplace_pricing_listing_moves()
+{
+	$before = array('own_price' => 0, 'strategy' => MP_PRICING_STRATEGY_WIN, 'robot_price' => 9400);
+
+	pg_assert_true(mp_pricing_listing_moves($before, 0, MP_PRICING_STRATEGY_FIXED), 'Win to Fixed with a robot price');
+	pg_assert_true(mp_pricing_listing_moves($before, 0, MP_PRICING_STRATEGY_GROW), 'Win to Grow with a robot price');
+	pg_assert_true(mp_pricing_listing_moves($before, 12990, MP_PRICING_STRATEGY_WIN), 'a price typed');
+	pg_assert_false(mp_pricing_listing_moves($before, 0, MP_PRICING_STRATEGY_WIN), 'nothing changed');
+
+	$fresh = array('own_price' => 0, 'strategy' => MP_PRICING_STRATEGY_FIXED, 'robot_price' => 0);
+
+	pg_assert_false(mp_pricing_listing_moves($fresh, 0, MP_PRICING_STRATEGY_WIN), 'Fixed to Win, nothing set yet: the robot\'s pass');
+	pg_assert_true(mp_pricing_listing_moves(array('own_price' => 12990) + $fresh, 0, MP_PRICING_STRATEGY_FIXED), 'a typed price cleared');
+}
