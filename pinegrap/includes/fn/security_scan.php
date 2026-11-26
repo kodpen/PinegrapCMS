@@ -184,6 +184,31 @@ function pg_security_place_record($type, $id)
 }
 
 /**
+ * Does a place lie in a part a run could not read: under a folder place the
+ * walk could not list ('' is the whole software folder), or a record of a
+ * type the content pass could not read? Its findings were not looked at, so
+ * the run must not mark them gone.
+ *
+ * @param string $place
+ * @param string[] $unread Folder places and record types
+ * @return bool
+ */
+function pg_security_place_unread($place, array $unread)
+{
+    $place = (string) $place;
+
+    foreach ($unread as $part) {
+        $part = (string) $part;
+
+        if (($part === '') || (strpos($place, $part . '/') === 0) || (strpos($place, $part . ':') === 0)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
  * The fingerprint of a finding: sha1 of its kind and place, so the same rule
  * at the same place is one row however often it is found.
  *
@@ -233,11 +258,72 @@ function pg_security_sighting($kind, $place, $severity, $detail = '')
 }
 
 /**
+ * A file finding's detail with the file's content digest after its words
+ * ("<words> sha1:<40 hex>"), so a later change of the file is told apart.
+ * The detail is returned as it is without a digest.
+ *
+ * @param string $detail
+ * @param string $digest
+ * @return string
+ */
+function pg_security_detail_with_digest($detail, $digest)
+{
+    $detail = (string) $detail;
+
+    if (preg_match('/^[0-9a-f]{40}$/', (string) $digest) !== 1) {
+        return $detail;
+    }
+
+    return ltrim($detail . ' sha1:' . $digest);
+}
+
+/**
+ * A detail's words and its file digest ('' when it carries none).
+ *
+ * @param string $detail
+ * @return array words, digest
+ */
+function pg_security_detail_parts($detail)
+{
+    $detail = (string) $detail;
+
+    if (preg_match('/^(.*?) ?sha1:([0-9a-f]{40})$/s', $detail, $match) === 1) {
+        return array($match[1], $match[2]);
+    }
+
+    return array($detail, '');
+}
+
+/**
+ * Did what a finding names change between the stored detail and a new
+ * sighting's: other words (hosts, a shell mark, a mode, a version), or
+ * another file digest. A stored detail without a digest (kept before the
+ * digest was) is compared by its words only.
+ *
+ * @param string $stored
+ * @param string $seen
+ * @return bool
+ */
+function pg_security_detail_changed($stored, $seen)
+{
+    $stored = pg_security_detail_parts($stored);
+    $seen = pg_security_detail_parts($seen);
+
+    if ($stored[0] !== $seen[0]) {
+        return true;
+    }
+
+    return ($stored[1] !== '') && ($seen[1] !== '') && ($stored[1] !== $seen[1]);
+}
+
+/**
  * The row to write for a sighting: a new open finding when nothing is stored
  * under its fingerprint, otherwise the stored row seen again. A gone finding
  * found again opens again, and so does a quarantined one found back at its
- * place (the file came back); an ignored one stays ignored. A person's note,
- * acted_by and acted_at are kept.
+ * place (the file came back); an ignored one stays ignored while what was
+ * found is the same, and opens again when it changed (another host in the
+ * record, other content in the file). A person's note, acted_by and acted_at
+ * are kept.
  *
  * @param array|null $stored The stored row, or null
  * @param array $sighting From pg_security_sighting()
@@ -262,7 +348,8 @@ function pg_security_finding_merge($stored, array $sighting, $now)
     $row = array_merge($stored, $sighting);
     $row['last_seen'] = $now;
     $state = isset($stored['state']) ? (int) $stored['state'] : PG_SECURITY_STATE_OPEN;
-    $row['state'] = ($state === PG_SECURITY_STATE_IGNORED) ? PG_SECURITY_STATE_IGNORED : PG_SECURITY_STATE_OPEN;
+    $changed = pg_security_detail_changed(isset($stored['detail']) ? $stored['detail'] : '', $sighting['detail']);
+    $row['state'] = (($state === PG_SECURITY_STATE_IGNORED) && !$changed) ? PG_SECURITY_STATE_IGNORED : PG_SECURITY_STATE_OPEN;
 
     return $row;
 }

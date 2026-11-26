@@ -20,7 +20,8 @@ module: security_scan_section
 ## Which actions does a row offer?
 - `pg_security_section_actions()`: open → Quarantine (file kinds only) and Ignore; quarantined → Restore; ignored → Reopen. `api.php` `security_scan_act` (Manager and above, token) answers with the list drawn again.
 - Quarantine only for `file_php_unknown`, `file_upload_executable`, `file_picture_php`, `file_shell_mark` (`pg_security_quarantinable()`); never `file_server_config`, as moving the root `.htaccess` could take the site down. It asks first (the only danger dialog).
-- Quarantine moves the file to `data/quarantine/<sha1(place)>.quarantine` (an extension nothing runs; the folder gets `Require all denied` and is skipped by the walk) and marks every open quarantinable finding of that place quarantined. Restore moves it back only when nothing is at the place again, and the place's quarantined findings become open.
+- Quarantine moves the file to `data/quarantine/<sha1(place)>.quarantine` (an extension nothing runs; the folder gets `Require all denied` and is skipped by the walk) and marks every open quarantinable finding of that place quarantined. A copy already there from an earlier Quarantine of the place is kept as `<sha1>.<n>.quarantine`. Restore moves it back only when nothing is at the place again, and the place's quarantined findings become open.
+- Both refuse when a folder of the place is no longer the one the walk found (`pg_security_place_folder_real()`: a segment turned into a symbolic link), so neither moves a file outside the site's folders.
 - Ignore first shows a note field ("Why is it ignored?", 255 characters, `pg_security_note_clean()`); Return in it sends the note, not the settings form. Each action writes a Site Log line.
 
 Related: `security-scan-api.md` (the API read), `security-scan-findings.md`, `security-scan-file-scan.md`, `security-scan-overview.md`.

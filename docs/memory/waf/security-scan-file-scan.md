@@ -20,16 +20,17 @@ module: security_scan_files
 ## How does the walk run and resume?
 - Roots in order: the software folder, `FILE_DIRECTORY_PATH` as `data/files`, `LAYOUT_DIRECTORY_PATH` as `data/layouts` (`pg_security_files_roots()`; `pg_security_place_disk_path()` maps a place back to disk).
 - Skipped: `.git`, `data/backups`, `data/temp/restore_<id>`, `data/quarantine` (`security-scan-section.md`), the upload folders inside the software folder (walked as their own roots); symbolic links are not followed.
-- `pg_security_files_advance()` walks on from the state's root and cursor; `pg_security_files_check()` checks one file.
+- `pg_security_files_advance()` walks on from the root and cursor; `pg_security_files_check()` checks one file.
 - Sorted walk; the cursor is the last place done, compared segment by segment (`pg_security_place_compare()`, `pg_security_folder_done()`).
-- `security_scan_job.php`, catalogue `security_scan_job`: heavy lane, daily, lock 600 s, budget `SEO_ANALYZE_TIME_BUDGET` capped by `pg_cron_time_left()`; it runs the joined scan (`pg_security_scan_run()`, files first, `security-scan-section.md`); unfinished, `pg_cron_due_again()`; finished, `pg_cron_ran()`. A web request needs a Manager.
-- Content is read in 1 MB chunks with a 512-byte carry, at most 32 MB per file.
+- `security_scan_job.php` (catalogue `security_scan_job`): heavy lane, daily, lock 600 s, budget `SEO_ANALYZE_TIME_BUDGET` capped by `pg_cron_time_left()`; runs the joined scan, files first (`security-scan-section.md`). A web request needs a Manager.
+- Read in 1 MB chunks, 512-byte carry, at most 32 MB a file.
 
 ## Where is the run kept, and what does a finished run do?
-- One `config_text` row `security_scan_files` (JSON): started, root, cursor, counts, reference source, baseline, the run's config digests, last_finished, last_files, last_reference.
+- One `config_text` row `security_scan_files` (JSON): started, root, cursor, counts, reference, baseline, the run's config digests, unread, last_finished, last_files, last_reference.
 - Every sighting is merged with `pg_security_finding_merge()` and stamps `last_seen`; at the end, rows of the judged kinds still open or ignored with `last_seen` before the run's start become gone, and gone rows past 90 days are deleted.
+- A folder there but not listable goes into the state's `unread` and its findings are not marked gone (`pg_security_place_unread()`). A file with a finding is hashed into its detail.
 
 ## How does the server-config baseline work?
-- The first finished run takes every `.htaccess` / `.user.ini` as it is (no findings). Later runs only drop files that disappeared: a new or changed file stays reported until a person ignores it.
+- The first finished run takes every `.htaccess` / `.user.ini` as it is. Later runs only drop files that disappeared: a new or changed file stays reported until ignored.
 
 Exceptions and tests: `security-scan-test-round.md`.

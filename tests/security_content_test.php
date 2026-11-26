@@ -69,6 +69,49 @@ function test_security_content_rules_find_a_script_from_an_unknown_host()
 	pg_assert_same(array('content_script_host' => array('evil.example')), $found);
 }
 
+function test_security_content_rules_read_entities_in_an_attribute_value()
+{
+	$known = array('mysite.example');
+
+	// The browser decodes character references inside an attribute value.
+	foreach (array(
+		'<script src="https&#58;//evil.example/a.js"></script>',
+		'<script src="&#x2F;&#x2F;evil.example/a.js"></script>',
+		'<script src="https:&sol;&sol;evil.example/a.js"></script>',
+	) as $html) {
+		pg_assert_same(array('content_script_host' => array('evil.example')), pg_security_content_rules($html, $known), $html);
+	}
+
+	pg_assert_same(array('content_redirect' => array('evil.example')), pg_security_content_rules('<meta http-equiv="refresh" content="0;url=https&#x3A;&#x2F;&#x2F;evil.example/">', $known));
+	pg_assert_same(array(), pg_security_content_rules('&lt;script src="//evil.example/a.js"&gt;&lt;/script&gt;', $known), 'an escaped tag is text');
+	pg_assert_same(array(), pg_security_content_rules('<iframe src="https://www.youtube.com/embed/x?a=1&amp;b=2" width="560"></iframe>', array('youtube.com')));
+}
+
+function test_security_content_rules_read_backslashes_as_slashes()
+{
+	$known = array('mysite.example');
+
+	// For http and https a browser reads a backslash as a slash.
+	pg_assert_same(array('content_script_host' => array('evil.example')), pg_security_content_rules('<script src="https:\\\\evil.example/a.js"></script>', $known));
+	pg_assert_same(array('content_script_host' => array('evil.example')), pg_security_content_rules('<script src="\\\\evil.example/a.js"></script>', $known));
+	pg_assert_same(array('content_script_host' => array('evil.example')), pg_security_content_rules('<script src="/\\evil.example/a.js"></script>', $known));
+	pg_assert_same('evil.example', pg_security_content_url_host('https:\\\\evil.example\\a.js'));
+	pg_assert_same('', pg_security_content_url_host('\\js\\own.js'), 'a path on the site');
+	pg_assert_same('', pg_security_content_url_host('\/cdn.mysite.example\/a.js'), 'a JSON-escaped path on the site');
+	pg_assert_same('evil.example', pg_security_content_url_host('https:\/\/evil.example\/a.js'));
+}
+
+function test_security_content_rules_read_a_tag_cut_at_the_end_of_a_field()
+{
+	$known = array('mysite.example');
+
+	// A field that ends inside a tag is closed by the markup the page puts
+	// after it, so the tag still loads.
+	pg_assert_same(array('content_script_host' => array('evil.example')), pg_security_content_rules('<p>Hi</p><script src="//evil.example/a.js"', $known));
+	pg_assert_same(array('content_iframe_hidden' => array('evil.example')), pg_security_content_rules('<iframe src="//evil.example/" width="0"', $known));
+	pg_assert_same(array('content_redirect' => array('evil.example')), pg_security_content_rules('<meta http-equiv="refresh" content="0;url=//evil.example/"', $known));
+}
+
 function test_security_content_rules_find_a_script_added_by_code()
 {
 	$known = array('mysite.example');
@@ -183,11 +226,16 @@ function test_security_content_cursor_walks_the_sources_in_order()
 	pg_assert_same('config', $sources[count($sources) - 1]);
 
 	$cursor = pg_security_content_cursor(null, 100);
-	pg_assert_same(array('source' => 0, 'after' => 0, 'started' => 100), $cursor);
+	pg_assert_same(array('source' => 0, 'after' => 0, 'started' => 100, 'unread' => array()), $cursor);
 
 	$kept = pg_security_content_cursor(array('source' => 2, 'after' => 55, 'started' => 90), 100);
-	pg_assert_same(array('source' => 2, 'after' => 55, 'started' => 90), $kept, 'a pass in progress keeps its place');
+	pg_assert_same(array('source' => 2, 'after' => 55, 'started' => 90, 'unread' => array()), $kept, 'a pass in progress keeps its place');
 
-	pg_assert_same(array('source' => 0, 'after' => 0, 'started' => 100), pg_security_content_cursor(array('source' => 99, 'after' => 1, 'started' => 5), 100), 'a broken cursor starts again');
-	pg_assert_same(array('source' => 0, 'after' => 0, 'started' => 100), pg_security_content_cursor(array('source' => 'x'), 100));
+	// A source that could not be read stays named until the pass closes, so
+	// its findings are not marked gone; a name that is no source is dropped.
+	$kept = pg_security_content_cursor(array('source' => 3, 'after' => 0, 'started' => 90, 'unread' => array('page', 'nope', 7)), 100);
+	pg_assert_same(array('page'), $kept['unread']);
+
+	pg_assert_same(array('source' => 0, 'after' => 0, 'started' => 100, 'unread' => array()), pg_security_content_cursor(array('source' => 99, 'after' => 1, 'started' => 5), 100), 'a broken cursor starts again');
+	pg_assert_same(array('source' => 0, 'after' => 0, 'started' => 100, 'unread' => array()), pg_security_content_cursor(array('source' => 'x'), 100));
 }

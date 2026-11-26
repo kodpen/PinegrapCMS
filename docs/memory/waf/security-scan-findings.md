@@ -19,7 +19,8 @@ module: security_scan
 - State 0 open, 1 quarantined, 2 ignored, 3 gone (`PG_SECURITY_STATE_*`, `pg_security_state_key()`).
 
 ## Which moves may a scan make?
-- Found and new: open. Found again: last_seen, severity and detail updated; gone and quarantined become open again (a quarantined file back at its place came back), ignored stays ignored; note, acted_by and acted_at are kept.
+- Found and new: open. Found again: last_seen, severity and detail updated; gone and quarantined become open again (a quarantined file back at its place came back); ignored stays ignored while the detail is the same and opens again when it changed (`pg_security_detail_changed()`: another host, mark or mode, or another file digest); note, acted_by and acted_at are kept.
+- A file finding's detail ends in the file's digest, `<words> sha1:<40 hex>` (`pg_security_detail_with_digest()`, `pg_security_detail_parts()`); a row stored before the digest is compared by its words only. Since the Security Scan hunt (#11777).
 - Not seen by a full scan (`pg_security_state_unseen()`): open and ignored become gone; quarantined stays quarantined, because the quarantine moved the file away.
 - A gone row is removed 90 days after its last_seen (`pg_security_finding_expired()`).
 

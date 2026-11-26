@@ -113,7 +113,7 @@ function test_security_finding_merge_updates_a_stored_finding()
 {
 	$s = pg_security_sighting('upload_php', 'files/a.php', 4, 'new reason');
 	$stored = array('id' => 7, 'kind' => 'upload_php', 'place' => 'files/a.php', 'fingerprint' => $s['fingerprint'], 'severity' => 3,
-		'state' => PG_SECURITY_STATE_IGNORED, 'detail' => 'old', 'note' => 'Our own tool', 'acted_by' => 2, 'first_seen' => 100,
+		'state' => PG_SECURITY_STATE_IGNORED, 'detail' => 'new reason', 'note' => 'Our own tool', 'acted_by' => 2, 'first_seen' => 100,
 		'last_seen' => 200, 'acted_at' => 150);
 
 	$row = pg_security_finding_merge($stored, $s, 5000);
@@ -132,6 +132,41 @@ function test_security_finding_merge_updates_a_stored_finding()
 
 	$stored['state'] = PG_SECURITY_STATE_QUARANTINED;
 	pg_assert_same(PG_SECURITY_STATE_OPEN, pg_security_finding_merge($stored, $s, 5000)['state'], 'back at its place opens');
+}
+
+function test_security_finding_ignored_opens_again_when_what_was_found_changed()
+{
+	$ignored = function ($kind, $place, $detail) {
+		return array('id' => 3, 'kind' => $kind, 'place' => $place, 'fingerprint' => pg_security_fingerprint($kind, $place), 'severity' => 3,
+			'state' => PG_SECURITY_STATE_IGNORED, 'detail' => $detail, 'note' => 'Ours', 'acted_by' => 2, 'first_seen' => 100, 'last_seen' => 200, 'acted_at' => 150);
+	};
+	$a = str_repeat('a', 40);
+	$b = str_repeat('b', 40);
+
+	// A new host in an ignored record.
+	$stored = $ignored('content_script_host', 'page:3', 'a.example (page_custom_js)');
+	pg_assert_same(PG_SECURITY_STATE_IGNORED, pg_security_finding_merge($stored, pg_security_sighting('content_script_host', 'page:3', 3, 'a.example (page_custom_js)'), 300)['state']);
+	$row = pg_security_finding_merge($stored, pg_security_sighting('content_script_host', 'page:3', 3, 'a.example (page_custom_js), b.example (page_meta_tags)'), 300);
+	pg_assert_same(PG_SECURITY_STATE_OPEN, $row['state'], 'a new host opens it again');
+	pg_assert_same('Ours', $row['note'], 'the note is kept');
+
+	// An ignored file whose content changed.
+	$stored = $ignored('file_php_unknown', 'tool.php', 'sha1:' . $a);
+	pg_assert_same(PG_SECURITY_STATE_IGNORED, pg_security_finding_merge($stored, pg_security_sighting('file_php_unknown', 'tool.php', 3, 'sha1:' . $a), 300)['state']);
+	pg_assert_same(PG_SECURITY_STATE_OPEN, pg_security_finding_merge($stored, pg_security_sighting('file_php_unknown', 'tool.php', 3, 'sha1:' . $b), 300)['state'], 'a changed file opens it again');
+
+	$stored = $ignored('file_server_config', 'data/files/.htaccess', 'new sha1:' . $a);
+	pg_assert_same(PG_SECURITY_STATE_OPEN, pg_security_finding_merge($stored, pg_security_sighting('file_server_config', 'data/files/.htaccess', 3, 'new sha1:' . $b), 300)['state']);
+
+	// A row stored before the file's digest was kept is not opened by the digest alone.
+	$stored = $ignored('file_upload_executable', 'data/files/a.php', '.php');
+	pg_assert_same(PG_SECURITY_STATE_IGNORED, pg_security_finding_merge($stored, pg_security_sighting('file_upload_executable', 'data/files/a.php', 4, '.php sha1:' . $a), 300)['state']);
+
+	pg_assert_same('.php sha1:' . $a, pg_security_detail_with_digest('.php', $a));
+	pg_assert_same('sha1:' . $a, pg_security_detail_with_digest('', $a));
+	pg_assert_same('.php', pg_security_detail_with_digest('.php', ''), 'no digest read');
+	pg_assert_same(array('new', $a), pg_security_detail_parts('new sha1:' . $a));
+	pg_assert_same(array('a.example (page_custom_js)', ''), pg_security_detail_parts('a.example (page_custom_js)'));
 }
 
 function test_security_finding_unseen_state()
