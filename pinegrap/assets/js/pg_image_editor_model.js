@@ -13184,6 +13184,131 @@
 
     var SITECOLORS = { siteColors: siteColors };
 
+    // ---- text styles and font pairs (pg_image_editor_textstyles.js) ----
+
+    // The three styles at the top of the Text panel: a size as a part of the
+    // board's shorter side, a weight and a line height.
+    var TEXT_PRESETS = {
+        heading: { size: 0.1, weight: 700, lineHeight: 1.1 },
+        subheading: { size: 0.06, weight: 600, lineHeight: 1.2 },
+        body: { size: 0.035, weight: 400, lineHeight: 1.4 }
+    };
+
+    // A font pair's two parts: the heading and the line under it.
+    var FONT_PAIR_PARTS = { head: { size: 0.09, lineHeight: 1.1 }, line: { size: 0.04, lineHeight: 1.3 } };
+
+    var FONT_PAIR_MAX = 12;
+
+    // A size from a part of the board's shorter side, never under 12 px.
+    function presetSize(part, board) {
+        var side = Math.min(Number(board && board.w) || 0, Number(board && board.h) || 0);
+
+        return Math.max(12, Math.round(side * part));
+    }
+
+    // A plain centred text style from `base` (the style last chosen, for its
+    // font and colour): no background, outline or shadow.
+    function presetBase(base) {
+        var s = clone(base || textDefaults());
+
+        s.align = 'center';
+        s.italic = false;
+        s.spacing = 0;
+        s.bg = '';
+        s.outline = null;
+        s.shadow = null;
+
+        return s;
+    }
+
+    // The style of "Add a heading", "Add a subheading" or "Add body text" on
+    // a board; null for another kind.
+    function textPreset(kind, board, base) {
+        var p = TEXT_PRESETS.hasOwnProperty(kind) ? TEXT_PRESETS[kind] : null, s;
+
+        if (!p) {
+            return null;
+        }
+
+        s = presetBase(base);
+        s.size = presetSize(p.size, board);
+        s.weight = p.weight;
+        s.lineHeight = p.lineHeight;
+
+        return s;
+    }
+
+    // The font pairs file (assets/canvas/font-pairs.json) checked: each pair
+    // an id, and a head and a line with a family `known` accepts (the Google
+    // Fonts catalogue), a weight of TEXT_WEIGHTS and a label key; ids once,
+    // at most twelve.
+    function fontPairs(data, known) {
+        var out = [], seen = {};
+        var part = function (p) {
+            var family = p ? textFamilyName(p.family) : '';
+
+            if (!family || (family !== p.family) || (known && !known(family)) || (typeof p.text !== 'string') || !/^fontPair[A-Za-z0-9]+$/.test(p.text)) {
+                return null;
+            }
+
+            return { family: family, weight: (TEXT_WEIGHTS.indexOf(p.weight) >= 0) ? p.weight : 400, text: p.text };
+        };
+
+        ((data && Array.isArray(data.pairs)) ? data.pairs : []).forEach(function (p) {
+            var head, line;
+
+            if (!p || (typeof p.id !== 'string') || !/^[a-z0-9-]{1,40}$/.test(p.id) || seen[p.id] || (out.length >= FONT_PAIR_MAX)) {
+                return;
+            }
+
+            head = part(p.head);
+            line = part(p.line);
+
+            if (head && line) {
+                seen[p.id] = true;
+                out.push({ id: p.id, head: head, line: line });
+            }
+        });
+
+        return out;
+    }
+
+    // The two text styles of a pair on a board, heading first.
+    function fontPairStyles(pair, board, base) {
+        return ['head', 'line'].map(function (k) {
+            var s = presetBase(base);
+
+            s.font = 'g:' + pair[k].family;
+            s.weight = pair[k].weight;
+            s.size = presetSize(FONT_PAIR_PARTS[k].size, board);
+            s.lineHeight = FONT_PAIR_PARTS[k].lineHeight;
+
+            return s;
+        });
+    }
+
+    // Boxes ({ w, h }) stacked in the board's middle, `gap` apart, each
+    // centred across: their { x, y }.
+    function textStack(board, boxes, gap) {
+        var total = 0, y;
+
+        boxes.forEach(function (b, i) {
+            total += b.h + (i ? gap : 0);
+        });
+
+        y = board.y + (board.h - total) / 2;
+
+        return boxes.map(function (b) {
+            var at = { x: textRound(board.x + (board.w - b.w) / 2), y: textRound(y) };
+
+            y += b.h + gap;
+
+            return at;
+        });
+    }
+
+    var TEXTSTYLES = { TEXT_PRESETS: TEXT_PRESETS, FONT_PAIR_MAX: FONT_PAIR_MAX, textPreset: textPreset, fontPairs: fontPairs, fontPairStyles: fontPairStyles, textStack: textStack };
+
     var api = {
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,
         flipRot: flipRot, coverScale: coverScale, fitZoom: fitZoom, centred: centred, fitView: fitView, zoomAt: zoomAt,
@@ -13201,7 +13326,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, FOLLOW, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU, VIDEO, SOUND, CLIP, MIX, UPLOAD, PHONE, GROUP, ATTACH, DATA, SEND, SITECOLORS].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, FOLLOW, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU, VIDEO, SOUND, CLIP, MIX, UPLOAD, PHONE, GROUP, ATTACH, DATA, SEND, SITECOLORS, TEXTSTYLES].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');

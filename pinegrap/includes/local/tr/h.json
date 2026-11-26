@@ -466,6 +466,7 @@
     "Hello again!": "Yeniden merhaba!",
     "Hello and the recipient's first name, filled for each recipient when the campaign is sent, then two paragraphs.": "Merhaba ve alıcının adı (kampanya gönderilirken her alıcı için doldurulur), ardından iki paragraf.",
     "Hello and welcome": "Merhaba, hoş geldiniz",
+    "Hello there": "Merhaba",
     "Hello {name},": "Merhaba {name},",
     "Hello {var:1},": "Merhaba {var:1},",
     "Hello {{customer}},": "Merhaba {{customer}},",
