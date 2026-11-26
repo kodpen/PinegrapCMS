@@ -461,6 +461,39 @@ function pg_commerce_settings_ticks($legend, $items)
                     </div>';
 }
 
+
+/**
+ * A choice whose options each carry a line, as radio rows under their legend
+ * (ui/settings-card-markup.md); the choice's own line follows. A radio's id
+ * is the name and its value. Pure.
+ *
+ * @param string $name    the radios' name
+ * @param string $legend  plain text
+ * @param array  $options each value, label and line (plain text, '' for none), on
+ * @param string $help    plain text, '' for none
+ * @return string HTML, a full-width cell
+ */
+function pg_commerce_settings_choice($name, $legend, $options, $help = '')
+{
+    $rows = '';
+
+    foreach ($options as $option) {
+        $id = $name . '_' . $option['value'];
+        $rows .= '
+                            <div class="form-field">
+                                <input value="' . h($option['value']) . '" class="radio" type="radio" id="' . h($id) . '" name="' . h($name) . '"' . (($option['line'] !== '') ? ' aria-describedby="' . h($id) . '_help"' : '') . ($option['on'] ? ' checked="checked"' : '') . '/>
+                                <label for="' . h($id) . '">' . h($option['label']) . '</label>
+                            </div>' . (($option['line'] !== '') ? '
+                            <div class="form-text mb-3" id="' . h($id) . '_help">' . h($option['line']) . '</div>' : '');
+    }
+
+    return '
+                    <div class="col-12">
+                        <fieldset' . (($help !== '') ? ' aria-describedby="' . h($name) . '_help"' : '') . '><legend class="form-label pg-field-label">' . h($legend) . '</legend>' . $rows . '
+                        </fieldset>' . (($help !== '') ? '
+                        <p class="pg-field-help pg-text-meta fg-secondary mb-0" id="' . h($name) . '_help">' . h($help) . '</p>' : '') . '
+                    </div>';
+}
 /**
  * A quiet button that opens a box of fields under it, closed at first: the
  * fields of something new, drawn only when asked for. The box posts its
