@@ -12,7 +12,7 @@ description: Outside developers of the API (owner 2026-11-26): their pages sit i
 - Architect (2026-11-26): every install is its own test environment. A shared demo site is looked at again only if trying without an install is asked for often.
 
 ## Is there a central registry of clients, as Paraşüt's Developer Portal has?
-- No. Architect (2026-11-26): each site gives its own keys on Application Access and is its own OAuth server, where a client names itself by its own address (`api/api-oauth-server.md`). A central issuer would make every site's connections depend on a server of ours (`erp/erp-parasut-devhub-application.md` shows what that costs a self-hosted site).
+- No. Architect (2026-11-26): each site gives its own keys on Application Access and is its own OAuth server, where a client names itself by its own address (`api/api-oauth-server.md`). A central issuer would make every site's connections depend on a server of ours, with fixed return addresses and a secret no self-hosted site may hold, as Paraşüt's partner client shows.
 - A directory of checked applications, which lists and issues nothing, belongs to the addons work after the launch (`after-launch-roadmap.md`).
 
 ## What do the pages lack for an outside developer?
