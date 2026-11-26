@@ -51,17 +51,15 @@ StyleDesigner.definePart('document', function (K) {
         return fetch(url(), {method: 'POST', body: fd, credentials: 'same-origin'}).then(function (r) { return r.json(); });
     }
 
-    // The pictures the rows show from a Word document, stored first:
+    // The pictures the page places from a Word document, stored first:
     // picture:<n> => their address in the file manager.
     function store(rows, keep, name) {
         var wanted = [];
-        rows.forEach(function (r) {
-            r.items.forEach(function (i) {
-                var m = /^picture:(\d+)$/.exec(String(i.src || ''));
-                if (m) {
-                    wanted.push(+m[1]);
-                }
-            });
+        window.PGDocumentPage.pictures(rows).forEach(function (src) {
+            var m = /^picture:(\d+)$/.exec(src);
+            if (m) {
+                wanted.push(+m[1]);
+            }
         });
         if (!keep || !wanted.length) {
             return Promise.resolve({});
