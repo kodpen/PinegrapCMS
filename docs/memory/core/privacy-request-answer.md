@@ -18,7 +18,7 @@ module: privacy_requests
 ## How does the foot change?
 - On Answer: Cancel and "Send the answer" (fill), or for an erasure "Erase and send" (danger, a confirm that it cannot be undone), disabled until the steps allow it. On Request and History: Refuse, Cancel, Save. The script swaps them by `data-privacy-foot`.
 - `action=send` calls `pg_privacy_request_send()`; its codes become the screen's errors (mail not sent: nothing was erased).
-- The server holds the disabled Send too: a correction, objection or other answer runs the gather and returns `refused` when the steps do not allow sending (`pg_privacy_request_send_gathers()`); an erasure and an information answer are refused by their dry run and export. Refuse is not held (#pending).
+- The server holds the disabled Send too: a correction, objection or other answer runs the gather and returns `refused` when the steps do not allow sending (`pg_privacy_request_send_gathers()`); an erasure and an information answer are refused by their dry run and export. Refuse is not held (#11779).
 
 ## What was fixed on the way?
 - The Requests view called `pg_list_table_when_cell()` without loading `includes/fn/list_table.php` (fatal with one row).

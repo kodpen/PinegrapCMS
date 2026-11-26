@@ -1,6 +1,6 @@
 ---
 name: bug-hunt-areas-privacy-requests
-description: Bug hunt of the Privacy centre's request side (proof link, public form, 30 days, Send, download link, API): four faults fixed, two asked, what was read clean
+description: Bug hunt of the Privacy centre's request side (#11779: proof link, public form, 30 days, Send, download link, API): four faults fixed, two asked, what was read clean
 module: privacy_requests
 ---
 
