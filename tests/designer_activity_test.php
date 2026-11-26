@@ -482,14 +482,16 @@ function test_designer_activity_rights()
 		array('key' => 'verdict:1', 'kind' => 'share', 'page_id' => 4, 'folder_id' => 9),
 		array('key' => 'audit:1', 'kind' => 'file', 'page_id' => 0, 'folder_id' => 0),
 		array('key' => 'audit:2', 'kind' => 'page', 'page_id' => 4, 'folder_id' => 9),
+		array('key' => 'comment:1', 'kind' => 'share', 'page_id' => 4, 'folder_id' => 9),
 	);
 
 	// The designer roles see every event of the design.
-	pg_assert_same(6, count(pg_designer_activity_visible($events, true, $mine)));
+	pg_assert_same(7, count(pg_designer_activity_visible($events, true, $mine)));
 
-	// A content editor: the page events of pages that are theirs, no
-	// design-level event (a share link, a design file).
-	pg_assert_same(array('revision:1', 'verdict:1', 'audit:2'),
+	// A content editor: the versions and the moves on and off the site of
+	// pages that are theirs; no design-level event, and no customer's
+	// answer or comment, which belong to the prototype review.
+	pg_assert_same(array('revision:1', 'audit:2'),
 		array_column(pg_designer_activity_visible($events, false, $mine), 'key'));
 }
 
