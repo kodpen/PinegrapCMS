@@ -20,6 +20,6 @@ module: commerce_settings_fold
 ## Which seller identity is read for what?
 - General › Organization (`organization_name`, address, city, state, zip, country → `ORGANIZATION_*`): the shop's own name and postal address on mails, receipts, invoices, packing slips and the shipping origin; Merchant Center's default country.
 - Product feeds' Seller group (`config.product_feeds`): read only by the feed builder: seller name in the OpenAI rows (needed, `no_seller_name`) and the Google XML channel title; seller website in OpenAI rows and the XML channel link; privacy and terms addresses in OpenAI rows only. The screen prefills Seller name with the organization name while it is empty; the build never falls back to it.
-- Not joined: EC5 changes no behaviour. Whether the feed's seller fields should read General › Organization is asked of the architect on the EC5 PR.
+- Not joined (#11938 changed no behaviour). Open: whether the feed's seller fields should read General › Organization is the architect's to decide and has not been asked yet; a step that would join them asks first (`plans/settings-tidy-census.md`).
 
-Related: docs/memory/plans/settings-ecommerce-tidy.md, docs/memory/commerce/product-feed-serving.md, docs/memory/commerce/referral-settings-card.md
+Related: docs/memory/ui/settings-ecommerce.md, docs/memory/commerce/product-feed-serving.md, docs/memory/commerce/referral-settings-card.md

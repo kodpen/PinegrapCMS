@@ -16,4 +16,4 @@ module: commerce_settings_fold
 ## What stayed?
 - Field names, ids, values, card ids, anchors and `commerce.save.php` unchanged; the radio ids stay `ecommerce_reference_price_rule_<rule>`. The help lines that were "(leave blank …)" are sentence-case new keys.
 
-Related: docs/memory/plans/settings-ecommerce-tidy.md, docs/memory/ui/settings-ecommerce-shipping-stock.md
+Related: docs/memory/ui/settings-ecommerce.md, docs/memory/ui/settings-ecommerce-shipping-stock.md

@@ -19,4 +19,4 @@ module: commerce_settings_fold
 ## What stayed?
 - Field names, ids, values, card ids and `commerce.save.php` unchanged; no anchor moved. The label services' hidden `present` input sits in their switch's cell.
 
-Related: docs/memory/plans/settings-ecommerce-tidy.md, docs/memory/ui/settings-ecommerce-store-payments.md
+Related: docs/memory/ui/settings-ecommerce.md, docs/memory/ui/settings-ecommerce-store-payments.md

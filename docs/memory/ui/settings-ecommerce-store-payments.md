@@ -17,4 +17,4 @@ module: commerce_settings_fold
 - The gateway's rows keep their ids (`ecommerce_payment_gateway_transaction_type_row`, `_mode_row`, `ecommerce_paypal_payments_pro_gateway_mode_row`, `ecommerce_iyzipay_*_row`) and inline display: `show_or_hide_ecommerce_payment_gateway()` still switches them; the Cards switch now calls it too, so turning cards on shows the gateway's rows at once.
 - Field names, values, card ids and `commerce.save.php` unchanged; one Save.
 
-Related: docs/memory/plans/settings-ecommerce-tidy.md, docs/memory/ui/settings-fold-rows.md
+Related: docs/memory/ui/settings-ecommerce.md, docs/memory/ui/settings-fold-rows.md

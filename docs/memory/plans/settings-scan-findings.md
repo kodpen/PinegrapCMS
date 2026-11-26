@@ -15,6 +15,6 @@ description: Faults the 2026-11-21 scan of the Site Settings panes left on SEO, 
 - Updates and maintenance: the 10% bubble always open, a missing line, the mini map on a one-line command; its plan closed without them (`ui/settings-maintenance.md`).
 
 ## Which panes still need a plan?
-- SEO, Languages and Translation, Fediverse, Integrations, Channels, Team: folded-row plans by the research agent. Ecommerce has its plan (`settings-ecommerce-tidy.md`); Accounting and Updates and maintenance are done (`ui/settings-accounting.md`, `ui/settings-maintenance.md`).
+- SEO, Languages and Translation, Fediverse, Integrations, Channels, Team: folded-row plans by the research agent. Ecommerce (`ui/settings-ecommerce.md`), Accounting and Updates and maintenance are done (`ui/settings-accounting.md`, `ui/settings-maintenance.md`).
 
 Related: docs/memory/ui/screen-composition-nesting.md, docs/memory/plans/settings-tidy-census-order.md
