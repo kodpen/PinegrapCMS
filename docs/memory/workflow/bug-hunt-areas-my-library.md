@@ -25,7 +25,7 @@ module: designer_library, designer_library_io
 - `image-set("…")` strings are not read as addresses (no script runs from CSS).
 
 ## What was left as it is?
-- A picture the other site lacks is kept as written. Architect (2026-11-26): a picture is a file, not a record; its address is the only trace of which one was meant, and the file put there repairs it; an address on another host or a token cannot be checked. What a file does about its pictures is asked of the owner.
+- A picture the other site lacks is kept as written. Architect (2026-11-26): a picture is a file, not a record; its address is the only trace of which one was meant, and the file put there repairs it; an address on another host or a token cannot be checked. The owner's answer: `designer/designer-library-missing-pictures.md`.
 
 ## What read clean?
 - Rights and CSRF: every library call goes through `pg_panel_designer()` with `validate_token()`; content roles get only `library_list` and `library_prepare` (the allow-list), and each call asks `pg_library_may()`; `make=1` asks `save`.
