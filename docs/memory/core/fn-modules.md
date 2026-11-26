@@ -147,7 +147,7 @@ description: Generated from the module field of the memory files: each includes/
 - `designer`: [[bound-media-src]], [[common-region-component-usage]], [[design-asset-path-placeholders]], [[preview-as-bar]], [[preview-as-check]], [[record-edit-in-place-preview]], [[sketch-build]], [[sketch-build-again]], [[sketch-feel]], [[sketch-page-details]]
 - `designer_activity`: [[designer-activity]], [[designer-activity-audit-lines]], [[designer-activity-reader]], [[designer-activity-tab]]
 - `designer_fx`: [[designer-interactions]], [[designer-interactions-chapter]], [[designer-interactions-count]], [[designer-interactions-more-entrances]], [[designer-options-curve]], [[designer-video-autoplay]]
-- `designer_library`: [[bug-hunt-areas-my-library]], [[designer-library-item]], [[designer-my-library-manage]]
+- `designer_library`: [[bug-hunt-areas-my-library]], [[designer-library-item]], [[designer-library-missing-pictures]], [[designer-my-library-manage]]
 - `designer_library_io`: [[bug-hunt-areas-my-library]], [[designer-library-export-import]], [[designer-library-import-checks]]
 - `designer_messages`: [[messages-node-settings]]
 - `designer_preview_as`: [[designer-preview-as-cases]]
