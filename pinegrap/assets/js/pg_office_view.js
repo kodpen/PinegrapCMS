@@ -3128,6 +3128,70 @@
         });
     }
 
+    // A list of states to go back and forward through, for Undo and Redo:
+    // record() keeps the state before a change, undo(now) gives the last
+    // one kept and keeps now to redo, redo(now) the other way round. A new
+    // change drops what could be redone; only the last limit states stay.
+    function changeList(limit) {
+        var past = [];
+        var future = [];
+
+        return {
+            record: function (state) {
+                past.push(state);
+                future = [];
+
+                if (past.length > limit) {
+                    past.shift();
+                }
+            },
+            undo: function (now) {
+                if (!past.length) {
+                    return null;
+                }
+
+                future.push(now);
+
+                return past.pop();
+            },
+            redo: function (now) {
+                if (!future.length) {
+                    return null;
+                }
+
+                past.push(now);
+
+                return future.pop();
+            },
+            canUndo: function () {
+                return past.length > 0;
+            },
+            canRedo: function () {
+                return future.length > 0;
+            },
+            clear: function () {
+                past = [];
+                future = [];
+            }
+        };
+    }
+
+    // What a key asks of the list of changes: Ctrl+Z (Cmd on a Mac) undo,
+    // Ctrl+Y and Ctrl+Shift+Z redo; '' for any other key.
+    function historyKey(event) {
+        if (!(event.ctrlKey || event.metaKey) || event.altKey) {
+            return '';
+        }
+
+        var key = String(event.key).toLowerCase();
+
+        if (key === 'z') {
+            return event.shiftKey ? 'redo' : 'undo';
+        }
+
+        return key === 'y' ? 'redo' : '';
+    }
+
     // A document as the safe HTML the server made, drawn on a white sheet.
     // Read for editing, the paragraphs it marked (data-p) may be given a new
     // text, except those it marked as holding more than text (data-lock);
@@ -5115,6 +5179,12 @@
             formatRanges: formatRanges,
             cutLook: cutLook,
             exactBase: exactBase
+        },
+        // The document's list of changes for Undo and Redo, and the keys
+        // that ask for them.
+        docHistory: {
+            changeList: changeList,
+            historyKey: historyKey
         },
         // A paragraph's text read from its drawing while it is typed in,
         // and a point of that text found in the drawing again.

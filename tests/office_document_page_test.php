@@ -195,3 +195,50 @@ function test_office_document_page_source()
 	pg_assert_contains('max-width: 816px;', $css, 'the sheet is a page wide at most');
 	pg_assert_same(false, strpos($css, '.office-para-editor'), 'the box\'s rules are gone');
 }
+
+// The document's own list of changes: one press of Undo takes the last step
+// back, Redo puts it again, a new step drops what could be redone, the list
+// keeps its last steps only; and the keys that ask for them.
+function test_office_document_page_history()
+{
+	$result = office_document_page_test_node(<<<'JS'
+var H = window.pgOfficeView.docHistory;
+var out = {};
+var list = H.changeList(3);
+out.empty = [list.canUndo(), list.canRedo(), list.undo('now'), list.redo('now')];
+list.record('a');
+list.record('b');
+out.first = [list.canUndo(), list.canRedo()];
+out.undo = [list.undo('c'), list.undo('b'), list.canUndo(), list.undo('a'), list.canRedo()];
+out.redo = [list.redo('a'), list.redo('b'), list.canRedo(), list.redo('c')];
+list.undo('c');
+list.record('x');
+out.dropped = [list.canRedo(), list.undo('y'), list.undo('x'), list.undo('a')];
+var short = H.changeList(2);
+short.record(1);
+short.record(2);
+short.record(3);
+out.limit = [short.undo(4), short.undo(3), short.undo(2), short.canUndo()];
+short.clear();
+out.clear = [short.canUndo(), short.canRedo()];
+function key(name, ctrl, shift, meta, alt) {
+    return H.historyKey({ key: name, ctrlKey: !!ctrl, shiftKey: !!shift, metaKey: !!meta, altKey: !!alt });
+}
+out.keys = [key('z', 1), key('Z', 1, 1), key('z', 0, 1, 1), key('y', 1), key('Y', 1), key('z', 0, 0, 1), key('z'), key('z', 1, 0, 0, 1), key('b', 1)];
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array(false, false, null, null), $result['empty'], 'nothing to take back on a new list');
+	pg_assert_same(array(true, false), $result['first'], 'a step recorded can be undone');
+	pg_assert_same(array('b', 'a', false, null, true), $result['undo'], 'each press takes one step back, the last first');
+	pg_assert_same(array('b', 'c', false, null), $result['redo'], 'redo puts the steps again in order, ending at the state undone from');
+	pg_assert_same(array(false, 'x', 'a', null), $result['dropped'], 'a new step drops what could be redone');
+	pg_assert_same(array(3, 2, null, false), $result['limit'], 'only the last steps are kept');
+	pg_assert_same(array(false, false), $result['clear'], 'a cleared list has nothing to undo or redo');
+	pg_assert_same(array('undo', 'redo', 'redo', 'redo', 'redo', 'undo', '', '', ''), $result['keys'], 'Ctrl+Z undoes; Ctrl+Y and Ctrl+Shift+Z redo; Cmd on a Mac');
+}
