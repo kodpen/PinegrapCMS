@@ -23,6 +23,6 @@ module: accounting_settings_fold
 
 ## Which ids changed?
 - A radio's id is its name and value, `default` for the empty value: `local_sale_prices_gross`/`_net`, `erp_auto_invoice_on_off`/`_order_paid`/`_order_shipped`, `erp_shipping_tax_default`/`_included`/`_none`, `erp_credit_limit_mode_warn`/`_block`. Names and values posted are those the selects and switches posted; `accounting.save.php` is unchanged. Old links to the field names open the row through `pg_settings_legacy_anchors()`.
-- Built in SA2 (#11887) and SA3.
+- Built in SA2 (#11887) and SA3 (#11908).
 
 Related: docs/memory/ui/settings-accounting.md, docs/memory/ui/settings-fold-rows.md, docs/memory/ui/settings-card-markup.md
