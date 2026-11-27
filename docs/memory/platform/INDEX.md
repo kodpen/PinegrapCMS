@@ -121,6 +121,10 @@
 - import-redirects.md: Content import redirects (2026.11.0): which items keep their old address as a 301 short link, destinations, refusals, report line, CSV download, undo [decision: decisions-made-schema-52.md]
 - import-screen.md: import.php screen rules: menu entry, picker choices (no Recycle Bin or Workspace, path labels), field rows by type, dry run refusals, discard and 7-day sweep, undo answers
 - import-shopify.md: Shopify products and customers CSV import (2026.11.0, #6236): rows grouped by handle, product items as WooCommerce, the contact writer, consent line, tag groups, undo
+- import-site-builders-census-squarespace.md: What Squarespace lets an owner export (read 2026-11-27): the WordPress-format XML, the products CSV and its columns, the contacts files, and the reader and writers each needs
+- import-site-builders-census-webflow.md: What Webflow lets an owner export (2026-11-27, from search text, the help pages refused): collection, products and redirect CSVs, the code ZIP, the reader and writers each needs
+- import-site-builders-census-wix.md: What Wix lets an owner export (read 2026-11-27): products CSV in two layouts, contacts CSV, collection CSV, the reader and writers each needs; no file for pages or blog posts
+- import-site-builders-census.md: What Squarespace, Webflow and Wix let an owner export for the importers (2026-11-27): kinds with a file, readers and writers each needs, what no file carries
 - import-woocommerce.md: WooCommerce products CSV import (2026.11.0, #6206): reader, item shape, variable products as variant sets, categories as groups, the product writer and its undo
 - import-wordpress.md: WordPress WXR reader of the import framework: streaming walk, what each item becomes, skipped internals, comment threads, dates, shortcodes, cursor, mapping rows [decision: decisions-made-schema-9.md]
 - indexnow-ping-result.md: The IndexNow ping in update_sitemap_and_ping() logs success only for HTTP 200/202; a refusal (400, 403, 422, 429) logs 'IndexNow ping failed: HTTP <code>'
