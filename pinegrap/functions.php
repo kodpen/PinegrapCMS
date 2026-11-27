@@ -163,6 +163,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/office_edit.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/office_shift.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/office_sheets.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/office_format.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/office_size.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/office_docx_format.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/office_docx_kind.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/office_docx_paragraphs.php');

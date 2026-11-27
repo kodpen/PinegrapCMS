@@ -26,7 +26,7 @@ module: xero, xero_page
 - Save rereads the chart and refuses an id that is not offered for its role; a kept account no longer offered is shown with a note.
 
 ## When is Xero called?
-- Only on the connect return (token, /connections), when the page is drawn with an organisation chosen (the chart of accounts) and when the accounts are saved. Nothing is sent yet: the sends are later steps of `plans/accounting-sync.md`.
+- Only on the connect return (token, /connections), when the page is drawn with an organisation chosen (the chart of accounts) and when the accounts are saved. Nothing is sent yet: sales, payments and refunds wait in `accounting_sync` (`accounting-sync-queue.md`) until the Xero driver of a later step of `plans/accounting-sync.md`.
 
 ## What does Disconnect do?
 - Revokes the token at Xero (`revoke_client_auth`), deletes the connection and the `xero` service entry (`xero_forget()`).

@@ -242,8 +242,8 @@ function test_workspace_wtable_lookup_filled_where_read()
 	pg_assert_true(strpos(pg_test_function_source('ws_api_wtable_rows_present'), 'ws_wtable_joined_fill') !== false);
 
 	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/workspace_wtables.php');
-	pg_assert_same(4, substr_count($screen, 'ws_wtable_joined_fill('), 'board, download, page and row form');
-	pg_assert_same(3, substr_count($screen, 'ws_wtable_people_with_lookups('));
+	pg_assert_same(5, substr_count($screen, 'ws_wtable_joined_fill('), 'board, download, page, row form and a cell saved in the grid');
+	pg_assert_same(4, substr_count($screen, 'ws_wtable_people_with_lookups('));
 
 	$hints = pg_test_function_source('ws_flow_ai_catalogue_hints');
 	pg_assert_true(substr_count($hints, 'a lookup column') >= 2, 'row_get and rows_get say a lookup is read');

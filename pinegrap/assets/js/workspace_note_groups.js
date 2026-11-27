@@ -410,7 +410,8 @@
         var open = ctx.search ? true : !isClosed(group.id);
         var box = kit.el('div', 'ws-nb-group' + (open ? ' open' : ''));
         var head = kit.el('div', 'ws-nb-group-head');
-        var toggle = kit.el('button', 'ws-nb-group-toggle');
+        // The folder's group label: a click or Enter folds it.
+        var toggle = kit.el('button', 'pg-group-label ws-nb-fold ws-nb-group-toggle');
         var body = kit.el('div', 'ws-nb-group-body');
         var dot = kit.el('span', 'ws-nb-group-dot' + (group.hex ? '' : ' ws-nb-group-dot-none'));
 
@@ -422,7 +423,7 @@
         toggle.dataset.groupId = String(group.id);
         toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
         toggle.setAttribute('aria-controls', body.id);
-        toggle.appendChild(kit.icon('bi-chevron-right', 'ws-nb-group-chevron'));
+        toggle.appendChild(kit.icon('bi-chevron-down', 'ws-nb-fold-chevron'));
 
         if (group.hex) {
             dot.style.background = group.hex;
@@ -441,7 +442,7 @@
             lock.setAttribute('aria-label', kit.t('notes_group_locked'));
             toggle.appendChild(lock);
         } else {
-            toggle.appendChild(kit.el('span', 'ws-nb-count', String(ctx.search ? notes.length : group.count)));
+            toggle.appendChild(kit.el('span', 'pg-group-label-count', String(ctx.search ? notes.length : group.count)));
         }
 
         toggle.addEventListener('click', function () {
@@ -508,15 +509,17 @@
         return box;
     }
 
-    // The My notes section with the person's groups as folders, then their
-    // own notes in no group. ctx: kit (window.PGWsKit), groups, notes (every
-    // note listed: own and shared, each with group_id), mine (own notes),
-    // search, title, emptyText, drawItem(note), ctxMenu, colorPicker,
+    // The My notes section under its group label (ctx.section(), which
+    // folds it) with the person's groups as folders, then their own notes in
+    // no group, in the order ctx.mine holds them. ctx: kit (window.PGWsKit),
+    // groups, notes (every note listed: own and shared, each with group_id),
+    // mine (own notes), search, section(key, title, count, extraClass),
+    // title, emptyText, drawItem(note), ctxMenu, colorPicker,
     // setGroups(groups), reload().
     function mine(ctx) {
         var kit = ctx.kit;
-        var section = kit.el('div', 'ws-nb-section ws-nb-section-groups');
-        var head = kit.el('div', 'ws-nb-section-title');
+        var parts = ctx.section('mine', ctx.title, ctx.mine.length, 'ws-nb-section-groups');
+        var section = parts.box;
         var groups = ctx.groups || [];
         var known = {};
 
@@ -525,16 +528,9 @@
         // A note whose group the list does not hold is drawn in no group.
         var loose = ctx.mine.filter(function (note) { return !known[Number(note.group_id || 0)]; });
 
-        head.appendChild(kit.el('span', '', ctx.title));
-
-        if (ctx.mine.length) {
-            head.appendChild(kit.el('span', 'ws-nb-count', String(ctx.mine.length)));
-        }
-
-        var add = kit.lookButton('pg-button pg-button-ghost pg-button-sm ms-auto ws-nb-group-add', kit.t('notes_group_new'), 'bi-folder-plus');
+        var add = kit.lookButton('pg-button pg-button-ghost pg-button-sm ws-nb-group-add', kit.t('notes_group_new'), 'bi-folder-plus');
         add.addEventListener('click', function () { editGroup(ctx, null); });
-        head.appendChild(add);
-        section.appendChild(head);
+        parts.head.appendChild(add);
 
         groups.forEach(function (group) {
             var notes = groupNotes(ctx.notes, group.id);
@@ -544,15 +540,15 @@
                 return;
             }
 
-            section.appendChild(folder(ctx, group, notes));
+            parts.body.appendChild(folder(ctx, group, notes));
         });
 
         if (!loose.length && (ctx.search || !groups.length)) {
-            section.appendChild(kit.el('div', 'ws-nb-section-empty', ctx.emptyText));
+            parts.body.appendChild(kit.el('div', 'ws-nb-section-empty', ctx.emptyText));
         }
 
         loose.forEach(function (note) {
-            section.appendChild(noteRow(ctx, note, 0));
+            parts.body.appendChild(noteRow(ctx, note, 0));
         });
 
         // Dropped anywhere else in My notes, a note leaves its group.

@@ -222,6 +222,9 @@ function ws_my_calendar($viewer, $view, $anchor = '')
         }
 
         $item = ws_my_calendar_task_item($row, $people, $today);
+        // One the reader may change, with a due day: moved by a drag or
+        // "Move to…" (ws_task_move, as the Planning Board moves it).
+        $item['can_move'] = ($item['due_date'] !== '') && ws_can_edit_task($viewer, $row, $people);
 
         if ($first === $last) {
             $days[$first]['tasks'][] = $item;
@@ -577,5 +580,13 @@ function ws_my_calendar_js_strings()
         'nothing'       => lang('Nothing on your calendar in these days.'),
         'nothing_day'   => lang('Nothing on your calendar this day.'),
         'own_calendar'  => lang('Your own calendar'),
+        // A plan or task moved by a drag or "Move to…" (workspace_my_calendar_move.js).
+        'open'          => lang('Open it'),
+        'move_to'       => lang('Move to...'),
+        'move_to_q'     => lang('Move to which day?'),
+        'move_day'      => lang('Day'),
+        'move'          => lang('Move'),
+        'undo'          => lang('Undo'),
+        'move_undone'   => lang('The move is undone.'),
     );
 }

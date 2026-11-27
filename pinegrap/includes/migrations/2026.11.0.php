@@ -273,6 +273,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_software_language_codes(); // 11.0.281
 	upgrade_2026_11_0_import_site_builder_kinds(); // 11.0.282
 	upgrade_2026_11_0_order_charged_currency();  // 11.0.283
+	upgrade_2026_11_0_accounting_sync();         // 11.0.284
 
 }
 
@@ -9638,5 +9639,44 @@ function upgrade_2026_11_0_order_charged_currency() {
 	}
 
 	install_note('Orders: an order keeps the currency it is charged in and the rate of its day. Marketplace orders in another currency are given their rate in the background, and the dashboard and report totals count them in the base currency.');
+
+}
+
+// 11.0.284 - The accounting sync's queue and pairing
+// (includes/fn/accounting_sync.php): one row per local record and what it
+// became in an accounting service (Xero, later QuickBooks Online), within one
+// of its companies (a Xero organisation, a QuickBooks realm). A row is both
+// the queue (status, attempts, next_try_at, last_error) and the pairing
+// (remote_id, sync_token), as ad_conversion_events is. kind names the record
+// in the service: a customer, an item, a tax rate matched to a tax code, a
+// sale, a payment or a refund; local_table and local_id name the record on
+// the site (orders, order_refunds, erp_invoices, erp_cash_transactions, ...).
+// Nothing is added to the records themselves. The table is created only when
+// it is missing, so the step runs twice without a change.
+function upgrade_2026_11_0_accounting_sync() {
+
+	install_create_table('accounting_sync', "CREATE TABLE accounting_sync (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		service     VARCHAR(20) NOT NULL DEFAULT '',
+		company     VARCHAR(64) NOT NULL DEFAULT '',
+		kind        ENUM('customer','item','tax','sale','payment','refund') NOT NULL DEFAULT 'sale',
+		local_table VARCHAR(40) NOT NULL DEFAULT '',
+		local_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		remote_id   VARCHAR(64) NOT NULL DEFAULT '',
+		sync_token  VARCHAR(64) NOT NULL DEFAULT '',
+		status      ENUM('waiting','sent','failed') NOT NULL DEFAULT 'waiting',
+		attempts    TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		next_try_at INT UNSIGNED NOT NULL DEFAULT 0,
+		last_error  VARCHAR(500) NOT NULL DEFAULT '',
+		created_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		sent_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_pair (service, company, kind, local_table, local_id),
+		KEY idx_due (service, company, status, next_try_at),
+		KEY idx_local (local_table, local_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Accounting sync: sales, payments and refunds can be queued for the accounting service the site connects.');
 
 }

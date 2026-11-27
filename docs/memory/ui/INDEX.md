@@ -350,6 +350,7 @@
 - image-editor-mix.md: An animation's sound in its MP4 or WebM (V7, #8484): the mix plan, OfflineAudioContext, AAC or Opus via AudioEncoder, the muxers' second track, the dialog's note, Sound field and steps
 - image-editor-modal.md: The Artifact Canvas core (window.PgImageEditor): files, loader, bundles, the pure model, labels via lang(), options, full screen, the phone layout, recording a change
 - image-editor-motion.md: The Artifact Canvas's Animate tool: anim and doc.motion, M.motionAt() and its spans, the play bar, the playhead and previews, the Motion popover, the empty panel [decision: decisions-made-product-67.md]
+- image-editor-openverse.md: Free photos (Openverse) in the Artifact Canvas's Import (AC13): keyless CC0 and public domain search, pixels via its proxy, a picture layer saved as a file with its credit
 - image-editor-outline.md: The Artifact Canvas's text to outlines: the model's own OpenType reader, where the font file comes from (action font, data/fonts), the path it makes, what is refused
 - image-editor-overview.md: The Artifact Canvas (code name image editor) as a whole: what it is, the decisions that bind it, browser or server, the document in rotated space, which file holds each part [decision: decisions-made-product-14.md, decisions-made-product-24.md, decisions-made-product-27.md, decisions-made-product-80.md]
 - image-editor-parts.md: The Artifact Canvas in parts: core, model, one file per tool; the hooks a tool hangs on the editor (panels, pointers, layer types), its model section, labels, API actions, styles and tests
@@ -865,6 +866,6 @@
 - whole-number-input-mask.md: Panel boxes of whole-number columns take Inputmask's integer alias, never decimal, so a Turkish 1.000 is a thousand; the auto dialog boxes take none
 - workspace-avatar-faces.md: A face from avatar() in the Workspace scripts keeps Bootstrap's .avatar (classList.add, never className =) and is sized by --bs-avatar-size; why a check-in answer's photo once covered the channel
 - workspace-screen-bar-calendars-board-timeline.md: The one-line bar and empty screens of Work Calendar, My calendar, Planning Board and Decision Timeline: barSteps(), pressed segments, Clashes count, inline filters
-- workspace-screen-bar-notes-data.md: The one-line bar and empty screen of My Notes (startNotes(), "⋯" with Pin to the menu, Import, Export all) and Data (ws_wtable_list_bar(), ws_empty_screen_html())
+- workspace-screen-bar-notes-data.md: The one-line bar and empty screen of My Notes (startNotes(), "⋯" with the list's order, Pin to the menu, Import, Export all) and Data (ws_wtable_list_bar(), ws_empty_screen_html())
 - workspace-screen-bar.md: A Workspace screen's one-line bar (My Tasks first): "Filter", its box and tags line, views as a select when narrow, the empty screen; barFilter(), emptyScreen() in workspace.js [decision: decisions-made-workspace-48.md]
 - zone-shared-form.md: add_zone.php and edit_zone.php draw the shipping zone form and read its rates through includes/forms/zone_form.php; what each screen keeps

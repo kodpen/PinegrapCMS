@@ -8,7 +8,10 @@
  * (number, money, date and checkbox narrow, text wide) and figures stand
  * right. The grid scrolls in its own box with the head row, the "#" column
  * and the totals rows held in view. A row opens in a form drawer, which is
- * also the New row form. Nothing here reads the database.
+ * also the New row form. A cell of a text, number, money, date, checkbox or
+ * status column is changed in the grid itself
+ * (assets/js/workspace_wtable_grid.js), one cell a post through the
+ * screen's row_cell action. Nothing here reads the database.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -59,14 +62,198 @@ function ws_wtable_grid_shape($type, $options = array())
  * @param array  $shape ws_wtable_grid_shape()
  * @param string $html  what the cell shows, escaped
  * @param string $title the cell's whole text, raw; empty for none
+ * @param string $attrs more attributes of the td, escaped, with a leading
+ *                      space (the grid's column, editor and value)
  * @return string HTML
  */
-function ws_wtable_grid_cell_html($shape, $html, $title)
+function ws_wtable_grid_cell_html($shape, $html, $title, $attrs = '')
 {
     $title = (string) $title;
 
-    return '<td class="ws-wt-c ws-wt-c-' . h((string) $shape['width']) . (!empty($shape['end']) ? ' text-end' : '') . '">'
+    return '<td class="ws-wt-c ws-wt-c-' . h((string) $shape['width']) . (!empty($shape['end']) ? ' text-end' : '') . '"' . (string) $attrs . '>'
         . '<div class="ws-wt-cell"' . (($title !== '') ? ' title="' . str_replace(array("\r\n", "\r", "\n"), '&#10;', h($title)) . '"' : '') . '>' . $html . '</div></td>';
+}
+
+/**
+ * The field a cell turns into when it is changed in the grid, '' when the
+ * cell opens the row drawer instead: formula, lookup, rollup, person, record
+ * link, row link and list cells, and a text that has more than one line
+ * (one line of the grid would lose its breaks). Pure.
+ *
+ * @param array $column type, options
+ * @param mixed $value  the stored cell
+ * @return string text, number, money, date, datetime, checkbox, status or ''
+ */
+function ws_wtable_grid_cell_editor($column, $value = null)
+{
+    $type = (string) ($column['type'] ?? '');
+
+    switch ($type) {
+        case 'text':
+            return (is_string($value) && preg_match('/[\r\n]/', $value)) ? '' : 'text';
+
+        case 'date':
+            return empty($column['options']['time']) ? 'date' : 'datetime';
+
+        case 'number':
+        case 'money':
+        case 'checkbox':
+        case 'status':
+            return $type;
+    }
+
+    return '';
+}
+
+/**
+ * The row change one cell typed in the grid writes: that cell alone, read
+ * as the row drawer reads its field (ws_wtable_screen_cell_from_form()), on
+ * the revision the row was drawn with. Null for a column the grid does not
+ * change. Pure.
+ *
+ * @param string|int $column_id
+ * @param array      $column
+ * @param mixed      $raw      the field's value as posted
+ * @param mixed      $revision
+ * @return array|null cells, revision (ws_wtable_row_update() input)
+ */
+function ws_wtable_grid_cell_change($column_id, $column, $raw, $revision)
+{
+    if (ws_wtable_grid_cell_editor($column) === '') {
+        return null;
+    }
+
+    return array(
+        'cells'    => array((string) (int) $column_id => ws_wtable_screen_cell_from_form($column, is_scalar($raw) ? (string) $raw : '')),
+        'revision' => is_scalar($revision) ? (int) $revision : 0,
+    );
+}
+
+/**
+ * A refused cell in the store's words: the code the store gave that cell,
+ * else the refusal as a whole (a key taken names its rows). Pure but for
+ * lang().
+ *
+ * @param array      $result    a store refusal
+ * @param string|int $column_id
+ * @return string
+ */
+function ws_wtable_grid_cell_refusal_text($result, $column_id)
+{
+    $errors = (array) ($result['errors'] ?? array());
+
+    if (isset($errors[(string) (int) $column_id]) && is_string($errors[(string) (int) $column_id])) {
+        return ws_wtable_screen_error_text($errors[(string) (int) $column_id]);
+    }
+
+    return ws_wtable_screen_refusal_text($result);
+}
+
+/**
+ * A row's cells as the grid draws them, by column id: the text one line in
+ * its width, a status as its badge, a formula's error as #CODE. A person
+ * who may change the row gets on each cell its column, and on a cell the
+ * grid changes its field and the value the field opens with. Pure but for
+ * lang().
+ *
+ * @param array $columns  column id => column
+ * @param array $shapes   column id => ws_wtable_grid_shape()
+ * @param array $row      a row as read (cells, formula_errors)
+ * @param array $people   ws_people() with link and lookup texts
+ * @param bool  $can_write
+ * @return array column id => td HTML
+ */
+function ws_wtable_grid_row_cells($columns, $shapes, $row, $people, $can_write)
+{
+    $out = array();
+
+    foreach ($columns as $column_id => $column) {
+        $value = $row['cells'][$column_id] ?? null;
+        $text = ws_wtable_screen_cell_text($column, $value, $people);
+
+        if (($column['type'] === 'formula') && isset($row['formula_errors'][$column_id])) {
+            $text = (string) $row['formula_errors'][$column_id];
+            $cell = '<span class="fg-danger">#' . h(strtoupper($text)) . '</span>';
+        } elseif (($column['type'] === 'status') && ($text !== '')) {
+            $color = '';
+
+            foreach ((array) ($column['options']['choices'] ?? array()) as $choice) {
+                if (((string) $choice['key'] === (string) $value) && ((string) ($choice['color'] ?? '') !== '')) {
+                    $color = ' style="background: ' . h($choice['color']) . '; color: #fff;"';
+                }
+            }
+
+            $cell = '<span class="badge theme-secondary fw-normal"' . $color . '>' . h($text) . '</span>';
+        } else {
+            // One line: the line breaks of a text show as spaces, the
+            // whole text in the title.
+            $cell = h($text);
+        }
+
+        $attrs = '';
+
+        if ($can_write) {
+            $editor = ws_wtable_grid_cell_editor($column, $value);
+            $attrs = ' data-ws-wt-col="' . (int) $column_id . '" tabindex="-1"'
+                . (($editor !== '') ? ' data-ws-wt-edit="' . $editor . '" data-ws-wt-value="' . h(ws_wtable_screen_cell_to_form($column, $value)) . '"' : '');
+        }
+
+        $out[(string) $column_id] = ws_wtable_grid_cell_html($shapes[(string) $column_id] ?? ws_wtable_grid_shape($column['type']), $cell, $text, $attrs);
+    }
+
+    return $out;
+}
+
+/**
+ * What the grid's script needs to turn a cell into its field: where it
+ * posts, the table, each column's name, a money column's currency and a
+ * status column's choices, and its texts. Pure but for lang().
+ *
+ * @param string $url      the screen's address
+ * @param int    $table_id
+ * @param string $token    the form token
+ * @param array  $columns  column id => column
+ * @return array
+ */
+function ws_wtable_grid_script_config($url, $table_id, $token, $columns)
+{
+    $out = array();
+
+    foreach ($columns as $column_id => $column) {
+        if (ws_wtable_grid_cell_editor($column) === '') {
+            continue;
+        }
+
+        $item = array('name' => (string) $column['name']);
+
+        if (($column['type'] === 'money') && ((string) ($column['options']['currency'] ?? '') !== '')) {
+            $item['currency'] = (string) $column['options']['currency'];
+        }
+
+        if ($column['type'] === 'status') {
+            $item['choices'] = array();
+
+            foreach ((array) ($column['options']['choices'] ?? array()) as $choice) {
+                $item['choices'][] = array('key' => (string) $choice['key'], 'label' => (string) $choice['label']);
+            }
+        }
+
+        $out[(string) (int) $column_id] = $item;
+    }
+
+    return array(
+        'url'     => (string) $url,
+        'table'   => (int) $table_id,
+        'token'   => (string) $token,
+        'columns' => $out,
+        'texts'   => array(
+            'none'    => lang('(none)'),
+            'saving'  => lang('Saving…'),
+            'saved'   => lang('The cell was saved.'),
+            'error'   => lang('Something went wrong. Please try again.'),
+            'keys'    => lang('Enter saves, Escape gives it up, Tab goes to the next cell.'),
+        ),
+    );
 }
 
 /**
@@ -193,6 +380,23 @@ function ws_wtable_grid_style()
     .ws-wt-grid .ws-wt-open:focus-visible {
         outline: 2px solid var(--pg-link-color);
         outline-offset: 2px;
+    }
+    .ws-wt-grid td[data-ws-wt-col]:focus-visible {
+        outline: 2px solid var(--pg-link-color);
+        outline-offset: -2px;
+    }
+    .ws-wt-grid td[data-ws-wt-edit] {
+        cursor: cell;
+    }
+    .ws-wt-grid td.ws-wt-editing {
+        padding-block: 0;
+    }
+    .ws-wt-grid td.ws-wt-editing .pg-input {
+        min-width: 8rem;
+    }
+    .ws-wt-grid .ws-wt-cell-note {
+        max-width: 24rem;
+        white-space: normal;
     }
 }
 </style>';

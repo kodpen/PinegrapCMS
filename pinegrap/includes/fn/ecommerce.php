@@ -1305,6 +1305,10 @@ function pg_order_mark_paid(int $order_id, int $user_id = 0): bool
     pg_form_payment_mark_paid($order_id);
     pg_booking_deposit_mark_paid($order_id);
 
+    // The sale and its payment wait for the connected accounting service.
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/accounting_sync.php');
+    pg_accounting_sync_order_paid($order_id);
+
     return true;
 }
 

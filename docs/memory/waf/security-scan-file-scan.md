@@ -1,6 +1,6 @@
 ---
 name: security-scan-file-scan
-description: Security Scan file scan - the six file rules, retired release files, what each reads, the release reference it judges by, the resumable walk, the server-config baseline, the job and its state row.
+description: Security Scan file scan - the six file rules, what each reads, the release reference, the resumable walk, the server-config baseline, the job and its state row.
 module: security_scan_files
 ---
 
@@ -20,10 +20,9 @@ module: security_scan_files
 ## How does the walk run and resume?
 - Roots in order: the software folder, `FILE_DIRECTORY_PATH` as `data/files`, `LAYOUT_DIRECTORY_PATH` as `data/layouts` (`pg_security_files_roots()`; `pg_security_place_disk_path()` maps a place back to disk).
 - Skipped: `.git`, `data/backups`, `data/temp/restore_<id>`, `data/quarantine` (`security-scan-section.md`), the upload folders inside the software folder (walked as their own roots); symbolic links are not followed.
-- `pg_security_files_advance()` walks on from the root and cursor; `pg_security_files_check()` checks one file.
-- Sorted walk; the cursor is the last place done, compared segment by segment (`pg_security_place_compare()`, `pg_security_folder_done()`).
+- `pg_security_files_advance()` walks on from the root and cursor, sorted; `pg_security_files_check()` checks one file. The cursor is the last place done, compared segment by segment (`pg_security_place_compare()`, `pg_security_folder_done()`).
 - `security_scan_job.php` (catalogue `security_scan_job`): heavy lane, daily, lock 600 s, budget `SEO_ANALYZE_TIME_BUDGET` capped by `pg_cron_time_left()`; runs the joined scan, files first (`security-scan-section.md`). A web request needs a Manager.
-- Read in 1 MB chunks, 512-byte carry, at most 32 MB a file.
+- Read in 64 KB chunks (`PG_SECURITY_FILES_READ_CHUNK`, #12101), 512-byte carry, at most 32 MB a file.
 
 ## Where is the run kept, and what does a finished run do?
 - One `config_text` row `security_scan_files` (JSON): started, root, cursor, counts, reference, baseline, the run's config digests, unread, last_finished, last_files, last_reference.

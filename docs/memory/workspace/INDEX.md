@@ -268,6 +268,7 @@
 - workflow-tables-data-list.md: The Data list (CO6 #8978, CO6b #9192): workflow tables named Data, the list table driver, its scopes, windows, Deleted tables view, the canvases that use a table, the channel seam
 - workflow-tables-export.md: A workflow table downloads as an Excel file (TX1): who may, what each cell becomes, the shared xlsx writer the ERP export also uses
 - workflow-tables-grid-drawer.md: A Data table's grid (workspace_wtables.php?id=N, DM2): one-line cells, widths by type, the box with its head, "#" and totals held in view; the row and New row in one form drawer
+- workflow-tables-grid.md: A Data table's cells changed in the grid (workspace_wtables.php?id=N, DM3): double click, Enter or F2, the row_cell action, refusals under the cell, changed_meanwhile, workspace_wtable_grid.js
 - workflow-tables-import.md: The import route workspace.tables.import (TX2, #8427): a site file or a note's table into a workflow table over the API and MCP, the pairing, the dry run through ws_wtable_import_check(), refusals [decision: decisions-made-workspace-10.md]
 - workflow-tables-later.md: What workflow tables leave for later (T1-T6 done): a "my tables" strip, table versions, the CRM pipeline; exports still to come and the planned bin [decision: decisions-made-product-11.md]
 - workflow-tables-lists.md: The list column of workflow tables (type list, PR #8486): texts or numbers one a line, contains, a count in formulas, a JSON list in flows, screen, import, privacy
@@ -599,6 +600,7 @@
 - workspace-message-seen-by.md: The "Who has seen it" drawer (ws_message_seen_by()): people by last_read_id, agents by their requests (#9366), the two groups, the muted not-woken line, the writer-alone line (#4238) [decision: decisions-made-workspace-23.md]
 - workspace-message-translate.md: Translate in a message's menu (MT1): the browser's own Translator and LanguageDetector, the reader's panel language, the line under the message, what is kept untranslated, nothing sent or saved [decision: decisions-made-workspace-35.md]
 - workspace-module-decisions.md: Binding decisions of the Workspace module (channels, tasks, plan board): rights not roles, private channel audit, chat bubble kept apart, multiple assignees, customer context, API scope ceiling
+- workspace-my-calendar-move.md: My calendar's drag (CM3): which plans and tasks lift, ws_personal_plan_move and ws_task_move with an hour, the repeat question, Undo, "Move to…" on the item's menu
 - workspace-my-calendar-phone.md: My calendar below 576 px (CM2): the month's chosen day listed under the grid, the week one day at a time stepped by the arrows and a swipe, icon views, the short range name in the bar
 - workspace-my-calendar-week.md: My calendar's Week with hours (CM1): the strip of what has no hour, the hour grid 07:00-20:00 in view, what stands where, overlaps sharing the width, the line of now, New plan from an empty hour
 - workspace-my-calendar.md: My calendar (workspace_my_calendar.php, PC2): the Work Calendar opened on the reader alone by month, week and list; what it reads, its gate, its ways in from the E-mails toolbar and the Workspace menu
@@ -617,7 +619,7 @@
 - workspace-note-lock-readers.md: Notes lock beyond the notes screen: API and MCP (locked, 423 note_locked), assistants, get_file.php, export, blocks, record history, table import; the readers guard test
 - workspace-note-lock-screen.md: Notes lock on My Notes (workspace_note_lock.js): toolbar Lock and dialogs, Lock/Unlock in menus, list marks, the lock pane and e-mailed code, the time-out, note_locked answers
 - workspace-note-lock.md: Notes lock store (note_lock.php): PIN set-up and checks, open lock in the session, times, wrong-PIN pause, e-mailed code, actions ws_note_lock_*; the gate in workspace-note-lock-gate.md
-- workspace-note-page.md: My Notes' note as a page (.ws-nb-page): title and text in a 46rem column without a frame, one sticky row of tools folding into More; what other writing boxes keep
+- workspace-note-page.md: My Notes' note as a page (#12055) (.ws-nb-page): title and text in a 46rem column without a frame, one sticky row of tools folding into More; what other writing boxes keep
 - workspace-note-tabs.md: Note tabs over an open note on My Notes — workspace_note_tabs.js (group as ARIA tablist, marks, +, keys, drag to reorder via ws_note_place) and drawTabs() in startNotes()
 - workspace-notes-deletions.md: Deleting a note over the API (PR #1674) and ws_note_deletions (schema 11.0.85): who may, whom a deletion or a person share taken back is kept for, how long, deleted in the changes listing, no MCP tool
 - workspace-notes-export.md: Notes leaving the Workspace as files (workspace_notes_export.php, notes_io.php): one note as Markdown with front matter, a print page, "Export all" as a zip vault; what the tags and attachments become
@@ -630,7 +632,7 @@
 - workspace-notes-import-upload.md: The notes import's upload: picked list, checks, unreadable files, XHR progress, cancel, reading step, focus, request_max cap, per-file sentences, session closed before staging
 - workspace-notes-import-zip-names.md: How the notes import reads zip entry names (UTF-8 flag, CP857 from Windows/7-Zip on a Turkish system, libzip's CP437 guess) and why "Toplantì notlarì" happened
 - workspace-notes-import.md: Notes brought in from other apps (workspace_notes_import.php, notes_import.php): Markdown/text or a zip staged, previewed, written in batches; how an export of ours updates its own note
-- workspace-notes-list-layout.md: My Notes screen layout: list column widths, the note time on the line under the title, the New note button in the empty pane (#5194)
+- workspace-notes-list-layout.md: My Notes list: column widths, each note a .pg-list-row (time under the excerpt), the chosen row's tint and edge, group labels that fold, the order in the bar's ⋯, the New note button in the empty pane
 - workspace-notes-revision.md: A note's revision (ws_notes.revision, schema 11.0.84, PR #1663): which writes move it, the API's revision field and 409, the panel's revision, why code checks for the column, base kept
 - workspace-notes-slash-inserts.md: "/" in a note's writing box lists the box's own inserts (lists, quote, checklist, table, calculation, code block, highlight); where it opens, keys, undo, what it never does
 - workspace-notes-sources.md: Where an imported note came from (ws_note_sources, schema 11.0.86, PR #1812): the id per provider, how the import plan turns a known file into "same" or "update", when rows are written and dropped [decision: here]

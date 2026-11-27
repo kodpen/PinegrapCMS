@@ -8205,6 +8205,7 @@ function pg_js_bundles()
             'assets/js/workspace_calls.js',
             'assets/js/workspace_customer.js',
             'assets/js/workspace_flow_flag.js',
+            'assets/js/workspace_note_list.js',
             'assets/js/workspace_note_groups.js',
             'assets/js/workspace_note_tabs.js',
             'assets/js/workspace_note_group_shares.js',
@@ -8217,6 +8218,7 @@ function pg_js_bundles()
             'assets/js/workspace_conversation_timeline.js',
             'assets/js/workspace_my_calendar_roadmap.js',
             'assets/js/workspace_my_calendar_week.js',
+            'assets/js/workspace_my_calendar_move.js',
             'assets/js/workspace_my_calendar.js',
             'assets/js/workspace_translate.js',
             'assets/js/workspace_highlights.js',
@@ -8226,6 +8228,8 @@ function pg_js_bundles()
         ),
         'assets/js/workspace_palette.min.js'       => array('assets/js/workspace_palette.js'),
         'assets/js/workspace_board_channel.min.js' => array('assets/js/workspace_board_channel.js'),
+        // A Data table's cells changed in its grid (workspace_wtables.php).
+        'assets/js/workspace_wtable_grid.min.js'   => array('assets/js/workspace_wtable_grid.js'),
         'assets/js/workspace_tour.min.js'          => array('assets/js/workspace_tour.js'),
         // The graph canvas core (window.PGGraphCanvas), printed before the
         // scripts that draw on it: the flow canvas first.
@@ -8264,7 +8268,7 @@ function pg_js_bundles()
             'assets/js/pg_image_editor_redact.js', 'assets/js/pg_image_editor_area.js', 'assets/js/pg_image_editor_versions.js', 'assets/js/pg_image_editor_artboard.js', 'assets/js/pg_image_editor_langview.js',
             'assets/js/pg_image_editor_export.js', 'assets/js/pg_image_editor_vector.js', 'assets/js/pg_image_editor_svg.js',
             'assets/js/pg_image_editor_motion.js', 'assets/js/pg_image_editor_tracks.js', 'assets/js/pg_image_editor_sound.js', 'assets/js/pg_image_editor_keyframes.js', 'assets/js/pg_image_editor_render.js', 'assets/js/pg_image_editor_scenes.js', 'assets/js/pg_image_editor_present.js', 'assets/js/pg_image_editor_access.js', 'assets/js/pg_image_editor_record.js', 'assets/js/pg_image_editor_follow.js', 'assets/js/pg_image_editor_fonts.js', 'assets/js/pg_image_editor_textstyles.js',
-            'assets/js/pg_image_editor_glyph.js', 'assets/js/pg_image_editor_elements.js', 'assets/js/pg_image_editor_tabler.js', 'assets/js/pg_image_editor_starts.js', 'assets/js/pg_image_editor_resize.js', 'assets/js/pg_image_editor_frames.js', 'assets/js/pg_image_editor_unsplash.js', 'assets/js/pg_image_editor_data.js', 'assets/js/pg_image_editor_warp.js', 'assets/js/pg_image_editor_puppet.js', 'assets/js/pg_image_editor_outline.js', 'assets/js/pg_image_editor_builder.js',
+            'assets/js/pg_image_editor_glyph.js', 'assets/js/pg_image_editor_elements.js', 'assets/js/pg_image_editor_tabler.js', 'assets/js/pg_image_editor_starts.js', 'assets/js/pg_image_editor_resize.js', 'assets/js/pg_image_editor_frames.js', 'assets/js/pg_image_editor_unsplash.js', 'assets/js/pg_image_editor_openverse.js', 'assets/js/pg_image_editor_data.js', 'assets/js/pg_image_editor_warp.js', 'assets/js/pg_image_editor_puppet.js', 'assets/js/pg_image_editor_outline.js', 'assets/js/pg_image_editor_builder.js',
             'assets/js/pg_image_editor_video.js', 'assets/js/pg_image_editor_clip.js', 'assets/js/pg_image_editor_mix.js', 'assets/js/pg_image_editor_upload.js', 'assets/js/pg_image_editor_phone.js', 'assets/js/pg_image_editor_colors.js', 'assets/js/pg_image_editor_actions.js',
             'assets/js/pg_image_editor_menu.js'),
         // The image editor's animation encoder, started as a worker (or on the

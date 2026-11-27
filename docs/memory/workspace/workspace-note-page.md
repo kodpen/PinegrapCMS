@@ -1,10 +1,10 @@
 ---
 name: workspace-note-page
-description: My Notes' note as a page (.ws-nb-page): title and text in a 46rem column without a frame, one sticky row of tools folding into More; what other writing boxes keep
+description: My Notes' note as a page (#12055) (.ws-nb-page): title and text in a 46rem column without a frame, one sticky row of tools folding into More; what other writing boxes keep
 ---
 
 ## What does My Notes' note pane look like?
-- The card is `card ws-nb-card ws-nb-page` (`drawNote()` in `startNotes()`, `assets/js/workspace.js`). The head keeps Back (phone), the faces, "Saved" with the last change (`.ws-nb-meta`: `.ws-nb-status` and `.ws-nb-last`), Share, the meeting transfer, History and "⋯", all in the quiet colour (`--pg-fg-2`). The info line under it keeps the rest (created, owner, source, channels).
+- Since #12055 the card is `card ws-nb-card ws-nb-page` (`drawNote()` in `startNotes()`, `assets/js/workspace.js`). The head keeps Back (phone), the faces, "Saved" with the last change (`.ws-nb-meta`: `.ws-nb-status` and `.ws-nb-last`), Share, the meeting transfer, History and "⋯", all in the quiet colour (`--pg-fg-2`). The info line under it keeps the rest (created, owner, source, channels).
 - The meta is one line joined by "·", cut short with an ellipsis on a phone; `.ws-nb-last` carries the whole text as its tooltip.
 - The body is the row of tools, then `.ws-nb-sheet`: a column of at most 46rem in the middle of a wide pane, holding the title, the voice row, the scheduled strip, the text, the assistant line and the recordings (read only: the notice and the note drawn).
 - The title is a plain input of `.pg-title-screen` size, no field frame (`drawHead()` puts it first in the column and keeps the same input on a redraw, so a new note's first save does not take the focus from it). The text has no frame, background or focus box: it is written on the card. Neither shows a focus ring; the caret marks the focus, and the row's buttons keep the panel's ring.

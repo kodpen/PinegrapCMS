@@ -45,7 +45,9 @@
 
     // kit: h (the Workspace helpers), data (ws_my_calendar()), eventChip,
     // taskChip (chip builders of the screen), newPlan(day, hour) (null when
-    // no plan may be made), dayMenu(day), openDay(day).
+    // no plan may be made), dayMenu(day), openDay(day), target(node, date,
+    // minuteAt) and minuteAt(column) (workspace_my_calendar_move.js, null
+    // when nothing is dropped).
     function draw(box, kit) {
         var h = kit.h;
         var el = h.el;
@@ -132,6 +134,11 @@
             });
 
             h.onContext(cell, function () { return kit.dayMenu(day); });
+
+            if (kit.target) {
+                kit.target(cell, day.date, null);
+            }
+
             strip.appendChild(cell);
         });
 
@@ -171,6 +178,13 @@
             }
 
             h.onContext(col, function () { return kit.dayMenu(day); });
+
+            // A plan or task dropped on the hours: that day, at the hour
+            // under its top.
+            if (kit.target) {
+                kit.target(col, day.date, kit.minuteAt ? kit.minuteAt(col) : null);
+            }
+
             grid.appendChild(col);
         });
 

@@ -748,38 +748,53 @@
         }
     };
 
-    // A picture file as a layer in the middle of the canvas, at most 60 % of
-    // it; one larger than 2000 px is kept at that size, one in another type
-    // than PNG or JPEG as a PNG (a save keeps it as a file, fileName naming
-    // it).
-    Editor.prototype.addPicture = function (file) {
-        var self = this, reader = new FileReader();
+    // A picture file's pixels as the canvas keeps them: a promise of
+    // { src, w, h }, src a data: address; one larger than 2000 px is kept at
+    // that size, one in another type than PNG or JPEG as a PNG.
+    Editor.prototype.readPicture = function (file) {
+        return new Promise(function (resolve, reject) {
+            var reader = new FileReader();
 
-        reader.onload = function () {
-            var img = new Image();
+            reader.onerror = reject;
+            reader.onload = function () {
+                var img = new Image();
 
-            img.onload = function () {
-                var src = String(reader.result), w = img.naturalWidth, h = img.naturalHeight, k = Math.min(1, 2000 / Math.max(w, h));
+                img.onerror = reject;
+                img.onload = function () {
+                    var src = String(reader.result), w = img.naturalWidth, h = img.naturalHeight, k = Math.min(1, 2000 / Math.max(w, h));
 
-                if ((k < 1) || !/^data:image\/(png|jpeg);/.test(src)) {
-                    var canvas = document.createElement('canvas');
+                    if ((k < 1) || !/^data:image\/(png|jpeg);/.test(src)) {
+                        var canvas = document.createElement('canvas');
 
-                    canvas.width = Math.round(w * k);
-                    canvas.height = Math.round(h * k);
-                    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-                    src = canvas.toDataURL('image/png');
-                }
+                        canvas.width = Math.round(w * k);
+                        canvas.height = Math.round(h * k);
+                        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                        src = canvas.toDataURL('image/png');
+                    }
 
-                self.picture(src).then(function () {
-                    var vr = self.viewRect(), fit = Math.min(1, 0.6 * vr.w / w, 0.6 * vr.h / h), lw = w * fit, lh = h * fit;
-
-                    self.toSelect();
-                    self.addLayers([{ type: 'image', src: src, fileName: file.name || '', x: vr.x + (vr.w - lw) / 2, y: vr.y + (vr.h - lh) / 2, w: lw, h: lh, rot: 0, opacity: 1 }], 0);
-                });
+                    resolve({ src: src, w: w, h: h });
+                };
+                img.src = String(reader.result);
             };
-            img.src = String(reader.result);
-        };
-        reader.readAsDataURL(file);
+            reader.readAsDataURL(file);
+        });
+    };
+
+    // A picture file as a layer in the middle of the canvas, at most 60 % of
+    // it (readPicture(); a save keeps it as a file, fileName naming it).
+    Editor.prototype.addPicture = function (file) {
+        var self = this;
+
+        this.readPicture(file).then(function (pic) {
+            var src = pic.src, w = pic.w, h = pic.h;
+
+            self.picture(src).then(function () {
+                var vr = self.viewRect(), fit = Math.min(1, 0.6 * vr.w / w, 0.6 * vr.h / h), lw = w * fit, lh = h * fit;
+
+                self.toSelect();
+                self.addLayers([{ type: 'image', src: src, fileName: file.name || '', x: vr.x + (vr.w - lw) / 2, y: vr.y + (vr.h - lh) / 2, w: lw, h: lh, rot: 0, opacity: 1 }], 0);
+            });
+        });
     };
 
     // The number in a layer's id ("l3" → 3, M.newId()); -1 for an id

@@ -5495,6 +5495,13 @@ function ws_handle_action($action, $request)
 
             $fields = ws_task_move_dates($task, $date);
 
+            // My calendar's week: a task with a due time dropped on an hour.
+            $time = ws_task_moved_time((string) ($task['due_time'] ?? ''), isset($request['hour']) ? (int) $request['hour'] : -1);
+
+            if ($time !== '') {
+                $fields['due_time'] = $time;
+            }
+
             $people = ws_task_assignee_ids($task['id']);
             $from_user = (int) ($request['from_user_id'] ?? 0);
             $to_user = (int) ($request['to_user_id'] ?? 0);
@@ -5590,6 +5597,14 @@ function ws_handle_action($action, $request)
             $result = ws_personal_plan_save($viewer, $request, (int) ($request['plan_id'] ?? 0));
 
             return isset($result['error']) ? ws_action_error($result['error']) : ws_action_ok(array('plan' => $result['plan']));
+
+        // A plan moved on My calendar by a drag or "Move to…", through its
+        // own save; the answer carries the move back for Undo.
+        case 'ws_personal_plan_move':
+            $result = ws_personal_plan_move($viewer, (int) ($request['plan_id'] ?? 0), is_scalar($request['day'] ?? '') ? (string) ($request['day'] ?? '') : '',
+                max(-3660, min(3660, (int) ($request['days'] ?? 0))), max(-1, min(23, (int) ($request['hour'] ?? -1))), is_scalar($request['mode'] ?? '') ? (string) ($request['mode'] ?? '') : '');
+
+            return isset($result['error']) ? ws_action_error($result['error']) : ws_action_ok(array('plan' => $result['plan'], 'undo' => $result['undo']));
 
         // Add to my calendar: the drawer filled from a mail the reader may read.
         case 'ws_personal_plan_mail':

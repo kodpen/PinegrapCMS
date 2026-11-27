@@ -1238,11 +1238,16 @@ function pg_office_xlsx_cell_parts($reader)
  *                            style) and how a number is shown in its format
  *                            (show, column => text), the value staying what
  *                            the editor changes
+ * @param array|null $sizes   set to the sheet's column widths, default
+ *                            sizes and frozen rows (pg_office_size_note());
+ *                            a row with its own height says it (h, points)
  * @return array[]
  */
-function pg_office_xlsx_rows($path, $part, $strings, $date_styles, &$cells_left, &$truncated, $date1904 = false, $looks = array())
+function pg_office_xlsx_rows($path, $part, $strings, $date_styles, &$cells_left, &$truncated, $date1904 = false, $looks = array(), &$sizes = null)
 {
     $rows = array();
+    $sizes = function_exists('pg_office_size_empty') ? pg_office_size_empty() : null;
+    $in_data = false;
     $truncated = false;
     $separators = (!empty($looks) && function_exists('pg_number_separators')) ? pg_number_separators() : array('decimal' => '.', 'thousands' => ',');
 
@@ -1259,6 +1264,26 @@ function pg_office_xlsx_rows($path, $part, $strings, $date_styles, &$cells_left,
 
     while ($reader->read()) {
         if (($reader->nodeType !== XMLReader::ELEMENT) || ($reader->localName !== 'row')) {
+            // The sheet's head before its rows: column widths, the default
+            // sizes and the first view's frozen pane (pg_office_size_note()).
+            if (($reader->nodeType === XMLReader::ELEMENT) && !$in_data && ($sizes !== null)) {
+                if ($reader->localName === 'sheetData') {
+                    $in_data = true;
+                } elseif (in_array($reader->localName, array('col', 'sheetFormatPr', 'sheetView', 'pane'), true)) {
+                    $attributes = array();
+
+                    if ($reader->moveToFirstAttribute()) {
+                        do {
+                            $attributes[$reader->localName] = $reader->value;
+                        } while ($reader->moveToNextAttribute());
+
+                        $reader->moveToElement();
+                    }
+
+                    pg_office_size_note($sizes, $reader->localName, $attributes);
+                }
+            }
+
             continue;
         }
 
@@ -1273,6 +1298,7 @@ function pg_office_xlsx_rows($path, $part, $strings, $date_styles, &$cells_left,
         $given = $reader->getAttribute('r');
         $number = (($given !== null) && ($given !== '')) ? (int) $given : ($last_number + 1);
         $last_number = $number;
+        $height = $reader->getAttribute('ht');
         $depth = $reader->depth;
         $has_cells = !$reader->isEmptyElement;
         $row = array();
@@ -1369,6 +1395,11 @@ function pg_office_xlsx_rows($path, $part, $strings, $date_styles, &$cells_left,
 
         $entry = array('n' => $number, 'cells' => $row);
 
+        // A row's own height in points (ht), as the grid draws it.
+        if (is_numeric($height) && ((float) $height > 0)) {
+            $entry['h'] = round((float) $height, 2);
+        }
+
         if (!empty($waiting)) {
             $entry['calc'] = $waiting;
         }
@@ -1405,7 +1436,7 @@ function pg_office_xlsx_rows($path, $part, $strings, $date_styles, &$cells_left,
  *
  * @param string $path
  * @param bool   $edit
- * @return array ok, error, sheets (name, hidden, rows [n, cells[, s, show, calc]], truncated[, edit]), truncated, looks (style => look)[, version]
+ * @return array ok, error, sheets (name, hidden, rows [n, cells[, h, s, show, calc]], truncated[, sizes][, edit]), truncated, looks (style => look)[, version]
  */
 function pg_office_xlsx_read($path, $edit = false)
 {
@@ -1462,7 +1493,8 @@ function pg_office_xlsx_read($path, $edit = false)
 
     foreach ($sheets as $sheet) {
         $cut = false;
-        $rows = ($cells_left > 0) ? pg_office_xlsx_rows($path, $sheet['part'], $strings, $date_styles, $cells_left, $cut, $date1904, $looks) : array();
+        $sizes = null;
+        $rows = ($cells_left > 0) ? pg_office_xlsx_rows($path, $sheet['part'], $strings, $date_styles, $cells_left, $cut, $date1904, $looks, $sizes) : array();
 
         foreach ($rows as $row) {
             if (isset($row['s'])) {
@@ -1476,6 +1508,10 @@ function pg_office_xlsx_read($path, $edit = false)
 
         $any_cut = $any_cut || $cut;
         $entry = array('name' => $sheet['name'], 'hidden' => $sheet['hidden'], 'rows' => $rows, 'truncated' => $cut);
+
+        if ($sizes !== null) {
+            $entry['sizes'] = pg_office_size_out($sizes);
+        }
 
         if ($edit) {
             $last_row = empty($rows) ? 0 : (int) $rows[count($rows) - 1]['n'];

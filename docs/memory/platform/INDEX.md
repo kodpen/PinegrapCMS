@@ -198,6 +198,7 @@
 - office-sheet-format.md: Format of selected cells of an .xlsx (office_format.php, OE3a): the save entry, how new styles are written beside the old ones, the number formats, what is refused and why
 - office-sheet-head-menu.md: The sheet grid's row and column head menu (pg_office_view.js) that inserts above/below, left/right or deletes one row or column: where it opens, what it puts in the list of changes
 - office-sheet-rows-columns.md: Insert and delete a row or column of an .xlsx (office_shift.php): the save entry, what moves, what is refused and why, one entry of a save's list
+- office-sheet-sizes.md: Column width, row height and Freeze top row of an .xlsx (office_size.php, SA3): the save entries, how each is written, what the reader gives the grid (widths, heights, frozen row), refusals
 - office-sheet-tabs.md: The sheet tabs' menu (pg_office_view.js, OE2b) that adds, renames, deletes or moves a sheet of an .xlsx: where it opens, what it puts in the list of changes, how the tabs are drawn
 - office-sheet-tools.md: The workbook view's tools (pg_office_view.js, OE4): sort by a column, filter by value, find in the workbook, Download as CSV of the open sheet; nothing written to the file
 - office-sheet-undo.md: Undo and Redo of a workbook's list of changes (pg_office_view.js, PR #11993): the bar's pair, Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z, what one press takes back, Escape keeping the list

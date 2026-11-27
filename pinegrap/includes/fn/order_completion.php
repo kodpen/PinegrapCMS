@@ -1082,6 +1082,14 @@ function pg_order_complete($order_id, array $values, array $documents = array(),
     // visitor's cookies, so a payment service's message queues it the same.
     pg_ad_conversion_order_completed($order_id, $values['total'], $order_number);
 
+    // A checkout that took the money: the sale and its payment wait for the
+    // connected accounting service. An offline payment waits for Payment
+    // Received (pg_order_mark_paid()).
+    if ((int) ($values['paid_at'] ?? 0) > 0) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/accounting_sync.php');
+        pg_accounting_sync_order_paid($order_id);
+    }
+
     // A page experiment whose goal is an order counts it for the variant the
     // buyer's pg_exp cookie holds; a payment service's own request has none.
     if (function_exists('pg_experiment_goal')) {

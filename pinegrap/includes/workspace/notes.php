@@ -3653,6 +3653,11 @@ function ws_notes_js_strings()
         'notes_onenote_fetching' => lang('Fetching the pages from OneNote…'),
         'notes_mine'            => lang('My notes'),
         'notes_shared'          => lang('Shared with me'),
+        // The list's order in the bar's "⋯" (workspace_note_list.js).
+        'notes_order'           => lang('Sort by'),
+        'notes_order_changed'   => lang('Last changed'),
+        'notes_order_name'      => lang('Name'),
+        'notes_order_created'   => lang('Created'),
         'notes_new'             => lang('New note'),
         'notes_news'            => lang('Changed since you last opened it'),
         'notes_claude_answered' => lang('Claude answered'),
