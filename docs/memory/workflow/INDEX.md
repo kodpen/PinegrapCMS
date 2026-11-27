@@ -56,7 +56,9 @@
 - bug-hunt-areas-channel-board.md: Bug hunt of a channel's Board tab (2026-11-26, PR #11743): who sees and moves a card, the four figures against the lists, moves, the board's rules, the kept view and ?view=board/list
 - bug-hunt-areas-channel-memory.md: Bug hunt of the channel memory (2026-11-26, PR #11790): who reads and writes, Claude's application and the general memory, a Turkish tag, the brief's size bound; what read clean and what is asked [decision: decisions-made-workspace-9.md]
 - bug-hunt-areas-channel-notes-share.md: Bug hunt of channel notes (CN1-CN3) and the share door (SL1-SL6): six faults fixed, what was read clean, what was left
+- bug-hunt-areas-cleanup.md: Bug hunt of the designer's Clean up (finder, lists, Remove, window; 2026-11-27): the six faults fixed, what was read clean, what was left
 - bug-hunt-areas-click-scroll-map.md: The bug hunt of the click and scroll map (architect 2026-11-20, channel message 10776): the three faults fixed, what was read clean, what is no fault [decision: here]
+- bug-hunt-areas-code-view.md: The bug hunt of the visual designer's Code view (style_designer_code.js, 2026-11-26, #12006): the five faults fixed, what was read clean, what was not run
 - bug-hunt-areas-comments-reviews.md: Bug hunt 23, page comments and product reviews (2026-11-24): links in a comment's text, a deleted page's comment notifications, the deleted product finding, what read clean
 - bug-hunt-areas-connections-merges.md: The bug hunt in Connections after the CX11 merges (area connections-merges): Claude's, the chat services' and the MCP connectors' pages; the faults fixed and what was read clean
 - bug-hunt-areas-cookie-consent.md: The bug hunt of the cookie notice (area 46, 2026-11-24): the four faults fixed, what was read clean, what is no fault, the embedded-video question left for the architect

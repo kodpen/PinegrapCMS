@@ -139,6 +139,7 @@
 - copy-buttons.md: Hand-written panel Copy buttons: label kept, icon swapped, polite status beside the button, clipboard API only in a secure context, execCommand decides; which screens follow it
 - country-shared-form.md: add_country.php and edit_country.php draw the country options card and read its posted values through includes/forms/country_form.php; what each screen keeps
 - css-class-attribute-subtree-restyle.md: A [class] compound followed by a descendant part (`.row > [class] > …`) makes any class change on any element restyle its whole subtree in Chromium; where backend.src.css has it, why it is still there
+- css-has-outside-subject.md: Never write :has() outside a selector's subject, nor :has() over :hover or the canvas selection; what each cost the visual designer (issue #11987) and what replaced them
 - css-has-whole-document-restyle.md: Chromium restyles the whole document on every DOM insertion while a rule styles every child of a :has() element; the settings card rewrite, the Bootstrap 6 dist rewrite, the guard test [decision: decisions-made-panel-2.md]
 - currency-exchange-rate-box.md: Exchange rate box on add/edit currency: five decimals like currencies.exchange_rate and the rate updater (#1341); Update Exchange Rates announces only the rates it wrote
 - currency-shared-form.md: The currency create and edit screens share includes/forms/currency_form.php: what it holds, what stays in the screens
@@ -336,6 +337,7 @@
 - image-editor-export.md: The Artifact Canvas's export panel (E13, E13b): format, quality, edge, progressive JPEG, PNG colours, camera details, sRGB, the estimate action, another format as a copy, the optimise profile
 - image-editor-follow.md: The Artifact Canvas's Follow (Animate tool): a layer moves with an area boxed on a video, by an own template-matching tracker; its numbers, limits and checks [decision: decisions-made-product-63.md, decisions-made-product-69.md, decisions-made-product-80.md]
 - image-editor-fonts.md: The Artifact Canvas's Google Fonts choice in the Text tool and the one font catalogue it shares with the visual designer
+- image-editor-frames.md: The Artifact Canvas's photo frames (AC10): the Frames chip in Elements, the frame layer type and its fields, a picture dropped or picked into it, the photo moved and zoomed inside, how it saves
 - image-editor-glyph.md: The Artifact Canvas's Bootstrap Icons and emoji in the Sticker tool: the glyph layer, where the icon font and map come from, the emoji set and its recent row
 - image-editor-groups-look.md: Artifact Canvas group's own size, turn, opacity and Animate keys (GC1b): l.gfx on members, the group box, keys over a member's own, the bars, server draw [decision: here]
 - image-editor-groups.md: Artifact Canvas layer groups (GC1a): l.grp on each layer, Group and Ungroup keys, a press picking the group and a click a member, order, copy, delete, the list's group rows, server draw [decision: decisions-made-product-80.md]

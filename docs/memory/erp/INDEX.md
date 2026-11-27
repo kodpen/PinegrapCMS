@@ -111,6 +111,7 @@
 - erp-overdue-reminders.md: ERP overdue receivable reminders (erp_overdue_check): thresholds, one summary per period, delivery channels, scheduling, recipients, Workspace collection follow-up.
 - erp-overdue-second-notice.md: ERP overdue round 2 (migration 4.56): candidate states, second notice at threshold+30, snooze, bell/menu badge, customer e-mail switches and stamps.
 - erp-parasut-accounts.md: Paraşüt's customer and supplier cards in ERP › Account sync (accounts capability): the lists a read pages through, archived and unlisted cards, card shape, writing a card, the linked card on invoices
+- erp-parasut-buyer-card-fill.md: A reused Paraşüt buyer card gets the order's details only in the fields it holds empty, in one PUT of the whole card; a refused user stops, any other refusal keeps the card (#12013, decision #2441)
 - erp-parasut-connect-card.md: Paraşüt's boxes on its page of Connections: Connect in three steps, secret and password boxes, Save, Disconnect, which company Connect takes; Default Product/Service ID
 - erp-parasut-connection.md: Paraşüt's older connection (pasted authorization code or password grant), where its token and the secrets live, the token's owner stamp, the Connect endpoint
 - erp-parasut-devhub-application.md: Paraşüt's partner application (2026-11-26): what was entered, the two fixed redirect addresses, the staging client and company, a partner client on a self-hosted site [decision: here]
