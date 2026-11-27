@@ -174,3 +174,181 @@ JS;
 	pg_assert_same(array(array('heading', 'Your & heading')), json_decode($out[1], true), 'only text items with words, none inside a shared component');
 	pg_assert_same(array('sample' => array('2'), 'edited' => 1), json_decode($out[2], true), 'shared parts left out, an edited section counted');
 }
+
+// Runs `$code` in Node with the part loaded on a small stand-in DOM (El)
+// and a fake host for one built sketch page (frame 1, one section whose
+// node is `sec`); `out` comes back decoded, null when Node cannot run. The
+// code runs after `go()` (the part's texts()) and its answers settle.
+function sketch_ai_test_node($answer, $code)
+{
+	if (!function_exists('exec')) {
+		return null;
+	}
+
+	$out = array();
+	$status = 1;
+	@exec('node --version 2>&1', $out, $status);
+
+	if ($status !== 0) {
+		return null;
+	}
+
+	$script = <<<'JS'
+function El(tag, cls, text) {
+    var self = this;
+    this.tagName = String(tag).toUpperCase(); this.className = cls || ''; this.children = []; this.parentNode = null; this.attrs = {}; this.textContent = text || ''; this.innerHTML = '';
+    var list = function () { return self.className.split(/\s+/).filter(Boolean); };
+    this.classList = {
+        contains: function (c) { return list().indexOf(c) !== -1; },
+        add: function (c) { if (list().indexOf(c) === -1) self.className = (self.className + ' ' + c).trim(); },
+        remove: function (c) { self.className = list().filter(function (x) { return x !== c; }).join(' '); },
+        toggle: function (c, on) { if (on) this.add(c); else this.remove(c); }
+    };
+}
+El.prototype.appendChild = function (c) { c.parentNode = this; this.children.push(c); return c; };
+El.prototype.insertBefore = function (c, ref) { c.parentNode = this; var i = ref ? this.children.indexOf(ref) : -1; if (i < 0) this.children.push(c); else this.children.splice(i, 0, c); return c; };
+El.prototype.removeChild = function (c) { this.children = this.children.filter(function (x) { return x !== c; }); c.parentNode = null; return c; };
+El.prototype.setAttribute = function (k, v) { this.attrs[k] = String(v); };
+El.prototype.getAttribute = function (k) { return this.attrs[k] === undefined ? null : this.attrs[k]; };
+El.prototype.addEventListener = function () {};
+El.prototype.querySelectorAll = function (sel) {
+    var cls = sel.replace(/^\./, ''), out = [];
+    (function walk(e) { e.children.forEach(function (c) { if (c.classList.contains(cls)) out.push(c); walk(c); }); })(this);
+    return out;
+};
+El.prototype.querySelector = function (sel) { return this.querySelectorAll(sel)[0] || null; };
+var part; var StyleDesigner = { definePart: function (n, f) { part = f({ _sdT: function (s, v) { v = [].concat(v === undefined ? [] : v); return String(s).replace(/\{var:(\d+)\}/g, function (m, i) { return v[i - 1]; }); }, esc: function (s) { return String(s); }, sdToast: function () {} }); } };
+JS;
+	$script .= file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_sketchai.js') . "\n";
+	$script .= 'var ANSWER = ' . json_encode($answer) . ";\n";
+	$script .= <<<'JS'
+var sec = { _id: 'sd_2', type: 'semantic', props: { _sketchId: 2 }, children: [{ _id: 'sd_3', type: 'content', props: { contentType: 'heading', text: 'Your heading here' }, children: [] }] };
+var tab = { key: 't', tree: { _id: 'root', type: 'root', props: { _sketch: { uid: 'u', secs: {} } }, children: [sec] } };
+var page = { id: 1, boxes: [], built: { uid: 'u' }, details: {} };
+var calls = { step: 0, undo: 0 };
+var host = {
+    page: function () { return page; }, pageOf: function () { return tab; }, treeOf: function (p) { return p.tree; }, name: function () { return 'Home'; },
+    fp: function (n) { return JSON.stringify(n); }, el: function (t, c, x) { return new El(t, c, x); },
+    redraw: function () {}, announce: function () {}, drawPage: function () {},
+    step: function () { calls.step++; }, undoPage: function () { calls.undo++; },
+    post: function () { return Promise.resolve(ANSWER); }
+};
+tab.tree.props._sketch.secs[2] = { sig: 's', fp: host.fp(sec) };
+// The frame as the core draws it: head with "More", the body.
+function frame(extra) {
+    var node = new El('div', 'sd-proto-node'), head = new El('div', 'sd-sketch-head'), body = new El('div', 'sd-sketch-body');
+    head.appendChild(new El('button', 'sd-sketch-more'));
+    node.appendChild(head); node.appendChild(body);
+    (extra || []).forEach(function (e) { node.appendChild(e); });
+    part.fill(1, node, head, body);
+    return node;
+}
+function foots(node) { return node.querySelectorAll('.sd-sketch-foot').map(function (f) { var t = f.querySelector('.sd-sketch-foot-text'); return { cls: f.className, text: t ? t.innerHTML : '', acts: f.querySelectorAll('.sd-sketch-act').map(function (b) { return b.textContent; }) }; }); }
+var out = null;
+part.texts(host, 1);
+setTimeout(function () {
+JS;
+	$script .= $code . "\nconsole.log(JSON.stringify(out));\n}, 20);\n";
+
+	$file = @tempnam(sys_get_temp_dir(), 'pgskai');
+
+	if ($file === false) {
+		return null;
+	}
+
+	file_put_contents($file, $script);
+	$out = array();
+	@exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $status);
+	@unlink($file);
+	pg_assert_same(0, $status, 'the Node script runs: ' . implode("\n", array_slice($out, 0, 8)));
+
+	return json_decode(implode("\n", $out), true);
+}
+
+/**
+ * The texts' line with its "Undo" goes once the built page changed after
+ * the texts were written: its Undo would take back that later edit.
+ */
+function test_sketch_ai_texts_undo_goes_with_a_later_edit()
+{
+	$out = sketch_ai_test_node(array('status' => 'success', 'texts' => array('Fresh bread every morning')), <<<'JS'
+var before = foots(frame());
+tab.tree.children.push({ _id: 'sd_9', type: 'semantic', props: { customName: 'added later' }, children: [] });
+var after = foots(frame());
+out = [before.length, before[0] ? before[0].acts : null, after.length];
+JS
+	);
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(1, array('Undo'), 0), $out, 'the line with Undo while the page is as written, gone after another edit');
+}
+
+/**
+ * A line of the AI actions never hides the "Read the picture" proposal's
+ * foot with its "Keep" and "Discard", nor draws a second foot beside it.
+ */
+function test_sketch_ai_line_leaves_the_picture_proposal()
+{
+	$out = sketch_ai_test_node(array('status' => 'success', 'texts' => array('Fresh bread every morning')), <<<'JS'
+var read = new El('div', 'sd-sketch-foot sd-sketch-read-foot');
+out = foots(frame([read])).map(function (f) { return f.cls; });
+JS
+	);
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('sd-sketch-foot sd-sketch-read-foot'), $out, 'the proposal\'s foot alone');
+	$read = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_sketchread.js');
+	pg_assert_contains("host.el('div', 'sd-sketch-foot sd-sketch-read-foot')", $read, 'the proposal\'s foot is marked');
+}
+
+/**
+ * A refused request says why: the server's message (the day's drafts used,
+ * asked too quickly) leads the line; the plain failure is said once.
+ */
+function test_sketch_ai_failure_says_the_servers_reason()
+{
+	$out = sketch_ai_test_node(array('status' => 'error', 'message' => 'This site has used its 20 drafts for today. Writing with AI is open again tomorrow.'), <<<'JS'
+var f = foots(frame())[0];
+out = [f.text, part.pure.why({ message: 'The texts could not be written.' }, 'The texts could not be written. 0 sections were written.'), part.pure.why(null, 'Plain.')];
+JS
+	);
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		'This site has used its 20 drafts for today. Writing with AI is open again tomorrow. The texts could not be written. 0 sections were written, the rest keep their sample content.',
+		'The texts could not be written. 0 sections were written.',
+		'Plain.',
+	), $out, 'the reason first, a generic message not said twice');
+}
+
+/**
+ * The texts a section sends are the ones the server keeps: at most
+ * PG_SKETCH_AI_ITEMS, none that is only Markdown marks; else the answer's
+ * count never matches and the section always fails.
+ */
+function test_sketch_ai_items_match_what_the_server_keeps()
+{
+	$out = sketch_ai_test_node(array('status' => 'success', 'texts' => array('x')), <<<'JS'
+var big = { type: 'semantic', props: {}, children: [] };
+for (var i = 0; i < 30; i++) big.children.push({ type: 'content', props: { contentType: 'paragraph', text: 'Card ' + i }, children: [] });
+big.children.unshift({ type: 'content', props: { contentType: 'heading', text: '**' }, children: [] });
+var items = part.pure.items(big);
+out = [items.length, items[0].text];
+JS
+	);
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(PG_SKETCH_AI_ITEMS, 'Card 0'), $out, 'capped at the server\'s limit, a marks-only text left out');
+}

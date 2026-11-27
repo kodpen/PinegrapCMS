@@ -138,6 +138,71 @@ JS
 	pg_assert_same(array('top', '1', '5', '2', 'mine', 'late', '4'), $out, 'top first, mine after 2, late (after the removed 3) after 2 as well');
 }
 
+// A section duplicated in Design carries the same _sketchId as the one it
+// was copied from: the copy stays after it as a node added in Design, never
+// dropped by "Build again".
+function test_sketch_build_arrange_keeps_a_duplicated_section()
+{
+	$out = sketch_build_test_node(<<<'JS'
+var copy = n(2, 'my copy');
+var kids = [n(1), n(2), copy, n(3)];
+var fresh = {1: n(1, 'a'), 2: n(2, 'b'), 3: n(3, 'c')};
+var list = P.arrange(kids, ['1', '2', '3'], function (id) { return fresh[id]; });
+out = list.map(function (c) { return c.props.text || ''; });
+JS
+	);
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('a', 'b', 'my copy', 'c'), $out, 'the copy stays after the section it was copied from');
+}
+
+// A section "Build again" keeps on the page keeps the fingerprint it was
+// built with, so an edit made in Design still counts as one afterwards and
+// a later box change asks before it is built again.
+function test_sketch_build_kept_sections_keep_their_fingerprint()
+{
+	$out = sketch_build_test_node(<<<'JS'
+var built = n(2, 'sample'), edited = n(2, 'my words');
+var was = {2: {sig: 's2', fp: P.nodeFp(built)}, 3: {sig: 's3', fp: 'f3'}};
+var secs = {2: {sig: 's2b', fp: P.nodeFp(edited)}, 3: {sig: 's3b', fp: 'f3b'}};
+P.keptFp(secs, was, {2: edited});
+var after = P.plan([sec(2, 'intro', {heading: 'New'})], {2: {sig: 'other', fp: secs[2].fp}}, {2: P.nodeFp(edited)});
+out = [secs[2].fp === P.nodeFp(built), secs[2].sig, secs[3].fp, after.clash];
+JS
+	);
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(true, 's2b', 'f3b', array('2')), $out, 'the kept section keeps its built fingerprint and clashes on its next box change; a rebuilt one takes its new one');
+}
+
+// What the built draft was built from is read from the draft itself: an
+// undo in Design of a "Build again" brings back the older sketch, so
+// "Build again" is offered again.
+function test_sketch_build_built_sig_comes_from_the_draft()
+{
+	$out = sketch_build_test_node(<<<'JS'
+var page = {id: 1, built: {uid: 'u', sig: 'new'}, boxes: []};
+out = [
+	P.keptSig(page, {props: {_sketch: {uid: 'u', sig: 'old'}}}),
+	P.keptSig(page, {props: {}}),
+	P.keptSig(page, null)
+];
+JS
+	);
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('old', 'new', 'new'), $out, 'the draft\'s kept sketch first, the browser\'s mark when the draft has none');
+}
+
 // The signatures: a moved box changes the sketch's, not the section's; an
 // edit changes the node's, its ids and open marks do not.
 function test_sketch_build_signatures()
