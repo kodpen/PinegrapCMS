@@ -133,6 +133,7 @@
 - lang-function-syntax.md: lang() call forms: plain, variables {var:N}, case modifiers |c |u |l, plural suffix, no text concatenated outside lang(), and the lang(['info' => true]) active-language query.
 - lang-loader.md: Where lang() lives (includes/fn/lang.php), how get_file.php loads it without functions.php, the software language a request outside init.php speaks
 - lang-pack-german-terms.md: The German word for each of the panel's 150 most used terms, so every German pack piece uses the same one; how the list was counted
+- lang-pack-german.md: The German panel pack: offered since 2026.11.0 as "Deutsch", its key count, the top-up of later keys, plurals without {suffix:N}, what the screens showed
 - lang-pack-translating.md: How a session translates a piece of a panel language pack: lang_pack.php --count/--missing/--check, writing with tr_add.php --lang, the rules a wording keeps, what check_lang.php fails on
 - lang-placeholders.md: How lang() fills {var:N}, its case modifiers and {suffix}: one strtr() pass, values never re-scanned, plain {var} left for JavaScript
 - log-warnings-forms-default-screens.md: Form, calendar and default screen warnings of the PHP 8.5 error log fixed by cause (#10304, `error-reporting.md`): what each screen now does when a row, a page or a posted key is missing
@@ -234,7 +235,7 @@
 - social-sign-in-connect.md: Connecting Google, Microsoft or Apple to an account that is already signed in ("Connect with ..." buttons), whatever its e-mail address, and the rules that refuse it
 - social-sign-in-providers.md: Adding a sign-in provider: the 'signin' block of its provider file (order, scopes, pkce, return, claims, Apple's JWT secret), its switch, what is stored (no token), the old user_google_id column.
 - social-sign-in.md: Sign in with Google, Microsoft and Apple: the flow, how an account is matched, where the buttons come from, and the failure screen (no more "404" on a refused sign-in)
-- software-languages.md: The panel's languages: pg_software_languages() (shipped list cut to wording on disk), the 17 codes config.software_language's ENUM holds, its readers, the 'tr' tests kept.
+- software-languages.md: The panel's languages: pg_software_languages() (English, Turkish, German; shipped list cut to wording on disk), the 17 codes config.software_language's ENUM holds, its readers, the 'tr' tests kept.
 - software-text-in-site-languages.md: Which language the software's own texts take on a site page in a language with no language file: English, except the cookie window (owner decision 2026-10-09), and how that exception is fed. [decision: decisions-made-product-118.md]
 - sortablejs-library.md: The vendored SortableJS (assets/lib/sortablejs/, 1.15.7, unmodified): why it replaced jQuery UI .sortable(), which screens load it, how to update it [decision: decisions-made-panel-2.md]
 - stripe-classic-embedding.md: The classic Stripe library (1.17.2, includes/stripe) behind the 'Stripe' gateway, and the local patch that keeps it quiet on PHP 8.1 to 8.5

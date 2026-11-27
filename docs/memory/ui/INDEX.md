@@ -715,7 +715,7 @@
 - script-built-field-names.md: Dialogs and fields drawn by script after load name themselves: unique title ids, label for, aria-label from the screen's label map, Escape kept (#3029)
 - scroll-regions-keyboard.md: Text-only boxes that scroll on their own are named keyboard regions: Audit Trail JSON values, Workspace MCP answer, API documentation tables and Try it answer, Write with AI draft
 - scrolling-table-hidden-text.md: Every panel .table-responsive is position: relative, so a .visually-hidden heading or label and a combobox's posted select stay inside the scroll box instead of widening the page on a phone (#9079)
-- select-commit-on-pick.md: Selects that save, ask or move focus on change (Translations engine, AI tone, list quick edit, Edit Comment Publish) wait for a keyboard pick; the AI panel gives focus back after a request
+- select-commit-on-pick.md: Selects that save, ask or move focus on change (AI tone, list quick edit, Edit Comment Publish) wait for a keyboard pick; the AI panel gives focus back after a request
 - send-once-screens.md: The panel screens that send once for longer than the window guard's 3 s (stock scans, refunds, exports, imports, SVG copies, ERP e-mails), and the symptom each one fixed.
 - seo-default-share-image-warning.md: The SEO card's Default Share Image warning names each form once, told apart, without binned forms, five names then a count
 - seo-panel-run-buttons.md: SEO detail panel and SEO card: Refresh score / Analyze HTML run the link step, work on every edit screen, update every score shown; counter measures like the score; missing page is not found
@@ -834,13 +834,15 @@
 - time-zone-list-labels.md: How the time zone pick lists label and order their zones (offsets computed from the time zone database, renamed places, values unchanged)
 - toggle-and-mark-names.md: Toggle aria-labels follow state, icon marks carry visually-hidden text, radio groups get a legend or radiogroup name, reasons are printed not hovered (offers, key codes, ERP)
 - toolbar-phone-fit.md: Toolbar filter forms capped to the bar (.pg-toolbar-filter), Edit Comment / Edit Theme File facts in the grow slot, Subscriptions date range wrapping at 375 px (#4264)
+- translations-screen-activity.md: Translations screen "Activity" tab (TS4): the table of a language's updates, the filter, the drawer with failed texts and reasons, "Try again with the failed ones" with the fallback, "Stop"
+- translations-screen-automation.md: Translations screen automation (TS4): the automation line under the head, the dialog "Automation for <language>" that saves the engine, fallback and Translate on save, and the progress card
 - translations-screen-csv-import.md: Translations screen's Import CSV: which rows of a file are written, which are left as they are (unchanged), and what the import notice counts
 - translations-screen-drawing.md: The Translations screen's redraw (2026-11-27): where its sheet is, what each board A to J shows, the measures, the keys, and the drawn choices that bind the steps of the plan
 - translations-screen-editor-rows.md: Translations screen (translations.php, translations.js): engine wait, row state and count sync, scoped tiles, glossary duplicates and refused saves, return view, CSV guard, box size
 - translations-screen-frame.md: Translations screen frame (TS1): head with language shares, tabs Texts/Activity/Glossary, Scan for new texts and Translate pending, the rail, the filter tiles, the tool line
 - translations-screen-noindex-reason.md: Translations screen: a page's search verdict in the page list, its own-noindex state, the "Why?" list of texts keeping it out (blocking filter) and "Keep as in the source and approve" [decision: decisions-made-product-38.md]
 - translations-screen-overview.md: The Translations screen (translations.php) as a whole: what it is, the redraw under way, its parts by label and which memory file holds each
-- translations-screen-recent-jobs.md: Translations screen (translations.php), recent jobs list: how a job's scope is labelled, where its error shows, and which messages survive the reload after a job or a bulk action
+- translations-screen-reload-messages.md: Translations screen (translations.php): which messages survive the reload after an update, a scan, a bulk action or the automation dialog, and what the Site Log says for a language translated by hand
 - translations-screen-row.md: Translations screen row (TS2): the grid, the box, the state column with "Suspicious" on its own line, "Details" read on opening, the refusal under the box, Ctrl+Enter and Alt+Up/Down
 - translations-screen-selection.md: Translations screen selection (TS3): a tick on every row, "Select all on this page", the bar with Approve, Translate again, Keep as in the source and approve, Clear, and the "Translate again" dialog
 - translations-screen-text-language.md: Translations screen (translations.php): which elements carry lang and dir="rtl" so screen readers and right-to-left translators get the text's own language
