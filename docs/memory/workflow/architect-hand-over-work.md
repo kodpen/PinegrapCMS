@@ -4,7 +4,7 @@ description: Hand-over of the architect session of 2026-11-24 to 26, the work in
 ---
 
 ## Who works now?
-- Owner (2026-11-27, messages 14812, 14844): k2 and k3 work at the usual limits; when no work is left, one short hunt round, then the night ends as in `bug-hunt-areas-6.md`.
+- Owner (2026-11-27, messages 14812, 14844): k2 and k3 work at the usual limits; with no work left, one short hunt round, then the night ends as in `bug-hunt-areas-6.md`.
 
 ## What is still to do with the sheets?
 - No sheet is left to draw; what a sheet holds is in `designer-sheet-rules.md`.
@@ -28,7 +28,7 @@ description: Hand-over of the architect session of 2026-11-24 to 26, the work in
 - Poll 242: Options is too narrow; his console line under it picks the issue.
 - Paraşüt: the six issues are fixed; what is left is in `plans/erp-parasut-open-work.md`.
 - The Workspace's own screens (message 14812): `plans/workspace-areas-modern.md` and its four plans; a step marked "drawing" is asked of the architect before its worker starts (TM3 so far).
-- Nine features for selling outside Turkey (polls 246, 247): `plans/global-features.md`. After each census the architect writes the build's steps and asks him the tables; German's lines are marked `free` when PL2 has landed.
+- Nine features (polls 246, 247): `plans/global-features.md`. After a census the architect writes its build steps and asks him the tables; German's lines go `free` when PL2 has landed.
 
 ## What is watched?
 - k3's own tasks: the context size on the agent form.
