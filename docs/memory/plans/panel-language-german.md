@@ -1,6 +1,6 @@
 ---
 name: panel-language-german
-description: Plan (owner 2026-11-27, poll 247): the German language pack, 79,407 keys in eight steps side by side by shard, after the mechanism of plan panel-language-packs; the architect marks lines free
+description: Plan (owner 2026-11-27, poll 247): the German language pack, 79,407 keys in eight steps side by side by shard; the mechanism has landed and the eight steps are free, DE9 waits for them
 priority: 5
 ---
 
@@ -8,18 +8,18 @@ priority: 5
 - Owner (2026-11-27, poll 247, `workflow/decisions-made-product-117.md`): German is the first further language of the panel. The mechanism and the rules of translating: `plans/panel-language-packs.md`.
 
 ## When do the steps start?
-- The architect marks lines `free` by a docs PR once PL2 of `plans/panel-language-packs.md` has landed, and tells the coordinators. Until then no step is given out.
+- The architect marks lines `free` by a docs PR. PL2 of `plans/panel-language-packs.md` has landed (#12091), so DE1 to DE8 are marked (2026-11-27); DE9 is marked when the eight have landed.
 - The eight translating steps run side by side: each writes only its own shards under `includes/local/de/`, so they never meet in a file. One worker a step.
 
 ## Which translating steps are there? (keys counted on 2026-11-27; a language file does not count in a PR's product lines)
-- DE1 shard `t` (13,019 keys).
-- DE2 shard `a` (9,422).
-- DE3 shards `s`, `r` (9,872).
-- DE4 shards `c`, `n` (9,370).
-- DE5 shards `p`, `w`, `o` (10,967).
-- DE6 shards `e`, `_`, `f`, `m` (11,173).
-- DE7 shards `b`, `d`, `i`, `l`, `h` (9,873).
-- DE8 shards `y`, `g`, `u`, `v`, `0`, `k`, `q`, `j`, `z`, `x` (5,711).
+- DE1 `free`: shard `t` (13,019 keys).
+- DE2 `free`: shard `a` (9,422).
+- DE3 `free`: shards `s`, `r` (9,872).
+- DE4 `free`: shards `c`, `n` (9,370).
+- DE5 `free`: shards `p`, `w`, `o` (10,967).
+- DE6 `free`: shards `e`, `_`, `f`, `m` (11,173).
+- DE7 `free`: shards `b`, `d`, `i`, `l`, `h` (9,873).
+- DE8 `free`: shards `y`, `g`, `u`, `v`, `0`, `k`, `q`, `j`, `z`, `x` (5,711).
 
 ## How does a worker do its step?
 - It reads `core/lang-pack-translating.md` and `core/lang-pack-german-terms.md` first.
