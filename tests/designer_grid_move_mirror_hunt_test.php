@@ -221,3 +221,28 @@ JS
 	pg_assert_same('"head head" "side main"', $r['cut'], 'with rows set, a column taken away cuts the areas');
 	pg_assert_contains('Columns went from 3 to 2.', $r['note'], 'the line says what changed');
 }
+
+// "Move…": after a target is chosen, a new search and Enter choose the
+// row the search lit, never move to the earlier target; the list starts
+// on the chosen target's row when it is listed.
+function test_designer_gmm_hunt_move_enter_after_search()
+{
+	$r = designer_gmm_hunt_run('style_designer_move.js', array('_mvFold', '_mvMatch', '_mvStartAt', '_mvEnterAct'), <<<'JS'
+var nodes = ['Header', 'Card 1', 'Card 2', 'Card 3', 'Footer'].map(function (n) { return { name: n }; });
+var entries = nodes.map(function (n) { return { node: n, name: n.name, fold: _mvFold(n.name) }; });
+var cards = _mvMatch(entries, 'card'), foot = _mvMatch(entries, 'foot'), none = _mvMatch(entries, 'zzz');
+var target = nodes[3];
+out = {
+	start: [_mvStartAt(cards, entries, target, 80), _mvStartAt(foot, entries, target, 80), _mvStartAt(none, entries, target, 80), _mvStartAt(cards, entries, target, 2)],
+	enter: [_mvEnterAct(foot, entries, 0, target), _mvEnterAct(cards, entries, 2, target), _mvEnterAct(cards, entries, 0, null), _mvEnterAct(none, entries, -1, target), _mvEnterAct(none, entries, -1, null)]
+};
+JS
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_same(array(2, 0, -1, 0), $r['start'], 'the list starts on the target\'s row when it is shown');
+	pg_assert_same(array(4, 'go', 1, 'go', null), $r['enter'], 'Enter chooses the lit row, or moves when it is the target');
+}
