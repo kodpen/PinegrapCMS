@@ -17,7 +17,14 @@ description: Compare's "What changed" column joined to the pictures (CL3, #11707
 - A text row opens into "Before" / "Now" (six lines at most). A row of several elements opens into their names (`nameOf()`: "Text “Full”"); a name outlines its element only.
 - Elements are found by `data-pg-node` (the compare render), else by id. One not found outlines nothing; the row stays. Outlines are redrawn on every layout, scrolled only when chosen.
 
+## Why does a picture carry the element ids?
+- `compare_render` draws through `pg_seo_check_draft_render()`, which loads `seo.php` itself: without it a standard page was not renderable, every picture fell back to the editor's markup and a chosen row outlined nothing (#11855).
+
+## How is it used by the keyboard?
+- The window is `aria-modal`: it takes the focus on its open tab, Tab and Shift+Tab go round its visible controls, Escape closes it and gives the focus back (#11855).
+
 ## And a narrow window?
+- The line holds the two names only (no grey detail); the foot's sentence takes a line of its own over the buttons.
 - Under 768 px the list is hidden; the foot's "What changed · 7" swaps the pictures for it and "The pictures" swaps back; choosing a row swaps back and shows its place.
 
 ## What differs from the drawing?

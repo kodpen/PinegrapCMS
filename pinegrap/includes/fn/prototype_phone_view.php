@@ -196,6 +196,7 @@ body.pp { display: flex; flex-direction: column; margin: 0; overflow: hidden; ba
 .pp-row.pp-on .bi { color: #58a6ff; }
 .pp-row.pp-off { color: #6e7681; }
 .pp-row.pp-off .bi { font-size: 13px; }
+.pp-list:focus-visible, .pp-row:focus-visible, .pp-update:focus-visible { outline: 2px solid #58a6ff; outline-offset: -2px; }
 .pp-frame { flex: 1 1 auto; width: 100%; border: 0; background: #fff; }
 .pp-msg { flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 0 34px; text-align: center; background: #f6f7f9; color: #4b5563; line-height: 1.5; }
 .pp-msg .bi { font-size: 26px; color: #9aa3ae; }
