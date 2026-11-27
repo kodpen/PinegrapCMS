@@ -272,6 +272,7 @@
     "Each issue gathers a few stories around one idea, a place, a habit or a way of living. Stories that belong to no issue appear online between them.": "Her sayı birkaç yazıyı tek bir fikrin, bir yerin, bir alışkanlığın ya da bir yaşama biçiminin çevresinde toplar. Hiçbir sayıya ait olmayan yazılar, sayıların arasında çevrimiçi yayımlanır.",
     "Each issue gathers a few stories around one idea.": "Her sayı, tek bir fikrin çevresinde birkaç yazıyı bir araya getirir.",
     "Each issued invoice goes to the account by e-mail. Switch it off for a customer who does not want them; an invoice can still be sent from its own screen.": "Kesilen her fatura bu cariye e-postayla gider. İstemeyen müşteri için kapatın; fatura yine kendi ekranından gönderilebilir.",
+    "Each item gets a redirect from this address followed by its slug. Left empty, no redirect is made.": "Her öğe, bu adresin ardından kendi kısa adının geldiği adresten yönlendirilir. Boş bırakılırsa yönlendirme yapılmaz.",
     "Each item is an object of order_item_id and quantity.": "Her kalem, order_item_id ve quantity alanlarından oluşan bir nesnedir.",
     "Each item is an object with a hash and a text.": "Her öğe hash ve text alanları olan bir nesnedir.",
     "Each item is at most {var:1} characters.": "Her öğe en fazla {var:1} karakterdir.",

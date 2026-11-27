@@ -203,7 +203,7 @@ $import_mapping_rows = function ($kind, $file = '') use ($import_choices) {
     foreach ((array) call_user_func('pg_import_' . $kind . '_mapping', (string) $file) as $name => $row) {
         $type = (string) ($row['type'] ?? 'select');
         $row['type'] = $type;
-        $row['choices'] = ($type === 'select') ? (array) ($row['choices'] ?? array()) : $import_choices($type);
+        $row['choices'] = ($type === 'select') ? (array) ($row['choices'] ?? array()) : (($type === 'text') ? array() : $import_choices($type));
 
         // A field row offers only the field types its writer fills; the
         // choices are the save's whitelist too.
@@ -252,7 +252,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $kind = pg_import_detect_kind($head);
 
         if ($kind === '') {
-            $liveform->mark_error('file', h(lang('The file is not an export this screen knows: a WordPress or Squarespace site export (XML), a WooCommerce, Shopify or Squarespace products CSV, or a Shopify or Squarespace customers CSV.')));
+            $liveform->mark_error('file', h(lang('The file is not an export this screen knows: a WordPress or Squarespace site export (XML), a WooCommerce, Shopify or Squarespace products CSV, a Shopify or Squarespace customers CSV, or a Webflow or Wix collection CSV.')));
             go($screen_url);
         }
 
@@ -422,7 +422,7 @@ if ($import === null) {
                 <div class="col-12 pg-field-span-6">
                     <label for="file" class="form-label">' . h(lang('File')) . '</label>
                     <input type="file" id="file" name="file" class="' . $liveform->create_error_class('file', 'form-control') . '" accept=".xml,.csv,.txt,text/xml,application/xml,text/csv" aria-describedby="file_kinds" required>
-                    <div id="file_kinds" class="form-text">' . h(lang('A WordPress or Squarespace site export (XML), a WooCommerce, Shopify or Squarespace products CSV, or a Shopify or Squarespace customers CSV.')) . '</div>
+                    <div id="file_kinds" class="form-text">' . h(lang('A WordPress or Squarespace site export (XML), a WooCommerce, Shopify or Squarespace products CSV, a Shopify or Squarespace customers CSV, or a Webflow or Wix collection CSV.')) . '</div>
                     ' . pg_upload_limit_hint() . '
                 </div>
             </div>');
@@ -488,6 +488,18 @@ if ($import === null) {
 
         foreach ($mapping_rows as $name => $row) {
 
+            // A text row is typed, not chosen (a collection's old address).
+            if ($row['type'] === 'text') {
+                $help = (string) ($row['help'] ?? '');
+                $mapping .= '
+                <div class="col-12 md:col-6 my-3">
+                    <label for="map_' . h($name) . '" class="form-label">' . h((string) ($row['label'] ?? $name)) . '</label>
+                    <input type="text" id="map_' . h($name) . '" name="map[' . h($name) . ']" class="form-control" maxlength="191" value="' . h((string) ($row['default'] ?? '')) . '" placeholder="' . h((string) ($row['placeholder'] ?? '')) . '"' . ($help !== '' ? ' aria-describedby="map_' . h($name) . '_help"' : '') . (!empty($row['required']) ? ' required' : '') . '>
+                    ' . ($help !== '' ? '<div id="map_' . h($name) . '_help" class="form-text">' . h($help) . '</div>' : '') . '
+                </div>';
+                continue;
+            }
+
             $options = '<option value="">' . h(empty($row['required']) ? lang('Leave out') : lang('Choose')) . '</option>';
             $for = '';
 
@@ -500,7 +512,8 @@ if ($import === null) {
                     }
                 }
 
-                $for = ' data-pg-import-form="map_' . h((string) ($row['form'] ?? '')) . '" data-pg-import-types="' . h(json_encode(array_values((array) ($row['field_types'] ?? array())))) . '"';
+                $for = ' data-pg-import-form="map_' . h((string) ($row['form'] ?? '')) . '" data-pg-import-types="' . h(json_encode(array_values((array) ($row['field_types'] ?? array())))) . '"'
+                    . (((string) ($row['guess'] ?? '') !== '') ? ' data-pg-import-guess="' . h((string) $row['guess']) . '"' : '');
             } else {
                 // A row may name the choice it starts on.
                 $default = (string) ($row['default'] ?? '');
@@ -686,6 +699,8 @@ pg_page_shell(
         if (!form) { return; }
         var types = JSON.parse(select.getAttribute("data-pg-import-types") || "[]");
         var first = select.options[0];
+        var squash = function (text) { return String(text).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ""); };
+        var guess = squash(select.getAttribute("data-pg-import-guess") || "");
         var sync = function () {
             var kept = select.value;
             while (select.options.length > 1) { select.remove(1); }
@@ -696,6 +711,12 @@ pg_page_shell(
             });
             select.value = kept;
             if (select.value !== kept) { select.value = first.value; }
+            // A column row starts on the field whose name matches its heading.
+            if (select.value === "" && guess !== "") {
+                for (var i = 1; i < select.options.length; i++) {
+                    if (squash(select.options[i].text) === guess) { select.value = select.options[i].value; break; }
+                }
+            }
         };
         form.addEventListener("change", sync);
         sync();

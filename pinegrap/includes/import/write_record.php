@@ -22,9 +22,15 @@
  *   does not follow complete, so it would be readable on the site.
  * - A featured image whose attachment comes later in the export is attached
  *   when that file is fetched (pg_import_record_attach_picture()).
+ * - Beside a post's parts, a collection file's cells (data.columns, keyed by
+ *   the mapping's col_<n> rows) go into the fields paired with them
+ *   (pg_import_record_column_rows()): rich text as HTML through the same
+ *   media fetch and cleaner, a picture as a fetched file, an option by its
+ *   label, a reference as the text it holds.
  *
  * The item's data: status, body, excerpt, time, slug, author (login, name,
- * email), categories, tags, picture (the attachment's source key).
+ * email), categories, tags, picture (the attachment's source key), columns
+ * (mapping row => cell).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -37,6 +43,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/import/media.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/import/collection.php');
 
 /**
  * The source key prefix of a record waiting for its featured image: the
@@ -272,6 +279,175 @@ function pg_import_record_rows($item, $mapping, $fields, $context)
         }
     }
 
+    // A collection file's cells, each in the field paired with its column.
+    foreach ((array) ($data['columns'] ?? array()) as $column => $cell) {
+        if ((strpos((string) $column, 'col_') !== 0) || !($field = $field_of((string) $column))) {
+            continue;
+        }
+
+        $built = pg_import_record_column_rows((string) $cell, $field, (array) ($context['columns'][$column] ?? array()));
+
+        foreach ($built['rows'] as $row) {
+            $add($field, $row['data'], $row['type'], $row['file_id']);
+        }
+
+        $notes = array_merge($notes, $built['notes']);
+    }
+
+    return array('rows' => $rows, 'notes' => $notes);
+}
+
+/**
+ * Whether a cell holds HTML rather than plain text: an opening or closing
+ * tag. Pure.
+ *
+ * @param string $cell
+ * @return bool
+ */
+function pg_import_record_cell_is_html($cell)
+{
+    return (bool) preg_match('#</?[a-z][a-z0-9]*(\s[^<>]*)?/?>#i', (string) $cell);
+}
+
+/**
+ * The names an option cell lists: a JSON array of names, else the cell cut
+ * at semicolons, else at commas. A field that takes one choice reads the
+ * whole cell. Pure.
+ *
+ * @param string $cell
+ * @param bool   $one
+ * @return string[]
+ */
+function pg_import_record_cell_names($cell, $one)
+{
+    $cell = trim((string) $cell);
+    $list = (substr($cell, 0, 1) === '[') ? json_decode($cell, true) : null;
+
+    if (is_array($list)) {
+        $names = array();
+
+        foreach ($list as $entry) {
+            if (is_scalar($entry)) {
+                $names[] = (string) $entry;
+            }
+        }
+
+        return $one ? array_slice($names, 0, 1) : $names;
+    }
+
+    if ($one) {
+        return array($cell);
+    }
+
+    return preg_split((strpos($cell, ';') !== false) ? '/\s*;\s*/' : '/\s*,\s*/', $cell);
+}
+
+/**
+ * The first web address of a cell (a picture, a list of pictures, a Wix
+ * gallery's JSON), '' when it has none. Pure.
+ *
+ * @param string $cell
+ * @return string
+ */
+function pg_import_record_cell_address($cell)
+{
+    return preg_match('#https?://[^\s"\'<>,;\]]+#i', (string) $cell, $match) ? $match[0] : '';
+}
+
+/**
+ * The form_data rows one cell of a collection file becomes in its paired
+ * field. Pure: a rich text area's sanitised HTML (html) and a file upload's
+ * fetched file (file_id, note) come prepared in $prepared.
+ *
+ * - Rich text area: the prepared HTML, else a plain cell as escaped
+ *   paragraphs. Other text area: plain text; text box: one line.
+ * - E-mail address: the address when it is one, else a note.
+ * - Date, date and time: the cell read as a time, else a note.
+ * - File upload: the fetched file, else the fetch's note.
+ * - Check box, pick list, radio button: the choices matching the cell's
+ *   names by label or value; a lone check box takes a true cell.
+ *
+ * @param string $cell
+ * @param array  $field    pg_import_record_form_fields() row
+ * @param array  $prepared html, file_id, note
+ * @return array{rows:array[],notes:string[]}
+ */
+function pg_import_record_column_rows($cell, $field, $prepared)
+{
+    $cell = trim((string) $cell);
+    $rows = array();
+    $notes = array();
+    $type = (string) ($field['type'] ?? '');
+    $name = (string) ($field['name'] ?? '');
+    $add = function ($value, $row_type = 'standard', $file_id = 0) use (&$rows) {
+        $rows[] = array('data' => (string) $value, 'type' => $row_type, 'file_id' => (int) $file_id);
+    };
+
+    if ($cell === '') {
+        return array('rows' => $rows, 'notes' => $notes);
+    }
+
+    if (($type === 'text area') && !empty($field['wysiwyg'])) {
+        $html = (string) ($prepared['html'] ?? '');
+
+        if ($html === '') {
+            $html = pg_import_record_cell_is_html($cell) ? '' : '<p>' . str_replace(array("\r\n", "\r", "\n"), '<br>', htmlspecialchars($cell, ENT_QUOTES, 'UTF-8')) . '</p>';
+        }
+
+        if (trim($html) !== '') {
+            $add($html, 'html');
+        }
+    } elseif (in_array($type, array('text area', 'text box'), true)) {
+        $text = pg_import_record_cell_is_html($cell) ? pg_import_record_plain_text($cell) : $cell;
+        $text = ($type === 'text box') ? trim(preg_replace('/\s+/u', ' ', $text)) : $text;
+
+        if ($text !== '') {
+            $add($text);
+        }
+    } elseif ($type === 'email address') {
+        if (filter_var($cell, FILTER_VALIDATE_EMAIL) !== false) {
+            $add($cell);
+        } else {
+            $notes[] = lang(array('string' => '{var:1} is not an e-mail address: {var:2}', 'vars' => array($name, $cell)));
+        }
+    } elseif (in_array($type, array('date', 'date and time'), true)) {
+        $time = pg_import_collection_time($cell);
+
+        if ($time > 0) {
+            $add(date(($type === 'date') ? 'Y-m-d' : 'Y-m-d H:i', $time), $type);
+        } else {
+            $notes[] = lang(array('string' => '{var:1} is not a date: {var:2}', 'vars' => array($name, $cell)));
+        }
+    } elseif ($type === 'file upload') {
+        if ((int) ($prepared['file_id'] ?? 0) > 0) {
+            $add('', 'standard', (int) $prepared['file_id']);
+        } elseif ((string) ($prepared['note'] ?? '') !== '') {
+            $notes[] = (string) $prepared['note'];
+        }
+    } elseif (in_array($type, array('check box', 'pick list', 'radio button'), true)) {
+        $options = (array) ($field['options'] ?? array());
+        $many = ($type === 'check box') || (($type === 'pick list') && !empty($field['multiple']));
+
+        // A lone check box (an "On" switch) is ticked by a true cell.
+        if (($type === 'check box') && (count($options) === 1) && in_array(mb_strtolower($cell), array('true', 'false', 'yes', 'no'), true)) {
+            if (in_array(mb_strtolower($cell), array('true', 'yes'), true)) {
+                $add((string) key($options));
+            }
+
+            return array('rows' => $rows, 'notes' => $notes);
+        }
+
+        $found = pg_import_record_terms(pg_import_record_cell_names($cell, !$many), $field);
+
+        if ($found['missing']) {
+            $notes[] = lang(array('string' => 'No choice of {var:1} matches: {var:2}', 'vars' => array($name, implode(', ', $found['missing']))));
+        }
+
+        foreach ($many ? $found['values'] : array_slice($found['values'], 0, 1) as $value) {
+            $add($value);
+        }
+    }
+
     return array('rows' => $rows, 'notes' => $notes);
 }
 
@@ -391,6 +567,29 @@ function pg_import_write_record($item, $import)
             $context['picture_id'] = $file_id;
         } else {
             $picture_wait = true;
+        }
+    }
+
+    // A collection file's cells: rich text through the media fetch and the
+    // cleaner, a picture fetched into the file library.
+    foreach ((array) ($data['columns'] ?? array()) as $column => $cell) {
+        $field_id = (strpos((string) $column, 'col_') === 0) ? (int) ($mapping[$column] ?? 0) : 0;
+        $field = ($field_id > 0) ? ($fields[$field_id] ?? null) : null;
+
+        if (!$field) {
+            continue;
+        }
+
+        if (($field['type'] === 'text area') && !empty($field['wysiwyg']) && pg_import_record_cell_is_html((string) $cell)) {
+            $local = pg_import_media_localize($import, $related, (string) $cell);
+            $media_notes = array_merge($media_notes, $local['notes']);
+            $context['columns'][$column] = array('html' => pg_sanitize_rich_text($local['html'], 'staff'));
+        } elseif ($field['type'] === 'file upload') {
+            $address = pg_import_record_cell_address((string) $cell);
+            $fetched = ($address !== '') ? pg_import_media_fetch($import, $related, $address) : array('ok' => false, 'id' => 0, 'reason' => lang('The address is not a web address.'));
+            $context['columns'][$column] = $fetched['ok']
+                ? array('file_id' => (int) $fetched['id'])
+                : array('note' => lang(array('string' => '{var:1} was not fetched: {var:2}', 'vars' => array((string) $field['name'], (string) $fetched['reason']))));
         }
     }
 

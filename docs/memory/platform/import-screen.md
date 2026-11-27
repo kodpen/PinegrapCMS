@@ -15,6 +15,7 @@ module: importers
 ## What does the upload card say, and how are rows asked?
 - A note under the file field (`#file_kinds`) and the refusal name each export taken. The What Is Imported card adds that sign-in and the old look are left out: Import My Site, named, not linked (closed on hosted sites).
 - Rows come from `pg_import_<kind>_mapping($file)` with the kept upload, as one kind's files ask different rows (`import-squarespace.md`). A `select` row's `default` is the choice it starts on.
+- A `text` row is an input (`placeholder`, `help` under it), used for a Webflow collection's old address. A `form_field` row with a `guess` starts on the field whose label matches it, letters and digits only, case ignored (`data-pg-import-guess`, the screen's script), when nothing was chosen.
 
 ## Which fields does a field row offer?
 - A `form_field` row carries `field_types`, the types its writer fills (`includes/import/write_record.php`): title, body, summary text box/text area; date date, date and time, text box; featured image file upload; categories and tags check box, pick list, radio button, text box, text area. `pg_import_field_fits()` (pure) also refuses `information` fields. An empty list takes every type.
