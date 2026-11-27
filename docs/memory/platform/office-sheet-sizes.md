@@ -16,7 +16,7 @@ module: office_size
 
 ## What does the reader give the grid?
 - Each .xlsx sheet of `pg_office_xlsx_read()` has `sizes`: `widths` (0-based column => characters, a later `<col>` wins, cut to 200 columns), `width` (`defaultColWidth`, else `baseColWidth`, else null), `height` (`defaultRowHeight` or null), `frozen` (the first view's frozen `ySplit`, else 0). A row with `ht` says `h` (points).
-- Read in the same streaming walk as the rows (`pg_office_xlsx_rows()`, `pg_office_size_note()`), only before `sheetData`, so custom sheet views after it do not count. Drawing them is SA4 of `plans/office-sheet-abilities.md`.
+- Read in the same streaming walk as the rows (`pg_office_xlsx_rows()`, `pg_office_size_note()`), only before `sheetData`, so custom sheet views after it do not count. The grid draws them and sets them: `office-sheet-sizes-grid.md`.
 
 ## What is refused, with its reason?
 - Width on a protected sheet unless `sheetProtection formatColumns="0"` (`size_columns`); height unless `formatRows="0"` (`size_rows`); freeze when the workbook has `workbookProtection lockWindows` (`size_windows`; sheet protection does not stop it, as in Excel).

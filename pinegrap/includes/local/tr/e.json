@@ -1054,6 +1054,7 @@
     "Enter a name for the feed.": "Besleme için bir ad girin.",
     "Enter a name of at most 100 characters.": "En fazla 100 karakterlik bir ad girin.",
     "Enter a name.": "Bir ad girin.",
+    "Enter a number above 0 and up to {1}.": "0'dan büyük ve en çok {1} olan bir sayı girin.",
     "Enter a number on each line.": "Her satıra bir sayı girin.",
     "Enter a number.": "Bir sayı girin.",
     "Enter a percent from 0 to 100, with at most three decimals.": "0 ile 100 arasında, en çok üç ondalıklı bir yüzde girin.",
