@@ -1195,6 +1195,13 @@ if (pg_cron_job_is_enabled('api_webhook_job')) {
 pg_ad_conversion_ga4_queue_refunds();
 pg_ad_conversion_dispatch(10);
 
+// The accounting service the site books into (includes/fn/accounting_sync.php):
+// refund rows from order_refunds first, then the due rows at the service's
+// pace. Its own budget, so a slow service holds back nothing else.
+require_once(dirname(__FILE__) . '/includes/fn/accounting_sync.php');
+pg_accounting_sync_queue_refunds();
+pg_accounting_sync_dispatch(10);
+
 // Device notifications, when the operator has switched them on. Same shape and
 // same reasoning as the webhook pass above: the queue is empty on a site where
 // nobody subscribed a device, which costs one indexed read.
