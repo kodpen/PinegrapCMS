@@ -17,8 +17,7 @@ module: office
 - It changes the selected cells: one, or the rectangle Shift+click or Shift+arrows make from the first selected cell. Choosing the alignment already on gives back general.
 - Each range waits in the workbook's one list beside the typed cells, in the order they were made (`{op: format, sheet, name, range, set}` in `view.edits()`, `office-sheet-change-list.md`), drawn on the cells at once (but the number text, shown after the save). Any number of ranges; at most 5000 cells a range. Each press of Undo takes back one part chosen, even where it joined a range already waiting.
 - The bar shows over every sheet of an editable workbook; its format controls only on a sheet whose cells take a format (not protected, not sorted or filtered), the Undo and Redo pair always.
-- Not offered on a protected sheet, even one whose protection allows formatting.
-- Money takes the site's base currency (the server's default).
+- Not offered on a protected sheet, even one whose protection allows formatting (`sheetFormattable()`). Money takes the site's base currency.
 
 ## How are text colour and fill chosen?
 - Architect (2026-11-20, agent channel message 11221): a `pg-icon-button` each ("Text color", "Fill color"), the glyph over a 3 px bar in the selected cell's colour, opening the editor's own menu: "None" first, then a grid of preset swatches (aria-label the colour's name, the chosen one ringed). No native colour input and no free colour.
