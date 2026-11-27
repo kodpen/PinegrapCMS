@@ -880,7 +880,9 @@ function ws_mail_message_write($channel_id, $parent_id, $item_id, $body, $file_i
  * @param string $raw
  * @param array  $box     ws_mail_boxes row
  * @param array  $options past_block: true takes the mail in although its
- *                        sender is blocked ("Move to the inbox", mail_blocks.php)
+ *                        sender is blocked ("Move to the inbox", mail_blocks.php);
+ *                        tie: contact_id and user_id of a new conversation,
+ *                        given by a site form that opens a request
  * @return array status, reason, item_id, conversation_id, message_id
  */
 function ws_mail_ingest($raw, $box, $options = array())
@@ -1010,9 +1012,16 @@ function ws_mail_ingest($raw, $box, $options = array())
             $parent_id = $message_id;
         }
     } else {
-        // Only a sender the box's server vouched for is tied to a record.
-        $contact_id = ($auth === 'pass') ? (int) db_value("SELECT id FROM contacts WHERE email_address = '" . e($from_email) . "' ORDER BY id DESC LIMIT 1") : 0;
-        $user_id = ($auth === 'pass') ? (int) db_value("SELECT user_id FROM user WHERE user_email = '" . e($from_email) . "' ORDER BY user_id LIMIT 1") : 0;
+        // Only a sender the box's server vouched for is tied to a record; a
+        // request a site form opened brings the customer the site knows
+        // (support_forms.php), whose address it checked itself.
+        if (isset($options['tie']) && is_array($options['tie'])) {
+            $contact_id = max(0, (int) ($options['tie']['contact_id'] ?? 0));
+            $user_id = max(0, (int) ($options['tie']['user_id'] ?? 0));
+        } else {
+            $contact_id = ($auth === 'pass') ? (int) db_value("SELECT id FROM contacts WHERE email_address = '" . e($from_email) . "' ORDER BY id DESC LIMIT 1") : 0;
+            $user_id = ($auth === 'pass') ? (int) db_value("SELECT user_id FROM user WHERE user_email = '" . e($from_email) . "' ORDER BY user_id LIMIT 1") : 0;
+        }
 
         db("INSERT INTO ws_mail_conversations (box_id, channel_id, subject, customer_email, customer_name, contact_id, user_id,
                 status, first_in_at, last_in_at, created_at, updated_at)
