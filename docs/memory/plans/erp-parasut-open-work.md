@@ -1,6 +1,6 @@
 ---
 name: erp-parasut-open-work
-description: Paraşüt work left after the staging round of 2026-11-27: six bug issues, what staging could not try, the decisions #2440-#2442, the queue worker, incoming e-invoices; where to start
+description: Paraşüt work left after the staging round of 2026-11-27 and its six fixes: what staging could not try, the decisions #2440-#2442, the queue worker, incoming e-invoices; where to start
 ---
 
 ## Where does it stand?
@@ -14,13 +14,12 @@ description: Paraşüt work left after the staging round of 2026-11-27: six bug 
 
 ## What was decided? (#2440, #2441, #2442)
 1. **Payment at Paraşüt:** a "Payment account" pick on the Paraşüt card from `GET accounts` (a non-VARCHAR `config` column, empty = today); when set, the order's paid moment posts `POST sales_invoices/{id}/payments`; not built.
-2. **A reused buyer card** (the driver, and the legacy buttons since #1543): only its empty fields are filled; a value it has is never overwritten. Not in the code yet: bug issue #11984.
+2. **A reused buyer card** (the driver, and the legacy buttons since #1543): only its empty fields are filled; a value it has is never overwritten. Built in #12013 (`erp/erp-parasut-buyer-card-fill.md`).
 3. **A `sent` e-Invoice whose conversion failed** keeps refusing Cancel (first Ask After the Status; `erp/erp-parasut-sent-cancel.md`); the #2025 guard held on staging, but no sent e-Fatura could be made there, so it stays.
 
-## Which bug issues are open? (one PR each, unit tests; tried live at the next round)
-- #11977 a user without the integration permission connects with no warning, then meets a raw 403; #11978 the legacy Create Invoice takes the e-Arşiv's 202 for a failure; #11979 two inbox texts not translated.
-- #11982 a product card opened for an invoice line takes the line's VAT rate (architect, 2026-11-27: the line is the sale, the card's rate a default; a stale catalogue rate must not stop an invoice).
-- #11983 a 0% line with no exemption code is refused before any request, for Paraşüt and İşbaşı (the schema rule of `erp/erp-accounting-rules.md`; not confirmed live). #11984 above.
+## Which bug issues did the round leave?
+- None open: the six of 2026-11-27 landed that night with unit tests. #12013: #11977 (the integration permission warning), #11978 (the e-Arşiv's 202), #11982 (a new product card takes the line's VAT rate) and #11984; #12017: #11979 (the inbox labels); #12020: #11983 (a 0% line with no exemption code refused before sending, `erp/erp-vat-exemption-send-check.md`).
+- None of the six was tried live: they are tried at the next round on a company whose e-document integration works.
 
 ## What bigger work is open?
 - **Queue worker** for `erp_edoc_queue` (nothing processes it; Paraşüt v4 has no webhook): create, convert, poll each tick while the 15-minute job window is open, reconcile from the document at 5 min, 30 min, 2 h, 6 h, 24 h, pay, cancel; after 6 tries `abandoned` and a panel warning. `erp_edoc_job` in `pg_cron_jobs()` (`'inline' => true`, 10 s budget) and a standalone `erp_edoc_job.php`. The e-document error notification and the automatic invoice's send wait on it (`erp/erp-auto-invoice-edocument.md`).

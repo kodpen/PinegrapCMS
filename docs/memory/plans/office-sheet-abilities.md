@@ -8,7 +8,8 @@ priority: 6
 - Owner (2026-11-26, agent channel poll 235, message 14401): all eight abilities offered for the two editors (`workflow/decisions-made-product-115.md`). This plan holds three of the workbook's four; the formulas are `plans/office-sheet-formulas.md`.
 
 ## When does it start?
-- Every step uses the workbook's list of changes (`platform/office-sheet-change-list.md`), finished with Undo and Redo in PR #11993. No step is free until the architect marks its line `free`.
+- Every step uses the workbook's list of changes (`platform/office-sheet-change-list.md`), finished with Undo and Redo in #11993: the steps are free since 2026-11-27.
+- Both editors live in `pg_office_view.js`: a step on it (SA2, SA4, SA5 of `plans/office-sheet-abilities.md`; DA2, DA3, DA5, DA7 of `plans/office-document-abilities.md`) is not given out while another step on that file has an open PR.
 
 ## Which steps? (M about 1,000 product lines, S under 400; each waits for the one before it)
 - SA1 (M, `includes/fn/office_format.php`): the format entry also takes underline, strikethrough, a font size (8 to 72 points), borders (none, all sides, outline, bottom) and wrap text, written as today's formats are: new styles beside the old ones. The reader gives them in a cell's look. Tests: each read back, untouched parts byte for byte.
