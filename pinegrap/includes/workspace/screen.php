@@ -1280,6 +1280,11 @@ function ws_screen_assets($viewer, $mode, $extra = array())
             . pg_js_bundle_tags('assets/js/workspace_tour.min.js');
     }
 
+    // My Tasks' Board layout draws its columns with the channel's board.
+    if ($mode === 'tasks') {
+        $output .= pg_js_bundle_tags('assets/js/workspace_board_channel.min.js');
+    }
+
     // The flow canvas (assets/js/workspace_flow.js), started by workspace.js
     // once the team is known, after the canvas core it draws with
     // (assets/js/pg_graph_canvas.js).

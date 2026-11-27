@@ -5566,8 +5566,12 @@ function ws_handle_action($action, $request)
                 $tasks[$index]['due_group'] = ws_task_due_group($task['due_date'], $filters['today'], $first_day);
             }
 
+            // The Board layout: the same tasks, a column a status.
+            $board = (($request['layout'] ?? '') === 'board') ? ws_tasks_status_board($tasks, $filters['status'], $filters['today']) : null;
+
             return ws_action_ok(array(
                 'tasks'          => $tasks,
+                'board'          => $board,
                 'agent_channels' => ws_tasks_agent_count($agent_names),
                 'agent_names'    => (object) $agent_names,
                 // The "Made by agents" filter shows once tasks carry the mark.

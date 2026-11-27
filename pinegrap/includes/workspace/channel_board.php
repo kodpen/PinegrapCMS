@@ -391,6 +391,99 @@ function ws_channel_board_merge_briefs($briefs, $more)
 }
 
 /**
+ * A task as a board card draws it, from its ws_tasks_list() brief. What the
+ * brief does not carry (the reminder, when it was finished, whether it is
+ * the newest copy of a series) comes in $extra. Pure but for the words.
+ *
+ * @param array  $brief      ws_task_brief() plus can_edit
+ * @param string $today      Y-m-d, the day the due chip is read on
+ * @param array  $priorities ws_task_priorities()
+ * @param array  $extra      series_latest, reminder, completed_at
+ * @return array
+ */
+function ws_channel_board_task_card($brief, $today, $priorities, $extra = array())
+{
+    $chip = ws_channel_board_due_chip($brief['due_date'] ?? null, !empty($brief['open']), $today);
+
+    return array(
+        'kind'           => 'task',
+        'id'             => (int) $brief['id'],
+        'number'         => (string) $brief['number'],
+        'title'          => (string) $brief['title'],
+        'status'         => (string) $brief['status'],
+        'status_label'   => (string) $brief['status_label'],
+        'priority'       => (string) $brief['priority'],
+        'priority_label' => (string) ($priorities[$brief['priority']] ?? ''),
+        'open'           => (bool) $brief['open'],
+        'due_date'       => $brief['due_date'] ?? null,
+        'due_label'      => (string) ($brief['due_label'] ?? ''),
+        'overdue'        => !empty($brief['overdue']),
+        'due_tone'       => $chip['tone'],
+        'due_late'       => $chip['late'],
+        'assignees'      => array_map('ws_channel_board_face', (array) ($brief['assignees'] ?? array())),
+        'progress'       => $brief['progress'] ?? null,
+        'notes_count'    => (int) ($brief['notes_count'] ?? 0),
+        'recurring'      => !empty($brief['recurring']),
+        'series_latest'  => !empty($extra['series_latest']),
+        'reminder'       => !empty($extra['reminder']),
+        'completed_at'   => (int) ($extra['completed_at'] ?? 0),
+        'can_edit'       => !empty($brief['can_edit']),
+        // The assistant or agent holding the task (delegation.php).
+        'delegate'        => (string) ($brief['delegate'] ?? ''),
+        'delegate_name'   => (string) ($brief['delegate_name'] ?? ''),
+        'delegate_icon'   => (string) ($brief['delegate_icon'] ?? ''),
+        'delegate_avatar' => (string) ($brief['delegate_avatar'] ?? ''),
+    );
+}
+
+/**
+ * My Tasks' Board layout (workspace_tasks.php): the tasks the bar chose, as
+ * cards in a column a status, each column a place a card is put to change
+ * its status. Cancelled stands only when the list holds closed tasks. Pure
+ * but for the words.
+ *
+ * @param array[] $briefs ws_tasks_list() rows, in any order
+ * @param string  $status the list's status filter: open, closed or all
+ * @param string  $today  Y-m-d, the reader's day
+ * @return array group_by, columns (key, title, icon, dot, drop, add, items, more), can_post
+ */
+function ws_tasks_status_board($briefs, $status, $today)
+{
+    $priorities = ws_task_priorities();
+    $icons = array('todo' => 'bi-circle', 'doing' => 'bi-play-circle', 'waiting' => 'bi-pause-circle', 'done' => 'bi-check2-circle', 'cancelled' => 'bi-x-circle');
+    $cards = array();
+
+    foreach ((array) $briefs as $brief) {
+        $cards[] = ws_channel_board_task_card($brief, $today, $priorities);
+    }
+
+    usort($cards, 'ws_channel_board_compare');
+
+    $columns = array();
+
+    foreach (ws_task_statuses() as $key => $label) {
+        if (($key === 'cancelled') && ($status === 'open')) {
+            continue;
+        }
+
+        $items = array_values(array_filter($cards, function ($card) use ($key) { return $card['status'] === $key; }));
+
+        $columns[] = array(
+            'key'   => $key,
+            'title' => $label,
+            'icon'  => $icons[$key] ?? 'bi-circle',
+            'dot'   => true,
+            'drop'  => $key,
+            'add'   => null,
+            'items' => $items,
+            'more'  => 0,
+        );
+    }
+
+    return array('group_by' => 'status', 'columns' => $columns, 'can_post' => false);
+}
+
+/**
  * The channel's tasks as cards, filtered.
  *
  * @param array $viewer
@@ -469,37 +562,11 @@ function ws_channel_board_tasks($viewer, $channel, $options)
             continue;
         }
 
-        $chip = ws_channel_board_due_chip($brief['due_date'], !empty($brief['open']), $today);
-
-        $out[] = array(
-            'kind'           => 'task',
-            'id'             => (int) $brief['id'],
-            'number'         => (string) $brief['number'],
-            'title'          => (string) $brief['title'],
-            'status'         => (string) $brief['status'],
-            'status_label'   => (string) $brief['status_label'],
-            'priority'       => (string) $brief['priority'],
-            'priority_label' => (string) ($priorities[$brief['priority']] ?? ''),
-            'open'           => (bool) $brief['open'],
-            'due_date'       => $brief['due_date'],
-            'due_label'      => (string) $brief['due_label'],
-            'overdue'        => (bool) $brief['overdue'],
-            'due_tone'       => $chip['tone'],
-            'due_late'       => $chip['late'],
-            'assignees'      => $people,
-            'progress'       => $brief['progress'],
-            'notes_count'    => (int) $brief['notes_count'],
-            'recurring'      => (bool) $brief['recurring'],
-            'series_latest'  => isset($newest[(int) $brief['id']]),
-            'reminder'       => (($row['remind_minutes'] ?? null) !== null) && ((int) ($row['remind_at'] ?? 0) > 0),
-            'completed_at'   => (int) ($row['completed_at'] ?? 0),
-            'can_edit'       => !empty($brief['can_edit']),
-            // The assistant or agent holding the task (delegation.php).
-            'delegate'        => (string) ($brief['delegate'] ?? ''),
-            'delegate_name'   => (string) ($brief['delegate_name'] ?? ''),
-            'delegate_icon'   => (string) ($brief['delegate_icon'] ?? ''),
-            'delegate_avatar' => (string) ($brief['delegate_avatar'] ?? ''),
-        );
+        $out[] = ws_channel_board_task_card($brief, $today, $priorities, array(
+            'series_latest' => isset($newest[(int) $brief['id']]),
+            'reminder'      => (($row['remind_minutes'] ?? null) !== null) && ((int) ($row['remind_at'] ?? 0) > 0),
+            'completed_at'  => (int) ($row['completed_at'] ?? 0),
+        ));
     }
 
     return $out;
