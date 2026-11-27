@@ -205,3 +205,13 @@ function test_workspace_memory_filter_where_narrows_in_the_query()
 	pg_assert_same('m.channel_id = ?', $all['sql'], 'the expired ones too, no tag, no project');
 	pg_assert_same(array(0), $all['params']);
 }
+
+// A quoted phrase typed with two spaces matches text holding two spaces;
+// the snippet, which folds the text's spaces, folds the phrase's too.
+function test_workspace_memory_search_snippet_phrase_spaces()
+{
+	$text = str_repeat('lorem ', 60) . 'merge  train rules here ' . str_repeat('ipsum ', 60);
+	$snippet = ws_memory_search_snippet($text, array('merge  train'), 60);
+
+	pg_assert_true(mb_strpos($snippet, 'merge train') !== false, 'the snippet is around the phrase');
+}

@@ -118,7 +118,8 @@ function ws_memory_search_snippet($text, $terms, $max = WS_MEMORY_SEARCH_SNIPPET
     $hit_length = 0;
 
     foreach ((array) $terms as $term) {
-        $term = (string) $term;
+        // A quoted phrase's spaces folded as the text's are.
+        $term = trim((string) preg_replace('/\s+/u', ' ', (string) $term));
 
         if ($term === '') {
             continue;
