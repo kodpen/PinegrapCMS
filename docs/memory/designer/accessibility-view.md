@@ -9,7 +9,7 @@ description: The designer's Accessibility view as built (AV2 #11657, AV3): the V
 
 ## How does it load?
 - The part `accessview` (`includes/designer_parts/accessview.php`, `when: always`): `assets/js/pg_a11y_reader.js` then `assets/js/style_designer_accessview.js`. The core keeps `_sdA11yState()`, `_sdA11yKeep()`, `_sdA11ySet()`, `_sdA11yHost()` and `_sdA11ySync()`; the part is run the first time the switch is on (`show(host)`, `hide()`).
-- `render()` ends with `_sdA11ySync()`: while on, the part reads the page again 300 ms after the last draw. A MutationObserver on the canvas body does the same for in-place redraws and typing; scroll and resize only move the marks. While off the part holds no listener, timer or observer.
+- `render()` ends with `_sdA11ySync()`: while on, the part reads the page again 300 ms after the last draw. When else it reads, and what it leaves out: `accessibility-view-reading.md`. While off the part holds no listener, timer or observer.
 
 ## What does the card show?
 - 258 px, 12 px from the canvas's bottom right corner, in the canvas wrapper (never in the canvas's page). Head: the name, fold (the kind chosen in grey when folded), close (turns the switch off; Escape inside the card too).
