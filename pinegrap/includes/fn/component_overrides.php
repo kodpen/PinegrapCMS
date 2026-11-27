@@ -468,6 +468,9 @@ function pg_co_place_texts($tree, $values)
 // `nodes` mapping a node's id (pg_co_node_id()) to the props the variant
 // gives it. A place keeps only a variant's name, `props._variant` on its
 // placing node. Texts, pictures, links and icons stay the component's.
+// A renamed variant keeps its former names (`was`), so a place saved with
+// one still draws it: the places live in other pages' trees, which a rename
+// does not write.
 
 // A variant's name as kept: trimmed, at most 60 characters; '' when it is
 // not a string or is empty.
@@ -505,18 +508,27 @@ function pg_co_clean_variant_props($props)
     return $out;
 }
 
+// A variant name as compared for "taken": any case.
+function pg_co_variant_key($name)
+{
+    return function_exists('mb_strtolower') ? mb_strtolower($name, 'UTF-8') : strtolower($name);
+}
+
 // The component's variants, cleaned: a name (unique, any case; the first
 // keeps it) and the nodes' props; a node with nothing left is dropped. At
-// most 50.
+// most 50. A variant renamed keeps `was`, its former names (at most 20): a
+// former name that is a variant's name now, or that an earlier variant
+// keeps, is dropped, and a variant with none has no `was`.
 function pg_co_variants($tree)
 {
     if (!is_array($tree) || !isset($tree['props']['_variants']) || !is_array($tree['props']['_variants'])) return array();
     $out = array();
     $names = array();
+    $formers = array();
     foreach ($tree['props']['_variants'] as $entry) {
         if (!is_array($entry)) continue;
         $name = pg_co_clean_variant_name(isset($entry['name']) ? $entry['name'] : null);
-        $key = function_exists('mb_strtolower') ? mb_strtolower($name, 'UTF-8') : strtolower($name);
+        $key = pg_co_variant_key($name);
         if ($name === '' || isset($names[$key])) continue;
         $names[$key] = true;
         $nodes = array();
@@ -527,18 +539,37 @@ function pg_co_variants($tree)
             }
         }
         $out[] = array('name' => $name, 'nodes' => $nodes);
+        $formers[] = (isset($entry['was']) && is_array($entry['was'])) ? $entry['was'] : array();
         if (count($out) >= 50) break;
+    }
+    $claimed = $names;
+    foreach ($out as $i => $variant) {
+        $was = array();
+        foreach ($formers[$i] as $former) {
+            $former = pg_co_clean_variant_name($former);
+            $key = pg_co_variant_key($former);
+            if ($former === '' || isset($claimed[$key])) continue;
+            $claimed[$key] = true;
+            $was[] = $former;
+            if (count($was) >= 20) break;
+        }
+        if ($was) $out[$i]['was'] = $was;
     }
     return $out;
 }
 
-// The variant named $name, or null.
+// The variant named $name, or null: a variant's name now first, then a
+// former name of a renamed one (the same case, as a name is matched).
 function pg_co_variant($tree, $name)
 {
     $name = pg_co_clean_variant_name($name);
     if ($name === '') return null;
-    foreach (pg_co_variants($tree) as $variant) {
+    $list = pg_co_variants($tree);
+    foreach ($list as $variant) {
         if ($variant['name'] === $name) return $variant;
+    }
+    foreach ($list as $variant) {
+        if (!empty($variant['was']) && in_array($name, $variant['was'], true)) return $variant;
     }
     return null;
 }
