@@ -16,5 +16,8 @@ description: The Work Calendar's cells (CM4): chips that give the title the cell
 - The bar's "Figures" button (after the grow slot, before the agents toggle; on a phone only its icon) hides the side column (month in figures, who carries, people) and turns the grid's `xl:col-9` into `xl:col-12`.
 - At 1280 px and wider the choice is kept per browser in `localStorage` `pg.ws.calendar.figures` (shown by default). Narrower, where the column stands under the grid, it starts folded each time and a press does not change the kept choice.
 
+## What is not done?
+- No drag on the Work Calendar: its items are other people's work and plan items with their own rights, changed in their drawers (`workspace-personal-calendar-rules.md`). No week or day view of it yet.
+
 ## What pins it?
 - `tests/workspace_calendar_cells_test.php`.

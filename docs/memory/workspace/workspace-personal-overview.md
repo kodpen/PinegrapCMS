@@ -13,6 +13,7 @@ description: A person's own calendar layers as a whole: own iCal calendars and o
 - Only the plan modules name the plan tables (`tests/workspace_personal_plans_test.php`); a template is kept in its own tables, never as a plan.
 
 ## Which file holds which part?
+- The screen: `workspace-my-calendar.md`; the week with hours `workspace-my-calendar-week.md`, on a phone `workspace-my-calendar-phone.md`, moved by a drag or "Move to…" `workspace-my-calendar-move.md`.
 - Plans, the gate, the drawer, reminders, account deletion: `workspace-personal-plans.md`.
 - "Who can see" (Only me, Chosen team members, The whole team): `workspace-personal-plan-sharing.md`.
 - Roadmap (dated steps, the bar, "Make a task"): `workspace-personal-plan-roadmap.md`.
