@@ -2188,6 +2188,25 @@ $shell . '
         });
     }
 
+    // The text fields of the row drawer grow to show their value whole at
+    // the width the drawer has (the rows the server gave are a guess for
+    // the widest drawer).
+    function fitText(area) {
+        area.style.height = "auto";
+        area.style.height = (area.scrollHeight + area.offsetHeight - area.clientHeight) + "px";
+    }
+    var rowDrawer = document.getElementById("ws-wt-row-form");
+    if (rowDrawer && window.pgUI) {
+        window.pgUI.ready(function () {
+            window.pgUI.drawer.on(rowDrawer, "shown", function () {
+                rowDrawer.querySelectorAll("textarea").forEach(fitText);
+            });
+        });
+        rowDrawer.addEventListener("input", function (e) {
+            if (e.target.matches("textarea")) { fitText(e.target); }
+        });
+    }
+
     // A click on a row opens it in the row drawer; the keyboard reaches the
     // same address on the number of the row. A link or button of the row, or a
     // click that ends a text selection, keeps its own meaning.

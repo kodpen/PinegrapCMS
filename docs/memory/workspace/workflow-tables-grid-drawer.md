@@ -18,7 +18,7 @@ description: A Data table's grid (workspace_wtables.php?id=N, DM2): one-line cel
 - The page opens the drawer the hash names (`openFromHash()`, the bar's drawers' code). A drawer closed takes its hash off the address (`history.replaceState`), so the same link opens it again.
 
 ## What is the row drawer?
-- `ws_wtable_grid_row_drawer()`: `dialog#ws-wt-row-form.ws-wt-drawer`, the form wrapping header, body and footer (`d-contents`); the fields as before, in the columns' order; a text or list field as tall as its value (`ws_wtable_grid_text_rows()`, 56 letters a line, 2 to 30 rows).
+- `ws_wtable_grid_row_drawer()`: `dialog#ws-wt-row-form.ws-wt-drawer`, the form wrapping header, body and footer (`d-contents`); the fields as before, in the columns' order; a text or list field as tall as its value: `ws_wtable_grid_text_rows()` (56 letters a line, 2 to 30 rows) from the server, then grown to its whole text at the drawer's width when it opens and as it is typed in (the phone's drawer holds fewer letters a line).
 - Footer: Delete (`pg-button-danger`, the row's confirm through `.ws-wt-action`) at the left of an existing row, Save or Add at the right; no Cancel, the cross or Escape closes it.
 - New row (the bar's button) opens the same drawer empty, in place when the page holds the new row form (`data-ws-wt-new`), else by going to the table's address with the hash.
 - The post is unchanged (`row_save`, `revision`); a refusal comes back to `#ws-wt-row-form` with the typed values and the refused cells named, and `changed_meanwhile` shows the row as it is now, as before.
