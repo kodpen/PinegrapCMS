@@ -1156,6 +1156,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - commerce/payment-gateway-secrets.md: Legacy gateway secrets sealed in config (pgenc2, AES-256-GCM since #3058; pgenc1 still read), drawn masked, opened in init.php; plain values still read; the 41-character limit
 - commerce/payment-iyzico-refusals.md: iyzico card refusals (PR #8517): the visitor sentence by error code, the Site Log line with order, payment id, error group and mdStatus, the 3-D Secure return stopping at a failed verification
 - commerce/payment-refunds.md: Money back through payment drivers (PRs #873, #903): the order's driver for the order screen's refund and the cancellation's void, log_name, the outcome lines
+- commerce/payment-stripe-blik-deferred.md: BLIK on the Stripe checkout: not in the deferred Payment Element, so the checkout draws its own code field, authorize() confirms with the code and a waiting page follows (PR #12123)
 - commerce/pick-pack-short-count.md: Short pick's count fix (#11346): drawer switch asks the shelf figure, the location gets max(0, shelf − units held by paid unsent orders), the count movement note, the held query
 - commerce/pick-pack-tables.md: Pick and pack's four tables and their keys, the reserved `lines` column, what an order's deletion removes, the "Packing only" right user.manage_packing
 - commerce/pick-pack.md: Pick and pack start file: shelf address, Orders › Pick waves, Orders › Pack barcode check, label on a checked pack, Short…, Packing card, API; K1-K16 with PRs, what is not built

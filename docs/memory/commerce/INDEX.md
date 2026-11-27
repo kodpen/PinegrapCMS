@@ -320,6 +320,7 @@
 - payment-refunds.md: Money back through payment drivers (PRs #873, #903): the order's driver for the order screen's refund and the cancellation's void, log_name, the outcome lines [decision: here]
 - payment-return-after-message.md: A payment return that comes after the service's message completed the order leads to its receipt (pg_payment_return_receipt()), not to a new empty order's checkout
 - payment-return-language.md: The address a payment service sends the visitor back to carries the language of the page they paid from (pg_tr_script_url()), so completion, receipt mail and receipt page are in it (#11423)
+- payment-stripe-blik-deferred.md: BLIK on the Stripe checkout: not in the deferred Payment Element, so the checkout draws its own code field, authorize() confirms with the code and a waiting page follows (PR #12123) [decision: here]
 - payment-stripe-later-result.md: A Stripe PaymentIntent still processing places the order awaiting payment (card + pi_ id + paid_at 0); payment_intent.succeeded records it, payment_failed alerts; SEPA Direct Debit uses it (PR #12087)
 - payment-stripe-method-list.md: Stripe methods beside the card: list pg_payment_stripe_methods(), pure pg_payment_stripe_method_types() for page and intent, method_<type> switches in connect_apps
 - payment-unclear-answers.md: The 'unclear' flag of a payment driver's answer, how the iyzico refund sets it, why a return's refund stays refunded on it and who honours it (#970, PR #1260)
