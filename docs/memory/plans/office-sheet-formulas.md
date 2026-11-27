@@ -9,7 +9,7 @@ priority: 6
 - Today a formula cell is locked, and its stored result is taken out when a cell it may depend on changes (`platform/office-cell-edits.md`, `office-cell-locks.md`).
 
 ## When does it start?
-- After SA5 of `plans/office-sheet-abilities.md`: the grid's script is one file. Until then no step is free: the architect marks lines `free` when SA5 has landed.
+- Now: SA5 of `plans/office-sheet-abilities.md` has landed (#12168). SF1 and SF2 touch no script; SF3 is on `pg_office_view.js` and is not given out while a step of `plans/office-document-abilities.md` on that file is open.
 
 ## What is a simple formula?
 - Numbers, cell references and ranges of the same sheet (`A1`, `$A$1`, `A1:B9`), `+ - * /`, brackets, a leading minus, and SUM, AVERAGE, MIN, MAX, COUNT with any number of arguments.
