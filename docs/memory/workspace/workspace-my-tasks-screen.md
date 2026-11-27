@@ -6,7 +6,7 @@ description: My Tasks list (TM1): open tasks under Overdue, Today, This week, La
 ## When is the list gathered by date?
 - With "Open tasks" as the status and no search typed, in every view (Mine, Given by me, My departments, Everyone): the rows stand under `.pg-group-label` buttons with their count, in this order: Overdue, Today, This week, Later, No date. A group with no task is not drawn.
 - Finished tasks, All tasks and a search draw one list without labels, in the server's order. My time keeps its own view (`workspace_task_time.js`).
-- `startTasks()` in `assets/js/workspace.js` hands the list to `PGWsMyTasks.list(container, tasks, grouped, helpers, parts, onChange)` in `assets/js/workspace_my_tasks.js` (in `workspace.min.js`); `parts` lends the row's menu and progress bar. Without the part file it falls back to `taskRows()`.
+- `startTasks()` in `assets/js/workspace.js` hands the list to `PGWsMyTasks.list(container, tasks, grouped, helpers, parts, onChange, fresh)` in `assets/js/workspace_my_tasks.js` (in `workspace.min.js`); `parts` lends the row's menu and progress bar; `fresh`, a task id, opens its group (`workspace-my-tasks-add-line.md`). Without the part file it falls back to `taskRows()`.
 
 ## Where does a task's group come from?
 - The `ws_tasks` action adds `due_group` to each task: `ws_task_due_group($due, $today, $first_day)` in `includes/workspace/tasks.php`, a pure function (`tests/workspace_task_due_group_test.php`).
