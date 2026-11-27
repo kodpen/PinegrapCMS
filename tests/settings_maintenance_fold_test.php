@@ -101,6 +101,7 @@ function test_settings_maintenance_fold_cron()
 	);
 
 	pg_assert_same(2, pg_maintenance_fold_cron_count(array('backup', 'seo', 'seo', 'job', 'gone'), $jobs), 'only jobs that can run with the general job, once each');
+	pg_assert_same(1, pg_maintenance_fold_cron_count(array('backup', 'seo'), $jobs, array('seo')), 'a job config.php switched off does not run with it');
 
 	$now = 1000000;
 

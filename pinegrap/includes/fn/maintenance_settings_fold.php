@@ -143,14 +143,16 @@ function pg_maintenance_fold_mode($ready, $on, $until, $now)
  *
  * @param string[] $selection the job names saved in job_dispatch
  * @param array    $jobs      pg_cron_jobs()
+ * @param string[] $inactive  names config.php has switched off, which the
+ *                            dispatcher passes over (pg_cron_job_active())
  * @return int
  */
-function pg_maintenance_fold_cron_count($selection, $jobs)
+function pg_maintenance_fold_cron_count($selection, $jobs, $inactive = array())
 {
     $count = 0;
 
     foreach (array_unique(array_map('strval', (array) $selection)) as $name) {
-        if (isset($jobs[$name]) && !empty($jobs[$name]['dispatch'])) {
+        if (isset($jobs[$name]) && !empty($jobs[$name]['dispatch']) && !in_array($name, (array) $inactive, true)) {
             $count++;
         }
     }
