@@ -28,6 +28,6 @@ module: office_docx_table
 - `table_wide`: past Word's 63 columns. A table after a paragraph where none may be added: `add_locked`.
 
 ## What was checked?
-- `tests/office_docx_table_test.php`: the entries, the new table's XML, widths, style choice, refusals, saves read back by `pg_office_read()` with the rest of the file byte for byte and the parts untouched, each refusal leaving the file as it was. Not opened in Word or LibreOffice. The bar's buttons come with DA5.
+- `tests/office_docx_table_test.php`: the entries, the new table's XML, widths, style choice, refusals, saves read back by `pg_office_read()` with the rest of the file byte for byte and the parts untouched, each refusal leaving the file as it was. Not opened in Word or LibreOffice. The bar's Table button, its grid and the row and column buttons: `office-docx-table-bar.md`.
 
 Related: docs/memory/platform/office-docx-add-delete.md, docs/memory/platform/office-docx-page.md

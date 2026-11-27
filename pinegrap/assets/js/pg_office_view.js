@@ -4833,6 +4833,108 @@
     // that may change is typed where it stands, the caret where the click
     // fell; what it is given shows plain until the file is saved, when the
     // server keeps the formatting of the words that did not change.
+    // A new table's largest size and Word's widest table: the writer's
+    // (includes/fn/office_docx_table.php).
+    var DOC_TABLE_LIMITS = { rows: 20, columns: 10, widest: 63 };
+
+    // How many rows the size grid shows once a size of that many rows is
+    // pointed at: eight, and one more than the size, up to the largest.
+    function pickRows(rows) {
+        return Math.min(DOC_TABLE_LIMITS.rows, Math.max(8, rows + 1));
+    }
+
+    // The save entries of a table of the file from what the page shows now
+    // (model: hidden when the whole table goes; rows, each fresh when put
+    // in, hidden when deleted, anchor: a paragraph of the file in it; their
+    // cells the same way, a fresh one with its paragraph entries, items).
+    // A deleted column keeps a hidden cell in each new row, as the writer
+    // puts rows in before any column goes. Columns put in are listed
+    // first, their cells by the rows of the file (the table as it then
+    // stands); then rows, their cells by every column; then what goes.
+    // Several after one cell or row are listed in order; those before the
+    // first go before it, left to right.
+    function tableEntries(model) {
+        var fileRows = model.rows.filter(function (row) {
+            return !row.fresh;
+        });
+        var entries = [];
+
+        if (!fileRows.length) {
+            return entries;
+        }
+
+        if (model.hidden) {
+            return [{ cell: fileRows[0].anchor, table: 'delete' }];
+        }
+
+        function cellsOf(list) {
+            var cells = list.map(function (cell) {
+                return cell.items || [];
+            });
+
+            return cells.some(function (items) { return items.length > 0; }) ? cells : null;
+        }
+
+        function add(anchor, action, cells) {
+            var entry = { cell: anchor, table: action };
+
+            if (cells) {
+                entry.cells = cells;
+            }
+
+            entries.push(entry);
+        }
+
+        // Each run of new ones after one of the file, or before the first.
+        function runs(list, put) {
+            var last = null;
+            var lead = [];
+
+            list.forEach(function (item, index) {
+                if (item.fresh) {
+                    if (last) {
+                        put(last, 'after', index);
+                    } else {
+                        lead.push(index);
+                    }
+                    return;
+                }
+
+                lead.forEach(function (at) {
+                    put(item, 'before', at);
+                });
+                lead = [];
+                last = item;
+            });
+        }
+
+        var reference = fileRows[0].cells;
+
+        runs(reference, function (cell, way, index) {
+            add(cell.anchor, 'column_' + way, cellsOf(fileRows.map(function (row) {
+                return row.cells[index];
+            })));
+        });
+
+        runs(model.rows, function (row, way, index) {
+            add(row.anchor, 'row_' + way, cellsOf(model.rows[index].cells));
+        });
+
+        fileRows.forEach(function (row) {
+            if (row.hidden) {
+                add(row.anchor, 'row_delete', null);
+            }
+        });
+
+        reference.forEach(function (cell) {
+            if (!cell.fresh && cell.hidden) {
+                add(cell.anchor, 'column_delete', null);
+            }
+        });
+
+        return entries;
+    }
+
     function renderDocument(container, office, strings, options) {
         var doc = el('div', 'office-doc office-doc-paged');
 
@@ -5042,13 +5144,63 @@
             return list;
         }
 
-        // Paragraphs of the file changed, deleted, and added.
+        // Whether a paragraph goes with a table, a row or a column deleted
+        // (hidden, not deleted itself).
+        function goneWith(position) {
+            var node = doc.querySelector('[data-p="' + position + '"]');
+
+            return !!node && node.hidden && !own(deletes, position);
+        }
+
+        // The paragraphs and tables added, each its own save entry: those
+        // in a new cell go with their table's.
+        function topAdded() {
+            return Array.prototype.filter.call(doc.querySelectorAll('.office-added, .office-added-table'), function (node) {
+                return !(node.parentNode && node.parentNode.closest && node.parentNode.closest('.office-new-cell'));
+            });
+        }
+
+        // The save entries of the tables of the file (tableEntries()), a
+        // new cell's paragraph entries given by itemsOf(cell). A table
+        // inside a part deleted goes with it.
+        function fileTableEntries(itemsOf) {
+            var entries = [];
+
+            Array.prototype.forEach.call(paper.querySelectorAll('table'), function (table) {
+                if (freshTable(table) || (table.parentNode && table.parentNode.closest('.office-added-table, .office-new-cell, [hidden]'))) {
+                    return;
+                }
+
+                entries = entries.concat(tableEntries({
+                    hidden: table.hidden,
+                    rows: Array.prototype.map.call(table.rows, function (row) {
+                        return {
+                            fresh: row.classList.contains('office-new-row'),
+                            hidden: row.hidden,
+                            anchor: rowAnchor(row),
+                            cells: Array.prototype.map.call(row.cells, function (cell) {
+                                var fresh = cell.classList.contains('office-new-cell');
+
+                                return { fresh: fresh, hidden: cell.hidden, anchor: fresh ? null : cellAnchor(cell), items: fresh ? itemsOf(cell) : null };
+                            })
+                        };
+                    })
+                }));
+            });
+
+            return entries;
+        }
+
+        // Paragraphs of the file changed and deleted, paragraphs and tables
+        // added, and rows, columns and tables of the file put in or deleted.
         function count() {
             var total = positionsNow().filter(function (position) {
-                return !isNew(position) && !own(deletes, position);
+                return !isNew(position) && !own(deletes, position) && !goneWith(position);
             }).length;
 
-            return total + Object.keys(deletes).length + doc.querySelectorAll('.office-added').length;
+            return total + Object.keys(deletes).length + topAdded().length + fileTableEntries(function () {
+                return [];
+            }).length;
         }
 
         function drawStatus() {
@@ -5297,24 +5449,35 @@
         // list) or the one asked for. The server writes it with the
         // paragraph properties of the file's paragraph it follows; its text
         // goes into a new run, so each format is sent for it.
-        function addAfter(node, text, bits, kind) {
+        function addAfter(node, text, bits, kind, place) {
             var position = node.getAttribute('data-p');
             var after = isNew(position) ? node.getAttribute('data-after') : position;
-            var tag = /^(P|H[1-6]|LI)$/.test(node.tagName) ? node.tagName.toLowerCase() : 'p';
+            var tag = (place && place !== node) ? 'p' : (/^(P|H[1-6]|LI)$/.test(node.tagName) ? node.tagName.toLowerCase() : 'p');
             var key = 'n' + (++added);
             var fresh = el(tag, (tag === 'li' ? node.className.replace(/\boffice-\S+/g, function (name) {
                 return /^office-lvl-/.test(name) ? name : '';
             }) + ' ' : '') + 'office-para office-added');
             var want = kind || (own(wantKinds, position) ? wantKinds[position] : kinds[position]);
 
+            // A paragraph of a new cell is written as the cell's first one
+            // (data-like: the paragraph of the file its properties come
+            // from), and so is one added after it in the cell.
+            var like = node.hasAttribute('data-like');
+            var base = like ? position : after;
+
             fresh.setAttribute('data-p', key);
             fresh.setAttribute('data-after', after);
+
+            if (like) {
+                fresh.setAttribute('data-like', node.getAttribute('data-like'));
+            }
+
             texts[key] = '';
             marks[key] = [];
             drawn[key] = '';
-            kinds[key] = own(kinds, after) ? kinds[after] : 'other';
+            kinds[key] = own(kinds, base) ? kinds[base] : 'other';
 
-            if (want && want !== kinds[key] && own(kinds, after)) {
+            if (want && want !== kinds[key] && own(kinds, base)) {
                 wantKinds[key] = want;
             }
 
@@ -5325,14 +5488,23 @@
 
             // It is written with the alignment of the file's paragraph it
             // follows; one asked for on the paragraph it was cut from goes on.
-            var align = alignSent(alignOf(aligns, after), alignNow(position));
+            var align = alignSent(alignOf(aligns, like ? node.getAttribute('data-like') : after), alignNow(position));
 
             if (align) {
                 wantAligns[key] = align;
             }
 
-            node.parentNode.insertBefore(fresh, node.nextSibling);
-            nodes.splice(nodes.indexOf(node) + 1, 0, fresh);
+            // Put after the node asked for (place): a new table, or the
+            // paragraph itself.
+            place = place || node;
+            place.parentNode.insertBefore(fresh, place.nextSibling);
+
+            if (place === node) {
+                nodes.splice(nodes.indexOf(node) + 1, 0, fresh);
+            } else {
+                nodes = Array.prototype.slice.call(doc.querySelectorAll('[data-p]'));
+            }
+
             redraw(fresh);
 
             return fresh;
@@ -5592,6 +5764,14 @@
             var position = node.getAttribute('data-p');
 
             if (isNew(position)) {
+                var holder = cellOf(node);
+
+                // A new cell keeps one paragraph.
+                if (holder && holder.classList.contains('office-new-cell') && cellParagraphs(holder).length < 2) {
+                    refuse(strings.keep_cell);
+                    return;
+                }
+
                 closeEditor(false);
 
                 var next = beside(node, 1) || beside(node, -1);
@@ -5671,9 +5851,14 @@
         }
 
         // A paragraph's alignment in the file; an added paragraph is written
-        // with the one of the file's paragraph it follows.
+        // with the one of the file's paragraph it follows, a new cell's
+        // with the one of the paragraph its cell is copied from.
         function fileAlign(position) {
             var node = isNew(position) ? doc.querySelector('[data-p="' + position + '"]') : null;
+
+            if (node && node.hasAttribute('data-like')) {
+                return alignOf(aligns, node.getAttribute('data-like'));
+            }
 
             return alignOf(aligns, node ? node.getAttribute('data-after') : position);
         }
@@ -5879,6 +6064,7 @@
         function openLinkWindow() {
             closeBarMenu(false);
             closeLinkWindow(false);
+            closeTableWindow(false);
 
             var target = linkTarget();
 
@@ -6000,6 +6186,687 @@
 
         var linkWindows = 0;
 
+        // Tables. Each row and cell carries a name (data-r, data-c; a new
+        // table data-t), so a state of the list tells them apart. A row,
+        // column or table of the file that is deleted is hidden till the
+        // save, with its paragraphs; one put in (.office-new-row,
+        // .office-new-cell, .office-added-table) simply goes. A new cell
+        // holds added paragraphs typed as any other, sent with its table.
+        var tableKeys = 0;
+
+        function nameOf(element, attribute, prefix) {
+            element.setAttribute(attribute, prefix + (++tableKeys));
+        }
+
+        function freshTable(table) {
+            return table.classList.contains('office-added-table');
+        }
+
+        // The paragraphs of a cell itself, not of a table inside it.
+        function cellParagraphs(cell) {
+            return Array.prototype.filter.call(cell.querySelectorAll('[data-p]'), function (node) {
+                return cellOf(node) === cell && !node.hidden;
+            });
+        }
+
+        function firstIn(cell, last) {
+            var list = cell ? cellParagraphs(cell) : [];
+
+            return list.length ? list[last ? list.length - 1 : 0] : null;
+        }
+
+        function shownOf(list) {
+            return Array.prototype.filter.call(list, function (item) {
+                return !item.hidden;
+            });
+        }
+
+        // A paragraph of the file in a cell, or in a row: what a save names
+        // its table, row or column by.
+        function cellAnchor(cell) {
+            var found = null;
+
+            Array.prototype.some.call(cell.querySelectorAll('[data-p]'), function (node) {
+                var position = node.getAttribute('data-p');
+
+                if (cellOf(node) === cell && !isNew(position)) {
+                    found = Number(position);
+                }
+
+                return found !== null;
+            });
+
+            return found;
+        }
+
+        function rowAnchor(row) {
+            var found = null;
+
+            Array.prototype.some.call(row.cells, function (cell) {
+                found = cell.classList.contains('office-new-cell') ? null : cellAnchor(cell);
+
+                return found !== null;
+            });
+
+            return found;
+        }
+
+        // The paragraph of the file a new cell copied from a cell is
+        // written like: its first one, or the one that cell copies; null
+        // for a plain one.
+        function likeOf(cell) {
+            var first = cell ? Array.prototype.filter.call(cell.querySelectorAll('[data-p]'), function (node) {
+                return cellOf(node) === cell;
+            })[0] : null;
+
+            if (!first) {
+                return null;
+            }
+
+            var position = first.getAttribute('data-p');
+
+            if (!isNew(position)) {
+                return position;
+            }
+
+            return first.getAttribute('data-like') || null;
+        }
+
+        // A new cell holding one empty paragraph, copied from a cell (its
+        // kind, its alignment, hidden in a deleted column) or plain.
+        function newCell(source) {
+            var cell = el(source && source.tagName === 'TH' ? 'th' : 'td', 'office-new-cell');
+            var like = likeOf(source);
+            var key = 'n' + (++added);
+            var fresh = el('p', 'office-para office-added');
+
+            nameOf(cell, 'data-c', 'k');
+            cell.hidden = !!(source && source.hidden);
+            fresh.setAttribute('data-p', key);
+            fresh.setAttribute('data-after', '');
+            fresh.setAttribute('data-like', like === null ? '' : like);
+            fresh.hidden = cell.hidden;
+            texts[key] = '';
+            marks[key] = [];
+            drawn[key] = '';
+            kinds[key] = (like !== null && own(kinds, like)) ? kinds[like] : 'normal';
+            cell.appendChild(fresh);
+            redraw(fresh);
+
+            return cell;
+        }
+
+        function newRow() {
+            var row = el('tr', 'office-new-row');
+
+            nameOf(row, 'data-r', 'k');
+
+            return row;
+        }
+
+        // The table the paragraph open or picked stands in (its nearest),
+        // with its row and cell; null outside a table.
+        function tablePlace() {
+            var node = blockNode();
+            var cell = (node && !node.hidden) ? cellOf(node) : null;
+            var row = cell ? cell.parentNode : null;
+            var table = (row && row.closest) ? row.closest('table') : null;
+
+            return table ? { node: node, cell: cell, row: row, table: table, fresh: freshTable(table) } : null;
+        }
+
+        // A table whose rows are not the same cells end to end: merged
+        // cells or rows of another length. Its rows and columns stay.
+        function uneven(table) {
+            var length = -1;
+
+            return Array.prototype.some.call(table.rows, function (row) {
+                var wide = Array.prototype.some.call(row.cells, function (cell) {
+                    return cell.colSpan > 1;
+                });
+
+                length = (length < 0) ? row.cells.length : length;
+
+                return wide || row.cells.length !== length;
+            });
+        }
+
+        // Whether a part of the file may go: nothing in it that a save
+        // refuses to delete (a picture, a field, a note, a control).
+        function removable(part) {
+            return !Array.prototype.some.call(part.querySelectorAll('[data-p]'), function (node) {
+                var keep = own(keeps, node.getAttribute('data-p')) ? keeps[node.getAttribute('data-p')] : '';
+
+                return node.classList.contains('office-locked') || keep === 'picture' || keep === 'section' || keep === 'locked';
+            });
+        }
+
+        // An added paragraph's maps go with it.
+        function dropKeys(node) {
+            var key = node.getAttribute('data-p');
+
+            if (key) {
+                [changes, looks, wantKinds, wantAligns, texts, marks, kinds, drawn].forEach(function (map) {
+                    delete map[key];
+                });
+            }
+        }
+
+        // A part put in on the page goes, with what was typed in it.
+        function removePart(part) {
+            Array.prototype.forEach.call(part.querySelectorAll('.office-added'), dropKeys);
+            dropKeys(part);
+            part.parentNode.removeChild(part);
+        }
+
+        // A part of the file is hidden till the save deletes it, with its
+        // paragraphs; paragraphs and tables added in its cells go, and new
+        // cells in it are hidden with it.
+        function hidePart(part) {
+            topAdded().forEach(function (node) {
+                if (part.contains(node) && node.parentNode) {
+                    removePart(node);
+                }
+            });
+
+            part.hidden = true;
+
+            Array.prototype.forEach.call(part.querySelectorAll('[data-p]'), function (node) {
+                node.hidden = true;
+                node.classList.remove('office-selected');
+            });
+        }
+
+        // After a table changed: the paragraphs read again in order, the
+        // caret in the paragraph asked.
+        function tableChanged(target, end) {
+            nodes = Array.prototype.slice.call(doc.querySelectorAll('[data-p]'));
+
+            if (shown.node && (!doc.contains(shown.node) || shown.node.hidden)) {
+                shown.node = null;
+            }
+
+            shown.last = null;
+            shown.note = '';
+            notify();
+
+            if (target) {
+                enter(target, end ? 'end' : 0);
+            } else {
+                drawBar();
+            }
+        }
+
+        // Insert row: a row below the caret's, its cells copied from it;
+        // the caret goes to its first cell.
+        function insertRow() {
+            var place = tablePlace();
+
+            if (!place) {
+                return;
+            }
+
+            if (uneven(place.table)) {
+                refuse(strings.doc_table_merged);
+                return;
+            }
+
+            if (place.fresh && shownOf(place.table.rows).length >= DOC_TABLE_LIMITS.rows) {
+                refuse(fill(strings.doc_table_full, DOC_TABLE_LIMITS.rows).replace('{2}', DOC_TABLE_LIMITS.columns));
+                return;
+            }
+
+            closeEditor(true);
+
+            var row = newRow();
+
+            Array.prototype.forEach.call(place.row.cells, function (cell) {
+                row.appendChild(newCell(cell));
+            });
+
+            place.row.parentNode.insertBefore(row, place.row.nextSibling);
+            tableChanged(firstIn(shownOf(row.cells)[0]));
+        }
+
+        // Insert column: a column right of the caret's, each cell copied
+        // from the one beside it; the caret goes to its cell in its row.
+        function insertColumn() {
+            var place = tablePlace();
+
+            if (!place) {
+                return;
+            }
+
+            if (uneven(place.table)) {
+                refuse(strings.doc_table_merged);
+                return;
+            }
+
+            if (place.fresh && shownOf(place.row.cells).length >= DOC_TABLE_LIMITS.columns) {
+                refuse(fill(strings.doc_table_full, DOC_TABLE_LIMITS.rows).replace('{2}', DOC_TABLE_LIMITS.columns));
+                return;
+            }
+
+            // The columns a save puts in come before any goes.
+            if (!place.fresh && place.row.cells.length >= DOC_TABLE_LIMITS.widest) {
+                refuse(fill(strings.doc_table_wide, DOC_TABLE_LIMITS.widest));
+                return;
+            }
+
+            closeEditor(true);
+
+            var index = Array.prototype.indexOf.call(place.row.cells, place.cell);
+            var target = null;
+
+            Array.prototype.forEach.call(place.table.rows, function (row) {
+                var source = row.cells[index];
+                var cell = newCell(source);
+
+                row.insertBefore(cell, source.nextSibling);
+
+                if (row === place.row) {
+                    target = cell;
+                }
+            });
+
+            tableChanged(firstIn(target));
+        }
+
+        // Delete row: the caret's row goes; the caret to the row after it,
+        // else the one before. The last row takes the table with it.
+        function deleteRow() {
+            var place = tablePlace();
+
+            if (!place) {
+                return;
+            }
+
+            var rows = shownOf(place.table.rows);
+
+            if (rows.length < 2) {
+                deleteTable();
+                return;
+            }
+
+            var put = place.fresh || place.row.classList.contains('office-new-row');
+
+            if (!place.fresh && uneven(place.table)) {
+                refuse(strings.doc_table_merged);
+                return;
+            }
+
+            if (!put && !removable(place.row)) {
+                refuse(strings.doc_table_keep);
+                return;
+            }
+
+            closeEditor(true);
+
+            var at = rows.indexOf(place.row);
+            var next = rows[at + 1] || rows[at - 1];
+            var index = Array.prototype.indexOf.call(place.row.cells, place.cell);
+
+            if (put) {
+                removePart(place.row);
+            } else {
+                hidePart(place.row);
+            }
+
+            var cell = next.cells[index] && !next.cells[index].hidden ? next.cells[index] : shownOf(next.cells)[0];
+
+            tableChanged(firstIn(cell));
+        }
+
+        // Delete column: the caret's column goes, in every row; the caret
+        // to the cell after it, else the one before. The last column takes
+        // the table with it.
+        function deleteColumn() {
+            var place = tablePlace();
+
+            if (!place) {
+                return;
+            }
+
+            var cells = shownOf(place.row.cells);
+
+            if (cells.length < 2) {
+                deleteTable();
+                return;
+            }
+
+            if (uneven(place.table)) {
+                refuse(strings.doc_table_merged);
+                return;
+            }
+
+            var index = Array.prototype.indexOf.call(place.row.cells, place.cell);
+            var reference = place.fresh ? null : Array.prototype.filter.call(place.table.rows, function (row) {
+                return !row.classList.contains('office-new-row');
+            })[0];
+
+            // A column of the file is hidden in every row, new rows too: a
+            // save puts those rows in before the column goes.
+            var ofFile = !!reference && !reference.cells[index].classList.contains('office-new-cell');
+            var column = Array.prototype.map.call(place.table.rows, function (row) {
+                return row.cells[index];
+            });
+
+            if (ofFile && !column.every(function (cell) { return cell.classList.contains('office-new-cell') || removable(cell); })) {
+                refuse(strings.doc_table_keep);
+                return;
+            }
+
+            closeEditor(true);
+
+            var at = cells.indexOf(place.cell);
+            var next = cells[at + 1] || cells[at - 1];
+
+            column.forEach(function (cell) {
+                if (ofFile) {
+                    hidePart(cell);
+                } else {
+                    removePart(cell);
+                }
+            });
+
+            tableChanged(firstIn(next));
+        }
+
+        // Delete table: a new one goes, one of the file is hidden till the
+        // save; the caret to the paragraph before it, else after it.
+        function deleteTable() {
+            var place = tablePlace();
+
+            if (!place) {
+                return;
+            }
+
+            if (!place.fresh && !removable(place.table)) {
+                refuse(strings.doc_table_keep);
+                return;
+            }
+
+            closeEditor(true);
+
+            var table = place.table;
+            var before = null;
+            var after = null;
+
+            nodes.forEach(function (node) {
+                if (node.hidden || table.contains(node)) {
+                    return;
+                }
+
+                if (table.compareDocumentPosition(node) & 2) {
+                    before = node;
+                } else if (!after) {
+                    after = node;
+                }
+            });
+
+            if (place.fresh) {
+                removePart(table);
+            } else {
+                hidePart(table);
+            }
+
+            tableChanged(before || after, !!before);
+        }
+
+        // Tab in a table goes to the next cell (Shift+Tab the one before);
+        // Tab in the last cell puts a row in after it. false when the
+        // key goes on as outside a table (Shift+Tab in the first cell).
+        function tabCell(node, back) {
+            var cell = cellOf(node);
+            var table = cell ? cell.parentNode.closest('table') : null;
+
+            if (!table) {
+                return false;
+            }
+
+            var cells = [];
+
+            shownOf(table.rows).forEach(function (row) {
+                cells = cells.concat(shownOf(row.cells));
+            });
+
+            var next = cells[cells.indexOf(cell) + (back ? -1 : 1)];
+
+            if (next) {
+                if (firstIn(next, back)) {
+                    enter(firstIn(next, back), back ? 'end' : 0);
+                }
+                return true;
+            }
+
+            // Where no row can be put in, Tab leaves the table as it leaves
+            // a paragraph.
+            if (back || uneven(table) || (freshTable(table) && cells.length && shownOf(table.rows).length >= DOC_TABLE_LIMITS.rows)) {
+                return false;
+            }
+
+            oneChange(insertRow);
+
+            return true;
+        }
+
+        // The size grid under the bar's Table button: a new table of the
+        // rows and columns pointed at goes after the paragraph open or
+        // picked when the grid opened.
+        var tableWindow = null;
+
+        function closeTableWindow(back) {
+            if (!tableWindow) {
+                return;
+            }
+
+            var target = tableWindow.target;
+            var at = tableWindow.at;
+
+            document.removeEventListener('mousedown', tableWindow.outside, true);
+            tableWindow.node.remove();
+            tableWindow = null;
+
+            if (back && target && doc.contains(target)) {
+                enter(target, at);
+            }
+
+            drawBar();
+        }
+
+        // Why no table can go after a paragraph, '' when one can.
+        function tableRefusal(node) {
+            if (!node) {
+                return strings.doc_pick || '';
+            }
+
+            var position = node.getAttribute('data-p');
+
+            if (node.closest('.office-new-cell')) {
+                return strings.doc_table_inside || '';
+            }
+
+            if (own(deletes, position)) {
+                return strings.doc_deleted || '';
+            }
+
+            return own(shut, isNew(position) ? node.getAttribute('data-after') : position) ? (strings.doc_shut || '') : '';
+        }
+
+        function openTableWindow() {
+            closeBarMenu(false);
+            closeLinkWindow(false);
+            closeTableWindow(false);
+
+            var target = blockNode();
+            var why = tableRefusal(target);
+
+            if (why) {
+                refuse(why);
+                return;
+            }
+
+            var anchor = controls.table;
+            var node = el('div', 'pg-card office-link-window office-table-window');
+            var caption = el('div', 'office-table-size', strings.doc_table_choose || '');
+            var grid = el('div', 'office-table-grid');
+            var cells = [];
+            var size = { rows: 1, columns: 1 };
+
+            node.setAttribute('role', 'dialog');
+            node.setAttribute('aria-label', strings.doc_table || '');
+            caption.setAttribute('aria-live', 'polite');
+
+            function label(rows, columns) {
+                return fill(strings.doc_table_size, columns).replace('{2}', rows);
+            }
+
+            // The grid shows the rows pointed at and one more, at least
+            // eight, every column.
+            function shape(rows) {
+                var want = pickRows(rows) * DOC_TABLE_LIMITS.columns;
+
+                while (cells.length > want) {
+                    cells.pop().remove();
+                }
+
+                while (cells.length < want) {
+                    (function (index) {
+                        var cell = el('button', 'office-table-cell');
+                        var rowsAt = Math.floor(index / DOC_TABLE_LIMITS.columns) + 1;
+                        var columnsAt = (index % DOC_TABLE_LIMITS.columns) + 1;
+
+                        cell.type = 'button';
+                        cell.tabIndex = -1;
+                        cell.setAttribute('aria-label', label(rowsAt, columnsAt));
+                        cell.addEventListener('mouseenter', function () {
+                            mark(rowsAt, columnsAt, false);
+                        });
+                        cell.addEventListener('focus', function () {
+                            mark(rowsAt, columnsAt, false);
+                        });
+                        cell.addEventListener('click', function () {
+                            closeTableWindow(false);
+                            oneChange(function () {
+                                insertTable(target, rowsAt, columnsAt);
+                            });
+                        });
+                        cells.push(cell);
+                        grid.appendChild(cell);
+                    })(cells.length);
+                }
+            }
+
+            function mark(rows, columns, focus) {
+                size = { rows: rows, columns: columns };
+                shape(rows);
+
+                cells.forEach(function (cell, index) {
+                    var on = (Math.floor(index / DOC_TABLE_LIMITS.columns) < rows) && ((index % DOC_TABLE_LIMITS.columns) < columns);
+
+                    cell.classList.toggle('is-on', on);
+                    cell.tabIndex = (index === (rows - 1) * DOC_TABLE_LIMITS.columns + columns - 1) ? 0 : -1;
+                });
+
+                caption.textContent = label(rows, columns);
+
+                if (focus) {
+                    cells[(rows - 1) * DOC_TABLE_LIMITS.columns + columns - 1].focus({ preventScroll: true });
+                }
+            }
+
+            node.addEventListener('keydown', function (event) {
+                event.stopPropagation();
+
+                var step = { ArrowRight: [0, 1], ArrowLeft: [0, -1], ArrowDown: [1, 0], ArrowUp: [-1, 0] }[event.key];
+
+                if (event.key === 'Escape' || event.key === 'Tab') {
+                    event.preventDefault();
+                    closeTableWindow(true);
+                } else if (step) {
+                    event.preventDefault();
+                    mark(Math.min(DOC_TABLE_LIMITS.rows, Math.max(1, size.rows + step[0])), Math.min(DOC_TABLE_LIMITS.columns, Math.max(1, size.columns + step[1])), true);
+                }
+            });
+
+            node.appendChild(caption);
+            node.appendChild(grid);
+            bar.appendChild(node);
+            shape(1);
+            mark(1, 1, false);
+            caption.textContent = strings.doc_table_choose || '';
+            node.style.left = Math.max(0, anchor.offsetLeft) + 'px';
+            node.style.top = (anchor.offsetTop + anchor.offsetHeight + 4) + 'px';
+
+            // Near the right edge (a narrow screen) the grid stays in the
+            // view.
+            if (node.offsetLeft + node.offsetWidth > bar.clientWidth) {
+                node.style.left = Math.max(0, bar.clientWidth - node.offsetWidth) + 'px';
+            }
+
+            tableWindow = {
+                node: node,
+                target: target,
+                at: (shown.editor && shown.editor.node === target && shown.editor.range) ? shown.editor.range[0] : 'end',
+                outside: function (event) {
+                    if (tableWindow && !tableWindow.node.contains(event.target) && event.target !== anchor && !anchor.contains(event.target)) {
+                        closeTableWindow(false);
+                    }
+                }
+            };
+
+            document.addEventListener('mousedown', tableWindow.outside, true);
+            anchor.setAttribute('aria-expanded', 'true');
+            cells[0].focus({ preventScroll: true });
+        }
+
+        // A new table of rows by columns after a paragraph (after its
+        // list, for a list item), each cell one plain empty paragraph; a
+        // paragraph follows it, as the writer puts one after a table none
+        // follows. The caret goes to its first cell.
+        function insertTable(node, rows, columns) {
+            var why = tableRefusal(node);
+
+            if (why || !doc.contains(node)) {
+                refuse(why);
+                return;
+            }
+
+            closeEditor(true);
+
+            var position = node.getAttribute('data-p');
+            var anchor = isNew(position) ? node.getAttribute('data-after') : position;
+            var table = el('table', 'office-table office-added-table');
+            var body = el('tbody');
+            var place = (node.tagName === 'LI' && node.parentNode && /^(UL|OL)$/.test(node.parentNode.tagName)) ? node.parentNode : node;
+            var row;
+            var column;
+
+            table.setAttribute('data-after', anchor);
+            nameOf(table, 'data-t', 'k');
+
+            for (row = 0; row < rows; row++) {
+                var line = newRow();
+
+                for (column = 0; column < columns; column++) {
+                    line.appendChild(newCell(null));
+                }
+
+                body.appendChild(line);
+            }
+
+            table.appendChild(body);
+            place.parentNode.insertBefore(table, place.nextSibling);
+
+            var next = table.nextElementSibling;
+
+            if (!next || next.tagName === 'TABLE' || !(next.hasAttribute('data-p') || next.querySelector('[data-p]'))) {
+                addAfter(node, '', [], 'normal', table);
+            }
+
+            tableChanged(firstIn(table.rows[0].cells[0]));
+        }
+
         // The colour, highlight or size all the selected text has; '' when
         // it has none, null when it differs. With only a caret, the one of
         // the character before it, which typed text takes (carryMarks()).
@@ -6049,6 +6916,7 @@
 
         function barMenu(anchor, label, colours, chosen, pick) {
             closeBarMenu(false);
+            closeTableWindow(false);
 
             var parts = selectedParts();
             var node = el('div', 'menu show office-head-menu');
@@ -6152,6 +7020,7 @@
                 deletes: copyOf(deletes),
                 added: [],
                 hidden: [],
+                tables: [],
                 caret: null
             };
             var range = sheetRange();
@@ -6161,8 +7030,10 @@
                 state.looks[position] = lookCopy(looks[position]);
             });
 
-            Array.prototype.forEach.call(doc.querySelectorAll('.office-added'), function (node) {
-                var key = node.getAttribute('data-p');
+            // Paragraphs and tables added, in reading order: a table before
+            // the paragraphs of its cells.
+            Array.prototype.forEach.call(doc.querySelectorAll('.office-added, .office-added-table'), function (node) {
+                var key = node.getAttribute('data-p') || node.getAttribute('data-t');
 
                 state.added.push({
                     node: node,
@@ -6180,6 +7051,25 @@
                 if (node.hidden) {
                     state.hidden.push(node);
                 }
+            });
+
+            // Each table's rows and their cells as they stand, hidden or
+            // not.
+            Array.prototype.forEach.call(paper.querySelectorAll('table'), function (table) {
+                state.tables.push({
+                    table: table,
+                    hidden: table.hidden,
+                    rows: Array.prototype.map.call(table.rows, function (row) {
+                        return {
+                            row: row,
+                            parent: row.parentNode,
+                            hidden: row.hidden,
+                            cells: Array.prototype.map.call(row.cells, function (cell) {
+                                return { cell: cell, hidden: cell.hidden };
+                            })
+                        };
+                    })
+                });
             });
 
             if (parts.length) {
@@ -6223,6 +7113,12 @@
                 return item.key;
             }), state.hidden.map(function (node) {
                 return node.getAttribute('data-p');
+            }), state.tables.map(function (item) {
+                return (item.hidden ? '-' : '') + item.rows.map(function (line) {
+                    return (line.hidden ? '-' : '') + line.row.getAttribute('data-r') + ':' + line.cells.map(function (cell) {
+                        return (cell.hidden ? '-' : '') + cell.cell.getAttribute('data-c');
+                    }).join(',');
+                }).join(';');
             })]);
         }
 
@@ -6276,7 +7172,7 @@
                 });
             });
 
-            Array.prototype.forEach.call(doc.querySelectorAll('.office-added'), function (node) {
+            Array.prototype.forEach.call(doc.querySelectorAll('.office-added, .office-added-table'), function (node) {
                 var key = node.getAttribute('data-p');
 
                 node.parentNode.removeChild(node);
@@ -6285,7 +7181,8 @@
                 });
             });
 
-            // In reading order, so the paragraph each follows stands already.
+            // In reading order, so the paragraph each follows stands already;
+            // a table stands before the paragraphs of its cells go back in.
             state.added.forEach(function (item) {
                 if (item.prev && item.prev.parentNode === item.parent) {
                     item.parent.insertBefore(item.node, item.prev.nextSibling);
@@ -6293,10 +7190,36 @@
                     item.parent.insertBefore(item.node, item.parent.firstChild);
                 }
 
-                texts[item.key] = item.text;
-                marks[item.key] = item.marks;
-                kinds[item.key] = item.kind;
-                drawn[item.key] = item.drawn;
+                if (item.node.hasAttribute('data-p')) {
+                    texts[item.key] = item.text;
+                    marks[item.key] = item.marks;
+                    kinds[item.key] = item.kind;
+                    drawn[item.key] = item.drawn;
+                }
+            });
+
+            // Each table's rows and cells as they stood: those put in since
+            // go, those deleted since come back.
+            state.tables.forEach(function (item) {
+                Array.prototype.slice.call(item.table.rows).forEach(function (row) {
+                    row.parentNode.removeChild(row);
+                });
+
+                item.rows.forEach(function (line) {
+                    line.parent.appendChild(line.row);
+                    line.row.hidden = line.hidden;
+
+                    Array.prototype.slice.call(line.row.cells).forEach(function (cell) {
+                        line.row.removeChild(cell);
+                    });
+
+                    line.cells.forEach(function (cell) {
+                        cell.cell.hidden = cell.hidden;
+                        line.row.appendChild(cell.cell);
+                    });
+                });
+
+                item.table.hidden = item.hidden;
             });
 
             changes = copyOf(state.changes);
@@ -6414,6 +7337,13 @@
                 controls[format[0]].setAttribute('aria-pressed', on ? 'true' : 'false');
                 controls[format[0]].classList.toggle('is-active', on);
             });
+
+            // The table controls show while the caret is in a table.
+            if (controls.table) {
+                controls.table.disabled = !blockNode();
+                controls.table.setAttribute('aria-expanded', tableWindow ? 'true' : 'false');
+                controls.tableTools.hidden = !tablePlace();
+            }
 
             // Link pressed when the text selected, or the caret, is in one.
             if (controls.link) {
@@ -6806,6 +7736,16 @@
             });
         });
 
+        Array.prototype.forEach.call(paper.querySelectorAll('table'), function (table) {
+            Array.prototype.forEach.call(table.rows, function (row) {
+                nameOf(row, 'data-r', 'f');
+
+                Array.prototype.forEach.call(row.cells, function (cell) {
+                    nameOf(cell, 'data-c', 'f');
+                });
+            });
+        });
+
         // The sheet is typed in when a paragraph of it may change; what is
         // not a paragraph (a picture, a note) is shut. It is the Tab key's
         // one stop; the arrows and Tab go on from there.
@@ -7158,7 +8098,14 @@
             }
 
             // Tab and Shift+Tab go to the next paragraph and the one before;
-            // at either end the focus leaves the document.
+            // at either end the focus leaves the document. In a table they
+            // go from cell to cell, Tab in the last cell adding a row.
+            if (key === 'Tab' && plain && bar && tabCell(node, event.shiftKey)) {
+                event.preventDefault();
+                event.stopPropagation();
+                return;
+            }
+
             if (key === 'Tab' && plain) {
                 var step = beside(node, event.shiftKey ? -1 : 1);
 
@@ -7354,6 +8301,37 @@
                 bar.appendChild(button);
             })();
 
+            // A new table after the paragraph open or picked: its size
+            // chosen on a grid.
+            (function () {
+                var button = el('button', 'pg-icon-button pg-icon-button-sm');
+                var glyph = el('span', 'bi bi-table');
+
+                button.type = 'button';
+                button.setAttribute('aria-haspopup', 'dialog');
+                button.setAttribute('aria-expanded', 'false');
+                button.setAttribute('aria-label', strings.doc_table || '');
+                button.title = strings.doc_table || '';
+                glyph.setAttribute('aria-hidden', 'true');
+                button.appendChild(glyph);
+
+                // A press keeps the caret on the sheet for the grid.
+                button.addEventListener('mousedown', function (event) {
+                    event.preventDefault();
+                });
+                button.addEventListener('click', function () {
+                    if (tableWindow) {
+                        closeTableWindow(true);
+                        return;
+                    }
+
+                    openTableWindow();
+                });
+
+                controls.table = button;
+                bar.appendChild(button);
+            })();
+
             // The alignment of the paragraphs selected, or of the one open.
             var alignGroup = el('span', 'pg-seg');
 
@@ -7445,6 +8423,45 @@
                 bar.appendChild(button);
             });
 
+            // With the caret in a table: its rows and columns put in or
+            // deleted, the table deleted. At the bar's end, so the other
+            // controls stay where they are as they come and go.
+            var tableTools = el('span', 'office-table-tools');
+
+            tableTools.setAttribute('role', 'group');
+            tableTools.setAttribute('aria-label', strings.doc_table || '');
+            tableTools.hidden = true;
+
+            [
+                ['bi-arrow-bar-down', strings.doc_table_row, insertRow],
+                ['bi-arrow-bar-right', strings.doc_table_column, insertColumn],
+                ['bi-arrows-collapse', strings.doc_table_row_delete, deleteRow],
+                ['bi-arrows-collapse-vertical', strings.doc_table_column_delete, deleteColumn],
+                ['bi-x-square', strings.doc_table_delete, deleteTable]
+            ].forEach(function (item) {
+                var button = el('button', 'pg-icon-button pg-icon-button-sm');
+                var glyph = el('span', 'bi ' + item[0]);
+
+                button.type = 'button';
+                button.setAttribute('aria-label', item[1] || '');
+                button.title = item[1] || '';
+                glyph.setAttribute('aria-hidden', 'true');
+                button.appendChild(glyph);
+
+                // A press keeps the caret on the sheet.
+                button.addEventListener('mousedown', function (event) {
+                    event.preventDefault();
+                });
+                button.addEventListener('click', function () {
+                    oneChange(item[2]);
+                });
+
+                tableTools.appendChild(button);
+            });
+
+            controls.tableTools = tableTools;
+            bar.appendChild(tableTools);
+
             container.insertBefore(bar, doc);
         }
 
@@ -7462,7 +8479,7 @@
                 // Paragraphs of the file changed, then those deleted, then
                 // those added, in the order they read after the same one.
                 var items = positionsNow().filter(function (position) {
-                    return !isNew(position) && !own(deletes, position);
+                    return !isNew(position) && !own(deletes, position) && !goneWith(position);
                 }).map(Number).sort(function (a, b) {
                     return a - b;
                 }).map(function (position) {
@@ -7475,7 +8492,18 @@
                     items.push({ p: position, delete: true });
                 });
 
-                Array.prototype.forEach.call(doc.querySelectorAll('.office-added'), function (node) {
+                // Paragraphs and tables added, in reading order; a new
+                // table with its rows of cells.
+                topAdded().forEach(function (node) {
+                    if (freshTable(node)) {
+                        var rows = Array.prototype.map.call(node.rows, function (row) {
+                            return Array.prototype.map.call(row.cells, cellItems);
+                        });
+
+                        items.push({ after: Number(node.getAttribute('data-after')), table: { rows: rows.length, columns: rows[0].length, cells: rows } });
+                        return;
+                    }
+
                     var key = node.getAttribute('data-p');
                     var item = entry(key, { after: Number(node.getAttribute('data-after')) });
 
@@ -7486,7 +8514,24 @@
                     items.push(item);
                 });
 
-                return items;
+                return items.concat(fileTableEntries(cellItems));
+
+                // A new cell's paragraphs as added ones; one empty paragraph
+                // as it was put in is sent as none.
+                function cellItems(cell) {
+                    var list = cellParagraphs(cell).map(function (node) {
+                        var key = node.getAttribute('data-p');
+                        var item = entry(key, {});
+
+                        if (!own(item, 'text')) {
+                            item.text = textNow(key);
+                        }
+
+                        return item;
+                    });
+
+                    return (list.length === 1 && list[0].text === '' && Object.keys(list[0]).length === 1) ? [] : list;
+                }
 
                 // A paragraph's new text, kind and format beside its name.
                 function entry(key, item) {
@@ -7522,21 +8567,33 @@
             },
             reset: function () {
                 closeEditor(false);
+                closeTableWindow(false);
 
-                // Added paragraphs go, deleted ones come back.
-                Array.prototype.forEach.call(doc.querySelectorAll('.office-added'), function (node) {
+                // Added paragraphs, tables, rows and columns go, deleted
+                // ones come back.
+                Array.prototype.forEach.call(doc.querySelectorAll('.office-added, .office-added-table, .office-new-row, .office-new-cell'), function (node) {
                     var key = node.getAttribute('data-p');
 
-                    nodes.splice(nodes.indexOf(node), 1);
-                    node.parentNode.removeChild(node);
-                    [texts, marks, kinds, drawn].forEach(function (map) {
-                        delete map[key];
-                    });
+                    if (node.parentNode) {
+                        node.parentNode.removeChild(node);
+                    }
 
-                    if (shown.node === node) {
-                        shown.node = null;
+                    if (key) {
+                        [texts, marks, kinds, drawn].forEach(function (map) {
+                            delete map[key];
+                        });
                     }
                 });
+
+                Array.prototype.forEach.call(paper.querySelectorAll('table[hidden], tr[hidden], td[hidden], th[hidden]'), function (node) {
+                    node.hidden = false;
+                });
+
+                nodes = Array.prototype.slice.call(doc.querySelectorAll('[data-p]'));
+
+                if (shown.node && !doc.contains(shown.node)) {
+                    shown.node = null;
+                }
 
                 var positions = Object.keys(changes).concat(Object.keys(looks), Object.keys(wantKinds), Object.keys(wantAligns), Object.keys(deletes)).filter(function (position) {
                     return !isNew(position);
@@ -7861,6 +8918,13 @@
         docHistory: {
             changeList: changeList,
             historyKey: historyKey
+        },
+        // A table's save entries from what the page shows, and the size
+        // grid's rows.
+        docTable: {
+            tableEntries: tableEntries,
+            pickRows: pickRows,
+            limits: DOC_TABLE_LIMITS
         },
         // A paragraph's text read from its drawing while it is typed in,
         // and a point of that text found in the drawing again.

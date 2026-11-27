@@ -9,7 +9,7 @@ description: Start file for the office-docx-* files: the Word document typed on 
 ## Which file holds which part, by what a person sees?
 - The page typed where it stands: `office-docx-page.md`; its keys (Enter, Backspace, arrows, Tab, paste, a click on a link): `office-docx-page-keys.md`; Undo and Redo: `office-docx-undo.md`.
 - Paragraph text saved and what is never changed: `office-paragraph-edits.md`. A paragraph added (Enter) or deleted (Delete the paragraph): `office-docx-add-delete.md`.
-- The bar: Bold, Italic, Underline `office-docx-format.md`; Size, Text color, Highlight color and the alignments `office-docx-bar-look.md` over `office-docx-format-look.md`; Paragraph style `office-docx-paragraph-kind.md`; Link and its window `office-docx-links.md`.
+- The bar: Bold, Italic, Underline `office-docx-format.md`; Size, Text color, Highlight color and the alignments `office-docx-bar-look.md` over `office-docx-format-look.md`; Paragraph style `office-docx-paragraph-kind.md`; Link and its window `office-docx-links.md`; Table, its size grid, rows and columns `office-docx-table-bar.md` over `office-docx-tables.md`.
 - The preview's reading of content controls, numbering and run properties turned off: `office-docx-controls-numbering.md`.
 
 ## How is a new Word ability added?

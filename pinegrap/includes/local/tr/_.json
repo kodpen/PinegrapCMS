@@ -575,6 +575,7 @@
     "^^store^^: ^^product^^, which you asked us about, is back in stock. ^^url^^": "^^store^^: Sorduğunuz ^^product^^ yeniden stokta. ^^url^^",
     "{1} change(s) not saved.": "{1} değişiklik kaydedilmedi.",
     "{1} changes": "{1} değişiklik",
+    "{1} columns × {2} rows": "{1} sütun × {2} satır",
     "{1} of {2}": "{1} / {2}",
     "{1} of {2} rows shown.": "{2} satırdan {1} tanesi gösteriliyor.",
     "{1} paragraph(s) changed.": "{1} paragraf değişti.",
