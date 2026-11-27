@@ -22698,6 +22698,58 @@ button.ws-file-name {
 .office-link-gap {
   flex: 1 1 auto;
 }
+/* The size grid under a document bar's Table button: the size pointed at
+   above ten columns of squares, the rows growing as they are reached; the
+   squares of the size chosen in the accent. */
+.pg-card.office-table-window {
+  width: auto;
+}
+.office-table-size {
+  font-size: .75rem;
+  font-weight: 600;
+  color: var(--pg-fg-2);
+}
+.office-table-grid {
+  display: grid;
+  grid-template-columns: repeat(10, 1.25rem);
+  gap: .2rem;
+}
+.office-table-cell {
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
+  border: 1px solid var(--pg-border-color);
+  border-radius: .2rem;
+  background: var(--pg-bg-body);
+}
+.office-table-cell.is-on {
+  border-color: var(--pg-primary);
+  background: color-mix(in srgb, var(--pg-primary) 25%, transparent);
+}
+.office-table-cell:focus-visible {
+  outline: 2px solid var(--pg-primary-ink);
+  outline-offset: 1px;
+}
+@media (pointer: coarse) {
+  /* Squares a finger can pick; ten still fit a 390 px screen. */
+  .office-table-grid {
+    grid-template-columns: repeat(10, 1.75rem);
+  }
+  .office-table-cell {
+    width: 1.75rem;
+    height: 1.75rem;
+  }
+}
+/* The table controls of a document's bar, shown with the caret in a
+   table. */
+.office-table-tools {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+}
+.office-table-tools[hidden] {
+  display: none;
+}
 /* A link on a document being typed in, drawn as the page draws one and
    never followed: a click opens the link window. */
 .office-paper .office-link {
@@ -22958,6 +23010,12 @@ button.ws-file-name {
 }
 .office-doc .office-table td p:last-child {
   margin-bottom: 0;
+}
+/* A table put in on the page is drawn as the writer saves it: its columns
+   share the text's width. */
+.office-doc .office-added-table {
+  width: 100%;
+  table-layout: fixed;
 }
 .office-doc .office-img {
   max-width: 100%;
