@@ -6405,8 +6405,9 @@
             node.classList.add('office-para');
             setTyping(node);
 
+            // A link shows its address; a click opens the link window.
             Array.prototype.forEach.call(node.querySelectorAll('a[href]'), function (link) {
-                link.title = strings.doc_link || '';
+                link.title = link.getAttribute('href') || '';
             });
         });
 

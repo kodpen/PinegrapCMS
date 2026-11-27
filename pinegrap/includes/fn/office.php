@@ -3743,7 +3743,6 @@ function pg_office_view_strings()
         'keep_last'         => lang('This is the last paragraph of the document, so it is not deleted. Its text can be emptied.'),
         'keep_bookmark'     => lang('This paragraph holds one end of a bookmark that reaches into other paragraphs, so it is not deleted here.'),
         'keep_locked'       => lang('This paragraph holds more than text, so it is not deleted here.'),
-        'doc_link'          => lang('Hold Ctrl (Cmd on a Mac) and click to follow the link.'),
         'doc_signed'        => lang('The file is digitally signed, so its text is not changed here.'),
         'doc_protected'     => lang('The document is protected against changes.'),
         'doc_tracking'      => lang('Track Changes is on for this document. Change it in a word processor, so that the changes are tracked.'),
