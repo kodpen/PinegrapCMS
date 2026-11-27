@@ -150,9 +150,10 @@ if (!$_POST) {
         'auto_import'    => ($start === 'import'),
         'auto_paste'     => ($start === 'paste'),
         'start_document' => ($start === 'document'),
-        // ?start=canva: the Canva start's pages wait in this browser as
-        // sketch pages; the Prototype view opens with the Sketch switch on.
-        'auto_sketch'    => ($start === 'canva'),
+        // ?start=canva and ?start=describe: the Canva pages or the plan of
+        // pages wait in this browser as sketch pages; the Prototype view
+        // opens with the Sketch switch on.
+        'auto_sketch'    => ($start === 'canva' || $start === 'describe'),
         'figma'          => $sd_figma,
         'template'       => $template ? pg_design_template_summary($template) : null,
         // ?folder= from the design chooser: the first page's folder.

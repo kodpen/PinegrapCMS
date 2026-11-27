@@ -112,6 +112,7 @@ function test_site_plan_cost()
 		array('sections' => array('a', 'b', 'c')),
 		array('sections' => array('a', 'b')),
 	)), 'two pages, five sections');
+	pg_assert_same(1 + PG_SITE_PLAN_GUESS, pg_site_plan_cost(array(array('name' => 'Added', 'sections' => array()))), 'a page added on the plan screen is counted with the guess');
 }
 
 /**
