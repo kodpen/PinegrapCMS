@@ -9,7 +9,7 @@ description: Image focus, Clip shape, curve and background layer rules since the
 
 ## When does the dashed shape outline show?
 - Only while the element's own rules (Normal's or a state's, outside media queries) hold a shape or a mask other than None: `PGClipShape.has(text, cls)`, asked by the part's `outline()`.
-- Symptom fixed (#12015): another element's clip-path drew it on every element with a custom class. The core's `_sdShapeHas()` still opens Shadow and effect's "More" that way: issue #12016.
+- Symptom fixed (#12015): another element's clip-path drew it on every element with a custom class. The core's "More" test answers the same since #12016 (`designer-options-shape.md`).
 
 ## What happens to the easing curve's arrow keys when the editor opens again?
 - The keys' timer (500 ms) belongs to its editor. The same row opened again before it fires (a panel drawing) keeps the keys' curve and writes it when they rest; another row's editor is never written by it.

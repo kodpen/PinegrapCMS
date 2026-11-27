@@ -26403,6 +26403,59 @@ const StyleDesigner = (function () {
             list.indexOf('btn') !== -1 || list.indexOf('nav-link') !== -1;
         return press ? ['hover', 'focus', 'pressed'] : ['hover'];
     }
+
+    var _SD_STATE_PSEUDO = { hover: ':hover', focus: ':focus-visible', pressed: ':active' };
+    var _sdOwnParsed = { text: null, list: [] };
+
+    // The element's own rules in User Styles, as the Options models
+    // (pg_option_states.js, pg_clip_shape.js) read them: per state ('normal',
+    // 'hover', 'focus', 'pressed') the first rule outside any at-rule whose
+    // selector, white space removed, is the class or the class with the
+    // state's pseudo-class. The last text's parse is kept, as the panel asks
+    // on every drawing. tests/designer_option_states_test.php and
+    // tests/designer_clip_shape_test.php hold these to the models' answers.
+    function _sdOwnRules(text, cls) {
+        var own = {}, sels = {};
+        if (!cls || !window.PgUserStyles) return own;
+        if (_sdOwnParsed.text !== text) _sdOwnParsed = { text: text, list: window.PgUserStyles.parse(text) };
+        sels['.' + cls] = 'normal';
+        Object.keys(_SD_STATE_PSEUDO).forEach(function (st) { sels['.' + cls + _SD_STATE_PSEUDO[st]] = st; });
+        _sdOwnParsed.list.forEach(function (r) {
+            var sel = r.selector.replace(/\s+/g, '');
+            if (r.media || !Object.prototype.hasOwnProperty.call(sels, sel) || own[sels[sel]]) return;
+            own[sels[sel]] = r;
+        });
+        return own;
+    }
+
+    // The states whose own rule holds a declaration: the states the panel
+    // part counts (S.count(S.read()) > 0), so not a rule inside a media query.
+    function _sdStatesHeldIn(text, cls) {
+        text = String(text || '');
+        if (!cls || text.indexOf(cls) === -1) return [];
+        var own = _sdOwnRules(text, cls);
+        return Object.keys(_SD_STATE_PSEUDO).filter(function (st) { return !!own[st] && own[st].decls.length > 0; });
+    }
+
+    // Whether the element's own rules (Normal's or a state's) cut it with a
+    // shape or a mask, the answer of PGClipShape.has() before the part is
+    // loaded: a clip-path or a mask image other than None, or a mask
+    // shorthand. Another element's clip-path in the same text is not the
+    // element's.
+    function _sdShapeHeldIn(text, cls) {
+        text = String(text || '');
+        if (!cls || text.indexOf(cls) === -1) return false;
+        var own = _sdOwnRules(text, cls);
+        var imp = /\s*!\s*important\s*$/i;
+        var flat = function (s) { return String(s || '').replace(/\s+/g, ' ').trim().toLowerCase(); };
+        return ['normal', 'hover', 'focus', 'pressed'].some(function (st) {
+            var map = {};
+            if (!own[st]) return false;
+            own[st].decls.forEach(function (d) { map[d.name.toLowerCase()] = d.value.replace(imp, '').trim(); });
+            var clip = flat(String(map['clip-path'] || '').replace(imp, '')), img = flat(map['mask-image'] || map['-webkit-mask-image']);
+            return (clip !== '' && clip !== 'none') || !!(map.mask || map['-webkit-mask']) || (img !== '' && img !== 'none');
+        });
+    }
     // ── end of the Options states pure helpers
 
     // ── Options states: the core's hooks ──
@@ -26417,7 +26470,6 @@ const StyleDesigner = (function () {
     // state is held while this element and the Style tab are open.
     var _sdOptState = '';
     var _sdOptStateId = '';
-    var _SD_STATE_PSEUDO = { hover: ':hover', focus: ':focus-visible', pressed: ':active' };
 
     function _sdStateName(st) {
         return st === 'hover' ? _sdT('Hover') : st === 'focus' ? _sdT('Focus') : st === 'pressed' ? _sdT('Pressed') : _sdT('Normal');
@@ -26432,16 +26484,12 @@ const StyleDesigner = (function () {
         return n;
     }
 
-    // The states whose rule the element's custom style class holds: a look
-    // at the User Styles text, no parse.
+    // The states whose rule the element's custom style class holds, read as
+    // the part reads them (_sdStatesHeldIn()): a state's rule inside a media
+    // query is not the state's.
     function _sdStateHeld(node) {
         var cls = node && node.props ? PgCustomStyle.classOf(node.props.cssClass) : '';
-        if (!cls) return [];
-        var text = _userStylesGet();
-        if (text.indexOf(cls + ':') === -1) return [];
-        return Object.keys(_SD_STATE_PSEUDO).filter(function (st) {
-            return new RegExp('\\.' + cls + _SD_STATE_PSEUDO[st] + '\\s*\\{').test(text);
-        });
+        return cls ? _sdStatesHeldIn(_userStylesGet(), cls) : [];
     }
 
     // The State row: a label and one group, a ring on a state that holds a
@@ -27373,11 +27421,11 @@ const StyleDesigner = (function () {
     // is open; it writes clip-path and mask-image on the element's custom
     // style class or the chosen state's rule. While the element has
     // either, the canvas outlines its whole box (dashed). Nothing is
-    // loaded while the User Styles hold neither for the element.
+    // loaded while the element's own rules hold neither (_sdShapeHeldIn()):
+    // another element's clip-path in the same User Styles opens nothing.
     function _sdShapeHas(node) {
         var cls = node && node.props ? PgCustomStyle.classOf(node.props.cssClass) : '';
-        var text = cls ? _userStylesGet() : '';
-        return !!cls && text.indexOf('.' + cls) !== -1 && /(?:^|[\s;{])(?:clip-path|(?:-webkit-)?mask(?:-image)?)\s*:/.test(text);
+        return !!cls && _sdShapeHeldIn(_userStylesGet(), cls);
     }
 
     function _sdShapeBind(panel) {

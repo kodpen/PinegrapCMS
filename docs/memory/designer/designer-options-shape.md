@@ -5,7 +5,7 @@ description: Clip shape and Mask under Shadow and effect's "More" as built (DO14
 
 ## Where are the rows?
 - Style tab, "Shadow and effect", under the section's "More" after Pointer: sub-head "Shape", "Clip shape", then "Mask", as drawn (`designer-options-layers-drawing-shape.md`). Each list has a small sign of the chosen shape beside it.
-- The core leaves an empty `[data-sd-shape-box]` at the end of `_sdTfRowsHtml()`'s "More"; part `shape` draws into it (`_sdShapeBind()`). "More" opens by itself while the User Styles hold `clip-path` or a mask for the element's class (`_sdShapeHas()`, a regex look).
+- The core leaves an empty `[data-sd-shape-box]` at the end of `_sdTfRowsHtml()`'s "More"; part `shape` draws into it (`_sdShapeBind()`). "More" opens by itself only while the element's own rules hold a shape or a mask other than None (`_sdShapeHas()` → `_sdShapeHeldIn()`, `PGClipShape.has()`'s answer before the part loads). Symptom fixed (#12016): another element's clip-path opened it.
 
 ## What does each offer?
 - Clip shape: None, Circle ("Size", "Center"), Ellipse ("Width", "Height", "Center"), Rounded inset ("Inset", "Corner"), Slant ("Edge" Top, Bottom, Both; "Amount"; "Direction" Up to the right, Up to the left), Arrow ("Points" Right, Left, Down, Up; "Point"). Center is the nine places of Origin.

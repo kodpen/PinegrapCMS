@@ -213,6 +213,54 @@ function test_designer_option_states_for()
 	pg_assert_same(array($all, $all, array('hover'), $all, $all, array('hover')), $r, 'Focus and Pressed only where a visitor can focus and press');
 }
 
+// The states the State row rings (_sdStatesHeldIn(), the same block): the
+// rules the model reads, so not a state's rule inside a media query or
+// another at-rule, an empty rule, another class's or a descendant's rule,
+// nor one in a comment.
+function test_designer_option_states_held()
+{
+	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$from = strpos($src, '// ── Options states: pure helpers ──');
+	$to = strpos($src, '// ── end of the Options states pure helpers');
+	pg_assert_true($from !== false && $to !== false && $to > $from, 'the editor has the block of the Options states');
+
+	if ($from === false || $to === false || $to < $from) {
+		return;
+	}
+
+	$cases = array(
+		"@media (min-width: 768px) {\n  .pgs-abc123:hover { color: red; }\n}\n",
+		".pgs-abc123:hover { color: red; }\n",
+		".pgs-abc123:hover { }\n",
+		".pgs-abc123 { color: blue; }\n.pgs-abc123:focus-visible { outline: 0; }\n.pgs-abc123:active{color:red}\n",
+		".pgs-xyz999:hover { color: red; }\n",
+		".pgs-abc123:hover .child { color: red; }\n",
+		"/* .pgs-abc123:hover { color: red; } */\n.pgs-abc123 { color: blue; }\n",
+		"@supports (display: grid) { .pgs-abc123:active { color: red; } }\n.pgs-abc123:hover { color: red; }\n",
+	);
+	$r = designer_option_states_run(substr($src, $from, $to - $from)
+		. 'var cases = ' . json_encode($cases) . ";\n"
+		. 'console.log(JSON.stringify(cases.map(function (t) { return [_sdStatesHeldIn(t, "pgs-abc123"),'
+		. ' S.STATES.filter(function (st) { return S.count(S.read(t, "pgs-abc123", st)) > 0; })]; })'
+		. '.concat([[_sdStatesHeldIn(cases[1], ""), []]])));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	$expect = array(array(), array('hover'), array(), array('focus', 'pressed'), array(), array(), array(), array('hover'), array());
+	$why = array('a hover rule only inside a media query', 'a hover rule', 'an empty hover rule', 'Focus and Pressed',
+		'another class\'s rule', 'a descendant\'s rule', 'a rule in a comment', 'a rule inside @supports beside a hover rule', 'no class');
+
+	foreach ($expect as $i => $want) {
+		pg_assert_same($want, $r[$i][0], $why[$i]);
+		pg_assert_same($r[$i][1], $r[$i][0], $why[$i] . ': as the model reads it');
+	}
+
+	pg_assert_contains('return cls ? _sdStatesHeldIn(_userStylesGet(), cls) : [];', $src, 'the State row asks the rules the model reads');
+}
+
 // The element's Transition: one rule on the custom style class inside
 // @media (prefers-reduced-motion: no-preference), read back, the look's
 // duration and easing until chosen, taken out with its block.
