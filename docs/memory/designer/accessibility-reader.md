@@ -24,6 +24,7 @@ description: The Accessibility view's pure reader (PGA11yReader, AV1 #11529): ta
 
 ## Which faults can it raise?
 - Only `a11y_heading_order`, `a11y_img_alt`, `a11y_link_name`, `a11y_button_name`, `a11y_form_label`, `a11y_frame_title`, each where `pg_a11y_check_html()` (`includes/fn/a11y.php`) raises it: a placeholder is no label, a field inside or tied to a label (even an empty one) is labelled, a frame is named only by a label or title. The test runs both on the same markup and compares the counts per code.
+- Text a screen reader never reads (`aria-hidden`, `hidden`, inline `display:none`) names no link or button on either side: since #12005 the audit's `pg_a11y_name()` reads content with `pg_a11y_read_text()` and skips hidden images and labels inside. Before, a button holding only `<span aria-hidden="true">×</span>` was "Button · no name" in the view and absent from the audit.
 
 ## How fast is it?
 - Node 22, 4 cores, 1,651 elements (50 named sections of six cards), median of 25 runs: `read()` 3.7 ms.

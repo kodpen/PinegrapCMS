@@ -238,6 +238,26 @@ function pg_a11y_text($node)
     return trim(preg_replace('/\s+/u', ' ', $text));
 }
 
+// Text of a node as a screen reader reads it for a name: pg_a11y_text()
+// without what it never reads (aria-hidden, hidden, display: none), the
+// same text the designer's Accessibility view names a control by.
+function pg_a11y_read_text($node)
+{
+    $text = '';
+
+    foreach ($node->childNodes as $child) {
+        if ($child->nodeType === XML_TEXT_NODE) {
+            $text .= $child->nodeValue;
+        } elseif (($child->nodeType === XML_ELEMENT_NODE) && !in_array($child->nodeName, array('script', 'style', 'template', 'noscript'), true)
+            && !$child->hasAttribute('hidden') && (strtolower($child->getAttribute('aria-hidden')) !== 'true')
+            && !preg_match('/(^|;)\s*display\s*:\s*none/i', $child->getAttribute('style'))) {
+            $text .= ' ' . pg_a11y_read_text($child) . ' ';
+        }
+    }
+
+    return trim(preg_replace('/\s+/u', ' ', $text));
+}
+
 // Whether the node or an ancestor is out of the accessibility tree.
 function pg_a11y_hidden($node)
 {
@@ -313,10 +333,15 @@ function pg_a11y_name($xpath, $element)
 
     // A select or textarea takes no name from its content: option texts and
     // the default text are its value, not a label.
-    $name = in_array($element->nodeName, array('select', 'textarea'), true) ? '' : pg_a11y_text($element);
+    $name = in_array($element->nodeName, array('select', 'textarea'), true) ? '' : pg_a11y_read_text($element);
 
     if (($name === '') && !in_array($element->nodeName, array('select', 'textarea'), true)) {
         foreach ($xpath->query('.//img[@alt]|.//*[local-name()="svg"]/*[local-name()="title"]|.//*[@aria-label]', $element) as $inner) {
+            // An image or label inside that is not read names nothing.
+            if (pg_a11y_hidden($inner)) {
+                continue;
+            }
+
             $value = ($inner->nodeName === 'img') ? $inner->getAttribute('alt')
                 : ($inner->hasAttribute('aria-label') ? $inner->getAttribute('aria-label') : $inner->textContent);
 

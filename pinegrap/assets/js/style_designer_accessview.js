@@ -224,10 +224,12 @@ StyleDesigner.definePart('accessview', function (K) {
 
     // ── Reading the canvas ──────────────────────────────────────────────
 
-    // The editor's own elements in the canvas (issue badges, placeholders):
-    // no node of the page, a class of the editor's.
+    // The editor's own elements in the canvas (issue badges, placeholders,
+    // toolbars): no node of the page, a class of the editor's, and nothing
+    // of the page inside. A shared component's or a system widget's content
+    // is drawn inside the editor's div.sd-shared-inner, which is kept.
     function chrome(el) {
-        return !el.hasAttribute('data-sd-id') && /(^|\s)sd-/.test(el.getAttribute('class') || '');
+        return !el.hasAttribute('data-sd-id') && /(^|\s)sd-/.test(el.getAttribute('class') || '') && !el.querySelector('[data-sd-id]');
     }
 
     function read() {
@@ -387,6 +389,10 @@ StyleDesigner.definePart('accessview', function (K) {
 
     function drawMarks() {
         V.frame = 0;
+        // A tip stood at the place its element had: a scroll, another kind
+        // or a new reading leaves it pointing at nothing.
+        hideTip();
+        V.tipFor = null;
         var v = view(V.doc);
         if (!V.layer) {
             V.layer = document.createElement('div');
@@ -489,11 +495,20 @@ StyleDesigner.definePart('accessview', function (K) {
             });
         }
         V.card.className = 'sd-av-card' + (narrow() ? ' sd-av-bar' : '') + (V.host.state.fold ? ' sd-av-fold' : '');
-        var keep = document.activeElement && V.card.contains(document.activeElement) ? document.activeElement.getAttribute('data-av') + '|' + (document.activeElement.getAttribute('data-kind') || '') : '';
+        // The control that had the focus (a kind's row, a heading's row of
+        // the outline) and where the outline was scrolled to come back after
+        // the card is drawn again, as it is on every reading.
+        var a = document.activeElement;
+        var keep = (a && V.card.contains(a)) ? '[data-av="' + a.getAttribute('data-av') + '"]' +
+            (a.getAttribute('data-kind') ? '[data-kind="' + a.getAttribute('data-kind') + '"]' : '') +
+            (a.getAttribute('data-i') ? '[data-i="' + a.getAttribute('data-i') + '"]' : '') : '';
+        var ol = V.card.querySelector('.sd-av-outline');
+        var olTop = ol ? ol.scrollTop : 0;
         V.card.innerHTML = cardHTML();
+        ol = olTop ? V.card.querySelector('.sd-av-outline') : null;
+        if (ol) ol.scrollTop = olTop;
         if (keep) {
-            var p = keep.split('|');
-            var back = V.card.querySelector('[data-av="' + p[0] + '"]' + (p[1] ? '[data-kind="' + p[1] + '"]' : ''));
+            var back = V.card.querySelector(keep);
             if (back) back.focus();
         }
         placeCard(view(V.doc));
@@ -698,6 +713,13 @@ StyleDesigner.definePart('accessview', function (K) {
         if (V && V.tip) V.tip.hidden = true;
     }
 
+    // The pointer leaving the canvas (to the editor or out of the window).
+    function onCanvasOut(e) {
+        if (e.relatedTarget) return;
+        V.tipFor = null;
+        hideTip();
+    }
+
     function onMarkOver(e) {
         var t = e.target.closest('button');
         if (!t || !t._avAt || !t._avAt.tip) return;
@@ -790,9 +812,21 @@ StyleDesigner.definePart('accessview', function (K) {
         V.rest = setTimeout(refresh, REST_MS);
     }
 
+    // Whether a text of the canvas is being edited in place: the editor
+    // makes it contenteditable and, on a label, takes its for off until the
+    // edit ends, so the page would read with a stop and a missing label of
+    // the editor's.
+    function editing(doc) {
+        var a = doc.activeElement;
+        return !!(a && a !== doc.body && a.isContentEditable);
+    }
+
     function refresh() {
         if (!V) return;
         V.rest = 0;
+        // The last reading stays; the edit's end (the element written back)
+        // reads the page again.
+        if (V.r && editing(V.doc)) return;
         V.r = read();
         V.named = new Map();
         V.r.controls.forEach(function (c) { if (!c.fault && c.name && c.ref) V.named.set(c.ref, c); });
@@ -801,23 +835,61 @@ StyleDesigner.definePart('accessview', function (K) {
         drawMarks();
     }
 
+    // Whether an element or text sits in the editor's chrome.
+    function inChrome(n) {
+        for (var el = (n && n.nodeType === 1) ? n : (n ? n.parentElement : null); el; el = el.parentElement) {
+            if (chrome(el)) return true;
+        }
+        return false;
+    }
+
+    // Whether a change seen in the canvas is the page's. The editor writes
+    // its own chrome on every hover and scroll (a toolbar filled, a chip
+    // placed); reading the whole page again for that would cost a read per
+    // pointer move.
+    function pageChange(rec) {
+        if (inChrome(rec.target)) return false;
+        if (rec.type !== 'childList') return true;
+        var nodes = Array.prototype.slice.call(rec.addedNodes || []).concat(Array.prototype.slice.call(rec.removedNodes || []));
+        return !nodes.length || nodes.some(function (n) { return n.nodeType !== 1 || !chrome(n); });
+    }
+
+    // The canvas laid out again with no change of its page: another screen
+    // size, a zoom, Fit. The marks move now, and the page is read again
+    // once it rests, since what shows and where differ at another width.
+    function relayout() {
+        soon();
+        rest();
+    }
+
     function listen(on) {
         var doc = V.doc;
         var win = doc.defaultView;
         var fn = on ? 'addEventListener' : 'removeEventListener';
         if (on) {
-            V.mo = new MutationObserver(rest);
-            if (doc.body) V.mo.observe(doc.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['alt', 'aria-label', 'aria-labelledby', 'aria-hidden', 'aria-level', 'hidden', 'href', 'role', 'style', 'tabindex', 'title', 'disabled', 'inert', 'open', 'for', 'id'] });
-        } else if (V.mo) {
-            V.mo.disconnect();
+            V.mo = new MutationObserver(function (recs) {
+                if (recs.some(pageChange)) rest();
+            });
+            if (doc.body) V.mo.observe(doc.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['alt', 'aria-label', 'aria-labelledby', 'aria-hidden', 'aria-level', 'hidden', 'href', 'role', 'style', 'tabindex', 'title', 'disabled', 'inert', 'open', 'for', 'id', 'contenteditable'] });
+            // A zoom is written on the canvas's <html>, Fit and a screen
+            // size on the frame's box; neither scrolls the canvas.
+            V.mz = new MutationObserver(relayout);
+            if (doc.documentElement) V.mz.observe(doc.documentElement, { attributes: true, attributeFilter: ['style'] });
+            var box = (win && win.frameElement) ? win.frameElement.parentNode : null;
+            if (box) V.mz.observe(box, { attributes: true, attributeFilter: ['style'] });
+        } else {
+            if (V.mo) V.mo.disconnect();
+            if (V.mz) V.mz.disconnect();
             V.mo = null;
+            V.mz = null;
         }
         if (win) {
             win[fn]('scroll', soon, { passive: true, capture: true });
-            win[fn]('resize', soon);
+            win[fn]('resize', relayout);
             win[fn]('keydown', onKey, true);
         }
         doc[fn]('mousemove', onCanvasMove, true);
+        doc[fn]('mouseout', onCanvasOut, true);
         doc[fn]('mousedown', onDown, true);
         window[fn]('resize', onResize);
         window[fn]('keydown', onKey, true);
@@ -846,7 +918,7 @@ StyleDesigner.definePart('accessview', function (K) {
         var see = V ? V.see : '';
         hide();
         var kind = host.state.kind;
-        V = { host: host, doc: host.doc, kind: KINDS.indexOf(kind) === -1 ? '' : kind, see: see, seeFrame: null, r: null, named: null, narrow: narrow(), layer: null, card: null, tip: null, pop: null, popRef: null, menu: null, pill: null, tipFor: null, frame: 0, rest: 0, mo: null };
+        V = { host: host, doc: host.doc, kind: KINDS.indexOf(kind) === -1 ? '' : kind, see: see, seeFrame: null, r: null, named: null, narrow: narrow(), layer: null, card: null, tip: null, pop: null, popRef: null, menu: null, pill: null, tipFor: null, frame: 0, rest: 0, mo: null, mz: null };
         listen(true);
         if (see) applySee();
         refresh();

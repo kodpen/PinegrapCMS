@@ -262,6 +262,7 @@ function test_a11y_reader_faults_match_the_audit()
 		'<button></button><button><img src="x" alt="Send"></button><div role="button"></div><input type="button" value=" ">',
 		'<input><input aria-label="A"><label>L <select></select></label><textarea title="T"></textarea><input type="submit"><label for="q"></label><input id="q">',
 		'<iframe></iframe><iframe title="x"></iframe><iframe aria-labelledby="none"></iframe><div aria-hidden="true"><iframe></iframe></div>',
+		'<button><span aria-hidden="true">×</span></button><a href="/x"><span hidden>Go</span></a><a href="/y"><span style="display:none">Y</span></a><a href="/z"><i aria-hidden="true"></i>Shop</a><button><img src="i" alt="Send" aria-hidden="true"></button>',
 		'<p>No faults at all.</p><h1>One</h1><h2>Two</h2><img src="z" alt="Z"><a href="/">Home</a>',
 	);
 	$codes = array('a11y_heading_order', 'a11y_img_alt', 'a11y_link_name', 'a11y_button_name', 'a11y_form_label', 'a11y_frame_title');
