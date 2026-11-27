@@ -40,7 +40,7 @@ function test_translations_reload_message_every_timed_reload_stores_its_message(
 	$js = translations_reload_message_js();
 
 	pg_assert_same(0, preg_match_all('/toast\(([^;]+)\);\s*window\.setTimeout\(function \(\) \{ window\.location\.reload\(\); \}, 800\);/', $js), 'no toast is followed straight by a reload without storing it');
-	pg_assert_same(6, preg_match_all('/toast\(([^;]+)\);\s*afterReload\(\1\);\s*window\.setTimeout\(function \(\) \{ window\.location\.reload\(\); \}, 800\);/', $js), 'nothing pending, pending by hand, scanned, Review All, Clear, Accept source');
+	pg_assert_same(5, preg_match_all('/toast\(([^;]+)\);\s*afterReload\(\1\);\s*window\.setTimeout\(function \(\) \{ window\.location\.reload\(\); \}, 800\);/', $js), 'nothing pending, pending by hand, scanned, Review All, Clear; the selection\'s actions change the rows in place');
 }
 
 // finish() stores the job's error, or the counts as an error when a text failed.

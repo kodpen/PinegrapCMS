@@ -221,28 +221,6 @@
         }
     }
 
-    // A reviewed text is not offered for "keep as in the source": its tick
-    // box comes and goes with the state, and the selection count follows.
-    function pickState(row, state) {
-        var pick = row.querySelector('.pg-tr-pick');
-        var spacer = row.querySelector('.pg-tr-pick-spacer');
-        if ((state === 'reviewed') && pick) {
-            spacer = document.createElement('span');
-            spacer.className = 'pg-tr-pick-spacer';
-            pick.replaceWith(spacer);
-        } else if ((state !== 'reviewed') && !pick && spacer) {
-            pick = document.createElement('input');
-            pick.type = 'checkbox';
-            pick.className = 'check pg-tr-pick';
-            pick.value = row.getAttribute('data-string-id');
-            pick.setAttribute('aria-label', text('select_text'));
-            spacer.replaceWith(pick);
-        } else {
-            return;
-        }
-        app.dispatchEvent(new CustomEvent('pg-tr-picks-changed'));
-    }
-
     function rowState(row, state, engine, suspicious) {
         var badge = row.querySelector('.pg-tr-state-badge');
         var before = row.getAttribute('data-state');
@@ -251,7 +229,6 @@
         var warn = row.querySelector('.pg-tr-suspicious');
         row.setAttribute('data-state', state);
         countState(before, state, !!(warn && !warn.classList.contains('d-none')), !!suspicious);
-        pickState(row, state);
 
         if (badge) {
             badge.className = 'pg-pill pg-tr-state-badge ' + ((state === 'reviewed') ? 'pg-tone-teal' : ((state === 'machine') ? 'pg-tone-amber' : 'pg-tone-gray'));
@@ -485,14 +462,25 @@
             panel.appendChild(reason);
         }
 
-        // A reviewed translation is left as it is by "keep as in the source".
+        // "Translate again" for a text that has a translation and an engine
+        // to send it to; a reviewed translation is left as it is by "keep
+        // as in the source".
+        var actions = el('span', 'pg-tr-details-actions');
+        if ((state !== 'pending') && !strings.again_reason) {
+            var again = el('button', 'pg-button pg-button-quiet pg-button-sm pg-tr-details-again');
+            again.type = 'button';
+            again.appendChild(icon('bi-arrow-repeat'));
+            again.appendChild(document.createTextNode(text('again')));
+            actions.appendChild(again);
+        }
         if (state !== 'reviewed') {
-            var actions = el('span', 'pg-tr-details-actions');
             var keep = el('button', 'pg-button pg-button-quiet pg-button-sm pg-tr-details-keep');
             keep.type = 'button';
             keep.appendChild(icon('bi-check2-square'));
             keep.appendChild(document.createTextNode(text('keep_source')));
             actions.appendChild(keep);
+        }
+        if (actions.childNodes.length) {
             panel.appendChild(actions);
         }
 
@@ -543,6 +531,14 @@
         var toggle = event.target.closest('.pg-tr-details-toggle');
         var showAll = event.target.closest('.pg-tr-show-all');
         var keep = event.target.closest('.pg-tr-details-keep');
+        var detailsAgain = event.target.closest('.pg-tr-details-again');
+
+        if (detailsAgain) {
+            if (!running && !preparing) {
+                openAgain([detailsAgain.closest('.pg-tr-row')]);
+            }
+            return;
+        }
 
         if (toggle) {
             var detailsRow = toggle.closest('.pg-tr-row');
@@ -1109,7 +1105,60 @@
         return step();
     }
 
-    // ── "Update translations" ──
+    // ── a job: the engine it is opened for, then worked here for a browser
+    //    engine, followed for Claude, run turn by turn for a server engine ──
+
+    // A language the model does not write goes to the Translator API, in a
+    // job of that engine (the server then packages its texts in runs).
+    // Decided before anything is awaited: the click is the gesture a
+    // download wants. Before the check has answered, a create() refused for
+    // the language tells the same.
+    function prepareJob() {
+        var job = { engine: ((config.engine === 'chrome_ai') && (modelWrites === false) && modelSupported() && translatorSupported()) ? 'chrome' : config.engine };
+
+        job.ready = (job.engine === 'chrome') ? createTranslator().then(translatorItem)
+            : ((job.engine === 'chrome_ai') ? createModel().then(modelItem, function (error) {
+                if (!error.unwritable || !translatorSupported()) {
+                    throw error;
+                }
+                job.engine = 'chrome';
+                return createTranslator().then(translatorItem);
+            }) : Promise.resolve(null));
+
+        return job;
+    }
+
+    // The job the server opened (data: its job_id, job, pending, queue and
+    // error), with the message the opening is told with.
+    function followJob(job, translateItem, data, message) {
+        toast(message, 'info');
+
+        if (translateItem) {
+            return runBrowserJob(translateItem, { id: data.job_id, total: data.pending, done: 0, failed: 0 });
+        }
+
+        if (job.engine === 'claude') {
+            if (data.error) {
+                toast(data.error, 'error');
+            } else if (data.queue === 'held') {
+                toast(text('queue_held', (data.job && data.job.error) || ''), 'warning');
+            }
+
+            return watchQueueJob(data.job || { id: data.job_id, total: data.pending, done_count: 0, failed_count: 0 });
+        }
+
+        // A server engine: the call only opened the job; every turn of
+        // translating is a run call of its own.
+        return runServerJob(data.job);
+    }
+
+    function jobFailed(error) {
+        hideProgress();
+        running = null;
+        toast(error.message, error.stopped ? 'info' : 'error');
+    }
+
+    // ── "Translate pending" ──
 
     if (updateButton) {
         updateButton.addEventListener('click', function () {
@@ -1120,35 +1169,21 @@
             updateButton.disabled = true;
             showProgress(text('scanning'), 0, 1);
 
-            // A language the model does not write goes to the Translator API,
-            // in a job of that engine (the server then packages its texts in
-            // runs). Decided before anything is awaited: the click is the
-            // gesture a download wants. Before the check has answered, a
-            // create() refused for the language tells the same.
-            var jobEngine = ((config.engine === 'chrome_ai') && (modelWrites === false) && modelSupported() && translatorSupported()) ? 'chrome' : config.engine;
+            var job = prepareJob();
 
-            var browserPromise = (jobEngine === 'chrome') ? createTranslator().then(translatorItem)
-                : ((jobEngine === 'chrome_ai') ? createModel().then(modelItem, function (error) {
-                    if (!error.unwritable || !translatorSupported()) {
-                        throw error;
-                    }
-                    jobEngine = 'chrome';
-                    return createTranslator().then(translatorItem);
-                }) : Promise.resolve(null));
-
-            browserPromise.then(function (translateItem) {
+            job.ready.then(function (translateItem) {
                 // A model's download progress may have taken the line.
                 if (translateItem) {
                     showProgress(text('scanning'), 0, 1);
                 }
 
-                if (jobEngine !== config.engine) {
+                if (job.engine !== config.engine) {
                     toast(text('model_fallback', config.language), 'info');
                 }
 
                 // A browser job an earlier visit left open is picked up where
                 // it stopped rather than opened again.
-                if (translateItem && config.open_job && (config.open_job.engine === jobEngine) && ['queued', 'sent', 'running'].indexOf(config.open_job.status) !== -1) {
+                if (translateItem && config.open_job && (config.open_job.engine === job.engine) && ['queued', 'sent', 'running'].indexOf(config.open_job.status) !== -1) {
                     return runBrowserJob(translateItem, { id: config.open_job.id, total: config.open_job.total, done: config.open_job.done, failed: config.open_job.failed });
                 }
 
@@ -1156,7 +1191,7 @@
                 // longer than one request may. Each answer says where the
                 // next turn starts; the last one opens the job.
                 var scan = function (from) {
-                    return call({ action: 'update', scope: config.scope, engine: (jobEngine !== config.engine) ? jobEngine : '', from: from }).then(function (data) {
+                    return call({ action: 'update', scope: config.scope, engine: (job.engine !== config.engine) ? job.engine : '', from: from }).then(function (data) {
                         if (data.extracting) {
                             showProgress(text('scanning_progress', data.next, data.total), data.next, data.total);
                             return scan(data.next);
@@ -1182,31 +1217,9 @@
                         return;
                     }
 
-                    toast(text('sent', data.pending), 'info');
-
-                    if (translateItem) {
-                        return runBrowserJob(translateItem, { id: data.job_id, total: data.pending, done: 0, failed: 0 });
-                    }
-
-                    if (config.engine === 'claude') {
-                        if (data.error) {
-                            toast(data.error, 'error');
-                        } else if (data.queue === 'held') {
-                            toast(text('queue_held', (data.job && data.job.error) || ''), 'warning');
-                        }
-
-                        return watchQueueJob(data.job || { id: data.job_id, total: data.pending, done_count: 0, failed_count: 0 });
-                    }
-
-                    // A server engine: the update only opened the job; every
-                    // turn of translating is a run call of its own.
-                    return runServerJob(data.job);
+                    return followJob(job, translateItem, data, text('sent', data.pending));
                 });
-            }).catch(function (error) {
-                hideProgress();
-                running = null;
-                toast(error.message, error.stopped ? 'info' : 'error');
-            }).then(function () {
+            }).catch(jobFailed).then(function () {
                 updateButton.disabled = false;
             });
         });
@@ -1504,86 +1517,275 @@
         });
     }
 
-    // ── "keep as in the source and approve": the texts ticked in the list
-    //    get their source text as the translation, approved by hand; the
-    //    dialog names the count ──
+    // ── the selection: a tick on every row, "Select all on this page", and
+    //    the bar at the foot of the list with what can be done to the ticked
+    //    texts. Each action changes the rows in place ──
 
-    var acceptButton = document.getElementById('pg_tr_accept_source');
-    var acceptModal = document.getElementById('pg_tr_accept_modal');
     var pickAll = document.getElementById('pg_tr_pick_all');
+    var selBar = document.getElementById('pg_tr_selbar');
+    var acceptModal = document.getElementById('pg_tr_accept_modal');
+    var againModal = document.getElementById('pg_tr_again_modal');
+    var clearPickedModal = document.getElementById('pg_tr_clear_picked_modal');
+    var againRows = [];
 
-    if (acceptButton && acceptModal && window.pgUI) {
+    function picks() {
+        return Array.prototype.slice.call(app.querySelectorAll('.pg-tr-pick'));
+    }
+
+    function pickedRows() {
+        return picks().filter(function (box) { return box.checked; }).map(function (box) { return box.closest('.pg-tr-row'); });
+    }
+
+    function rowIds(rows) {
+        return rows.map(function (row) { return parseInt(row.getAttribute('data-string-id'), 10); });
+    }
+
+    function rowsOf(ids) {
+        return (ids || []).map(function (id) {
+            return app.querySelector('.pg-tr-row[data-string-id="' + parseInt(id, 10) + '"]');
+        }).filter(Boolean);
+    }
+
+    function inState(rows, state) {
+        return rows.filter(function (row) { return row.getAttribute('data-state') === state; }).length;
+    }
+
+    function syncPicks() {
+        var all = picks();
+        var count = pickedRows().length;
+
+        if (selBar) {
+            selBar.hidden = (count === 0);
+            selBar.querySelector('.pg-tr-selbar-count').textContent = text('selected', count);
+        }
+
+        if (pickAll) {
+            pickAll.checked = (all.length > 0) && (count === all.length);
+            pickAll.indeterminate = (count > 0) && (count < all.length);
+        }
+    }
+
+    function unpick() {
+        picks().forEach(function (box) { box.checked = false; });
+        syncPicks();
+    }
+
+    function flagged(row) {
+        var warn = row.querySelector('.pg-tr-suspicious');
+        return !!(warn && !warn.classList.contains('d-none'));
+    }
+
+    // A translation deleted: the row is pending again, its box empty.
+    function rowCleared(row) {
+        row.querySelector('.pg-tr-target').value = '';
+        rowState(row, 'pending', '', false);
+    }
+
+    function busy() {
+        return !!(running || preparing);
+    }
+
+    app.addEventListener('change', function (event) {
+        var target = event.target;
+
+        if (target === pickAll) {
+            picks().forEach(function (box) { box.checked = pickAll.checked; });
+            syncPicks();
+        } else if (target.classList && target.classList.contains('pg-tr-pick')) {
+            syncPicks();
+        }
+    });
+
+    app.addEventListener('click', function (event) {
+        var button = event.target.closest ? event.target.closest('.pg-tr-sel-approve, .pg-tr-sel-again, .pg-tr-sel-keep, .pg-tr-sel-clear, .pg-tr-sel-none') : null;
+
+        if (!button || button.disabled) {
+            return;
+        }
+
+        var rows = pickedRows();
+
+        if (button.classList.contains('pg-tr-sel-none')) {
+            unpick();
+            return;
+        }
+
+        if (!rows.length || busy()) {
+            return;
+        }
+
+        if (button.classList.contains('pg-tr-sel-approve')) {
+            approvePicked(button, rows);
+        } else if (button.classList.contains('pg-tr-sel-again')) {
+            openAgain(rows);
+        } else if (button.classList.contains('pg-tr-sel-keep') && acceptModal && window.pgUI) {
+            acceptModal.querySelector('.pg-tr-accept-count').textContent = text('accept_count', rows.length);
+            pgUI.dialog.show(acceptModal);
+        } else if (button.classList.contains('pg-tr-sel-clear') && clearPickedModal && window.pgUI) {
+            pgUI.dialog.show(clearPickedModal);
+        }
+    });
+
+    // "Approve": the ticked machine translations reviewed at once.
+    function approvePicked(button, rows) {
+        button.disabled = true;
+
+        call({ action: 'approve', string_ids: rowIds(rows) }).then(function (data) {
+            rowsOf(data.ids).forEach(function (row) {
+                var engineEl = row.querySelector('.pg-tr-engine');
+                rowState(row, 'reviewed', engineEl ? engineEl.textContent : '', flagged(row));
+            });
+            toast(data.message, (data.count > 0) ? 'success' : 'info');
+            unpick();
+        }).catch(function (error) {
+            toast(error.message, 'error');
+        }).then(function () {
+            button.disabled = false;
+        });
+    }
+
+    // "Keep as in the source and approve": today's dialog and wording; the
+    // source text becomes the translation of each ticked text not reviewed.
+    if (acceptModal && window.pgUI) {
         var acceptGo = acceptModal.querySelector('.pg-tr-accept-go');
-        var acceptCount = acceptModal.querySelector('.pg-tr-accept-count');
-        var pickCount = acceptButton.querySelector('.pg-tr-pick-count');
-
-        function picks() {
-            return Array.prototype.slice.call(app.querySelectorAll('.pg-tr-pick'));
-        }
-
-        function picked() {
-            return picks().filter(function (box) { return box.checked; });
-        }
-
-        function syncPicks() {
-            var all = picks();
-            var count = picked().length;
-
-            pickCount.textContent = count;
-            acceptButton.disabled = (count === 0);
-
-            if (pickAll) {
-                pickAll.checked = (all.length > 0) && (count === all.length);
-                pickAll.indeterminate = (count > 0) && (count < all.length);
-            }
-        }
-
-        app.addEventListener('change', function (event) {
-            var target = event.target;
-
-            if (target === pickAll) {
-                picks().forEach(function (box) { box.checked = pickAll.checked; });
-                syncPicks();
-            } else if (target.classList && target.classList.contains('pg-tr-pick')) {
-                syncPicks();
-            }
-        });
-
-        app.addEventListener('pg-tr-picks-changed', syncPicks);
-
-        pgUI.dialog.on(acceptModal, 'show', function () {
-            var count = picked().length;
-            acceptCount.textContent = text('accept_count', count);
-            acceptGo.disabled = (count === 0);
-        });
-
-        acceptButton.addEventListener('click', function () {
-            if (!running && picked().length) {
-                pgUI.dialog.show(acceptModal);
-            }
-        });
 
         acceptGo.addEventListener('click', function () {
-            var ids = picked().map(function (box) { return parseInt(box.value, 10); });
+            var rows = pickedRows();
 
-            if (running || !ids.length) {
+            if (busy() || !rows.length) {
                 return;
             }
 
             acceptGo.disabled = true;
 
-            call({ action: 'accept_source', string_ids: ids }).then(function (data) {
-                toast(data.message, 'success');
-                afterReload(data.message, 'success');
-                window.setTimeout(function () { window.location.reload(); }, 800);
+            call({ action: 'accept_source', string_ids: rowIds(rows) }).then(function (data) {
+                rowsOf(data.ids).forEach(function (row) {
+                    var source = row.querySelector('.pg-tr-source');
+                    row.querySelector('.pg-tr-target').value = source ? source.textContent : '';
+                    rowState(row, 'reviewed', 'manual', false);
+                });
+                pgUI.dialog.hide(acceptModal);
+                toast(data.message, (data.count > 0) ? 'success' : 'info');
+                unpick();
             }).catch(function (error) {
-                acceptGo.disabled = false;
                 toast(error.message, 'error');
+            }).then(function () {
+                acceptGo.disabled = false;
             });
         });
-
-        syncPicks();
     }
+
+    // "Clear": the ticked texts' translations deleted, the reviewed ones
+    // when ticked; the dialog names the count.
+    if (clearPickedModal && window.pgUI) {
+        var clearPickedGo = clearPickedModal.querySelector('.pg-tr-clear-picked-go');
+        var clearPickedReviewed = clearPickedModal.querySelector('.pg-tr-clear-picked-reviewed');
+
+        var syncClearPicked = function () {
+            var rows = pickedRows();
+            var reviewed = inState(rows, 'reviewed');
+            var count = inState(rows, 'machine') + (clearPickedReviewed.checked ? reviewed : 0);
+
+            clearPickedReviewed.disabled = (reviewed === 0);
+            clearPickedModal.querySelector('.pg-tr-clear-picked-reviewed-count').textContent = reviewed;
+            clearPickedModal.querySelector('.pg-tr-clear-picked-count').textContent = text('clear_count', count);
+            clearPickedGo.disabled = (count === 0);
+        };
+
+        clearPickedReviewed.addEventListener('change', syncClearPicked);
+
+        pgUI.dialog.on(clearPickedModal, 'show', function () {
+            clearPickedReviewed.checked = false;
+            syncClearPicked();
+        });
+
+        clearPickedGo.addEventListener('click', function () {
+            var rows = pickedRows();
+
+            if (busy() || !rows.length) {
+                return;
+            }
+
+            clearPickedGo.disabled = true;
+
+            call({ action: 'clear', scope: config.scope, string_ids: rowIds(rows), reviewed: clearPickedReviewed.checked ? 1 : 0 }).then(function (data) {
+                rowsOf(data.ids).forEach(rowCleared);
+                pgUI.dialog.hide(clearPickedModal);
+                toast(data.message, 'success');
+                unpick();
+            }).catch(function (error) {
+                toast(error.message, 'error');
+            }).then(function () {
+                clearPickedGo.disabled = false;
+            });
+        });
+    }
+
+    // "Translate again", from the bar or a row's details: the texts are
+    // sent to the language's engine in a job of their own, followed as
+    // "Translate pending" follows one. A reviewed translation is replaced
+    // only when the dialog's tick says so.
+    function openAgain(rows) {
+        if (!againModal || !window.pgUI || strings.again_reason) {
+            return;
+        }
+
+        var reviewed = inState(rows, 'reviewed');
+        var box = againModal.querySelector('.pg-tr-again-reviewed');
+
+        againRows = rows;
+        againModal.querySelector('.pg-tr-again-count').textContent = text('again_count', rows.length, config.engine_label || '');
+        againModal.querySelector('.pg-tr-again-reviewed-count').textContent = reviewed;
+        box.checked = false;
+        box.disabled = (reviewed === 0);
+        pgUI.dialog.show(againModal);
+    }
+
+    if (againModal && window.pgUI) {
+        var againGo = againModal.querySelector('.pg-tr-again-go');
+
+        againGo.addEventListener('click', function () {
+            var rows = againRows;
+            var reviewed = againModal.querySelector('.pg-tr-again-reviewed').checked;
+
+            if (busy() || !rows.length) {
+                return;
+            }
+
+            // The browser's translator is made in this click (the gesture
+            // a download wants), before the dialog closes.
+            var job = prepareJob();
+
+            pgUI.dialog.hide(againModal);
+
+            job.ready.then(function (translateItem) {
+                if (job.engine !== config.engine) {
+                    toast(text('model_fallback', config.language), 'info');
+                }
+
+                return call({
+                    action: 'again',
+                    scope: config.scope,
+                    string_ids: rowIds(rows),
+                    reviewed: reviewed ? 1 : 0,
+                    engine: (job.engine !== config.engine) ? job.engine : ''
+                }).then(function (data) {
+                    rowsOf(data.sent).forEach(rowCleared);
+                    unpick();
+
+                    if (!data.job_id) {
+                        hideProgress();
+                        toast(data.message, 'info');
+                        return;
+                    }
+
+                    return followJob(job, translateItem, data, data.message);
+                });
+            }).catch(jobFailed);
+        });
+    }
+
+    syncPicks();
 
     // ── the glossary modal: one form for a new term and for an existing one ──
 
