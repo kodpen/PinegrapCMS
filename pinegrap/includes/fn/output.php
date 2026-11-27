@@ -8227,8 +8227,8 @@ function pg_js_bundles()
         ),
         'assets/js/workspace_palette.min.js'       => array('assets/js/workspace_palette.js'),
         'assets/js/workspace_board_channel.min.js' => array('assets/js/workspace_board_channel.js'),
-        // A Data table's cells changed in its grid (workspace_wtables.php).
-        'assets/js/workspace_wtable_grid.min.js'   => array('assets/js/workspace_wtable_grid.js'),
+        // A Data table's cells changed in its grid and its rows' order (workspace_wtables.php).
+        'assets/js/workspace_wtable_grid.min.js'   => array('assets/js/workspace_wtable_grid.js', 'assets/js/workspace_wtable_order.js'),
         'assets/js/workspace_tour.min.js'          => array('assets/js/workspace_tour.js'),
         // The graph canvas core (window.PGGraphCanvas), printed before the
         // scripts that draw on it: the flow canvas first.

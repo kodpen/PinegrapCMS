@@ -415,3 +415,17 @@ function test_workspace_wtables_tables_are_listed_and_loaded()
 
 	pg_assert_same(1, substr_count(ws_wtables_test_source('includes/workspace/bootstrap.php'), "require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtables.php');"));
 }
+
+// A column moved to another place among the table's columns: the others
+// close up around it, a place past either end is the end, and a column the
+// table lacks moves nothing.
+function test_workspace_wtables_column_order_moved()
+{
+	pg_assert_same(array('12', '10', '11', '13'), ws_wtable_column_order_moved(array('10', '11', '12', '13'), 12, 1));
+	pg_assert_same(array('10', '12', '11', '13'), ws_wtable_column_order_moved(array('10', '11', '12', '13'), 11, 3));
+	pg_assert_same(array('11', '12', '13', '10'), ws_wtable_column_order_moved(array(10, 11, 12, 13), 10, 9), 'past the end');
+	pg_assert_same(array('10', '11'), ws_wtable_column_order_moved(array('10', '11'), 10, 1), 'in place');
+	pg_assert_same(null, ws_wtable_column_order_moved(array('10', '11'), 99, 1));
+	pg_assert_same(null, ws_wtable_column_order_moved(array('10', '11'), 10, 0));
+	pg_assert_same(null, ws_wtable_column_order_moved(array('10', '11'), 10, '2x'));
+}

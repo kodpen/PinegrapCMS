@@ -2091,3 +2091,108 @@ function ws_wtable_column_delete($viewer, $table, $column)
 
     return $check;
 }
+
+/**
+ * The columns' ids in their new order once one of them is moved to a place
+ * (1-based) among them: the others close up around it, and a place past the
+ * end is the end. Pure.
+ *
+ * @param array $ids       the column ids in their order now
+ * @param int   $column_id the column moved
+ * @param mixed $position  its new place
+ * @return string[]|null the ids, null when the column is not among them or
+ *                       the place is not a whole number above 0
+ */
+function ws_wtable_column_order_moved($ids, $column_id, $position)
+{
+    $ids = array_map('strval', array_values((array) $ids));
+    $from = array_search((string) (int) $column_id, $ids, true);
+
+    if (($from === false) || !ws_wtable_is_whole($position) || ((int) $position <= 0)) {
+        return null;
+    }
+
+    array_splice($ids, $from, 1);
+    array_splice($ids, min((int) $position, count($ids) + 1) - 1, 0, array((string) (int) $column_id));
+
+    return $ids;
+}
+
+/**
+ * May the person move a column, and is the place a whole number above 0?
+ *
+ * @param array      $viewer
+ * @param array|null $table
+ * @param array|null $column
+ * @param mixed      $input  position (1-based)
+ * @return array ok, position, error, field, status
+ */
+function ws_wtable_column_move_check($viewer, $table, $column, $input)
+{
+    if (!ws_wtable_may(ws_wtable_access($viewer, $table), 'write') || !is_array($column)) {
+        return ws_wtable_refusal('not_found', '', 404);
+    }
+
+    $position = is_array($input) ? ($input['position'] ?? null) : null;
+
+    if (!ws_wtable_is_whole($position) || ((int) $position <= 0)) {
+        return ws_wtable_refusal('position_invalid', 'position');
+    }
+
+    return array('ok' => true, 'position' => (int) $position, 'error' => '', 'field' => '', 'status' => 200);
+}
+
+/**
+ * Move a column to another place among the table's columns. The columns
+ * are read locked and numbered 1..n again in their new order, so that two
+ * moves at once, or positions left with gaps by a delete, never give two
+ * columns one place. Cells and formulas do not change: they name columns by
+ * id and by name.
+ *
+ * @param array      $viewer
+ * @param array|null $table
+ * @param array|null $column
+ * @param mixed      $input  position (1-based)
+ * @return array ok, error, field, status, position
+ */
+function ws_wtable_column_move($viewer, $table, $column, $input)
+{
+    $check = ws_wtable_column_move_check($viewer, $table, $column, $input);
+
+    if (!$check['ok']) {
+        return $check + array('position' => 0);
+    }
+
+    $table_id = (int) $table['id'];
+
+    db("START TRANSACTION");
+
+    $columns = ws_wtable_columns_locked($table_id);
+    $order = ws_wtable_column_order_moved(array_keys($columns), (int) $column['id'], $check['position']);
+
+    if ($order === null) {
+        db("ROLLBACK");
+
+        return ws_wtable_refusal('not_found', '', 404) + array('position' => 0);
+    }
+
+    $done = true;
+
+    foreach ($order as $place => $id) {
+        if ($done && ((int) $columns[$id]['position'] !== $place + 1)) {
+            $done = (db("UPDATE ws_wtable_columns SET position = '" . ($place + 1) . "' WHERE id = '" . (int) $id . "' AND table_id = '" . $table_id . "'") !== false);
+        }
+    }
+
+    if (!$done) {
+        db("ROLLBACK");
+
+        return ws_wtable_refusal('not_saved', '', 500) + array('position' => 0);
+    }
+
+    db("COMMIT");
+
+    ws_wtable_columns_changed($table_id);
+
+    return array('ok' => true, 'error' => '', 'field' => '', 'status' => 200, 'position' => (int) array_search((string) (int) $column['id'], $order, true) + 1);
+}
