@@ -16,7 +16,7 @@ priority: 5
 - Then the six that may need a table or a column. Each plan starts with a census step, and each table is asked of the owner on its own:
   - Markets: `plans/markets-price-lists.md`.
   - Automatic tax: `plans/tax-automatic.md`.
-  - A whole site from one brief: `plans/site-from-brief.md`.
+  - A whole site from one brief: done, `designer/site-from-brief.md`.
   - A knowledge base and support requests: `plans/help-centre.md`.
   - QuickBooks and Xero sync: `plans/accounting-sync.md`.
   - Global sales channels (Amazon, eBay, Etsy, TikTok Shop): `plans/sales-channels-global.md`.

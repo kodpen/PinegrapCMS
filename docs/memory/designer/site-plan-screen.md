@@ -5,7 +5,7 @@ module: site_plan
 ---
 
 ## Where is it?
-- In the "Describe it" pane of the New design window, after "Plan my site" (`describe-start.md`). The server draws only its empty place `section.sd-sp` with its words, the theme's choices, the limits and the address (`pg_site_plan_screen()`, `includes/fn/site_plan.php`); `assets/js/designer_describe.js` draws the rest. Plan: `plans/site-from-brief.md`.
+- In the "Describe it" pane of the New design window, after "Plan my site" (`describe-start.md`). The server draws only its empty place `section.sd-sp` with its words, the theme's choices, the limits and the address (`pg_site_plan_screen()`, `includes/fn/site_plan.php`); `assets/js/designer_describe.js` draws the rest. Rules: `site-from-brief.md`.
 - "Plan my site" sends the checked brief to `designer/site_plan` (`site-plan-request.md`); the foot's line reads "Planning your pages…" and the button waits. A refusal's words, or "The connection was lost. Please try again.", stand in the foot's line and the brief stays.
 - Back shows the brief again; "Plan my site" on the same brief shows the rows as they were left, with no second request (kept for the open window only).
 
