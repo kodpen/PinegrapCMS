@@ -27082,7 +27082,7 @@
         var layout = el('div', 'row g-7');
         var mainCol = el('div', 'xl:col-9');
         var sideCol = el('div', 'xl:col-3');
-        var calCard = el('div', 'ws-cal card');
+        var calCard = el('div', 'ws-cal ws-cal-work card');
         var side = el('div', 'ws-cal-side');
 
         mainCol.appendChild(calCard);
@@ -27120,6 +27120,17 @@
         bar.appendChild(shows.node);
 
         bar.appendChild(el('div', 'pg-toolbar-grow'));
+
+        // The cells' parts (workspace_calendar_cells.js): "+N more" and its
+        // card, and the side column folded behind "Figures".
+        var cells = window.PGWsCalendarCells || null;
+        var cellHelpers = partHelpers();
+
+        cellHelpers.onContext = onContext;
+
+        if (cells) {
+            bar.appendChild(cells.figures(cellHelpers, mainCol, sideCol));
+        }
 
         var agents = taskAgentsToggle(state.agents, function (on) {
             state.agents = on;
@@ -27255,6 +27266,10 @@
 
             title.textContent = data.label;
 
+            if (cells) {
+                cells.close(false);
+            }
+
             var box = clear(calCard);
             var head = el('div', 'ws-cal-head');
 
@@ -27289,7 +27304,7 @@
                     cell.appendChild(top);
 
                     var shown = 0;
-                    var limit = 4;
+                    var limit = cells ? cells.LIMIT : 4;
                     var hidden = 0;
 
                     // Lanes first, an empty gap where a lane has nothing on
@@ -27386,7 +27401,11 @@
                         });
                     }
 
-                    if (hidden > 0) {
+                    if (hidden > 0 && cells) {
+                        cell.appendChild(cells.moreButton(cellHelpers, hidden, function (opener) {
+                            cells.more(cellHelpers, opener, cell, day.label, dayItems(day), function () { openDay(day); });
+                        }));
+                    } else if (hidden > 0) {
                         cell.appendChild(el('div', 'ws-cal-more', t('more_count', hidden)));
                     }
 
@@ -27403,6 +27422,66 @@
 
         function forWhom() {
             return state.person_id ? [state.person_id] : [BOOT.me.id];
+        }
+
+        // A day's whole list for the card "+N more" opens, in the cell's
+        // order and with what the bar shows: tasks, plan items, channels.
+        function dayItems(day) {
+            var items = [];
+
+            if (state.show.tasks) {
+                (data.spans || []).filter(function (task) {
+                    return task.span_start <= day.date && task.span_end >= day.date;
+                }).concat(day.tasks).filter(taskShown).forEach(function (task) {
+                    items.push({
+                        icon: task.upcoming ? icon('bi-arrow-repeat', 'fg-secondary') : el('span', 'ws-status-dot ws-s-' + task.status),
+                        title: task.title,
+                        time: task.upcoming ? '' : task.number,
+                        sub: (task.upcoming ? comingText(task) : BOOT.statuses[task.status]) + (task.span_start ? ' · ' + t('task_span', dmy(task.span_start), dmy(task.span_end)) : '') + ((task.people || []).length ? ' · ' + peopleNames(task.people) : ''),
+                        done: !task.open,
+                        open: function () { taskDrawer.open(task.id, null, load); },
+                        menu: function () { return comingMenu(task) || taskMenu(task, load); }
+                    });
+                });
+            }
+
+            if (state.show.events) {
+                day.events.forEach(function (event) {
+                    var item = {
+                        icon: el('span', 'ws-cal-event-dot ws-kind-' + event.kind),
+                        title: event.title,
+                        time: event.time || '',
+                        sub: event.readonly ? event.layer : (CFG.event_kinds[event.kind] || '') + ((event.people || []).length ? ' · ' + peopleNames(event.people) : '')
+                    };
+
+                    // A booking opens on the agenda; the reader's own iCal
+                    // layer has no plan item behind it to open.
+                    if (event.url) {
+                        item.href = event.url;
+                    } else if (!event.readonly) {
+                        item.open = function () {
+                            api('ws_event_get', { event_id: event.id }).then(function (result) {
+                                eventForm(result.event, {}, load);
+                            }).catch(fail);
+                        };
+                    }
+
+                    items.push(item);
+                });
+            }
+
+            if (state.show.talk) {
+                day.channels.forEach(function (channel) {
+                    items.push({
+                        icon: icon(channel['private'] ? 'bi-lock' : 'bi-plus-circle', 'fg-secondary'),
+                        title: '#' + channel.name,
+                        sub: t('channel_opened_by', channel.name, channel.by),
+                        href: CFG.urls.workspace + '?channel=' + channel.id
+                    });
+                });
+            }
+
+            return items;
         }
 
         function dayMenu(day) {

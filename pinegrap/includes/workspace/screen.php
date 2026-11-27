@@ -612,6 +612,10 @@ function ws_js_strings()
         'mark_waiting'           => lang('Mark as waiting'),
         'messages_count'         => ws_js_template('{var:1} messages', 1),
         'month_in_figures'       => lang('The month in figures'),
+        // The bar's button that folds the Work Calendar's side column.
+        'cal_figures'            => lang('Figures'),
+        'cal_figures_hide'       => lang('Hide the figures and widen the calendar'),
+        'cal_figures_show'       => lang('Show the month in figures beside the calendar'),
         'more_count'             => ws_js_template('+{var:1} more', 1),
         'most_tasks'             => lang('Most work'),
         'new_task_about'         => lang('New task about it'),

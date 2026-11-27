@@ -8216,6 +8216,7 @@ function pg_js_bundles()
             'assets/js/workspace_channel_agents.js',
             'assets/js/workspace_channel_activity.js',
             'assets/js/workspace_conversation_timeline.js',
+            'assets/js/workspace_calendar_cells.js',
             'assets/js/workspace_my_calendar_roadmap.js',
             'assets/js/workspace_my_calendar_week.js',
             'assets/js/workspace_my_calendar_move.js',
