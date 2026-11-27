@@ -13,7 +13,7 @@ module: office_docx_paragraphs
 ## What does the preview send and the save take?
 - `pg_office_docx_read()` with edit sends `edit.keeps` (position => `picture`, `section`, `cell`, `last`, `bookmark`, `locked`) and `edit.shut` (positions nothing may be added after), beside texts, marks and kinds; the HTML is unchanged.
 - In the save's `paragraphs` list: `{p, delete: true}` deletes; a split is a text entry and an `{after}` entry, a join a text entry and a `{delete}` entry; `{after: p, text, format?, kind?}` adds after paragraph p of the file (text '' when left out). Several after the same p are written in the order listed. Positions are always the file's as opened.
-- Order of the save: texts, formats, then added paragraphs (with their own text, format), then deletes from the last up, each checked as the document then stands, then kinds in the order paragraphs now read. Nothing is written when any is refused.
+- Order of the save: texts, formats, then added paragraphs (with their own text, format), then table changes (`office-docx-tables.md`), then deletes from the last up, each checked as the document then stands, then kinds in the order paragraphs now read. Nothing is written when any is refused.
 
 ## Which kind does a new paragraph take?
 - The paragraph properties of the file's paragraph it follows are copied (`pg_office_docx_paragraph_add()`): its style, numbering, alignment and mark formatting, so a list item continues its list and its text takes the mark's look. Not copied: `sectPr`, `pageBreakBefore`, `pPrChange`, and tracked marks in the mark's rPr. A kind the anchor is being given in the same save is sent for the new one too.

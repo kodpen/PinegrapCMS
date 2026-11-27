@@ -8204,6 +8204,8 @@
     "The table is yours already.": "Tablo zaten sizin.",
     "The table name {var:1} is too long to be loaded next to the tables of the site.": "{var:1} tablo adı, sitenin tablolarının yanına yüklenemeyecek kadar uzun.",
     "The table now belongs to the channel {var:1}.": "Tablo artık {var:1} kanalına ait.",
+    "The table of paragraph {var:1} has merged or uneven cells, so its rows and columns are not changed here.": "{var:1}. paragrafın tablosunda birleştirilmiş ya da düzensiz hücreler var, bu yüzden satırları ve sütunları burada değiştirilmez.",
+    "The table of paragraph {var:1} is in a content control or holds tracked changes, so it is not changed here.": "{var:1}. paragrafın tablosu bir içerik denetiminde ya da izlenen değişiklikler içeriyor, bu yüzden burada değiştirilmez.",
     "The table was in use (a long query or a backup was running), so it was left as it is. The general job tries again at the quietest hour of the day.": "Tablo kullanımdaydı (uzun bir sorgu ya da yedek çalışıyordu), bu yüzden olduğu gibi bırakıldı. Genel görev günün en sakin saatinde yeniden dener.",
     "The table was made from the starter.": "Tablo başlangıç şablonundan oluşturuldu.",
     "The table was made: add its columns.": "Tablo oluşturuldu: sütunlarını ekleyin.",

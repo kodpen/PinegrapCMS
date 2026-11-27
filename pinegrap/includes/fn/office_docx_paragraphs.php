@@ -111,16 +111,15 @@ function pg_office_docx_add_allowed($paragraph)
 }
 
 /**
- * A new, empty paragraph placed right after another node, with the
- * paragraph properties of the paragraph it follows: its style, numbering,
- * alignment and the formatting of its mark. Not copied: the section break,
- * a page break before, and tracked changes of the properties.
+ * A new, empty paragraph with the paragraph properties of another: its
+ * style, numbering, alignment and the formatting of its mark. Not copied:
+ * the section break, a page break before, and tracked changes of the
+ * properties.
  *
  * @param DOMElement $anchor the paragraph whose kind it takes
- * @param DOMElement $after  the node it is placed after (the anchor, or a paragraph added after it)
- * @return DOMElement
+ * @return DOMElement not yet placed
  */
-function pg_office_docx_paragraph_add($anchor, $after)
+function pg_office_docx_paragraph_new($anchor)
 {
     $document = $anchor->ownerDocument;
     $prefix = ((string) $anchor->prefix !== '') ? $anchor->prefix . ':' : '';
@@ -151,25 +150,79 @@ function pg_office_docx_paragraph_add($anchor, $after)
         }
     }
 
+    return $paragraph;
+}
+
+/**
+ * A new, empty paragraph placed right after another node, with the
+ * paragraph properties of the paragraph it follows
+ * (pg_office_docx_paragraph_new()).
+ *
+ * @param DOMElement $anchor the paragraph whose kind it takes
+ * @param DOMElement $after  the node it is placed after (the anchor, or a paragraph or table added after it)
+ * @return DOMElement
+ */
+function pg_office_docx_paragraph_add($anchor, $after)
+{
+    $paragraph = pg_office_docx_paragraph_new($anchor);
     $after->parentNode->insertBefore($paragraph, $after->nextSibling);
 
     return $paragraph;
 }
 
 /**
- * Adds the asked paragraphs into a document being saved, each with its
- * text, format, kind and alignment as a changed paragraph has them.
+ * Gives a new paragraph its asked text, format and alignment, and queues
+ * its kind.
+ *
+ * @param DOMElement $paragraph
+ * @param array      $item  text, format, kind, align (pg_office_docx_change_parts())
+ * @param array      $kinds list of [paragraph, kind], added to
+ * @param array|null $links pg_office_docx_link_context(), for links in its format
+ * @return string '' when written, else the refusal's code
+ */
+function pg_office_docx_paragraph_fill($paragraph, $item, &$kinds, &$links)
+{
+    if (($item['text'] !== null) && ($item['text'] !== '')) {
+        pg_office_docx_paragraph_write($paragraph, pg_office_docx_paragraph_edit($paragraph), $item['text']);
+    }
+
+    if ($item['format'] !== null) {
+        $code = pg_office_docx_paragraph_format($paragraph, $item['format'], $links);
+
+        if ($code !== '') {
+            return $code;
+        }
+    }
+
+    if (isset($item['align'])) {
+        pg_office_docx_paragraph_align_set($paragraph, $item['align']);
+    }
+
+    if ($item['kind'] !== null) {
+        $kinds[] = array($paragraph, $item['kind']);
+    }
+
+    return '';
+}
+
+/**
+ * Adds the asked paragraphs and tables into a document being saved, each
+ * paragraph with its text, format, kind and alignment as a changed
+ * paragraph has them, each table with its cells
+ * (includes/fn/office_docx_table.php).
  *
  * @param DOMElement[] $paragraphs the document's paragraphs before anything was added
- * @param array        $added      list of [after, text, format, kind, align], in the order they read after the same paragraph
+ * @param array        $added      list of [after, text, format, kind, align], or of [after, table, style] for a table,
+ *                                 in the order they read after the same paragraph
  * @param array        $kinds      list of [paragraph, kind] the added ones' kinds are put on
  * @param array|null   $links      pg_office_docx_link_context(), for links in their formats
- * @return array ok, code, paragraph (counted from 1), added (the new paragraphs)
+ * @return array ok, code, paragraph (counted from 1), added (the new paragraphs and tables)
  */
 function pg_office_docx_paragraphs_add($paragraphs, $added, &$kinds, &$links = null)
 {
     $tails = array();
     $made = array();
+    $tables = array();
 
     foreach ($added as $item) {
         $position = $item['after'];
@@ -184,29 +237,34 @@ function pg_office_docx_paragraphs_add($paragraphs, $added, &$kinds, &$links = n
             return array('ok' => false, 'code' => 'add_locked', 'paragraph' => (string) ($position + 1), 'added' => $made);
         }
 
-        $paragraph = pg_office_docx_paragraph_add($anchor, isset($tails[$position]) ? $tails[$position] : $anchor);
+        $after = isset($tails[$position]) ? $tails[$position] : $anchor;
+
+        if (isset($item['table'])) {
+            $element = pg_office_docx_table_add($anchor, $after, $item['table'], $item['style'], $kinds, $links);
+
+            if (is_string($element)) {
+                return array('ok' => false, 'code' => $element, 'paragraph' => (string) ($position + 1), 'added' => $made);
+            }
+
+            $tails[$position] = $element;
+            $made[] = $element;
+            $tables[] = $element;
+            continue;
+        }
+
+        $paragraph = pg_office_docx_paragraph_add($anchor, $after);
         $tails[$position] = $paragraph;
         $made[] = $paragraph;
+        $code = pg_office_docx_paragraph_fill($paragraph, $item, $kinds, $links);
 
-        if (($item['text'] !== null) && ($item['text'] !== '')) {
-            pg_office_docx_paragraph_write($paragraph, pg_office_docx_paragraph_edit($paragraph), $item['text']);
+        if ($code !== '') {
+            return array('ok' => false, 'code' => $code, 'paragraph' => (string) ($position + 1), 'added' => $made);
         }
+    }
 
-        if ($item['format'] !== null) {
-            $code = pg_office_docx_paragraph_format($paragraph, $item['format'], $links);
-
-            if ($code !== '') {
-                return array('ok' => false, 'code' => $code, 'paragraph' => (string) ($position + 1), 'added' => $made);
-            }
-        }
-
-        if (isset($item['align'])) {
-            pg_office_docx_paragraph_align_set($paragraph, $item['align']);
-        }
-
-        if ($item['kind'] !== null) {
-            $kinds[] = array($paragraph, $item['kind']);
-        }
+    // Once everything is in place, a paragraph follows each new table.
+    foreach ($tables as $table) {
+        pg_office_docx_table_close($table);
     }
 
     return array('ok' => true, 'code' => '', 'paragraph' => '', 'added' => $made);
@@ -215,7 +273,8 @@ function pg_office_docx_paragraphs_add($paragraphs, $added, &$kinds, &$links = n
 /**
  * Deletes the asked paragraphs, from the last one up, each checked as the
  * document stands then: deleting a cell's last two paragraphs stops at the
- * last.
+ * last. A paragraph already gone with a deleted row, column or table is
+ * passed over.
  *
  * @param DOMElement[] $paragraphs the document's paragraphs before anything was added
  * @param int[]        $positions
@@ -228,6 +287,11 @@ function pg_office_docx_paragraphs_delete($paragraphs, $positions)
     foreach ($positions as $position) {
         if (!isset($paragraphs[$position])) {
             return array('ok' => false, 'code' => 'missing', 'paragraph' => (string) ($position + 1));
+        }
+
+        // Gone already with a row, a column or a table deleted.
+        if (!pg_office_docx_table_attached($paragraphs[$position])) {
+            continue;
         }
 
         $refusal = pg_office_docx_delete_refusal($paragraphs[$position]);

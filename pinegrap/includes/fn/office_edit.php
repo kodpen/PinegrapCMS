@@ -3366,7 +3366,10 @@ function pg_office_docx_change_parts($change, $added)
  *                          align => start, center, end or justify (pg_office_docx_align_request())];
  *                          text, format, kind or align may be left out when another is there. [p, delete => true] deletes
  *                          the paragraph; [after => a paragraph's position, text, format, kind] adds one after it
- *                          (includes/fn/office_docx_paragraphs.php), several after the same one in the order listed, with an align too
+ *                          (includes/fn/office_docx_paragraphs.php), several after the same one in the order listed, with an align too;
+ *                          [after, table => [rows, columns, cells]] adds a table after it, and [cell => a paragraph's position,
+ *                          table => an action, cells] puts a row or column in or deletes one, or the table, where that paragraph
+ *                          is in a table (includes/fn/office_docx_table.php)
  * @param string $version   what the person opened (pg_office_version())
  * @param string $directory where the new package is built; data/temp when ''
  * @return array ok, code, error, size, version, changed
@@ -3396,12 +3399,38 @@ function pg_office_docx_save($path, $changes, $version, $directory = '')
     // together.
     $wanted = array();
     $added = array();
+    $tables = array();
 
     foreach ($changes as $change) {
-        // A paragraph added after another, named by the other's position.
+        // A row or column put in or deleted, or a table deleted, in the
+        // table a paragraph is in (includes/fn/office_docx_table.php).
+        if (is_array($change) && !isset($change['p']) && !isset($change['after']) && isset($change['cell'], $change['table'])) {
+            $item = pg_office_docx_table_change_request($change);
+
+            if (is_string($item)) {
+                return $fail($item);
+            }
+
+            $tables[] = $item;
+            continue;
+        }
+
+        // A paragraph or a table added after another paragraph, named by
+        // the other's position.
         if (is_array($change) && !isset($change['p']) && isset($change['after'])) {
             if (!is_scalar($change['after']) || !ctype_digit((string) $change['after'])) {
                 return $fail('none');
+            }
+
+            if (isset($change['table'])) {
+                $table = pg_office_docx_table_request($change['table']);
+
+                if (is_string($table)) {
+                    return $fail($table);
+                }
+
+                $added[] = array('after' => (int) $change['after'], 'table' => $table);
+                continue;
             }
 
             $item = pg_office_docx_change_parts($change, true);
@@ -3444,8 +3473,8 @@ function pg_office_docx_save($path, $changes, $version, $directory = '')
         return $fail('busy');
     }
 
-    $result = pg_office_save_package($path, (string) $version, $directory, $fail, function ($zip, $spool) use ($wanted, $added, $fail) {
-        return pg_office_docx_save_parts($zip, $wanted, $fail, $spool, $added);
+    $result = pg_office_save_package($path, (string) $version, $directory, $fail, function ($zip, $spool) use ($wanted, $added, $tables, $fail) {
+        return pg_office_docx_save_parts($zip, $wanted, $fail, $spool, $added, $tables);
     });
 
     pg_office_edit_unlock($lock);
@@ -3462,10 +3491,12 @@ function pg_office_docx_save($path, $changes, $version, $directory = '')
  *                           align => an alignment or null, delete => true to delete it]
  * @param callable   $fail
  * @param callable   $spool  writes a part to a file (pg_office_save_package())
- * @param array      $added  paragraphs to add: list of [after => a position, text, format, kind, align]
+ * @param array      $added  paragraphs to add: list of [after => a position, text, format, kind, align], or of
+ *                           [after, table => pg_office_docx_table_request()]
+ * @param array      $tables changes to tables: list of pg_office_docx_table_change_request()
  * @return array ok, parts (part name => file), changed; or a refusal
  */
-function pg_office_docx_save_parts($zip, $wanted, $fail, $spool, $added = array())
+function pg_office_docx_save_parts($zip, $wanted, $fail, $spool, $added = array(), $tables = array())
 {
     $refusal = pg_office_docx_edit_refusal($zip);
 
@@ -3497,8 +3528,25 @@ function pg_office_docx_save_parts($zip, $wanted, $fail, $spool, $added = array(
     // A link leaving the document is a relationship of the main part: read
     // when a format asks for a link (includes/fn/office_docx_link.php).
     $links = null;
+    $items = array_values($wanted);
 
-    foreach (array_merge(array_values($wanted), $added) as $change) {
+    // The paragraphs asked for in new cells hold formats too.
+    foreach (array_merge($added, $tables) as $change) {
+        if (!isset($change['table']) && !isset($change['action'])) {
+            $items[] = $change;
+            continue;
+        }
+
+        $rows = isset($change['table']) ? $change['table']['cells'] : array((array) $change['cells']);
+
+        foreach ($rows as $row) {
+            foreach ($row as $cell) {
+                $items = array_merge($items, $cell);
+            }
+        }
+    }
+
+    foreach ($items as $change) {
         foreach ((array) $change['format'] as $range) {
             if (($links === null) && is_array($range[2]) && array_key_exists('link', $range[2])) {
                 $rels = pg_zip_entry_contents($zip, 'word/_rels/document.xml.rels', PG_OFFICE_EDIT_MAX_DOCUMENT, $unread_rels);
@@ -3588,6 +3636,16 @@ function pg_office_docx_save_parts($zip, $wanted, $fail, $spool, $added = array(
     }
 
     if (!empty($added)) {
+        // A new table takes the document's table style when it has one.
+        $style = null;
+
+        foreach ($added as $index => $item) {
+            if (isset($item['table'])) {
+                $style = ($style === null) ? pg_office_docx_table_style($zip, $document) : $style;
+                $added[$index]['style'] = $style;
+            }
+        }
+
         $result = pg_office_docx_paragraphs_add($paragraphs, $added, $kinds, $links);
 
         if (!$result['ok']) {
@@ -3596,6 +3654,21 @@ function pg_office_docx_save_parts($zip, $wanted, $fail, $spool, $added = array(
 
         foreach ($result['added'] as $index => $paragraph) {
             $changed[spl_object_hash($paragraph)] = true;
+        }
+    }
+
+    // Rows and columns put in and deleted, tables deleted
+    // (includes/fn/office_docx_table.php).
+    if (!empty($tables)) {
+        $result = pg_office_docx_tables_change($paragraphs, $tables, $kinds, $links);
+
+        if (!$result['ok']) {
+            return $fail($result['code'], $result['paragraph']);
+        }
+
+        // Each change counted once, under a name of its own.
+        for ($index = 0; $index < $result['changed']; $index++) {
+            $changed['table:' . $index] = true;
         }
     }
 
@@ -3621,6 +3694,11 @@ function pg_office_docx_save_parts($zip, $wanted, $fail, $spool, $added = array(
         foreach (pg_office_docx_paragraphs($document) as $index => $paragraph) {
             $order[$paragraph] = $index;
         }
+
+        // A paragraph gone with a deleted row or table keeps no kind.
+        $kinds = array_values(array_filter($kinds, function ($item) use ($order) {
+            return isset($order[$item[0]]);
+        }));
 
         usort($kinds, function ($a, $b) use ($order) {
             return $order[$a[0]] - $order[$b[0]];
@@ -3729,6 +3807,18 @@ function pg_office_docx_edit_message($code, $paragraph = '')
             return lang(array('string' => 'Paragraph {var:1} holds one end of a bookmark that reaches into other paragraphs, so it is not deleted here.', 'vars' => array($paragraph)));
         case 'add_locked':
             return lang(array('string' => 'No paragraph can be added after paragraph {var:1} here: it is in a content control, a text box, a merged cell or a tracked change.', 'vars' => array($paragraph)));
+        case 'table_size':
+            return lang(array('string' => 'A new table has 1 to {var:1} rows and 1 to {var:2} columns.', 'vars' => array(PG_OFFICE_DOCX_TABLE_MAX_ROWS, PG_OFFICE_DOCX_TABLE_MAX_COLUMNS)));
+        case 'table_wide':
+            return lang(array('string' => 'A table has at most {var:1} columns.', 'vars' => array(PG_OFFICE_DOCX_TABLE_WIDEST)));
+        case 'table_missing':
+            return lang(array('string' => 'Paragraph {var:1} is not in a table.', 'vars' => array($paragraph)));
+        case 'table_merged':
+            return lang(array('string' => 'The table of paragraph {var:1} has merged or uneven cells, so its rows and columns are not changed here.', 'vars' => array($paragraph)));
+        case 'table_locked':
+            return lang(array('string' => 'The table of paragraph {var:1} is in a content control or holds tracked changes, so it is not changed here.', 'vars' => array($paragraph)));
+        case 'table_delete':
+            return lang(array('string' => 'What would be deleted at paragraph {var:1} holds a picture, a field, a comment, a note, a content control or one end of a bookmark, so it is not deleted here.', 'vars' => array($paragraph)));
         case 'unusual':
             return lang('This document cannot be changed here.');
     }

@@ -2066,6 +2066,7 @@
     "A new subscription request": "Yeni bir abonelik talebi",
     "A new support request": "Yeni bir destek talebi",
     "A new table booking": "Yeni bir masa rezervasyonu",
+    "A new table has 1 to {var:1} rows and 1 to {var:2} columns.": "Yeni bir tablo 1 ile {var:1} arasında satır ve 1 ile {var:2} arasında sütun içerir.",
     "A new table in #{var:1}": "#{var:1} kanalında yeni bir tablo",
     "A new tailor-made enquiry": "Yeni bir size özel seyahat talebi",
     "A new team member's first screens for their role": "Yeni bir ekip üyesinin rolüne göre ilk ekranları",

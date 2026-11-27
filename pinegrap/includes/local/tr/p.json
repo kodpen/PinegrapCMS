@@ -382,6 +382,7 @@
     "Paragraph {var:1} holds a picture, so it is not deleted here.": "{var:1}. paragrafta resim var, bu yüzden burada silinmez.",
     "Paragraph {var:1} holds more than text and cannot be changed here.": "{var:1}. paragrafta metinden fazlası var; burada değiştirilemez.",
     "Paragraph {var:1} holds one end of a bookmark that reaches into other paragraphs, so it is not deleted here.": "{var:1}. paragraf, başka paragraflara uzanan bir yer işaretinin bir ucunu taşıyor, bu yüzden burada silinmez.",
+    "Paragraph {var:1} is not in a table.": "{var:1}. paragraf bir tablonun içinde değil.",
     "Paragraph {var:1} is not in the file.": "{var:1}. paragraf dosyada yok.",
     "Paragraph {var:1} is the last paragraph of a table cell, which cannot be left without one, so it is not deleted.": "{var:1}. paragraf, paragrafsız bırakılamayan bir tablo hücresinin son paragrafı, bu yüzden silinmez.",
     "Paragraph {var:1} is the last paragraph of the document, so it is not deleted. Its text can be emptied.": "{var:1}. paragraf belgenin son paragrafı, bu yüzden silinmez. Metni boşaltılabilir.",
