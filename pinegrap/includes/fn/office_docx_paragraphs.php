@@ -163,9 +163,10 @@ function pg_office_docx_paragraph_add($anchor, $after)
  * @param DOMElement[] $paragraphs the document's paragraphs before anything was added
  * @param array        $added      list of [after, text, format, kind, align], in the order they read after the same paragraph
  * @param array        $kinds      list of [paragraph, kind] the added ones' kinds are put on
+ * @param array|null   $links      pg_office_docx_link_context(), for links in their formats
  * @return array ok, code, paragraph (counted from 1), added (the new paragraphs)
  */
-function pg_office_docx_paragraphs_add($paragraphs, $added, &$kinds)
+function pg_office_docx_paragraphs_add($paragraphs, $added, &$kinds, &$links = null)
 {
     $tails = array();
     $made = array();
@@ -192,7 +193,7 @@ function pg_office_docx_paragraphs_add($paragraphs, $added, &$kinds)
         }
 
         if ($item['format'] !== null) {
-            $code = pg_office_docx_paragraph_format($paragraph, $item['format']);
+            $code = pg_office_docx_paragraph_format($paragraph, $item['format'], $links);
 
             if ($code !== '') {
                 return array('ok' => false, 'code' => $code, 'paragraph' => (string) ($position + 1), 'added' => $made);

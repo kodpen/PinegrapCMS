@@ -238,12 +238,13 @@ function pg_office_docx_look_style($look)
  * The look of an editable paragraph's text, stretch by stretch: what the
  * editor starts from when it shows and changes the format.
  *
- * @param array $edit pg_office_docx_paragraph_edit() of it
+ * @param array      $edit pg_office_docx_paragraph_edit() of it
+ * @param array|null $rels the main part's relationships (pg_office_rels()): a run in a link carries its address as l
  * @return array [[characters, bits], ...] covering the text in order; a
- *               stretch with a colour, highlight or size of its own carries
- *               pg_office_docx_run_look() third: [characters, bits, {c, h, s}]
+ *               stretch with a colour, highlight or size of its own, or in a
+ *               link, carries pg_office_docx_run_look() third: [characters, bits, {c, h, s, l}]
  */
-function pg_office_docx_paragraph_marks($edit)
+function pg_office_docx_paragraph_marks($edit, $rels = null)
 {
     $marks = array();
 
@@ -256,6 +257,11 @@ function pg_office_docx_paragraph_marks($edit)
 
         $mark = array($length, pg_office_docx_run_bits($run['run']));
         $look = pg_office_docx_run_look($run['run']);
+        $link = ($rels !== null) ? pg_office_docx_run_link($run['run'], $rels) : '';
+
+        if ($link !== '') {
+            $look['l'] = $link;
+        }
 
         if (!empty($look)) {
             $mark[] = $look;
@@ -276,7 +282,8 @@ function pg_office_docx_paragraph_marks($edit)
 /**
  * A paragraph's format change as a save sends it, checked: a list of
  * {start, end, set: {bold|italic|underline: true|false, color: RRGGBB|false,
- * highlight: a Word highlight name|false, size: points|false}}.
+ * highlight: a Word highlight name|false, size: points|false, link: an
+ * address|false}}.
  *
  * @param mixed $format
  * @return array|null [[start, end, [property => bool]], ...]; null when it is not one
@@ -317,6 +324,18 @@ function pg_office_docx_format_request($format)
         $set = array();
 
         foreach ($range['set'] as $property => $on) {
+            // A link's address (includes/fn/office_docx_link.php).
+            if ($property === 'link') {
+                $on = ($on === false) ? false : pg_office_docx_link_value($on);
+
+                if ($on === null) {
+                    return null;
+                }
+
+                $set[$property] = $on;
+                continue;
+            }
+
             if (isset($values[$property]) && ($on !== false)) {
                 $on = pg_office_docx_format_value($property, $on);
 
@@ -733,11 +752,16 @@ function pg_office_docx_runs_join($first, $second)
  * stretches of an editable paragraph's text, splitting the runs a stretch starts or ends inside and joining the
  * reached runs that end up looking the same.
  *
+ * A link stretch puts the text into a link or takes it out of its links
+ * (pg_office_docx_paragraph_link()); a link leaving the document adds its
+ * relationship to $links.
+ *
  * @param DOMElement $paragraph
  * @param array      $ranges pg_office_docx_format_request()
+ * @param array|null $links  pg_office_docx_link_context(); made when a link needs it and it is null
  * @return string '' when written; locked or format_range
  */
-function pg_office_docx_paragraph_format($paragraph, $ranges)
+function pg_office_docx_paragraph_format($paragraph, $ranges, &$links = null)
 {
     $reached = new SplObjectStorage();
     $values = pg_office_docx_format_values();
@@ -774,12 +798,18 @@ function pg_office_docx_paragraph_format($paragraph, $ranges)
             $edit = pg_office_docx_paragraph_edit($paragraph);
         }
 
+        if (array_key_exists('link', $set)) {
+            pg_office_docx_paragraph_link($paragraph, $start, $end, $set['link'], $links, $reached);
+            unset($set['link']);
+            $edit = pg_office_docx_paragraph_edit($paragraph);
+        }
+
         $offset = 0;
 
         foreach ($edit['runs'] as $run) {
             $length = mb_strlen($run['text'], 'UTF-8');
 
-            if (($length > 0) && ($offset >= $start) && ($offset + $length <= $end)) {
+            if (!empty($set) && ($length > 0) && ($offset >= $start) && ($offset + $length <= $end)) {
                 $styled = pg_office_docx_run_styled($paragraph, $run['run']);
 
                 foreach ($set as $property => $on) {

@@ -167,6 +167,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/office_size.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/office_docx_format.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/office_docx_kind.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/office_docx_paragraphs.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/office_docx_link.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/office_new.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/xlsx_write.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/sheet_read.php');

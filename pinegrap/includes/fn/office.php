@@ -1904,7 +1904,7 @@ function pg_office_docx_inline(&$state, $parent)
                 $rel = $state['rels'][$rel_id] ?? null;
                 $href = ($rel && $rel['external']) ? (string) $rel['target'] : '';
 
-                if (($href !== '') && preg_match('#^(https?://|mailto:)#i', $href)) {
+                if (($href !== '') && preg_match('#^(https?://|mailto:|tel:)#i', $href)) {
                     $html .= '<a href="' . h($href) . '" target="_blank" rel="noopener noreferrer">' . $inner . '</a>';
                 } else {
                     $html .= $inner;
@@ -2239,7 +2239,7 @@ function pg_office_docx_edit_mark(&$state, $paragraph)
     // the start, which the editor's format bar starts from
     // (includes/fn/office_docx_format.php).
     if (function_exists('pg_office_docx_paragraph_marks')) {
-        $state['edit']['marks'][(string) $position] = pg_office_docx_paragraph_marks($edit);
+        $state['edit']['marks'][(string) $position] = pg_office_docx_paragraph_marks($edit, isset($state['rels']) ? $state['rels'] : array());
         $align = pg_office_docx_paragraph_align($paragraph);
 
         if ($align !== 'start') {
