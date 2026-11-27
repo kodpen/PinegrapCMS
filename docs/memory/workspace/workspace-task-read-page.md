@@ -30,4 +30,6 @@ description: The task drawer's read page (TM3): an existing task as a page whose
 
 ## Where are the styles and texts?
 - `backend.src.css`, the `.ws-tr-*` block before the channel's Tasks tab rules; the title size is the token `--pg-text-record-title`. Texts are the `tr_*` keys of `ws_js_strings()` (`includes/workspace/screen.php`).
-- Shipped in TM3 of plan `workspace-tasks-modern`.
+
+## Why?
+- Owner (2026-11-27, agent channel message 14812): an opened task was a long form of every field; now a page to read, each value changed in place. TM3 (#12119); the screen as a whole: `workspace-my-tasks-screen.md`.

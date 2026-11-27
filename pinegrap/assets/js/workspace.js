@@ -24095,9 +24095,9 @@
         },
 
         // The channel's tasks as cards in a grid (CSS on .ws-task-grid), into
-        // the Tasks tab or the Board tab's List view; My tasks and a record's
-        // window draw the same rows as a list. filters: status (open, closed,
-        // all), and from the board's toolbar q, priority, person, mine,
+        // the Tasks tab or the Board tab's List view; a record's window draws
+        // the same rows as a list (My Tasks has rows of its own). filters:
+        // status (open, closed, all), and from the board's toolbar q, priority, person, mine,
         // figure (one of the board's figures: its tasks, open or closed),
         // onChange (a task changed: the view is drawn again).
         taskListInto: function (body, filters) {
