@@ -15016,7 +15016,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // A .csv or .tsv is drawn as a sheet in Quick Look, only looked at; the
     // file window keeps opening it in the text editor, where it is changed.
     var OFFICE_SHEET_TYPES = ['csv', 'tsv'];
-    var OFFICE_STRINGS = <?php echo encode_json(pg_office_view_strings()); ?>;
+    var OFFICE_STRINGS = <?php echo encode_json(pg_office_view_strings() + pg_office_format_view_strings()); ?>;
 
     function isOfficeType(type) {
         return OFFICE_TYPES.indexOf(String(type || '').toLowerCase()) !== -1;

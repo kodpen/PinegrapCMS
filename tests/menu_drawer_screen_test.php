@@ -125,3 +125,80 @@ function test_designer_left_panel_hide_is_gone()
 	pg_assert_contains("localStorage.removeItem('pinegrap_designer_hide_left')", $js, 'the old key is removed at load');
 	pg_assert_false(strpos($css, 'sd-hide-left') !== false, 'the style rule is gone');
 }
+
+// Page Design Studio draws no top bar: its tools stand at the head of the
+// main menu's drawer, Go to Site and the account at its foot; every other
+// screen keeps its bar.
+function test_menu_drawer_takes_the_top_bar_in()
+{
+	$drawer = pg_menu_shell_parts(array('hide_menu' => true, 'menu_drawer' => true));
+	pg_assert_true($drawer['bar_in_drawer'], 'the drawer-only screen moves its bar into the drawer');
+
+	foreach (array(array(), array('hide_menu' => true), array('menu_drawer' => false)) as $properties) {
+		pg_assert_false(pg_menu_shell_parts($properties)['bar_in_drawer'], 'any other screen keeps its bar');
+	}
+}
+
+function test_menu_drawer_bar_markup_order()
+{
+	$bar = pg_menu_drawer_bar('<nav id="menu">ROWS</nav>', array(
+		'logo' => 'LOGO',
+		'home' => '/pg/welcome.php',
+		'parent_target' => '',
+		'tools' => array('SEARCH', 'NOTE', 'HELP', 'SETTINGS', 'BELL'),
+		'site' => 'SITE',
+		'account' => '<li>ACCOUNT</li>',
+	));
+
+	pg_assert_contains('<div id="header" class="pg-drawer-bar">', $bar, 'the drawer holds the bar\'s id, so its controls keep their rules');
+	pg_assert_contains('href="/pg/welcome.php"', $bar, 'the logo leads to the panel\'s home');
+	pg_assert_true(preg_match('/<button[^>]*data-pg-menu-drawer-close[^>]*>/', $bar, $close) === 1, 'a close button in the head');
+	pg_assert_contains('aria-controls="menu"', $close[0], 'it controls the menu');
+
+	$order = array('LOGO', 'data-pg-menu-drawer-close', 'SEARCH', 'NOTE', 'HELP', 'SETTINGS', 'BELL', 'ROWS', 'SITE', 'ACCOUNT');
+	$last = -1;
+	foreach ($order as $part) {
+		$at = strpos($bar, $part);
+		pg_assert_true(($at !== false) && ($at > $last), $part . ' in its place');
+		$last = $at;
+	}
+
+	pg_assert_contains('<ul class="navbar-nav pg-db-account"><li>ACCOUNT</li></ul>', $bar, 'the account item in its list');
+}
+
+function test_menu_header_prints_no_top_bar_on_the_drawer_screen()
+{
+	$header = pg_test_function_source('output_header');
+
+	pg_assert_contains("\$bar_in_drawer = (\$menu_parts['bar_in_drawer'] && (\$toolbar != true) && (\$output_menu_nav !== ''));", $header, 'only with a drawer and outside the site bar');
+	pg_assert_contains("\$menu_drawer_class .= ' pg-bar-in-drawer';", $header, 'the container says so');
+	pg_assert_contains("\$output_navbar = '';", $header, 'no top bar there');
+	pg_assert_contains('$output_navbar . \'', $header, 'the bar is printed through the variable');
+	pg_assert_contains('pg_menu_drawer_bar($output_menu_nav, array(', $header, 'the bar\'s controls go into the drawer');
+	pg_assert_same(1, substr_count($header, 'id="notification_toggle"'), 'one bell');
+	pg_assert_same(1, substr_count($header, 'id="EnableSearch"'), 'one search button');
+	pg_assert_same(1, substr_count($header, 'id="help_button"'), 'one help button');
+}
+
+function test_menu_drawer_bar_script()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/backend.src.js');
+
+	pg_assert_contains("var MENU_BAR_IN_DRAWER = document.querySelector('.software-container.pg-bar-in-drawer') !== null;", $js, 'the flag');
+	pg_assert_contains("\$(document).on('click', '[data-pg-menu-drawer-close]', function (e) {", $js, 'the head\'s close button');
+	pg_assert_contains("if (MENU_BAR_IN_DRAWER && next.closest('dialog[open]')) {", $js, 'a window a tool opened keeps the drawer under it');
+	pg_assert_contains("if (!MENU_BAR_IN_DRAWER && isMenuDrawerOpen()) {", $js, 'a menu of a tool keeps the drawer open');
+	pg_assert_contains("\$('[data-pg-menu-drawer-toggle]').addClass('pg-menu-unread');", $js, 'an unread notification marks the opener');
+	pg_assert_contains("\$('[data-pg-menu-drawer-toggle]').removeClass('pg-menu-unread');", $js, 'and the mark goes when all is read');
+}
+
+function test_menu_drawer_bar_styles()
+{
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+
+	pg_assert_contains(".software-container.pg-bar-in-drawer {\n  --pg-navbar-h: 0px;\n  grid-template-rows: 0 minmax(0, 1fr);\n}", $css, 'no row for the bar');
+	pg_assert_true((bool) preg_match('/\[data-pg-menu-drawer-toggle\]\.pg-menu-unread::after \{[^}]*width: 7px;[^}]*height: 7px;/', $css), 'the 7 px dot');
+	pg_assert_contains('.pg-bar-in-drawer #header .pg-quick-note-nav,', $css, 'the quick note stays in the drawer on a phone');
+	pg_assert_contains('.pg-bar-in-drawer #header .pg-usermenu {', $css, 'the account menu opens over the drawer');
+	pg_assert_contains('.pg-bar-in-drawer .sd-wrapper {', $css, 'the editor takes the bar\'s height');
+}

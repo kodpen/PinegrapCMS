@@ -171,10 +171,12 @@ function ws_task_assignees_map($task_ids)
  * A due date as a person reads it: "Today", "Tomorrow", "Fri 26.09", and
  * "overdue" when it has passed.
  *
- * @param array $task
+ * @param array  $task
+ * @param string $today Y-m-d, the reader's day (ws_task_reader_today());
+ *                      anything else is read as the site's today
  * @return string
  */
-function ws_task_due_label($task)
+function ws_task_due_label($task, $today = '')
 {
     $due = (string) ($task['due_date'] ?? '');
 
@@ -182,11 +184,11 @@ function ws_task_due_label($task)
         return lang('No due date');
     }
 
-    $today = date('Y-m-d');
+    $today = preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $today) ? (string) $today : date('Y-m-d');
 
     if ($due === $today) {
         $label = lang('Today');
-    } elseif ($due === date('Y-m-d', strtotime('+1 day'))) {
+    } elseif ($due === gmdate('Y-m-d', strtotime($today . ' 12:00:00 UTC') + 86400)) {
         $label = lang('Tomorrow');
     } else {
         $label = ws_day_label($due);
@@ -221,6 +223,76 @@ function ws_task_is_overdue($due, $status, $today)
 }
 
 /**
+ * The date group a task stands under on My Tasks: past its due date, due
+ * today, due by the last day of this week, due after it, or without a due
+ * date. Whether the task is open does not matter here. Pure.
+ *
+ * @param string|null $due       Y-m-d; empty or 0000-00-00 is no due date
+ * @param string      $today     Y-m-d, the reader's day
+ * @param int         $first_day the day the week starts on, 0 (Sunday) to 6
+ *                               (pg_list_period_week_first_day()); anything
+ *                               else is read as Monday
+ * @return string overdue, today, week, later or none
+ */
+function ws_task_due_group($due, $today, $first_day)
+{
+    $due = (string) $due;
+    $today = (string) $today;
+
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $due) || ($due === '0000-00-00')) {
+        return 'none';
+    }
+
+    if ($due < $today) {
+        return 'overdue';
+    }
+
+    if ($due === $today) {
+        return 'today';
+    }
+
+    $first_day = (int) $first_day;
+
+    if (($first_day < 0) || ($first_day > 6)) {
+        $first_day = 1;
+    }
+
+    // Noon UTC keeps the day arithmetic off any daylight saving change.
+    $noon = strtotime($today . ' 12:00:00 UTC');
+    $left = ($first_day + 6 - (int) gmdate('w', $noon)) % 7;
+
+    return ($due <= gmdate('Y-m-d', $noon + ($left * 86400))) ? 'week' : 'later';
+}
+
+/**
+ * The day a moment falls on in a time zone. Pure.
+ *
+ * @param int    $timestamp
+ * @param string $zone      a zone name; '' or an unknown one is the default
+ *                          zone (pg_timezone_object())
+ * @return string Y-m-d
+ */
+function ws_task_day_in_zone($timestamp, $zone)
+{
+    $date = new DateTime('@' . (int) $timestamp);
+    $date->setTimezone(pg_timezone_object((string) $zone));
+
+    return $date->format('Y-m-d');
+}
+
+/**
+ * Today where the reader is: their own time zone when they have one, else
+ * the site's, as times on panel screens are drawn
+ * (pg_time_uses_user_zone()).
+ *
+ * @return string Y-m-d
+ */
+function ws_task_reader_today()
+{
+    return ws_task_day_in_zone(time(), pg_time_uses_user_zone(array()) ? (string) USER_TIMEZONE : '');
+}
+
+/**
  * The shape a task has in lists, on the board and in the API.
  *
  * @param array $task
@@ -232,6 +304,9 @@ function ws_task_brief($task, $assignees)
     $people = ws_people($assignees);
     $due = (string) ($task['due_date'] ?? '');
     $start = (string) ($task['start_date'] ?? '');
+
+    // The reader's day, where a list hands it in (ws_tasks_list()'s today).
+    $today = (string) ($task['_ws_today'] ?? '');
 
     // The time spent (task_time.php) and the open tasks it waits for
     // (task_links.php); a list hands both in, worked out for all its rows.
@@ -253,8 +328,8 @@ function ws_task_brief($task, $assignees)
         'open'             => ws_task_is_open($task['status']),
         'start_date'       => ($start !== '' && $start !== '0000-00-00') ? $start : null,
         'due_date'         => ($due !== '' && $due !== '0000-00-00') ? $due : null,
-        'due_label'        => ws_task_due_label($task),
-        'overdue'          => ws_task_is_overdue($due, $task['status'], date('Y-m-d')),
+        'due_label'        => ws_task_due_label($task, $today),
+        'overdue'          => ws_task_is_overdue($due, $task['status'], ($today !== '') ? $today : date('Y-m-d')),
         'estimate_minutes' => (int) $task['estimate_minutes'],
         'estimate_label'   => ((int) $task['estimate_minutes'] > 0) ? ws_minutes_label($task['estimate_minutes']) : '',
         'department_id'    => (int) $task['department_id'],
@@ -1458,7 +1533,9 @@ function ws_tasks_for_person($tasks, $person)
  *                       key), limit, agent_channels ('' | include |
  *                       only; only the readers that pass it leave agent
  *                       channels' tasks out: ws_tasks_agent_rule()),
- *                       made_by ('' | people | apps: ws_task_made_by_sql())
+ *                       made_by ('' | people | apps: ws_task_made_by_sql()),
+ *                       today (Y-m-d: the reader's day the due labels and
+ *                       "overdue" read; the site's day when left out)
  * @return array[] briefs
  */
 function ws_tasks_list($viewer, $filters)
@@ -1605,6 +1682,7 @@ function ws_tasks_list($viewer, $filters)
         $row['_ws_time'] = $times[$task_id] ?? 0;
         $row['_ws_blockers'] = $blockers[$task_id] ?? array();
         $row['_ws_waiting'] = $waiting[$task_id] ?? 0;
+        $row['_ws_today'] = (string) ($filters['today'] ?? '');
 
         $brief = ws_task_brief($row, $assignees[$task_id] ?? array());
         $brief['can_edit'] = ws_can_edit_task($viewer, $row, $assignees[$task_id] ?? array());

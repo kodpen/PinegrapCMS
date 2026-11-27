@@ -440,6 +440,7 @@ function pg_connections_transfer_fields()
         'parasut' => array('TR', $order),
         'isbasi' => array('TR', $order),
         'vies' => array('BE', array('identity')),
+        'xero' => array('NZ', $order),
 
         'postmark' => array('US', $mail),
         'mailgun' => array('US', $mail),
@@ -629,6 +630,11 @@ function pg_connections_registry()
             'covers' => array('edoc' => array('isbasi'))),
         'vies' => array('name' => 'VIES', 'group' => 'edocuments', 'place' => '#settings/commerce/pgset-store', 'uses' => 'Checks EU VAT numbers at checkout',
             'state' => null, 'no_state' => 'No key or switch of its own; it runs whenever tax is on.'),
+        // Xero's books: the site's own application, organisation and
+        // accounts are set on its page.
+        'xero' => array('name' => 'Xero', 'group' => 'edocuments', 'place' => 'connections.php', 'uses' => 'Sales, customers and payments sent to the books',
+            'state' => array('kind' => 'account', 'provider' => 'xero', 'purpose' => 'xero', 'attention' => true),
+            'covers' => array('connect' => array('xero'), 'purpose' => array('xero'))),
 
         // E-mail.
         'postmark' => array('name' => 'Postmark', 'group' => 'email', 'place' => '#settings/email/pgset-mail-system', 'uses' => 'Sending the site\'s mail',

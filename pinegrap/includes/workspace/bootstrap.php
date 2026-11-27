@@ -163,6 +163,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_retype.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_shares.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_channel.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_screen.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_screen_bar.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_board.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_import.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_starters.php');

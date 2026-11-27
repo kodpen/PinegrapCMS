@@ -570,6 +570,7 @@ function ws_calendar_plan_place($days, $event)
             'kind'   => (string) $event['kind'],
             'title'  => (string) $event['title'],
             'time'   => ((int) $event['all_day'] === 1) ? '' : date('H:i', max((int) $event['starts_at'], $day_start)),
+            'until'  => ws_calendar_until($event, $day_end),
             'scope'  => (string) $event['scope'],
             'people' => array_values($event['people']),
             'meeting_url' => (string) ($event['meeting_url'] ?? ''),
@@ -577,6 +578,26 @@ function ws_calendar_plan_place($days, $event)
     }
 
     return $days;
+}
+
+/**
+ * Where an event laid on a day stops on that day: "H:i", "24:00" when it
+ * runs on past the day, '' for a whole-day one. An event that ends before
+ * it starts stops at its start. Pure.
+ *
+ * @param array $event   starts_at, ends_at, all_day
+ * @param int   $day_end the next day's midnight
+ * @return string
+ */
+function ws_calendar_until($event, $day_end)
+{
+    if (!empty($event['all_day'])) {
+        return '';
+    }
+
+    $ends = max((int) $event['ends_at'], (int) $event['starts_at']);
+
+    return ($ends >= (int) $day_end) ? '24:00' : date('H:i', $ends);
 }
 
 /**
@@ -631,6 +652,7 @@ function ws_booking_calendar_place($days, $events)
                 'kind'        => 'booking',
                 'title'       => (string) $event['title'],
                 'time'        => date('H:i', max((int) $event['starts_at'], $day_start)),
+                'until'       => ws_calendar_until($event, $day_end),
                 'scope'       => 'people',
                 'people'      => array(),
                 'meeting_url' => '',

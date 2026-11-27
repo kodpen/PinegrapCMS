@@ -17,6 +17,11 @@
  * address and complete() reads the PaymentIntent again before the order is
  * placed.
  *
+ * Beside the card, the methods of pg_payment_stripe_methods() (iDEAL,
+ * Klarna, ...) are offered once the store switched them on and only in a
+ * currency they take. Each is paid on the bank's or the service's own page,
+ * the same redirect a 3-D Secure card takes.
+ *
  * The API is called over HTTPS with the secret key (no SDK), with the API
  * version pinned, so a Stripe account whose default version is older or newer
  * reads and answers the same fields. Every operation is a thin wrapper around
@@ -49,7 +54,7 @@ function pg_payment_stripe_capabilities()
 
 function pg_payment_stripe_fields()
 {
-    return array(
+    return array_merge(array(
         array(
             'name'       => 'publishable_key',
             'label'      => lang('Publishable Key'),
@@ -78,7 +83,7 @@ function pg_payment_stripe_fields()
             'label' => lang('Offer Link'),
             'help'  => lang('Stripe\'s one-click checkout beside the card. Turn Link on in the Stripe Dashboard first.'),
         ),
-    );
+    ), pg_payment_stripe_method_fields(defined('BASE_CURRENCY_CODE') ? (string) BASE_CURRENCY_CODE : ''));
 }
 
 function pg_payment_stripe_prepare($order, $amount)
@@ -144,23 +149,137 @@ function pg_payment_stripe_api_version()
  * The store's Stripe settings.
  *
  * @return array publishable_key, secret_key, webhook_secret, link (bool),
+ *               methods (type => bool: the switches of pg_payment_stripe_methods()),
  *               currency (lowercase ISO code), capture ('automatic' or 'manual'), locale
  */
 function pg_payment_stripe_settings()
 {
     $locale = strtolower(trim((string) lang(array('info' => ''))));
+    $methods = array();
+
+    foreach (array_keys(pg_payment_stripe_methods()) as $type) {
+        $methods[$type] = (pg_payment_setting('stripe', 'method_' . $type) === '1');
+    }
 
     return array(
         'publishable_key' => trim(pg_payment_setting('stripe', 'publishable_key')),
         'secret_key'      => trim(pg_payment_setting('stripe', 'secret_key')),
         'webhook_secret'  => trim(pg_payment_setting('stripe', 'webhook_secret')),
         'link'            => (pg_payment_setting('stripe', 'link') === '1'),
+        'methods'         => $methods,
         'currency'        => strtolower(defined('BASE_CURRENCY_CODE') ? (string) BASE_CURRENCY_CODE : ''),
         // The store's Transaction Type: Authorize holds the money, and the
         // operator takes it on Stripe's own screen, as with the classic code.
         'capture'         => (defined('ECOMMERCE_PAYMENT_GATEWAY_TRANSACTION_TYPE') && (ECOMMERCE_PAYMENT_GATEWAY_TRANSACTION_TYPE == 'Authorize')) ? 'manual' : 'automatic',
         'locale'          => (preg_match('/^[a-z]{2}(-[a-z]{2})?$/', $locale) === 1) ? $locale : 'auto',
     );
+}
+
+/* ---------------------------------------------------------------------------
+   Payment methods beside the card
+   --------------------------------------------------------------------------- */
+
+/**
+ * The payment methods the store can offer beside the card, by Stripe's
+ * payment method type. Each is offered only where the site's base currency
+ * is one of its own (the charge is never converted) and only once the store
+ * switched it on.
+ *
+ * @return array type => label (the method's own name), currencies (uppercase
+ *               ISO codes it takes), immediate (Stripe knows the result when
+ *               the visitor is back), hold (the payment can be held and taken
+ *               later: capture_method manual), step ('redirect': the visitor
+ *               pays on the bank's or the service's page and comes back to the
+ *               checkout's return address)
+ */
+function pg_payment_stripe_methods()
+{
+    return array(
+        'ideal'             => array('label' => 'iDEAL', 'currencies' => array('EUR'), 'immediate' => true, 'hold' => false, 'step' => 'redirect'),
+        'bancontact'        => array('label' => 'Bancontact', 'currencies' => array('EUR'), 'immediate' => true, 'hold' => false, 'step' => 'redirect'),
+        'eps'               => array('label' => 'EPS', 'currencies' => array('EUR'), 'immediate' => true, 'hold' => false, 'step' => 'redirect'),
+        'p24'               => array('label' => 'Przelewy24', 'currencies' => array('EUR', 'PLN'), 'immediate' => true, 'hold' => false, 'step' => 'redirect'),
+        'klarna'            => array('label' => 'Klarna', 'currencies' => array('AUD', 'CAD', 'CHF', 'CZK', 'DKK', 'EUR', 'GBP', 'NOK', 'NZD', 'PLN', 'RON', 'SEK', 'USD'), 'immediate' => true, 'hold' => true, 'step' => 'redirect'),
+        'afterpay_clearpay' => array('label' => 'Afterpay / Clearpay', 'currencies' => array('AUD', 'CAD', 'EUR', 'GBP', 'NZD', 'USD'), 'immediate' => true, 'hold' => true, 'step' => 'redirect'),
+    );
+}
+
+/**
+ * The payment method types a payment is offered with: the card (and Link
+ * when it is offered), then each listed method the store switched on that
+ * takes the currency. The Payment Element (prepare()) and the PaymentIntent
+ * (authorize()) are both built from it, so they agree, as Stripe requires.
+ *
+ * A held payment (Transaction type Authorize) keeps only the methods that can
+ * be held. A payment that keeps the card for renewals (an order with a
+ * recurring line, the renewal itself, the card update) is offered cards
+ * only. Pure.
+ *
+ * @param string $currency  ISO code, any case
+ * @param array  $settings  pg_payment_stripe_settings(): link, capture,
+ *                          methods (type => bool; none when missing)
+ * @param bool   $recurring the payment keeps the card for renewals
+ * @return array list of Stripe types
+ */
+function pg_payment_stripe_method_types($currency, $settings, $recurring = false)
+{
+    $types = !empty($settings['link']) ? array('card', 'link') : array('card');
+
+    if ($recurring) {
+        return $types;
+    }
+
+    $switched = (isset($settings['methods']) && is_array($settings['methods'])) ? $settings['methods'] : array();
+    $currency = strtoupper(trim((string) $currency));
+    $held = (isset($settings['capture']) && ($settings['capture'] === 'manual'));
+
+    foreach (pg_payment_stripe_methods() as $type => $method) {
+        if (!empty($switched[$type]) && in_array($currency, $method['currencies'], true) && (!$held || $method['hold'])) {
+            $types[] = $type;
+        }
+    }
+
+    return $types;
+}
+
+/**
+ * The switches of the methods beside the card, one a method under the group
+ * "Payment methods", each naming its currencies. A method that does not take
+ * the site's base currency is drawn off with the reason (the base currency is
+ * chosen on another screen). Pure.
+ *
+ * @param string $currency the site's base currency, any case; '' when not known
+ * @return array pg_payment_fields_normalize() input
+ */
+function pg_payment_stripe_method_fields($currency)
+{
+    $currency = strtoupper(trim((string) $currency));
+    $fields = array();
+
+    foreach (pg_payment_stripe_methods() as $type => $method) {
+        $currencies = implode(', ', $method['currencies']);
+        $help = lang(array('string' => 'Currencies: {var:1}. Turn {var:2} on in the Stripe Dashboard first.', 'vars' => array($currencies, $method['label'])));
+
+        if (!$method['hold']) {
+            $help .= ' ' . lang('Not offered while Transaction type is Authorize.');
+        }
+
+        $field = array(
+            'name'  => 'method_' . $type,
+            'type'  => 'switch',
+            'label' => $method['label'],
+            'help'  => $help,
+            'group' => ($fields === array()) ? lang('Payment methods') : '',
+        );
+
+        if (($currency !== '') && !in_array($currency, $method['currencies'], true)) {
+            $field['unavailable'] = lang(array('string' => 'Currencies: {var:1}. Off: the store\'s base currency is {var:2}.', 'vars' => array($currencies, $currency)));
+        }
+
+        $fields[] = $field;
+    }
+
+    return $fields;
 }
 
 /**
@@ -508,7 +627,9 @@ function pg_payment_stripe_card_details($intent)
  * @param array $settings pg_payment_stripe_settings()
  * @return array an answer: client = script (Stripe.js, loaded from Stripe as
  *               Stripe requires), publishable_key, amount (Stripe's units),
- *               currency, payment_method_types, locale
+ *               currency, payment_method_types (pg_payment_stripe_method_types()),
+ *               capture_method, locale; setup_future_usage for an order with
+ *               a recurring line
  */
 function pg_payment_stripe_prepare_with($order, $amount, $settings)
 {
@@ -527,7 +648,8 @@ function pg_payment_stripe_prepare_with($order, $amount, $settings)
         'publishable_key'      => $settings['publishable_key'],
         'amount'               => $units,
         'currency'             => $settings['currency'],
-        'payment_method_types' => $settings['link'] ? array('card', 'link') : array('card'),
+        // The intent is created with the same types (authorize()).
+        'payment_method_types' => pg_payment_stripe_method_types($settings['currency'], $settings, is_array($order) && !empty($order['recurring'])),
         // The Payment Element must be built with the capture method the
         // intent is created with (authorize()), or Stripe refuses the
         // confirmation.
@@ -586,7 +708,7 @@ function pg_payment_stripe_authorize_with($order, $amount, $payment, $settings, 
         'currency'             => $settings['currency'],
         'confirm'              => true,
         'confirmation_token'   => $token,
-        'payment_method_types' => $settings['link'] ? array('card', 'link') : array('card'),
+        'payment_method_types' => pg_payment_stripe_method_types($settings['currency'], $settings, !empty($payment['recurring'])),
         'capture_method'       => $settings['capture'],
         'metadata'             => array(
             'order_id'       => $order_id,
@@ -1216,7 +1338,7 @@ function pg_payment_stripe_charge_renewal_with($subscription, $settings, $http)
         'payment_method'       => $payment_method,
         'off_session'          => true,
         'confirm'              => true,
-        'payment_method_types' => $settings['link'] ? array('card', 'link') : array('card'),
+        'payment_method_types' => pg_payment_stripe_method_types($currency, $settings, true),
         // Nobody is there to take a held renewal on Stripe's screen.
         'capture_method'       => 'automatic',
         // No order_id: the webhook would take the renewal for the first order.
@@ -1354,7 +1476,7 @@ function pg_payment_stripe_update_card_with($subscription, $settings, $http, $no
     $call = pg_payment_stripe_call($http, $settings, 'POST', '/v1/checkout/sessions', array(
         'mode'                 => 'setup',
         'customer'             => $card[0],
-        'payment_method_types' => $settings['link'] ? array('card', 'link') : array('card'),
+        'payment_method_types' => pg_payment_stripe_method_types($settings['currency'], $settings, true),
         'success_url'          => $return_url,
         'cancel_url'           => $return_url,
         'locale'               => $settings['locale'],

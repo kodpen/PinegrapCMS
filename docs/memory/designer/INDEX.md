@@ -389,7 +389,7 @@
 - designer-bootstrap-vocabulary.md: The Bootstrap 5 vocabulary of the designer's smart completion (assets/js/designer_vocab/bootstrap5.json): how it is generated and kept, its keys and what each entry holds
 - designer-bottom-panel-heads.md: The Page Design Studio bottom panel heads (30 px, one chevron at the right end, tags, "No element selected", the narrow Styles head) and the status bar line, Help and Validate
 - designer-canvas-absolute-position.md: Where the designer canvas places an absolutely positioned element (sd-fx-abs, sd-fx-unpos), which wrappers stop the walk, and how the chrome of see-through wrappers is placed.
-- designer-canvas-bands-drag-start.md: Canvas spacing bands fixes: handles take a drag (#11921: late PGSpacingBox, hit areas, auto start), back after Prototype, hidden once the selection empties (#11939)
+- designer-canvas-bands-drag-start.md: Canvas spacing bands fixes: handles take a drag (#11921: late PGSpacingBox, hit areas, auto start), back after Prototype, hidden once the selection empties (#11939, #12004)
 - designer-canvas-bar-prototype.md: The canvas bar's Prototype mode (DP24, #10507): its zones, where each control of the Prototype view's old bar went, zoom per mode, keys, folding, the Comments button (PN6) [decision: here]
 - designer-canvas-bar.md: The canvas bar above the Page Design Studio's canvas (DP22, #10205): the Design | Prototype switch, screen sizes and zoom, the View menu (Shared parts…) and badge, Find and History; its measures
 - designer-canvas-chrome-placement.md: Designer chrome that must not move or cover the canvas: the context bar's reserved row, the toolbar spot above/below/inside (_sdTbSpot), the page root's name tag at the bottom-left, the size badge.
@@ -469,6 +469,7 @@
 - designer-gutter-overflow.md: Why wide row gutters (g-5) overflow inside .container on phones, the g-4 g-lg-5 rule, and how to measure responsive overflow of a block.
 - designer-hidden-page-endpoints.md: Editor endpoints asked by page id keep the hidden-page rule of the tab list: page_load, form_fields and notes_fetch refuse a page behind a folder the operator may not know about
 - designer-hide-on-sticky-from.md: Style › Size and display's "Hide on" (Phone, Tablet, Desktop) and "Sticky from" a size (DO3): Bootstrap's d-* and sticky-{size}-top classes, written and read back by pg_size_style.js
+- designer-home-classic-styles.md: Styles the Page Design Studio home and the design chooser list: every visual design; a classic style only while one of its tree pages is outside the Recycle Bin (#12019)
 - designer-home-colours.md: Page Design Studio home colours (#3267): neutral greys plus the panel's primary token, the previews keep theirs, status as words and a shaped mark, tooltips
 - designer-home-menu.md: The Page Design Studio home's menu on a design or a page chip: how it opens, its rows in groups without icons, its texts
 - designer-home-narrow.md: The New design window below 768 px (a list, then the pane with "All starts") and the Page Design Studio home on a phone (one column, the other designs as a list) [decision: here]
@@ -651,7 +652,7 @@
 - designer-start-import-drawing-home-line.md: The line a Figma import puts on the design's card of the designs home, as drawn (figma.html, B11 and B12, ST5b): four states, "Continue", the dialog "Stop" opens, "Report"
 - designer-start-import-drawing.md: The drawing of the Figma and Canva starts (`designer-start-import.md`, built in ST3, ST5 and ST6): the three sheets, where each part is described, and which board belongs to which step
 - designer-start-import.md: The Figma and Canva starts of the New design window (2026-11): what the owner asked, where each part is written, and what was left unbuilt [decision: decisions-made-product-105.md, decisions-made-product-106.md]
-- designer-sticky-panel-layout.md: Designer panel docking (docked drawer vs in-flow, 32px rail, sd-dock-* classes, _SD_DOCK_BP 992px, one layer at a time, three-strip bottom panel, rail icons) and the bottom panel edge drag.
+- designer-sticky-panel-layout.md: Designer panel docking (docked drawer vs in-flow, 32px rail, sd-dock-* classes, _SD_DOCK_BP 992px, one layer at a time, three-strip bottom panel, rail icons) and the bottom panel edge drag. [decision: here]
 - designer-style-guide-blocks-drawing.md: The drawing of the Style guide's blocks Type, Spacing, Shape, Controls and Components, a name's click through to its variable or component, and the print sheet (boards G2 to G4, G6)
 - designer-style-guide-drawing.md: The drawing of the designer's Style guide: the Preview menu row, the window with its head and strip, the Colours block, dark, a design with no variables, a phone's width (boards G1, G5, G7)
 - designer-style-guide-print-links.md: The Style guide's names as links to a variable or component and "Print or save as PDF" (SG3, #11678): openVariable, openComponent, reveal, the @page head and foot

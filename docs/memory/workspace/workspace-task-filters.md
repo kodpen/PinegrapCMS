@@ -14,7 +14,7 @@ description: My Tasks, planning board and Work Calendar filters (workspace.js): 
 - `ws_tasks_list()` reads `department_id` only in the department scope (`includes/workspace/tasks.php`), so choosing any other view resets the select and `state.department_id` to 0; before, the select kept a department the list ignored.
 
 ## What is left alone?
-- `taskRows()` and its "All clear" empty state are shared with a channel's task tab and the drawers. My Tasks draws its own empty screen instead (`emptyScreen()`, "Nothing found" with Clear when filtered); the status line says when a search finds nothing.
+- `taskRows()` and its "All clear" empty state are shared with a channel's task tab and the drawers. My Tasks draws its own rows (`workspace-my-tasks-screen.md`) and its own empty screen (`emptyScreen()`, "Nothing found" with Clear when filtered); the status line says when a search finds nothing.
 
 ## What pins it?
 - `tests/workspace_task_filters_test.php` (source pins). Added in #3353; the bar since #11104.

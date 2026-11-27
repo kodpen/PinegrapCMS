@@ -380,29 +380,26 @@ function pg_image_editor_data_show_config($table, $channel, $channels = array())
 }
 
 /**
- * "Show on a canvas" on a table's head, first in its bar: the Menus pattern
- * of the Design examples screen (a pg-button with its word opening .menu)
- * with "As a chart" and "As a table" (pg_image_editor_data_show_assets()
- * prints the rest).
+ * "Show on a canvas" in the "⋯" menu of a table's bar
+ * (ws_wtable_screen_menu()): a header and its two entries, "As a chart" and
+ * "As a table" (pg_image_editor_data_show_assets() prints the rest).
  * Each entry opens the Data picker's second step on the table
  * (workspace_wtables.php's script, dataShow in pg_image_editor_data.js).
  *
- * @return string HTML
+ * @return array menu items of ws_wtable_screen_menu()
  */
-function pg_image_editor_data_show_menu()
+function pg_image_editor_data_show_items()
 {
-    return '<span class="pg-menu-wrap" id="ws_wt_canvas_wrap">'
-        . '<button type="button" class="pg-button pg-button-ghost" id="ws_wt_canvas_button" data-bs-toggle="menu" aria-expanded="false">'
-        . pg_design_canvas_icon_one_colour('me-1') . h(lang('Show on a canvas')) . '<i class="bi bi-chevron-down ms-1" aria-hidden="true"></i></button>'
-        . '<ul class="menu">'
-        . '<li><button type="button" class="menu-item" data-ws-wt-canvas="chart"><i class="bi bi-bar-chart me-3" aria-hidden="true"></i>' . h(lang('As a chart')) . '</button></li>'
-        . '<li><button type="button" class="menu-item" data-ws-wt-canvas="table"><i class="bi bi-table me-3" aria-hidden="true"></i>' . h(lang('As a table')) . '</button></li>'
-        . '</ul></span>';
+    return array(
+        array('header' => lang('Show on a canvas')),
+        array('label' => lang('As a chart'), 'icon' => 'bi-bar-chart', 'attrs' => 'data-ws-wt-canvas="chart"'),
+        array('label' => lang('As a table'), 'icon' => 'bi-table', 'attrs' => 'data-ws-wt-canvas="table"'),
+    );
 }
 
 /**
  * What the menu's entries hand the editor, and the editor's loader, printed
- * outside the button bar.
+ * outside the bar.
  *
  * @param array $config pg_image_editor_data_show_config()
  * @return string HTML

@@ -171,7 +171,7 @@
 - claude-plugin-census.md: Claude plugin bundle as Anthropic's pages state it (read 2026-11-14): folder and manifest, directory checks and policy, which Claude app loads what, and how a bundle can (not) ask for a site's address [decision: here]
 - claude-plugin-tool-check.md: The site's MCP tools checked against Claude's directory rules (2026-11-14): name length, annotations, and the routes that move money or issue stored value, by route id and scope [decision: here]
 - connections-registry-rows.md: Every row of the registry of outside services by group: the place of its setting (Site Settings card or screen) and how its state is read, and the services that show no state, with why
-- connections-registry.md: Registry of outside services (pg_connections_registry()): a row, the count rule, the figure (85 + 12 MCP connectors), the difference from the census's 79, adding a service [decision: here]
+- connections-registry.md: Registry of outside services (pg_connections_registry()): a row, the count rule, the figure (86 + 12 MCP connectors), the difference from the census's 79, adding a service [decision: here]
 - external-api-authorization.md: External API authorization: app scopes x owner scopes, write implies read, where a new scope goes, what failed sign-ins do, the removed apps.php model; role-3 rows in api-user-role-rows
 - external-api-iis-environment.md: What IIS and the WAF impose on the external API: path-based API detection, rate buckets outside the sensitive limit, no PATCH/DELETE, POST twins, older deletes on a plain POST, first-match routing [decision: decisions-made-product-13.md]
 - figma-api-file-reads.md: Figma REST file reads (read 2026-11-24): GET file and nodes, depth and ids, frame auto layout (with GRID), text style, component instances, the styles map
@@ -212,3 +212,4 @@
 - workspace-mcp-small-file.md: Posting a file into a channel over MCP (workspace_files_create, PR #1830): content_base64 and name only, at most 1 MB measured before decoding, larger files over REST, why
 - workspace-message-file-api.md: The API routes for files in a message (#9769): post a file of the file manager, put an edited file in place of the old one (own words, no tool), list a file's earlier versions
 - workspace-thread-approval-api.md: The API routes (#9794) that conclude or rename a discussion and take back or close an approval request: the panel function each runs, the check it shares for the dry run, who may and the refusals
+- xero-connection.md: Xero connected (#12069): the site's own app, provider and purpose, the organisation read from /connections, the three accounts, the sealed service entry, when Xero is called, Disconnect

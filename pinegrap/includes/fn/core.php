@@ -3350,7 +3350,7 @@ function get_date_picker_format()
         $output_date_picker_format = 'd/m/yy';
     }
     $output_first_day = '';
-    if (lang(array('info' => '')) == 'tr') {
+    if (pg_software_language_first_day(lang(array('info' => ''))) === 1) {
         $output_first_day = 'firstDay: 1,';
     }
 
@@ -3381,7 +3381,7 @@ function get_date_time_picker_format()
         $output_date_picker_format = 'd/m/yy';
     }
     $output_first_day = '';
-    if (lang(array('info' => '')) == 'tr') {
+    if (pg_software_language_first_day(lang(array('info' => ''))) === 1) {
         $output_first_day = 'firstDay: 1,';
     }
 

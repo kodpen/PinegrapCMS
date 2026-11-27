@@ -3110,6 +3110,138 @@ body:not(.toolbar) .software-content > #footer {
     transition: none;
   }
 }
+
+/* ── The top bar in the drawer ───────────────────────────────────────────────
+   A drawer-only screen (Page Design Studio) draws no top bar: its controls
+   stand in the drawer (pg_menu_drawer_bar()), which is #header there, so the
+   bar's rules keep sizing them. These lay it out as a column: the head (the
+   logo and the close button), one row of tools, the main menu, the foot (Go
+   to Site and the account). Every other screen keeps its bar. */
+.software-container.pg-bar-in-drawer {
+  --pg-navbar-h: 0px;
+  grid-template-rows: 0 minmax(0, 1fr);
+}
+.software-container.pg-bar-in-drawer .software-sidebar {
+  top: 0;
+  height: 100vh;
+  height: 100dvh;
+}
+.pg-bar-in-drawer #header.pg-drawer-bar {
+  --pg-db-row: calc(var(--pg-tap) + 0.5rem);
+  /* The foot: Go to Site and the account, one tap height each. */
+  --pg-db-foot: calc(2 * var(--pg-tap) + 1.25rem + 1px);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  box-shadow: none;
+}
+.pg-bar-in-drawer #header .pg-db-head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  height: var(--pg-db-row);
+  padding: 0 0.5rem 0 0.75rem;
+}
+.pg-bar-in-drawer #header .pg-db-brand > a {
+  padding-left: 0;
+  padding-right: 0;
+}
+.pg-bar-in-drawer #header .pg-db-tools {
+  flex: none;
+  height: var(--pg-db-row);
+  margin-left: 0;
+  padding: 0 0.5rem;
+  border-bottom: 1px solid var(--pg-border-color);
+}
+.pg-bar-in-drawer #header #menu {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
+}
+.pg-bar-in-drawer #header #menu .menu-body {
+  padding-bottom: 0.5rem;
+}
+.pg-bar-in-drawer #header .pg-db-foot {
+  flex: none;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.25rem;
+  height: var(--pg-db-foot);
+  margin-left: 0;
+  padding: 0.5rem;
+  border-top: 1px solid var(--pg-border-color);
+}
+.pg-bar-in-drawer #header .pg-db-site {
+  justify-content: flex-start;
+  min-height: var(--pg-tap);
+}
+.pg-bar-in-drawer #header .pg-db-account > li {
+  width: 100%;
+}
+.pg-bar-in-drawer #header .pg-acctbtn {
+  width: 100%;
+  justify-content: flex-start;
+}
+/* The name is d-none below lg in the bar; @layer utilities beats @layer
+   custom, so only an important declaration shows it in the drawer. */
+.pg-bar-in-drawer #header .pg-acctname {
+  display: inline !important;
+  flex: 1 1 auto;
+  max-width: none;
+  text-align: start;
+}
+/* The account menu opens upward, over the drawer. */
+.pg-bar-in-drawer #header .pg-chev {
+  transform: rotate(180deg);
+}
+.pg-bar-in-drawer #header .pg-usermenu {
+  top: auto;
+  right: auto;
+  bottom: calc(var(--pg-db-foot) + 0.25rem);
+  left: 0.5rem;
+  width: calc(min(280px, 84vw) - 1rem);
+  max-width: none;
+  max-height: calc(100vh - var(--pg-db-foot) - 1rem);
+  max-height: calc(100dvh - var(--pg-db-foot) - 1rem);
+  transform-origin: bottom left;
+}
+/* The quick note opens under the row of tools. */
+.pg-bar-in-drawer #pg_quick_note {
+  top: calc(2 * var(--pg-db-row) + 0.25rem) !important;
+  right: auto !important;
+  left: 0.5rem !important;
+  width: calc(min(280px, 84vw) - 1rem);
+  max-width: none;
+}
+/* What a phone's bar gives up for room stays in the drawer. */
+.pg-bar-in-drawer #header .pg-quick-note-nav,
+.pg-bar-in-drawer #header .pinegrap-logo-word {
+  display: flex;
+}
+/* The editor fills the window the bar left. */
+.pg-bar-in-drawer .sd-wrapper {
+  height: 100vh;
+  height: 100dvh;
+}
+/* An unread notification puts a dot on the button that opens the drawer
+   (backend.src.js, the notification poll). */
+[data-pg-menu-drawer-toggle].pg-menu-unread {
+  position: relative;
+}
+[data-pg-menu-drawer-toggle].pg-menu-unread::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--pg-danger);
+  pointer-events: none;
+}
 .navbar .vh {
   height: 28px;
 }
@@ -20158,10 +20290,128 @@ a.ws-chip-message:hover,
   text-decoration: line-through;
   color: var(--pg-fg-2);
 }
+/* My Tasks (workspace_my_tasks.js): the open tasks under date labels that
+   fold, each task a .pg-list-row of one line (the Mark done circle, the
+   number, the title; the due text, the priority pill and the initials at
+   the right), a second line only for the agent channel, the application
+   that made it and the progress. On a phone the title takes its own line. */
+.ws-mt-list {
+  padding: 6px;
+}
+.ws-mt-group + .ws-mt-group {
+  margin-top: 4px;
+}
+.ws-mt-group-head {
+  margin: 0;
+  font: inherit;
+}
+.ws-mt-group-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px 4px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  cursor: pointer;
+}
+.ws-mt-group-toggle:hover {
+  color: var(--pg-fg-body);
+}
+.ws-mt-group-toggle:focus-visible {
+  outline: 2px solid var(--pg-accent);
+  outline-offset: 0;
+}
+.ws-mt-row {
+  align-items: flex-start;
+  cursor: pointer;
+}
+.ws-mt-row:focus-visible {
+  outline: 2px solid var(--pg-accent);
+  outline-offset: -2px;
+}
+.ws-mt-done {
+  flex: none;
+  margin: -4px -2px -4px -4px;
+  color: var(--pg-fg-3);
+}
+.ws-mt-done.is-still {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+}
+.ws-mt-done > .ws-mt-done-tick,
+button.ws-mt-done:hover > .bi-circle,
+button.ws-mt-done:focus-visible > .bi-circle {
+  display: none;
+}
+button.ws-mt-done:hover > .ws-mt-done-tick,
+button.ws-mt-done:focus-visible > .ws-mt-done-tick {
+  display: inline-block;
+}
+button.ws-mt-done:hover,
+button.ws-mt-done:focus-visible,
+.ws-mt-done > .bi-check-circle-fill {
+  color: var(--pg-tone-teal);
+}
+.ws-mt-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 20px;
+}
+.ws-mt-number {
+  margin-right: 6px;
+  color: var(--pg-fg-3);
+  font-weight: var(--pg-weight-regular);
+  font-variant-numeric: tabular-nums;
+}
+.ws-mt-meta {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+}
+.ws-mt-due {
+  color: var(--pg-fg-3);
+  font-size: var(--pg-text-meta);
+  white-space: nowrap;
+}
+.ws-mt-due.is-late {
+  color: var(--pg-tone-rose-text);
+}
+.ws-mt-people.ws-avatars .avatar {
+  --bs-avatar-size: 22px;
+}
+.ws-mt-sub {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  margin-top: 2px;
+  color: var(--pg-fg-2);
+  font-size: var(--pg-text-meta);
+}
+.ws-mt-sub-part {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+@media (max-width: 575.98px) {
+  .ws-mt-head {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+  .ws-mt-head > .ws-mt-name {
+    flex-basis: 100%;
+  }
+}
 /* The channel's Tasks tab (drawTasks()): a quiet toolbar row, then each
    task a card; the cards flow in columns as the decisions do, one on a
-   phone. My tasks and a record's window draw the same .ws-list-row as a
-   list and keep it. */
+   phone. A record's window draws the same .ws-list-row as a list and keeps
+   it. */
 .ws-pane-toolbar {
   padding: 0;
   border-bottom: 0;
@@ -21758,6 +22008,39 @@ button.ws-file-name {
   width: auto;
   max-width: 12rem;
 }
+/* The font size choice in a workbook's format bar. */
+.office-format .office-size {
+  width: auto;
+}
+/* A cell's border: a line along each side drawn, just inside the cell
+   (a cell clips what passes its edge). File content drawn in the text
+   colour of the theme, black on a cell drawn on paper (paint() in
+   pg_office_view.js). */
+.office-sheet td.office-bd {
+  position: relative;
+}
+.office-sheet td.office-bd::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 0 solid var(--pg-fg-emphasis);
+  pointer-events: none;
+}
+.office-sheet td.office-bd-paper::after {
+  color-scheme: light;
+}
+.office-sheet td.office-bd-l::after {
+  border-left-width: 1px;
+}
+.office-sheet td.office-bd-r::after {
+  border-right-width: 1px;
+}
+.office-sheet td.office-bd-t::after {
+  border-top-width: 1px;
+}
+.office-sheet td.office-bd-b::after {
+  border-bottom-width: 1px;
+}
 /* The tools over a workbook's grid: find in the workbook, the sheet's sort
    and filter with Clear, Download as CSV at the end. Wraps on a phone. */
 .office-tools {
@@ -22596,8 +22879,157 @@ button.ws-cal-more {
   flex: 1;
   min-width: 0;
 }
-.ws-mycal-week .ws-cal-day {
-  min-height: 22rem;
+/* My calendar's week (workspace_my_calendar_week.js): the days' heads, a
+   strip of what has no hour, then 24 hours of which 07:00 to 20:00 are in
+   view; a column of hour labels on the left of each row. */
+.ws-mycal-hours {
+  --ws-mycal-hour: 3rem;
+  --ws-mycal-gutter: 3.5rem;
+}
+.ws-mycal-hours-row {
+  display: grid;
+  grid-template-columns: var(--ws-mycal-gutter) repeat(7, minmax(0, 1fr));
+}
+.ws-mycal-hours-head {
+  background: var(--pg-bg-1);
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+}
+.ws-mycal-hours-day {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 6px 4px;
+  cursor: pointer;
+}
+.ws-mycal-hours-day:hover {
+  background: var(--ws-soft);
+}
+.ws-mycal-weekday {
+  color: var(--pg-fg-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-mycal-gutter {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 6px 8px 0 0;
+  border-right: 1px solid var(--pg-border-color-translucent);
+}
+.ws-mycal-strip {
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+}
+.ws-mycal-strip-day {
+  --ws-cal-pad: .4rem;
+  min-width: 0;
+  min-height: 2rem;
+  padding: .3rem var(--ws-cal-pad) .1rem;
+  border-right: 1px solid var(--pg-border-color-translucent);
+}
+.ws-mycal-strip-day:last-child,
+.ws-mycal-hours-col:last-child {
+  border-right: 0;
+}
+.ws-mycal-strip-day.ws-cal-weekend,
+.ws-mycal-hours-col.ws-cal-weekend {
+  background: color-mix(in srgb, var(--pg-fg-emphasis) 2%, transparent);
+}
+.ws-mycal-scroll {
+  height: calc(var(--ws-mycal-hour) * 13);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.ws-mycal-hours-grid {
+  height: calc(var(--ws-mycal-hour) * 24);
+}
+.ws-mycal-hour-labels {
+  position: relative;
+  padding: 0;
+}
+.ws-mycal-hour-label {
+  position: absolute;
+  right: 8px;
+  transform: translateY(-50%);
+}
+.ws-mycal-hours-col {
+  position: relative;
+  min-width: 0;
+  border-right: 1px solid var(--pg-border-color-translucent);
+}
+.ws-mycal-slot {
+  height: calc(100% / 24);
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+}
+.ws-mycal-slot[role="button"] {
+  cursor: pointer;
+}
+.ws-mycal-slot[role="button"]:hover {
+  background: var(--ws-soft);
+}
+.ws-mycal-slot:focus-visible {
+  outline: 2px solid var(--ws-accent);
+  outline-offset: -2px;
+}
+/* An item with a time: the chip of its kind, at its start and as tall as
+   it lasts, its share of the width beside the items it overlaps. */
+.ws-cal-task.ws-mycal-block,
+.ws-cal-event.ws-mycal-block {
+  position: absolute;
+  align-items: flex-start;
+  margin: 0;
+  padding: .1rem .3rem;
+  border: 1px solid var(--pg-bg-body);
+  white-space: normal;
+  overflow: hidden;
+  z-index: 1;
+}
+.ws-cal-task.ws-mycal-block .ws-status-dot {
+  margin-top: .3rem;
+}
+.ws-mycal-block:focus-visible {
+  outline: 2px solid var(--ws-accent);
+  outline-offset: 0;
+  z-index: 2;
+}
+/* The line of now across today's column. */
+.ws-mycal-now {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--pg-danger);
+  pointer-events: none;
+  z-index: 3;
+}
+.ws-mycal-now::before {
+  content: "";
+  position: absolute;
+  left: -4px;
+  top: -3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--pg-danger);
+}
+/* On a phone the week's items keep the month's coloured bars, and an item
+   with a time still opens on a tap rather than the hour under it. */
+@media (max-width: 575.98px) {
+  .ws-mycal-hours {
+    --ws-mycal-gutter: 2.75rem;
+  }
+  .ws-mycal-hours-day {
+    flex-direction: column;
+    gap: 2px;
+  }
+  .ws-cal-task.ws-mycal-block,
+  .ws-cal-event.ws-mycal-block {
+    margin: 0;
+    border-radius: var(--ws-radius-xs);
+    pointer-events: auto;
+  }
 }
 .ws-mycal-list {
   padding: 8px 12px 12px;
@@ -25569,16 +26001,6 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
 .ws-nb-head .ws-nb-faces {
     margin-right: .6rem;
 }
-.ws-nb-head .ws-nb-title {
-    flex: 1 1 12rem;
-    min-width: 0;
-    padding: .25rem;
-    border: 0;
-    background: transparent;
-    font-size: 1.125rem;
-    font-weight: 600;
-    box-shadow: none;
-}
 .ws-nb-status {
     margin-right: .25rem;
     font-size: .75rem;
@@ -25654,6 +26076,87 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
     #ws-root:not(.ws-nb-open) .ws-nb-pane-col {
         display: none;
     }
+}
+/* My Notes' note drawn as a page (drawNote() in workspace.js). The head
+   keeps "Saved" and the last change on one quiet line that is cut short
+   before the buttons wrap. One row of tools spans the card, sticky under the
+   panel's fixed header, and never wraps: the tools that do not fit are
+   folded into its More menu (workspace_note_page.js). The title and the
+   text stand in a column of at most 46rem, written on the card without a
+   field's frame or focus box; the caret marks the focus. Every rule starts
+   at .ws-nb-page, so a channel's note, the highlights and lock panes, the
+   task description and the other writing boxes keep the rules above. */
+.ws-nb-page .ws-nb-meta {
+    flex: 1 1 0;
+    min-width: 5rem;
+    overflow: hidden;
+    font-size: var(--pg-text-meta);
+    color: var(--pg-fg-2);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ws-nb-page .ws-nb-meta .ws-nb-status {
+    margin-right: 0;
+}
+.ws-nb-page .ws-nb-status:not(:empty) + .ws-nb-last:not(:empty)::before {
+    content: "\00B7";
+    margin: 0 .4rem;
+}
+.ws-nb-page .ws-nb-tools {
+    top: var(--pg-navbar-h);
+    flex-wrap: nowrap;
+    align-items: center;
+    margin: calc(-1 * var(--bs-card-spacer-y)) calc(-1 * var(--bs-card-spacer-x)) 1.5rem;
+    padding: .5rem var(--bs-card-spacer-x);
+    overflow: hidden;
+    border-bottom: 1px solid var(--pg-border-color-translucent);
+    background: var(--bs-card-bg);
+}
+.ws-nb-page .ws-nb-tools > * {
+    flex: none;
+}
+.ws-nb-page .ws-nb-more {
+    margin-left: auto;
+}
+.ws-nb-page .ws-nb-folded {
+    display: none;
+}
+.ws-nb-page .ws-nb-sheet {
+    max-width: 46rem;
+    margin-right: auto;
+    margin-left: auto;
+}
+.ws-nb-page .ws-nb-sheet .ws-nb-title {
+    display: block;
+    width: 100%;
+    margin: 0 0 1rem;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--pg-fg-body);
+    box-shadow: none;
+}
+.ws-nb-page .ws-nb-sheet .ws-nb-title::placeholder {
+    color: var(--pg-fg-3);
+}
+.ws-nb-page .ws-nb-sheet .ws-nb-title:focus,
+.ws-nb-page .ws-nb-sheet .ws-nb-title:focus-visible {
+    outline: 0;
+    box-shadow: none;
+}
+.ws-nb-page .ws-rich.ws-rich-field.ws-nb-text {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+.ws-nb-page .ws-rich.ws-rich-field.ws-nb-text:focus,
+.ws-nb-page .ws-rich.ws-rich-field.ws-nb-text:focus-visible {
+    border-color: transparent;
+    outline: 0;
+    box-shadow: none;
 }
 /* A note shared in a channel, as its card in the conversation */
 .ws-nb-msg-card {
@@ -36830,6 +37333,76 @@ textarea.pg-campaign-text {
   .ws-bar-box .ws-bar-views-select {
     max-width: none;
     width: 100%;
+  }
+}
+
+}
+
+/* ==========================================================================
+   Look A: a Data table's bar and drawers (workspace_wtables.php?id=N,
+   includes/workspace/wtable_screen_bar.php). The bar is the screen bar
+   above drawn by the server; "Filter" opens its box under the button, the
+   query bar's conditions one under the other. The cards that stood beside
+   the rows open as drawers from "⋯".
+   ========================================================================== */
+@layer custom {
+
+.ws-wt-filter {
+  position: relative;
+}
+.ws-wt-filter-box {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 1020;
+  width: 30rem;
+  max-width: calc(100vw - 32px);
+  box-shadow: var(--ws-shadow);
+}
+.ws-wt-filter-box[hidden] {
+  display: none;
+}
+.ws-wt-query-line {
+  display: grid;
+  gap: 6px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+}
+.ws-wt-query-value {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ws-wt-query-value > :first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ws-wt-query .ws-plan-pair {
+  gap: 6px;
+}
+.ws-wt-drawer {
+  --pg-drawer-width: min(32rem, 100vw);
+}
+.ws-wt-drawer .drawer-header {
+  gap: 12px;
+}
+.ws-wt-menu .menu-item {
+  white-space: nowrap;
+}
+/* A phone: the box spans the bar's frame, under the bar, wherever
+   "Filter" stands on the line. */
+@media (max-width: 575.98px) {
+  .ws-wt-bar-frame {
+    position: relative;
+  }
+  .ws-wt-filter {
+    position: static;
+  }
+  .ws-wt-filter-box {
+    top: 52px;
+    left: 0;
+    width: auto;
+    max-width: none;
   }
 }
 

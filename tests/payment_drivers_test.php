@@ -517,6 +517,44 @@ function test_payment_drivers_fields_html_escapes_and_never_draws_secrets()
 	pg_assert_false(strpos($unread, 'placeholder="') !== false, 'nothing readable is stored');
 }
 
+// A group label draws a heading before its first field; a switch with a
+// reason it cannot be on is drawn off and disabled, with the reason.
+function test_payment_drivers_fields_group_and_unavailable_switch()
+{
+	$fields = pg_payment_fields_normalize(array(
+		array('name' => 'mode', 'type' => 'select', 'label' => 'Mode', 'options' => array('test' => 'Test'), 'unavailable' => 'Not a switch'),
+		array('name' => 'method_a', 'type' => 'switch', 'label' => 'Method <A>', 'help' => 'Takes EUR.', 'group' => ' Payment <methods> '),
+		array('name' => 'method_b', 'type' => 'switch', 'label' => 'Method B', 'help' => 'Takes EUR.', 'unavailable' => 'Off: the "base" currency is USD.'),
+		array('name' => 'method_c', 'type' => 'switch', 'label' => 'Method C', 'group' => array('x'), 'unavailable' => 5),
+	));
+
+	pg_assert_same('', $fields[0]['group']);
+	pg_assert_same('', $fields[0]['unavailable'], 'only a switch can be unavailable');
+	pg_assert_same('Payment <methods>', $fields[1]['group']);
+	pg_assert_same('', $fields[1]['unavailable']);
+	pg_assert_same('Off: the "base" currency is USD.', $fields[2]['unavailable']);
+	pg_assert_same('', $fields[3]['group'], 'a group is a string');
+	pg_assert_same('', $fields[3]['unavailable']);
+
+	$html = pg_payment_settings_inputs_html('examplepay', $fields, payment_drivers_test_stored(array('method_a' => '1', 'method_b' => '1')));
+
+	pg_assert_same(1, substr_count($html, 'pg-group-label'), 'one heading for the group');
+	pg_assert_contains('<div class="col-12"><h3 class="pg-group-label mb-0">Payment &lt;methods&gt;</h3></div>', $html);
+	pg_assert_true(strpos($html, 'pg-group-label') < strpos($html, 'payment_examplepay__method_a'), 'the heading comes before its first field');
+	pg_assert_true(strpos($html, 'payment_examplepay__mode') < strpos($html, 'pg-group-label'), 'a field before the group stays above it');
+	pg_assert_contains('checked="checked" id="payment_examplepay__method_a"', $html);
+	pg_assert_contains('value="1" disabled="disabled" id="payment_examplepay__method_b"', $html, 'stored on, drawn off and disabled');
+	pg_assert_contains('Off: the &quot;base&quot; currency is USD.', $html, 'the reason in place of the help');
+	pg_assert_same(1, substr_count($html, 'Takes EUR.'));
+
+	// A disabled switch is not posted; one posted on anyway is stored off.
+	$definition = pg_payment_driver_definition_normalize('examplepay', array('label' => 'Example Pay', 'kind' => 'card', 'gateway' => 'Example Pay', 'file' => 'x.php'), '/d');
+	$decision = pg_payment_settings_decide($definition, $fields, array('payment_examplepay__present' => '1', 'payment_examplepay__method_a' => '1', 'payment_examplepay__method_b' => '1'), payment_drivers_test_stored(), true);
+
+	pg_assert_same('1', $decision['values']['method_a']);
+	pg_assert_same('', $decision['values']['method_b']);
+}
+
 // The fee keys: whole hundredths of zero or more, a three-letter code, a rate
 // above zero; only on a success.
 function test_payment_drivers_answer_reads_the_fee()

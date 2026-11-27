@@ -406,3 +406,26 @@ function test_designer_home_large_card()
 	pg_assert_contains('>' . h(lang('Add page')) . '<', $card);
 	pg_assert_same(0, preg_match('/\bbtn btn-/', $card), 'look A buttons only');
 }
+
+// The styles listed as designs (the home and the design chooser): every
+// style the Page Design Studio made, and a classic style only while one of
+// its pages with its own tree is outside the Recycle Bin.
+function test_designer_listed_style_sql_leaves_out_binned_tree_pages()
+{
+	$own_tree = "EXISTS (SELECT 1 FROM page p2 WHERE p2.page_style = style.style_id AND p2.page_tree_json IS NOT NULL AND p2.page_tree_json <> ''";
+	pg_assert_same("(style.style_layout = 'visual_designer' OR " . $own_tree . " AND p2.page_folder NOT IN (4,6)))", pg_designer_listed_style_sql_for(true, array(4, '6')), 'a page in a bin folder does not list its classic style');
+	pg_assert_same("(style.style_layout = 'visual_designer' OR " . $own_tree . "))", pg_designer_listed_style_sql_for(true, array()), 'no Recycle Bin: no folder filter');
+	pg_assert_same("(style.style_layout = 'visual_designer')", pg_designer_listed_style_sql_for(false, array(4)), 'before pages carry trees: made designs only');
+}
+
+// The home's list and the design chooser read the one condition.
+function test_designer_list_and_targets_share_the_listed_style_sql()
+{
+	foreach (array('/includes/designer_screen.php' => 'pg_designer_list_designs', '/includes/fn/designer.php' => 'pg_designer_design_targets') as $file => $fn) {
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . $file);
+		$body = substr($source, (int) strpos($source, 'function ' . $fn . '('));
+		$body = substr($body, 0, (int) strpos($body, "\nfunction ", 10));
+		pg_assert_contains('pg_designer_listed_style_sql()', $body);
+		pg_assert_false(strpos($body, 'p2.page_tree_json') !== false, $fn . ' builds no condition of its own');
+	}
+}

@@ -2784,6 +2784,29 @@ function pg_designer_not_binned_sql_for($ids, $column)
 }
 
 /**
+ * WHERE condition on `style` for the styles listed as designs (the Page
+ * Design Studio home and the design chooser): every style the editor made,
+ * plus a classic style while one of its pages that carries its own tree is
+ * outside the recycle bin. A classic style whose tree pages are all binned
+ * would show as an empty design that design_delete refuses (it deletes
+ * visual designs only).
+ */
+function pg_designer_listed_style_sql()
+{
+    $ready = pg_multi_page_design_ready();
+    return pg_designer_listed_style_sql_for($ready, $ready ? pg_recycle_bin_folder_ids() : array());
+}
+
+/** pg_designer_listed_style_sql() from the tree column probe and the bin folder ids. Pure. */
+function pg_designer_listed_style_sql_for($tree_ready, $bin_ids)
+{
+    if (!$tree_ready) return "(style.style_layout = 'visual_designer')";
+    return "(style.style_layout = 'visual_designer' OR EXISTS (SELECT 1 FROM page p2"
+        . " WHERE p2.page_style = style.style_id AND p2.page_tree_json IS NOT NULL AND p2.page_tree_json <> ''"
+        . pg_designer_not_binned_sql_for($bin_ids, 'p2.page_folder') . "))";
+}
+
+/**
  * Ids of the styles the visual editor made (style_layout = 'visual_designer'),
  * once per request. Empty array when there are none.
  */
@@ -3320,14 +3343,11 @@ function pg_designer_design_targets($folder_id = 0, $exclude_style_id = 0)
     $folder_id        = (int)$folder_id;
     $exclude_style_id = (int)$exclude_style_id;
 
-    $own_tree = pg_multi_page_design_ready()
-        ? " OR EXISTS (SELECT 1 FROM page p2 WHERE p2.page_style = style.style_id AND p2.page_tree_json IS NOT NULL AND p2.page_tree_json <> '')"
-        : '';
     $rows = db_items(
         "SELECT style.style_id, style.style_name,
                 (SELECT COUNT(*) FROM page WHERE page.page_style = style.style_id AND " . pg_page_visual_design_sql() . pg_designer_not_binned_sql() . ") AS pages
          FROM style
-         WHERE (style.style_layout = 'visual_designer'$own_tree)" . ($exclude_style_id > 0 ? " AND style.style_id <> '$exclude_style_id'" : '') . "
+         WHERE " . pg_designer_listed_style_sql() . ($exclude_style_id > 0 ? " AND style.style_id <> '$exclude_style_id'" : '') . "
          ORDER BY style.style_timestamp DESC, style.style_name ASC");
 
     $designs = array();

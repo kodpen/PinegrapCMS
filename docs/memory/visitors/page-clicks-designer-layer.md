@@ -11,7 +11,7 @@ module: page_clicks
 - Every variant of an experiment is counted together; the panel says so (C23).
 
 ## How is it opened in the editor? (#10715)
-- The row "Clicks on this page" of the canvas bar's View menu (`#sd-clicks-btn`, `bi-hand-index`, a group of its own before Side by side) and the command palette row "Show / Hide clicks on this page" (`act_clicks`), both only when `_sdClicksReady()`: `sdDesign.clicks` and the part handed over. It was a page bar button before FR1 of plan designer-frame-tidy.
+- The row "Clicks on this page" of the canvas bar's View menu (`#sd-clicks-btn`, `bi-hand-index`, a group of its own before Side by side) and the command palette row "Show / Hide clicks on this page" (`act_clicks`), both only when `_sdClicksReady()`: `sdDesign.clicks` and the part handed over. It was a page bar button before #11956: a switch over the canvas is a View menu row; no decision binds its place (architect, 2026-11-26).
 - On, it counts in the View button's badge and opens a panel `.sd-clicks-panel` over the canvas' right edge, its body is `host.panel`; `_sdPartCall('clicks', 'open', …)`. Off or its close button: `close()`.
 - `_sdClicksDrawn()` at the end of `renderCanvas()`: `refresh()` soon after a full draw, `reload()` when the active tab changed. A one-node redraw keeps the layer.
 - Badge and line look: `_sdClicksCanvasStyle()` puts `<style id="sd-clicks-style">` into each canvas document, since `style_designer.css` does not reach the frame. Panel look (`.sd-clicks-*`): `style_designer.css`.

@@ -5549,8 +5549,18 @@ function ws_handle_action($action, $request)
             // there is one, and a task row names its agent channel.
             $agent_names = ws_tasks_agent_readable($viewer);
 
+            // Each task's date group (My Tasks gathers the open ones under
+            // them), and its due label, on the reader's own day.
+            $filters['today'] = ws_task_reader_today();
+            $first_day = pg_list_period_week_first_day();
+            $tasks = ws_tasks_list($viewer, $filters);
+
+            foreach ($tasks as $index => $task) {
+                $tasks[$index]['due_group'] = ws_task_due_group($task['due_date'], $filters['today'], $first_day);
+            }
+
             return ws_action_ok(array(
-                'tasks'          => ws_tasks_list($viewer, $filters),
+                'tasks'          => $tasks,
                 'agent_channels' => ws_tasks_agent_count($agent_names),
                 'agent_names'    => (object) $agent_names,
                 // The "Made by agents" filter shows once tasks carry the mark.

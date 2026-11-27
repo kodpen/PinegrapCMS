@@ -1083,8 +1083,7 @@ function router_output_error($error_message) {
     require (dirname(__FILE__) . '/functions.php');
     if(
         (isset($_GET['local']))
-        && ($_GET['local'] ==='en'
-        || $_GET['local'] ==='tr')
+        && pg_software_language_offered($_GET['local'])
     ){
         define('SOFTWARE_LANGUAGE', $_GET['local']);
     }else{
@@ -1315,12 +1314,7 @@ function router_h($content)
     return htmlspecialchars($content, ENT_COMPAT | ENT_HTML401, 'UTF-8');
 }
 
-// dedect user language from list, default is en
+// The browser's first offered language (pg_software_languages()), else English.
 function dedect_user_language(){
-	$supportedLanguages=['en','tr'];
-	$lang = substr(($_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? ''), 0, 2);
-	if(!in_array($lang,$supportedLanguages)){
-		$lang='en';
-	}
-	return $lang;
+	return pg_software_language_from_header($_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? '');
 }

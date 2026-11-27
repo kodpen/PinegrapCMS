@@ -267,6 +267,10 @@ function ws_js_strings()
         'more'                   => lang('More'),
         'move_anyway'            => lang('Move it anyway'),
         'move_despite'           => lang('Moving the task there causes these clashes:'),
+        'mt_later'               => lang('Later'),
+        'mt_no_date'             => lang('No date'),
+        'mt_overdue'             => lang('Overdue'),
+        'mt_week'                => lang('This week'),
         'my_channels'            => lang('My channels'),
         'my_tasks'               => lang('My Tasks'),
         'new_channel'            => lang('New channel'),
@@ -1119,7 +1123,7 @@ function ws_screen_config($viewer, $mode, $extra = array())
         // on first use (includes/fn/office.php).
         'office'       => function_exists('pg_office_view_includes') ? array(
             'script'  => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_office_view.js?v=' . (int) @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_office_view.js'),
-            'strings' => pg_office_view_strings(),
+            'strings' => pg_office_view_strings() + pg_office_format_view_strings(),
         ) : null,
         'strings'      => $strings,
         'recurrence'   => function_exists('ws_recurrence_js_config') ? ws_recurrence_js_config() : array('ready' => false),

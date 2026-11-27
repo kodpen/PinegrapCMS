@@ -18,6 +18,7 @@ if (!defined('PG_TEST_RUNNER')) {
 }
 
 require_once(dirname(__FILE__) . '/image_editor_data_menu_test.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_screen_bar.php');
 
 // Who may: someone who reads the table, whose table belongs to a channel,
 // and who may post in it; each refusal in words already said elsewhere.
@@ -83,11 +84,11 @@ function test_image_editor_data_show_binding()
 	pg_assert_false(pg_image_editor_data_doc_shows(null, 7), 'no document');
 }
 
-// The menu on the table's head: the Menus pattern, two entries, the
-// editor's loader and what it is handed.
+// The entries in the "⋯" menu of the table's bar: a header and two
+// entries, the editor's loader and what it is handed.
 function test_image_editor_data_show_menu()
 {
-	$html = pg_image_editor_data_show_menu();
+	$html = ws_wtable_screen_menu(pg_image_editor_data_show_items());
 	$assets = pg_image_editor_data_show_assets(array('table' => array('id' => 7, 'name' => 'Sa<les'), 'channel' => 4, 'save' => '/s', 'open' => '/o'));
 
 	pg_assert_same(1, substr_count($html, 'class="pg-menu-wrap"'));
@@ -95,10 +96,8 @@ function test_image_editor_data_show_menu()
 	pg_assert_same(2, substr_count($html, 'class="menu-item"'), 'As a chart and As a table');
 	pg_assert_true(strpos($html, 'data-ws-wt-canvas="chart"') !== false);
 	pg_assert_true(strpos($html, 'data-ws-wt-canvas="table"') !== false);
-	pg_assert_false(strpos($html, 'pg-button-fill') !== false || strpos($html, 'btn-solid') !== false, 'no filled button on the head');
-	pg_assert_true(strpos($html, 'class="pg-button pg-button-ghost"') !== false, 'a button with its word, not a quiet small one');
-	pg_assert_true(strpos($html, '>Show on a canvas<') !== false);
-	pg_assert_false(strpos($html, '<script') !== false, 'nothing but the menu in the button bar');
+	pg_assert_true(strpos($html, '<h6 class="menu-header">Show on a canvas</h6>') !== false);
+	pg_assert_false(strpos($html, '<script') !== false, 'nothing but the menu in the bar');
 	pg_assert_false(strpos($assets, 'Sa<les') !== false, 'the name is escaped in the JSON');
 	pg_assert_true(strpos($assets, 'id="ws_wt_canvas_config"') !== false);
 	pg_assert_true(strpos($assets, '"label":"Send the canvas"') !== false);

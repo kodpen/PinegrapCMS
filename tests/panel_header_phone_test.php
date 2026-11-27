@@ -107,3 +107,16 @@ function test_panel_header_phone_quick_note_gives_way()
 	pg_assert_true($hidden, 'below sm the quick note is hidden');
 	pg_assert_true(strpos($notes, '<ul class="navbar-nav pg-quick-note-nav">') !== false, 'the quick note list carries the class');
 }
+
+// On Page Design Studio the bar's controls stand in the main menu's drawer
+// (pg_menu_drawer_bar()): the phone rules that make room in the bar do not
+// reach them there.
+function test_panel_header_phone_rules_skip_the_drawer()
+{
+	$css = file_get_contents(dirname(__DIR__) . '/pinegrap/assets/css/backend.src.css');
+	$php = file_get_contents(dirname(__DIR__) . '/pinegrap/includes/fn/output.php');
+
+	pg_assert_true((bool) preg_match('/\.pg-bar-in-drawer #header \.pg-quick-note-nav,\s*\.pg-bar-in-drawer #header \.pinegrap-logo-word\s*\{[^}]*display: flex;/', $css), 'the quick note and the wordmark show in the drawer at every width');
+	pg_assert_contains("\$help_nav_class = \$bar_in_drawer ? 'navbar-nav' : 'navbar-nav d-none sm:d-flex';", $php, 'help is not hidden on a phone in the drawer');
+	pg_assert_true((bool) preg_match('/<li class="nav-item pg-brand-item">\s*<a href="[^"]*welcome\.php"/', $php), 'the bar keeps its logo item');
+}

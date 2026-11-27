@@ -2,5 +2,10 @@
     "X": "X",
     "X (mm)": "X (mm)",
     "X-Dry-Run must be true or false.": "X-Dry-Run true veya false olmalıdır.",
-    "XML Sitemap": "XML Site Haritası"
+    "XML Sitemap": "XML Site Haritası",
+    "Xero gave a token but would not list its organisations: {var:1}": "Xero bir anahtar verdi ama kuruluşlarını listelemedi: {var:1}",
+    "Xero has to be connected again: {var:1}": "Xero yeniden bağlanmalı: {var:1}",
+    "Xero organisation": "Xero kuruluşu",
+    "Xero was connected to several organisations. Choose the one the site's sales go to under Connection details.": "Xero birden çok kuruluşa bağlandı. Sitenin satışlarının gideceğini Bağlantı bilgileri altında seçin.",
+    "Xero was connected, but no organisation was allowed. Connect it again and choose the organisation the site's sales go to.": "Xero bağlandı ama hiçbir kuruluşa izin verilmedi. Yeniden bağlayın ve sitenin satışlarının gideceği kuruluşu seçin."
 }
