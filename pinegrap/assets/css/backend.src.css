@@ -3110,6 +3110,138 @@ body:not(.toolbar) .software-content > #footer {
     transition: none;
   }
 }
+
+/* ── The top bar in the drawer ───────────────────────────────────────────────
+   A drawer-only screen (Page Design Studio) draws no top bar: its controls
+   stand in the drawer (pg_menu_drawer_bar()), which is #header there, so the
+   bar's rules keep sizing them. These lay it out as a column: the head (the
+   logo and the close button), one row of tools, the main menu, the foot (Go
+   to Site and the account). Every other screen keeps its bar. */
+.software-container.pg-bar-in-drawer {
+  --pg-navbar-h: 0px;
+  grid-template-rows: 0 minmax(0, 1fr);
+}
+.software-container.pg-bar-in-drawer .software-sidebar {
+  top: 0;
+  height: 100vh;
+  height: 100dvh;
+}
+.pg-bar-in-drawer #header.pg-drawer-bar {
+  --pg-db-row: calc(var(--pg-tap) + 0.5rem);
+  /* The foot: Go to Site and the account, one tap height each. */
+  --pg-db-foot: calc(2 * var(--pg-tap) + 1.25rem + 1px);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  box-shadow: none;
+}
+.pg-bar-in-drawer #header .pg-db-head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  height: var(--pg-db-row);
+  padding: 0 0.5rem 0 0.75rem;
+}
+.pg-bar-in-drawer #header .pg-db-brand > a {
+  padding-left: 0;
+  padding-right: 0;
+}
+.pg-bar-in-drawer #header .pg-db-tools {
+  flex: none;
+  height: var(--pg-db-row);
+  margin-left: 0;
+  padding: 0 0.5rem;
+  border-bottom: 1px solid var(--pg-border-color);
+}
+.pg-bar-in-drawer #header #menu {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
+}
+.pg-bar-in-drawer #header #menu .menu-body {
+  padding-bottom: 0.5rem;
+}
+.pg-bar-in-drawer #header .pg-db-foot {
+  flex: none;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.25rem;
+  height: var(--pg-db-foot);
+  margin-left: 0;
+  padding: 0.5rem;
+  border-top: 1px solid var(--pg-border-color);
+}
+.pg-bar-in-drawer #header .pg-db-site {
+  justify-content: flex-start;
+  min-height: var(--pg-tap);
+}
+.pg-bar-in-drawer #header .pg-db-account > li {
+  width: 100%;
+}
+.pg-bar-in-drawer #header .pg-acctbtn {
+  width: 100%;
+  justify-content: flex-start;
+}
+/* The name is d-none below lg in the bar; @layer utilities beats @layer
+   custom, so only an important declaration shows it in the drawer. */
+.pg-bar-in-drawer #header .pg-acctname {
+  display: inline !important;
+  flex: 1 1 auto;
+  max-width: none;
+  text-align: start;
+}
+/* The account menu opens upward, over the drawer. */
+.pg-bar-in-drawer #header .pg-chev {
+  transform: rotate(180deg);
+}
+.pg-bar-in-drawer #header .pg-usermenu {
+  top: auto;
+  right: auto;
+  bottom: calc(var(--pg-db-foot) + 0.25rem);
+  left: 0.5rem;
+  width: calc(min(280px, 84vw) - 1rem);
+  max-width: none;
+  max-height: calc(100vh - var(--pg-db-foot) - 1rem);
+  max-height: calc(100dvh - var(--pg-db-foot) - 1rem);
+  transform-origin: bottom left;
+}
+/* The quick note opens under the row of tools. */
+.pg-bar-in-drawer #pg_quick_note {
+  top: calc(2 * var(--pg-db-row) + 0.25rem) !important;
+  right: auto !important;
+  left: 0.5rem !important;
+  width: calc(min(280px, 84vw) - 1rem);
+  max-width: none;
+}
+/* What a phone's bar gives up for room stays in the drawer. */
+.pg-bar-in-drawer #header .pg-quick-note-nav,
+.pg-bar-in-drawer #header .pinegrap-logo-word {
+  display: flex;
+}
+/* The editor fills the window the bar left. */
+.pg-bar-in-drawer .sd-wrapper {
+  height: 100vh;
+  height: 100dvh;
+}
+/* An unread notification puts a dot on the button that opens the drawer
+   (backend.src.js, the notification poll). */
+[data-pg-menu-drawer-toggle].pg-menu-unread {
+  position: relative;
+}
+[data-pg-menu-drawer-toggle].pg-menu-unread::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--pg-danger);
+  pointer-events: none;
+}
 .navbar .vh {
   height: 28px;
 }
