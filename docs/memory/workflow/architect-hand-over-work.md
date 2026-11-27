@@ -4,7 +4,7 @@ description: Hand-over of the architect session of 2026-11-24 to 26, the work in
 ---
 
 ## Who works now?
-- Since 2026-11-26 (owner, message 14372) only the architect, the merging session and k3 work; k2 is back for the Paraşüt round alone (`architect-hand-over.md`).
+- Owner (2026-11-27, message 14812): everybody stays open and k2 takes work again; the night's closing order is void. k2 and k3 work at the usual limits.
 
 ## What is still to do with the sheets?
 - No sheet is left to draw; what a sheet holds is in `designer-sheet-rules.md`.
@@ -20,14 +20,15 @@ description: Hand-over of the architect session of 2026-11-24 to 26, the work in
 ## What is still the architect's own?
 - After MS4 has landed: the merging session's rule for the memory mirror.
 - AC1's census may show that shared component and theme changes need a store, a schema question for the owner.
-- The office editors (owner 2026-11-26, `decisions-made-product-115.md`): `plans/office-sheet-abilities.md` and `office-document-abilities.md` are free since 2026-11-27; `office-sheet-formulas.md` waits: the architect marks its lines `free` by a docs PR when SA5 has landed, and tells k3.
+- The office editors (`decisions-made-product-115.md`): both ability plans are free; `plans/office-sheet-formulas.md` waits: the architect marks its lines `free` by a docs PR when SA5 has landed, and tells k3.
 - The owner asked for the designer first (`designer-faults-first.md`): an open designer `bug` issue goes ahead of a plan step, with k3.
-- His stutter is the design's size: #11974 and #12011 landed (`designer/designer-performance.md`). He has not tried design 838 again (poll 245); his word then says whether an issue follows.
-- Phone preview: #11966 and #11991 (the live page's QR code, poll 243) landed; another reason his window names gets its own issue.
+- His stutter is the design's size: #11974 and #12011 landed (`designer/designer-performance.md`); he has not tried design 838 again (poll 245).
+- Phone preview: #11966 and #11991 landed; another reason his window names gets its own issue.
 - Plan `designer-new-version` (poll 244, `decisions-made-product-116.md`): NV1 landed, NV2 is PR #12023; a step needing a table or column comes back here.
 - Poll 242: Options is too narrow; his console line under it picks the issue.
-- Paraşüt: the staging round passed and its six issues are fixed; what is left is in `plans/erp-parasut-open-work.md`, with k2's local workers.
-- 2026-11-27: one hunt round at up to 15 workers a coordinator (`bug-hunt-areas-6.md`); the usual limits are back.
+- Paraşüt: the six issues are fixed; what is left is in `plans/erp-parasut-open-work.md`.
+- The Workspace's own screens (message 14812): `plans/workspace-areas-modern.md` and its four plans; a step marked "drawing" is asked of the architect before its worker starts (TM3 so far).
+- Owed to the owner (message 14812): the ten most valuable features the product lacks, written to the channel with reasons; he picks which become plans.
 
 ## What is watched?
 - k3's own tasks: the context size on the agent form.
