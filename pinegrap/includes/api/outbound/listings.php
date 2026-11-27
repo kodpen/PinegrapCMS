@@ -213,9 +213,16 @@ function mp_category_attributes_decode($rows) {
 // step). The picture is the group's own, else its first product's that has
 // one; GROUP_CONCAT leaves the NULLs out and a cut at its length limit only
 // loses names after the first.
-function mp_listing_articles($account_id, $limit = 300, $group_ids = null) {
+//
+// $category_key is the key the account's categories are cached under
+// (mp_category_key()); without it, the account's provider.
+function mp_listing_articles($account_id, $limit = 300, $group_ids = null, $category_key = null) {
 
 	$account_id = (int) $account_id;
+
+	$category_where = ($category_key !== null)
+		? "'" . e((string) $category_key) . "'"
+		: "(SELECT provider FROM marketplace_accounts WHERE id = '" . e($account_id) . "')";
 
 	$only = '';
 
