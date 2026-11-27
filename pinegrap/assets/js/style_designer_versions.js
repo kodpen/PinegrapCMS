@@ -116,8 +116,16 @@ StyleDesigner.definePart('versions', function (K) {
         });
     }
 
+    // The progress toast of a start, taken down when it ends.
+    var waiting = null;
+    function unwait() {
+        if (waiting && waiting.parentNode) waiting.parentNode.removeChild(waiting);
+        waiting = null;
+    }
+
     function fail(err) {
         busy = false;
+        unwait();
         K.sdToast(esc((err && err.message) || _sdT('Network error.')), 'error', 6000);
     }
 
@@ -142,7 +150,7 @@ StyleDesigner.definePart('versions', function (K) {
         var changed = !!rec && !rec.unchanged;
         var liveName = p.savedName || p.page_name || '';
         busy = true;
-        K.sdToast('<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>' + esc(_sdT('Saving the new version…')), 'info', 3000);
+        waiting = K.sdToast('<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>' + esc(_sdT('Saving the new version…')), 'info', 15000);
         K._pgApiPost('version_start', { page_id: p.page_id, page: changed ? JSON.stringify(rec) : '' }).then(function (res) {
             if (!res || !res.ok) throw new Error((res && res.error) || _sdT('The new version could not be saved.'));
             remember(res, liveName);
@@ -154,6 +162,7 @@ StyleDesigner.definePart('versions', function (K) {
                 if (got[1]) K._pgContentLay(p, got[1].tree || K.createDefaultTree(), got[1], true);
                 K._pgTabsRender();
                 busy = false;
+                unwait();
                 K.sdToast(esc(res.existing
                     ? _sdT('This page already has a new version. It was opened; your changes stay on the page\'s own tab.')
                     : _sdT('The new version was saved as a draft. The page on the site stays as it is.')), res.existing ? 'warning' : 'success', 6000);
