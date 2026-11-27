@@ -216,6 +216,46 @@ function pg_accounting_sync_tax_local_id($rate)
 }
 
 /**
+ * The site's tax rates as pairing ids (pg_accounting_sync_tax_local_id()):
+ * each rate between 0 and 100 once, smallest first, 0 always, since an
+ * untaxed or exempt line is sent with a rate too. Empty values, non-numbers
+ * and rates outside 0..100 are left out. Pure.
+ *
+ * @param array $rates percents as stored
+ * @return int[]
+ */
+function pg_accounting_sync_tax_local_ids(array $rates)
+{
+    $ids = array(0 => 0);
+
+    foreach ($rates as $rate) {
+        if (($rate === null) || ($rate === '') || !is_numeric($rate) || ((float) $rate < 0) || ((float) $rate > 100)) {
+            continue;
+        }
+
+        $id = pg_accounting_sync_tax_local_id($rate);
+        $ids[$id] = $id;
+    }
+
+    sort($ids);
+
+    return array_values($ids);
+}
+
+/**
+ * A tax pairing id as a rate: 20000 is "20%", 8875 is "8.875%". Pure.
+ *
+ * @param int $local_id
+ * @return string
+ */
+function pg_accounting_sync_tax_label($local_id)
+{
+    $number = rtrim(rtrim(number_format(((int) $local_id) / 1000, 3, '.', ''), '0'), '.');
+
+    return (($number === '') ? '0' : $number) . '%';
+}
+
+/**
  * A row's columns after its driver's answer. Pure.
  *
  * The answer: ok, with the remote_id and sync_token the service gave (each
@@ -511,6 +551,64 @@ function pg_accounting_sync_pair_save(array $target, $kind, $local_table, $local
         (string) $target['service'], (string) $target['company'], (string) $kind, (string) $local_table, (int) $local_id,
         $remote_id, $sync_token, $now, $now, $now,
         $remote_id, $sync_token, $now, $now));
+}
+
+/**
+ * Forgets a pairing kept outside the queue: a tax rate no longer matched on
+ * the Connections page. A queued kind (sale, payment, refund) is never
+ * dropped here.
+ *
+ * @param array  $target service, company
+ * @param string $kind
+ * @param string $local_table
+ * @param int    $local_id
+ * @return bool
+ */
+function pg_accounting_sync_pair_drop(array $target, $kind, $local_table, $local_id)
+{
+    if (!in_array((string) $kind, array('customer', 'item', 'tax'), true)) {
+        return false;
+    }
+
+    return (bool) db_q("DELETE FROM accounting_sync WHERE service = ? AND company = ? AND kind = ? AND local_table = ? AND local_id = ?",
+        array((string) $target['service'], (string) $target['company'], (string) $kind, (string) $local_table, (int) $local_id));
+}
+
+/**
+ * The tax rates the site charges, as pairing ids
+ * (pg_accounting_sync_tax_local_ids()): every tax zone's rate, every
+ * product's own rate and, with "Rates by the buyer's country" on, each EU
+ * member state's standard rate today.
+ *
+ * @return int[]
+ */
+function pg_accounting_sync_site_tax_rates()
+{
+    $rates = array();
+
+    foreach (array("SELECT DISTINCT tax_rate FROM tax_zones", "SELECT DISTINCT tax_rate FROM products WHERE tax_rate IS NOT NULL") as $sql) {
+        $result = db_q($sql);
+
+        while ($result && ($row = mysqli_fetch_row($result))) {
+            $rates[] = $row[0];
+        }
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/tax_eu_rates.php');
+
+    if (pg_tax_by_country_on()) {
+        $today = date('Y-m-d');
+
+        foreach (pg_eu_vat_rates() as $eu) {
+            $rate = pg_eu_vat_rate($eu[0], 'standard', $today);
+
+            if ($rate !== false) {
+                $rates[] = $rate;
+            }
+        }
+    }
+
+    return pg_accounting_sync_tax_local_ids($rates);
 }
 
 /**

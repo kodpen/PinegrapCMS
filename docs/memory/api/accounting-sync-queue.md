@@ -7,7 +7,7 @@ module: accounting_sync
 ## What is the table?
 - `accounting_sync` (step 11.0.284, approved in `workflow/decisions-made-schema-54.md`): one row per local record and what it became in a service (`service` `xero`, later `quickbooks`) within one company (`company`: Xero tenant id, QuickBooks realm). Unique on service, company, kind, local_table, local_id.
 - A row is both the queue (`status` waiting/sent/failed, `attempts`, `next_try_at`, `last_error`) and the pairing (`remote_id`, `sync_token`). Nothing is added to orders, products or invoices.
-- `kind`: sale, payment, refund are queued; customer, item, tax are pairings kept as sent (`pg_accounting_sync_pair_save()`). A tax rate's pairing is local_table `tax_rate`, local_id the rate in thousandths (`pg_accounting_sync_tax_local_id()`, 20% = 20000).
+- `kind`: sale, payment, refund are queued; customer, item, tax are pairings kept as sent (`pg_accounting_sync_pair_save()`). A tax rate's pairing is local_table `tax_rate`, local_id the rate in thousandths (`pg_accounting_sync_tax_local_id()`, 20% = 20000); it is written on Xero's Connections page and deleted when unmatched (`xero-tax-rates.md`).
 - Only ids, remote ids and error text: no personal column, so it is not in the privacy erase or export lists.
 
 ## What writes a row?

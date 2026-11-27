@@ -19,8 +19,9 @@
  * put()), typed by xero_state_parse(). Without the encryption key nothing
  * can be connected, so nothing is stored either.
  *
- * Xero is called after the sign-in, for the chart of accounts the page
- * offers, and when the chosen accounts are saved. The pure parts are tested
+ * Xero is called after the sign-in, for the chart of accounts and the tax
+ * rates the page offers, and when the chosen accounts or matched tax rates
+ * are saved. The pure parts are tested
  * in tests/xero_test.php.
  *
  * @author      Erdal Güral (Kodpen)
@@ -269,6 +270,85 @@ function xero_account_label($account)
 }
 
 /**
+ * The tax rates of a GET /TaxRates answer, typed. A rate is named by its
+ * TaxType, which every sales line carries. Pure.
+ *
+ * @param mixed $data the decoded answer
+ * @return array TaxType => type, name, rate (EffectiveRate, percent),
+ *               status, revenue (CanApplyToRevenue), in Xero's order
+ */
+function xero_tax_rates_from_api($data)
+{
+    $rates = array();
+    $list = (is_array($data) && isset($data['TaxRates']) && is_array($data['TaxRates'])) ? $data['TaxRates'] : array();
+
+    foreach ($list as $rate) {
+        $type = (is_array($rate) && isset($rate['TaxType']) && is_string($rate['TaxType'])) ? trim($rate['TaxType']) : '';
+
+        // Xero's types are upper-case words and numbers (OUTPUT2, TAX001);
+        // the pairing keeps one in 64 characters.
+        if (preg_match('/^[A-Za-z0-9_]{1,50}$/', $type) !== 1) {
+            continue;
+        }
+
+        $number = isset($rate['EffectiveRate']) && is_numeric($rate['EffectiveRate']) ? $rate['EffectiveRate']
+            : (isset($rate['DisplayTaxRate']) && is_numeric($rate['DisplayTaxRate']) ? $rate['DisplayTaxRate'] : 0);
+
+        $rates[$type] = array(
+            'type'    => $type,
+            'name'    => mb_substr(isset($rate['Name']) && is_scalar($rate['Name']) ? trim((string) $rate['Name']) : '', 0, 150),
+            'rate'    => (float) $number,
+            'status'  => strtoupper(isset($rate['Status']) && is_scalar($rate['Status']) ? trim((string) $rate['Status']) : ''),
+            'revenue' => !empty($rate['CanApplyToRevenue']) && ($rate['CanApplyToRevenue'] !== 'false'),
+        );
+    }
+
+    return $rates;
+}
+
+/**
+ * The tax rates a sale may carry: active and applicable to revenue, by
+ * their label. Pure.
+ *
+ * @param array $rates xero_tax_rates_from_api()
+ * @return array TaxType => label
+ */
+function xero_tax_rates_for_sales($rates)
+{
+    $offered = array();
+
+    foreach (is_array($rates) ? $rates : array() as $type => $rate) {
+        if (is_array($rate) && (($rate['status'] ?? '') === 'ACTIVE') && !empty($rate['revenue'])) {
+            $offered[(string) $type] = xero_tax_rate_label($rate);
+        }
+    }
+
+    asort($offered, SORT_NATURAL | SORT_FLAG_CASE);
+
+    return $offered;
+}
+
+/**
+ * A tax rate as the page names it: "20% (VAT on Income) — 20%", the tax
+ * type standing for a missing name. Pure.
+ *
+ * @param array $rate type, name, rate
+ * @return string
+ */
+function xero_tax_rate_label($rate)
+{
+    $name = is_array($rate) && isset($rate['name']) ? trim((string) $rate['name']) : '';
+
+    if ($name === '') {
+        $name = is_array($rate) && isset($rate['type']) ? (string) $rate['type'] : '';
+    }
+
+    $number = rtrim(rtrim(number_format(is_array($rate) && isset($rate['rate']) ? (float) $rate['rate'] : 0, 4, '.', ''), '0'), '.');
+
+    return $name . ' — ' . (($number === '' || $number === '-0') ? '0' : $number) . '%';
+}
+
+/**
  * Xero's own words for a refused call: the accounting API's Message and
  * validation errors, or the problem details' Detail and Title. Pure.
  *
@@ -489,6 +569,28 @@ function xero_accounts_read($connection_id, $tenant_id)
         'ok'       => $call['ok'],
         'accounts' => $call['ok'] ? xero_accounts_from_api($call['data']) : array(),
         'error'    => $call['error'],
+    );
+}
+
+/**
+ * The organisation's tax rates.
+ *
+ * @param int    $connection_id
+ * @param string $tenant_id
+ * @return array ok, rates (xero_tax_rates_from_api()), error
+ */
+function xero_tax_rates_read($connection_id, $tenant_id)
+{
+    if (!xero_uuid_valid($tenant_id)) {
+        return array('ok' => false, 'rates' => array(), 'error' => lang('No Xero organisation is chosen.'));
+    }
+
+    $call = xero_call($connection_id, $tenant_id, 'GET', PG_XERO_API . '/TaxRates');
+
+    return array(
+        'ok'    => $call['ok'],
+        'rates' => $call['ok'] ? xero_tax_rates_from_api($call['data']) : array(),
+        'error' => $call['error'],
     );
 }
 

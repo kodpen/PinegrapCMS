@@ -1158,9 +1158,9 @@ if ($_POST) {
 
 	}
 
-	// Xero's organisation and accounts, saved on its page under the gate of
+	// Xero's organisation, accounts and tax rates, saved on its page under the gate of
 	// Site Settings › Accounting.
-	if (in_array($action, array('xero_organisation', 'xero_accounts'), true) && connections_accounting_may_manage($user)) {
+	if (in_array($action, array('xero_organisation', 'xero_accounts', 'xero_tax_rates'), true) && connections_accounting_may_manage($user)) {
 
 		require_once(PG_FUNCTIONS_DIR . '/includes/fn/xero_page.php');
 
