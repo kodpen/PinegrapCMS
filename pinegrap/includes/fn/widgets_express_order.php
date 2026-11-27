@@ -2691,7 +2691,45 @@ function _eo_hosted_card_html($amount_cents)
     // A card kept for renewals is asked for before it is typed (Stripe's
     // setup_future_usage), as the payment will ask for it.
     $order['recurring'] = pg_payment_order_recurring((int) ($order['id'] ?? 0));
-    return pg_payment_box($key, pg_payment_call($key, 'prepare', array($order, (int) $amount_cents)));
+    // The checkout shows a payment's waiting page (BLIK): submit_order.php
+    // echoes the page the driver answers.
+    $order['page_step'] = true;
+    $prepare = pg_payment_call($key, 'prepare', array($order, (int) $amount_cents));
+    $client = (isset($prepare['client']) && is_array($prepare['client'])) ? $prepare['client'] : array();
+
+    return pg_payment_box($key, $prepare, null, !empty($client['blik'])
+        ? _eo_hosted_blik_choice_html(isset($client['payment_method_types']) ? (array) $client['payment_method_types'] : array())
+        : '');
+}
+
+/**
+ * The choice drawn above the Payment Element when BLIK is offered beside it:
+ * the Payment Element's methods or BLIK, and BLIK's code field (six digits,
+ * the code the bank's app gives). The field is switched off, so not posted,
+ * until BLIK is chosen (assets/js/payment_hosted.js). Pure.
+ *
+ * @param array $types the Payment Element's method types
+ * @return string HTML
+ */
+function _eo_hosted_blik_choice_html($types)
+{
+    $cards_only = array_diff($types, array('card', 'link')) === array();
+
+    return '<div class="pg-eo-hosted-choice mb-3" role="radiogroup" aria-label="' . h(lang('Payment method')) . '">'
+         .   '<div class="form-check form-check-inline">'
+         .     '<input class="form-check-input" type="radio" name="payment_hosted_choice" id="pg_payment_hosted_choice_element" value="element" checked>'
+         .     '<label class="form-check-label" for="pg_payment_hosted_choice_element">' . h($cards_only ? lang('Card') : lang('Card and other methods')) . '</label>'
+         .   '</div>'
+         .   '<div class="form-check form-check-inline">'
+         .     '<input class="form-check-input" type="radio" name="payment_hosted_choice" id="pg_payment_hosted_choice_blik" value="blik">'
+         .     '<label class="form-check-label" for="pg_payment_hosted_choice_blik">BLIK</label>'
+         .   '</div>'
+         .   '<div class="pg-eo-hosted-blik mt-3" hidden>'
+         .     '<label class="form-label" for="pg_payment_blik_code">' . h(lang('BLIK code')) . '</label>'
+         .     '<input class="form-control" type="text" name="payment_blik_code" id="pg_payment_blik_code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" size="8" aria-describedby="pg_payment_blik_code_help" disabled>'
+         .     '<div class="form-text" id="pg_payment_blik_code_help">' . h(lang('Get the six-digit code in your bank\'s app, then approve the payment there. A code is valid for two minutes.')) . '</div>'
+         .   '</div>'
+         . '</div>';
 }
 
 function _eo_render_billing_country_select($lf)

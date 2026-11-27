@@ -33,6 +33,10 @@ function submit_order($type) {
     $page_id = (isset($_REQUEST['page_id']) && is_string($_REQUEST['page_id'])) ? $_REQUEST['page_id'] : '';
     
 
+    // The BLIK code is sent to the payment service only: it is taken out of
+    // the request before the form's values are kept in the session.
+    $payment_blik_code = pg_payment_posted_secret('payment_blik_code');
+
     $liveform = new liveform($type_value);
 
     $ghost = $_SESSION['software']['ghost'] ?? false;
@@ -1983,6 +1987,8 @@ function submit_order($type) {
                     : '',
                 // The payment service's token for a card typed into its own fields.
                 'token'                    => (isset($_POST['payment_token']) && is_string($_POST['payment_token'])) ? $_POST['payment_token'] : '',
+                // BLIK's code, typed into the checkout's own field.
+                'blik_code'                => $payment_blik_code,
             )));
         }
 

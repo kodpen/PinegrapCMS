@@ -7593,6 +7593,7 @@
     "Approve the Return": "İadeyi Onayla",
     "Approve the change: {var:1}": "Değişikliği onaylayın: {var:1}",
     "Approve the ones flagged suspicious as well": "Şüpheli işaretlenenleri de onayla",
+    "Approve the payment in your bank's app": "Ödemeyi bankanızın uygulamasında onaylayın",
     "Approve the return of order {var:1}? The buyer is refunded for {var:2} units, and this cannot be undone from here.": "{var:1} siparişinin iadesi onaylansın mı? Alıcıya {var:2} adet için geri ödeme yapılır ve bu işlem buradan geri alınamaz.",
     "Approve the text for publishing": "Metni yayın için onayla",
     "Approve this page": "Bu sayfayı onayla",

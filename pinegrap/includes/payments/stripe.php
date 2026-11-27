@@ -24,7 +24,11 @@
  * checkout: the visitor gives the IBAN and accepts the mandate in the
  * Payment Element, and the debit settles days later, so the order is placed
  * awaiting its payment (the intent is processing) and notify() reads the
- * result.
+ * result. BLIK is not in the Payment Element (Stripe does not offer it when
+ * the intent is made after the details): the checkout draws its own field for
+ * the six-digit code, authorize() confirms the intent with it, and the page
+ * Stripe's answer gives waits while the visitor approves the payment in the
+ * bank's app, then goes to the same return address.
  *
  * The API is called over HTTPS with the secret key (no SDK), with the API
  * version pinned, so a Stripe account whose default version is older or newer
@@ -197,7 +201,10 @@ function pg_payment_stripe_settings()
  *               step ('redirect': the visitor pays on the bank's or the
  *               service's page and comes back to the checkout's return
  *               address; 'element': the visitor gives the details and accepts
- *               the mandate in the Payment Element and is not sent away)
+ *               the mandate in the Payment Element and is not sent away;
+ *               'page': not in the Payment Element, the checkout draws its
+ *               own field and a waiting page follows, see
+ *               pg_payment_stripe_blik_offered())
  */
 function pg_payment_stripe_methods()
 {
@@ -209,6 +216,7 @@ function pg_payment_stripe_methods()
         'klarna'            => array('label' => 'Klarna', 'currencies' => array('AUD', 'CAD', 'CHF', 'CZK', 'DKK', 'EUR', 'GBP', 'NOK', 'NZD', 'PLN', 'RON', 'SEK', 'USD'), 'immediate' => true, 'hold' => true, 'step' => 'redirect'),
         'afterpay_clearpay' => array('label' => 'Afterpay / Clearpay', 'currencies' => array('AUD', 'CAD', 'EUR', 'GBP', 'NZD', 'USD'), 'immediate' => true, 'hold' => true, 'step' => 'redirect'),
         'sepa_debit'        => array('label' => 'SEPA Direct Debit', 'currencies' => array('EUR'), 'immediate' => false, 'hold' => false, 'step' => 'element'),
+        'blik'              => array('label' => 'BLIK', 'currencies' => array('PLN'), 'immediate' => true, 'hold' => false, 'step' => 'page'),
     );
 }
 
@@ -242,12 +250,123 @@ function pg_payment_stripe_method_types($currency, $settings, $recurring = false
     $held = (isset($settings['capture']) && ($settings['capture'] === 'manual'));
 
     foreach (pg_payment_stripe_methods() as $type => $method) {
-        if (!empty($switched[$type]) && in_array($currency, $method['currencies'], true) && (!$held || $method['hold'])) {
+        // A method the checkout draws itself is never in the Payment Element.
+        if (($method['step'] !== 'page') && !empty($switched[$type]) && in_array($currency, $method['currencies'], true) && (!$held || $method['hold'])) {
             $types[] = $type;
         }
     }
 
     return $types;
+}
+
+/**
+ * Whether BLIK is offered beside the Payment Element: switched on, the
+ * currency is zloty, the payment is taken at once (BLIK cannot be held) and
+ * nothing is kept for renewals (BLIK is for one payment). Pure.
+ *
+ * @param string $currency  ISO code, any case
+ * @param array  $settings  pg_payment_stripe_settings()
+ * @param bool   $recurring the payment keeps the card for renewals
+ * @return bool
+ */
+function pg_payment_stripe_blik_offered($currency, $settings, $recurring = false)
+{
+    $methods = pg_payment_stripe_methods();
+    $switched = (isset($settings['methods']) && is_array($settings['methods'])) ? $settings['methods'] : array();
+
+    return !$recurring
+        && !empty($switched['blik'])
+        && in_array(strtoupper(trim((string) $currency)), $methods['blik']['currencies'], true)
+        && !(isset($settings['capture']) && ($settings['capture'] === 'manual'));
+}
+
+/**
+ * The BLIK code as typed: six digits, spaces and dashes between them
+ * allowed. Pure.
+ *
+ * @param mixed $value
+ * @return string the six digits, '' when it is not a code
+ */
+function pg_payment_stripe_blik_code($value)
+{
+    if (!is_string($value)) {
+        return '';
+    }
+
+    $digits = preg_replace('/[\s-]+/', '', $value);
+
+    return (preg_match('/^[0-9]{6}$/', (string) $digits) === 1) ? $digits : '';
+}
+
+/**
+ * The page the visitor waits on while they approve a BLIK payment in their
+ * bank's app. Stripe.js reads the intent with its client secret until it is
+ * decided (assets/js/payment_hosted.js), then the page goes to the
+ * checkout's return address, where complete() reads the intent again; the
+ * Continue link does the same without the script. The client secret is only
+ * in this page, never in an address or a log. Pure.
+ *
+ * @param array $step publishable_key, client_secret, locale, return_url,
+ *                    script (Stripe.js), bundle (the site's script tags)
+ * @return string a whole HTML document
+ */
+function pg_payment_stripe_blik_step_html($step)
+{
+    $config = array(
+        'driver'          => 'stripe',
+        'publishable_key' => (string) $step['publishable_key'],
+        'client_secret'   => (string) $step['client_secret'],
+        'locale'          => (string) $step['locale'],
+        'return_url'      => (string) $step['return_url'],
+        // Stripe gives the visitor 60 seconds to approve.
+        'seconds'         => 60,
+    );
+    $json = json_encode($config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+    $title = lang('Approve the payment in your bank\'s app');
+
+    return '<!DOCTYPE html>' . "\n"
+         . '<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">'
+         . '<title>' . h($title) . '</title>'
+         . '<style>body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:#f5f6f8;color:#212529}'
+         . '.pg-payment-step{max-width:28rem;margin:10vh auto 0;padding:2rem 1.5rem;background:#fff;border:1px solid #dee2e6;border-radius:.5rem;text-align:center}'
+         . '.pg-payment-step h1{font-size:1.25rem;margin:0 0 .75rem}.pg-payment-step p{margin:0 0 1rem;line-height:1.5}'
+         . '.pg-payment-step-count{font-size:2rem;font-weight:600;font-variant-numeric:tabular-nums}.pg-payment-step a{color:#0d6efd}</style>'
+         . '</head><body>'
+         . '<main class="pg-payment-step" data-pg-payment-step="' . h($json) . '">'
+         .   '<h1>' . h($title) . '</h1>'
+         .   '<p>' . h(lang('We sent the BLIK payment to your bank. Open your bank\'s app and approve it within a minute. Keep this page open.')) . '</p>'
+         .   '<p class="pg-payment-step-count" aria-live="polite">60</p>'
+         .   '<p class="small"><a href="' . h($config['return_url']) . '">' . h(lang('Continue')) . '</a></p>'
+         . '</main>'
+         . '<script src="' . h((string) $step['script']) . '"></script>'
+         . (string) $step['bundle']
+         . '</body></html>';
+}
+
+/**
+ * The visitor's sentence for a BLIK payment Stripe refused. Pure.
+ *
+ * @param string $decline_code last_payment_error.decline_code
+ * @param string $code         last_payment_error.code
+ * @return string
+ */
+function pg_payment_stripe_blik_error($decline_code, $code)
+{
+    switch ((string) $decline_code) {
+        case 'code_invalid':
+        case 'code_expired':
+            return lang('The BLIK code is wrong or has expired. Please get a new code in your bank\'s app and try again.');
+
+        case 'insufficient_funds':
+        case 'payment_limit_exceeded':
+            return lang('Your bank did not allow this BLIK payment. Please check your account or choose another payment method.');
+    }
+
+    if ((string) $code === 'payment_method_provider_timeout') {
+        return lang('The BLIK payment was not approved in time. Please get a new code and try again.');
+    }
+
+    return lang('The BLIK payment was not approved. Please get a new code and try again, or choose another payment method.');
 }
 
 /**
@@ -676,6 +795,11 @@ function pg_payment_stripe_prepare_with($order, $amount, $settings)
         $client['setup_future_usage'] = 'off_session';
     }
 
+    // BLIK beside the Payment Element, only where the page can show the
+    // waiting step that follows it (the checkout says so with page_step).
+    $client['blik'] = is_array($order) && !empty($order['page_step'])
+        && pg_payment_stripe_blik_offered($settings['currency'], $settings, !empty($order['recurring']));
+
     return array('success' => true, 'client' => $client);
 }
 
@@ -700,6 +824,12 @@ function pg_payment_stripe_authorize_with($order, $amount, $payment, $settings, 
 {
     if (($settings['secret_key'] === '') || ($settings['currency'] === '')) {
         return pg_payment_failure(lang('This payment method is not available.'));
+    }
+
+    // A BLIK code the checkout drew its own field for takes the place of the
+    // Payment Element's token.
+    if (is_array($payment) && isset($payment['blik_code']) && is_string($payment['blik_code']) && (trim($payment['blik_code']) !== '')) {
+        return pg_payment_stripe_blik_authorize_with($order, $amount, $payment, $settings, $http);
     }
 
     $token = (is_array($payment) && isset($payment['token']) && is_string($payment['token'])) ? trim($payment['token']) : '';
@@ -764,6 +894,88 @@ function pg_payment_stripe_authorize_with($order, $amount, $payment, $settings, 
     }
 
     return pg_payment_stripe_intent_answer($order, $amount, $call['body'], $settings, $http, true);
+}
+
+/**
+ * Pays the order's total with BLIK: the intent is created and confirmed with
+ * the code the visitor typed. Stripe answers it waiting for the visitor's
+ * approval in the bank's app (requires_action, blik_authorize), and the
+ * answer is the page they wait on. The code is sent to Stripe only: it is
+ * never kept or logged.
+ *
+ * @param array    $order
+ * @param int      $amount   hundredths: the order total
+ * @param array    $payment  blik_code, return_url, recurring
+ * @param array    $settings
+ * @param callable $http
+ * @return array an answer: redirect with html (the waiting page) and state
+ *               for complete(); paid when Stripe has the result at once
+ */
+function pg_payment_stripe_blik_authorize_with($order, $amount, $payment, $settings, $http)
+{
+    $return_url = (isset($payment['return_url']) && is_string($payment['return_url'])) ? $payment['return_url'] : '';
+
+    if (!pg_payment_stripe_blik_offered($settings['currency'], $settings, !empty($payment['recurring'])) || ($return_url === '') || ($settings['publishable_key'] === '')) {
+        return pg_payment_failure(lang('This payment method is not available.'));
+    }
+
+    $code = pg_payment_stripe_blik_code($payment['blik_code']);
+
+    if ($code === '') {
+        return pg_payment_failure(lang('Please enter the six-digit BLIK code from your bank\'s app.'));
+    }
+
+    $order_id = pg_payment_stripe_order_value($order, 'id');
+    $units = pg_payment_stripe_amount($amount, $settings['currency']);
+
+    if (($order_id === '') || ($units <= 0)) {
+        return pg_payment_failure(lang('The payment was not accepted.'));
+    }
+
+    $method_data = array('type' => 'blik');
+    $email = pg_payment_stripe_order_value($order, 'billing_email_address');
+
+    if ($email !== '') {
+        $method_data['billing_details'] = array('email' => $email);
+    }
+
+    $params = array(
+        'amount'                 => $units,
+        'currency'               => $settings['currency'],
+        'confirm'                => true,
+        'payment_method_types'   => array('blik'),
+        'payment_method_data'    => $method_data,
+        'payment_method_options' => array('blik' => array('code' => $code)),
+        'metadata'               => array(
+            'order_id'       => $order_id,
+            'reference_code' => pg_payment_stripe_order_value($order, 'reference_code'),
+        ),
+        'expand'                 => array('payment_method', 'latest_charge.balance_transaction'),
+    );
+
+    if ($email !== '') {
+        $params['description'] = $email;
+    }
+
+    // A code is used once: the same code posted twice is the same request,
+    // which Stripe answers with the first result.
+    $call = pg_payment_stripe_call($http, $settings, 'POST', '/v1/payment_intents', $params, 'pg-pi-blik-' . sha1($order_id . '|' . $code . '|' . $units));
+
+    if (!$call['ok']) {
+        $error = in_array($call['code'], array('code_invalid', 'code_expired'), true)
+            ? pg_payment_stripe_blik_error($call['code'], '')
+            : pg_payment_stripe_visitor_error($call['code'], $call['message']);
+
+        return pg_payment_stripe_refused($order, $error, $call['message'], $call['code']);
+    }
+
+    return pg_payment_stripe_intent_answer($order, $amount, $call['body'], $settings, $http, true, array(
+        'publishable_key' => $settings['publishable_key'],
+        'locale'          => $settings['locale'],
+        'return_url'      => $return_url,
+        'script'          => 'https://js.stripe.com/v3/',
+        'bundle'          => function_exists('pg_js_bundle_tags') ? pg_js_bundle_tags('assets/js/payment_hosted.min.js', false) : '',
+    ));
 }
 
 /**
@@ -839,9 +1051,12 @@ function pg_payment_stripe_complete_with($order, $amount, $return, $state, $sett
  * @param callable $http
  * @param bool     $can_redirect authorize(): a 3-D Secure page may follow;
  *                               complete(): the visitor has been there
+ * @param array    $page_step    a BLIK payment's waiting page:
+ *                               pg_payment_stripe_blik_step_html() without
+ *                               the client secret; empty for any other
  * @return array
  */
-function pg_payment_stripe_intent_answer($order, $amount, $intent, $settings, $http, $can_redirect)
+function pg_payment_stripe_intent_answer($order, $amount, $intent, $settings, $http, $can_redirect, $page_step = array())
 {
     $order_id = pg_payment_stripe_order_value($order, 'id');
     $intent_id = (isset($intent['id']) && is_string($intent['id'])) ? $intent['id'] : '';
@@ -884,6 +1099,21 @@ function pg_payment_stripe_intent_answer($order, $amount, $intent, $settings, $h
                 ? $next['redirect_to_url']['url']
                 : '';
 
+            $secret = (isset($intent['client_secret']) && is_string($intent['client_secret'])) ? $intent['client_secret'] : '';
+
+            // BLIK: the visitor approves in the bank's app while the page
+            // waits; the state is the one a 3-D Secure return reads.
+            if ($can_redirect && ($page_step !== array()) && isset($next['type']) && ($next['type'] === 'blik_authorize')
+                && (preg_match('/^' . preg_quote($intent_id, '/') . '_secret_[A-Za-z0-9]{1,250}$/', $secret) === 1)) {
+                return array(
+                    'success'        => true,
+                    'status'         => 'redirect',
+                    'transaction_id' => $intent_id,
+                    'html'           => pg_payment_stripe_blik_step_html(array_merge($page_step, array('client_secret' => $secret))),
+                    'state'          => array('payment_intent' => $intent_id, 'order_id' => $order_id, 'amount' => (int) $amount),
+                );
+            }
+
             if ($can_redirect && (preg_match('#^https://[^\s/]+#i', $url) === 1)) {
                 return array(
                     'success'        => true,
@@ -898,9 +1128,13 @@ function pg_payment_stripe_intent_answer($order, $amount, $intent, $settings, $h
             // came back from without finishing): the intent is let go.
             pg_payment_stripe_void_with($intent_id, $settings, $http);
 
+            $blik_waiting = isset($next['type']) && ($next['type'] === 'blik_authorize');
+
             return pg_payment_stripe_refused(
                 $order,
-                $can_redirect ? lang('This payment needs a step this checkout cannot show. Please choose another payment method.') : lang('Your card could not be verified. Please try again or use another card.'),
+                ($blik_waiting && !$can_redirect)
+                    ? lang('The BLIK payment was not approved in time. Please get a new code and try again.')
+                    : ($can_redirect ? lang('This payment needs a step this checkout cannot show. Please choose another payment method.') : lang('Your card could not be verified. Please try again or use another card.')),
                 'PaymentIntent ' . $intent_id . ' still requires action' . (isset($next['type']) && is_string($next['type']) ? ' (' . $next['type'] . ')' : ''),
                 '');
 
@@ -914,7 +1148,11 @@ function pg_payment_stripe_intent_answer($order, $amount, $intent, $settings, $h
                 }
             }
 
-            return pg_payment_stripe_refused($order, pg_payment_stripe_visitor_error($code, $message), $message, $code);
+            $blik = (isset($intent['payment_method']['type']) && ($intent['payment_method']['type'] === 'blik'))
+                || (isset($error['payment_method']['type']) && ($error['payment_method']['type'] === 'blik'));
+            $error_code = (isset($error['code']) && is_scalar($error['code'])) ? (string) $error['code'] : '';
+
+            return pg_payment_stripe_refused($order, $blik ? pg_payment_stripe_blik_error((isset($error['decline_code']) && is_scalar($error['decline_code'])) ? (string) $error['decline_code'] : '', $error_code) : pg_payment_stripe_visitor_error($code, $message), $message, $code);
 
         case 'canceled':
             return pg_payment_stripe_refused($order, lang('The payment was cancelled.'), 'PaymentIntent ' . $intent_id . ' was canceled', '');

@@ -1541,9 +1541,11 @@ function pg_payment_hosted_card_driver($gateway = null)
  * @param string     $driver     the driver key
  * @param array      $prepare    pg_payment_answer() of prepare()
  * @param array|null $definition the driver's definition; null reads it
+ * @param string     $choice     HTML drawn above the service's fields (the
+ *                               checkout's BLIK choice); '' for none
  * @return string HTML
  */
-function pg_payment_box($driver, $prepare, $definition = null)
+function pg_payment_box($driver, $prepare, $definition = null, $choice = '')
 {
     $unavailable = lang('Card payments are not available right now. Please choose another payment method.');
     $definition = is_array($definition) ? $definition : pg_payment_driver((string) $driver);
@@ -1562,16 +1564,39 @@ function pg_payment_box($driver, $prepare, $definition = null)
         'messages' => array(
             'unavailable' => $unavailable,
             'invalid'     => lang('The card details could not be read. Please check them and try again.'),
+            'code'        => lang('Please enter the six-digit BLIK code from your bank\'s app.'),
         ),
     );
 
     return '<div class="pg-eo-hosted-card mb-3" data-pg-payment-hosted="' . h(json_encode($config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)) . '">'
+         .   $choice
          .   '<div class="pg-eo-hosted-card-element"></div>'
          .   '<div class="small text-danger mt-2 pg-eo-hosted-card-error" role="alert" aria-live="polite"></div>'
          . '</div>'
          . '<input type="hidden" name="payment_token" value="">'
          . '<script src="' . h($script) . '"></script>'
          . pg_js_bundle_tags('assets/js/payment_hosted.min.js', false);
+}
+
+/**
+ * A posted value that must never reach the session or a log (a BLIK code):
+ * the first call takes it out of the request, so the form's copy kept in the
+ * session (liveform::add_fields_to_session() reads $_REQUEST) does not have
+ * it; every call answers what was taken.
+ *
+ * @param string $name the field's name
+ * @return string '' when it was not posted
+ */
+function pg_payment_posted_secret($name)
+{
+    static $taken = array();
+
+    if (!array_key_exists($name, $taken)) {
+        $taken[$name] = (isset($_POST[$name]) && is_string($_POST[$name])) ? $_POST[$name] : '';
+        unset($_POST[$name], $_REQUEST[$name]);
+    }
+
+    return $taken[$name];
 }
 
 /**

@@ -82,6 +82,8 @@ $ghost = $_SESSION['software']['ghost'] ?? false;
 // Only a visitor's own submit is captured into the session; a gateway
 // callback POST carries the gateway's fields, not the form's.
 if (!$is_gateway_return) {
+    // The BLIK code is sent to the payment service only, never kept.
+    pg_payment_posted_secret('payment_blik_code');
     $liveform->add_fields_to_session();
 
     // The billing, payment and quick add fields post one value each, and so do each
