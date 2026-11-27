@@ -1388,6 +1388,9 @@ function pg_order_complete_receipt($order_id, $order_number, array $receipt, $cu
         // a session holds.
         pg_order_receipt_new_account($has_account ? $new_account : array());
 
+        // The receipt prints an order kept in another currency in it.
+        $receipt_display = pg_order_display_begin((int) $order_id);
+
         if ($format == 'plain_text') {
             $body = '';
 
@@ -1420,6 +1423,7 @@ function pg_order_complete_receipt($order_id, $order_number, array $receipt, $cu
             }
         }
 
+        pg_order_display_end($receipt_display);
         pg_order_receipt_audience('screen');
         pg_order_receipt_new_account(false);
 

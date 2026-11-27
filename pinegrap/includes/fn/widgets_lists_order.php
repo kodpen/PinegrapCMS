@@ -619,6 +619,19 @@ function pg_sw_list_order_rows($shipments, $items, $parcels, $steps)
     return $out;
 }
 
+// An order history row's total as plain text: in the order's own currency
+// when it is kept in another than the base (charged_currency), else with the
+// base symbol as before. $o['total'] is in major units.
+function pg_sw_list_account_order_total($o)
+{
+    $total = isset($o['total']) ? $o['total'] : 0;
+    $code = pg_order_currency_code(isset($o['charged_currency']) ? $o['charged_currency'] : '');
+    if (($code !== '') && ($code !== pg_order_currency_code(defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : ''))) {
+        return pg_order_money($o, (int)round((float)$total * 100));
+    }
+    return html_entity_decode(prepare_amount($total), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+}
+
 // The rows of the account list, as pg_sw_list_publish('account') files
 // them: array('account.orders' => array($account_id => rows)). $orders: the
 // rows the order history reads (id, order_number, order_date as a unix
@@ -635,7 +648,7 @@ function pg_sw_list_account_rows($account_id, $orders, $view_url, $date_format)
             '__order_id'           => (string)$id,
             '__order_no'           => isset($o['order_number']) ? (string)$o['order_number'] : '',
             '__order_date'         => _pg_sw_short_date(isset($o['order_date']) ? (int)$o['order_date'] : 0, $date_format),
-            '__order_total'        => html_entity_decode(prepare_amount(isset($o['total']) ? $o['total'] : 0), ENT_QUOTES | ENT_HTML5, 'UTF-8'),
+            '__order_total'        => pg_sw_list_account_order_total($o),
             '__order_status'       => isset($o['status']) ? (string)$o['status'] : '',
             '__order_is_cancelled' => (isset($o['status']) && $o['status'] === 'cancelled') ? '1' : '',
             '__order_url'          => ((string)$view_url !== '') ? $view_url . '?id=' . $id : '#',

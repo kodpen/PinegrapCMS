@@ -126,3 +126,62 @@ function test_order_currency_not_ready_without_columns()
 	pg_assert_same(null, pg_order_charged_for('USD', 1700000000));
 	pg_assert_same(array('after' => 0, 'done' => false), pg_order_currency_fill_run(1));
 }
+
+// A site's order screens print an order kept in another currency in it, at
+// rate 1 with its code after the figure; an order in base keeps the visitor's
+// display currency.
+function test_order_currency_display_for()
+{
+	$symbols = array('EUR' => '&euro;');
+
+	pg_assert_same(null, pg_order_display_for(array('charged_currency' => ''), 'TRY', $symbols), 'an order in base');
+	pg_assert_same(null, pg_order_display_for(array('charged_currency' => 'try'), 'TRY', $symbols), 'the base code');
+	pg_assert_same(null, pg_order_display_for(array(), 'TRY', $symbols), 'no column');
+	pg_assert_same(array('code' => 'EUR', 'symbol' => '&euro;', 'suffix' => ' EUR', 'rate' => 1.0),
+		pg_order_display_for(array('charged_currency' => 'eur'), 'TRY', $symbols));
+	pg_assert_same(array('code' => 'USD', 'symbol' => '', 'suffix' => ' USD', 'rate' => 1.0),
+		pg_order_display_for(array('charged_currency' => 'USD'), 'TRY', $symbols), 'no symbol listed');
+}
+
+// While a display is set, the site's money functions print the amount as it
+// is in the order's currency; ending it goes back to the one before.
+function test_order_currency_display_scope()
+{
+	pg_assert_same(null, pg_order_display(), 'none set');
+	pg_assert_same(null, pg_order_display_begin(0), 'no order sets none');
+	pg_assert_same(null, pg_order_display());
+
+	pg_order_display(pg_order_display_for(array('charged_currency' => 'EUR'), 'TRY', array('EUR' => '€')));
+
+	pg_assert_same(12.5, pg_visitor_amount(12.5), 'not converted');
+	pg_assert_same(array('symbol' => '€', 'suffix' => ' EUR'), pg_visitor_currency_parts(), 'its symbol and code');
+	pg_assert_same(array('symbol' => '€', 'suffix' => ' EUR'), pg_visitor_currency_parts('$'), 'whatever symbol the caller passes');
+	pg_assert_contains('€' . pg_format_number(12.5, 2) . ' EUR', prepare_price_for_output(1250, false, '', 'html'));
+	pg_assert_same('€' . pg_format_number(12.5, 2) . ' EUR', prepare_price_for_output(1250, false, '', 'plain_text'));
+	pg_assert_false(pg_order_display_converts(), 'no base total beside it');
+
+	pg_order_display_end(null);
+	pg_assert_same(null, pg_order_display(), 'ended');
+}
+
+// The orders list prints an order in base as before (an order in another
+// currency reads its symbol from the currencies table, pg_order_money()).
+function test_order_currency_list_amount()
+{
+	pg_assert_same(prepare_amount(39.95), pg_order_list_amount_html('complete', 3995, null, array('charged_currency' => '')), 'an order in base');
+	pg_assert_same(prepare_amount(39.95), pg_order_list_amount_html('complete', 3995, null, array('charged_currency' => defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : '')), 'the base code');
+}
+
+// The report adds orders up in base units: an order kept in another currency
+// counts at its rate, and 0 when the rate is not known.
+function test_order_currency_report_row_in_base()
+{
+	$row = array('id' => 1, 'order_number' => '1', 'order_date' => 0, 'status' => 'complete',
+		'subtotal' => 1000, 'discount' => 0, 'tax' => 180, 'shipping' => 0, 'gift_card_discount' => 0,
+		'surcharge' => 0, 'installment_charges' => 0, 'total' => 1180);
+
+	pg_assert_same(1180, pg_order_report_order($row)['total'], 'an order in base');
+	pg_assert_same(4130, pg_order_report_order($row + array('charged_currency' => 'ZZZ', 'charged_rate' => '3.5'))['total'], 'at its rate');
+	pg_assert_same(630, pg_order_report_order($row + array('charged_currency' => 'ZZZ', 'charged_rate' => '3.5'))['tax'], 'every figure');
+	pg_assert_same(0, pg_order_report_order($row + array('charged_currency' => 'ZZZ', 'charged_rate' => '0'))['total'], 'rate not known');
+}

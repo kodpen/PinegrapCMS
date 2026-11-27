@@ -159,3 +159,22 @@ function test_api_order_schema_declares_the_state_nullable()
 		pg_assert_same($word, isset($schema[$field]) ? $schema[$field] : null, $field . ' is nullable');
 	}
 }
+
+// currency names the unit of every amount: the order's charged currency,
+// else the base currency (an order written before the column, or in base).
+function test_api_order_present_the_currency()
+{
+	$base = defined('BASE_CURRENCY_CODE') ? pg_order_currency_code(BASE_CURRENCY_CODE) : '';
+	$row = api_order_present_test_row();
+
+	pg_assert_same($base, api_order_present($row)['currency'], 'no column: the base currency');
+
+	$row['charged_currency'] = '';
+	pg_assert_same($base, api_order_present($row)['currency'], 'an order in base');
+
+	$row['charged_currency'] = 'eur';
+	pg_assert_same('EUR', api_order_present($row)['currency'], 'the charged currency');
+
+	pg_assert_contains('orders.charged_currency', api_order_select(array('charged_currency')), 'read when the site has it');
+	pg_assert_false(strpos(api_order_select(array()), 'charged_currency') !== false, 'left out when it does not');
+}

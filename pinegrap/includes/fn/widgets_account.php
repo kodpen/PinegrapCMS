@@ -2025,13 +2025,17 @@ function _pg_my_account_extras($logged_in, $cfg = array())
 
     if ($shop && $viewer['id'] > 0) {
         $orders = (array)db_items(
-            "SELECT id, order_number, order_date, (total / 100) AS total, status FROM orders
+            "SELECT id, order_number, order_date, (total / 100) AS total, status"
+             . (pg_order_charged_ready() ? ', charged_currency' : '') . " FROM orders
              WHERE user_id = '" . $viewer['id'] . "' AND status IN ('complete', 'exported', 'cancelled')
              ORDER BY order_date DESC LIMIT 50");
         if ($orders) {
             $view = _pg_acct_page_url(0, 'view order');
             $out['sections']['order_history'] = pg_acct_order_history_html(pg_sw_list_account_rows(0, $orders, $view, pg_sw_default_date_format('date'))['account.orders'][0],
-                $view !== '', array_column($orders, 'total'));
+                $view !== '', array_map(function ($o) {
+                    // An order kept in another currency than the base, in it.
+                    return (pg_order_currency_code($o['charged_currency'] ?? '') !== '') ? pg_sw_list_account_order_total($o) : $o['total'];
+                }, $orders));
             $out['orders']         = $orders;
             $out['order_view_url'] = $view;
             $out['flags']['has_orders'] = true;
@@ -2078,7 +2082,8 @@ function _pg_my_account_extras($logged_in, $cfg = array())
  * (pg_sw_list_account_rows()), as it always printed: a link per order while
  * the site has a view order page, else a plain item. $totals: each order's
  * total in major units, printed by prepare_amount() as before (the rows
- * carry it decoded to text). Pure; the designer canvas draws its twin
+ * carry it decoded to text), or a text already written in the order's own
+ * currency (pg_order_money()), printed as it is. Pure; the designer canvas draws its twin
  * (_sdAccountOrderHistoryHtml()).
  *
  * @param array $rows   the account.orders rows of the member
@@ -2094,7 +2099,7 @@ function pg_acct_order_history_html($rows, $linked, $totals)
         $inner = '<span><span class="fw-semibold">#' . h($o['__order_no']) . '</span>'
                . '<span class="text-body-secondary small ms-2">' . h($o['__order_date']) . '</span>'
                . ($o['__order_is_cancelled'] !== '' ? '<span class="badge text-bg-secondary ms-2">' . h(lang('Cancelled')) . '</span>' : '')
-               . '</span><span>' . prepare_amount(isset($totals[$i]) ? $totals[$i] : 0) . '</span>';
+               . '</span><span>' . (is_numeric(isset($totals[$i]) ? $totals[$i] : 0) ? prepare_amount(isset($totals[$i]) ? $totals[$i] : 0) : h($totals[$i])) . '</span>';
         $html .= $linked
             ? '<a href="' . h($o['__order_url']) . '" class="' . $cls . ' list-group-item-action">' . $inner . '</a>'
             : '<div class="' . $cls . '">' . $inner . '</div>';

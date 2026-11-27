@@ -28,4 +28,4 @@ module: order_currency
 - Until it is through, an older order still counts as base in the sums.
 
 ## How is an order's amount printed?
-- `pg_order_money($order, $minor)`: plain text in the order's own currency (the base symbol, the currency's symbol, else ` CODE` after the figure), never converted; the caller escapes it. Screens adopt it in MK3 of `plans/markets-price-lists.md`.
+- `pg_order_money($order, $minor)`: plain text in the order's own currency (the base symbol, the currency's symbol, else ` CODE` after the figure), never converted; the caller escapes it. Which screens use what: `order-currency-screens.md`.

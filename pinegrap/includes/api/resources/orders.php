@@ -81,6 +81,9 @@ function api_order_present($row, $items = null, $shipments = null) {
 			'zip'     => $row['billing_zip_code'],
 			'country' => $row['billing_country']
 		),
+		// The currency every amount of the order is in: the one it is kept
+		// and charged in, the base currency for an order without one.
+		'currency' => pg_order_amount_currency($row, defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : ''),
 		'totals' => array(),
 		'payment' => array(
 			'method'         => $row['payment_method'],
@@ -297,8 +300,12 @@ function api_order_select($present = null) {
 
 	}
 
+	// The charged currency arrives with 2026.11.0; without it every order
+	// is in the base currency.
+	$charged = ($present === null) ? pg_order_charged_ready() : in_array('charged_currency', $present, true);
+
 	return "SELECT orders.id, orders.order_number, orders.order_date, orders.last_modified_timestamp, orders.status,
-			" . $state . "orders.contact_id,
+			" . $state . ($charged ? 'orders.charged_currency, ' : '') . "orders.contact_id,
 			orders.billing_first_name, orders.billing_last_name,
 			orders.billing_email_address, orders.billing_company,
 			orders.billing_address_1, orders.billing_address_2,
@@ -1867,6 +1874,7 @@ function api_order_schema() {
 			'zip'     => 'string?',
 			'country' => 'string?'
 		),
+		'currency' => 'string',
 		'totals' => array(
 			'subtotal'  => 'integer',
 			'discount'  => 'integer',

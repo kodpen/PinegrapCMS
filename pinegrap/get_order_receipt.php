@@ -18,6 +18,17 @@
 
 function get_order_receipt($properties) {
 
+    // An order kept in another currency than the base prints in it, as
+    // charged, not converted into the visitor's currency.
+    $display = pg_order_display_begin((int) ($_SESSION['ecommerce']['completed_order_id'] ?? 0));
+    $output = get_order_receipt_content($properties);
+    pg_order_display_end($display);
+
+    return $output;
+}
+
+function get_order_receipt_content($properties) {
+
     $page_id = $properties['page_id'];
     $device_type = $properties['device_type'];
 
@@ -1420,7 +1431,7 @@ function get_order_receipt($properties) {
 
         // If the visitor's currency is different from the base currency,
         // then show actual base currency amount and disclaimer because the base currency will be charged.
-        if (VISITOR_CURRENCY_CODE != BASE_CURRENCY_CODE) {
+        if (pg_order_display_converts()) {
             $output_unconverted_total = '* <span style="white-space: nowrap">(' . prepare_amount($grand_total) . ' ' . h(BASE_CURRENCY_CODE) . ')</span>';
 
             $base_currency_name = db_value("SELECT name FROM currencies WHERE id = '" . BASE_CURRENCY_ID . "'");
@@ -2223,7 +2234,7 @@ function get_order_receipt($properties) {
         // If the visitor's currency is different from the base currency,
         // then show actual base currency amount and disclaimer
         // because the base currency will be charged.
-        if (VISITOR_CURRENCY_CODE != BASE_CURRENCY_CODE) {
+        if (pg_order_display_converts()) {
             $base_currency_total_info = '<span style="white-space: nowrap">' . prepare_amount($total) . ' ' . h(BASE_CURRENCY_CODE) . '</span>';
 
             $base_currency_name = db_value("SELECT name FROM currencies WHERE id = '" . BASE_CURRENCY_ID . "'");
@@ -2526,8 +2537,8 @@ function get_order_receipt($properties) {
             'auto_registration_password' => $auto_registration_password,
             'auto_registration_set_password_url' => $auto_registration_set_password_url,
             'auto_registration_for_customer' => $auto_registration_for_customer,
-            'currency_symbol' => VISITOR_CURRENCY_SYMBOL,
-            'currency_code' => VISITOR_CURRENCY_CODE_FOR_OUTPUT,
+            'currency_symbol' => pg_visitor_currency_parts()['symbol'],
+            'currency_code' => pg_visitor_currency_parts()['suffix'],
             'currency' => $currency,
             'currency_attributes' => $currency_attributes,
             'currencies' => $currencies,

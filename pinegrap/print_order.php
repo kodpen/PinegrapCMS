@@ -84,7 +84,15 @@ $utm_campaign = $row['utm_campaign'];
 $utm_term = $row['utm_term'];
 $utm_content = $row['utm_content'];
 $affiliate_code = $row['affiliate_code'];
-$currency_code = $row['currency_code'];
+// The currency the order is kept in, when another than the base; else the
+// one the visitor was shown. Every amount of the order is printed in it
+// (pg_order_money_symbol()); gift card balances stay in base.
+$charged_code = pg_order_currency_code($row['charged_currency'] ?? '');
+$currency_code = ($charged_code !== '') ? $charged_code : $row['currency_code'];
+$order_money = pg_order_money_symbol($row);
+$order_amount = function ($amount) use ($order_money) {
+    return pg_format_money($amount, $order_money['symbol'], $order_money['suffix']);
+};
 $http_referer = $row['http_referer'];
 $user_id = $row['user_id'];
 $username = $row['username'];
@@ -340,7 +348,7 @@ if ($gift_card_discount > 0) {
     $output_gift_card_discount_row =
     '<div class="row" >
         <span class="translateable col fg-secondary">' . lang(array('string'=>'Gift Card{suffix:1}','vars'=>array(),'suffix'=>array($output_gift_card_label_plural_suffix))) . ':</span>
-        <span class="col text-end">-' . pg_format_money($gift_card_discount, BASE_CURRENCY_SYMBOL) . '</span>
+        <span class="col text-end">-' . $order_amount($gift_card_discount) . '</span>
     </div>';
 }
 $output_surcharge_row = '';
@@ -349,7 +357,7 @@ if ($surcharge > 0) {
     $output_surcharge_row =
         '<div class="row" >
             <span class="translateable col fg-secondary">' . lang('Surcharge') . ':</span>
-            <span class="col text-end">' . pg_format_money($surcharge, BASE_CURRENCY_SYMBOL) . '</span>
+            <span class="col text-end">' . $order_amount($surcharge) . '</span>
         </div>';
 }
 $output_payment_information = '';
@@ -429,7 +437,7 @@ if ($payment_method != '') {
                        ' . ($refunded_amount_cents > 0 ?
                            '<div class="row" style="color:#dc3545">
                                <span class="translateable col fg-secondary">' . lang('Total Refunded') . ':</span>
-                               <span class="col text-end">-' . pg_format_money($refunded_amount_cents / 100, BASE_CURRENCY_SYMBOL) . '</span>
+                               <span class="col text-end">-' . $order_amount($refunded_amount_cents / 100) . '</span>
                            </div>' : '') . '
                        <br/>
                    </div>
@@ -536,7 +544,7 @@ if (AFFILIATE_PROGRAM and $affiliate_code) {
                 </div>
                 <div class="row">
                     <span class="translateable col fg-secondary">' . lang('Commission') . ':</span>
-                    <span class="col text-end">' . pg_format_money($commission, BASE_CURRENCY_SYMBOL) . '</span>
+                    <span class="col text-end">' . $order_amount($commission) . '</span>
                 </div>
             </div>
         </div>';
@@ -756,7 +764,7 @@ if ($ship_to_exists == true) {
                 lang('Delivery Date')     => $output_delivery_date,
                 lang('Shipping Method')   => h($shipping_method),
                 lang('Tracking Numbers')  => $output_shipping_tracking_numbers,
-                lang('Shipping Cost')     => ($ship_tos[$key]['shipping_cost'] > 0) ? pg_format_money($ship_tos[$key]['shipping_cost'] / 100, BASE_CURRENCY_SYMBOL) : '',
+                lang('Shipping Cost')     => ($ship_tos[$key]['shipping_cost'] > 0) ? $order_amount($ship_tos[$key]['shipping_cost'] / 100) : '',
                 lang('Packages')          => h($ship_tos[$key]['packages']),
             );
 
@@ -1049,7 +1057,7 @@ if ($ship_to_exists == true) {
                                         </tr>
                                         <tr>
                                             <td>' . lang('Amount') . ':</td>
-                                            <td>' . prepare_amount($product_price) . '</td>
+                                            <td>' . $order_amount($product_price) . '</td>
                                         </tr>
                                         <tr>
                                             <td>' . lang('Recipient Email') . ':</td>
@@ -1151,8 +1159,8 @@ if ($ship_to_exists == true) {
                         <td>' . $short_description . '</td>
                         <td>' . $quantity . '</td>
                         <td>' . $output_shipped_quantity . '</td>
-                        <td style="text-align: right">' . prepare_amount($product_price) . '</td>
-                        <td style="text-align: right">' . prepare_amount($product_total) . '</td>
+                        <td style="text-align: right">' . $order_amount($product_price) . '</td>
+                        <td style="text-align: right">' . $order_amount($product_total) . '</td>
                         ' . ($print_order_recurring ? '<td>' . $output_recurring_payment_period . '</td><td>' . $output_recurring_number_of_payments . '</td><td>' . $output_recurring_start_date . '</td>' : '') . '
                         ' . $output_custom_field_1_cell . '
                         ' . $output_custom_field_2_cell . '
@@ -1413,7 +1421,7 @@ if ($ship_to_exists == true) {
                                     </tr>
                                     <tr>
                                         <td>' . lang('Amount') . ':</td>
-                                        <td>' . prepare_amount($product_price) . '</td>
+                                        <td>' . $order_amount($product_price) . '</td>
                                     </tr>
                                     <tr>
                                         <td>' . lang('Recipient Email') . ':</td>
@@ -1516,8 +1524,8 @@ if ($ship_to_exists == true) {
                     <td>' . $output_product_name . '</td>
                     <td>' . $short_description . '</td>
                     <td>' . $quantity . '</td>
-                    <td style="text-align: right">' . prepare_amount($product_price) . '</td>
-                    <td style="text-align: right">' . prepare_amount($product_total) . '</td>
+                    <td style="text-align: right">' . $order_amount($product_price) . '</td>
+                    <td style="text-align: right">' . $order_amount($product_total) . '</td>
                     ' . ($print_order_recurring ? '<td>' . $output_recurring_payment_period . '</td><td>' . $output_recurring_number_of_payments . '</td><td>' . $output_recurring_start_date . '</td>' : '') . '
                     ' . $output_custom_field_1_cell . '
                     ' . $output_custom_field_2_cell . '
@@ -1601,7 +1609,7 @@ $output_print_payment =
     ($payment_method ? '<div><strong>' . ($order_on_account ? lang('Put on account') : lang(h($payment_method))) . '</strong></div>' : '') .
     ($special_offer_code ? '<div>' . lang('Special Offer Code') . ': ' . h($special_offer_code) . '</div>' : '') .
     ($reference_code ? '<div>' . lang('Reference Code') . ': ' . h($reference_code) . '</div>' : '') .
-    ((ECOMMERCE_MULTICURRENCY === true) && ($currency_code != '') ? '<div>' . lang('Currency') . ': ' . h(get_currency_name_from_code($currency_code)) . ' (' . h($currency_code) . ')</div>' : '');
+    (((ECOMMERCE_MULTICURRENCY === true) || ($charged_code !== '')) && ($currency_code != '') ? '<div>' . lang('Currency') . ': ' . h(get_currency_name_from_code($currency_code)) . ' (' . h($currency_code) . ')</div>' : '');
 
 // Build print-friendly shipping section
 $output_print_shipping = '';
@@ -1752,17 +1760,17 @@ legend { font-size: .9em; font-weight: bold; }
 
     <!-- TOTALS -->
     <table style="margin-left:auto;margin-top:.5em;border-collapse:collapse">
-        <tr><td style="padding:.15em .5em">' . lang('Subtotal') . '</td><td style="padding:.15em .5em;text-align:right">' . prepare_amount($subtotal) . '</td></tr>
-        ' . ($discount > 0 ? '<tr><td style="padding:.15em .5em">' . lang('Discount') . '</td><td style="padding:.15em .5em;text-align:right">-' . pg_format_money($discount, BASE_CURRENCY_SYMBOL) . '</td></tr>' : '') . '
-        ' . ($tax > 0 ? '<tr><td style="padding:.15em .5em">' . lang('Tax') . '</td><td style="padding:.15em .5em;text-align:right">' . pg_format_money($tax, BASE_CURRENCY_SYMBOL) . '</td></tr>' : '') . '
-        ' . ($shipping > 0 ? '<tr><td style="padding:.15em .5em">' . lang('Shipping') . '</td><td style="padding:.15em .5em;text-align:right">' . pg_format_money($shipping, BASE_CURRENCY_SYMBOL) . '</td></tr>' : '') . '
-        ' . ($gift_card_discount > 0 ? '<tr><td style="padding:.15em .5em">' . lang('Gift Card') . '</td><td style="padding:.15em .5em;text-align:right">-' . pg_format_money($gift_card_discount, BASE_CURRENCY_SYMBOL) . '</td></tr>' : '') . '
-        ' . ($surcharge > 0 ? '<tr><td style="padding:.15em .5em">' . lang('Surcharge') . '</td><td style="padding:.15em .5em;text-align:right">' . pg_format_money($surcharge, BASE_CURRENCY_SYMBOL) . '</td></tr>' : '') . '
-        ' . ($installment_charges > 0 && $payment_installment >= 2 ? '<tr><td style="padding:.15em .5em">' . lang('Number of Installments') . '</td><td style="padding:.15em .5em;text-align:right">' . (int) $payment_installment . '</td></tr><tr><td style="padding:.15em .5em">' . lang('Installment Charge') . '</td><td style="padding:.15em .5em;text-align:right">' . pg_format_money($installment_charges, BASE_CURRENCY_SYMBOL) . '</td></tr>' : '') . '
-        <tr style="border-top:2px solid #333"><td style="padding:.2em .5em"><strong>' . lang('Total') . '</strong></td><td style="padding:.2em .5em;text-align:right"><strong>' . prepare_amount($total) . '</strong></td></tr>
+        <tr><td style="padding:.15em .5em">' . lang('Subtotal') . '</td><td style="padding:.15em .5em;text-align:right">' . $order_amount($subtotal) . '</td></tr>
+        ' . ($discount > 0 ? '<tr><td style="padding:.15em .5em">' . lang('Discount') . '</td><td style="padding:.15em .5em;text-align:right">-' . $order_amount($discount) . '</td></tr>' : '') . '
+        ' . ($tax > 0 ? '<tr><td style="padding:.15em .5em">' . lang('Tax') . '</td><td style="padding:.15em .5em;text-align:right">' . $order_amount($tax) . '</td></tr>' : '') . '
+        ' . ($shipping > 0 ? '<tr><td style="padding:.15em .5em">' . lang('Shipping') . '</td><td style="padding:.15em .5em;text-align:right">' . $order_amount($shipping) . '</td></tr>' : '') . '
+        ' . ($gift_card_discount > 0 ? '<tr><td style="padding:.15em .5em">' . lang('Gift Card') . '</td><td style="padding:.15em .5em;text-align:right">-' . $order_amount($gift_card_discount) . '</td></tr>' : '') . '
+        ' . ($surcharge > 0 ? '<tr><td style="padding:.15em .5em">' . lang('Surcharge') . '</td><td style="padding:.15em .5em;text-align:right">' . $order_amount($surcharge) . '</td></tr>' : '') . '
+        ' . ($installment_charges > 0 && $payment_installment >= 2 ? '<tr><td style="padding:.15em .5em">' . lang('Number of Installments') . '</td><td style="padding:.15em .5em;text-align:right">' . (int) $payment_installment . '</td></tr><tr><td style="padding:.15em .5em">' . lang('Installment Charge') . '</td><td style="padding:.15em .5em;text-align:right">' . $order_amount($installment_charges) . '</td></tr>' : '') . '
+        <tr style="border-top:2px solid #333"><td style="padding:.2em .5em"><strong>' . lang('Total') . '</strong></td><td style="padding:.2em .5em;text-align:right"><strong>' . $order_amount($total) . '</strong></td></tr>
         ' . ($refunded_amount_cents > 0 ?
-            '<tr><td style="padding:.15em .5em;color:#dc3545">' . lang('Total Refunded') . '</td><td style="padding:.15em .5em;text-align:right;color:#dc3545">-' . pg_format_money($refunded_amount_cents / 100, BASE_CURRENCY_SYMBOL) . '</td></tr>
-            <tr style="border-top:1px solid #333"><td style="padding:.2em .5em"><strong>' . lang('Net Total') . '</strong></td><td style="padding:.2em .5em;text-align:right"><strong>' . prepare_amount(($total_cents - $refunded_amount_cents) / 100) . '</strong></td></tr>'
+            '<tr><td style="padding:.15em .5em;color:#dc3545">' . lang('Total Refunded') . '</td><td style="padding:.15em .5em;text-align:right;color:#dc3545">-' . $order_amount($refunded_amount_cents / 100) . '</td></tr>
+            <tr style="border-top:1px solid #333"><td style="padding:.2em .5em"><strong>' . lang('Net Total') . '</strong></td><td style="padding:.2em .5em;text-align:right"><strong>' . $order_amount(($total_cents - $refunded_amount_cents) / 100) . '</strong></td></tr>'
         : '') . '
     </table>
 

@@ -8084,7 +8084,15 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // Unicode glyph by the time it hits h(). ENT_QUOTES | ENT_HTML5 covers
     // numeric (&#8378;), hex (&#x20BA;), and named (&#nbsp;) entities.
     $currency_symbol = html_entity_decode((string)$currency_symbol, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-    $fmt_money = function ($cents) use ($currency_symbol) {
+    // An order kept in another currency than the base prints in it, as
+    // charged (pg_order_money()); any other in the visitor's currency.
+    $order_charged = array('charged_currency' => pg_order_charged_ready()
+        ? (string)db_value("SELECT charged_currency FROM orders WHERE id = '$oid_esc' LIMIT 1") : '');
+    $order_own_currency = (pg_order_display_for($order_charged, defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : '', array()) !== null);
+    $fmt_money = function ($cents) use ($currency_symbol, $order_charged, $order_own_currency) {
+        if ($order_own_currency) {
+            return pg_order_money($order_charged, (int)$cents);
+        }
         // Shown in the visitor's currency like the legacy order screens.
         return pg_visitor_money((int)$cents / 100, $currency_symbol);
     };

@@ -247,7 +247,15 @@ if (!$_POST) {
     $utm_term = $row['utm_term'];
     $utm_content = $row['utm_content'];
     $affiliate_code = $row['affiliate_code'];
-    $currency_code = $row['currency_code'];
+    // The currency the order is kept in, when another than the base; else
+    // the one the visitor was shown. Every amount of the order is printed in
+    // it (pg_order_money_symbol()); gift card balances stay in base.
+    $charged_code = pg_order_currency_code($row['charged_currency'] ?? '');
+    $currency_code = ($charged_code !== '') ? $charged_code : $row['currency_code'];
+    $order_money = pg_order_money_symbol($row);
+    $order_amount = function ($amount) use ($order_money) {
+        return pg_format_money($amount, $order_money['symbol'], $order_money['suffix']);
+    };
     $http_referer = $row['http_referer'];
     $user_id = $row['user_id'];
     $username = $row['username'];
@@ -436,14 +444,14 @@ if (!$_POST) {
         if (count($applied_gift_cards) > 1) {
             $output_gift_card_label_plural_suffix = 's';
         }
-        $output_gift_card_discount_row = pg_order_view_kv(lang(array('string'=>'Gift Card{suffix:1}','vars'=>array(),'suffix'=>array($output_gift_card_label_plural_suffix))), '-' . pg_format_money($gift_card_discount, BASE_CURRENCY_SYMBOL));
+        $output_gift_card_discount_row = pg_order_view_kv(lang(array('string'=>'Gift Card{suffix:1}','vars'=>array(),'suffix'=>array($output_gift_card_label_plural_suffix))), '-' . $order_amount($gift_card_discount));
     }
     // A credit card surcharge and the instalment fee: rows of the Payment
     // card's totals only when the order has them (the number of instalments
     // is a row of how it was paid).
-    $output_surcharge_row = ($surcharge > 0) ? pg_order_view_kv(lang('Surcharge'), pg_format_money($surcharge, BASE_CURRENCY_SYMBOL)) : '';
+    $output_surcharge_row = ($surcharge > 0) ? pg_order_view_kv(lang('Surcharge'), $order_amount($surcharge)) : '';
     $output_installment_charge_row = (($installment_charges != 0) && ($payment_installment >= 2))
-        ? pg_order_view_kv(lang('Installment Charge'), pg_format_money($installment_charges, BASE_CURRENCY_SYMBOL))
+        ? pg_order_view_kv(lang('Installment Charge'), $order_amount($installment_charges))
         : '';
     // How it was paid, the left part of the Payment card: the method with
     // its tile and the card's grey line, then the rows that hold a value.
@@ -567,7 +575,7 @@ if (!$_POST) {
                     </div>
                     <div class="d-flex justify-content-between gap-3">
                         <span class="translateable fg-secondary">' . lang('Commission') . '</span>
-                        <span class="text-end text-break">' . pg_format_money($commission, BASE_CURRENCY_SYMBOL) . '</span>
+                        <span class="text-end text-break">' . $order_amount($commission) . '</span>
                     </div>
                 </div>
             </div>';
@@ -1166,7 +1174,7 @@ if (!$_POST) {
                             <dl class="pg-kv">
                                 ' . pg_order_view_kv(lang('Shipping Method'), $shipping_method) . '
                                 ' . pg_order_view_kv(lang('Req. Arrival Date'), $output_arrival_date) . '
-                                ' . pg_order_view_kv(lang('Shipping Cost'), '<span class="pg-tabular">' . pg_format_money($ship_tos[$key]['shipping_cost'] / 100, BASE_CURRENCY_SYMBOL) . '</span>') . '
+                                ' . pg_order_view_kv(lang('Shipping Cost'), '<span class="pg-tabular">' . $order_amount($ship_tos[$key]['shipping_cost'] / 100) . '</span>') . '
                                 ' . pg_order_view_kv(lang('Packages'), h($ship_tos[$key]['packages'])) . '
                                 ' . $output_custom_field_cells . '
                             </dl>
@@ -1442,7 +1450,7 @@ if (!$_POST) {
                                 $output_legend_content,
                                 '<div class="order-line-facts">
                                         ' . pg_order_view_line_fact(lang('Code'), $output_code) . '
-                                        ' . pg_order_view_line_fact(lang('Amount'), prepare_amount($product_price)) . '
+                                        ' . pg_order_view_line_fact(lang('Amount'), $order_amount($product_price)) . '
                                         ' . pg_order_view_line_fact(lang('Recipient Email'), h($order_item_gift_card['recipient_email_address'])) . '
                                         ' . pg_order_view_line_fact(lang('From Name'), h($order_item_gift_card['from_name'])) . '
                                         ' . pg_order_view_line_fact(lang('Message'), nl2br(h($order_item_gift_card['message']))) . '
@@ -1494,9 +1502,9 @@ if (!$_POST) {
                         $output_custom_field_3,
                         $output_custom_field_4,
                     )),
-                    'amount_html' => (int) $quantity . ' × ' . prepare_amount($product_price),
+                    'amount_html' => (int) $quantity . ' × ' . $order_amount($product_price),
                     'shipped_html' => pg_order_view_line_shipped($output_shipped_quantity_field, $quantity),
-                    'total_html' => prepare_amount($product_total),
+                    'total_html' => $order_amount($product_total),
                     'parts_html' => $output_gift_cards . $output_forms,
                 ));
 
@@ -1729,7 +1737,7 @@ if (!$_POST) {
                                 $output_legend_content,
                                 '<div class="order-line-facts">
                                     ' . pg_order_view_line_fact(lang('Code'), $output_code) . '
-                                    ' . pg_order_view_line_fact(lang('Amount'), prepare_amount($product_price)) . '
+                                    ' . pg_order_view_line_fact(lang('Amount'), $order_amount($product_price)) . '
                                     ' . pg_order_view_line_fact(lang('Recipient Email'), h($order_item_gift_card['recipient_email_address'])) . '
                                     ' . pg_order_view_line_fact(lang('From Name'), h($order_item_gift_card['from_name'])) . '
                                     ' . pg_order_view_line_fact(lang('Message'), nl2br(h($order_item_gift_card['message']))) . '
@@ -1781,8 +1789,8 @@ if (!$_POST) {
                     $output_custom_field_3,
                     $output_custom_field_4,
                 )),
-                'amount_html' => (int) $quantity . ' × ' . prepare_amount($product_price),
-                'total_html' => prepare_amount($product_total),
+                'amount_html' => (int) $quantity . ' × ' . $order_amount($product_price),
+                'total_html' => $order_amount($product_total),
                 'parts_html' => $output_gift_cards . $output_forms,
             ));
         }
@@ -1794,7 +1802,7 @@ if (!$_POST) {
     $output_restore_button = pg_order_view_restore_button($status);
 
     // if multi currency is enabled, output miscellaneous fieldset with currency information
-    if (ECOMMERCE_MULTICURRENCY === true) {
+    if ((ECOMMERCE_MULTICURRENCY === true) || ($charged_code !== '')) {
         $currency_name_and_code = '';
         
         // if there is a currency code, then output it
@@ -1918,15 +1926,15 @@ if (!$_POST) {
         $refund_service = pg_payment_driver($refund_driver)['label'];
         // The input takes the machine format; the text shows the site's.
         $refund_remaining_value = number_format($refund_remaining_cents / 100, 2, '.', '');
-        $refund_remaining_formatted = pg_format_money($refund_remaining_cents / 100, BASE_CURRENCY_SYMBOL);
-        $refund_refunded_formatted = pg_format_money($refunded_amount_cents / 100, BASE_CURRENCY_SYMBOL);
+        $refund_remaining_formatted = $order_amount($refund_remaining_cents / 100);
+        $refund_refunded_formatted = $order_amount($refunded_amount_cents / 100);
 
         // What the modal asks for: an amount, or - with the ERP - the lines
         // and quantities that came back, the amount worked out from them.
         $output_payment_refund_body = '
                                     <label class="form-label fw-semibold" for="payment_refund_amount">' . lang('Refund Amount') . ' (' . lang('max') . ': ' . $refund_remaining_formatted . ')</label>
                                     <label class="form-control form-adorn">
-                                        <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
+                                        <span class="form-adorn-text" aria-hidden="true">' . (($order_money['symbol'] !== '') ? $order_money['symbol'] : h($charged_code)) . '</span>
                                         <input type="number" class="form-ghost" id="payment_refund_amount" name="refund_amount" step="0.01" min="0.01" max="' . $refund_remaining_value . '" value="' . $refund_remaining_value . '" required>
                                     </label>
                                     <p class="form-text fg-secondary mt-3">' . lang(array('string' => 'This will refund the specified amount via {var:1}.', 'vars' => h($refund_service))) . '</p>';
@@ -2042,7 +2050,7 @@ if (!$_POST) {
     // money is left, the gift card one only when cards paid.
     // The amounts are in the store's base currency, the unit they were
     // charged in; orders.currency_code is only what the visitor was shown.
-    $refund_amount_text   = pg_format_money($refund_owed['total'] / 100, BASE_CURRENCY_SYMBOL);
+    $refund_amount_text   = $order_amount($refund_owed['total'] / 100);
 
     $refund_instructions = '';
     if ($refund_owed['payment'] > 0 || $refund_owed['gift_card'] <= 0) {
@@ -2053,7 +2061,7 @@ if (!$_POST) {
     if ($refund_owed['gift_card'] > 0) {
         $refund_instructions .= '<div class="small">' . lang(array(
             'string' => 'Gift cards paid {var:1} of this order. Return the amounts to the cards; the site log names them.',
-            'vars'   => array(pg_format_money($refund_owed['gift_card'] / 100, BASE_CURRENCY_SYMBOL)))) . '</div>';
+            'vars'   => array($order_amount($refund_owed['gift_card'] / 100)))) . '</div>';
     }
 
     if (in_array($refund_state, array('manual_required', 'failed', 'pending'), true)) {
@@ -2151,8 +2159,8 @@ if (!$_POST) {
                     ? '{var:1} of the payment was refunded already. The remaining {var:2} will NOT be refunded automatically. Send it back to the customer by bank transfer.'
                     : '{var:1} of the payment was refunded already. The remaining {var:2} will NOT be refunded automatically. Process the refund in your payment provider dashboard.',
                 'vars'   => array(
-                    pg_format_money($cancel_payment_plan['refunded'] / 100, BASE_CURRENCY_SYMBOL),
-                    pg_format_money($cancel_payment_plan['remaining'] / 100, BASE_CURRENCY_SYMBOL)))) . '</p>';
+                    $order_amount($cancel_payment_plan['refunded'] / 100),
+                    $order_amount($cancel_payment_plan['remaining'] / 100)))) . '</p>';
         } elseif ($cancel_payment_plan['action'] === 'manual') {
             $cancel_payment_note = '<p class="fg-warning small">' . ($cancel_by_transfer
                 ? lang('The payment will NOT be refunded automatically. Send the amount back to the customer by bank transfer.')
@@ -2507,17 +2515,17 @@ if (!$_POST) {
     // The Payment card (board O1, mark 4): its title carries the payment
     // pill; how it was paid on the left, the totals on the right (stacked
     // when the card is narrow).
-    $output_payment_totals = pg_order_view_kv(lang('Subtotal'), '<span class="pg-tabular">' . prepare_amount($subtotal) . '</span>')
-        . (($discount > 0) ? '<div><dt>' . h(lang('Discount')) . (((string) $special_offer_code !== '') ? ' <span class="pg-text-meta">' . h($special_offer_code) . '</span>' : '') . '</dt><dd>-' . pg_format_money($discount, BASE_CURRENCY_SYMBOL) . '</dd></div>' : '')
-        . pg_order_view_kv(lang('Tax'), pg_format_money($tax, BASE_CURRENCY_SYMBOL))
-        . pg_order_view_kv(lang('Shipping'), pg_format_money($shipping, BASE_CURRENCY_SYMBOL))
+    $output_payment_totals = pg_order_view_kv(lang('Subtotal'), '<span class="pg-tabular">' . $order_amount($subtotal) . '</span>')
+        . (($discount > 0) ? '<div><dt>' . h(lang('Discount')) . (((string) $special_offer_code !== '') ? ' <span class="pg-text-meta">' . h($special_offer_code) . '</span>' : '') . '</dt><dd>-' . $order_amount($discount) . '</dd></div>' : '')
+        . pg_order_view_kv(lang('Tax'), $order_amount($tax))
+        . pg_order_view_kv(lang('Shipping'), $order_amount($shipping))
         . $output_gift_card_discount_row
         . $output_surcharge_row
         . $output_installment_charge_row;
-    $output_payment_sum = pg_order_view_kv(lang('Total'), '<strong class="pg-tabular">' . prepare_amount($total) . '</strong>')
+    $output_payment_sum = pg_order_view_kv(lang('Total'), '<strong class="pg-tabular">' . $order_amount($total) . '</strong>')
         . (($refunded_amount_cents > 0)
-            ? pg_order_view_kv(lang('Total Refunded'), '<span class="fg-danger">-' . pg_format_money($refunded_amount_cents / 100, BASE_CURRENCY_SYMBOL) . '</span>')
-                . pg_order_view_kv(lang('Net Total'), '<strong class="pg-tabular">' . prepare_amount(($total_cents - $refunded_amount_cents) / 100) . '</strong>')
+            ? pg_order_view_kv(lang('Total Refunded'), '<span class="fg-danger">-' . $order_amount($refunded_amount_cents / 100) . '</span>')
+                . pg_order_view_kv(lang('Net Total'), '<strong class="pg-tabular">' . $order_amount(($total_cents - $refunded_amount_cents) / 100) . '</strong>')
             : '');
     $output_payment_card =
         '<div class="card pg-card">
@@ -2916,7 +2924,7 @@ if (!$_POST) {
 
         db_value("SELECT RELEASE_LOCK('" . e($refund_lock) . "')");
 
-        log_activity(lang(array('string' => 'Refunded {var:1} {var:2} for order #{var:3}.', 'vars' => array(pg_format_number($refund_cents / 100, 2), BASE_CURRENCY_CODE, pg_order_log_number($order_row)))));
+        log_activity(lang(array('string' => 'Refunded {var:1} {var:2} for order #{var:3}.', 'vars' => array(pg_format_number($refund_cents / 100, 2), pg_order_amount_currency($order_row, BASE_CURRENCY_CODE), pg_order_log_number($order_row)))));
 
         // The full amount back cancels the order through the store's one
         // cancellation: the canceller, date and reason are recorded, a waiting
@@ -2947,7 +2955,7 @@ if (!$_POST) {
                 $return_query['qty'][(int) $line_id] = $count;
             }
             $liveform_return = new liveform('add_erp_return');
-            $liveform_return->add_notice(lang(array('string' => 'The card refund of {var:1} has been processed. Issue the return invoice for the same lines to finish.', 'vars' => pg_format_money($refund_cents / 100, BASE_CURRENCY_SYMBOL))));
+            $liveform_return->add_notice(lang(array('string' => 'The card refund of {var:1} has been processed. Issue the return invoice for the same lines to finish.', 'vars' => h(pg_order_money($order_row, $refund_cents)))));
             go(PATH . SOFTWARE_DIRECTORY . '/add_erp_return.php?' . http_build_query($return_query));
         }
 

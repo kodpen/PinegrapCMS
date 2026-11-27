@@ -592,7 +592,9 @@ $export_distinct = (($join_order_items !== '') || ($join_ship_tos !== '')) ? 'DI
 // The orders the list shows (same joins and conditions as its count), one row
 // each: the joins for the advanced filters can repeat an order, so every
 // figure of the strip and of Summary is taken over this distinct set.
-$orders_filtered_select = "SELECT DISTINCT orders.id, orders.total, orders.order_date, orders.payment_method, " . (pg_schema_has('orders', 'type') ? 'orders.type' : "'' AS type") . "
+// Its total is in base units (pg_order_base_sql()), so every sum over it
+// adds one currency.
+$orders_filtered_select = "SELECT DISTINCT orders.id, " . pg_order_base_sql('orders.total') . " AS total, orders.order_date, orders.payment_method, " . (pg_schema_has('orders', 'type') ? 'orders.type' : "'' AS type") . "
     FROM orders
     LEFT JOIN user ON orders.user_id = user.user_id
     LEFT JOIN contacts on orders.contact_id = contacts.id
@@ -2565,6 +2567,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                 orders.status,
                 orders.payment_method,
                 orders.transaction_id,
+                " . (pg_order_charged_ready() ? "orders.charged_currency, orders.charged_rate," : "") . "
                 " . ($paid_at_column_exists ? "orders.paid_at" : "0 AS paid_at") . ",
                 " . ($refunded_amount_exists ? "orders.refunded_amount" : "0 AS refunded_amount") . ",
                 " . ($on_account_exists ? "orders.erp_on_account" : "0 AS erp_on_account") . ",
@@ -2644,9 +2647,10 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             $output_order_type = lang('Online');
         }
         $card_verification_number = $row['card_verification_number'];
-        $total = $row['total'] / 100;
-        $filter_totals = $filter_totals + $total;
-        $filter_totals_minor += (int) $row['total'];
+        // The filter's sum is in base units; the row prints the order's own.
+        $total_base = pg_order_base_amount((int) $row['total'], $row);
+        $filter_totals = $filter_totals + ($total_base / 100);
+        $filter_totals_minor += $total_base;
         $order_date = get_relative_time(array('timestamp' => $row['order_date']));
         
         $output_link_url = 'view_order.php?id=' . $id . '&send_to=' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY)) . '/view_orders.php';
@@ -2756,7 +2760,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                 'last_name' => pg_list_cell(h($billing_last_name)),
                 'status' => pg_list_cell($output_status, 'align-middle', $output_status_edit + array('data-pg-sort-value' => (string) $status)),
                 'type' => pg_list_cell(h($output_order_type)),
-                'total' => pg_list_cell(pg_order_list_amount_html($status, $row['total'], $cart_totals[(int) $id] ?? null), 'align-middle', array('data-pg-sort-value' => (string) (int) $row['total'])),
+                'total' => pg_list_cell(pg_order_list_amount_html($status, $row['total'], $cart_totals[(int) $id] ?? null, $row), 'align-middle', array('data-pg-sort-value' => (string) (int) $row['total'])),
                 'user' => pg_list_cell(h($username)),
                 'tracking_code' => pg_list_cell(h($tracking_code)),
                 'member_id' => pg_list_cell(h($member_id)),
@@ -3178,7 +3182,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
     // came from outside. A marketplace order is one of those - the sale is real
     // and the money is real, it was simply made on somebody else's site.
     $online_orders_total = (float) db_value(
-        "SELECT SUM(total) FROM orders
+        "SELECT SUM(" . pg_order_base_sql('orders.total') . ") FROM orders
         WHERE (status IN ('complete', 'exported'))
           AND (type IN ('online', 'marketplace'))") / 100;
 
@@ -3205,7 +3209,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
 
     if ($refund_columns_exist) {
         $refund_pending_total = ((float) db_value(
-            "SELECT COALESCE(SUM(" . pg_order_cancel_refund_owed_sql(pg_schema_has('orders', 'paid_at'), pg_schema_has('orders', 'refunded_amount')) . "), 0)
+            "SELECT COALESCE(SUM(" . pg_order_base_sql(pg_order_cancel_refund_owed_sql(pg_schema_has('orders', 'paid_at'), pg_schema_has('orders', 'refunded_amount'))) . "), 0)
              FROM orders
              WHERE refund_status IN ('manual_required', 'failed', 'pending')")) / 100;
     }

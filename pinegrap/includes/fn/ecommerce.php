@@ -9196,9 +9196,33 @@ function pg_format_money($amount, $symbol = null, $suffix = '')
  */
 function pg_visitor_amount($base_amount)
 {
-    $rate = (defined('VISITOR_CURRENCY_EXCHANGE_RATE') && ((float) VISITOR_CURRENCY_EXCHANGE_RATE > 0))
-        ? (float) VISITOR_CURRENCY_EXCHANGE_RATE : 1.0;
+    $display = function_exists('pg_order_display') ? pg_order_display() : null;
+    $rate = ($display !== null) ? (float) $display['rate']
+        : ((defined('VISITOR_CURRENCY_EXCHANGE_RATE') && ((float) VISITOR_CURRENCY_EXCHANGE_RATE > 0))
+            ? (float) VISITOR_CURRENCY_EXCHANGE_RATE : 1.0);
     return (is_numeric($base_amount) ? (float) $base_amount : 0.0) * $rate;
+}
+
+/**
+ * The symbol and code suffix the site writes money with: the visitor's
+ * currency, or the order's own while pg_order_display_begin() draws an order
+ * kept in another currency (its amounts are then printed as they are).
+ *
+ * @param string|null $symbol  null = the visitor's currency symbol
+ * @return array  symbol (as stored, maybe an entity), suffix (plain text)
+ */
+function pg_visitor_currency_parts($symbol = null)
+{
+    $display = function_exists('pg_order_display') ? pg_order_display() : null;
+
+    if ($display !== null) {
+        return array('symbol' => (string) $display['symbol'], 'suffix' => (string) $display['suffix']);
+    }
+
+    return array(
+        'symbol' => ($symbol === null) ? (defined('VISITOR_CURRENCY_SYMBOL') ? (string) VISITOR_CURRENCY_SYMBOL : '') : (string) $symbol,
+        'suffix' => defined('VISITOR_CURRENCY_CODE_FOR_OUTPUT') ? (string) VISITOR_CURRENCY_CODE_FOR_OUTPUT : '',
+    );
 }
 
 /**
@@ -9213,8 +9237,8 @@ function pg_visitor_amount($base_amount)
  */
 function pg_visitor_money($base_amount, $symbol = null)
 {
-    $suffix = defined('VISITOR_CURRENCY_CODE_FOR_OUTPUT') ? h(VISITOR_CURRENCY_CODE_FOR_OUTPUT) : '';
-    return pg_format_money(pg_visitor_amount($base_amount), $symbol, $suffix);
+    $parts = pg_visitor_currency_parts($symbol);
+    return pg_format_money(pg_visitor_amount($base_amount), $parts['symbol'], h($parts['suffix']));
 }
 
 /**
@@ -9249,8 +9273,8 @@ function pg_money_text($amount, $symbol = null, $suffix = '')
  */
 function pg_visitor_money_text($base_amount, $symbol = null)
 {
-    $suffix = defined('VISITOR_CURRENCY_CODE_FOR_OUTPUT') ? (string) VISITOR_CURRENCY_CODE_FOR_OUTPUT : '';
-    return pg_money_text(pg_visitor_amount($base_amount), $symbol, $suffix);
+    $parts = pg_visitor_currency_parts($symbol);
+    return pg_money_text(pg_visitor_amount($base_amount), $parts['symbol'], $parts['suffix']);
 }
 
 /**
@@ -9405,7 +9429,12 @@ function pg_money_format_json()
 
 function prepare_price_for_output($original_price, $discounted, $discounted_price, $format, $show_code = true, $show_html_entity_symbol = true)
 {
-    $original_amount = get_currency_amount($original_price / 100, VISITOR_CURRENCY_EXCHANGE_RATE);
+    // While an order kept in another currency is drawn, its amounts are
+    // printed as they are, in that currency (pg_order_display_begin()).
+    $display = function_exists('pg_order_display') ? pg_order_display() : null;
+    $exchange_rate = ($display !== null) ? (float) $display['rate'] : VISITOR_CURRENCY_EXCHANGE_RATE;
+    $currency = pg_visitor_currency_parts();
+    $original_amount = get_currency_amount($original_price / 100, $exchange_rate);
     $original_negative = '';
     // If the amount is negative, then prepare to show negative sign before price,
     // and convert amount to positive value.
@@ -9414,7 +9443,7 @@ function prepare_price_for_output($original_price, $discounted, $discounted_pric
         $original_amount = abs($original_amount);
     }
     if ($discounted) {
-        $discounted_amount = get_currency_amount($discounted_price / 100, VISITOR_CURRENCY_EXCHANGE_RATE);
+        $discounted_amount = get_currency_amount($discounted_price / 100, $exchange_rate);
         $discounted_negative = '';
         // If the amount is negative, then prepare to show negative sign before price,
         // and convert amount to positive value.
@@ -9427,13 +9456,13 @@ function prepare_price_for_output($original_price, $discounted, $discounted_pric
     // so determine if we should show the symbol or not
     $output_symbol = '';
     // if the symbol should be shown, then show it
-    if (($show_html_entity_symbol == true) || (mb_substr(VISITOR_CURRENCY_SYMBOL, 0, 1) != '&')) {
-        $output_symbol = VISITOR_CURRENCY_SYMBOL;
+    if (($show_html_entity_symbol == true) || (mb_substr($currency['symbol'], 0, 1) != '&')) {
+        $output_symbol = $currency['symbol'];
     }
     $output_code = '';
     // if the code should be shown, then prepare to show code
     if ($show_code == true) {
-        $output_code = h(VISITOR_CURRENCY_CODE_FOR_OUTPUT);
+        $output_code = h($currency['suffix']);
     }
     // prepare to output product price differently based on the format
     switch ($format) {

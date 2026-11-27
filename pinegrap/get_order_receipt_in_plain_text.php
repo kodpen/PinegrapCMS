@@ -18,6 +18,16 @@
 
 function get_order_receipt_in_plain_text($order_id)
 {
+    // An order kept in another currency than the base prints in it.
+    $display = pg_order_display_begin((int) $order_id);
+    $output = get_order_receipt_in_plain_text_content($order_id);
+    pg_order_display_end($display);
+
+    return $output;
+}
+
+function get_order_receipt_in_plain_text_content($order_id)
+{
     // get order info that we will need to use below
     $query =
         "SELECT
@@ -1125,7 +1135,7 @@ function get_order_receipt_in_plain_text($order_id)
     
     // If the visitor's currency is different from the base currency,
     // then show actual base currency amount and disclaimer because the base currency will be charged.
-    if (VISITOR_CURRENCY_CODE != BASE_CURRENCY_CODE) {
+    if (pg_order_display_converts()) {
         $output_unconverted_total = '* (' . prepare_amount($grand_total) . ' ' . h(BASE_CURRENCY_CODE) . ')';
 
         $base_currency_name = db_value("SELECT name FROM currencies WHERE id = '" . BASE_CURRENCY_ID . "'");

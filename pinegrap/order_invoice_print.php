@@ -137,7 +137,15 @@ if ($site_name === '' && defined('HOSTNAME')) $site_name = (string)HOSTNAME;
 // Currency + money formatter — mirror the widget so totals match exactly.
 $currency_symbol = defined('VISITOR_CURRENCY_SYMBOL') ? VISITOR_CURRENCY_SYMBOL : '$';
 $currency_symbol = html_entity_decode((string)$currency_symbol, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-$fmt = function ($cents) use ($currency_symbol) {
+// An order kept in another currency than the base prints in it, as charged
+// (pg_order_money()); any other in the visitor's currency.
+$order_charged = array('charged_currency' => pg_order_charged_ready()
+    ? (string)db_value("SELECT charged_currency FROM orders WHERE id = '" . e($order_id) . "' LIMIT 1") : '');
+$order_own_currency = (pg_order_display_for($order_charged, defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : '', array()) !== null);
+$fmt = function ($cents) use ($currency_symbol, $order_charged, $order_own_currency) {
+    if ($order_own_currency) {
+        return pg_order_money($order_charged, (int)$cents);
+    }
     return pg_visitor_money((int)$cents / 100, $currency_symbol);
 };
 

@@ -114,20 +114,27 @@ function pg_order_list_cart_totals($rows)
 /**
  * The amount cell's content: the charged total, or for an incomplete order
  * with lines in its cart the cart's total, muted and titled so it does not
- * read as money taken.
+ * read as money taken. An order kept in another currency than the base
+ * prints in it (pg_order_money()).
  *
  * @param string   $status     orders.status
  * @param int      $total      orders.total in minor units
  * @param int|null $cart_total the cart's total in minor units, null when unknown
+ * @param array    $order      charged_currency; array() for an order in base
  * @return string HTML
  */
-function pg_order_list_amount_html($status, $total, $cart_total = null)
+function pg_order_list_amount_html($status, $total, $cart_total = null, $order = array())
 {
+    $own = (pg_order_display_for((array) $order, defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : '', array()) !== null);
+    $money = function ($minor) use ($own, $order) {
+        return $own ? h(pg_order_money((array) $order, (int) $minor)) : prepare_amount((int) $minor / 100);
+    };
+
     if (($status === 'incomplete') && ((int) $total === 0) && ($cart_total !== null)) {
-        return '<span class="fg-secondary fst-italic" title="' . h(lang('Cart total')) . '">' . prepare_amount((int) $cart_total / 100) . '</span>';
+        return '<span class="fg-secondary fst-italic" title="' . h(lang('Cart total')) . '">' . $money($cart_total) . '</span>';
     }
 
-    return prepare_amount((int) $total / 100);
+    return $money($total);
 }
 
 /**
