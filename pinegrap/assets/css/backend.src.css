@@ -22685,6 +22685,8 @@ button.ws-file-name {
   padding: .75rem;
   background: var(--pg-surface-float);
   box-shadow: var(--pg-shadow-float);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
 }
 .office-link-foot {
   display: flex;

@@ -15,7 +15,7 @@ module: office_docx_format
 - Alignment: `w:jc` in pPr in CT_PPr order (`pg_office_docx_ppr_put()` of `office_docx_kind.php`), written `left`, `center`, `right`, `both`: Word reads left and right as the start and the end of a right-to-left paragraph, and older readers do not know `start`/`end`. Start without a `pStyle` removes `jc` (and an emptied pPr); with one it writes `left`, as the style may centre it. A paragraph already so aligned (also by `start`/`end` values) is left as it is.
 
 ## What does the reader send the editor?
-- `edit.marks` stretches stay `[characters, bits]`; a stretch whose runs have a colour, highlight or size of their own carries a third item `{c: 'RRGGBB', h: name, s: points}`, each key only when present (`pg_office_docx_run_look()`). `auto`, `none` and highlight names Word does not have are not counted. Neighbours join only when bits and look are equal.
+- `edit.marks` stretches stay `[characters, bits]`; a stretch whose runs have a colour, highlight or size of their own carries a third item `{c: 'RRGGBB', h: name, s: points}`, each key only when present (`pg_office_docx_run_look()`); a run in a link also `l`, its address (`office-docx-links.md`). `auto`, `none` and highlight names Word does not have are not counted. Neighbours join only when bits and look are equal.
 - `edit.aligns`: paragraph position => `center`, `end` or `justify`, only for paragraphs not at the start (`pg_office_docx_paragraph_align()`, from the paragraph's own `jc`; `distribute` and `thai` read as start).
 - The preview's HTML draws them (`pg_office_docx_look_style()`), and the document bar sets them: `office-docx-bar-look.md`.
 
