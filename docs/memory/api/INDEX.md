@@ -197,6 +197,7 @@
 - meta-capi-facts.md: Meta Conversions API as Meta's own documents say it (read 2026-11-20): address and version, body, required fields, hashing, 7-day limit, test code, answers and error codes
 - oauth-authorize-state.md: OAuth authorize (includes/oauth/authorize.php): state is handed back exactly as sent, never cut; a state over 4096 bytes is refused with invalid_request and the same state
 - oauth-client-automation-platforms.md: Whether one OAuth client could serve an automation platform on every site (read 2026-11-17): the client metadata document a site reads, what Zapier, Make, Pabbly and n8n allow, why it is not used [decision: here]
+- quickbooks-connection.md: QuickBooks Online connected (AS6): the site's own Intuit app, environment, discovery addresses, realmId kept from the return, the company read, accounts and tax codes chosen, one service at a time
 - removed-rest-api-apps.md: History note: apps.php, apps_settings.php and the custom_apps table were removed in 2026.4.4 and replaced by the external API (integration.php, includes/api/). [decision: decisions-made-data.md, decisions-made.md]
 - tiktok-events-facts.md: TikTok Events API 2.0 as TikTok's own documents say it (read 2026-11-20): address, Access-Token header, body, hashing (phone in E.164 with +), test code, answers, what could not be checked
 - translations-api-dry-run.md: The seven translation API writes take X-Dry-Run (PR #1911): where each stops, the batch counts, translate_api_write_check(), pg_tr_result_judge(), pg_tr_reviewed_kept()

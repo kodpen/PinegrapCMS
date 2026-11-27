@@ -246,6 +246,7 @@
 - share-links-screens.md: Screens of Share by link: the mark on a shared item, Share by link… and its dialog, the head's Sharing mark and menu, Channel info's Sharing, the system line, the sandbox check [decision: here]
 - share-links-table-list.md: A table or checklist of an agent channel message shared by link (SL6): item_id as its number, the text as it is now, Share table by link…, the page, CSV, Markdown
 - share-links.md: Share by link of an agent channel's item (SL1-SL6): a file, note, table or checklist by an unguessable address with an end; who makes one, when it closes, the address [decision: decisions-made-workspace-49.md]
+- support-chat-request.md: The chat window's "Make a support request" (HC5): a site chat taken into a chosen support box as a mail from the customer; a second click finds the same request
 - support-form-request.md: A custom form's "Support Request" switch (HC3): box and e-mail field in connect_apps, the record taken in as a mail by ws_mail_ingest() with its automatic answer; the reply threads back
 - support-request-page.md: A customer's own support requests (HC4): My Account section requests, support_request.php by a signed link in the automatic answer, the mails shown, the Reply box
 - task-app-mark.md: Task application mark (ws_tasks.app_id, #9994): routes that write it, "Made by <application>", the "Made by agents" filter on My Tasks, created_by_app and made_by in the API [decision: decisions-made-schema-23.md]
