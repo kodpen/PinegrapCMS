@@ -954,6 +954,7 @@
 - signature-field-evidence.md: Signature form field (form_fields.type 'signature'): legal status, seal vs document hash, and the immutable capture and storage rules.
 - signature-receipt-and-output.md: Signature evidence receipt, the ^^field^^ token output, the h() ampersand pitfall, and why 'signature' was added to the form_fields.type enum.
 - signature-timestamp-rfc3161.md: RFC 3161 timestamping of signatures: what is stamped, storage, network call policy, config columns, settings-test pitfall, auth list, hand-written ASN.1.
+- site-from-brief.md: A whole site from one brief, the "Describe it" start: what it may and may not make, where it starts, what it costs, where nothing is stored, and which file holds each part [decision: here]
 - site-plan-request.md: The plan of pages of the "Describe it" start (SB3): the designer/site_plan action, what it sends, the answer's pages and theme and their checks, the drafts it reports, the limits
 - site-plan-screen.md: The plan screen of "Describe it" (SB4): the page rows, the theme's five answers, the drafts line that stops "Make my site", what "Make my site" keeps and opens
 - site-run.md: The run of "Describe it" (SB5): the part siterun makes the plan page by page as draft tabs, header and footer once, the line with Stop, a refusal, "Go on", the sketch parts' hooks
