@@ -874,6 +874,7 @@
     "Refund marked as processed by operator for order #{var:1}": "#{var:1} numaralı sipariş için iade operatör tarafından işlendi olarak işaretlendi",
     "Refund marked as processed by operator for order #{var:1}. Reference: {var:2}": "#{var:1} numaralı sipariş için iade operatör tarafından işlendi olarak işaretlendi. Referans: {var:2}",
     "Refund method": "İade yolu",
+    "Refund of order {var:1}": "{var:1} numaralı siparişin iadesi",
     "Refund of the money": "Paranın iadesi",
     "Refund overdue #{var:1}": "İade ödemesi gecikti #{var:1}",
     "Refund reference": "İade referansı",

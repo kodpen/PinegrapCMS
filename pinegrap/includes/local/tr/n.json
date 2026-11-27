@@ -3086,6 +3086,7 @@
     "Not marked": "İşaretlenmez",
     "Not matched": "Eşleşmemiş",
     "Not matched on {var:1}.": "{var:1} üzerinde eşleşmemiş.",
+    "Not matched to a Xero tax rate on the Connections page: {var:1}": "Bağlantılar sayfasında bir Xero vergi oranıyla eşleştirilmedi: {var:1}",
     "Not measured": "Ölçülmedi",
     "Not more than once an hour": "Saatte birden sık değil",
     "Not named": "Belirtilmedi",
