@@ -838,7 +838,9 @@
 - translations-screen-editor-rows.md: Translations screen (translations.php, translations.js): engine wait, row state and count sync, scoped tiles, glossary duplicates and refused saves, return view, CSV guard, box size
 - translations-screen-frame.md: Translations screen frame (TS1): head with language shares, tabs Texts/Activity/Glossary, Scan for new texts and Translate pending, the rail, the filter tiles, the tool line
 - translations-screen-noindex-reason.md: Translations screen: a page's search verdict in the page list, its own-noindex state, the "Why?" list of texts keeping it out (blocking filter) and "Keep as in the source and approve" [decision: decisions-made-product-38.md]
+- translations-screen-overview.md: The Translations screen (translations.php) as a whole: what it is, the redraw under way, its parts by label and which memory file holds each
 - translations-screen-recent-jobs.md: Translations screen (translations.php), recent jobs list: how a job's scope is labelled, where its error shows, and which messages survive the reload after a job or a bulk action
+- translations-screen-row.md: Translations screen row (TS2): the grid, the box, the state column with "Suspicious" on its own line, "Details" read on opening, the refusal under the box, Ctrl+Enter and Alt+Up/Down
 - translations-screen-text-language.md: Translations screen (translations.php): which elements carry lang and dir="rtl" so screen readers and right-to-left translators get the text's own language
 - translations-screen-today.md: Census of the Translations screen before its redraw (2026-11-27): its views, every control, a text's states, what runs by itself, what the API reaches, and the faults the redraw answers
 - translations-screen-unsaved-rows.md: Translations screen (translations.js): a row with typed, unsaved text, its Save highlight, the review (eye) button on it and the leave question

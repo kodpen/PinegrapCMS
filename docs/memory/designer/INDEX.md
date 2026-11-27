@@ -956,6 +956,7 @@
 - signature-timestamp-rfc3161.md: RFC 3161 timestamping of signatures: what is stamped, storage, network call policy, config columns, settings-test pitfall, auth list, hand-written ASN.1.
 - site-plan-request.md: The plan of pages of the "Describe it" start (SB3): the designer/site_plan action, what it sends, the answer's pages and theme and their checks, the drafts it reports, the limits
 - site-plan-screen.md: The plan screen of "Describe it" (SB4): the page rows, the theme's five answers, the drafts line that stops "Make my site", what "Make my site" keeps and opens
+- site-run.md: The run of "Describe it" (SB5): the part siterun makes the plan page by page as draft tabs, header and footer once, the line with Stop, a refusal, "Go on", the sketch parts' hooks
 - site-search-index-text.md: What text the site search index stores for a drawn page: main content only, no cookie window, shared header/menu/footer or link addresses (#4096)
 - site-search-query-and-freshness.md: Site search: the query text in MATCH, the binned and archived page filter (advanced and simple), record and file labels, the index made due after a template install (#3550, #3551, #3552)
 - site-search-skipped-pages.md: Visual-editor pages site search never lists as items (bare product, record, error, checkout and order pages): pg_search_index_skipped_widget_types() (#9053)

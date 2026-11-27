@@ -138,6 +138,7 @@
 - ebay-categories.md: eBay categories and item specifics on the Listings view: Taxonomy API with an application token, the cache key a site (ebay:EBAY_DE), aspects as attribute rows, free text with suggested values
 - ebay-connection.md: eBay marketplace accounts: the ebay and ebay_sandbox connect providers (RuName, three sell scopes), the connector test, the eBay site, remote selects for location and policies
 - ebay-listings.md: eBay listings: inventory item, variant group, offer and publish, price in the site currency, the "does not apply" identifier, verdicts at once, listing id read back
+- ebay-orders.md: eBay orders read on the schedule (getOrders by last modification) into mp_import_order() in the order's own currency, and a parcel reported back with carrier and tracking number
 - ebay-stock-price.md: eBay stock and price through the queue: bulkUpdatePriceQuantity 25 SKUs a call, offer looked up first, price in the site currency to the cent, per-SKU verdicts
 - edit-product-undrawn-columns-kept.md: Edit Product's save leaves out the shipping, customs, zone, gift card and unlabelled custom-field columns the screen does not draw.
 - eu-vat-check.md: EU VAT ids checked against VIES: the clean function and patterns per member state, the REST request, answer mapping, a day's cache, the reverse-charge decision; where it is wired [decision: decisions-made-product-19.md, decisions-made-product-26.md]
