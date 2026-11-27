@@ -12,15 +12,15 @@ priority: 5
 - First the three smallest, each as its own plan file, written by the architect after a count of the code:
   - Local payment methods and pay-later through Stripe: `plans/payment-local-methods.md`.
   - Importers from Wix, Squarespace and Webflow: `plans/import-site-builders.md`.
-  - Panel language packs and a right-to-left panel: the setting that holds the panel's language takes only English and Turkish today, so its plan waits for the owner's answer on that column.
+  - Panel language packs: `plans/panel-language-packs.md` (the mechanism), then `plans/panel-language-german.md`. Arabic with the right-to-left panel and further languages follow German (owner, poll 247).
 - Then the six that may need a table or a column. Each plan starts with a census step, and each table is asked of the owner on its own:
-  - Markets: a price list a country, the charge in the buyer's currency.
-  - Automatic tax: the EU's VAT rate by the buyer's country, an OSS report, US sales tax.
-  - A whole site from one brief.
-  - A knowledge base and support requests.
-  - QuickBooks and Xero sync.
-  - Global sales channels: Amazon, eBay, Etsy, TikTok Shop.
-- A plan's file is named here when it is written; until then nothing of that feature is given out.
+  - Markets: `plans/markets-price-lists.md`.
+  - Automatic tax: `plans/tax-automatic.md`.
+  - A whole site from one brief: `plans/site-from-brief.md`.
+  - A knowledge base and support requests: `plans/help-centre.md`.
+  - QuickBooks and Xero sync: `plans/accounting-sync.md`.
+  - Global sales channels (Amazon, eBay, Etsy, TikTok Shop): `plans/sales-channels-global.md`.
+- A census is memory only; after it the architect writes the build's steps and asks the owner what is his.
 
 ## What does every plan of the list keep?
 - Running sites keep working: a feature is off until its owner turns it on, and a shop that sells in one country and one currency sees nothing new at checkout.
