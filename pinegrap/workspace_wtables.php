@@ -32,6 +32,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
 // The Data list is drawn by the list table driver.
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_list.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_screen_grid.php');
 
 $viewer = ws_screen_gate($user);
 
@@ -1099,8 +1100,15 @@ if (!$table) {
         ws_wtable_link_texts($viewer, $columns, array_merge($page['rows'], $bin_rows))), $lookup_targets);
     $link_counts = $can_write ? ws_wtable_link_counts($id, array_column($page['rows'], 'id')) : array();
 
-    // The rows.
+    // The rows: each column's cells take the width and alignment of the
+    // type they show (a lookup or rollup that of the column it reads).
     $head = '';
+    $shapes = array();
+
+    foreach ($columns as $column_id => $column) {
+        $joined = ws_wtable_joined_type($column['type']);
+        $shapes[(string) $column_id] = ws_wtable_grid_shape($joined ? (string) ($lookup_targets[(string) $column_id]['type'] ?? '') : $column['type'], $joined ? array() : (array) $column['options']);
+    }
 
     foreach ($columns as $column_id => $column) {
         // A heading sorts by its column: up, then down, then the table's order.
@@ -1109,11 +1117,11 @@ if (!$table) {
         $sort_params = array_diff_key($query_params, array('sort' => 1, 'dir' => 1)) + $next;
         $icon = array('' => '', 'asc' => ' <i class="bi bi-sort-up" aria-hidden="true"></i>', 'desc' => ' <i class="bi bi-sort-down" aria-hidden="true"></i>')[$sorted];
 
-        $shown_type = (string) (ws_wtable_joined_type($column['type']) ? ($lookup_targets[(string) $column_id]['type'] ?? '') : $column['type']);
-        $head .= '<th scope="col"' . (in_array($shown_type, array('number', 'money', 'formula'), true) ? ' class="text-end"' : '')
-            . (($sorted !== '') ? ' aria-sort="' . (($sorted === 'asc') ? 'ascending' : 'descending') . '"' : '') . '>'
+        $shape = $shapes[(string) $column_id];
+        $head .= '<th scope="col" class="ws-wt-c ws-wt-c-' . $shape['width'] . ($shape['end'] ? ' text-end' : '') . '"'
+            . (($sorted !== '') ? ' aria-sort="' . (($sorted === 'asc') ? 'ascending' : 'descending') . '"' : '') . '><div class="ws-wt-cell">'
             // A lookup or rollup is worked out after the rows are sorted: it sorts nothing.
-            . (ws_wtable_joined_type($column['type']) ? h($column['name']) : '<a class="fg-reset text-decoration-none" href="' . h($table_url . (empty($sort_params) ? '' : '&' . http_build_query($sort_params))) . '#ws-wt-rows" title="' . h(lang('Sort by this column')) . '">' . h($column['name']) . $icon . '</a>') . '</th>';
+            . (ws_wtable_joined_type($column['type']) ? '<span title="' . h($column['name']) . '">' . h($column['name']) . '</span>' : '<a class="fg-reset text-decoration-none" href="' . h($table_url . (empty($sort_params) ? '' : '&' . http_build_query($sort_params))) . '#ws-wt-rows" title="' . h($column['name'] . ' · ' . lang('Sort by this column')) . '">' . h($column['name']) . $icon . '</a>') . '</div></th>';
     }
 
     // The totals line: sum, average, smallest and largest of each number,
@@ -1159,11 +1167,10 @@ if (!$table) {
         foreach ($columns as $column_id => $column) {
             $value = $row['cells'][$column_id] ?? null;
             $text = ws_wtable_screen_cell_text($column, $value, $people);
-            $shown_type = (string) (ws_wtable_joined_type($column['type']) ? ($lookup_targets[(string) $column_id]['type'] ?? '') : $column['type']);
-            $class = in_array($shown_type, array('number', 'money', 'formula'), true) ? ' class="text-end text-nowrap"' : '';
 
             if (($column['type'] === 'formula') && isset($row['formula_errors'][$column_id])) {
-                $cell = '<span class="fg-danger" title="' . h((string) $row['formula_errors'][$column_id]) . '">#' . h(strtoupper((string) $row['formula_errors'][$column_id])) . '</span>';
+                $text = (string) $row['formula_errors'][$column_id];
+                $cell = '<span class="fg-danger">#' . h(strtoupper($text)) . '</span>';
             } elseif (($column['type'] === 'status') && ($text !== '')) {
                 $color = '';
 
@@ -1175,21 +1182,26 @@ if (!$table) {
 
                 $cell = '<span class="badge theme-secondary fw-normal"' . $color . '>' . h($text) . '</span>';
             } else {
-                $cell = nl2br(h($text));
+                // One line: the line breaks of a text show as spaces, the
+                // whole text in the title.
+                $cell = h($text);
             }
 
-            $line .= '<td' . $class . '>' . $cell . '</td>';
+            $line .= ws_wtable_grid_cell_html($shapes[(string) $column_id], $cell, $text);
         }
 
         $tools = '';
+        $number = ws_wtable_row_label($row);
 
         if ($can_write) {
-            $tools = '<a class="pg-icon-button pg-icon-button-sm" href="' . h($table_url . '&row=' . (int) $row['id'] . $page_qs) . '#ws-wt-row-form" title="' . h(lang('Edit')) . '" aria-label="' . h(lang('Edit')) . '"><i class="bi bi-pencil" aria-hidden="true"></i></a>'
-                . ws_wtable_screen_action_button(array('action' => 'row_delete', 'row' => (int) $row['id'], 'revision' => (int) $row['revision']), lang('Delete'), 'bi-trash',
-                    ws_wtable_screen_delete_confirm('row', (string) $table['name'], $bin_days, (int) ($link_counts[(int) $row['id']] ?? 0)));
+            // A row's click, or Enter on its number, opens it in the row drawer.
+            $open = $table_url . '&row=' . (int) $row['id'] . $page_qs . '#ws-wt-row-form';
+            $number = '<a class="ws-wt-open" href="' . h($open) . '" aria-label="' . h(lang(array('string' => 'Row {var:1}', 'vars' => ws_wtable_row_label($row)))) . '">' . $number . '</a>';
+            $tools = ws_wtable_screen_action_button(array('action' => 'row_delete', 'row' => (int) $row['id'], 'revision' => (int) $row['revision']), lang('Delete'), 'bi-trash',
+                ws_wtable_screen_delete_confirm('row', (string) $table['name'], $bin_days, (int) ($link_counts[(int) $row['id']] ?? 0)));
         }
 
-        $lines .= '<tr id="ws-wt-row-' . (int) $row['id'] . '"><td class="small fg-secondary text-end">' . ws_wtable_row_label($row) . '</td>' . $line . ($can_write ? '<td class="text-end text-nowrap">' . $tools . '</td>' : '') . '</tr>';
+        $lines .= '<tr id="ws-wt-row-' . (int) $row['id'] . '"' . ($can_write ? ' data-ws-wt-open="' . h($open) . '"' : '') . '><td class="small fg-secondary text-end">' . $number . '</td>' . $line . ($can_write ? '<td class="text-end text-nowrap">' . $tools . '</td>' : '') . '</tr>';
     }
 
     $pager = '';
@@ -1209,7 +1221,7 @@ if (!$table) {
     } elseif ($lines === '') {
         $rows_body = pg_empty_state('bi-table', lang('No row yet'));
     } else {
-        $rows_body = '<div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0">
+        $rows_body = ws_wtable_grid_style() . '<div class="ws-wt-grid" role="region" tabindex="0" aria-label="' . h(lang('Rows')) . '"><table class="table table-sm table-hover align-middle mb-0">
             <thead><tr><th scope="col" class="text-end">#</th>' . $head . ($can_write ? '<th scope="col" aria-label="' . h(lang('Actions')) . '"></th>' : '') . '</tr></thead>
             <tbody>' . $lines . '</tbody>' . $totals_foot . '
         </table></div>' . ((($pager !== '') || ($totals_switch !== '')) ? '<div class="d-flex flex-wrap align-items-center gap-3 mt-3">' . $totals_switch . $pager . '</div>' : '');
@@ -1333,10 +1345,9 @@ if (!$table) {
 
                 case 'text':
                 case 'list':
-                    // Tall enough for the lines the value has, two at least;
-                    // a list takes one item a line.
-                    $lines = min(8, max(2, count(preg_split('/\r\n|\r|\n/', $value))));
-                    $input = '<textarea class="pg-input pg-input-sm' . $invalid . '" name="' . h($name) . '" id="' . $field_id . '" rows="' . $lines . '">' . h($value) . '</textarea>';
+                    // Tall enough to show the value whole, two lines at
+                    // least; a list takes one item a line.
+                    $input = '<textarea class="pg-input pg-input-sm' . $invalid . '" name="' . h($name) . '" id="' . $field_id . '" rows="' . ws_wtable_grid_text_rows($value) . '">' . h($value) . '</textarea>';
 
                     if ($column['type'] === 'list') {
                         $hint = lang('One item a line.');
@@ -1367,27 +1378,25 @@ if (!$table) {
         // A row a live page wrote last names its canvas (canvas_consents.php).
         $via_label = $edit ? ws_canvas_via_label($viewer, (int) ($edit['via_message_id'] ?? 0)) : '';
 
-        $row_form = '
-            <div class="card mb-5' . ($edit ? ' border-primary' : '') . '" id="ws-wt-row-form">
-                <div class="card-header"><h2 class="h6 mb-0"><i class="bi ' . ($edit ? 'bi-pencil' : 'bi-plus-lg') . ' me-1" aria-hidden="true"></i>'
-                    . h($edit ? lang(array('string' => 'Row {var:1}', 'vars' => ws_wtable_row_label($edit))) : lang('New row')) . '</h2></div>
-                <div class="card-body">
-                    ' . (($edit_id > 0) && !$edit ? '<div class="alert theme-warning small py-3">' . h(lang('That row could not be found: it may have been deleted.')) . '</div>' : '') . '
-                    ' . ($via_label !== '' ? '<p class="small fg-secondary mb-3"><i class="bi bi-window-stack me-1" aria-hidden="true"></i>' . h($via_label) . '</p>' : '') . '
-                    <form method="post" action="' . h($self_url) . '" class="disable_shortcut">
-                        ' . get_token_field() . '
-                        <input type="hidden" name="wt_action" value="row_save">
-                        <input type="hidden" name="wt_table" value="' . $id . '">
-                        <input type="hidden" name="wt_row" value="' . ($edit ? (int) $edit['id'] : 0) . '">
-                        <input type="hidden" name="revision" value="' . ($edit ? (int) $edit['revision'] : 0) . '">
-                        ' . (($fields !== '') ? $fields : '<p class="small fg-secondary">' . h(lang('Every column of this table is worked out by a formula.')) . '</p>') . '
-                        <div class="d-flex gap-3 mt-5">
-                            <button type="submit" class="pg-button pg-button-fill pg-button-sm">' . h($edit ? lang('Save') : lang('Add')) . '</button>
-                            ' . ($edit || ($edit_id > 0) ? '<a class="pg-button pg-button-ghost pg-button-sm" href="' . h($table_url . $page_qs) . '#ws-wt-rows">' . h(lang('Cancel')) . '</a>' : '') . '
-                        </div>
-                    </form>
-                </div>
-            </div>';
+        // The row drawer: opened by a row's click, by New row, or by the
+        // address's hash when a refused save comes back to it.
+        $row_form = ws_wtable_grid_row_drawer(array(
+            'action' => $self_url,
+            'title'  => $edit ? lang(array('string' => 'Row {var:1}', 'vars' => ws_wtable_row_label($edit))) : lang('New row'),
+            'icon'   => $edit ? 'bi-pencil' : 'bi-plus-lg',
+            'submit' => $edit ? lang('Save') : lang('Add'),
+            'delete' => $edit ? '<button type="button" class="pg-button pg-button-danger pg-button-sm ws-wt-action" data-action="row_delete" data-row="' . (int) $edit['id'] . '" data-revision="' . (int) $edit['revision'] . '"'
+                . ' data-confirm="' . h(ws_wtable_screen_delete_confirm('row', (string) $table['name'], $bin_days, (int) (ws_wtable_link_counts($id, array((int) $edit['id']))[(int) $edit['id']] ?? 0))) . '">'
+                . '<i class="bi bi-trash" aria-hidden="true"></i>' . h(lang('Delete')) . '</button>' : '',
+            'form'   => (($edit_id > 0) && !$edit ? '<div class="alert theme-warning small py-3">' . h(lang('That row could not be found: it may have been deleted.')) . '</div>' : '')
+                . ($via_label !== '' ? '<p class="small fg-secondary mb-3"><i class="bi bi-window-stack me-1" aria-hidden="true"></i>' . h($via_label) . '</p>' : '')
+                . get_token_field()
+                . '<input type="hidden" name="wt_action" value="row_save">'
+                . '<input type="hidden" name="wt_table" value="' . $id . '">'
+                . '<input type="hidden" name="wt_row" value="' . ($edit ? (int) $edit['id'] : 0) . '">'
+                . '<input type="hidden" name="revision" value="' . ($edit ? (int) $edit['revision'] : 0) . '">'
+                . (($fields !== '') ? $fields : '<p class="small fg-secondary">' . h(lang('Every column of this table is worked out by a formula.')) . '</p>'),
+        ));
     }
 
     // The column form fields of one type: the options it takes.
@@ -2162,6 +2171,44 @@ $shell . '
     }
     openFromHash();
     window.addEventListener("hashchange", openFromHash);
+
+    // A drawer closed takes its hash off the address, so the same link
+    // opens it again.
+    if (window.pgUI) {
+        window.pgUI.ready(function () {
+            document.querySelectorAll("dialog.ws-wt-drawer").forEach(function (drawer) {
+                window.pgUI.drawer.on(drawer, "hidden", function () {
+                    var id = window.location.hash.slice(1);
+                    var target = id ? document.getElementById(id) : null;
+                    if (target && drawer.contains(target)) {
+                        window.history.replaceState(null, "", window.location.pathname + window.location.search);
+                    }
+                });
+            });
+        });
+    }
+
+    // A click on a row opens it in the row drawer; the keyboard reaches the
+    // same address on the number of the row. A link or button of the row, or a
+    // click that ends a text selection, keeps its own meaning.
+    document.addEventListener("click", function (e) {
+        var row = e.target.closest("tr[data-ws-wt-open]");
+        if (!row || e.target.closest("a, button, input, select, textarea, label")) { return; }
+        if (window.getSelection && String(window.getSelection()) !== "") { return; }
+        window.location.href = row.dataset.wsWtOpen;
+    });
+
+    // New row opens the drawer in place when the page holds the form of a new row.
+    document.addEventListener("click", function (e) {
+        var link = e.target.closest("a[href$=\"#ws-wt-row-form\"]");
+        var drawer = document.getElementById("ws-wt-row-form");
+        if (!link || link.closest("tr") || !drawer || !drawer.hasAttribute("data-ws-wt-new") || !window.pgUI) { return; }
+        e.preventDefault();
+        window.pgUI.drawer.show(drawer).then(function () {
+            var first = drawer.querySelector(".drawer-body input:not([type=hidden]), .drawer-body select, .drawer-body textarea");
+            if (first) { first.focus(); }
+        });
+    });
 
     // A type change of a column asks first.
     document.addEventListener("submit", function (e) {
