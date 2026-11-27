@@ -61,7 +61,7 @@
 - help-centre-census-privacy.md: Help centre census: who reads a support request, and how it leaves with a customer's data (export, erasure, keep period) today and as proposed
 - help-centre-census-proposal.md: Help centre census proposal: a support request is a support-box mail conversation with a priority and a source, every door ends there; the columns and tables to ask one by one, the screens in words
 - help-centre-census.md: Help centre HC1 census from the code: what collections lack for a knowledge base, what a Workspace mail conversation stores, where requests come in, the proposal, the owner's questions
-- help-centre.md: Plan (owner 2026-11-27, poll 246): a knowledge base on the site and support requests followed by the team; starts with the census step HC1, the build follows the owner's answers
+- help-centre.md: Plan (owner 2026-11-27, poll 246): a knowledge base and support requests; the census is done, HC2 to HC6 need no table and no column, HC7 and HC8 wait for poll 252
 - import-site-builders.md: Plan (owner 2026-11-27, poll 246): importers from Squarespace, Webflow and Wix as new readers of the import framework, each from the files its owner can export; steps IB1 to IB5
 - integrations-census-aggregators.md: Census (2026-11-17) of services where one integration brings many: marketplace integrators, channel and feed tools, cargo and payment aggregators, what each states and whether its API is open
 - integrations-census-connectors.md: Census (2026-11-17) of AI assistants' connector directories for a site's own MCP server: Claude's URL pattern and install link, the MCP Registry, the ecosystem's size, what may be claimed
@@ -87,7 +87,7 @@
 - markets-price-lists-census-questions.md: Markets and price lists MK1 census, the owner's questions: each table and column of the proposal asked on its own, and the product choices the build waits on, one a line
 - markets-price-lists-census-wholesale.md: Markets and price lists MK1 census, wholesale: how an account's prices are stored and chosen at the store, and whether a market's price list could be laid the same way
 - markets-price-lists-census.md: Markets and price lists MK1 census from the code: where prices are converted, what an order keeps, which currency each driver charges, wholesale's prices, a proposal, the owner's questions
-- markets-price-lists.md: Plan (owner 2026-11-27, poll 246): markets, a price list a country and the charge in the buyer's currency; starts with the census step MK1, the build's steps follow the owner's answers
+- markets-price-lists.md: Plan (owner 2026-11-27, poll 246): markets, a country's currency and prices, the charge in the buyer's currency; the census is done, every step after MK1 waits for poll 251
 - mobile-api-shelved-m8.md: Plan mobile-api-shelved, steps M8a to M8d (owner 2026-11-22, beside the other plans): sort=newest on the remaining lists, several reads in one request, a list of deleted records, a CORS allow-list
 - mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what exists (M1–M7), M8 given out beside the other plans, decisions, how its needs arrive
 - office-document-abilities.md: Plan (owner 2026-11-26, poll 235): the document editor's new abilities once it is typed on a page: alignment, text and highlight colour, font size, links, tables, pictures from Files; steps DA1 to DA8
@@ -111,6 +111,11 @@
 - settings-scan-findings.md: Faults the 2026-11-21 scan of the Site Settings panes left on SEO, Languages, Channels, Team and Maintenance; a step deletes its lines, the last one the file
 - settings-tidy-census-order.md: Survey of the Site Settings categories, its second part: which categories still look old, their plans, and what is decided for every tidy
 - settings-tidy-census.md: Survey of the Site Settings categories (owner 2026-11-21: tidy every settings screen): the contradictions and scattered settings still open, with the plan that takes each
+- site-from-brief-census-describe.md: Site from a brief census: what the Sketch tool's "Describe the page" and "Write the texts" send and get back, their limits, the provider and licence they need, what a page costs in requests and tokens
+- site-from-brief-census-doors.md: Site from a brief census: where a new site's owner lands after the installer, the New design window's starts, and where a brief flow could start for a new or an existing site
+- site-from-brief-census-proposal.md: Site from a brief census proposal: the "Describe it" start of the New design window, screen by screen (brief, plan of pages, making, editing), what is stored, the cost a site, the steps it suggests
+- site-from-brief-census-templates.md: Site from a brief census: how a design template installs (pages, header and footer, theme, sample content), which of its writes a brief flow could reuse, and the one that would touch the live site
+- site-from-brief-census.md: Site from a brief SB1 census from the code: what "Describe the page" sends and costs, how a design template installs, where a flow could start, the proposal, the owner's questions
 - site-from-brief.md: Plan (owner 2026-11-27, poll 246): a whole site from one brief, pages, menu and theme made by AI as drafts to edit; starts with the census step SB1, the build follows the owner's answers
 - storefront-api-acp-ucp.md: Storefront API design note: OpenAI ACP checkout_sessions mapped onto the storefront routes, the UCP manifest after checkout exists, MCP tools under the customer's consent, WAF agent verification
 - storefront-api-agentic-commerce.md: Plan (approved 2026-10-19; design note first, code after 2026.11.0 ships, #3798): public storefront API (cart, checkout, customer auth), base for OpenAI ACP and Google UCP bindings

@@ -23,6 +23,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - `integrations-census-*`: 12 files; start at `integrations-census.md`.
 - `markets-price-*`: 8 files.
 - `sales-channels-*`: 9 files.
+- `site-from-*`: 6 files.
 - `storefront-api-*`: 9 files.
 - `tax-automatic-*`: 7 files; start at `tax-automatic.md`.
 
