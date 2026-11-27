@@ -178,3 +178,23 @@ function test_api_order_present_the_currency()
 	pg_assert_contains('orders.charged_currency', api_order_select(array('charged_currency')), 'read when the site has it');
 	pg_assert_false(strpos(api_order_select(array()), 'charged_currency') !== false, 'left out when it does not');
 }
+
+// payment.paid_with: a card order's brand or the method that paid it, as
+// orders.card_type keeps it; nothing for another method.
+function test_api_order_present_paid_with()
+{
+	$row = api_order_present_test_row();
+	$row['payment_method'] = 'Credit/Debit Card';
+	$row['card_type'] = 'iDEAL';
+	pg_assert_same('iDEAL', api_order_present($row)['payment']['paid_with']);
+
+	$row['card_type'] = 'Visa';
+	pg_assert_same('Visa', api_order_present($row)['payment']['paid_with']);
+
+	$row['payment_method'] = 'Offline Payment';
+	pg_assert_same('', api_order_present($row)['payment']['paid_with'], 'not a card order');
+
+	pg_assert_same('', api_order_present(api_order_present_test_row())['payment']['paid_with'], 'a row without the column');
+	pg_assert_same('string', api_order_schema()['payment']['paid_with']);
+	pg_assert_true(strpos(api_order_select(array()), 'orders.card_type') !== false);
+}
