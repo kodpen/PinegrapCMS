@@ -11,7 +11,7 @@ priority: 5
 ## In which order, and where is each plan?
 - First the three smallest, each as its own plan file, written by the architect after a count of the code:
   - Local payment methods and pay-later through Stripe: done, `commerce/payment-stripe-local-methods.md`.
-  - Importers from Wix, Squarespace and Webflow: `plans/import-site-builders.md`.
+  - Importers from Wix, Squarespace and Webflow: done, `platform/import-sources.md`.
   - Panel language packs: `plans/panel-language-packs.md` (the mechanism), then `plans/panel-language-german.md`. Arabic with the right-to-left panel and further languages follow German (owner, poll 247).
 - Then the six that may need a table or a column. Each plan starts with a census step, and each table is asked of the owner on its own:
   - Markets: `plans/markets-price-lists.md`.

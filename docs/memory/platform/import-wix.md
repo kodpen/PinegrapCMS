@@ -5,11 +5,11 @@ module: importers
 ---
 
 ## Where is it?
-- Reader `includes/import/wix.php`: a collection file goes to the shared collection reader (`import-collection-csv.md`), products to `write_product.php`, contacts to `write_contact.php`. It reuses helpers of `webflow.php` and `squarespace.php`.
-- Tests: `tests/import_wix_test.php` on `tests/fixtures/import/wix_products.csv`, `wix_products_v1.csv` and `wix_contacts.csv`. Products fixtures follow Wix's help pages (census X2, X3); contacts headings are assumed.
+- Reader `includes/import/wix.php` (PR #12164): a collection file goes to the shared collection reader (`import-collection-csv.md`), products to `write_product.php`, contacts to `write_contact.php`. It reuses helpers of `webflow.php` and `squarespace.php`.
+- Tests: `tests/import_wix_test.php` on `tests/fixtures/import/wix_products.csv`, `wix_products_v1.csv` and `wix_contacts.csv`. Products fixtures follow Wix's help pages, contacts headings are assumed (`import-sources.md`).
 
 ## How is each file told apart?
-- `pg_import_detect_kind()` says `wix` for `handle` or `handleId` with `fieldType` (products); for `First Name` or `Last Name` with `Labels` or an e-mail subscriber/subscription status column (contacts); a collection as `import-collection-csv.md`.
+- `pg_import_detect_kind()` says `wix` for the headers `import-sources.md` lists.
 - The reader decides again with `pg_import_wix_file_kind()` (pure; `pg_import_wix_column()` keeps letters and digits, so `productOptionName[1]` is `productoptionname1`). The cursor carries `wix_file` `products` or `contacts`; a cursor without it is a collection's.
 
 ## How are products read?
