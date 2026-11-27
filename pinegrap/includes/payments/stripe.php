@@ -728,14 +728,62 @@ function pg_payment_stripe_card_brand($brand)
 }
 
 /**
+ * The name of the method that paid when it is not a card: the label of
+ * pg_payment_stripe_methods() (iDEAL, Klarna, SEPA Direct Debit, BLIK, ...),
+ * "Link" for Stripe's Link; '' for a card, a type the driver does not list or
+ * a payment_method that was not expanded. The names are the services' own,
+ * kept untranslated. Pure.
+ *
+ * @param array|string $payment_method the intent's payment_method
+ * @return string
+ */
+function pg_payment_stripe_paid_method_name($payment_method)
+{
+    $type = (is_array($payment_method) && isset($payment_method['type']) && is_string($payment_method['type'])) ? $payment_method['type'] : '';
+
+    if ($type === 'link') {
+        return 'Link';
+    }
+
+    $methods = pg_payment_stripe_methods();
+
+    return isset($methods[$type]) ? $methods[$type]['label'] : '';
+}
+
+/**
+ * The names pg_payment_stripe_paid_method_name() can answer: what an order
+ * keeps in card_type when a method other than a card paid. Pure.
+ *
+ * @return array
+ */
+function pg_payment_stripe_paid_method_names()
+{
+    $names = array('Link');
+
+    foreach (pg_payment_stripe_methods() as $method) {
+        $names[] = $method['label'];
+    }
+
+    return $names;
+}
+
+/**
  * The card details an order keeps, from a PaymentIntent whose payment_method
- * was expanded.
+ * was expanded. When a method other than a card paid, card_brand is that
+ * method's name (the order keeps it where it keeps a card's brand) and the
+ * card fields are empty.
  *
  * @param array $intent
  * @return array card_brand, card_last4, card_exp_month, card_exp_year
  */
 function pg_payment_stripe_card_details($intent)
 {
+    $method = pg_payment_stripe_paid_method_name(isset($intent['payment_method']) ? $intent['payment_method'] : '');
+
+    if ($method !== '') {
+        return array('card_brand' => $method, 'card_last4' => '', 'card_exp_month' => '', 'card_exp_year' => '');
+    }
+
     $card = (isset($intent['payment_method']['card']) && is_array($intent['payment_method']['card'])) ? $intent['payment_method']['card'] : array();
 
     return array(

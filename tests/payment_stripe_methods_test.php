@@ -680,3 +680,79 @@ JS;
 	pg_assert_same(array('https://shop.example/pinegrap/express_order.php?mode=stripe_return&page_id=1023'), $result['stripe']['assigned'], 'once, after Stripe.js answered');
 	pg_assert_same(array('https://shop.example/pinegrap/express_order.php?mode=stripe_return&page_id=1023'), $result['none']['assigned'], 'without Stripe.js: at once');
 }
+
+/* ---------------------------------------------------------------------------
+   The method named on the order
+   --------------------------------------------------------------------------- */
+
+// The name of the method that paid comes from the intent's expanded
+// payment_method; a card (or a type the driver does not list) names none.
+function test_payment_stripe_paid_method_name()
+{
+	foreach (pg_payment_stripe_methods() as $type => $method) {
+		pg_assert_same($method['label'], pg_payment_stripe_paid_method_name(array('type' => $type)), $type);
+	}
+
+	pg_assert_same('iDEAL', pg_payment_stripe_paid_method_name(array('type' => 'ideal')));
+	pg_assert_same('SEPA Direct Debit', pg_payment_stripe_paid_method_name(array('type' => 'sepa_debit')));
+	pg_assert_same('Link', pg_payment_stripe_paid_method_name(array('type' => 'link')));
+	pg_assert_same('', pg_payment_stripe_paid_method_name(array('type' => 'card', 'card' => array('brand' => 'visa'))), 'a card is named by its brand');
+	pg_assert_same('', pg_payment_stripe_paid_method_name(array('type' => 'cashapp')), 'a type not listed');
+	pg_assert_same('', pg_payment_stripe_paid_method_name('pm_1Abc'), 'not expanded');
+	pg_assert_same('', pg_payment_stripe_paid_method_name(null));
+
+	$names = pg_payment_stripe_paid_method_names();
+	pg_assert_true(in_array('Link', $names, true));
+	pg_assert_true(in_array('BLIK', $names, true));
+	pg_assert_same(count(pg_payment_stripe_methods()) + 1, count($names));
+
+	foreach ($names as $name) {
+		pg_assert_true(strlen($name) <= 50, $name . ' fits orders.card_type');
+	}
+}
+
+// The order keeps the method's name where it keeps a card's brand, with no
+// card number or expiry; a card still gives its brand and digits.
+function test_payment_stripe_card_details_name_the_method()
+{
+	pg_assert_same(
+		array('card_brand' => 'Klarna', 'card_last4' => '', 'card_exp_month' => '', 'card_exp_year' => ''),
+		pg_payment_stripe_card_details(array('payment_method' => array('id' => 'pm_1K', 'type' => 'klarna', 'klarna' => array())))
+	);
+	pg_assert_same(
+		array('card_brand' => 'SEPA Direct Debit', 'card_last4' => '', 'card_exp_month' => '', 'card_exp_year' => ''),
+		pg_payment_stripe_card_details(array('payment_method' => array('type' => 'sepa_debit', 'sepa_debit' => array('last4' => '3000')))),
+		'the IBAN digits are not a card number'
+	);
+	pg_assert_same(
+		array('card_brand' => 'Visa', 'card_last4' => '4242', 'card_exp_month' => '12', 'card_exp_year' => '2030'),
+		pg_payment_stripe_card_details(array('payment_method' => array('type' => 'card', 'card' => array('brand' => 'visa', 'last4' => '4242', 'exp_month' => 12, 'exp_year' => 2030))))
+	);
+	pg_assert_same('', pg_payment_stripe_card_details(array())['card_brand'], 'no payment_method');
+}
+
+// A redirect method's return reads the intent again: the answer the order is
+// written from names the method.
+function test_payment_stripe_return_names_the_method()
+{
+	$answer = pg_payment_answer('complete', pg_payment_stripe_intent_answer(payment_stripe_methods_test_order(), 4714, payment_stripe_methods_test_intent(array(
+		'payment_method' => array('id' => 'pm_1Ideal', 'object' => 'payment_method', 'type' => 'ideal', 'ideal' => array('bank' => 'ing')),
+	)), payment_stripe_methods_test_settings(), payment_stripe_methods_test_http(), false));
+
+	pg_assert_same('paid', $answer['status']);
+	pg_assert_same('iDEAL', $answer['card_brand']);
+	pg_assert_same('', $answer['card_last4']);
+}
+
+// The order screens say "Paid with" only for a name the driver writes, and
+// only on a card order; a brand stays a Card Type.
+function test_payment_stripe_order_paid_with_method()
+{
+	pg_assert_true(pg_order_paid_with_method('Credit/Debit Card', 'iDEAL'));
+	pg_assert_true(pg_order_paid_with_method('Credit/Debit Card', 'BLIK'));
+	pg_assert_true(pg_order_paid_with_method('Credit/Debit Card', 'Link'));
+	pg_assert_false(pg_order_paid_with_method('Credit/Debit Card', 'Visa'));
+	pg_assert_false(pg_order_paid_with_method('Credit/Debit Card', 'ideal'), 'only the name as written');
+	pg_assert_false(pg_order_paid_with_method('Credit/Debit Card', ''));
+	pg_assert_false(pg_order_paid_with_method('PayPal Express Checkout', 'Klarna'), 'not a card order');
+}

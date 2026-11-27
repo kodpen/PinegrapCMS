@@ -1190,6 +1190,28 @@ function pg_payment_method_label($method)
 }
 
 /**
+ * Whether a card order's card_type names the method that paid rather than a
+ * card's brand: the Stripe driver keeps iDEAL, Klarna, SEPA Direct Debit,
+ * BLIK, Link, ... there (pg_payment_stripe_card_details()). The order has no
+ * card then, so its screens say "Paid with" and draw no card number. Only a
+ * name equal to one of the driver's own counts; a brand never does.
+ *
+ * @param string $payment_method orders.payment_method
+ * @param string $card_type      orders.card_type
+ * @return bool
+ */
+function pg_order_paid_with_method($payment_method, $card_type)
+{
+    $card_type = (string) $card_type;
+
+    if (((string) $payment_method !== 'Credit/Debit Card') || ($card_type === '') || !pg_payment_load('stripe')) {
+        return false;
+    }
+
+    return in_array($card_type, pg_payment_stripe_paid_method_names(), true);
+}
+
+/**
  * Which payment methods an order is offered, decided from the switches
  * alone: no database, no constants.
  *

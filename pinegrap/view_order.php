@@ -460,8 +460,13 @@ if (!$_POST) {
     if ($payment_method != '') {
         $output_card_line = '';
         $output_card_rows = '';
+        $paid_with_method = ($payment_method == 'Credit/Debit Card') && pg_order_paid_with_method($payment_method, $card_type);
 
-        if ($payment_method == 'Credit/Debit Card') {
+        // A method other than a card (iDEAL, Klarna, BLIK, ...) is kept
+        // where a card's brand is: the line names it and draws no card.
+        if ($paid_with_method) {
+            $output_card_line = h(lang('Paid with') . ' ' . $card_type);
+        } elseif ($payment_method == 'Credit/Debit Card') {
             $output_card_line = implode(' · ', array_filter(array(
                 trim(h($card_type) . ' ' . h($card_number)),
                 ($expiration_month and $expiration_year) ? h(lang('Expiration') . ' ' . $expiration_month . '/' . $expiration_year) : '',
@@ -479,7 +484,7 @@ if (!$_POST) {
         $output_payment_method =
             '<div>
                 <div class="pg-order-pay-method">
-                    <span class="pg-icon-tile pg-icon-tile-lg pg-tone-blue" aria-hidden="true"><span class="bi ' . (($payment_method == 'Credit/Debit Card') ? 'bi-credit-card' : ($order_on_account ? 'bi-journal-text' : 'bi-wallet2')) . '"></span></span>
+                    <span class="pg-icon-tile pg-icon-tile-lg pg-tone-blue" aria-hidden="true"><span class="bi ' . ((($payment_method == 'Credit/Debit Card') && !$paid_with_method) ? 'bi-credit-card' : ($order_on_account ? 'bi-journal-text' : 'bi-wallet2')) . '"></span></span>
                     <div class="pg-order-pay-method-text">
                         <strong class="pg-list-row-title">' . h($order_on_account ? lang('Put on account') : lang($payment_method)) . '</strong>
                         ' . (($output_card_line !== '') ? '<span class="pg-text-meta">' . $output_card_line . '</span>' : '') . '

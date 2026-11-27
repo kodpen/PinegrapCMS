@@ -1197,7 +1197,9 @@ function get_order_receipt_in_plain_text_content($order_id)
         $output_credit_debit_card_information = '';
         
         // if Credit/Debit Card payment method was selected, then prepare to output value for that
-        if ($payment_method == 'Credit/Debit Card') {
+        if (pg_order_paid_with_method($payment_method, $card_type)) {
+            $output_credit_debit_card_information = "\n" . lang('Paid with') . ': ' . $card_type;
+        } elseif ($payment_method == 'Credit/Debit Card') {
             $output_credit_debit_card_information =
                 "\n" .
                 lang('Card Type') . ': ' . $card_type . "\n" .

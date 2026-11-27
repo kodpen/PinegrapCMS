@@ -85,9 +85,13 @@ function api_order_present($row, $items = null, $shipments = null) {
 		// and charged in, the base currency for an order without one.
 		'currency' => pg_order_amount_currency($row, defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : ''),
 		'totals' => array(),
+		// paid_with: a card order's card brand, or the method that paid it
+		// (iDEAL, Klarna, BLIK, ...) as orders.card_type keeps it; '' for
+		// another method or when the service named none.
 		'payment' => array(
 			'method'         => $row['payment_method'],
-			'transaction_id' => $row['transaction_id']
+			'transaction_id' => $row['transaction_id'],
+			'paid_with'      => (isset($row['card_type']) && ($row['payment_method'] === 'Credit/Debit Card')) ? (string)$row['card_type'] : ''
 		),
 		'offer_code' => $row['special_offer_code'],
 		// The number of instalments the card was charged in: 1 (or 0 on an
@@ -313,7 +317,7 @@ function api_order_select($present = null) {
 			orders.billing_country, orders.billing_phone_number,
 			orders.subtotal, orders.discount, orders.tax, orders.shipping,
 			orders.surcharge, orders.gift_card_discount, orders.installment_charges, orders.total,
-			orders.payment_method, orders.payment_installment, orders.transaction_id, orders.special_offer_code,
+			orders.payment_method, orders.card_type, orders.payment_installment, orders.transaction_id, orders.special_offer_code,
 			contacts.member_id
 		FROM orders
 		LEFT JOIN contacts ON orders.contact_id = contacts.id";
@@ -1887,7 +1891,8 @@ function api_order_schema() {
 		),
 		'payment' => array(
 			'method'         => 'string',
-			'transaction_id' => 'string?'
+			'transaction_id' => 'string?',
+			'paid_with'      => 'string'
 		),
 		'offer_code' => 'string',
 		'payment_installment' => 'integer',
