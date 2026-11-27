@@ -22,7 +22,7 @@ module: security_scan_files
 - Skipped: `.git`, `data/backups`, `data/temp/restore_<id>`, `data/quarantine` (`security-scan-section.md`), the upload folders inside the software folder (walked as their own roots); symbolic links are not followed.
 - `pg_security_files_advance()` walks on from the root and cursor, sorted; `pg_security_files_check()` checks one file. The cursor is the last place done, compared segment by segment (`pg_security_place_compare()`, `pg_security_folder_done()`).
 - `security_scan_job.php` (catalogue `security_scan_job`): heavy lane, daily, lock 600 s, budget `SEO_ANALYZE_TIME_BUDGET` capped by `pg_cron_time_left()`; runs the joined scan, files first (`security-scan-section.md`). A web request needs a Manager.
-- Read in 64 KB chunks (`PG_SECURITY_FILES_READ_CHUNK`, #12080), 512-byte carry, at most 32 MB a file.
+- Read in 64 KB chunks (`PG_SECURITY_FILES_READ_CHUNK`, #12101), 512-byte carry, at most 32 MB a file.
 
 ## Where is the run kept, and what does a finished run do?
 - One `config_text` row `security_scan_files` (JSON): started, root, cursor, counts, reference, baseline, the run's config digests, unread, last_finished, last_files, last_reference.
