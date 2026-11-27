@@ -241,3 +241,19 @@ function test_image_focus_control_is_a_part()
 	pg_assert_contains('_sdFocusBind(selectedNode);', $core, 'the single element\'s panel binds it');
 	pg_assert_true(strpos($core, 'PGImageFocus') === false, 'the module is not in the core');
 }
+
+// A move writes the screen the canvas bar shows. The bar draws no panel,
+// so a control drawn at full width and moved after the bar was set to a
+// phone wrote the desktop's value: the part draws the shown controls again
+// when the canvas changes width, with the core's screen of the moment.
+function test_image_focus_control_follows_the_canvas_width()
+{
+	$part = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_focus.js');
+	$core = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	pg_assert_contains("document.getElementById('sd-iframe-wrap')", $part, 'the part watches the canvas width');
+	pg_assert_contains('new ResizeObserver(', $part);
+	pg_assert_contains('K._sdFocusBind(K.selectedNode)', $part, 'the controls are drawn again through the core, which reads the screen');
+	pg_assert_contains('shown.busy()', $part, 'not while a drag or the keys are writing');
+	pg_assert_contains('_sdFocusBind: _sdFocusBind,', $core, 'the core hands its binder to the parts');
+	pg_assert_contains('var screen = _sdFocusCanvasScreen();', $core, 'each host reads the screen when it is made');
+}

@@ -38,6 +38,8 @@ StyleDesigner.definePart('focus', function (K) {
     // moves with the picture; the mode on now, ended by a second start.
     var shown = null;
     var active = null;
+    // The canvas element watched for its width (the canvas bar's size).
+    var watched = null;
 
     function names() {
         return { phone: _sdT('Phone'), tablet: _sdT('Tablet'), desktop: _sdT('Desktop'), every: _sdT('Every screen') };
@@ -103,9 +105,31 @@ StyleDesigner.definePart('focus', function (K) {
         return head + '<div class="sd-fc-body">' + pic + frames + '</div>' + foot;
     }
 
+    // A move writes the screen the canvas bar shows (host.screen, read when
+    // the core made the host). Choosing a width on the bar draws no panel,
+    // so a change of the canvas's width draws the shown controls again
+    // through the core, with the screen and the shape of that moment; not
+    // while a drag or the keys of a control or the mode are writing.
+    function watch() {
+        var wrap = document.getElementById('sd-iframe-wrap');
+        if (!wrap || watched === wrap || typeof ResizeObserver !== 'function') return;
+        watched = wrap;
+        var width = wrap.offsetWidth, timer = 0;
+        new ResizeObserver(function () {
+            if (wrap.offsetWidth === width) return;
+            width = wrap.offsetWidth;
+            clearTimeout(timer);
+            timer = setTimeout(function () {
+                if (!shown || !shown.el.isConnected || shown.busy() || active || !K.selectedNode) return;
+                K._sdFocusBind(K.selectedNode);
+            }, 150);
+        }).observe(wrap);
+    }
+
     function draw(host) {
         var el = host.el;
         if (!el || !el.isConnected) return;
+        watch();
         var M = window.PGImageFocus(host.F);
         var values = host.values;
         var v = M.view(values, host.screen);
@@ -122,8 +146,9 @@ StyleDesigner.definePart('focus', function (K) {
         if (img.complete) fit(); else img.addEventListener('load', fit, { once: true });
         var pt = el.querySelector('[data-fc-pt]');
         var val = el.querySelector('.sd-fc-val');
-        var pending = null, raf = 0, keyTimer = 0;
-        shown = { id: host.id, kind: host.kind, el: el, show: function (next) { show(next); }, redraw: function () { draw(host); } };
+        var pending = null, raf = 0, keyTimer = 0, keyed = null;
+        shown = { id: host.id, kind: host.kind, el: el, show: function (next) { show(next); }, redraw: function () { draw(host); },
+            busy: function () { return !!keyed || pic.classList.contains('is-drag'); } };
 
         // Shows `next` in the control and on the canvas without writing it.
         function show(next) {
@@ -184,7 +209,6 @@ StyleDesigner.definePart('focus', function (K) {
 
         // Keys move the point at once; the value is written once the hand
         // rests, as one undo step.
-        var keyed = null;
         pt.addEventListener('keydown', function (e) {
             var from = M.view(keyed || values, host.screen).xy;
             var xy = M.key(from, e.key);
