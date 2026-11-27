@@ -15,5 +15,5 @@ description: The designer's Preview menu beside Publish (DP23, D58, #10244; phon
 
 ## How does it behave?
 - Click toggles; a click outside, Esc (focus back to the button) or a window resize closes it; the arrow keys move between the shown rows. It opens under the button, right edges aligned.
-- Below a 1024px window the word "Preview" goes, the icon and caret stay (as Publish's word does, `designer-narrow-screen-bars.md`). Below 768px the caret goes too and the button moves after Publish (CSS `order`): at 390px a saved draft with a long design name already overran the toolbar before this menu (View Page ended at 418px), and Publish must stay the control on screen.
+- At a 1024px window and below the word "Preview" goes, the icon and caret stay (as Publish's word does, `designer-narrow-screen-bars.md`). Below 768px the caret goes too and the button moves after Publish (CSS `order`): at 390px a saved draft with a long design name already overran the toolbar before this menu (View Page ended at 418px), and Publish must stay the control on screen.
 - The keyboard shortcut and the command palette's Preview still call `openPreview()` directly.
