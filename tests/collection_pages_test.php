@@ -207,6 +207,26 @@ function test_collection_pages_part_step1()
 	pg_assert_same(true, $res['chosen']['next']);
 }
 
+// A page's address follows its name until one is typed, free of the
+// design's pages and of the other page's address: renaming the list page to
+// the detail page's name gave both one address, refused on the detail line.
+function test_collection_pages_part_address_follows_the_name()
+{
+	$res = collection_pages_node(array('_ncSlug', '_ncFree', '_ncFollow'),
+		'var pages = { list: { title: "Teachers", name: "teachers" }, detail: { title: "Teacher", name: "teacher" } };'
+		. 'console.log(JSON.stringify({ list: _ncFollow(pages, "list", "Teacher", ["home"]), detail: _ncFollow(pages, "detail", "Teachers", ["home"]),'
+		. ' taken: _ncFollow(pages, "list", "Home", ["home"]), own: _ncFollow(pages, "list", "Teachers", []) }));');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same('teacher-2', $res['list'], 'the list page keeps clear of the detail page\'s address');
+	pg_assert_same('teachers-2', $res['detail'], 'and the detail page of the list page\'s');
+	pg_assert_same('home-2', $res['taken'], 'clear of the design\'s pages');
+	pg_assert_same('teachers', $res['own'], 'its own address is no clash');
+}
+
 function test_collection_pages_part_field_defs()
 {
 	$res = collection_pages_node(array('_ncSlug', '_ncKey', '_ncFieldDefs', '_ncListDefs', '_ncShowDef'),
