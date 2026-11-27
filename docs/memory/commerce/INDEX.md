@@ -311,7 +311,7 @@
 - payment-driver-paytr-installments.md: PayTR installments (decision #3057, PR #3070): the Most Installments setting, get-token fields, installment_count, the match rule and what the completion writes for a customer-paid difference [decision: decisions-made-product-2.md]
 - payment-driver-paytr-refund.md: PayTR refund API (PR #3055): the order screen's refund through /odeme/iade, the hash, decimal return_amount, our reference_no, refusal vs unclear answers
 - payment-driver-paytr.md: PayTR iFrame driver (method 'PayTR', 11.0.122, PR #3036): get-token hash, framed page, the server callback with OK completes the incomplete order; CSP; limits [decision: decisions-made-product-2.md]
-- payment-driver-stripe.md: Stripe on PaymentIntents (gateway 'Stripe PaymentIntents', 11.0.24, PR #937): Payment Element and ConfirmationToken, 3-D Secure return, refund, cancel, CSP; classic 'Stripe' untouched
+- payment-driver-stripe.md: Stripe on PaymentIntents (gateway 'Stripe PaymentIntents', 11.0.24, PR #937): Payment Element and ConfirmationToken, 3-D Secure return, refund, cancel, CSP; local methods apart
 - payment-drivers.md: Payment driver layer (2026.11.0, PR #740; iyzico on it since step 2): pg_payment_<key>_ contract, pg_payment_call() answers, card vs redirect, add-ons, settings in connect_apps or config
 - payment-gateway-secrets.md: Legacy gateway secrets sealed in config (pgenc2, AES-256-GCM since #3058; pgenc1 still read), drawn masked, opened in init.php; plain values still read; the 41-character limit [decision: decisions-made-product-39.md]
 - payment-hosted-classic-pages.md: Hosted card box (Stripe Payment Element, PR #2556) on the classic order preview and express order pages; how payment_hosted.js finds an unmarked card section
@@ -325,6 +325,7 @@
 - payment-return-language.md: The address a payment service sends the visitor back to carries the language of the page they paid from (pg_tr_script_url()), so completion, receipt mail and receipt page are in it (#11423)
 - payment-stripe-blik-deferred.md: BLIK on the Stripe checkout: not in the deferred Payment Element, so the checkout draws its own code field, authorize() confirms with the code and a waiting page follows (PR #12123) [decision: here]
 - payment-stripe-later-result.md: A Stripe PaymentIntent still processing places the order awaiting payment (card + pi_ id + paid_at 0); payment_intent.succeeded records it, payment_failed alerts; SEPA Direct Debit uses it (PR #12087)
+- payment-stripe-local-methods.md: Start file for Stripe local payment methods and pay-later (iDEAL, Klarna, SEPA Direct Debit, BLIK...): what binds them, which file holds what, how a method is added [decision: here]
 - payment-stripe-method-list.md: Stripe methods beside the card: list pg_payment_stripe_methods(), pure pg_payment_stripe_method_types() for page and intent, method_<type> switches in connect_apps
 - payment-stripe-method-named.md: The Stripe method that paid (iDEAL, Klarna, SEPA, BLIK, Link) kept in orders.card_type; View Order, the order mail and API payment.paid_with show it
 - payment-unclear-answers.md: The 'unclear' flag of a payment driver's answer, how the iyzico refund sets it, why a return's refund stays refunded on it and who honours it (#970, PR #1260)

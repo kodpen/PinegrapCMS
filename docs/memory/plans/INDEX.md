@@ -94,7 +94,6 @@
 - panel-language-packs.md: Plan (owner 2026-11-27, poll 247): the panel in further languages, first the mechanism (one list of languages, the column's type, the checks, the pack tool); German follows in its own plan
 - parasut-devhub-connection.md: Plan (2026-11-25): connecting Paraşüt with a client from its Developer Portal (DevHub): the registered redirect address, sign-in at id.parasut.com with PKCE, short tokens; step PD1
 - parasut-devhub-staging.md: Plan (owner 2026-11-26): Paraşüt's test environment (staging) for a Developer Portal client: the choice on Paraşüt's page of Connections, the sign-in host, the mark on the status line; step PS1
-- payment-local-methods.md: Plan (owner 2026-11-27, poll 246): the Stripe driver offers local payment methods and pay-later (iDEAL, Bancontact, SEPA debit, BLIK, Klarna) beside cards; steps LP1 to LP5
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
 - sales-channels-global-census-amazon.md: Census (2026-11-27): Amazon's Selling Partner API (SP-API) as its developer pages say it: connecting a seller, listings, stock and price, orders and shipment, registering an application, fees
 - sales-channels-global-census-ebay.md: Census (2026-11-27): eBay's Sell APIs as developer.ebay.com says them: connecting a seller, listings, stock and price, orders and shipment, registering, account deletion notices
