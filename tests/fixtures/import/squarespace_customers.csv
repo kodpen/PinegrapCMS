@@ -1,0 +1,4 @@
+Account,First Name,Last Name,Email,Total Orders,Total Spent,Average Order Value,Date of Last Order,Customer Since,"Last used Shipping Name, Address, and Phone Number","Last used Billing Name, Address, and Phone Number",Tags
+Yes,Ayşe,Demir,AYSE@example.com,2,120.00,60.00,2026-10-01,2025-01-15,"Ayşe Demir, Bağdat Cd. 10, İstanbul 34730, TR, +90 216 000 00 00","Demir Ltd, Bağdat Cd. 10, İstanbul 34730, TR","vip, wholesale"
+No,John,Smith,john@example.com,0,0.00,0.00,,2026-03-02,,,
+No,,,,0,0.00,0.00,,2026-03-03,,,
