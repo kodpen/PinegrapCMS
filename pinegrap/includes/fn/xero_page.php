@@ -4,14 +4,17 @@
  *
  * Xero's page of Connections (connections.php?service=xero): what its
  * Status card adds (the organisation), its "Connection details" (the
- * application, the organisation and the three accounts the site's sales
- * will be booked to) and what those forms save. The state is
+ * application, the organisation, the three accounts the site's sales
+ * will be booked to and the tax rates matched to Xero's) and what those
+ * forms save. The state is
  * includes/fn/xero.php's; the page is gated by Site Settings › Accounting
  * (connections_accounting_may_manage()).
  *
- * The chart of accounts is read from Xero while the page is drawn with an
- * organisation chosen, and again when the accounts are saved, so only an
- * active account that fits its role is kept.
+ * The chart of accounts and the tax rates are read from Xero while the page
+ * is drawn with an organisation chosen, and again when they are saved, so
+ * only an active account that fits its role, and an active sales tax rate,
+ * is kept. A matched tax rate is a pairing of the accounting sync
+ * (pg_accounting_sync_pair_save()), keyed by the organisation.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -86,6 +89,9 @@ function pg_xero_page($page, $may_manage, $app_html)
 			<h3 class="pg-field-label mt-6 mb-1">' . h(lang('Ledger accounts')) . '</h3>
 			<p class="pg-field-help mt-0 mb-3">' . h(lang('Only active accounts of the organisation\'s chart of accounts that fit each role are offered.')) . '</p>
 			' . pg_xero_page_accounts($state, $connection) . '
+			<h3 class="pg-field-label mt-6 mb-1">' . h(lang('Tax rates')) . '</h3>
+			<p class="pg-field-help mt-0 mb-3">' . h(lang('Each rate the site charges is matched once to one of the organisation\'s sales tax rates. A sale with a rate not matched waits until it is.')) . '</p>
+			' . pg_xero_page_tax_rates($state, $connection) . '
 		</section>';
 
     return $page;
@@ -194,9 +200,146 @@ function pg_xero_page_accounts($state, $connection)
 }
 
 /**
+ * The tax rates part of "Connection details": each rate the site charges
+ * (pg_accounting_sync_site_tax_rates()) with Xero's sales tax rates to
+ * match it to. Xero's rates are read for it.
+ *
+ * @param array      $state      xero_state()
+ * @param array|null $connection xero_connection()
+ * @return string HTML
+ */
+function pg_xero_page_tax_rates($state, $connection)
+{
+    if (!is_array($connection) || ($state['tenant_id'] === '')) {
+        return '<p class="pg-text-2 mb-0">' . h(lang('The tax rates are matched once the organisation is chosen.')) . '</p>';
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/accounting_sync.php');
+
+    $target = pg_accounting_sync_target();
+
+    if (!is_array($target)) {
+        return '<div class="alert theme-warning small py-3 mb-0 text-break">' . h(lang('The tax rates can be matched once the site\'s update has run.')) . '</div>';
+    }
+
+    $read = xero_tax_rates_read($connection['id'], $state['tenant_id']);
+
+    if (!$read['ok']) {
+        return '<div class="alert theme-warning small py-3 mb-0 text-break">' . h(lang(array('string' => 'The Xero tax rates could not be read: {var:1}', 'vars' => $read['error']))) . '</div>';
+    }
+
+    $offered = xero_tax_rates_for_sales($read['rates']);
+    $fields = '';
+
+    foreach (pg_accounting_sync_site_tax_rates() as $local_id) {
+
+        $pair = pg_accounting_sync_pair($target, 'tax', 'tax_rate', $local_id);
+        $kept = is_array($pair) ? (string) $pair['remote_id'] : '';
+        $options = '<option value="">' . h(lang('Not matched')) . '</option>';
+
+        foreach ($offered as $type => $label) {
+            $options .= '<option value="' . h($type) . '"' . (($type === $kept) ? ' selected' : '') . '>' . h($label) . '</option>';
+        }
+
+        // A rate archived or deleted in Xero since it was matched.
+        $gone = (($kept !== '') && !isset($offered[$kept]))
+            ? '<div class="pg-field-help text-break">' . h(lang(array('string' => 'The rate matched before, {var:1}, is no longer offered: choose another.',
+                'vars' => isset($read['rates'][$kept]) ? xero_tax_rate_label($read['rates'][$kept]) : $kept))) . '</div>'
+            : '';
+
+        $fields .= '
+				<div>
+					<label class="pg-field-label" for="xero_tax_rate_' . $local_id . '">' . h(lang(array('string' => 'Site rate {var:1}', 'vars' => pg_accounting_sync_tax_label($local_id)))) . '</label>
+					<select class="pg-input" id="xero_tax_rate_' . $local_id . '" name="xero_tax_rate_' . $local_id . '">' . $options . '</select>
+					' . $gone . '
+				</div>';
+
+    }
+
+    return '
+			<form method="post" action="connections.php" class="connections-app-form">
+				' . get_token_field() . '
+				<input type="hidden" name="connections_action" value="xero_tax_rates">
+				<input type="hidden" name="connections_return" value="xero">
+				' . $fields . '
+				<div class="pg-field-help">' . h(lang('The rates of the tax zones, the products\' own rates, 0% for an untaxed sale and, with Rates by the buyer\'s country on, the EU standard rates.')) . '</div>
+				<div class="d-flex flex-wrap align-items-center gap-3">
+					<button type="submit" class="pg-button pg-button-sm pg-button-fill">' . h(lang('Save')) . '</button>
+				</div>
+			</form>';
+}
+
+/**
+ * Saves the tax rates matched under "Connection details": Xero's rates are
+ * read again and only an active sales rate is kept; a rate left "Not
+ * matched" forgets its pairing.
+ *
+ * @param array $state xero_state()
+ * @param array $input the posted values
+ * @return array messages, log (as pg_xero_page_save())
+ */
+function pg_xero_page_save_tax_rates($state, $input)
+{
+    $answer = array('messages' => array(), 'log' => '');
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/accounting_sync.php');
+
+    $target = pg_accounting_sync_target();
+
+    if (!is_array($target)) {
+        $answer['messages'][] = array('error', lang('The tax rates can be matched once the site\'s update has run.'));
+
+        return $answer;
+    }
+
+    $read = xero_tax_rates_read(xero_connection($state)['id'], $state['tenant_id']);
+
+    if (!$read['ok']) {
+        $answer['messages'][] = array('error', lang(array('string' => 'The Xero tax rates could not be read: {var:1}', 'vars' => $read['error'])));
+
+        return $answer;
+    }
+
+    $offered = xero_tax_rates_for_sales($read['rates']);
+    $chosen = array();
+
+    foreach (pg_accounting_sync_site_tax_rates() as $local_id) {
+
+        $type = (isset($input['xero_tax_rate_' . $local_id]) && is_string($input['xero_tax_rate_' . $local_id])) ? trim($input['xero_tax_rate_' . $local_id]) : '';
+
+        if (($type !== '') && !isset($offered[$type])) {
+            $answer['messages'][] = array('error', lang(array('string' => '{var:1}: choose a tax rate from the list.',
+                'vars' => lang(array('string' => 'Site rate {var:1}', 'vars' => pg_accounting_sync_tax_label($local_id))))));
+
+            return $answer;
+        }
+
+        $chosen[$local_id] = $type;
+    }
+
+    foreach ($chosen as $local_id => $type) {
+
+        $saved = ($type === '')
+            ? pg_accounting_sync_pair_drop($target, 'tax', 'tax_rate', $local_id)
+            : pg_accounting_sync_pair_save($target, 'tax', 'tax_rate', $local_id, $type);
+
+        if (!$saved) {
+            $answer['messages'][] = array('error', lang('The Xero settings could not be saved.'));
+
+            return $answer;
+        }
+    }
+
+    $answer['messages'][] = array('notice', lang('The Xero tax rates were saved.'));
+    $answer['log'] = lang(array('string' => 'changed the Xero tax rates of {var:1}', 'vars' => $state['tenant_name']));
+
+    return $answer;
+}
+
+/**
  * Saves what a form of "Connection details" posts.
  *
- * @param string $action xero_organisation or xero_accounts
+ * @param string $action xero_organisation, xero_accounts or xero_tax_rates
  * @param array  $input  the posted values
  * @return array messages (list of [notice|warning|error, text]; the texts
  *               carry Xero's words, unescaped), log ('' when nothing was
@@ -247,7 +390,7 @@ function pg_xero_page_save($action, $input)
 
     }
 
-    if ($action !== 'xero_accounts') {
+    if (!in_array($action, array('xero_accounts', 'xero_tax_rates'), true)) {
         return $answer;
     }
 
@@ -255,6 +398,10 @@ function pg_xero_page_save($action, $input)
         $answer['messages'][] = array('error', lang('Choose the Xero organisation first.'));
 
         return $answer;
+    }
+
+    if ($action === 'xero_tax_rates') {
+        return pg_xero_page_save_tax_rates($state, $input);
     }
 
     $read = xero_accounts_read(xero_connection($state)['id'], $state['tenant_id']);

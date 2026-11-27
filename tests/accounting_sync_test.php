@@ -225,3 +225,18 @@ function test_accounting_sync_wiring()
 	pg_assert_contains('UNIQUE KEY uniq_pair (service, company, kind, local_table, local_id)', $migration, 'the unique key');
 	pg_assert_contains("'accounting_sync',", accounting_sync_test_source('install/index.php'), 'in get_tables()');
 }
+
+function test_accounting_sync_tax_local_ids()
+{
+	pg_assert_same(array(0, 8875, 20000), pg_accounting_sync_tax_local_ids(array('20.000', 20, '8.875', null, '', 0, '0.000', 'x', 150, -1)),
+		'unique, in order, 0 always; empty, non-numbers and rates outside 0..100 left out');
+	pg_assert_same(array(0), pg_accounting_sync_tax_local_ids(array()), 'no rate: 0 alone');
+}
+
+function test_accounting_sync_tax_label()
+{
+	pg_assert_same('20%', pg_accounting_sync_tax_label(20000), 'a whole rate');
+	pg_assert_same('8.875%', pg_accounting_sync_tax_label(8875), 'thousandths');
+	pg_assert_same('5.5%', pg_accounting_sync_tax_label(5500), 'trailing zeros dropped');
+	pg_assert_same('0%', pg_accounting_sync_tax_label(0), 'zero');
+}

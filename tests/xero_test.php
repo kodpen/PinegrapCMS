@@ -153,6 +153,42 @@ function test_xero_account_label()
 	pg_assert_same('e0a9b8c6-1d2f-4e3a-9b4c-5d6e7f8a9b01', xero_account_label(array('id' => 'e0a9b8c6-1d2f-4e3a-9b4c-5d6e7f8a9b01', 'code' => '', 'name' => '')), 'nothing but the id');
 }
 
+// A GET /TaxRates answer: two sales rates, a purchase rate, an archived
+// rate and one without a tax type.
+function xero_test_tax_rates_answer()
+{
+	return array('TaxRates' => array(
+		array('Name' => '20% (VAT on Income)', 'TaxType' => 'OUTPUT2', 'CanApplyToRevenue' => true, 'DisplayTaxRate' => 20.0, 'EffectiveRate' => 20.0, 'Status' => 'ACTIVE'),
+		array('Name' => 'No VAT', 'TaxType' => 'NONE', 'CanApplyToRevenue' => true, 'DisplayTaxRate' => 0.0, 'EffectiveRate' => 0.0, 'Status' => 'ACTIVE'),
+		array('Name' => '20% (VAT on Expenses)', 'TaxType' => 'INPUT2', 'CanApplyToRevenue' => false, 'DisplayTaxRate' => 20.0, 'EffectiveRate' => 20.0, 'Status' => 'ACTIVE'),
+		array('Name' => 'Old rate', 'TaxType' => 'TAX001', 'CanApplyToRevenue' => true, 'DisplayTaxRate' => 17.5, 'EffectiveRate' => 17.5, 'Status' => 'ARCHIVED'),
+		array('Name' => 'Broken', 'CanApplyToRevenue' => true, 'Status' => 'ACTIVE'),
+	));
+}
+
+function test_xero_tax_rates_from_api()
+{
+	$rates = xero_tax_rates_from_api(xero_test_tax_rates_answer());
+
+	pg_assert_same(array('OUTPUT2', 'NONE', 'INPUT2', 'TAX001'), array_keys($rates), 'the one without a tax type is left out');
+	pg_assert_same(array('type' => 'OUTPUT2', 'name' => '20% (VAT on Income)', 'rate' => 20.0, 'status' => 'ACTIVE', 'revenue' => true), $rates['OUTPUT2'], 'typed, by tax type');
+	pg_assert_false($rates['INPUT2']['revenue'], 'a purchase rate');
+	pg_assert_same(array(), xero_tax_rates_from_api(array('Title' => 'Unauthorized')), 'an error answer');
+	pg_assert_same(array(), xero_tax_rates_from_api(array('TaxRates' => array(array('TaxType' => 'BAD TYPE', 'Status' => 'ACTIVE')))), 'a tax type with a space');
+}
+
+function test_xero_tax_rates_for_sales()
+{
+	$rates = xero_tax_rates_from_api(xero_test_tax_rates_answer());
+	$offered = xero_tax_rates_for_sales($rates);
+
+	pg_assert_same(array('OUTPUT2', 'NONE'), array_keys($offered), 'active sales rates only, by label');
+	pg_assert_same('20% (VAT on Income) — 20%', $offered['OUTPUT2'], 'name and rate');
+	pg_assert_same('Old rate — 17.5%', xero_tax_rate_label($rates['TAX001']), 'a rate with decimals');
+	pg_assert_same('X — 0%', xero_tax_rate_label(array('type' => 'X', 'name' => '', 'rate' => 0.0)), 'no name: the tax type');
+	pg_assert_same(array(), xero_tax_rates_for_sales('none'), 'nothing read');
+}
+
 function test_xero_error_message()
 {
 	pg_assert_same('HTTP 400: A validation exception occurred Account code \'999\' is not a valid code. Contact name is required.', xero_error_message(400, array(

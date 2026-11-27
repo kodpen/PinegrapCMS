@@ -5049,6 +5049,7 @@
     "changed in the stylesheet": "stil dosyasında değiştirildi",
     "changed the Sign in with Google application": "Google ile Giriş uygulamasını değiştirdi",
     "changed the Xero accounts of {var:1}": "{var:1} kuruluşunun Xero hesaplarını değiştirdi",
+    "changed the Xero tax rates of {var:1}": "{var:1} için Xero vergi oranlarını değiştirdi",
     "changed the design file {var:1}": "{var:1} tasarım dosyasını değiştirdi",
     "changed the settings of the shared component {var:1}": "{var:1} ortak bileşeninin ayarlarını değiştirdi",
     "changed the {var:1} application of connected accounts": "bağlı hesapların {var:1} uygulamasını değiştirdi",
