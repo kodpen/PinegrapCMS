@@ -30,8 +30,8 @@ description: Site from a brief census proposal: the "Describe it" start of the N
 ## What does a site cost?
 - One plan request, then about 7 to 9 requests a page (`site-from-brief-census-describe.md`): 6 pages about 50 requests of the 200 daily drafts and 45,000 to 80,000 tokens of the licence's day; about three minutes at 20 a minute. A run counts against the same daily cap as "Write with AI"; a separate cap or a one-run exception is asked.
 
-## What could the build steps be? (for the architect)
-- 1: the start's row and pane, the brief's fields and checks (pure, tested). 2: a server action `site_plan` (one call, pages and theme as JSON, checked and cut). 3: the plan screen and the hand-over of sketch pages. 4: the editor's run (build all, write all, progress, stop). 5: the set-up card's line. Each under 400 lines.
+## How is the build cut?
+- Into SB2 to SB7 of `plans/site-from-brief.md`, written by the architect from this proposal.
 
 ## What could the code not settle?
 - Real token counts and the model's quality on a whole plan: no live Pinegrap AI here. The licence's daily token figure lives at the gateway.
