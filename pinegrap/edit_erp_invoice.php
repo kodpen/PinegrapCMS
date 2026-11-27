@@ -714,6 +714,18 @@ if (((string) $invoice['direction'] === 'purchase') && (trim((string) $invoice['
                         <dt>' . lang('Supplier Invoice Number') . '</dt><dd>' . h($invoice['supplier_invoice_no']) . (($supplier_date !== '' && $supplier_date !== '0000-00-00') ? ' <span class="pg-kv-note">' . h(prepare_form_data_for_output($supplier_date, 'date')) . '</span>' : '') . '</dd>';
 }
 
+// Where a sales invoice or return stands in the accounting service the site
+// books into.
+if ((string) $invoice['direction'] === 'sales') {
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/accounting_sync_log.php');
+    $accounting_sync_line = pg_accounting_sync_record_line('erp_invoices', (int) $invoice['id']);
+
+    if ($accounting_sync_line) {
+        $output_supplier .= '
+                        <dt>' . h($accounting_sync_line['label']) . '</dt><dd>' . $accounting_sync_line['html'] . '</dd>';
+    }
+}
+
 // The internet sale block: an e-archive invoice for a sale made over the
 // internet has to state how and when it was paid, who carried the goods and
 // when they left, and the address it was sold at. Only shown for such a sale.

@@ -1183,6 +1183,22 @@ if ($_POST) {
 
 	}
 
+	// Try again on a failed accounting sync send, from the service's Events
+	// card, under the gate of Site Settings › Accounting.
+	if (($action === 'accounting_sync_again') && connections_accounting_may_manage($user)) {
+
+		require_once(PG_FUNCTIONS_DIR . '/includes/fn/accounting_sync_log.php');
+
+		pg_request_single_values(array('sync_row'));
+
+		if (pg_accounting_sync_try_again(isset($_POST['sync_row']) ? (int) $_POST['sync_row'] : 0)) {
+			$liveform->add_notice(h(lang('The send waits for the next run of the scheduled job.')));
+		} else {
+			$liveform->add_error(h(lang('That send cannot be tried again.')));
+		}
+
+	}
+
 	// The Sign in with Google application, saved on Google's page under the
 	// gate of the sign-in settings it came from. The switch that shows the
 	// button stays there.
@@ -5468,6 +5484,13 @@ if ($provider_page !== '') {
 	// details, under the same gate.
 	if (in_array($page_id, pg_ad_conversion_services(), true) && connections_privacy_may_manage($user)) {
 		$page['details'] .= pg_ad_conversion_log_card($page_id);
+	}
+
+	// Xero's sends: the daily counts, the last 50 and Try again, below its
+	// details, under the gate of Site Settings › Accounting.
+	if (($page_id === 'xero') && isset($providers['xero']) && connections_accounting_may_manage($user)) {
+		require_once(PG_FUNCTIONS_DIR . '/includes/fn/accounting_sync_log.php');
+		$page['details'] .= pg_accounting_sync_log_card(true);
 	}
 
 	// Google Drive's, OneDrive's and Dropbox's pages: connect an account for

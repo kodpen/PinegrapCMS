@@ -133,6 +133,13 @@ function pg_ops_alert_codes()
             'type'  => 'warning',
             'url'   => 'connections.php',
         ),
+        // The accounting service's sends all failed on a day
+        // (includes/fn/accounting_sync_log.php); the detail names the service.
+        'accounting_sync_failed' => array(
+            'label' => lang('Sales could not be sent to the accounting service'),
+            'type'  => 'warning',
+            'url'   => 'connections.php?service=xero',
+        ),
         'orders_stopped' => array(
             'label' => lang('Orders stopped coming in'),
             'type'  => 'error',
@@ -1673,6 +1680,9 @@ function pg_ops_alert_sources()
         // An ad service that refused every event of yesterday, once a day
         // (includes/fn/ad_conversions_log.php).
         'ad_conversions' => 'pg_ad_conversion_check_refused',
+        // The accounting service's sends that all failed yesterday, once a
+        // day (includes/fn/accounting_sync_log.php).
+        'accounting_sync' => 'pg_ops_alerts_check_accounting_sync',
         // Orders stopped and payment broken (includes/fn/sales_watch.php).
         'sales'       => 'pg_sales_watch_check',
         // A price error that sells (includes/fn/sales_watch.php).
@@ -1683,6 +1693,19 @@ function pg_ops_alert_sources()
         // seconds once a day.
         'certificate' => 'pg_ops_alerts_check_certificate',
     );
+}
+
+/**
+ * The accounting sync's source, its module loaded only when the check runs.
+ *
+ * @param int $now
+ * @return string[] the codes told
+ */
+function pg_ops_alerts_check_accounting_sync($now)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/accounting_sync_log.php');
+
+    return pg_accounting_sync_ready() ? pg_accounting_sync_check_failed($now) : array();
 }
 
 /**

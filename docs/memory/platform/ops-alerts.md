@@ -25,6 +25,7 @@ description: Operations alerts (includes/fn/ops_alerts.php): codes, the once-a-d
 - `disk_low`: `disk_free_space()` of `data/`. `mail_failures`: `mail_outbox` rows of the last day with attempts > 0, queued or failed. `webhook_failing`: `api_webhooks.status = 'failing'`.
 - `security_finding`: an open critical or high Security Scan finding (`waf/security-scan-card.md`).
 - `supplier_feed`: a feed's brake (`commerce/supplier-feed-sync.md`).
+- `accounting_sync_failed`: `api/accounting-sync-log.md`.
 - `payment_notice`: a payment callback's log line (`commerce/payment-callback.md`), PR #2143.
 - `group => 'sales'`: the sales watch's sources (`commerce/sales-watch.md`); `'shipping'`: the delivery tower's pass (`commerce/delivery-tower-alerts-events.md`).
 - `cert_expiring`: https and a public host only; read once a day (`pg_ops_certificate_end()`), judged every pass; a failed reading says nothing.

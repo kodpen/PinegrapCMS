@@ -481,6 +481,15 @@ if (!$_POST) {
             . pg_order_view_kv(lang('Authorization Code'), h($authorization_code))
             . ((($installment_charges != 0) && ($payment_installment >= 2)) ? pg_order_view_kv(lang('Number of Installments'), (int) $payment_installment) : '');
 
+        // Where the sale stands in the accounting service the site books
+        // into: sent, waiting, or not sent with the reason.
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/accounting_sync_log.php');
+        $accounting_sync_line = pg_accounting_sync_record_line('orders', (int) $_GET['id']);
+
+        if ($accounting_sync_line) {
+            $output_payment_rows .= pg_order_view_kv($accounting_sync_line['label'], $accounting_sync_line['html']);
+        }
+
         $output_payment_method =
             '<div>
                 <div class="pg-order-pay-method">
