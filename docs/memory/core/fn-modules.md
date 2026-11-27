@@ -9,6 +9,7 @@ description: Generated from the module field of the memory files: each includes/
 - `a11y`: [[accessibility-report]], [[editor-a11y-measurements]]
 - `accounting_settings_fold`: [[settings-accounting]], [[settings-accounting-open-rows]]
 - `accounting_sync`: [[accounting-sync-queue]], [[xero-tax-rates]]
+- `accounting_sync_log`: [[accounting-sync-log]]
 - `accounting_sync_xero`: [[xero-sync-driver]]
 - `activitypub`: [[activitypub-actor]], [[activitypub-decisions]]
 - `activitypub_comments`: [[activitypub-comments]], [[activitypub-reactions]]
