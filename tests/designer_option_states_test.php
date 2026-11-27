@@ -159,6 +159,34 @@ function test_designer_option_states_write_read()
 	pg_assert_same(array('colors' => array('hover'), 'border' => array('hover'), 'styling' => array('focus')), $r['sections']);
 }
 
+// A new rule on the class (a state's, or Normal's for a transform, an
+// effect or a cursor) goes before the class's rules by screen size, as a
+// new base rule does (pg_custom_style.js): after them it would win at every
+// width and undo a larger size's value.
+function test_designer_option_states_new_rule_before_the_sizes()
+{
+	$r = designer_option_states_run(
+		'var cls = "pgs-abc123", o = {};'
+		. 'var md = "@media (min-width: 768px) {\n  .pgs-abc123 {\n    width: 50%;\n  }\n}\n";'
+		. 'var other = ".lead {\n  color: red;\n}\n\n";'
+		. 'o.normal = S.tfWrite(other + md, cls, "", "tx", "10px");'
+		. 'o.hover = S.write(other + md, cls, "hover", ["bg-primary"], "bg-primary");'
+		. 'o.tfHover = S.tfWrite(md, cls, "hover", "r", "5");'
+		. 'o.none = S.write(other, cls, "hover", ["bg-primary"], "bg-primary");'
+		. 'console.log(JSON.stringify(o));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	$md = "@media (min-width: 768px) {\n  .pgs-abc123 {\n    width: 50%;\n  }\n}\n";
+	pg_assert_same(".lead {\n  color: red;\n}\n\n.pgs-abc123 {\n  translate: 10px 0px;\n}\n\n" . $md, $r['normal'], 'Normal\'s new rule before the size rule');
+	pg_assert_same(".lead {\n  color: red;\n}\n\n.pgs-abc123:hover {\n  background-color: var(--bs-primary) !important;\n}\n\n" . $md, $r['hover'], 'a state\'s new rule before it');
+	pg_assert_true(strpos($r['tfHover'], ".pgs-abc123:hover {") < strpos($r['tfHover'], '@media'), 'a state\'s transform before it');
+	pg_assert_same(".lead {\n  color: red;\n}\n\n.pgs-abc123:hover {\n  background-color: var(--bs-primary) !important;\n}\n", $r['none'], 'without one, at the end');
+}
+
 // The states an element takes (_sdStatesFor(), the editor's block of the
 // Options states' pure helpers).
 function test_designer_option_states_for()
