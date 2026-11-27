@@ -9335,6 +9335,12 @@ function pg_visitor_currency_parts($symbol = null)
         return array('symbol' => (string) $display['symbol'], 'suffix' => (string) $display['suffix']);
     }
 
+    // The visitor's currency depends on their country on a site with
+    // markets, so the page is kept per country (pg_market_cache_note()).
+    if (function_exists('pg_market_cache_note')) {
+        pg_market_cache_note();
+    }
+
     return array(
         'symbol' => ($symbol === null) ? (defined('VISITOR_CURRENCY_SYMBOL') ? (string) VISITOR_CURRENCY_SYMBOL : '') : (string) $symbol,
         'suffix' => defined('VISITOR_CURRENCY_CODE_FOR_OUTPUT') ? (string) VISITOR_CURRENCY_CODE_FOR_OUTPUT : '',
@@ -9354,7 +9360,7 @@ function pg_visitor_currency_parts($symbol = null)
 function pg_visitor_money($base_amount, $symbol = null)
 {
     $parts = pg_visitor_currency_parts($symbol);
-    return pg_format_money(pg_visitor_amount($base_amount), $parts['symbol'], h($parts['suffix']));
+    return pg_format_money(pg_visitor_price($base_amount), $parts['symbol'], h($parts['suffix']));
 }
 
 /**
@@ -9390,7 +9396,7 @@ function pg_money_text($amount, $symbol = null, $suffix = '')
 function pg_visitor_money_text($base_amount, $symbol = null)
 {
     $parts = pg_visitor_currency_parts($symbol);
-    return pg_money_text(pg_visitor_amount($base_amount), $parts['symbol'], $parts['suffix']);
+    return pg_money_text(pg_visitor_price($base_amount), $parts['symbol'], $parts['suffix']);
 }
 
 /**
@@ -9550,7 +9556,10 @@ function prepare_price_for_output($original_price, $discounted, $discounted_pric
     $display = function_exists('pg_order_display') ? pg_order_display() : null;
     $exchange_rate = ($display !== null) ? (float) $display['rate'] : VISITOR_CURRENCY_EXCHANGE_RATE;
     $currency = pg_visitor_currency_parts();
-    $original_amount = get_currency_amount($original_price / 100, $exchange_rate);
+    // In a market a price is converted and rounded by the market's rule
+    // (pg_visitor_price()); an order drawn in its own currency is as it is.
+    $market = ($display === null) && function_exists('pg_market_pricing') && pg_market_pricing();
+    $original_amount = $market ? pg_visitor_price($original_price / 100) : get_currency_amount($original_price / 100, $exchange_rate);
     $original_negative = '';
     // If the amount is negative, then prepare to show negative sign before price,
     // and convert amount to positive value.
@@ -9559,7 +9568,7 @@ function prepare_price_for_output($original_price, $discounted, $discounted_pric
         $original_amount = abs($original_amount);
     }
     if ($discounted) {
-        $discounted_amount = get_currency_amount($discounted_price / 100, $exchange_rate);
+        $discounted_amount = $market ? pg_visitor_price($discounted_price / 100) : get_currency_amount($discounted_price / 100, $exchange_rate);
         $discounted_negative = '';
         // If the amount is negative, then prepare to show negative sign before price,
         // and convert amount to positive value.

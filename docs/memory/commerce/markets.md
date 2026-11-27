@@ -11,7 +11,7 @@ module: markets
 - Added by `upgrade_2026_11_0_markets()` (11.0.286); both tables are in `get_tables()`.
 
 ## What do the rounding codes mean?
-- `none`: to the currency's smallest unit; `whole`: up to whole amounts; `end99`: up to a .99 ending. Labels "To the cent", "Whole amounts", "Ending in .99" (`pg_market_rounding_options()`); an unknown value reads `none` (`pg_market_rounding_code()`). The rounding itself is applied with the price in MK5.
+- `none`: to the currency's smallest unit; `whole`: up to whole amounts; `end99`: up to a .99 ending. Labels "To the cent", "Whole amounts", "Ending in .99" (`pg_market_rounding_options()`); an unknown value reads `none` (`pg_market_rounding_code()`). The rounding is applied to a price on the site: `market-site-prices.md`.
 
 ## Where is the screen?
 - Markets, `view_markets.php`, gate `validate_ecommerce_access()`: in the Shipping row's panel beside All Currencies, the Ctrl+K chip "Markets", help `commerce-cont#markets`.
@@ -24,4 +24,4 @@ module: markets
 - Delete while an order names the market (`pg_market_order_count()`): it is switched off instead.
 
 ## What does a site without a market do?
-- Exactly what it did: nothing reads the tables before MK5. Plan: `plans/markets-price-lists.md`.
+- Exactly what it did: the site reads only enabled markets (`market-site-prices.md`). Plan: `plans/markets-price-lists.md`.

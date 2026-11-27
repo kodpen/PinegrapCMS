@@ -319,7 +319,7 @@ function pg_sw_entity_value($spec, $row, $ctx = array())
             if ((int)$value <= 0) return '';
             $symbol = array_key_exists('currency_symbol', $ctx) ? $ctx['currency_symbol'] : null;
             $suffix = defined('VISITOR_CURRENCY_CODE_FOR_OUTPUT') ? (string)VISITOR_CURRENCY_CODE_FOR_OUTPUT : '';
-            return pg_money_text(pg_visitor_amount((int)$value / 100), $symbol, $suffix);
+            return pg_money_text(pg_visitor_price((int)$value / 100), $symbol, $suffix);
         case 'stamp':
             if ((int)$value <= 0) return '';
             if (isset($ctx['format_stamp']) && is_callable($ctx['format_stamp'])) return (string)call_user_func($ctx['format_stamp'], (int)$value);

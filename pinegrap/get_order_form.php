@@ -992,7 +992,7 @@ function get_order_form($properties) {
         $currencies = array();
         $currency_system = '';
 
-        if (ECOMMERCE_MULTICURRENCY) {
+        if (pg_currency_choice_shown()) {
             // Get all currencies where the exchange rate is not 0, with base currency first.
             $currencies = db_items(
                 "SELECT

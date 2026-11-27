@@ -4423,6 +4423,11 @@ function _pg_cart_tax_shipping_notice($has_shippable_item, $tax_shown = false)
 // @return string         HTML block, or '' when there is nothing to choose.
 function _pg_cart_currency_selector($send_to)
 {
+    // On a site with markets the visitor picks a country, not a currency.
+    if (function_exists('pg_markets_on') && pg_markets_on()) {
+        return pg_market_country_form($send_to, 'cart');
+    }
+
     $rows = pg_sw_currency_rows();
     if (count($rows) < 2) return '';
 
@@ -4466,7 +4471,9 @@ function _pg_cart_currency_selector($send_to)
  */
 function pg_sw_currency_rows()
 {
-    if (!defined('ECOMMERCE_MULTICURRENCY') || !ECOMMERCE_MULTICURRENCY) return array();
+    // None with multi-currency off, or on a site with markets (the country
+    // decides the currency there).
+    if (!pg_currency_choice_shown()) return array();
     $rows = db_items(
         "SELECT id, name, code
          FROM currencies

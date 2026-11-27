@@ -335,7 +335,7 @@ function pg_coll_ref_product_fields($row, $detail_prefix, $base_path)
     return array(
         'name'  => ($title !== '') ? $title : (string)(isset($row['name']) ? $row['name'] : ''),
         'url'   => ($detail_prefix !== '' && $address !== '') ? $detail_prefix . encode_url_path($address) : '',
-        'price' => pg_money_text(pg_visitor_amount(round((float)(isset($row['price']) ? $row['price'] : 0)) / 100), null,
+        'price' => pg_money_text(pg_visitor_price(round((float)(isset($row['price']) ? $row['price'] : 0)) / 100), null,
             defined('VISITOR_CURRENCY_CODE_FOR_OUTPUT') ? VISITOR_CURRENCY_CODE_FOR_OUTPUT : ''),
         'image' => ($image !== '') ? $base_path . encode_url_path($image) : '',
     );
