@@ -823,6 +823,29 @@ function pg_connect_redirect_uri()
 }
 
 /**
+ * The redirect_uri a provider's authorization and token requests carry: the
+ * one return address, or for a provider that names its registered address
+ * by a name of its own (eBay's RuName, 'redirect_option') that option of
+ * its application; '' while the option is not entered. The provider still
+ * sends the browser back to connect.php, which is the address entered
+ * behind that name in its console. Pure.
+ *
+ * @param array $provider a provider definition
+ * @param mixed $app      pg_connect_app()
+ * @return string
+ */
+function pg_connect_provider_redirect($provider, $app)
+{
+    if (empty($provider['redirect_option'])) {
+        return pg_connect_redirect_uri();
+    }
+
+    $name = (string) $provider['redirect_option'];
+
+    return (is_array($app) && isset($app['options'][$name])) ? trim((string) $app['options'][$name]) : '';
+}
+
+/**
  * The address of the site's client ID metadata document
  * (draft-ietf-oauth-client-id-metadata-document): an authorization server
  * that reads those takes this address as the site's client_id and reads the
@@ -1661,7 +1684,7 @@ function pg_connect_start($provider_key, $purpose_key, $owner, $user, $return, $
 
     $app = pg_connect_app($provider_key);
 
-    if (!pg_connect_app_ready($app)) {
+    if (!pg_connect_app_ready($app) || (pg_connect_provider_redirect($provider, $app) === '')) {
         return $fail(lang(array(
             'string' => 'The {var:1} application is not set up yet. Enter it on Connected accounts first.',
             'vars'   => $provider['label'])));
@@ -1727,7 +1750,7 @@ function pg_connect_start($provider_key, $purpose_key, $owner, $user, $return, $
     return array(
         'ok'    => true,
         'url'   => pg_connect_authorize_url($provider, $app, array(
-            'redirect_uri' => pg_connect_redirect_uri(),
+            'redirect_uri' => pg_connect_provider_redirect($provider, $app),
             'scopes'       => pg_connect_scope_list($scopes),
             'state'        => $state,
             'challenge'    => $pkce['challenge'],
@@ -1808,7 +1831,7 @@ function pg_connect_finish($query, $user)
     $response = pg_connect_token_request($provider, $app, array(
         'grant_type'    => 'authorization_code',
         'code'          => $code,
-        'redirect_uri'  => pg_connect_redirect_uri(),
+        'redirect_uri'  => pg_connect_provider_redirect($provider, $app),
         'code_verifier' => $pending['verifier'],
     ));
 
