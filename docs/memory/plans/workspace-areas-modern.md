@@ -10,7 +10,7 @@ priority: 6
 
 ## Which plans carry it?
 - `plans/workspace-tasks-modern.md` (TM, My Tasks) and `plans/workspace-notes-modern.md` (NM, My Notes): k2.
-- `plans/workspace-data-modern.md` (DM, Data) and CM (My calendar and the Work Calendar, closed 2026-11-27; written up in `workspace/workspace-personal-calendar-rules.md`): k3.
+- DM (Data, closed 2026-11-27; written up in `workspace/workflow-tables-screen.md`) and CM (My calendar and the Work Calendar, closed 2026-11-27; written up in `workspace/workspace-personal-calendar-rules.md`): k3.
 - The four run side by side, one step of each at a time. This file holds no work of its own; the last of the four to close deletes it.
 
 ## What did the count find? (sandbox, 2026-11-27, 1440 and 390 px, dark)
