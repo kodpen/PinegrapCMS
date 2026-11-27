@@ -307,7 +307,12 @@ function test_menu_row_21_is_drawn_for_whoever_may_open_one_of_its_entries()
 	$menu = pg_test_function_source('output_menu');
 
 	pg_assert_contains("if ((\$user['role'] < 2) || (\$design_other_content !== '')) {\n        \$menu_items[21]['id'] = 21;", $menu, 'the studio\'s own entries, or one behind Other');
-	pg_assert_contains("\$menu_items[21]['data-bs-content'] = '';\n\n        if (\$user['role'] < 2) {\n            \$menu_items[21]['data-bs-content'] .= '<a href=\\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_system_styles.php\\''", $menu, 'the studio\'s own entries keep their gate');
+	pg_assert_contains("\$menu_items[21]['data-bs-content'] = '';\n\n        if (\$user['role'] < 2) {\n            \$studio_link_class = 'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi ';\n            \$menu_items[21]['data-bs-content'] .= '<a href=\\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_system_styles.php\\''", $menu, 'the studio\'s own entries keep their gate');
+	// The Bundles screen admits designers (validate_area_access 'designer'),
+	// so its entry sits among the studio's own, after Experiments.
+	pg_assert_contains("lang('Experiments') . '</a>';\n            // PAGE DESIGN STUDIO > Bundles:", $menu, 'Bundles follows Experiments');
+	pg_assert_contains("'/page_bundles.php\\'' . \$output_parent_target . ' class=\\'' . \$studio_link_class . 'bi-collection bi-me-2\\'>' . lang('Bundles') . '</a>';", $menu, 'the Bundles entry');
+	pg_assert_contains("case 'page_bundles.php':\n            \$active_menu = 21;", $menu, 'the Bundles screen marks row 21');
 	pg_assert_contains("\$menu_items[21]['href'] = 'view_system_styles.php';", $menu, 'the row keeps its address');
 
 	// Other is the last entry, drawn only when one of its own is there.
