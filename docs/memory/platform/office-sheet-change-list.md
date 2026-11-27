@@ -5,7 +5,7 @@ module: office
 ---
 
 ## How does the grid keep its waiting changes?
-- `renderBook()` keeps one ordered list, `steps`: a typed cell `{sheet, cell, value}`, a format range `{sheet, range, set}`, a row or column `{op: insert|delete, sheet, axis, at}` (`at` a row number or 0-based column, the line inserted before), a sheet change `{op: sheet_add|sheet_rename|sheet_delete|sheet_move, sheet, to}`. Every place in an entry is the workbook's at that point of the list.
+- `renderBook()` keeps one ordered list, `steps`: a typed cell `{sheet, cell, value}`, a format range `{sheet, range, set}`, a row or column `{op: insert|delete, sheet, axis, at}` (`at` a row number or 0-based column, the line inserted before), a sheet change `{op: sheet_add|sheet_rename|sheet_delete|sheet_move, sheet, to}`, a size `{op: width|height|freeze, …}` (`office-sheet-sizes-grid.md`). Every place in an entry is the workbook's at that point of the list.
 - The pure helpers (`window.pgOfficeView.sheetList`): `listCell()`, `listFormat()`, `listLook()`, `listBook()`, `listEdits()`.
 - `listBook()` replays the list on the sheets the server sent and gives the workbook it leaves: sheets (copies with an `id`, rows, name, `edit` locks and areas moved, `added` rows and columns, `changed`), the typed `values` and the format `sets` of each cell. The grid and the tabs are drawn from it (`workbook` in `renderBook()`), so an inserted row, a new column and an added sheet are typed into before the save (PR #11964).
 - An inserted row is drawn empty and its head (and an inserted column's) is marked `office-head-added`; an added sheet is an empty grid of 30 rows and 10 columns like a new spreadsheet; the server makes the rows a cell is typed into (`office-save-list.md`).
