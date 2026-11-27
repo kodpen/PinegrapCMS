@@ -17,7 +17,7 @@ description: A Data table's bar (workspace_wtables.php?id=N, #12057): New row, T
 - `ws_wtable_screen_menu()`: Show on a canvas (header, As a chart, As a table: `pg_image_editor_data_show_items()`), Run from table (its dialog), Download as Excel, Import; Columns, Shares, Belongs to, Name and description, Deleted rows (N); Delete table (red, with its confirm, managers only). An entry appears only when the screen offered its card or button before.
 
 ## Where did the side cards go?
-- Each is a drawer (`ws_wtable_screen_drawer()`, `dialog.drawer.drawer-end.ws-wt-drawer`, 32 rem) keeping the card's anchor as its id: `ws-wt-columns`, `ws-wt-shares`, `ws-wt-home` (`ws_wtable_home_drawer()`), `ws-wt-details`, `ws-wt-import-rows` (rows from a file and from a note), `ws-wt-deleted-rows`. The grid card and the row form take the page's width.
+- Each is a drawer (`ws_wtable_screen_drawer()`, `dialog.drawer.drawer-end.ws-wt-drawer`, 32 rem) keeping the card's anchor as its id: `ws-wt-columns`, `ws-wt-shares`, `ws-wt-home` (`ws_wtable_home_drawer()`), `ws-wt-details`, `ws-wt-import-rows` (rows from a file and from a note), `ws-wt-deleted-rows`. The grid card takes the page's width; the row form is a drawer too (`workflow-tables-grid-drawer.md`).
 - The screen's script opens the drawer the address's hash names, or holds (a column's `ws-wt-retype-N`), so every post-redirect-get `$back` anchor lands in its drawer; the forms and `.ws-wt-action` posts inside are unchanged.
 
 ## What pins it?

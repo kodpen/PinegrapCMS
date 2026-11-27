@@ -6,12 +6,12 @@ description: The workflow tables screen workspace_wtables.php (T1e, #2966): serv
 ## Where is the screen, and how is it drawn?
 - `workspace_wtables.php` (root, URL-called): no `?id=` is the Data list (`workflow-tables-data-list.md`); `?id=N` opens one table through `ws_wtable_for()` (not reached → "That table could not be found."). Menu: `ws_nav_groups()` key `wtables` ("Data", `bi-table`) while `ws_wtables_ready()`, every member; `ws_side_screen()` and `pg_active_menu` slot 23 know the file.
 - Server-drawn, no bundle: every change is a form posted with the token (`wt_action`), handled by the store's write function, then `go()` back (PRG) with a liveform notice or the store code worded by `ws_wtable_screen_error_text()`. The store decides who may do what; the screen only hides buttons a person may not use (`ws_wtable_may()`).
-- Bar, "Filter", "⋯", drawers: `workflow-tables-screen-bar.md`.
-- Deletes (table, column, row, share) post through one hidden form outside the drawers via `.ws-wt-action` buttons with `data-confirm`: no form sits in a table row.
+- Bar and drawers: `workflow-tables-screen-bar.md`; grid: `workflow-tables-grid-drawer.md`.
+- Deletes (table, column, row, share) post via one hidden form outside the drawers via `.ws-wt-action` buttons with `data-confirm`: no form sits in a table row.
 
 ## How are rows shown and written?
 - 100 rows a page (`ws_wtable_rows_page()`, `?after=`/`after_id=` the last row; with a query bar filter or sort, `?from=` an offset: `workflow-tables-query.md`, which also has the totals line), formulas as read (`#CODE` on an error), status as a badge in its colour, person by name (`ws_people()`).
-- The row form (`#ws-wt-row-form`): a new row, or `?row=M` one row with its `revision`; formula columns have no field. A refusal brings the typed values back once through `$_SESSION['software']['ws_wtable_row']` with each refused cell named; `changed_meanwhile` shows the row as it is now instead.
+- The row drawer (`#ws-wt-row-form`): a new row, or `?row=M` one row with its `revision`; formula columns have no field. A refusal brings the typed values back once through `$_SESSION['software']['ws_wtable_row']` with each refused cell named; `changed_meanwhile` shows the row as it is now instead.
 - `includes/workspace/wtable_screen.php` turns fields into cells: money and numbers read the site's way (`workflow-tables-numbers.md`), money → minor units with `round()`, a datetime's `T` → space, a checkbox `1`/hidden `0`, a record link `kind:id` or `kind #id`. What it cannot read goes to the store as typed so the store's code answers. A date cell is a native `type="date"`/`"datetime-local"` input with `data-pg-date`/`data-pg-datetime` (ISO store; a text input kept the site text, which the store refused), `ws_wtable_screen_cell_to_form()` gives it `Y-m-d`/`Y-m-d\TH:i`; lists and board cards show dates in the site format (`ws_wtable_screen_date_text()`). Tests `tests/workspace_wtable_screen_test.php`.
 
 ## How are columns and shares edited?
@@ -25,4 +25,4 @@ description: The workflow tables screen workspace_wtables.php (T1e, #2966): serv
 - Run from table: the rows as a draft flow (`workspace-flows-from-table.md`).
 
 ## What is left out?
-- Editing in place, column reorder, row move (the store has `ws_wtable_row_move()`), a record-link picker (typed `kind:id`, shown `kind #id`, not resolved to a name). The bin for deleted tables and rows: `workflow-tables-bin.md`, `workflow-tables-bin-screens.md`.
+- Editing in the grid, column reorder, row move, a record-link picker (typed `kind:id`, shown `kind #id`, not resolved to a name). The bin for deleted tables and rows: `workflow-tables-bin.md`, `workflow-tables-bin-screens.md`.
