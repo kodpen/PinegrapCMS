@@ -17,7 +17,7 @@ description: Translations screen row (TS2): the grid, the box, the state column 
 - "Used in:": `pg_tr_screen_details()` reads the text's `translation_uses`, `pg_tr_screen_use_lines()` gives one line a place (a page's title and description folded into the page; pages first, then shared components, menus, the catalog, the forms, the pictures, the cookie window), 12 at most and "and {var} more". A page links to the screen scoped to it, the catalog, forms, pictures and cookie window to their group; a shared component and a menu are plain text.
 - "Earlier wording:": the wording the text replaced (`prev_string_id` of its first use with one) and that wording's translation in the language.
 - The suspicious reason in rose, then "Keep as in the source and approve" for a row not reviewed (the `accept_source` action with its one id; the row turns Reviewed in place).
-- "Translate again" in Details comes with TS3, which adds its dialog for the selection bar and the row.
+- "Translate again" in Details (a row with a translation, an engine ready) opens the selection's "Translate again" dialog for that row (`translations-screen-selection.md`).
 - A change of state (save, eye, keep) drops the loaded Details; an open one is read again.
 
 ## What happens when a save is refused?

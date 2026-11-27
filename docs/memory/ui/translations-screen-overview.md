@@ -10,6 +10,7 @@ description: The Translations screen (translations.php) as a whole: what it is, 
 ## Which file holds which part?
 - The head (language button, tabs "Texts", "Activity", "Glossary", "Translate pending", "Scan for new texts", "More"), the rail, the filter tiles, the tool line: `translations-screen-frame.md`.
 - The row (grid, box, state column, "Suspicious", "Details", the refusal under the box, the keys): `translations-screen-row.md`.
+- The ticks, "Select all on this page", the selection bar and its dialogs ("Approve", "Translate again", "Keep as in the source and approve", "Clear"): `translations-screen-selection.md`.
 - Counts that follow a save, the browser engines' wait, the glossary's refused save and duplicates, the CSV guard: `translations-screen-editor-rows.md`.
 - Unsaved rows and the leave question: `translations-screen-unsaved-rows.md`. `lang` and `dir` on a text: `translations-screen-text-language.md`.
 - "Why?" of a page kept out of search: `translations-screen-noindex-reason.md`. The CSV import: `translations-screen-csv-import.md`. "Recent updates": `translations-screen-recent-jobs.md`. Look A's classes: `look-translations-screen.md`.

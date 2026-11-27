@@ -22,7 +22,10 @@ Texts with no translation, or one that is not reviewed and differs from the sour
 No, and the screen says so: it is the texts as last extracted. Form fields a widget draws count too; a list's records, products and other database texts never keep a page out.
 
 ## What does "Keep as in the source and approve" do?
-Unreviewed rows get a checkbox and a dialog with the count. `translations_action.php` `accept_source` (JSON, session token, manager only) validates ids with `pg_tr_screen_string_ids()` (positive, unique, over 500 refused whole) and calls `pg_tr_accept_source()`: `pg_tr_save_translation(..., 'manual', 'reviewed', ...)` per text not already reviewed (`kept`). The text comes from `pg_tr_accept_source_text()`: the sanitized source only when `pg_tr_sanitize_incoming()` equals `pg_tr_normalize()` of it. A plain source is stored decoded and printed through `h()`, so the sanitizer's `strip_tags()` would save `Size <M>` as `Size`, reviewed and never flagged again; such rows are skipped, counted as `changed` and named in the message. A differing machine translation is replaced. The write drops the language's stored verdicts.
+- Ticked rows, then the selection bar's button: a dialog with the count (`translations-screen-selection.md`).
+- `accept_source` (manager only) takes ids through `pg_tr_screen_string_ids()` (over 500 refused whole); `pg_tr_accept_source()` writes each text not reviewed (`kept`) as `manual`, `reviewed`, and answers the ids written.
+- The text is `pg_tr_accept_source_text()`: the source only when sanitizing leaves it as it is. `Size <M>` would be saved as `Size`, so such a row is skipped, counted as `changed` and named in the message.
+- A differing machine translation is replaced; the write drops the language's stored verdicts.
 
 ## Where are the helpers and tests?
 `includes/translate/screen.php` (loaded by `pg_tr_load()`), `tests/translations_screen_test.php`. PR #1175 (issue #1096).

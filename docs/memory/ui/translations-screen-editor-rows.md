@@ -7,7 +7,7 @@ description: Translations screen (translations.php, translations.js): engine wai
 `Translator.create()` / `LanguageModel.create()` of a browser with the API but no service or language pack never settles. `guardCreate()` gives up after 30 s with no `downloadprogress` event (each event restarts the wait) and shows "The browser did not get its translator ready…". The progress line says "Preparing the browser translator…" while it waits, and "Stop" ends the wait without a question (`preparing.stop()`); nothing has been sent yet. A translator that arrives after the wait gave up is destroyed. (#5994, PR #6016)
 
 ## How does a row follow its state after a save?
-`rowState()` stores the state on the row (`data-state`), adds or removes the "keep as in the source" tick box (`.pg-tr-pick`, a `.pg-tr-pick-spacer` stands in for a reviewed row) and fires `pg-tr-picks-changed`, which re-counts the selection.
+`rowState()` stores the state on the row (`data-state`); every row keeps its tick whatever its state (`translations-screen-selection.md`).
 
 `countState()` moves every server-drawn count with each change of state: the filter tiles (`.pg-tr-chip-count[data-state]`, "Suspicious" included), the pending count of "Translate pending" (`.pg-tr-pending-count`), "All texts" in the rail (`.pg-tr-all-done`), the rail's reviewed total (`.pg-tr-reviewed-total`).
 
