@@ -4699,6 +4699,7 @@ function output_menu($properties = false)
             $menu_items[15]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
             $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_tax_zones.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-calculator bi-me-2\'>' . lang('All Tax Zones') . '</a>';
             $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_tax_zone.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Tax Zone'))) . '</a>';
+            $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/oss_report.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-globe-europe-africa bi-me-2\'>' . lang('One-Stop Shop Report') . '</a>';
             // ECOMMERCE > Referral Sources and Currencies. Site Settings › Store
             // Lists has them too, but a role 3 user does not get that row.
             $menu_items[15]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
@@ -5377,6 +5378,7 @@ function output_menu($properties = false)
         case 'view_tax_zones.php':
         case 'add_tax_zone.php':
         case 'edit_tax_zone.php':
+        case 'oss_report.php':
         case 'view_countries.php':
         case 'add_country.php':
         case 'edit_country.php':

@@ -89,6 +89,7 @@ function pg_panel_search_screens()
         array('ecommerce', 'Store', 'Markets', 'bi-globe-americas', 'view_markets.php', array('pazar', 'pazarlar', 'market', 'markets', 'ulke fiyat', 'yurt disi', 'yurt dışı', 'mar')),
         array('ecommerce', 'Store', 'Countries', 'bi-globe2', 'view_countries.php', array('ulke', 'ülke', 'country', 'countries', 'ulk')),
         array('ecommerce', 'Store', 'Tax Zones', 'bi-receipt-cutoff', 'view_tax_zones.php', array('vergi', 'kdv', 'tax', 'ver')),
+        array('ecommerce', 'Store', 'One-Stop Shop Report', 'bi-globe-europe-africa', 'oss_report.php', array('oss', 'tek durak', 'kdv beyan', 'vat return', 'one-stop', 'ab kdv', 'eu vat')),
         array('ecommerce', 'Store', 'Shipping Zones', 'bi-map', 'view_zones.php', array('nakliye bolge', 'nakliye bölge', 'kargo bolge', 'bolge', 'bölge', 'shipping zone', 'zone', 'zon', 'böl')),
         array('ecommerce', 'Store', 'States/Provinces', 'bi-geo-alt', 'view_states.php', array('iller', 'eyalet', 'eyaletler', 'sehir', 'şehir', 'state', 'province', 'seh')),
         // A right of its own: a role 3 user may hold it without manage_ecommerce.

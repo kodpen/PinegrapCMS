@@ -3614,6 +3614,35 @@ function pg_tax_class_line_rate($tax_on, $taxable, $product_rate, $zone_rate, $l
 }
 
 /**
+ * The EU member state an order line is taxed in, as order_items.tax_country
+ * keeps it for the one-stop-shop report: the country of the address that
+ * taxes the line (the recipient's, else the billing one) when it is a member
+ * state on $date, whether its rate came from a tax zone, a product's own rate
+ * or the EU list. '' when tax is switched off, the order is exempt (the
+ * buyer accounts for the VAT) or the address is outside the EU. Pure.
+ *
+ * @param bool   $tax_on  pg_tax_switched_on()
+ * @param mixed  $exempt  orders.tax_exempt
+ * @param string $country the taxing address's ISO country code
+ * @param string $date    Y-m-d, the day the order is taxed
+ * @return string the ISO code in upper case (GR for EL), or ''
+ */
+function pg_tax_line_country($tax_on, $exempt, $country, $date)
+{
+    $country = strtoupper(trim((string) $country));
+
+    if ($country === 'EL') {
+        $country = 'GR';
+    }
+
+    if (!$tax_on || !empty($exempt) || (pg_eu_vat_rate($country, 'standard', $date) === false)) {
+        return '';
+    }
+
+    return $country;
+}
+
+/**
  * pg_tax_buyer_zone_rate() for a buyer's address, read from the tax zones and
  * the Commerce switch.
  *
@@ -5055,12 +5084,19 @@ function update_order_item_taxes($ship_to_addresses = array())
             ? ", tax_rate = '" . number_format((float) $rate, 3, '.', '') . "'"
             : '';
     };
+    // And the EU member state it was taxed in (order_items.tax_country,
+    // 11.0.287), which the one-stop-shop report groups by.
+    $country_sql = function ($country) {
+        return pg_schema_has('order_items', 'tax_country')
+            ? ", tax_country = '" . escape(pg_tax_line_country(pg_tax_switched_on(), false, $country, date('Y-m-d'))) . "'"
+            : '';
+    };
 
     // if order is tax-exempt, clear tax from all order items
     if ($tax_exempt) {
         $query = "UPDATE order_items
 
-                 SET tax_total = 0, tax = 0" . $rate_sql(0) . "
+                 SET tax_total = 0, tax = 0" . $rate_sql(0) . $country_sql('') . "
 
                  WHERE order_id = ?";
         $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error(lang('Query failed.'));
@@ -5108,12 +5144,14 @@ function update_order_item_taxes($ship_to_addresses = array())
             // the rate resolved for the previous one.
             $shipping_address_tax_rate = false;
             $shipping_list_country = '';
+            $line_country = $billing_country;
             // if this ship to is a real recipient, get tax rate for shipping address
             if ($ship_to['ship_to_id'] > 0) {
                 $ship_to_address = isset($ship_to_addresses[(int) $ship_to['ship_to_id']])
                     ? $ship_to_addresses[(int) $ship_to['ship_to_id']]
                     : array('country' => $ship_to['country'], 'state' => $ship_to['state']);
                 $shipping_address_tax_rate = pg_tax_rate_for_buyer_address((string) ($ship_to_address['country'] ?? ''), (string) ($ship_to_address['state'] ?? ''), $today, $shipping_list_country);
+                $line_country = (string) ($ship_to_address['country'] ?? '');
             }
             // get all order items for this ship to
             $query = "SELECT
@@ -5163,6 +5201,7 @@ function update_order_item_taxes($ship_to_addresses = array())
                 $line_quantity = max(1, (int) $order_item['quantity']);
                 $lines[(int) $order_item['id']] = array(
                     'amount' => (int) $order_item['price'] * $line_quantity,
+                    'country' => $line_country,
                     'rate' => pg_tax_class_line_rate(pg_tax_switched_on(), $order_item['taxable'], $order_item['tax_rate'], $zone_rate, $list_country, (string) ($order_item['tax_class'] ?? 'standard'), $today),
                     // A line saved for later is no part of the sale.
                     'alone' => !empty($order_item['saved_for_later'])
@@ -5179,7 +5218,7 @@ function update_order_item_taxes($ship_to_addresses = array())
         foreach ($lines as $id => $line) {
             $query = "UPDATE order_items
 
-                     SET tax_total = ?, tax = '0'" . $rate_sql($line['rate']) . "
+                     SET tax_total = ?, tax = '0'" . $rate_sql($line['rate']) . $country_sql($line['country']) . "
 
                      WHERE id = ?";
             $result = db_q($query, array((string) (int) $taxes[$id], (string) (int) $id)) or output_error(lang('Query failed.'));
