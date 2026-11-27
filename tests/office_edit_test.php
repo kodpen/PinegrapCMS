@@ -431,7 +431,10 @@ function test_office_edit_save_and_read_back()
 
 	$parts = office_edit_test_book_parts();
 	$path = office_edit_test_package($parts);
-	$directory = sys_get_temp_dir();
+	// A folder of this run's own: another run's save in the shared temporary
+	// folder must not count as a leftover of this one.
+	$directory = sys_get_temp_dir() . '/pg_office_edit_test_' . getmypid() . '_' . bin2hex(random_bytes(4));
+	mkdir($directory, 0700);
 	$book = pg_office_read($path, 'liste.xlsx', true);
 
 	pg_assert_true($book['ok'], 'read for editing: ' . $book['error']);
@@ -512,7 +515,11 @@ function test_office_edit_save_and_read_back()
 	$leftovers = array_merge((array) glob($directory . '/office_edit_*.tmp'), (array) glob($directory . '/office_edit_*.part'));
 	pg_assert_same(array(), $leftovers, 'no temporary package or part is left behind');
 
-	@unlink($directory . '/office_edit_' . sha1($path) . '.lock');
+	foreach ((array) glob($directory . '/*') as $file) {
+		@unlink($file);
+	}
+
+	@rmdir($directory);
 	unlink($path);
 }
 
