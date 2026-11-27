@@ -188,3 +188,50 @@ function test_workspace_memory_tab_search_wiring()
 	pg_assert_contains("input.type = 'search';", $script);
 	pg_assert_contains('fields.search = query;', $script, 'the words go to ws_memory_list');
 }
+
+// A list narrowed by project or tag is narrowed in the query, before its
+// 500-row limit: filtered after it, a project of a memory of thousands of
+// records lost every record past the newest 500. The project is compared
+// by the column's case-insensitive collation, as the projects read counts it.
+function test_workspace_memory_filter_where_narrows_in_the_query()
+{
+	$where = ws_memory_filter_where(7, array('tag' => 'api', 'project' => 'Design'), 1000);
+
+	pg_assert_same('m.channel_id = ? AND (m.expires_at = 0 OR m.expires_at > ?) AND FIND_IN_SET(?, m.tags) > 0 AND m.project = ?', $where['sql']);
+	pg_assert_same(array(7, 1000, 'api', 'Design'), $where['params']);
+
+	$all = ws_memory_filter_where(0, array('expired' => true), 1000);
+
+	pg_assert_same('m.channel_id = ?', $all['sql'], 'the expired ones too, no tag, no project');
+	pg_assert_same(array(0), $all['params']);
+}
+
+// A quoted phrase typed with two spaces matches text holding two spaces;
+// the snippet, which folds the text's spaces, folds the phrase's too.
+function test_workspace_memory_search_snippet_phrase_spaces()
+{
+	$text = str_repeat('lorem ', 60) . 'merge  train rules here ' . str_repeat('ipsum ', 60);
+	$snippet = ws_memory_search_snippet($text, array('merge  train'), 60);
+
+	pg_assert_true(mb_strpos($snippet, 'merge train') !== false, 'the snippet is around the phrase');
+}
+
+// A Turkish project written with İ in one record and i in another is one
+// project, as the column's collation and project= read it: PHP lower cases
+// İ to i and a combining dot, so the fold maps İ to i first.
+function test_workspace_memory_project_counts_turkish_dotted_i()
+{
+	$counts = ws_memory_project_counts(array(
+		array('project' => 'İnsan kaynakları', 'count' => 2),
+		array('project' => 'insan kaynakları', 'count' => 1),
+	));
+
+	pg_assert_same(array(array('project' => 'İnsan kaynakları', 'count' => 3)), $counts, 'one project, as first met');
+
+	$groups = ws_memory_groups(array(
+		array('id' => 1, 'project' => 'İK'),
+		array('id' => 2, 'project' => 'ik'),
+	));
+
+	pg_assert_same(1, count($groups), 'the Memory tab draws one heading');
+}

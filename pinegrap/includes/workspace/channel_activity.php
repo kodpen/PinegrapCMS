@@ -332,9 +332,9 @@ function ws_channel_activity_held_requests($values)
 }
 
 /**
- * What a working agent's row says of the request it holds: who asked and
- * the message (only for a request of this channel, so nothing of another
- * channel is told), "since HH:MM" and the progress note. Pure but for
+ * What a working agent's row says of the request it holds: who asked, the
+ * message and the progress note (only for a request of this channel, so
+ * nothing of another channel is told) and "since HH:MM". Pure but for
  * lang() and date().
  *
  * @param array|null $row     ws_ai_requests
@@ -356,7 +356,7 @@ function ws_channel_activity_request_line($row, $channel_id, $people)
         'message_id' => ($here && ((int) $row['message_id'] > 0)) ? (int) $row['message_id'] : null,
         'asked_by'   => ($here && ($asker > 0) && isset($people[$asker])) ? array('user_id' => $asker, 'name' => (string) $people[$asker]['name']) : null,
         'since'      => $line['since'],
-        'note'       => $line['note'],
+        'note'       => $here ? $line['note'] : '',
     );
 }
 

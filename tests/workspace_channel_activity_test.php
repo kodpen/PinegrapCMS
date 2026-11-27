@@ -239,3 +239,24 @@ function test_workspace_channel_activity_null_parts()
 		pg_assert_same(null, $row['project']);
 	}
 }
+
+// A working agent's row tells who asked, the message and the progress note
+// only for a request of this channel: the note of a request in another
+// channel, a private one among them, is that channel's words.
+function test_workspace_channel_activity_request_line_other_channel()
+{
+	$row = array('channel_id' => 5, 'message_id' => 90, 'requested_by' => 3, 'status' => 'running', 'claimed_at' => 1700000000, 'ai_state' => json_encode(array('progress' => 'reading the salary plans', 'progress_at' => 1700000100)));
+	$people = array(3 => array('name' => 'Ayşe'));
+
+	$here = ws_channel_activity_request_line($row, 5, $people);
+
+	pg_assert_same('reading the salary plans', $here['note'], 'its own channel tells the note');
+	pg_assert_same(90, $here['message_id']);
+
+	$there = ws_channel_activity_request_line($row, 7, $people);
+
+	pg_assert_same('', $there['note'], 'another channel does not');
+	pg_assert_same(null, $there['message_id']);
+	pg_assert_same(null, $there['asked_by']);
+	pg_assert_true($there['since'] !== '', 'the time it holds the request is told');
+}

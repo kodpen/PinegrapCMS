@@ -445,15 +445,9 @@ function ws_api_memory_index($channel_id, $params)
         return;
     }
 
-    foreach (ws_memory_rows($channel_id, !empty($params['expired'])) as $row) {
-        if (($tag !== '') && !in_array($tag, ws_memory_tags((string) $row['tags']), true)) {
-            continue;
-        }
-
-        if (($project !== '') && (ws_memory_project($row['project'] ?? '') !== $project)) {
-            continue;
-        }
-
+    // Narrowed in the query, so a project or a tag past the newest 500
+    // records of a large memory is still listed.
+    foreach (ws_memory_index_rows($channel_id, array('expired' => !empty($params['expired']), 'tag' => $tag, 'project' => $project)) as $row) {
         $out[] = ws_api_memory_present($row, false);
     }
 
