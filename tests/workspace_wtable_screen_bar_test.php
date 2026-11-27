@@ -115,7 +115,7 @@ function test_ws_wtable_screen_bar()
 		'tags'    => '<div class="ws-bar-tags"></div>',
 	));
 
-	pg_assert_true(strpos($html, '<div class="ws-bar-frame"><nav class="pg-toolbar ws-bar"') === 0, 'one bar line in its frame');
+	pg_assert_true(strpos($html, '<div class="ws-bar-frame ws-wt-bar-frame"><nav class="pg-toolbar ws-bar"') === 0, 'one bar line in its frame');
 	pg_assert_false(strpos($html, 'button_bar') !== false);
 	pg_assert_false((bool) preg_match('/btn btn-|nav-tabs|nav-pills/', $html));
 	pg_assert_same(1, substr_count($html, 'pg-button-fill'), 'New row is the one fill');

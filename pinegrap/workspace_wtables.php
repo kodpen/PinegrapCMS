@@ -2125,7 +2125,7 @@ $shell . '
         filterBox.hidden = !on;
         filterButton.setAttribute("aria-expanded", on ? "true" : "false");
         if (on) {
-            var first = filterBox.querySelector("select, input, button");
+            var first = filterBox.querySelector("select, input:not([type=hidden]), button");
             if (first) { first.focus(); }
         } else if (refocus) {
             filterButton.focus();

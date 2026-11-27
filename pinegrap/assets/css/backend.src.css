@@ -36886,6 +36886,22 @@ textarea.pg-campaign-text {
 .ws-wt-menu .menu-item {
   white-space: nowrap;
 }
+/* A phone: the box spans the bar's frame, under the bar, wherever
+   "Filter" stands on the line. */
+@media (max-width: 575.98px) {
+  .ws-wt-bar-frame {
+    position: relative;
+  }
+  .ws-wt-filter {
+    position: static;
+  }
+  .ws-wt-filter-box {
+    top: 52px;
+    left: 0;
+    width: auto;
+    max-width: none;
+  }
+}
 
 }
 

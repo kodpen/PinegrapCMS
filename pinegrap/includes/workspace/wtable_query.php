@@ -506,7 +506,7 @@ function ws_wtable_screen_query_bar($self_url, $table_id, $columns, $screen, $te
     return '<form method="get" action="' . h($self_url) . '#ws-wt-rows" class="ws-wt-query" id="ws-wt-query" role="search" aria-label="' . h(lang('Filter and sort rows')) . '">
         <input type="hidden" name="id" value="' . (int) $table_id . '">' . ($totals_all ? '<input type="hidden" name="totals" value="all">' : '') . '
         <div class="ws-bar-box-body">
-            <span class="pg-field-label mb-0">' . h(lang('Conditions')) . '</span>
+            <span class="pg-field-label mb-0">' . h(lang('Which rows')) . '</span>
             ' . $out . '
             ' . ((count($typed) > 0) ? '<select class="pg-input pg-input-sm" name="join" aria-label="' . h(lang('How the conditions join')) . '">' . $joins . '</select>' : '') . '
             <div class="ws-plan-field"><label class="pg-field-label" for="ws-wt-query-sort">' . h(lang('Sort by')) . '</label>

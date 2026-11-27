@@ -188,7 +188,7 @@ function ws_wtable_screen_bar($bar)
 
     $out .= (string) ($bar['menu'] ?? '');
 
-    return '<div class="ws-bar-frame"><nav class="pg-toolbar ws-bar" aria-label="' . h(lang('Button Bar')) . '">' . $out . '</nav>'
+    return '<div class="ws-bar-frame ws-wt-bar-frame"><nav class="pg-toolbar ws-bar" aria-label="' . h(lang('Button Bar')) . '">' . $out . '</nav>'
         . (string) ($bar['tags'] ?? '') . '</div>';
 }
 
