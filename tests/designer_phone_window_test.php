@@ -194,3 +194,33 @@ function test_designer_phone_window_is_a_part_opened_from_the_preview_menu()
 	pg_assert_false(strpos($part, '<img'), 'no image address for the code');
 	pg_assert_false(strpos($part, 'localStorage'), 'the address is kept nowhere');
 }
+
+function test_designer_phone_window_offers_a_new_version_on_a_live_tab_with_changes()
+{
+	$res = designer_phone_window_node(array('_phInfoKind'), '[' . implode(', ', array(
+		'{ page: { saved: true }, version: function () { return "start"; }, dirty: function () { return true; } }',
+		'{ page: { saved: true }, version: function () { return "open"; }, dirty: function () { return true; } }',
+		'{ page: { saved: true }, version: function () { return ""; }, dirty: function () { return true; } }',
+		'{ page: { saved: true }, version: function () { return ""; }, dirty: function () { return false; } }',
+		'{ page: { saved: false }, version: function () { return "start"; }, dirty: function () { return true; } }',
+		'{ page: { saved: true }, dirty: function () { return true; } }',
+	)) . '].map(_phInfoKind)');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array('start', 'open', 'dirty', 'saved', 'new', 'dirty'), $res, 'a live tab with changes is offered its new version; other pages keep Save');
+
+	$js = designer_phone_window_source();
+	pg_assert_contains("data-ph=\"version\"", $js, 'the line carries the version button');
+	pg_assert_contains("_sdT('Save as a new version')", $js, 'the button starts a new version');
+	pg_assert_contains("_sdT('Open the new version')", $js, 'or opens the one the page has');
+	pg_assert_contains('pgUI.dialog.hide(state.el)).then(', $js, 'the window closes before the version is started');
+
+	$core = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$host = substr($core, strpos($core, 'function _sdPhoneHost()'), 1600);
+	pg_assert_contains('!q.page_draft && _pgPageDirty(q)) ? _pgVersionDoorOf(q)', $host, 'the door is given only for a page on the site with its own changes');
+	pg_assert_contains("_sdPartCall('versions', 'start', [p.key])", $host, 'the press starts the version of the page on screen');
+	pg_assert_contains('if (opened) _sdPhoneOpen();', $host, 'the window is asked again for the opened draft');
+}

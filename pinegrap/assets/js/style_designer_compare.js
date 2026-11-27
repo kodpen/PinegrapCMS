@@ -22,6 +22,9 @@
  * closing it gives the dialog back as it was. The rules are
  * window.PgCompareLook's.
  *
+ * For a live page's new version (opts.livePageId) the page on the site is
+ * the page the version replaces.
+ *
  * Not needed to open a page: the core runs this file the first time
  * Compare is opened (_sdCompareOpen(), pg_designer_parts()).
  *
@@ -64,8 +67,10 @@ StyleDesigner.definePart('compare', function (K) {
         return null;
     }
 
-    // A draft page and a page never saved have nothing on the site.
+    // A draft page and a page never saved have nothing on the site; a new
+    // version's draft has the live page it replaces (opts.livePageId).
     function hasLive() {
+        if (w.livePageId > 0) return !!(w.livePage ? L.liveTree(w.livePage.baseline) : w.liveRevisions.length);
         var p = w.page;
         if (p && (!(p.page_id > 0) || (K._pgDraftsReady() && p.page_draft))) return false;
         return !!(p ? L.liveTree(p.baseline) : w.revisions.length);
@@ -73,6 +78,12 @@ StyleDesigner.definePart('compare', function (K) {
 
     function nowTree() {
         return w.page ? (K._pgTreeOf(w.page) || null) : null;
+    }
+
+    // The revisions of the page on the site: the replaced page's for a new
+    // version, else the page's own.
+    function liveRevisions() {
+        return w.livePageId > 0 ? w.liveRevisions : w.revisions;
     }
 
     function revRow(no) {
@@ -93,7 +104,7 @@ StyleDesigner.definePart('compare', function (K) {
     function sideDetail(s) {
         if (!s) return '';
         if (s.kind === 'now') return _sdT('as it is in the designer now');
-        var r = (s.kind === 'live') ? (w.revisions[0] || null) : revRow(s.no);
+        var r = (s.kind === 'live') ? (liveRevisions()[0] || null) : revRow(s.no);
         if (!r) return '';
         if (s.kind === 'live') return _sdT('since {var}', K._sdRevisionWhen(r.created_at));
         return (r.user_username || _sdT('Unknown')) + ' · ' + K._sdRevisionWhen(r.created_at) + ' · ' + K._sdRevisionSourceLabel(r.source);
@@ -172,6 +183,10 @@ StyleDesigner.definePart('compare', function (K) {
         if (s.kind === 'now') return Promise.resolve(nowTree());
         if (s.kind === 'live') {
             if (!hasLive()) return Promise.resolve(null);
+            if (w.livePageId > 0) {
+                if (w.livePage) return Promise.resolve(L.liveTree(w.livePage.baseline));
+                return K._sdRevisionFetch(w.livePageId, w.liveRevisions[0].revision_no).then(function (rev) { return rev ? rev.tree : null; });
+            }
             if (w.page) return Promise.resolve(L.liveTree(w.page.baseline));
             s = { kind: 'rev', no: w.revisions[0].revision_no };
         }
@@ -201,8 +216,10 @@ StyleDesigner.definePart('compare', function (K) {
         opts = opts || {};
         close();
         var pageId = parseInt(opts.pageId, 10) || 0;
+        var livePageId = parseInt(opts.livePageId, 10) || 0;
         w = {
             pageId: pageId, page: pageOf(pageId), opts: opts, revisions: [],
+            livePageId: livePageId, livePage: livePageId > 0 ? pageOf(livePageId) : null, liveRevisions: [],
             sides: { before: L.side(opts.left) || { kind: 'live', no: 0 }, after: L.side(opts.right) || { kind: 'now', no: 0 } },
             got: { before: null, after: null }, read: null, look: null,
             prefs: readPrefs(), pos: 50, pics: { before: {}, after: {} }, html: {}, code: false, seq: 0,
@@ -211,14 +228,18 @@ StyleDesigner.definePart('compare', function (K) {
         };
         w.rows = [];
         build();
-        var list = pageId > 0
-            ? K._pgApiPost('revisions_list', { page_id: pageId }).then(function (res) {
-                return (res && res.status === 'success' && Array.isArray(res.revisions)) ? res.revisions : [];
-            }, function () { return []; })
-            : Promise.resolve([]);
-        list.then(function (rows) {
-            if (!w) return;
-            w.revisions = rows;
+        var revisionsOf = function (id) {
+            return id > 0
+                ? K._pgApiPost('revisions_list', { page_id: id }).then(function (res) {
+                    return (res && res.status === 'success' && Array.isArray(res.revisions)) ? res.revisions : [];
+                }, function () { return []; })
+                : Promise.resolve([]);
+        };
+        var mine = w;
+        Promise.all([revisionsOf(pageId), revisionsOf(livePageId)]).then(function (got) {
+            if (!w || w !== mine) return;
+            w.revisions = got[0];
+            w.liveRevisions = got[1];
             load();
         });
     }
@@ -524,7 +545,9 @@ StyleDesigner.definePart('compare', function (K) {
 
     function serverHtml(s, t) {
         if (!t || !(w.pageId > 0)) return Promise.resolve('');
-        var body = { page_id: w.pageId, tree_json: JSON.stringify(t), widgets: [] };
+        // The page on the site of a new version is the page it replaces.
+        var id = (s.kind === 'live' && w.livePageId > 0) ? w.livePageId : w.pageId;
+        var body = { page_id: id, tree_json: JSON.stringify(t), widgets: [] };
         // The draft shows the system widgets as the editor holds them, as
         // the Preview does; every other side shows the stored ones.
         if (s.kind === 'now' && w.page) {
