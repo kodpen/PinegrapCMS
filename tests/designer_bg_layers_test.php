@@ -204,3 +204,35 @@ function test_designer_bg_layers_repeat_row()
 	pg_assert_same(array('no-repeat', 'repeat-y'), $r['of']);
 	pg_assert_same('no-repeat', $r['written'], 'a gradient\'s "No repeat" is written');
 }
+
+// A picture with a focus per screen keeps --pg-focus-d/-t/-p and reads
+// them through its background-position. A write whose position no longer
+// reads them (a place chosen, the picture removed) leaves them stale: the
+// Focus control then showed a phone's focus the page no longer draws.
+function test_designer_bg_layers_focus_left_behind()
+{
+	$r = designer_bg_layers_run(
+		'var st = { "background-image": "url(a.jpg)", "background-size": "cover", "background-position": "var(--pg-focus,30% 20%)",'
+		. ' "--pg-focus-d": "30% 20%", "--pg-focus-t": "30% 20%", "--pg-focus-p": "10% 0%" };'
+		. 'var l = L.read(st).layers;'
+		. 'var kept = L.write(l);'
+		. 'l[0].position = "right bottom";'
+		. 'var placed = L.write(l);'
+		. 'var video = Object.assign({}, st, { "object-position": "var(--pg-focus,30% 20%)" });'
+		. 'console.log(JSON.stringify([L.focusLeft(st, kept), L.focusLeft(st, placed), L.focusLeft(st, L.write([])),'
+		. ' L.focusLeft({ "background-image": "url(a.jpg)" }, L.write([])), L.focusLeft(video, placed)]));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_same(false, $r[0], 'the position still reads the focus');
+	pg_assert_same(true, $r[1], 'a place chosen in the nine places');
+	pg_assert_same(true, $r[2], 'every layer removed');
+	pg_assert_same(false, $r[3], 'no focus per screen');
+	pg_assert_same(false, $r[4], 'a video\'s object-position still reads them');
+
+	$part = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_bglayers.js');
+	pg_assert_contains('L.focusLeft(styleOf(node), vals)', $part, 'a write takes the stale focus out');
+}

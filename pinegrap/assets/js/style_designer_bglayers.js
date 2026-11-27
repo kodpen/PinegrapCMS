@@ -255,7 +255,14 @@ StyleDesigner.definePart('bglayers', function (K) {
         if (K.selectedNode !== node) return;
         K.saveState();
         var vals = L.write(layers);
+        // A focus per screen the new position no longer reads goes with
+        // its class, or the Focus control would show it again.
+        var left = L.focusLeft(styleOf(node), vals);
         Object.keys(vals).forEach(function (k) { K.setAttrStyleProp(node, k, vals[k]); });
+        if (left) {
+            ['--pg-focus-d', '--pg-focus-t', '--pg-focus-p'].forEach(function (k) { K.setAttrStyleProp(node, k, ''); });
+            node.props.cssClass = String(node.props.cssClass || '').split(/\s+/).filter(function (c) { return c && c !== 'pg-focus'; }).join(' ');
+        }
         if (node.props._bgGrad) node.props._bgGrad = null;
         if (say) ui.said = say;
         K._sdRenderNode(node, K.renderCanvas);
