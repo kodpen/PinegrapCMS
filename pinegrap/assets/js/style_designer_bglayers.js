@@ -161,7 +161,7 @@ StyleDesigner.definePart('bglayers', function (K) {
                     (custom ? '<div class="sd-bgl-wh"><input type="text" class="form-control form-control-sm" data-bgl="sw" value="' + esc(wh[0] || 'auto') + '" aria-label="' + esc(_sdT('Width')) + '">' +
                         '<input type="text" class="form-control form-control-sm" data-bgl="sh" value="' + esc(wh[1] || 'auto') + '" aria-label="' + esc(_sdT('Height')) + '"></div>' : ''));
             // One picture alone that its box cuts takes the Focus control.
-            h += layers.length === 1 && K._sdFocusTakes(node, 'background') ? K._sdFocusPlace('background') : row(_sdT('Position'), places('position', L.place(l.position || 'center'), _sdT('Position')));
+            h += layers.length === 1 && K._sdFocusTakes(node, 'background') ? K._sdFocusPlace('background') : row(_sdT('Position'), places('position', L.shownPlace(l.position), _sdT('Position')));
             return h + moreRows(l);
         }
         var s = l.stops[Math.min(ui.stop, l.stops.length - 1)], n = l.stops.length;

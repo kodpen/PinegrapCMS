@@ -155,3 +155,27 @@ function test_designer_bg_layers_order_and_stops()
 	pg_assert_same('#000000', $r['edge']['v']);
 	pg_assert_same(array('center center', 'center top', 'right top', 'left bottom', '10px 20px'), $r['places']);
 }
+
+// A picture with no position of its own sits where CSS puts it, the top
+// left corner, and the nine places show that corner; choosing it and
+// reading the style back shows the same corner, not the middle.
+function test_designer_bg_layers_position_shown_at_css_default()
+{
+	$r = designer_bg_layers_run(
+		'var back = L.read(L.write([{ kind: "picture", url: "a.jpg", size: "cover", position: "left top" }])).layers[0];'
+		. 'console.log(JSON.stringify({ none: L.shownPlace(""), back: back.position, shown: L.shownPlace(back.position),'
+		. ' set: L.shownPlace("right bottom"), pct: L.shownPlace("50% 100%"), own: L.shownPlace("30% 20%") }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_same('left top', $r['none'], 'no position is CSS\'s top left');
+	pg_assert_same('', $r['back'], 'the default is not written');
+	pg_assert_same('left top', $r['shown'], 'the chosen top left shows after the write');
+	pg_assert_same('right bottom', $r['set']);
+	pg_assert_same('center bottom', $r['pct']);
+	pg_assert_same('30% 20%', $r['own'], 'a place none of the nine is kept as it is');
+}
+

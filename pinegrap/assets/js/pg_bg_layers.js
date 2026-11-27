@@ -250,6 +250,12 @@
         return out;
     }
 
+    // The place the nine places show for a layer's position: one with no
+    // value of its own sits where CSS puts it, the top left corner.
+    function shownPlace(v) {
+        return place(v || CSS_DEFAULT.position);
+    }
+
     function move(list, from, to) {
         var a = list.slice();
         if (from < 0 || from >= a.length || to < 0 || to >= a.length) return a;
@@ -284,7 +290,8 @@
     var api = {
         PALETTE: PALETTE, PLACES: PLACES, MAX_LAYERS: MAX_LAYERS, MIN_STOPS: MIN_STOPS, MAX_STOPS: MAX_STOPS,
         read: read, write: write, color: color, parseColor: parseColor, gradient: gradient,
-        parseImage: parseImage, move: move, widest: widest, mixAt: mixAt, hexRgb: hexRgb, place: place
+        parseImage: parseImage, move: move, widest: widest, mixAt: mixAt, hexRgb: hexRgb, place: place,
+        shownPlace: shownPlace
     };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (root) root.PGBgLayers = api;
