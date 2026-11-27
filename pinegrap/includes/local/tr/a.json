@@ -3937,6 +3937,7 @@
     "A weather card for one city: the temperature, the sky, humidity, wind and rain, and the next hours.": "Tek şehir için hava durumu kartı: sıcaklık, gökyüzü, nem, rüzgâr ve yağış, ardından sonraki saatler.",
     "A weaver at a wooden loom": "Ahşap tezgâhında bir dokumacı",
     "A web address field with its label.": "Etiketiyle birlikte web adresi alanı.",
+    "A web address, an e-mail address or a phone number.": "Bir web adresi, bir e-posta adresi ya da bir telefon numarası.",
     "A webhook delivery to {var:1} was given up after {var:2} attempts: {var:3}": "{var:1} adresine webhook gönderimi {var:2} denemeden sonra bırakıldı: {var:3}",
     "A webhook is already registered for this account. Remove it first.": "Bu hesap için zaten bir webhook kayıtlı. Önce onu kaldırın.",
     "A website design shown on a laptop and a phone": "Dizüstü bilgisayarda ve telefonda gösterilen bir web sitesi tasarımı",

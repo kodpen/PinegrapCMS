@@ -1904,7 +1904,7 @@ function pg_office_docx_inline(&$state, $parent)
                 $rel = $state['rels'][$rel_id] ?? null;
                 $href = ($rel && $rel['external']) ? (string) $rel['target'] : '';
 
-                if (($href !== '') && preg_match('#^(https?://|mailto:)#i', $href)) {
+                if (($href !== '') && preg_match('#^(https?://|mailto:|tel:)#i', $href)) {
                     $html .= '<a href="' . h($href) . '" target="_blank" rel="noopener noreferrer">' . $inner . '</a>';
                 } else {
                     $html .= $inner;
@@ -2239,7 +2239,7 @@ function pg_office_docx_edit_mark(&$state, $paragraph)
     // the start, which the editor's format bar starts from
     // (includes/fn/office_docx_format.php).
     if (function_exists('pg_office_docx_paragraph_marks')) {
-        $state['edit']['marks'][(string) $position] = pg_office_docx_paragraph_marks($edit);
+        $state['edit']['marks'][(string) $position] = pg_office_docx_paragraph_marks($edit, isset($state['rels']) ? $state['rels'] : array());
         $align = pg_office_docx_paragraph_align($paragraph);
 
         if ($align !== 'start') {
@@ -3713,6 +3713,14 @@ function pg_office_view_strings()
         'highlight_lightGray'=> lang('Light grey'),
         'highlight_black'   => lang('Black'),
         'doc_format_select' => lang('Select text in a paragraph to format it.'),
+        'doc_link'          => lang('Link'),
+        'doc_link_address'  => lang('Address'),
+        'doc_link_hint'     => lang('A web address, an e-mail address or a phone number.'),
+        'doc_link_bad'      => lang('Write a web address starting with http:// or https://, an e-mail address or a phone number.'),
+        'doc_link_apply'    => lang('Apply'),
+        'doc_link_cancel'   => lang('Cancel'),
+        'doc_link_remove'   => lang('Remove link'),
+        'doc_link_select'   => lang('Select text in a paragraph to link it.'),
         'doc_kind'          => lang('Paragraph style'),
         'kind_normal'       => lang('Normal text'),
         'kind_heading1'     => lang('Heading 1'),
@@ -3735,7 +3743,6 @@ function pg_office_view_strings()
         'keep_last'         => lang('This is the last paragraph of the document, so it is not deleted. Its text can be emptied.'),
         'keep_bookmark'     => lang('This paragraph holds one end of a bookmark that reaches into other paragraphs, so it is not deleted here.'),
         'keep_locked'       => lang('This paragraph holds more than text, so it is not deleted here.'),
-        'doc_link'          => lang('Hold Ctrl (Cmd on a Mac) and click to follow the link.'),
         'doc_signed'        => lang('The file is digitally signed, so its text is not changed here.'),
         'doc_protected'     => lang('The document is protected against changes.'),
         'doc_tracking'      => lang('Track Changes is on for this document. Change it in a word processor, so that the changes are tracked.'),

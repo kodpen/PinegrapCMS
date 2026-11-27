@@ -3494,6 +3494,24 @@ function pg_office_docx_save_parts($zip, $wanted, $fail, $spool, $added = array(
     $paragraphs = pg_office_docx_paragraphs($document);
     $changed = array();
 
+    // A link leaving the document is a relationship of the main part: read
+    // when a format asks for a link (includes/fn/office_docx_link.php).
+    $links = null;
+
+    foreach (array_merge(array_values($wanted), $added) as $change) {
+        foreach ((array) $change['format'] as $range) {
+            if (($links === null) && is_array($range[2]) && array_key_exists('link', $range[2])) {
+                $rels = pg_zip_entry_contents($zip, 'word/_rels/document.xml.rels', PG_OFFICE_EDIT_MAX_DOCUMENT, $unread_rels);
+                $links = (($rels === null) && ($unread_rels !== 'missing')) ? null
+                    : pg_office_docx_link_context($rels, $document->documentElement->namespaceURI === 'http://purl.oclc.org/ooxml/wordprocessingml/main');
+
+                if ($links === null) {
+                    return $fail('unusual');
+                }
+            }
+        }
+    }
+
     // Every paragraph is checked before any is written.
     $edits = array();
 
@@ -3539,7 +3557,7 @@ function pg_office_docx_save_parts($zip, $wanted, $fail, $spool, $added = array(
             continue;
         }
 
-        $code = pg_office_docx_paragraph_format($paragraphs[$position], $change['format']);
+        $code = pg_office_docx_paragraph_format($paragraphs[$position], $change['format'], $links);
 
         if ($code !== '') {
             return $fail($code, (string) ($position + 1));
@@ -3570,7 +3588,7 @@ function pg_office_docx_save_parts($zip, $wanted, $fail, $spool, $added = array(
     }
 
     if (!empty($added)) {
-        $result = pg_office_docx_paragraphs_add($paragraphs, $added, $kinds);
+        $result = pg_office_docx_paragraphs_add($paragraphs, $added, $kinds, $links);
 
         if (!$result['ok']) {
             return $fail($result['code'], $result['paragraph']);
@@ -3635,6 +3653,18 @@ function pg_office_docx_save_parts($zip, $wanted, $fail, $spool, $added = array(
 
             $parts[$name] = $file;
         }
+    }
+
+    $rels = pg_office_docx_link_rels_xml($links);
+
+    if ($rels !== null) {
+        $file = $spool($rels);
+
+        if ($file === null) {
+            return $fail('save');
+        }
+
+        $parts['word/_rels/document.xml.rels'] = $file;
     }
 
     $xml = $document->saveXML();

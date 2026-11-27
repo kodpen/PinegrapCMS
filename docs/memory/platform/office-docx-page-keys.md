@@ -10,7 +10,7 @@ description: Keys of a Word document typed on its sheet (OP2, PR #11940): Enter 
 - Text moved into another paragraph or a new one is sent with every format on or off (`exactBase()`), as the server puts it in a run whose look the view does not know.
 - Arrows: Left at a start and Right at an end go to the paragraph beside; Up and Down are the browser's. Shift+Enter: a line break. Tab and Shift+Tab: next and previous paragraph, at either end the focus leaves. Esc: what was typed since the caret came in is undone; with nothing typed Esc goes on to the window.
 - Ctrl/Cmd+B, I, U and the bar act on the selection, also across paragraphs (`selectedParts()`), kept selected after the redraw; Ctrl/Cmd+S saves. `format*` input and a drop are refused in `beforeinput`. Ctrl/Cmd+Z, Ctrl/Cmd+Y and Ctrl/Cmd+Shift+Z undo and redo on the document's own list (`office-docx-undo.md`).
-- Paste takes `text/plain` only. A link is followed with Ctrl/Cmd and a click; a plain click places the caret.
+- Paste takes `text/plain` only. A click on a link places the caret and opens the link window; the address is never followed from the page (`office-docx-links.md`). Ctrl/Cmd+K opens the window too.
 - A locked paragraph is not typed into: a click or Tab picks it (it takes the focus, ringed, its reason in its title and the status line); the arrows go on from it. A click on the sheet below the last paragraph puts the caret at the end of the last one that may change.
 
 ## What was checked?
