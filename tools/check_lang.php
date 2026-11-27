@@ -17,6 +17,12 @@
  *      without a word, so a second copy with another value hides the first
  *      one's translation. Each duplicate is reported with every line it is
  *      on, and whether the copies' values differ.
+ *   4. Every other language (a folder includes/local/<code>/ or a single
+ *      <code>.json, en.json's English overrides aside) is in the same exact
+ *      form, holds each key once, holds only keys Turkish has, and keeps
+ *      each key's placeholders, tags, entities and end spaces
+ *      (pg_lang_pack_problems()). A key it lacks is no fault: lang() shows
+ *      the English.
  *
  * Usage:  php tools/check_lang.php [directory]     (default: pinegrap/)
  * Exit:   0 when everything resolves, 1 otherwise.
@@ -136,6 +142,105 @@ if (is_dir($language_folder)) {
 	if (!is_array($duplicates)) {
 		fwrite(STDERR, 'Could not scan ' . $language_file . " for duplicate keys.\n");
 		exit(1);
+	}
+
+}
+
+// -- every other language ------------------------------------------------------
+
+// The form problems of the language at $source (a folder of shards or a
+// single file, its name relative to includes/local/ in $label), appended to
+// $shard_problems and $duplicates as the Turkish ones are; its map, or null
+// when it cannot be read.
+function check_other_language($source, $label, &$shard_problems, &$duplicates)
+{
+	if (is_dir($source)) {
+
+		$files = glob($source . '/*.json');
+		$files = is_array($files) ? $files : array();
+		sort($files, SORT_STRING);
+
+		foreach ($files as $file) {
+
+			$json = (string) file_get_contents($file);
+			$name = basename($file, '.json');
+
+			foreach (pg_lang_shard_problems($name, $json) as $problem) {
+				$shard_problems[] = $label . $name . '.json: ' . $problem;
+			}
+
+			$found = pg_json_duplicate_keys($json);
+
+			foreach (is_array($found) ? $found : array() as $duplicate) {
+				$duplicate['file'] = $label . $name . '.json';
+				$duplicates[] = $duplicate;
+			}
+
+		}
+
+		return pg_lang_read_folder($source);
+
+	}
+
+	$json = (string) file_get_contents($source);
+	$map = json_decode($json, true);
+
+	if (!is_array($map) || (ltrim($json) === '') || (ltrim($json)[0] !== '{')) {
+		$shard_problems[] = $label . ': not a JSON object';
+		return null;
+	}
+
+	$found = pg_json_duplicate_keys($json);
+
+	if (!is_array($found)) {
+		$shard_problems[] = $label . ': could not be scanned for duplicate keys';
+	}
+
+	foreach (is_array($found) ? $found : array() as $duplicate) {
+		$duplicate['file'] = $label;
+		$duplicates[] = $duplicate;
+	}
+
+	return $map;
+}
+
+$local_folder = $root_real . '/includes/local';
+
+$other_languages = array();   // code => source path
+
+foreach (array_merge((array) glob($local_folder . '/*', GLOB_ONLYDIR), (array) glob($local_folder . '/*.json')) as $source) {
+
+	if (!is_string($source)) {
+		continue;
+	}
+
+	$code = basename($source, '.json');
+
+	if (($code === 'tr') || ($code === 'en')) {
+		continue;
+	}
+
+	if (isset($other_languages[$code])) {
+		$shard_problems[] = 'includes/local/' . $code . '/ and includes/local/' . $code . '.json both exist; lang() reads the folder, so the file is stale: remove one';
+		continue;
+	}
+
+	$other_languages[$code] = $source;
+
+}
+
+ksort($other_languages, SORT_STRING);
+
+$pack_problems = array();
+
+foreach ($other_languages as $code => $source) {
+
+	$label = 'includes/local/' . $code . (is_dir($source) ? '/' : '.json');
+
+	$map = check_other_language($source, $label, $shard_problems, $duplicates);
+
+	foreach (pg_lang_pack_problems($translations, is_array($map) ? $map : array()) as $problem) {
+		$pack_problems[] = $label . ': ' . $problem;
 	}
 
 }
@@ -345,6 +450,10 @@ foreach ($shard_problems as $problem) {
 	echo 'SHARD ' . $problem . "\n";
 }
 
+foreach ($pack_problems as $problem) {
+	echo 'PACK  ' . $problem . "\n";
+}
+
 foreach ($duplicates as $duplicate) {
 	echo 'DUPE  ' . (isset($duplicate['file']) ? $duplicate['file'] : $language_file) . ':' . implode(', ', $duplicate['lines']) . "\n";
 	echo '      key written ' . count($duplicate['lines']) . ' times: ' . $duplicate['key'] . "\n";
@@ -357,10 +466,10 @@ foreach ($duplicates as $duplicate) {
 echo "\n";
 echo 'Scanned ' . $scanned . ' file(s); ' . count($used) . ' key(s) used, ' . count($translations) . ' key(s) defined.' . "\n";
 
-if ((count($missing) > 0) || (count($violations) > 0) || (count($duplicates) > 0) || (count($shard_problems) > 0)) {
-	echo 'FAILED: ' . count($missing) . ' missing key(s), ' . count($violations) . ' rule violation(s), ' . count($duplicates) . ' duplicate key(s), ' . count($shard_problems) . ' shard problem(s).' . "\n";
+if ((count($missing) > 0) || (count($violations) > 0) || (count($duplicates) > 0) || (count($shard_problems) > 0) || (count($pack_problems) > 0)) {
+	echo 'FAILED: ' . count($missing) . ' missing key(s), ' . count($violations) . ' rule violation(s), ' . count($duplicates) . ' duplicate key(s), ' . count($shard_problems) . ' shard problem(s), ' . count($pack_problems) . ' language pack problem(s).' . "\n";
 	exit(1);
 }
 
-echo "OK: every key resolves, and none is written twice in " . $language_file . ".\n";
+echo "OK: every key resolves, and none is written twice in " . $language_file . (count($other_languages) > 0 ? ' or in ' . count($other_languages) . ' other language(s)' : '') . ".\n";
 exit(0);

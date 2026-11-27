@@ -27,8 +27,9 @@ module: lang_files
 
 ## What does check_lang.php check?
 - Each shard against `pg_lang_shard_problems()` (an object of strings, each key in its own shard, the exact form, so no key twice), duplicates with lines (`pg_json_duplicate_keys()`), the keys through `pg_lang_read_folder()`. A folder and a `tr.json` side by side fail.
+- Other languages: [[lang-pack-translating]].
 
 ## Is reading 28 files slower?
-- Measured at the conversion (PHP 8.4 64-bit, Windows, 100 runs): about 20 ms for the folder against 16 ms for the single file, mostly the 28 file opens. A compiled cache removes the cost for either form: [[lang-compiled-cache]].
+- Measured at the conversion (PHP 8.4, Windows, 100 runs): 20 ms for the folder against 16 ms for the single file, mostly the 28 file opens. A compiled cache removes the cost for either form: [[lang-compiled-cache]].
 
 Related: docs/memory/core/translation-rules.md
