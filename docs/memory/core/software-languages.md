@@ -1,13 +1,14 @@
 ---
 name: software-languages
-description: The panel's languages: pg_software_languages() (shipped list cut to wording on disk), the 17 codes config.software_language's ENUM holds, its readers, the 'tr' tests kept.
+description: The panel's languages: pg_software_languages() (English, Turkish, German; shipped list cut to wording on disk), the 17 codes config.software_language's ENUM holds, its readers, the 'tr' tests kept.
 module: software_languages
 ---
 
 ## Where is the list of the panel's languages?
-- `includes/fn/software_languages.php` (2026.11.0, plan panel-language-packs PL1). `pg_software_language_catalog()` is the shipped list: code => own name (`English`, `Türkçe`), direction (`ltr`/`rtl`), first day of the week (0 Sunday, 1 Monday).
+- `includes/fn/software_languages.php` (2026.11.0, plan panel-language-packs PL1). `pg_software_language_catalog()` is the shipped list: code => own name (`English`, `Türkçe`, `Deutsch`), direction (`ltr`/`rtl`), first day of the week (0 Sunday, 1 Monday).
 - `pg_software_languages()` gives the offered ones: the catalogue cut to codes the ENUM can store and whose wording is on disk (`includes/local/<code>/*.json` or `<code>.json`; English needs none). A folder outside the catalogue is not offered.
 - A new panel language is one catalogue line plus its wording; nothing else names a language one by one.
+- German joined in 2026.11.0 (plan panel-language-german DE9): `de`, "Deutsch", `ltr`, week from Monday. Its wording, figures and the top-up: [[lang-pack-german]].
 
 ## Which codes can config.software_language store?
 - `config.software_language` stays an ENUM, never a VARCHAR: the `config` row has no room (`data/config-table-no-varchar.md`); an ENUM of up to 255 members is one byte.

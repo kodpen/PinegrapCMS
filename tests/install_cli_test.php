@@ -221,7 +221,7 @@ function test_install_cli_read_starter_and_language()
 
 	pg_assert_same('en', $read['fields']['default_software_language'], 'language set');
 
-	$env['PG_INSTALL_LANGUAGE'] = 'de';
+	$env['PG_INSTALL_LANGUAGE'] = 'fr';
 
 	$env['PG_INSTALL_STARTER'] = 'my_backup';
 
@@ -229,7 +229,7 @@ function test_install_cli_read_starter_and_language()
 
 	pg_assert_same(array(
 		'PG_INSTALL_STARTER is my_backup; the starter sites here are turkish_default, english_default.',
-		'PG_INSTALL_LANGUAGE must be en or tr.',
+		'PG_INSTALL_LANGUAGE must be en or tr or de.',
 	), $read['problems']);
 
 	$read = install_cli_read(install_cli_test_env(), array(), array());

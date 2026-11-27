@@ -1141,7 +1141,7 @@
     "Lines 12 and 40 stop at the museum gate.": "Die Linien 12 und 40 halten am Museumstor.",
     "Lines 8 and 21 stop in front of the theatre.": "Die Linien 8 und 21 halten vor dem Theater.",
     "Lines filled from the template {var:1}.": "Zeilen aus der Vorlage {var:1} gefüllt.",
-    "Lines kept {var:1} year{suffix:1}": "Zeilen werden {var:1} Jahr{suffix:1} aufbewahrt",
+    "Lines kept {var:1} year{suffix:1}": "Zeilen werden {var:1} Jahr(e) aufbewahrt",
     "Lines of Code": "Codezeilen",
     "Lines of products with no cost known (profit overstated)": "Produktzeilen ohne bekannte Kosten (Gewinn überhöht)",
     "Lines of this order name products deleted from the catalogue since the order was placed: {var:1}. Pinegrap cannot tell whether they kept stock or which Paraşüt product they were, so no shipment document was created. Write this shipment in Paraşüt by hand.": "Zeilen dieser Bestellung nennen Produkte, die seit der Bestellung aus dem Katalog gelöscht wurden: {var:1}. Pinegrap kann nicht erkennen, ob sie Lagerbestand führten oder welchem Paraşüt-Produkt sie entsprachen, daher wurde kein Lieferschein erstellt. Erfassen Sie diese Lieferung manuell in Paraşüt.",
