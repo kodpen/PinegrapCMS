@@ -492,8 +492,20 @@ function pg_proto_phone_panel($sub, $request, $user)
     $audience = (isset($request['audience']) && ($request['audience'] === 'team')) ? 'team' : 'anyone';
     $plan = pg_proto_phone_plan($audience, isset($request['page_id']) ? (int) $request['page_id'] : 0, $draft_ids, $now);
 
+    // A design with no draft pages has nothing a share link could show: the
+    // code opens the live page instead, its public address holding no
+    // secret, so no link is made, found or listed.
     if ($plan === null) {
-        return array('status' => 'error', 'message' => pg_proto_link_error_message('no_drafts'));
+        $live = pg_proto_phone_live_page(pg_proto_design_live_pages($style_id), isset($request['page_id']) ? (int) $request['page_id'] : 0);
+
+        if ($live === null) {
+            return array('status' => 'error', 'message' => pg_proto_link_error_message('no_drafts'));
+        }
+
+        $answer = pg_proto_phone_live_answer($live, URL_SCHEME . HOSTNAME_SETTING . PATH);
+        $answer['qr'] = pg_qr_svg($answer['url'], 0, array('label' => lang('QR code of the live page')));
+
+        return $answer;
     }
 
     $row = pg_proto_phone_pick(pg_proto_links_of_design($style_id), (int) $user['id'], $audience, $now);
@@ -591,4 +603,110 @@ function pg_proto_phone_start_name($pages, $start_page_id)
     $title = isset($first['title']) ? trim((string) $first['title']) : '';
 
     return ($title !== '') ? $title : (isset($first['name']) ? (string) $first['name'] : '');
+}
+
+/* ---------------------------------------------------------------------------
+   A design with no draft pages: the live page
+   --------------------------------------------------------------------------- */
+
+/**
+ * A design's pages on the site: its visual-design pages outside the Drafts
+ * folder and the Recycle Bin, in the order of the editor's tab strip.
+ *
+ * @param int $style_id
+ * @return array[] id, name, title
+ */
+function pg_proto_design_live_pages($style_id)
+{
+    $style_id = (int) $style_id;
+
+    if ($style_id <= 0) {
+        return array();
+    }
+
+    $draft_folder = pg_page_draft_folder_id(false);
+
+    $rows = db_items(
+        "SELECT page_id, page_name, page_title
+        FROM page
+        WHERE page_style = '" . $style_id . "'
+            AND " . pg_page_visual_design_sql() .
+            (($draft_folder > 0) ? " AND page_folder <> '" . (int) $draft_folder . "'" : '') .
+            pg_designer_not_binned_sql('page_folder') . "
+        ORDER BY page_id");
+
+    $pages = array();
+
+    foreach ((array) $rows as $row) {
+        $pages[(int) $row['page_id']] = array(
+            'id' => (int) $row['page_id'],
+            'name' => (string) $row['page_name'],
+            'title' => (string) $row['page_title'],
+        );
+    }
+
+    if (!$pages) {
+        return array();
+    }
+
+    $layout = pg_style_tab_layout_ready() ? (string) db_value("SELECT style_tab_layout FROM style WHERE style_id = '" . $style_id . "'") : '';
+    $ordered = array();
+
+    foreach (pg_designer_tab_layout_normalize($layout, array_keys($pages))['tabs'] as $tab) {
+        $ordered[] = $pages[(int) $tab['id']];
+    }
+
+    return $ordered;
+}
+
+/**
+ * The live page the code of a design with no draft pages opens: the page
+ * being edited when it is on the site, else the design's first page there.
+ * Pure.
+ *
+ * @param array[] $pages         pg_proto_design_live_pages()
+ * @param int     $page_id       the page being edited (0 for one never saved)
+ * @return array|null null for a design with no page on the site
+ */
+function pg_proto_phone_live_page($pages, $page_id)
+{
+    $first = null;
+
+    foreach ((array) $pages as $page) {
+        if (!is_array($page) || !isset($page['id'])) {
+            continue;
+        }
+
+        if ((int) $page['id'] === (int) $page_id) {
+            return $page;
+        }
+
+        if ($first === null) {
+            $first = $page;
+        }
+    }
+
+    return $first;
+}
+
+/**
+ * The window's answer for a live page: its public address and name, with no
+ * share link behind it (no id, no time left, nothing to end). The code is
+ * added by the caller. Pure.
+ *
+ * @param array  $page pg_proto_phone_live_page()
+ * @param string $base the site's address with its path, ending in '/'
+ * @return array status, live, url, start_page
+ */
+function pg_proto_phone_live_answer($page, $base)
+{
+    $title = isset($page['title']) ? trim((string) $page['title']) : '';
+    $name = isset($page['name']) ? (string) $page['name'] : '';
+
+    return array(
+        'status' => 'success',
+        'live' => true,
+        'url' => (string) $base . encode_url_path($name),
+        'start_page' => ($title !== '') ? $title : $name,
+    );
 }

@@ -9848,6 +9848,7 @@
     "This design does not use Bootstrap 3 (no bootstrap.css or bootstrap.min.css among its stylesheets): there is no report and no trial design.": "Bu tasarım Bootstrap 3 kullanmıyor (stil dosyaları arasında bootstrap.css ya da bootstrap.min.css yok): rapor ve deneme tasarımı yok.",
     "This design does not use Bootstrap 3: there is no trial design.": "Bu tasarım Bootstrap 3 kullanmıyor: deneme tasarımı yok.",
     "This design has a trial design already.": "Bu tasarımın zaten bir deneme tasarımı var.",
+    "This design has no draft pages, so the code opens the live page as visitors see it.": "Bu tasarımın taslak sayfası yok; bu yüzden kod, canlı sayfayı ziyaretçilerin gördüğü gibi açar.",
     "This design has no draft pages.": "Bu tasarımın taslak sayfası yok.",
     "This design has no shared component yet.": "Bu tasarımda henüz ortak bileşen yok.",
     "This design has no trial design.": "Bu tasarımın deneme tasarımı yok.",

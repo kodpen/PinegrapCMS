@@ -91348,10 +91348,14 @@ const StyleDesigner = (function () {
     // anything is unsaved, and the designer's own save.
     function _sdPhoneHost() {
         var p = _pgActivePage();
-        var draft = !!(p && p.page_id > 0 && p.page_draft && !p.pickedPending);
+        // A saved page is named whether it is a draft or on the site: a
+        // draft link starts on it only when it is a draft (the server
+        // falls back to the first draft), and a design with no draft
+        // shows the live page named.
+        var saved = !!(p && p.page_id > 0 && !p.pickedPending);
         return {
             styleId: _design.styleId,
-            page: { id: draft ? p.page_id : 0, name: p ? String(p.page_title || p.page_name || '') : '', saved: !!(p && p.page_id > 0) },
+            page: { id: saved ? p.page_id : 0, name: p ? String(p.page_title || p.page_name || '') : '', saved: !!(p && p.page_id > 0) },
             dirty: function () { return _pages.some(_pgPageDirty); },
             save: function (done) {
                 var b = document.getElementById('sd-ajax-save');

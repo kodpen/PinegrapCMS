@@ -313,6 +313,44 @@ function test_prototype_phone_start_name_is_the_pages_title_or_the_first_draft()
 	pg_assert_same('', pg_proto_phone_start_name(array(), 12), 'nothing for a design with no drafts');
 }
 
+// A design with no draft pages shows the live page: the page being edited
+// when it is on the site, else the design's first page there; nothing for a
+// design with no page on the site.
+function test_prototype_phone_live_page_is_the_page_being_edited_or_the_first_on_the_site()
+{
+	$pages = array(
+		array('id' => 21, 'name' => 'home', 'title' => 'Home'),
+		array('id' => 22, 'name' => 'about-us', 'title' => 'About us'),
+	);
+
+	pg_assert_same(22, pg_proto_phone_live_page($pages, 22)['id'], 'the page being edited');
+	pg_assert_same(21, pg_proto_phone_live_page($pages, 0)['id'], 'a page never saved: the first on the site');
+	pg_assert_same(21, pg_proto_phone_live_page($pages, 99)['id'], 'not on the site: the first on the site');
+	pg_assert_same(null, pg_proto_phone_live_page(array(), 22), 'no page on the site');
+}
+
+// The live answer is the page's public address: no share link, no countdown,
+// nothing to end; the address is the one visitors open.
+function test_prototype_phone_live_answer_is_the_public_address_with_no_link()
+{
+	$answer = pg_proto_phone_live_answer(array('id' => 22, 'name' => 'about us', 'title' => ''), 'https://example.com/');
+
+	pg_assert_same('success', $answer['status']);
+	pg_assert_true($answer['live']);
+	pg_assert_same('https://example.com/about%20us', $answer['url']);
+	pg_assert_same('about us', $answer['start_page'], 'its name when it has no title');
+	pg_assert_false(isset($answer['link']), 'no share link');
+	pg_assert_same('Home', pg_proto_phone_live_answer(array('id' => 21, 'name' => 'home', 'title' => 'Home'), 'https://example.com/')['start_page']);
+
+	// The panel answers it before any share link is looked for or made.
+	$fn = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/prototype_phone.php');
+	$panel = substr($fn, strpos($fn, 'function pg_proto_phone_panel('));
+	$live = strpos($panel, 'pg_proto_phone_live_answer(');
+	pg_assert_true($live !== false, 'the panel answers the live page');
+	pg_assert_true($live < strpos($panel, 'pg_proto_phone_pick('), 'before a link is found');
+	pg_assert_true($live < strpos($panel, 'pg_proto_link_issue('), 'before a link is made');
+}
+
 function test_prototype_phone_window_gets_its_code_inline_and_never_cached()
 {
 	$fn = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/prototype_phone.php');

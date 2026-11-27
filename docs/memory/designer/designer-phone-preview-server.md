@@ -29,4 +29,4 @@ module: prototype_phone
 
 Tests: `tests/prototype_phone_test.php`. No database or browser in the session that wrote it: the watch was not run over HTTP.
 
-Related: docs/memory/designer/designer-prototype-share-links.md, docs/memory/designer/designer-phone-preview-rules.md
+Related: docs/memory/designer/designer-phone-preview-live.md, docs/memory/designer/designer-prototype-share-links.md, docs/memory/designer/designer-phone-preview-rules.md

@@ -44,11 +44,13 @@ StyleDesigner.definePart('phone', function (K) {
     }
 
     // What the window shows for an answer of prototype_phone and the time
-    // left: 'team' (the page needs a team link), 'ready', 'ended' (ran out
-    // while open) or 'failed'.
+    // left: 'team' (the page needs a team link), 'live' (a design with no
+    // draft pages: the code of the live page, no link behind it), 'ready',
+    // 'ended' (ran out while open) or 'failed'.
     function _phView(res, secondsLeft) {
         if (!res || res.status !== 'success') return 'failed';
         if (res.team_only) return 'team';
+        if (res.live) return (res.url && res.qr) ? 'live' : 'failed';
         if (!res.link || !res.url || !res.qr) return 'failed';
         return secondsLeft > 0 ? 'ready' : 'ended';
     }
@@ -119,10 +121,11 @@ StyleDesigner.definePart('phone', function (K) {
             esc(_sdT('The phone shows the pages as last saved and redraws after each save.')) + '</span></p>';
     }
 
-    function _phFoot(on) {
+    // The foot's buttons; a live page's address has no link to end.
+    function _phFoot(on, live) {
         var off = on ? '' : ' disabled';
         var copy = '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-ph="copy"' + off + '><span class="bi bi-copy me-1" aria-hidden="true"></span>' + esc(_sdT('Copy link')) + '</button>';
-        var end = '<button type="button" class="btn btn-sm btn-text theme-secondary" data-ph="end"' + off + '>' + esc(_sdT('End now')) + '</button>';
+        var end = live ? '' : '<button type="button" class="btn btn-sm btn-text theme-secondary" data-ph="end"' + off + '>' + esc(_sdT('End now')) + '</button>';
         if (_phNarrow()) {
             return '<button type="button" class="btn btn-sm btn-solid theme-primary" data-ph="open"' + off + '><span class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></span>' + esc(_sdT('Open here')) + '</button>' + copy + end;
         }
@@ -167,6 +170,15 @@ StyleDesigner.definePart('phone', function (K) {
                 (team ? '<p class="sd-phone-sub"><span class="badge theme-info me-1">' + esc(_sdT('Team link')) + '</span>' + esc(_sdT('Sign in on the phone to open it.')) + '</p>' : '') +
                 '<p class="sd-phone-sub" data-ph-left>' + _phStartsLine() + '</p>' + _phInfoLine();
             footHtml = _phFoot(true);
+        } else if (state.view === 'live') {
+            // No share link stands behind this code: no time left, nothing
+            // to end, no redraw after a save.
+            html = '<div class="sd-phone-code">' + res.qr + '</div>' +
+                '<p class="sd-phone-head">' + esc(_phNarrow() ? _sdT('Point another phone\'s camera here') : _sdT('Point your phone\'s camera here')) + '</p>' +
+                '<p class="sd-phone-sub">' + _sdT('Opens {var} on the site', '<b>' + esc(res.start_page || '') + '</b>') + '</p>' +
+                '<p class="sd-phone-line"><span class="bi bi-info-circle" aria-hidden="true"></span><span>' +
+                esc(_sdT('This design has no draft pages, so the code opens the live page as visitors see it.')) + '</span></p>';
+            footHtml = _phFoot(true, true);
         }
         body.innerHTML = html;
         foot.innerHTML = footHtml;
