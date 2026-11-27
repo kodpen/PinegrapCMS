@@ -529,9 +529,39 @@
     // carries a size only when it is not the default's.
     var BASE_SIZE = 11;
 
-    // The width a wrapped cell wraps at: the grid draws no column widths,
-    // and a column is as wide as its widest text.
+    // The width a wrapped cell wraps at in a column with no width of its
+    // own, which is as wide as its widest text.
     var WRAP_WIDTH = '12rem';
+
+    // A column's width in characters of the file's first font and a row's
+    // height in points, drawn in pixels as a spreadsheet draws them at
+    // 100 %: a character of the default font (Calibri 11) is 7 px wide and
+    // a column adds 5 px of padding; a point is 4/3 px. A drawn size is
+    // read back inside the limits the save takes (office_size.php).
+    var CHAR_PX = 7;
+    var CHAR_PAD = 5;
+    var MAX_WIDTH = 255;
+    var MAX_HEIGHT = 409;
+
+    function widthPx(chars) {
+        return Math.round(chars * CHAR_PX + CHAR_PAD);
+    }
+
+    function heightPx(points) {
+        return Math.round(points * 4 / 3);
+    }
+
+    function sizeIn(value, low, high) {
+        return Math.min(high, Math.max(low, Math.round(value * 100) / 100));
+    }
+
+    function widthOf(px) {
+        return sizeIn((px - CHAR_PAD) / CHAR_PX, 0.5, MAX_WIDTH);
+    }
+
+    function heightOf(px) {
+        return sizeIn(px * 3 / 4, 1, MAX_HEIGHT);
+    }
 
     // The borders the Borders menu offers, in its order.
     var BORDERS = [['none', 'bi-border'], ['all', 'bi-border-all'], ['outline', 'bi-border-outer'], ['bottom', 'bi-border-bottom']];
@@ -662,13 +692,20 @@
         style.fontSize = look.sz ? (Math.round(look.sz / BASE_SIZE * 1000) / 1000) + 'em' : '';
         style.whiteSpace = look.w ? 'pre-wrap' : '';
 
-        // The grid's columns take their widest text, so a wrapped cell sets
-        // a width of its own to wrap at (WRAP_WIDTH).
-        style.width = look.w ? WRAP_WIDTH : '';
-        style.minWidth = look.w ? WRAP_WIDTH : '';
+        // A column with no width of its own takes its widest text, so a
+        // wrapped cell there sets a width to wrap at (WRAP_WIDTH); a column
+        // with a width holds every cell to it (data-width, in px).
+        var fixed = td.getAttribute('data-width');
+
+        style.width = fixed ? fixed + 'px' : (look.w ? WRAP_WIDTH : '');
+        style.minWidth = style.width;
+        style.maxWidth = fixed ? fixed + 'px' : '';
         style.textAlign = look.a || '';
         style.color = paper ? (look.c ? '#' + look.c : 'black') : '';
-        style.backgroundColor = paper ? (look.bg ? '#' + look.bg : 'white') : '';
+
+        // A cell of a row frozen on top (data-pinned) is opaque, so that the
+        // rows scrolled under it do not show through.
+        style.backgroundColor = paper ? (look.bg ? '#' + look.bg : 'white') : (td.hasAttribute('data-pinned') ? (td.classList.contains('office-edited') ? 'var(--pg-warning-bg-subtle)' : 'var(--pg-bg-body)') : '');
 
         ['l', 'r', 't', 'b'].forEach(function (side) {
             var on = String(look.bd || '').indexOf(side) !== -1;
@@ -703,7 +740,79 @@
     // Whether a change moves cells or sheets, so that an address before it
     // names another cell than after it.
     function listMoves(step) {
-        return !step.cell && !step.range;
+        return !step.cell && !step.range && !sizeOps[step.op];
+    }
+
+    // A column's width, a row's height and the frozen top row: {op: width|
+    // height|freeze, sheet, at, value}, `at` a 0-based column, a row number
+    // or 0, `value` characters, points (null takes it off) or on/off. They
+    // move no cell.
+    var sizeOps = { width: true, height: true, freeze: true };
+
+    // Sets a size. The same size set again at once is one change (a drag
+    // and its correction); any other is a change of its own.
+    function listSize(list, sheet, op, at, value) {
+        var last = list.length ? list[list.length - 1] : null;
+
+        if (last && last.op === op && last.sheet === sheet && last.at === at) {
+            last.value = value;
+        } else {
+            list.push({ op: op, sheet: sheet, at: at, value: value });
+        }
+
+        return list;
+    }
+
+    // A sheet's sizes as the reader sent them (pg_office_size_out()),
+    // copied: widths by 0-based column, the default width and height, the
+    // number of rows frozen on top.
+    function sheetSizes(sheet) {
+        var sizes = (sheet && sheet.sizes) || {};
+
+        return {
+            widths: copyOf(sizes.widths),
+            width: (sizes.width === undefined) ? null : sizes.width,
+            height: (sizes.height === undefined) ? null : sizes.height,
+            frozen: sizes.frozen || 0
+        };
+    }
+
+    // A sheet with a size of the list laid on it: a row's height on its
+    // row (`h`, points), a width and the frozen rows in `sizes`.
+    function sizeSheet(sheet, step) {
+        var out = copyOf(sheet);
+        var sizes = sheetSizes(sheet);
+
+        if (step.op === 'width') {
+            if (step.value === null) {
+                delete sizes.widths[step.at];
+            } else {
+                sizes.widths[step.at] = step.value;
+            }
+        } else if (step.op === 'height') {
+            out.rows = sheet.rows.map(function (row) {
+                if (row.n !== step.at) {
+                    return row;
+                }
+
+                var copy = copyOf(row);
+
+                if (step.value === null) {
+                    delete copy.h;
+                } else {
+                    copy.h = step.value;
+                }
+
+                return copy;
+            });
+        } else {
+            sizes.frozen = step.value ? 1 : 0;
+        }
+
+        out.sizes = sizes;
+        out.changed = true;
+
+        return out;
     }
 
     // Takes a typed cell out of the changes made since the last row, column
@@ -899,6 +1008,22 @@
             });
 
             out.wide = (op === 'insert') ? Math.min(Math.max(width, at) + 1, SHEET_COLUMNS) : Math.max(0, width - ((at < width) ? 1 : 0));
+
+            // Widths move with their columns. The file keeps a run of
+            // columns of one width as one entry, which an insert inside
+            // widens (pg_office_shift_span()): a column inserted between
+            // two of the same width takes it.
+            if (sheet.sizes) {
+                var sizes = sheetSizes(sheet);
+                var widths = shiftColumns(sizes.widths, op, at);
+
+                if (op === 'insert' && at > 0 && own(sizes.widths, at - 1) && own(sizes.widths, at) && sizes.widths[at - 1] === sizes.widths[at]) {
+                    widths[at] = sizes.widths[at];
+                }
+
+                sizes.widths = widths;
+                out.sizes = sizes;
+            }
         }
 
         if (edit) {
@@ -983,6 +1108,10 @@
                     book.values[at] = shiftKeys(book.values[at], step.axis, step.op, step.at);
                     book.sets[at] = shiftKeys(book.sets[at], step.axis, step.op, step.at);
                 }
+            } else if (sizeOps[step.op]) {
+                if (book.sheets[at]) {
+                    book.sheets[at] = sizeSheet(book.sheets[at], step);
+                }
             } else if (step.op === 'sheet_add') {
                 book.sheets.push(newSheet(step.to, 'new' + (++added)));
                 book.values.push({});
@@ -1026,6 +1155,20 @@
 
                 change[step.axis] = (step.axis === 'row') ? step.at : columnName(step.at);
                 out.push(change);
+            } else if (sizeOps[step.op]) {
+                var size = { op: step.op, sheet: step.sheet, name: name };
+
+                if (step.op === 'width') {
+                    size.column = columnName(step.at);
+                    size.width = step.value;
+                } else if (step.op === 'height') {
+                    size.row = step.at;
+                    size.height = step.value;
+                } else {
+                    size.on = !!step.value;
+                }
+
+                out.push(size);
             } else if (step.op === 'sheet_add') {
                 out.push({ op: 'sheet_add', to: step.to });
                 names.push(step.to);
@@ -1093,6 +1236,46 @@
         return mark;
     }
 
+    // Holds a column's cell (its head or a cell) to a width in px.
+    function sizeCell(cell, px) {
+        cell.setAttribute('data-width', px);
+        cell.style.width = px + 'px';
+        cell.style.minWidth = px + 'px';
+        cell.style.maxWidth = px + 'px';
+    }
+
+    // Draws a row at a height in px. A table row is never lower than its
+    // text, so its cells lose their padding above and below to come close.
+    function sizeRow(tr, px) {
+        tr.style.height = px + 'px';
+
+        Array.prototype.forEach.call(tr.cells, function (cell) {
+            cell.style.paddingTop = '0';
+            cell.style.paddingBottom = '0';
+            cell.style.lineHeight = '1.2';
+        });
+    }
+
+    // Keeps the rows marked data-pinned (sheetTable()) under the column
+    // heads while the grid scrolls; each sits below the ones before it, so
+    // it is placed once the table is laid out.
+    function pinRows(table) {
+        var head = table.tHead;
+        var top = head ? head.offsetHeight : 0;
+
+        Array.prototype.forEach.call(table.querySelectorAll('tbody tr[data-pinned]'), function (tr) {
+            Array.prototype.forEach.call(tr.cells, function (cell, place) {
+                cell.style.position = 'sticky';
+                cell.style.top = top + 'px';
+                cell.style.zIndex = place ? '1' : '2';
+            });
+
+            top += tr.offsetHeight;
+        });
+
+        return !head || head.offsetHeight > 0;
+    }
+
     // One sheet as a table. With `state` (a sheet offered for editing) the
     // cells carry what the keyboard and the mouse need: the row number on
     // each row, and the column by the cell's place in it. Each cell is drawn
@@ -1121,11 +1304,18 @@
         var index = state ? rangeIndex(sheet) : null;
         var head = el('thead');
         var headRow = el('tr');
+        var sizes = sheetSizes(sheet);
 
         headRow.appendChild(el('th', 'office-corner', ''));
 
         for (var column = 0; column < width; column++) {
-            headRow.appendChild(headCell('column', column, columnName(column), strings, state, tools));
+            var th = headCell('column', column, columnName(column), strings, state, tools);
+
+            if (own(sizes.widths, column)) {
+                sizeCell(th, widthPx(sizes.widths[column]));
+            }
+
+            headRow.appendChild(th);
         }
 
         head.appendChild(headRow);
@@ -1135,12 +1325,21 @@
 
         var order = tools ? tools.order : sheet.rows.map(function (row, place) { return place; });
 
+        // The rows frozen on top stay in view while the grid scrolls: the
+        // ones the sheet shows first, as far as they are among them.
+        var pinning = sizes.frozen > 0;
+
         order.forEach(function (place) {
             var row = sheet.rows[place];
             var tr = el('tr');
+            var pinned = pinning = pinning && row.n <= sizes.frozen;
 
             tr.appendChild(headCell('row', row.n, String(row.n), strings, state));
             tr.setAttribute('data-row', row.n);
+
+            if (pinned) {
+                tr.setAttribute('data-pinned', '');
+            }
 
             for (var column = 0; column < width; column++) {
                 var value = (column < row.cells.length) ? row.cells[column] : '';
@@ -1174,7 +1373,15 @@
                     look = state.look(row.n, column, look);
                 }
 
-                if (look) {
+                if (own(sizes.widths, column)) {
+                    td.setAttribute('data-width', widthPx(sizes.widths[column]));
+                }
+
+                if (pinned) {
+                    td.setAttribute('data-pinned', '');
+                }
+
+                if (look || td.hasAttribute('data-width') || pinned) {
                     paint(td, look);
                 }
 
@@ -1194,6 +1401,10 @@
                 }
 
                 tr.appendChild(td);
+            }
+
+            if (row.h !== undefined && row.h !== null) {
+                sizeRow(tr, heightPx(row.h));
             }
 
             body.appendChild(tr);
@@ -1430,7 +1641,7 @@
 
             // Formulas are worked out again after a cell or a line changes.
             if (list.length > 0) {
-                parts.push(fill(strings.unsaved, list.length) + ((strings.recalc && list.some(function (step) { return !step.range && !/^sheet_/.test(step.op || ''); })) ? ' ' + strings.recalc : ''));
+                parts.push(fill(strings.unsaved, list.length) + ((strings.recalc && list.some(function (step) { return !step.range && !sizeOps[step.op] && !/^sheet_/.test(step.op || ''); })) ? ' ' + strings.recalc : ''));
             } else if (sheetsEditable) {
                 parts.push(strings.sheet_hint || '');
             }
@@ -1461,8 +1672,16 @@
         // row-number column widens with the sheet and a hidden pane reads 0.
         function padHeadings() {
             var corner = shown.table ? shown.table.querySelector('.office-corner') : null;
+            var pinned = 0;
 
-            pane.style.scrollPaddingTop = corner ? corner.offsetHeight + 'px' : '';
+            // The rows frozen on top cover the cells scrolled under them too.
+            if (corner) {
+                Array.prototype.forEach.call(shown.table.querySelectorAll('tbody tr[data-pinned]'), function (tr) {
+                    pinned += tr.offsetHeight;
+                });
+            }
+
+            pane.style.scrollPaddingTop = corner ? (corner.offsetHeight + pinned) + 'px' : '';
             pane.style.scrollPaddingLeft = corner ? corner.offsetWidth + 'px' : '';
         }
 
@@ -2572,7 +2791,7 @@
             var items = (axis === 'column') ? viewItems(at) : [];
 
             if (sheetShiftable(shown.index)) {
-                items = items.concat(items.length ? [{ divider: true }] : [], menuItems([{ axis: axis, at: at }]));
+                items = items.concat(items.length ? [{ divider: true }] : [], menuItems([{ axis: axis, at: at }]), [{ divider: true }], sizeItems([{ axis: axis, at: at }], head));
             }
 
             if (!items.length) {
@@ -2596,8 +2815,344 @@
                 return;
             }
 
-            items = items.concat([{ divider: true }], menuItems([{ axis: 'row', at: position.row }, { axis: 'column', at: position.column }]));
+            items = items.concat([{ divider: true }], menuItems([{ axis: 'row', at: position.row }, { axis: 'column', at: position.column }]),
+                [{ divider: true }], sizeItems([{ axis: 'column', at: position.column }, { axis: 'row', at: position.row }], td));
             openMenu(td, items, strings.shift_menu);
+        }
+
+        // Places the rows frozen on top once the table is laid out: a book
+        // drawn before it is on the page is placed at the next frame.
+        function placePins(table) {
+            if (!table.querySelector('tbody tr[data-pinned]') || pinRows(table)) {
+                return;
+            }
+
+            if (window.requestAnimationFrame) {
+                window.requestAnimationFrame(function () {
+                    if (table.isConnected) {
+                        pinRows(table);
+                        padHeadings();
+                    }
+                });
+            }
+        }
+
+        // The open sheet drawn again as the list leaves it, scrolled and
+        // selected where it was.
+        function showAgain() {
+            var at = shown.cell ? cellPosition(shown.cell) : null;
+            var scroll = [pane.scrollTop, pane.scrollLeft];
+
+            show(shown.index);
+            pane.scrollTop = scroll[0];
+            pane.scrollLeft = scroll[1];
+
+            var row = (at && shown.table) ? shown.table.querySelector('tr[data-row="' + at.row + '"]') : null;
+
+            if (row && row.cells[at.column + 1]) {
+                select(row.cells[at.column + 1]);
+            }
+        }
+
+        // Puts a column's width, a row's height or the frozen top row into
+        // the list (listSize()) and draws the sheet as it leaves it.
+        function setSize(op, at, value) {
+            closeEditor(true);
+            change(function () { listSize(steps, shown.index, op, at, value); });
+            rebuild();
+            showAgain();
+            notify();
+        }
+
+        // The size a column or a row is drawn at, in the file's units: its
+        // own, else as wide or high as the grid draws it.
+        function sizeNow(axis, at) {
+            var sheet = workbook.sheets[shown.index];
+
+            if (axis === 'column') {
+                var widths = sheetSizes(sheet).widths;
+                var head = shown.table ? shown.table.tHead.rows[0].cells[at + 1] : null;
+
+                return own(widths, at) ? widths[at] : (head ? widthOf(head.getBoundingClientRect().width) : null);
+            }
+
+            var row = rowOf(sheet, at);
+            var tr = shown.table ? shown.table.querySelector('tr[data-row="' + at + '"]') : null;
+
+            return (row && row.h !== undefined && row.h !== null) ? row.h : (tr ? heightOf(tr.getBoundingClientRect().height) : null);
+        }
+
+        // What a menu offers for sizes: each line's width or height, asked
+        // as a number, and the frozen top row on or off.
+        function sizeItems(lines, anchor) {
+            var frozen = sheetSizes(workbook.sheets[shown.index]).frozen > 0;
+            var items = lines.map(function (line) {
+                return { label: strings[(line.axis === 'column') ? 'size_column' : 'size_row'], icon: (line.axis === 'column') ? 'bi-arrows' : 'bi-arrows-vertical', run: function () {
+                    return askSize(line.axis, line.at, anchor);
+                } };
+            });
+
+            items.push({ label: frozen ? strings.freeze_off : strings.freeze_on, icon: frozen ? 'bi-pin-angle-fill' : 'bi-pin-angle', run: function () {
+                setSize('freeze', 0, !frozen);
+            } });
+
+            return items;
+        }
+
+        // Asks a column's width (characters) or a row's height (points) in
+        // a field under the head or cell the menu opened from: Enter or
+        // Apply keeps it, Escape leaves the sheet as it was.
+        function askSize(axis, at, anchor) {
+            closeMenu(false);
+
+            if (!anchor || !anchor.isConnected) {
+                return false;
+            }
+
+            var op = (axis === 'column') ? 'width' : 'height';
+            var high = (axis === 'column') ? MAX_WIDTH : MAX_HEIGHT;
+            var label = fill(strings[(axis === 'column') ? 'size_column_label' : 'size_row_label'], (axis === 'column') ? columnName(at) : at);
+            var node = el('div', 'menu show office-head-menu');
+            var title = el('div', 'menu-header', label);
+            var line = el('div', 'menu-text d-flex align-items-center gap-3');
+            var field = el('span', 'pg-input pg-input-sm');
+            var input = el('input');
+            var apply = el('button', 'pg-button pg-button-sm', strings.size_apply || '');
+            var problem = el('div', 'menu-text small fg-danger');
+            var now = sizeNow(axis, at);
+
+            title.id = paneId + '_size';
+            node.setAttribute('role', 'dialog');
+            node.setAttribute('aria-labelledby', title.id);
+            input.type = 'number';
+            input.min = '0';
+            input.max = String(high);
+            input.step = 'any';
+            input.inputMode = 'decimal';
+            input.value = (now === null) ? '' : String(now);
+            input.setAttribute('aria-labelledby', title.id);
+            apply.type = 'button';
+            problem.setAttribute('role', 'alert');
+            problem.hidden = true;
+            field.appendChild(input);
+            line.appendChild(field);
+            line.appendChild(apply);
+            node.appendChild(title);
+            node.appendChild(line);
+            node.appendChild(problem);
+
+            function keep() {
+                var value = Number(String(input.value).replace(',', '.'));
+
+                if (String(input.value).trim() === '' || !isFinite(value) || value <= 0 || value > high) {
+                    problem.textContent = fill(strings.size_bad, high);
+                    problem.hidden = false;
+                    field.classList.add('is-invalid');
+                    input.setAttribute('aria-invalid', 'true');
+                    input.focus();
+                    return;
+                }
+
+                closeMenu(false);
+                setSize(op, at, Math.round(value * 100) / 100);
+
+                if (!shown.cell && axis === 'column' && headButton(at)) {
+                    headButton(at).focus({ preventScroll: true });
+                }
+            }
+
+            apply.addEventListener('click', keep);
+            node.addEventListener('keydown', function (event) {
+                event.stopPropagation();
+
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    keep();
+                } else if (event.key === 'Escape') {
+                    event.preventDefault();
+                    closeMenu(true);
+                }
+            });
+
+            var place = anchor.getBoundingClientRect();
+            var box = book.getBoundingClientRect();
+
+            node.style.left = Math.max(0, place.left - box.left) + 'px';
+            node.style.top = (place.bottom - box.top) + 'px';
+            book.appendChild(node);
+
+            if (node.offsetLeft + node.offsetWidth > book.clientWidth) {
+                node.style.left = Math.max(0, book.clientWidth - node.offsetWidth) + 'px';
+            }
+
+            menu = {
+                node: node,
+                opener: (shown.cell && shown.cell.isConnected) ? shown.cell : anchor,
+                outside: function (event) {
+                    if (menu && !menu.node.contains(event.target)) {
+                        closeMenu(false);
+                    }
+                }
+            };
+
+            document.addEventListener('mousedown', menu.outside, true);
+            input.focus({ preventScroll: true });
+            input.select();
+
+            return true;
+        }
+
+        // A drag on a column head's end edge or a row head's bottom edge
+        // sets its width or height; the cursor shows where one starts. A
+        // click that ends a drag opens no menu.
+        function wireSizes(table) {
+            var drag = null;
+            var hovered = null;
+            var swallow = false;
+
+            function edgeOf(event) {
+                var cell = (event.target && event.target.closest) ? event.target.closest('th') : null;
+
+                if (!cell || !table.contains(cell) || cell.classList.contains('office-corner')) {
+                    return null;
+                }
+
+                var box = cell.getBoundingClientRect();
+                var reach = (event.pointerType === 'mouse') ? 4 : 8;
+
+                if (cell.parentNode.parentNode === table.tHead) {
+                    var rtl = window.getComputedStyle(cell).direction === 'rtl';
+
+                    if (Math.abs(event.clientX - (rtl ? box.left : box.right)) > reach) {
+                        return null;
+                    }
+
+                    return { axis: 'column', at: cell.cellIndex - 1, cell: cell, size: box.width, rtl: rtl };
+                }
+
+                if (Math.abs(event.clientY - box.bottom) > reach) {
+                    return null;
+                }
+
+                return { axis: 'row', at: parseInt(cell.parentNode.getAttribute('data-row'), 10), cell: cell, size: box.height };
+            }
+
+            function hover(edge) {
+                var cell = edge ? edge.cell : null;
+                var cursor = edge ? ((edge.axis === 'column') ? 'col-resize' : 'row-resize') : '';
+
+                [hovered, cell].forEach(function (th) {
+                    if (th) {
+                        var button = th.querySelector('.office-head');
+
+                        th.style.cursor = (th === cell) ? cursor : '';
+
+                        if (button) {
+                            button.style.cursor = (th === cell) ? cursor : '';
+                        }
+                    }
+                });
+
+                hovered = cell;
+            }
+
+            // The line drawn at the size the pointer gives, before it is kept.
+            function draw(px) {
+                if (drag.axis === 'column') {
+                    Array.prototype.forEach.call(table.rows, function (tr) {
+                        if (tr.cells[drag.at + 1]) {
+                            sizeCell(tr.cells[drag.at + 1], px);
+                        }
+                    });
+                } else {
+                    sizeRow(drag.cell.parentNode, px);
+                }
+            }
+
+            table.addEventListener('pointermove', function (event) {
+                if (!drag) {
+                    hover(edgeOf(event));
+                    return;
+                }
+
+                var moved = (drag.axis === 'column') ? (event.clientX - drag.x) * (drag.rtl ? -1 : 1) : event.clientY - drag.y;
+
+                if (Math.abs(moved) > 2) {
+                    drag.moved = true;
+                }
+
+                if (drag.moved) {
+                    drag.px = Math.max(8, Math.round(drag.size + moved));
+                    draw(drag.px);
+                }
+            });
+
+            table.addEventListener('pointerleave', function () {
+                if (!drag) {
+                    hover(null);
+                }
+            });
+
+            table.addEventListener('pointerdown', function (event) {
+                swallow = false;
+
+                var edge = (event.button === 0) ? edgeOf(event) : null;
+
+                if (!edge) {
+                    return;
+                }
+
+                event.preventDefault();
+                closeEditor(true);
+                closeMenu(false);
+                drag = edge;
+                drag.x = event.clientX;
+                drag.y = event.clientY;
+                drag.moved = false;
+
+                if (table.setPointerCapture) {
+                    table.setPointerCapture(event.pointerId);
+                }
+            });
+
+            table.addEventListener('pointerup', function () {
+                var done = drag;
+
+                drag = null;
+
+                if (!done || !done.moved) {
+                    return;
+                }
+
+                swallow = true;
+                hover(null);
+
+                // Kept after the click this pointer makes, so the click
+                // still lands on the table it began on.
+                window.setTimeout(function () {
+                    setSize((done.axis === 'column') ? 'width' : 'height', done.at, (done.axis === 'column') ? widthOf(done.px) : heightOf(done.px));
+                }, 0);
+            });
+
+            // A drag the browser took over (a scroll on a touch screen)
+            // leaves the sheet as the list has it.
+            table.addEventListener('pointercancel', function () {
+                var done = drag;
+
+                drag = null;
+
+                if (done && done.moved) {
+                    showAgain();
+                }
+            });
+
+            table.addEventListener('click', function (event) {
+                if (swallow) {
+                    swallow = false;
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                }
+            }, true);
         }
 
         // The heads' clicks; a sheet only looked at reaches its column heads
@@ -3018,6 +3573,12 @@
                 } : null, looks, { order: orderOf(index), sort: viewOf(index).sort, filters: viewOf(index).filters });
                 pane.appendChild(shown.table);
                 wireHeads(shown.table, !offered);
+
+                if (offered && sheetShiftable(index)) {
+                    wireSizes(shown.table);
+                }
+
+                placePins(shown.table);
 
                 if (offered) {
                     wireGrid(shown.table);
@@ -6522,7 +7083,15 @@
             sides: borderSides,
             book: listBook,
             edits: listEdits,
-            history: listHistory
+            history: listHistory,
+            size: listSize
+        },
+        // The units a column's width and a row's height are drawn in.
+        sheetSizes: {
+            widthPx: widthPx,
+            heightPx: heightPx,
+            widthOf: widthOf,
+            heightOf: heightOf
         },
         // A document's bold, italic and underline, which read no page: the
         // look the server sent, carried over a changed text, and the

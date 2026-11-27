@@ -448,6 +448,7 @@
     "Height": "Yükseklik",
     "Height (mm)": "Yükseklik (mm)",
     "Height is required.": "Yükseklik gereklidir.",
+    "Height of row {1}, in points": "{1}. satırın yüksekliği, punto olarak",
     "Held": "Yapıldı",
     "Held back": "Geride tutulan",
     "Held by": "Üstlenen",
