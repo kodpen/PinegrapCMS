@@ -1772,8 +1772,9 @@ function install_heavy_tables() {
 		// recipients, one or more rows per order. contacts_contact_groups_xref
 		// .source with its index (11.0.155) copies every group membership.
 		// forms.order_id, paid_at and idx_order_id (11.0.158) copy the
-		// submitted form records. orders.stock_location_id (11.0.162) copies
-		// the orders. shipping_tracking_numbers takes nine columns, a unique
+		// submitted form records. orders.stock_location_id (11.0.162) and
+		// orders.charged_currency and charged_rate (11.0.283) copy the
+		// orders. shipping_tracking_numbers takes nine columns, a unique
 		// key and two passes over its rows (11.0.20), one row per parcel;
 		// user.user_disabled_at (11.0.160) copies the membership; the storage
 		// columns of `files` (11.0.152) copy the file list, wherever the

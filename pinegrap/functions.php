@@ -134,6 +134,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/file_copy_gate.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/explorer_side.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/cron.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/currency_rates.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/order_currency.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/tour.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/output.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/look_list.php');

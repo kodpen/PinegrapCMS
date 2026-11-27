@@ -272,6 +272,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_agent_context_size();   // 11.0.280
 	upgrade_2026_11_0_software_language_codes(); // 11.0.281
 	upgrade_2026_11_0_import_site_builder_kinds(); // 11.0.282
+	upgrade_2026_11_0_order_charged_currency();  // 11.0.283
 
 }
 
@@ -9597,5 +9598,45 @@ function upgrade_2026_11_0_import_site_builder_kinds() {
 	install_modify_column('imports', 'kind', "ENUM(" . implode(',', $values) . ") NOT NULL DEFAULT '" . $default . "'");
 
 	install_note('Import: Squarespace exports can be imported.');
+
+}
+
+// 11.0.283 - The currency an order is charged in, and its rate
+// (includes/fn/order_currency.php). charged_currency is the order's own
+// currency code, '' for the base currency; charged_rate is how many base
+// units one charged unit was worth on the order's day, 0 when the order is
+// in the base currency or its rate is not known. Every stored total keeps
+// the currency it was charged in: no second total is stored, and the sums
+// convert with the rate (pg_order_base_sql()). The marketplace orders
+// written before this step are given their currency and rate by the general
+// job (pg_order_currency_fill_run()), a few hundred rows a run, so the
+// upgrade does not walk the orders. The columns are added in place where the
+// server can; elsewhere the table is copied, one column a pass once the
+// pass's budget is spent. A column that is there is left alone, so the step
+// runs twice without a change.
+function upgrade_2026_11_0_order_charged_currency() {
+
+	$columns = array(
+		'charged_currency' => "CHAR(3) NOT NULL DEFAULT ''",
+		'charged_rate'     => "DECIMAL(18,8) NOT NULL DEFAULT 0",
+	);
+
+	if (!install_add_columns_instant('orders', $columns)) {
+
+		foreach ($columns as $column => $definition) {
+
+			if (install_pass_spent() && !install_column_exists('orders', $column)) {
+
+				install_pause(lang(array('string' => 'orders: the charged currency is being added; {var:1} follows in the next pass', 'vars' => $column)));
+
+			}
+
+			install_add_column('orders', $column, $definition);
+
+		}
+
+	}
+
+	install_note('Orders: an order keeps the currency it is charged in and the rate of its day. Marketplace orders in another currency are given their rate in the background, and the dashboard and report totals count them in the base currency.');
 
 }
