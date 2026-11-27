@@ -17,7 +17,7 @@ module: office_docx_format
 ## What does the reader send the editor?
 - `edit.marks` stretches stay `[characters, bits]`; a stretch whose runs have a colour, highlight or size of their own carries a third item `{c: 'RRGGBB', h: name, s: points}`, each key only when present (`pg_office_docx_run_look()`). `auto`, `none` and highlight names Word does not have are not counted. Neighbours join only when bits and look are equal.
 - `edit.aligns`: paragraph position => `center`, `end` or `justify`, only for paragraphs not at the start (`pg_office_docx_paragraph_align()`, from the paragraph's own `jc`; `distribute` and `thai` read as start).
-- The server preview's HTML does not draw colour, highlight or size yet; the editor bar and the page drawing them is DA2 of `plans/office-document-abilities.md`.
+- The preview's HTML draws them (`pg_office_docx_look_style()`), and the document bar sets them: `office-docx-bar-look.md`.
 
 ## What was checked?
 - `tests/office_docx_look_test.php`: the request, the marks, each property written and taken off (plain and styled), split and join, alignment written, replaced and removed, a save with format, align and an added aligned paragraph read back with an untouched paragraph byte for byte. Not opened in Word or LibreOffice.
