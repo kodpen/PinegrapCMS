@@ -868,6 +868,8 @@ function pg_connections_screen_carrier_pages()
  *                    'mailboxes' (bool: may open Mailboxes, the accounts
  *                    that read mailboxes), 'accounting' (bool: may open
  *                    Accounting, Paraşüt's and Logo İşbaşı's connection),
+ *                    'xero' (bool: may open Accounting, Xero's
+ *                    application, organisation and accounts),
  *                    'integrations' (bool: may open Integrations, Google
  *                    reviews' key and Place ID), 'maintenance' (bool:
  *                    may open Updates and maintenance, connecting Google
@@ -932,6 +934,8 @@ function pg_connections_screen_page_cards($id, $can)
         $cards[] = 'details';
     } elseif (in_array($id, pg_connections_screen_accounting_pages(), true) && !empty($can['accounting'])) {
         $cards[] = 'details';
+    } elseif (($id === 'xero') && !empty($can['xero'])) {
+        $cards[] = 'details';
     } elseif (($id === 'google_reviews') && !empty($can['integrations'])) {
         $cards[] = 'details';
     } elseif (in_array($id, array('slack', 'teams', 'telegram'), true) && !empty($can['chat_notify'])) {
@@ -970,7 +974,7 @@ function pg_connections_screen_page_here($id, $extra)
 
     return in_array($id, (array) $extra, true)
         || in_array($id, array('indexnow', 'google_analytics', 'google_translate', 'whatsapp', 'iys', 'mailchimp', 'netgsm', 'iletimerkezi', 'twilio',
-            'signin_apple', 'turnstile', 'hcaptcha', 'google_reviews', 'slack', 'teams', 'telegram', 'claude', 'figma'), true)
+            'signin_apple', 'turnstile', 'hcaptcha', 'google_reviews', 'slack', 'teams', 'telegram', 'claude', 'figma', 'xero'), true)
         || in_array($id, pg_connections_screen_commerce_pages(), true)
         || in_array($id, pg_connections_screen_accounting_pages(), true)
         || (pg_connections_screen_mcp_connector($id) !== '');

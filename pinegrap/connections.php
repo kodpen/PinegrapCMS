@@ -267,6 +267,7 @@ function connections_page_can($page_id, $user, $is_manager, $app_provider, $ws_v
 		'security'     => in_array($page_id, array('turnstile', 'hcaptcha'), true) && connections_signin_may_manage($user),
 		'commerce'     => in_array($page_id, pg_connections_screen_commerce_pages(), true) && connections_commerce_may_manage($user),
 		'accounting'   => in_array($page_id, pg_connections_screen_accounting_pages(), true) && connections_accounting_may_manage($user),
+		'xero'         => ($page_id === 'xero') && connections_accounting_may_manage($user),
 		'integrations' => ($page_id === 'google_reviews') && connections_integrations_may_manage($user),
 		'maintenance'  => (pg_backup_cloud_type_of_service($page_id) !== '') && connections_maintenance_may_manage($user),
 		'chat_notify'  => in_array($page_id, array('slack', 'teams', 'telegram'), true) && connections_chat_notify_may_manage($user),
@@ -1157,6 +1158,31 @@ if ($_POST) {
 
 	}
 
+	// Xero's organisation and accounts, saved on its page under the gate of
+	// Site Settings › Accounting.
+	if (in_array($action, array('xero_organisation', 'xero_accounts'), true) && connections_accounting_may_manage($user)) {
+
+		require_once(PG_FUNCTIONS_DIR . '/includes/fn/xero_page.php');
+
+		$xero_answer = pg_xero_page_save($action, $_POST);
+
+		// The messages carry Xero's own words, so they are escaped.
+		foreach ($xero_answer['messages'] as $xero_line) {
+			if ($xero_line[0] === 'notice') {
+				$liveform->add_notice(h($xero_line[1]));
+			} elseif ($xero_line[0] === 'warning') {
+				$liveform->add_warning(h($xero_line[1]));
+			} else {
+				$liveform->add_error(h($xero_line[1]));
+			}
+		}
+
+		if ($xero_answer['log'] !== '') {
+			log_activity($xero_answer['log'], $_SESSION['sessionusername']);
+		}
+
+	}
+
 	// The Sign in with Google application, saved on Google's page under the
 	// gate of the sign-in settings it came from. The switch that shows the
 	// button stays there.
@@ -1742,6 +1768,12 @@ if ($_POST) {
 			$return_provider = $account['provider'];
 			pg_connect_disconnect($account['id']);
 
+			// The organisation and accounts read through it go with it.
+			if ($account['provider'] === 'xero') {
+				require_once(PG_FUNCTIONS_DIR . '/includes/fn/xero.php');
+				xero_forget();
+			}
+
 			$liveform->add_notice(lang(array('string' => '{var:1} was disconnected.', 'vars' => h($account['label']))));
 
 			log_activity(lang(array(
@@ -1819,6 +1851,29 @@ if (is_array($flash)) {
 
 		if ($parasut_answer['log'] !== '') {
 			log_activity($parasut_answer['log'], $_SESSION['sessionusername']);
+		}
+
+	}
+
+	// Back from Xero's sign-in: the organisations it allowed are read once,
+	// now, and the one the site uses is picked.
+	if (is_array($flash_account) && ($flash_account['provider'] === 'xero') && ((int) $flash_account['user_id'] === 0) && connections_accounting_may_manage($user)) {
+
+		require_once(PG_FUNCTIONS_DIR . '/includes/fn/xero.php');
+
+		$xero_connected = xero_after_connect((int) $flash_account['id']);
+
+		// The messages carry Xero's own words, so they are escaped.
+		foreach ($xero_connected['notices'] as $xero_line) {
+			$liveform->add_notice(h($xero_line));
+		}
+
+		foreach ($xero_connected['warnings'] as $xero_line) {
+			$liveform->add_warning(h($xero_line));
+		}
+
+		if ($xero_connected['log'] !== '') {
+			log_activity($xero_connected['log'], $_SESSION['sessionusername']);
 		}
 
 	}
@@ -4876,7 +4931,7 @@ foreach ($facts['accounts'] as $account) {
 				' . (($account['user_id'] === 0)
 					? '<button type="button" class="pg-button pg-button-sm pg-button-quiet connections-connect" data-provider="' . h($account['provider']) . '"
 						data-purpose="' . h(!empty($provider['connect_purpose']) ? $provider['connect_purpose'] : 'account') . '" data-connection="' . $account['id'] . '"'
-						. ((pg_connect_app_ready($provider_apps[$account['provider']]) && $can_seal) ? '' : ' disabled') . '>' . h(lang('Connect again')) . '</button>'
+						. ((pg_connect_app_ready(isset($provider_apps[$account['provider']]) ? $provider_apps[$account['provider']] : pg_connect_app($account['provider'])) && $can_seal) ? '' : ' disabled') . '>' . h(lang('Connect again')) . '</button>'
 					: '<span class="pg-text-meta">' . h(lang('A person\'s own account: they connect it again.')) . '</span>') . '
 			</div>
 		</div>';
@@ -5083,7 +5138,7 @@ if (is_array($back) && !$liveform->check_form_errors()) {
 		$back_done = 'saved';
 	}
 
-	if ((is_array($flash) && ($flash['kind'] === 'notice') && empty($parasut_answer['warnings'])) || isset($_GET['mcp_connected'])) {
+	if ((is_array($flash) && ($flash['kind'] === 'notice') && empty($parasut_answer['warnings']) && empty($xero_connected['warnings'])) || isset($_GET['mcp_connected'])) {
 		$back_done = 'connected';
 	}
 
@@ -5285,6 +5340,19 @@ if ($provider_page !== '') {
 	// it.
 	if (in_array($page_id, pg_connections_screen_accounting_pages(), true)) {
 		$page = connections_edoc_page($page, $page_id, connections_accounting_may_manage($user), $draft, $can_seal, $redirect_uri);
+	}
+
+	// Xero's page: its application, organisation and accounts. Its
+	// application is no row of Account providers (listed => false), so the
+	// Status card's Connect is made ready from here.
+	if (($page_id === 'xero') && isset($providers['xero'])) {
+		require_once(PG_FUNCTIONS_DIR . '/includes/fn/xero_page.php');
+		$provider_apps['xero'] = pg_connect_app('xero');
+		$xero_hint = connections_app_hint($provider_apps['xero']);
+		$page = pg_xero_page($page, connections_accounting_may_manage($user),
+			(($xero_hint === '') ? '' : '<p class="pg-field-help mt-0">' . h($xero_hint) . '</p>')
+			. connections_app_form('xero', $providers['xero'], $provider_apps['xero'],
+				(is_array($draft) && ($draft['provider'] === 'xero')) ? $draft : null, $can_seal, $redirect_uri, 'xero'));
 	}
 
 	// Google reviews' page: its key and Place ID, and what reads them.

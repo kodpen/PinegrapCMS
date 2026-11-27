@@ -19,7 +19,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/connections_screen.php');
 
 function test_connections_list_page_here_names_pages_with_their_own_settings()
 {
-	foreach (array('indexnow', 'google_analytics', 'google_translate', 'whatsapp', 'signin_apple', 'turnstile', 'slack', 'claude', 'figma', 'google_reviews', 'stripe', 'parasut') as $id) {
+	foreach (array('indexnow', 'google_analytics', 'google_translate', 'whatsapp', 'signin_apple', 'turnstile', 'slack', 'claude', 'figma', 'google_reviews', 'stripe', 'parasut', 'xero') as $id) {
 		pg_assert_true(pg_connections_screen_page_here($id, array()), $id . ': its settings are on its page');
 	}
 
