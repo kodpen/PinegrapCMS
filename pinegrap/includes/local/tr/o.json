@@ -1087,6 +1087,8 @@
     "Only addresses on the same host as the website URL are read, at most {var:1} items.": "Yalnızca web sitesi URL'si ile aynı sunucudaki adresler okunur, en çok {var:1} öğe.",
     "Only addresses sent with this carrier.": "Yalnızca bu kargo firmasıyla gönderilen adresler.",
     "Only administrators and designers can change a release bundle.": "Bir yayın paketini yalnızca yöneticiler ve tasarımcılar değiştirebilir.",
+    "Only administrators and designers can discard a new version of a page.": "Bir sayfanın yeni sürümünü yalnızca yöneticiler ve tasarımcılar silebilir.",
+    "Only administrators and designers can make a new version of a page.": "Bir sayfanın yeni sürümünü yalnızca yöneticiler ve tasarımcılar oluşturabilir.",
     "Only administrators and designers can make a release bundle.": "Yayın paketini yalnızca yöneticiler ve tasarımcılar oluşturabilir.",
     "Only administrators and designers can publish a release bundle.": "Yayın paketini yalnızca yöneticiler ve tasarımcılar yayınlayabilir.",
     "Only administrators and designers can share a dashboard layout.": "Pano düzenini yalnız yöneticiler ve tasarımcılar paylaşabilir.",
