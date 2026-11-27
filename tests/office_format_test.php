@@ -238,3 +238,136 @@ function test_office_format_save_refusals()
 	unlink($path);
 	@array_map('unlink', (array) glob(sys_get_temp_dir() . '/office_edit_*.part'));
 }
+
+function test_office_format_request_more()
+{
+	pg_assert_same(
+		array('underline' => true, 'strike' => false, 'size' => 14, 'border' => 'outline', 'wrap' => true),
+		pg_office_format_request(office_format_test_change('A1:C3', array('underline' => true, 'strike' => false, 'size' => 14, 'border' => 'outline', 'wrap' => true)))['set'],
+		'underline, strikethrough, a size, a border and wrap'
+	);
+
+	foreach (array('none', 'all', 'outline', 'bottom') as $border) {
+		pg_assert_same($border, pg_office_format_request(office_format_test_change('A1', array('border' => $border)))['set']['border'], 'the border ' . $border);
+	}
+
+	pg_assert_same(8, pg_office_format_request(office_format_test_change('A1', array('size' => 8)))['set']['size'], 'the smallest size');
+	pg_assert_same(72, pg_office_format_request(office_format_test_change('A1', array('size' => 72)))['set']['size'], 'the largest size');
+	pg_assert_same(null, pg_office_format_request(office_format_test_change('A1', array('size' => 7))), 'a size under 8');
+	pg_assert_same(null, pg_office_format_request(office_format_test_change('A1', array('size' => 73))), 'a size over 72');
+	pg_assert_same(null, pg_office_format_request(office_format_test_change('A1', array('size' => '12'))), 'a size as text');
+	pg_assert_same(null, pg_office_format_request(office_format_test_change('A1', array('size' => 10.5))), 'a size between points');
+	pg_assert_same(null, pg_office_format_request(office_format_test_change('A1', array('border' => 'thick'))), 'a border not offered');
+	pg_assert_same(null, pg_office_format_request(office_format_test_change('A1', array('underline' => 1))), 'underline is true or false');
+	pg_assert_same(null, pg_office_format_request(office_format_test_change('A1', array('wrap' => 'yes'))), 'wrap is true or false');
+}
+
+function test_office_format_border_sides()
+{
+	$range = array(2, 1, 4, 3);
+	$all = array('left' => true, 'right' => true, 'top' => true, 'bottom' => true);
+	$none = array('left' => false, 'right' => false, 'top' => false, 'bottom' => false);
+
+	pg_assert_same($all, pg_office_format_border_sides('all', $range, 3, 2), 'all sides: every cell');
+	pg_assert_same($none, pg_office_format_border_sides('none', $range, 3, 2), 'none: every side taken off');
+	pg_assert_same(array('left' => true, 'top' => true), pg_office_format_border_sides('outline', $range, 2, 1), 'outline: the top left corner');
+	pg_assert_same(array('right' => true, 'bottom' => true), pg_office_format_border_sides('outline', $range, 4, 3), 'outline: the bottom right corner');
+	pg_assert_same(array(), pg_office_format_border_sides('outline', $range, 3, 2), 'outline: an inner cell keeps its borders');
+	pg_assert_same($all, pg_office_format_border_sides('outline', array(2, 1, 2, 1), 2, 1), 'outline of one cell: all four');
+	pg_assert_same(array('bottom' => true), pg_office_format_border_sides('bottom', $range, 4, 2), 'bottom: the last row');
+	pg_assert_same(array(), pg_office_format_border_sides('bottom', $range, 3, 2), 'bottom: a row above it keeps its borders');
+}
+
+function test_office_format_styles_more()
+{
+	$document = new DOMDocument();
+	$document->loadXML(office_format_test_styles());
+	$writer = pg_office_format_styles($document);
+
+	pg_assert_same(2, $writer['restyle'](0, array('underline' => true, 'strike' => true, 'size' => 14)), 'underline, strikethrough and 14 points');
+	pg_assert_same(3, $writer['restyle'](0, array('wrap' => true)), 'wrap text');
+	pg_assert_same(4, $writer['restyle'](1, array('wrap' => false)), 'wrap taken off the wrapped style');
+	pg_assert_same(0, $writer['restyle'](0, array('wrap' => false, 'underline' => false, 'strike' => false, 'size' => 11)), 'taking off what is not there, the size it has: the style itself');
+	pg_assert_same(5, $writer['restyle'](0, array('sides' => array('left' => true, 'right' => true, 'top' => true, 'bottom' => true))), 'all sides');
+	pg_assert_same(5, $writer['restyle'](5, array('sides' => array('top' => true))), 'a side already there: the same style');
+	pg_assert_same(6, $writer['restyle'](5, array('sides' => array('top' => false, 'left' => false))), 'two sides taken off');
+	pg_assert_same(7, $writer['restyle'](5, array('sides' => array('left' => false, 'right' => false, 'top' => false, 'bottom' => false))), 'every side taken off: the empty border there already is, the style marked as applying it');
+	pg_assert_same(2, $writer['restyle'](2, array('underline' => true)), 'underline on an underlined font: nothing changes');
+
+	$xml = $document->saveXML();
+	pg_assert_contains('<fonts count="3"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font><font><strike/><u/><sz val="14"/><name val="Calibri"/></font></fonts>', $xml, 'a new font after the others, its parts in Excel\'s order');
+	pg_assert_contains('<borders count="3"><border><left/><right/><top/><bottom/><diagonal/></border>'
+		. '<border><left style="thin"><color indexed="64"/></left><right style="thin"><color indexed="64"/></right><top style="thin"><color indexed="64"/></top><bottom style="thin"><color indexed="64"/></bottom><diagonal/></border>'
+		. '<border><left/><right style="thin"><color indexed="64"/></right><top/><bottom style="thin"><color indexed="64"/></bottom><diagonal/></border></borders>', $xml, 'thin borders added after the existing one, the sides in place');
+	pg_assert_contains('<cellXfs count="8"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"><alignment vertical="top" wrapText="1"/></xf>', $xml, 'the existing cell formats untouched');
+	pg_assert_contains('<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyBorder="1"/></cellXfs>', $xml, 'no border');
+	pg_assert_contains('<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/>', $xml, 'the font');
+	pg_assert_contains('<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment wrapText="1"/></xf>', $xml, 'wrapped');
+	pg_assert_contains('<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="top"/></xf>', $xml, 'unwrapped, its vertical alignment kept');
+	pg_assert_contains('<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"/>', $xml, 'all sides');
+
+	// A part without a borders list cannot take a border.
+	$bare = new DOMDocument();
+	$bare->loadXML(str_replace('<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>', '', office_format_test_styles()));
+	$writer = pg_office_format_styles($bare);
+	pg_assert_same(null, $writer['restyle'](0, array('sides' => array('top' => true))), 'no borders list');
+}
+
+function test_office_format_save_more_read_back()
+{
+	if (!pg_office_ready()) {
+		pg_assert_true(true, 'no zip extension here: the save is not run');
+		return;
+	}
+
+	$parts = office_format_test_parts();
+	$path = office_format_test_save($parts, office_format_test_change('A1:B2', array('underline' => true, 'strike' => true, 'size' => 16, 'border' => 'outline', 'wrap' => true)), $saved);
+	pg_assert_true($saved['ok'], 'saved: ' . $saved['error']);
+	pg_assert_same(4, $saved['changed'], 'four cells');
+
+	$book = pg_office_xlsx_read($path, true);
+	pg_assert_true($book['ok'], 'read back: ' . $book['error']);
+	$rows = $book['sheets'][0]['rows'];
+	$look = function ($row, $column) use ($rows, $book) {
+		$style = $rows[$row]['s'][$column];
+
+		return $book['looks'][$style];
+	};
+
+	pg_assert_same(array('u' => 1, 'st' => 1, 'sz' => 16, 'w' => 1, 'bd' => 'lt'), $look(0, 0), 'A1: its look with the top left border');
+	pg_assert_same(array('u' => 1, 'st' => 1, 'sz' => 16, 'w' => 1, 'bd' => 'rt'), $look(0, 1), 'B1: the top right border');
+	pg_assert_same(array('u' => 1, 'st' => 1, 'sz' => 16, 'w' => 1, 'bd' => 'lb'), $look(1, 0), 'A2: the bottom left border');
+	pg_assert_same(array('u' => 1, 'st' => 1, 'sz' => 16, 'w' => 1, 'bd' => 'rb'), $look(1, 1), 'B2: the bottom right border, wrapped already');
+
+	$zip = new ZipArchive();
+	$zip->open($path);
+
+	foreach (array('xl/workbook.xml', 'xl/worksheets/sheet2.xml', 'xl/_rels/workbook.xml.rels', '[Content_Types].xml') as $name) {
+		pg_assert_same($parts[$name], $zip->getFromName($name), $name . ' is carried across untouched');
+	}
+
+	$sheet = (string) $zip->getFromName('xl/worksheets/sheet1.xml');
+	pg_assert_contains('<row r="4"><c r="A4"><f>A2*2</f><v>20</v></c></row></sheetData><pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/></worksheet>', $sheet, 'the rest of the sheet byte for byte');
+	pg_assert_contains('<cellXfs count="6"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"><alignment vertical="top" wrapText="1"/></xf>', (string) $zip->getFromName('xl/styles.xml'), 'the existing styles untouched, one new style a corner');
+	pg_assert_same(count($parts), $zip->numFiles, 'no part added or lost');
+	$zip->close();
+	unlink($path);
+	@array_map('unlink', (array) glob(sys_get_temp_dir() . '/office_edit_*.part'));
+}
+
+function test_office_format_looks_more()
+{
+	$document = new DOMDocument();
+	$document->loadXML('<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+		. '<fonts count="4"><font><sz val="11"/></font><font><u val="double"/><strike/><sz val="11"/></font><font><u val="none"/><strike val="0"/><sz val="9.5"/></font><font><b/></font></fonts>'
+		. '<fills count="1"><fill><patternFill patternType="none"/></fill></fills>'
+		. '<borders count="2"><border/><border><left style="none"/><right style="medium"/><top/><bottom style="thin"/><diagonal style="thin"/></border></borders>'
+		. '<cellXfs count="4"><xf numFmtId="0" fontId="1" fillId="0" borderId="1" xfId="0"/><xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0"><alignment wrapText="1"/></xf>'
+		. '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"><alignment wrapText="0"/></xf><xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0"/></cellXfs></styleSheet>');
+	$looks = pg_office_xlsx_style_looks($document);
+
+	pg_assert_same(array('u' => 1, 'st' => 1, 'bd' => 'rb'), $looks[0], 'a double underline, strikethrough and the drawn sides; a diagonal left out');
+	pg_assert_same(array('sz' => 9.5, 'w' => 1), $looks[1], 'underline none, strike off, a size of its own, wrapped');
+	pg_assert_false(isset($looks[2]), 'wrap off and the default size look like nothing');
+	pg_assert_same(array('b' => 1), $looks[3], 'a font without a size keeps the default');
+}
