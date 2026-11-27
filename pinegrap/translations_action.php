@@ -48,7 +48,7 @@ if (!$translations_is_import && !$translations_is_export) {
     // The keys read as text or a number. One sent as a list or an object
     // counts as not given, where (string) logged "Array to string
     // conversion" and (int) read the string or the job it names as 1.
-    foreach (array('action', 'language', 'scope', 'engine', 'from', 'job_id', 'string_id', 'text', 'page_id') as $translations_key) {
+    foreach (array('action', 'language', 'scope', 'engine', 'fallback_engine', 'auto_update', 'fallback', 'from', 'job_id', 'string_id', 'text', 'page_id') as $translations_key) {
         if (isset($request[$translations_key]) && !is_scalar($request[$translations_key])) {
             unset($request[$translations_key]);
         }
@@ -185,21 +185,73 @@ if (!$translations_is_import && !$translations_is_export) {
             translations_respond(array('status' => 'success') + $result);
             break;
 
-        // The engine picked in the toolbar: the language's engine, the same
-        // setting the settings card writes.
-        case 'engine':
-            $engine = isset($request['engine']) ? (string) $request['engine'] : '';
+        // The dialog "Automation for <language>": the engine, the fallback
+        // engine and "Translate on save", the columns the settings card of
+        // Languages and Translation writes, saved together with its button.
+        case 'automation':
             $row = ($language !== '') ? pg_tr_language_row($language) : null;
 
-            if (!$row || !array_key_exists($engine, pg_tr_engine_options(array((string) $row['engine'])))) {
-                translations_respond(array('status' => 'error', 'message' => lang('The engine is not known.')));
+            if (!$row) {
+                translations_respond(array('status' => 'error', 'message' => lang('Invalid request.')));
             }
 
-            db("UPDATE site_languages SET engine = '" . e($engine) . "', fallback_engine = IF(fallback_engine = '" . e($engine) . "', '', fallback_engine), updated_at = '" . time() . "' WHERE code = '" . e($language) . "'");
+            $values = pg_tr_automation_values($request, pg_tr_engine_options(array((string) $row['engine'], (string) $row['fallback_engine'])));
 
-            log_activity(lang(array('string' => 'the translation engine of {var:1} was set to {var:2}', 'vars' => array($language, $engine))), $_SESSION['sessionusername']);
+            if (!$values['ok']) {
+                translations_respond(array('status' => 'error', 'message' => $values['error']));
+            }
 
-            translations_respond(array('status' => 'success', 'engine' => $engine));
+            // auto_update arrives with an upgrade; until then it is not written.
+            db("UPDATE site_languages SET engine = '" . e($values['engine']) . "', fallback_engine = '" . e($values['fallback_engine']) . "',"
+                . (array_key_exists('auto_update', $row) ? " auto_update = '" . (int) $values['auto_update'] . "'," : '')
+                . " updated_at = '" . time() . "' WHERE code = '" . e($language) . "'");
+
+            if ((string) $row['engine'] !== $values['engine']) {
+                log_activity(lang(array('string' => 'the translation engine of {var:1} was set to {var:2}', 'vars' => array($language, $values['engine']))), $_SESSION['sessionusername']);
+            }
+
+            translations_respond(array('status' => 'success') + $values);
+            break;
+
+        // An update of "Activity" for its drawer: the figures, the error,
+        // the failed texts with their reasons.
+        case 'activity_job':
+            $job_id = isset($request['job_id']) ? (int) $request['job_id'] : 0;
+            $detail = pg_tr_activity_job_detail($job_id, $language);
+
+            if (!$detail) {
+                translations_respond(array('status' => 'error', 'message' => lang('The job could not be found.')));
+            }
+
+            // What the drawer prints as it is: the engine's name, who started
+            // it and when, in the panel's own time format.
+            $detail_job = $detail['job'];
+            $detail_engine = pg_tr_engine((string) $detail_job['engine']);
+            $detail_people = pg_tr_activity_user_names(array((int) $detail_job['created_by']));
+            $detail['engine_label'] = $detail_engine ? $detail_engine['label'] : (string) $detail_job['engine'];
+            $detail['by'] = isset($detail_people[(int) $detail_job['created_by']]) ? $detail_people[(int) $detail_job['created_by']] : '';
+            $detail['started_text'] = get_absolute_time(array('timestamp' => (int) $detail_job['created_at'], 'format' => 'plain_text'));
+            $detail['finished_text'] = ((int) $detail_job['finished_at'] > 0) ? get_absolute_time(array('timestamp' => (int) $detail_job['finished_at'], 'format' => 'plain_text')) : '';
+            $detail['open'] = pg_tr_activity_open($detail_job['status']);
+
+            translations_respond(array('status' => 'success') + $detail);
+            break;
+
+        // "Try again with the failed ones", to the same engine or the
+        // language's fallback engine.
+        case 'retry':
+            $job_id = isset($request['job_id']) ? (int) $request['job_id'] : 0;
+            $result = pg_tr_activity_retry($language, $job_id, !empty($request['fallback']), (int) $user['id']);
+
+            if (!$result['ok']) {
+                translations_respond(array('status' => 'error', 'message' => $result['error']));
+            }
+
+            if (!empty($result['job_id'])) {
+                log_activity(lang(array('string' => 'translations were updated ({var:1}, {var:2} text(s) sent)', 'vars' => array($language, $result['pending']))), $_SESSION['sessionusername']);
+            }
+
+            translations_respond(array('status' => 'success') + $result);
             break;
 
         // The browser engine asks for its next batch of texts.

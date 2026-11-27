@@ -163,8 +163,8 @@ function test_picture_translation_auto_job_scope()
 	pg_assert_same("(u.owner_type = 'file' AND u.owner_id = '12')", pg_tr_owner_where(pg_tr_scope_owners('file:12')), 'one owner');
 	pg_assert_same(array('pages' => 0, 'segments' => 0), pg_tr_scope_extract('file:12'), 'the saves keep the texts: nothing is extracted');
 
-	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/translations.php');
-	pg_assert_contains("preg_match('/^file:\\d+$/'", $screen, 'the jobs list names such a job');
+	// "Activity" names such an update by the Images group.
+	pg_assert_same('Images', pg_tr_activity_scope_label('file:12', pg_tr_owner_groups(), array()), 'the updates list names such a job');
 }
 
 // The job is opened only for a signed-in user, by the page's own lock and

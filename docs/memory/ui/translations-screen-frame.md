@@ -14,8 +14,8 @@ description: Translations screen frame (TS1): head with language shares, tabs Te
 - "Translate pending" is today's update: scan, then the language's engine. With the engine "By hand" it is not drawn and "Scan for new texts" is the fill.
 - Before TS1 one button, "Update translations" / "Update this page" / "Update these texts", did both under one name.
 
-## Where are the engine and its notes until TS4?
-- On a card line "Automation" under the head with today's engine select, saved on its pick, and the engine note under it. TS4 replaces both with the automation line and its dialog.
+## Where are the engine and its notes?
+- On the automation line under the head, changed in the dialog "Automation for <language>"; the progress card takes the line's place while an update runs (`translations-screen-automation.md`).
 
 ## What is the rail?
 - One `pg-card`, 300 px (240 px under 1200 px, above the list under 992 px), sticky and scrolling on its own. "Find a page" narrows the page rows as typed (`data-pg-tr-page`, client side; "No page matches the search."). Then "All texts" (was "All pages"), "Pages" with the reviewed count, the pages with count, verdict icon and a 3 px bar, "Other texts" with the groups.
@@ -27,7 +27,7 @@ description: Translations screen frame (TS1): head with language shares, tabs Te
 ## What is the tool line?
 - "Search in the texts" (the key "/" puts the cursor there outside a field), "Draw the waiting pictures" in the Images group, "Approve all" quiet with its count. Under it the page's index note, the group notes, the bulk line and the rows (TS2 redraws the row).
 
-## Where are today's two cards?
-- "Recent updates" in the tab "Activity", "Glossary" with "Add a term" in the tab "Glossary", unchanged until TS4 and TS5.
+## What do the other two tabs hold?
+- "Activity": the table of the language's updates and an update's drawer (`translations-screen-activity.md`). "Glossary": today's card with "Add a term", unchanged until TS5.
 
 Related: docs/memory/ui/translations-screen-drawing.md, docs/memory/ui/translations-screen-today.md, docs/memory/ui/look-translations-screen.md

@@ -125,8 +125,7 @@ function test_panel_title_label_override_finder()
 	}
 }
 
-// The icon-labelled filter selects name themselves, and the hint of the
-// translation engine select is a tooltip that keyboard focus shows too.
+// The icon-labelled filter selects name themselves.
 function test_panel_title_label_override_named_selects()
 {
 	$products = file_get_contents(PG_FUNCTIONS_DIR . '/view_products.php');
@@ -134,9 +133,6 @@ function test_panel_title_label_override_named_selects()
 
 	$builder = file_get_contents(PG_FUNCTIONS_DIR . '/product_builder.php');
 	pg_assert_true((bool) preg_match('/<select id="status" aria-label="\' \. h\(lang\(\'Enabled\'\)\) \. \'"/', $builder), 'product_builder: #status has its aria-label');
-
-	$translations = file_get_contents(PG_FUNCTIONS_DIR . '/translations.php');
-	pg_assert_true((bool) preg_match('/id="pg_tr_engine" data-bs-toggle="tooltip"/', $translations), 'translations: #pg_tr_engine hint is a tooltip');
 }
 
 // A select named by its own aria-label keeps a hover title that says the

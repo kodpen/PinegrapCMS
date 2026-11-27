@@ -5,7 +5,7 @@
  * The Translations screen (translations.php, assets/js/translations.js),
  * checked by its source: every message shown right before the screen
  * reloads is stored for the next load and shown again there, a job's error
- * comes back as an error, and a recent job's error is printed as visible
+ * comes back as an error, and an update's error is printed as visible
  * text in its row instead of a title on a hidden icon.
  *
  * @author      Erdal Güral (Kodpen)
@@ -61,5 +61,7 @@ function test_translations_reload_message_job_error_is_visible_text()
 	$php = (string) file_get_contents(PG_FUNCTIONS_DIR . '/translations.php');
 
 	pg_assert_same(0, substr_count($php, 'title="\' . h($job[\'error\'])'), 'no title-only error');
-	pg_assert_contains('<span class="fg-danger small text-break">\' . h($job[\'error\']) . \'</span>', $php, 'error printed as text');
+	// The update's error stands in its drawer on "Activity", as text.
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/translations.js');
+	pg_assert_contains("note.appendChild(el('span', '', job.error));", $js, 'error printed as text');
 }
