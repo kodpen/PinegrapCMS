@@ -28,14 +28,9 @@
  *
  * One save takes an ordered list of changes of every kind: cells, the format
  * of ranges, rows and columns inserted or deleted, sheets added, renamed,
- * deleted or moved (includes/fn/office_format.php, office_shift.php,
- * office_sheets.php). Each is applied to the workbook as the one before it
- * left it, all on one copy; a refusal writes nothing.
- *
- * One save takes an ordered list of changes of every kind: cells, the format
- * of ranges, rows and columns inserted or deleted, sheets added, renamed,
- * deleted or moved (includes/fn/office_format.php, office_shift.php,
- * office_sheets.php). Each is applied to the workbook as the one before it
+ * deleted or moved, column widths, row heights and a frozen top row
+ * (includes/fn/office_format.php, office_shift.php, office_sheets.php,
+ * office_size.php). Each is applied to the workbook as the one before it
  * left it, all on one copy; a refusal writes nothing.
  *
  * The file is replaced in one step at the end: the new package is built and
@@ -1848,6 +1843,10 @@ function pg_office_edit_message($code, $cell = '', $sheet = '')
         return pg_office_sheets_message($code, $sheet);
     }
 
+    if (strpos((string) $code, 'size_') === 0) {
+        return pg_office_size_message($code, $sheet);
+    }
+
     return pg_office_shift_message($code, $cell, $sheet);
 }
 
@@ -1916,8 +1915,9 @@ function pg_office_xlsx_save_list_codes()
  *
  * @param mixed $changes list of cell changes [sheet, name, cell, value] and of
  *                       changes with an op (format, insert, delete, sheet_add,
- *                       sheet_rename, sheet_delete, sheet_move)
- * @return array ok, steps (kind cells|format|shift|sheets, at, request, places);
+ *                       sheet_rename, sheet_delete, sheet_move, width, height,
+ *                       freeze)
+ * @return array ok, steps (kind cells|format|shift|sheets|size, at, request, places);
  *               or ok false, code, at (null when it is the whole list), cell
  */
 function pg_office_xlsx_save_steps($changes)
@@ -1966,6 +1966,13 @@ function pg_office_xlsx_save_steps($changes)
 
             if ($shift !== null) {
                 $steps[] = array('kind' => 'shift', 'at' => $place, 'request' => $shift);
+                continue;
+            }
+
+            $size = pg_office_size_request($change);
+
+            if ($size !== null) {
+                $steps[] = array('kind' => 'size', 'at' => $place, 'request' => $size);
                 continue;
             }
 
@@ -2129,7 +2136,7 @@ function pg_office_xlsx_save_list($path, $steps, $version, $directory, $fail)
 /**
  * Writes one step of a save's list into a workbook on disk with the writer
  * of its kind (cells here, includes/fn/office_format.php,
- * office_shift.php, office_sheets.php) and that writer's refusals. A refused
+ * office_shift.php, office_sheets.php, office_size.php) and that writer's refusals. A refused
  * cell is traced back to the last change of the step that named it.
  *
  * @param string   $path
@@ -2157,6 +2164,8 @@ function pg_office_xlsx_save_step($path, $step, $version, $directory, $fail)
                 return pg_office_xlsx_sheets_parts($zip, $step['request'], $step_fail, $spool);
             case 'shift':
                 return pg_office_xlsx_shift_parts($zip, $step['request'], $step_fail, $spool);
+            case 'size':
+                return pg_office_xlsx_size_parts($zip, $step['request'], $step_fail, $spool);
         }
 
         return pg_office_xlsx_save_parts($zip, $step['request'], $step_fail, $spool);
