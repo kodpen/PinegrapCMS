@@ -171,6 +171,7 @@
 - office-csv-preview.md: .csv and .tsv as a sheet in Quick Look and a channel's Preview (PR #10484): separator and character set guessed, the choice above the sheet, limits, view only
 - office-docx-add-delete.md: Adding a paragraph after another (Enter) and deleting one (Delete the paragraph) in a .docx (office_docx_paragraphs.php, OD3, PR #11811): the save entries, the kind a new paragraph takes, the refusals
 - office-docx-controls-numbering.md: Word preview: table rows and cells inside content controls and custom XML, and numId 0 taking a paragraph's (or its style's) numbering off (PR #1119), run properties turned off by w:val
+- office-docx-format-look.md: Text colour, highlight and font size on selected .docx text and a paragraph's alignment (office_docx_format.php, DA1): save entry, reader marks and aligns, how each is written
 - office-docx-format.md: Bold, italic and underline on selected text of a .docx paragraph (office_docx_format.php, OD1, PR #11152): the bar, the save entry, runs split and joined, what is kept
 - office-docx-page-keys.md: Keys of a Word document typed on its sheet (OP2, PR #11940): Enter splits, Backspace and Delete join, selections and arrows cross paragraphs, B/I/U across them
 - office-docx-page.md: A Word document drawn as a white sheet and typed where it stands (renderDocument(), OP1, OP2 PR #11940): one typed sheet, the caret followed, what stays; the keys in office-docx-page-keys.md [decision: decisions-made-product-115.md]

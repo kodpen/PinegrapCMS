@@ -469,6 +469,7 @@
 - designer-gutter-overflow.md: Why wide row gutters (g-5) overflow inside .container on phones, the g-4 g-lg-5 rule, and how to measure responsive overflow of a block.
 - designer-hidden-page-endpoints.md: Editor endpoints asked by page id keep the hidden-page rule of the tab list: page_load, form_fields and notes_fetch refuse a page behind a folder the operator may not know about
 - designer-hide-on-sticky-from.md: Style › Size and display's "Hide on" (Phone, Tablet, Desktop) and "Sticky from" a size (DO3): Bootstrap's d-* and sticky-{size}-top classes, written and read back by pg_size_style.js
+- designer-home-classic-styles.md: Styles the Page Design Studio home and the design chooser list: every visual design; a classic style only while one of its tree pages is outside the Recycle Bin (#12019)
 - designer-home-colours.md: Page Design Studio home colours (#3267): neutral greys plus the panel's primary token, the previews keep theirs, status as words and a shaped mark, tooltips
 - designer-home-menu.md: The Page Design Studio home's menu on a design or a page chip: how it opens, its rows in groups without icons, its texts
 - designer-home-narrow.md: The New design window below 768 px (a list, then the pane with "All starts") and the Page Design Studio home on a phone (one column, the other designs as a list) [decision: here]

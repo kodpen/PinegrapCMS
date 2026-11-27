@@ -32,7 +32,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 
 - `messages-area-*`: 7 files.
 - `object-storage-*`: 6 files.
-- `office-docx-*`: 7 files.
+- `office-docx-*`: 8 files.
 - `office-sheet-*`: 10 files; start at `office-sheets.md`.
 - `visitor-push-*`: 8 files; start at `visitor-push.md`.
 
