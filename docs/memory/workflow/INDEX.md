@@ -34,6 +34,7 @@
 - bug-hunt-areas-4.md: Bug hunt areas beside bug-hunt-areas-3: the fifteen panel screens hunted on 2026-11-19 and the two areas given on 2026-11-20 (prototype comments' guest side, picture text translation's server side)
 - bug-hunt-areas-5.md: Bug hunt areas given on the evening of 2026-11-20: order profit and shipping labels (K3), the bookings' visitor side and stock per location (K2); files, what to look at, what is left alone [decision: here]
 - bug-hunt-areas-6.md: The one round of bug hunts of the night of 2026-11-27 (owner): up to 15 workers a coordinator, work first, the ten designer parts given to k3 and the eight areas given to k2, how the night ends [decision: decisions-made-product-118.md]
+- bug-hunt-areas-7.md: The 15 bug hunts of the night of 2026-11-27 to 28 (owner, message 15232): given out by k3 once the work is finished, the fifteen areas named, the order in which the sessions end [decision: here]
 - bug-hunt-areas-ad-conversions.md: The bug hunt in the ad conversions (agent channel request 3045, 2026-11-26): what was fixed, what was read clean against the consent rule, what is left
 - bug-hunt-areas-agent-guide.md: The bug hunt in the AI agent guide and the refused calls (built in #10709 to #11236), PR #11805: the faults fixed, what was read clean and what was seen and left [decision: here]
 - bug-hunt-areas-agent-requests.md: The bug hunt in the agents' request queue and wakes (architect, 2026-11-26, request 3016): what was fixed, what was read clean, what is asked and left [decision: here]
