@@ -5851,6 +5851,8 @@
 
         return {
             node: wrap,
+            // The time on the due date, for the read page's date picker.
+            time: time,
             value: function () {
                 var wanted = minutes();
                 var out = { due_time: time.value || '', remind_minutes: (wanted === null) ? '' : wanted };
@@ -6948,6 +6950,22 @@
         };
     }
 
+    // The read page of a task (workspace_task_read.js): the parts' helpers
+    // and the ones it draws the description, the menus and the checks with.
+    function readHelpers() {
+        var helpers = partHelpers();
+
+        helpers.setHtml = setHtml;
+        helpers.chipMenus = chipMenus;
+        helpers.progressBar = progressBar;
+        helpers.ctxMenu = ctxMenu;
+        helpers.taskMenu = taskMenu;
+        helpers.warningList = warningList;
+        helpers.dateShown = dateShown;
+
+        return helpers;
+    }
+
     // ── The task drawer, shared by every screen ────────────────────────
 
     var taskDrawer = {
@@ -6990,6 +7008,7 @@
             var rights = BOOT.me.rights;
 
             self.task = task;
+            self.refsChanged = null;
             // Records only: the people on the task have their own field.
             self.refs = (task ? task.refs : (defaults.refs || [])).filter(function (ref) {
                 return !ref.token || ref.token.indexOf('<#') === 0;
@@ -7234,6 +7253,7 @@
                 }
             }
 
+            self.allowed = allowed;
             f.people = peoplePicker(task ? task.assignees.map(function (member) { return member.id; }) : (defaults.assignees || [BOOT.me.id]), allowed);
             body.appendChild(formRow(t('people'), f.people, t('people_help')));
 
@@ -7317,6 +7337,14 @@
             if (editable) {
                 self.check();
             }
+
+            // An existing task opens as a page whose rows save at once; New
+            // task keeps a short form (assets/js/workspace_task_read.js).
+            if (window.PGWsTaskRead && task) {
+                window.PGWsTaskRead.page(self, task, readHelpers());
+            } else if (window.PGWsTaskRead) {
+                window.PGWsTaskRead.newForm(self, body, readHelpers());
+            }
         },
 
         drawRefs: function () {
@@ -7332,6 +7360,11 @@
 
             if (!self.refs.length) {
                 box.appendChild(el('span', 'small fg-secondary', t('no_records')));
+            }
+
+            // The read page saves a record tagged or taken off at once.
+            if (self.refsChanged) {
+                self.refsChanged();
             }
         },
 

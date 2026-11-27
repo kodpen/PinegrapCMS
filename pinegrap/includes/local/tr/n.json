@@ -3054,6 +3054,7 @@
     "Not given yet": "Henüz verilmedi",
     "Not handed out yet: it opens on its day. Clicking it opens the task it repeats.": "Henüz açılmadı; gününde açılır. Tıklayınca tekrarladığı görev açılır.",
     "Not handed over": "Kargoya verilmedi",
+    "Not handed to an assistant": "Bir asistana verilmedi",
     "Not here": "Gelmedi",
     "Not here after": "Şu süreden sonra burada değil",
     "Not here is offered {var:1} minutes after the call.": "Gelmedi, çağrıdan {var:1} dakika sonra seçilebilir.",
