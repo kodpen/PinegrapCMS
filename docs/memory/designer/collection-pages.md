@@ -10,7 +10,7 @@ module: collection_pages
 
 ## What do the two steps keep?
 - Step 1: "A new collection" (Name, Fields: the Title first and locked, a field named Title or as the Title in the editor's language refused, at most twelve, kinds Text, Rich text, Number, Date, Image, File, Option set, Reference) or "One that is there" (the site's collections with fields, items and the pages showing them).
-- Step 2: the list and detail page's names and addresses (an address follows its name until typed, free of the design's pages and the other page's, `_ncFollow()`, #PR), the group (a new one named after the collection, a design group or Other).
+- Step 2: the list and detail page's names and addresses (an address follows its name until typed, free of the design's pages and the other page's, `_ncFollow()`, #12025), the group (a new one named after the collection, a design group or Other).
 - What was typed stays while the same Pages window is open; shutting it drops it. Addresses start free of the design's pages and of each other (`_ncFree()`), follow the name until typed, and are asked of the server once the hand rests (op `taken`).
 
 ## How is a field stored?

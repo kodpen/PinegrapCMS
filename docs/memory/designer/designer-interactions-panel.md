@@ -6,7 +6,7 @@ description: Interactions section of the properties panel and on the canvas: nod
 ## Where is the section, and on which nodes?
 - The Interactions section of the properties panel (`propsInteractions()`, after Search and SERP), only on nodes `_sdFxTakes()` accepts: semantic and grid nodes, components but the language switcher (I4, #1998), and the content types whose markup carries the node's attributes (designer-node-attributes.md).
 - Rows follow the effect and the trigger (distance only for slides, stagger for load/view, Every time for view, Top offset for sticky, Speed for parallax, Start scale / Start opacity / Start offset for Zoom / Fade / Rise on scroll, Duration and Delay for Count up, offered on text nodes only: designer-interactions-count.md). `_sdFxSet()` writes one field and normalizes, so switching the effect keeps the timing and drops what no longer applies, the start too (each effect's is its own unit).
-- Switching the effect drops the distance too, unless both are slides: Blur in reads it as px of blur, Rotate in as degrees (#PR).
+- Switching the effect drops the distance too, unless both are slides: Blur in reads it as px of blur, Rotate in as degrees (#12025).
 - None deletes `_fx`.
 - A scroll-linked effect gets a note on how it follows the scroll, and Zoom on scroll starting above 100 % one to set Overflow to Hidden on the element around it (else the page scrolls sideways). It has no trigger, so no Play button.
 

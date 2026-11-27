@@ -9,7 +9,7 @@ description: The Options panel's State row as built (DO10, #11588): Normal, Hove
 - Shown for one element whose custom style is on (`_sdCustomStyleOff()`); not for several elements, the page root, a text's inner element, inside a system widget or a shared component.
 
 ## Where is a state's value written?
-- In User Styles, on the element's custom style class: `.pgs-xxxxxx:hover`, `:focus-visible` (Focus), `:active` (Pressed), after the base rule and before its `@media` rules, as a new Normal rule (#PR); the element gets the class the first time, as "This element" does (`custom-style.md`). One undo step per change (`_sdStateWrite()`).
+- In User Styles, on the element's custom style class: `.pgs-xxxxxx:hover`, `:focus-visible` (Focus), `:active` (Pressed), after the base rule and before its `@media` rules, as a new Normal rule (#12025); the element gets the class the first time, as "This element" does (`custom-style.md`). One undo step per change (`_sdStateWrite()`).
 - A row's Bootstrap class is written as its declarations with `!important` (`PGOptionStates.decls()`: `bg-primary` → `background-color: var(--bs-primary)`), in a fixed order so `border` comes before `border-color`. A declaration no row writes stays in the rule.
 - Read back by matching the declarations to the row's classes (`match()`).
 
