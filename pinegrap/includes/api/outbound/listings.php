@@ -430,6 +430,12 @@ function mp_listing_items($account, $group_id) {
 
 			$code = $barcode;
 
+		} else {
+
+			// Sent as the product identifier where the marketplace asks for
+			// one (eBay's EAN or UPC); none is no refusal there.
+			$barcode = mp_product_first_barcode((int)$product['id']);
+
 		}
 
 		$items[] = array(
@@ -439,6 +445,7 @@ function mp_listing_items($account, $group_id) {
 			'barcode'     => $barcode,
 			'brand'       => trim((string)$product['brand']),
 			'group_code'  => (string)$group['name'],
+			'group_title' => (string)$group['title'],
 			'title'       => ($product['title'] !== '') ? (string)$product['title'] : (string)$group['title'],
 			'description' => (string)$description,
 			'category_id' => (string)$map['remote_category_id'],

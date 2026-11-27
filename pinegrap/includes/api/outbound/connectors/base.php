@@ -55,7 +55,9 @@
 //                                         characters
 //   category_tree($account)               their category tree, flattened
 //   category_attributes($account, $id)    what a category demands, with values
-//   create_listings($account, $items)     open listings, answers a task handle
+//   create_listings($account, $items)     open listings, answers a task handle,
+//                                         or with task_id '' the verdicts at
+//                                         once in data['results']
 //   listing_status($account, $barcodes)   where those listings stand (approved,
 //                                         pending, rejected), by barcode
 //   buybox($account, $barcodes)           where the store stands in each

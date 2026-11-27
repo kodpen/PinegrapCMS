@@ -1,0 +1,17 @@
+{
+  "errors": [
+    {
+      "errorId": 25021,
+      "domain": "API_INVENTORY",
+      "category": "BUSINESS",
+      "message": "Invalid item condition information.",
+      "parameters": [{"name": "0", "value": "condition"}]
+    },
+    {
+      "errorId": 25002,
+      "domain": "API_INVENTORY",
+      "category": "REQUEST",
+      "message": "Item specific Marke is missing."
+    }
+  ]
+}

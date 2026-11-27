@@ -16,6 +16,14 @@
  * are cached under the account's site (mp_ebay_category_key()): eBay keeps
  * one category tree a site.
  *
+ * A listing is three calls an item on the Inventory API with the seller's
+ * token: the inventory item (createOrReplaceInventoryItem), its offer on the
+ * account's site (createOffer, or updateOffer for one already there) and
+ * the publish; an article of several products is an inventory item group
+ * published as one listing. eBay answers each at once, so create_listings()
+ * answers the verdicts itself (data['results']) and there is no task to
+ * read; listing_status() reads each SKU's offer for its listing id.
+ *
  * The eBay functions of their own (sites, scopes, the parsers of these
  * answers) are in includes/fn/ebay.php.
  *
@@ -35,7 +43,9 @@ function mp_ebay_connector() {
 		'test_credentials'    => 'mp_ebay_test_credentials',
 		'category_key'        => 'mp_ebay_category_key',
 		'category_tree'       => 'mp_ebay_category_tree',
-		'category_attributes' => 'mp_ebay_category_attributes'
+		'category_attributes' => 'mp_ebay_category_attributes',
+		'create_listings'     => 'mp_ebay_create_listings',
+		'listing_status'      => 'mp_ebay_listing_status'
 	);
 
 }
@@ -379,5 +389,443 @@ function mp_ebay_category_attributes($account, $category_id, $call = null) {
 	}
 
 	return mp_ok(array('attributes' => pg_ebay_aspect_rows($answer['data'])));
+
+}
+
+/* -------------------------------------------------------------- listings */
+
+// A call on the Inventory API of the account's environment with the seller's
+// token, answering array(ok, status, data, error): function ($method, $path,
+// $body = null). Every call names the site's language, which eBay asks of
+// an inventory item and an offer. null when no eBay account is connected.
+function mp_ebay_api_call($account) {
+
+	$environment = mp_ebay_environment($account);
+
+	$connection_id = mp_ebay_connection_id($environment);
+
+	if ($connection_id <= 0) {
+
+		return null;
+
+	}
+
+	$hosts = pg_ebay_hosts($environment);
+
+	$sites = pg_ebay_sites();
+
+	$locale = $sites[mp_ebay_site($account)]['locale'];
+
+	return function ($method, $path, $body = null) use ($connection_id, $hosts, $locale) {
+
+		$options = array(
+			'headers'  => array('Accept: application/json', 'Content-Language: ' . $locale),
+			'timeout'  => 60,
+			'max_body' => 1048576,
+			'agent'    => 'marketplace'
+		);
+
+		if ($body !== null) {
+
+			$options['headers'][] = 'Content-Type: application/json';
+
+			$options['body'] = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+		}
+
+		$result = pg_connect_api($connection_id, $method, $hosts['api'] . $path, $options);
+
+		$result['data'] = is_array($result['data']) ? $result['data'] : array();
+
+		return $result;
+
+	};
+
+}
+
+// The account's inventory location and three business policies, or null
+// while one of them has not been chosen.
+function mp_ebay_listing_choices($account) {
+
+	$credentials = (isset($account['credentials']) && is_array($account['credentials'])) ? $account['credentials'] : array();
+
+	$choices = array();
+
+	foreach (array('location', 'fulfillment_policy', 'payment_policy', 'return_policy') as $field) {
+
+		$value = isset($credentials[$field]) ? trim((string)$credentials[$field]) : '';
+
+		if ($value === '') {
+
+			return null;
+
+		}
+
+		$choices[$field] = $value;
+
+	}
+
+	return $choices;
+
+}
+
+// The rate from the shop's currency to $currency today (1 for the same
+// currency), or null when none is recorded (Settings › Currencies).
+function mp_ebay_rate($currency) {
+
+	$base = defined('BASE_CURRENCY_CODE') ? strtoupper((string)BASE_CURRENCY_CODE) : '';
+
+	if ($base === strtoupper($currency)) {
+
+		return 1.0;
+
+	}
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/currency_rates.php');
+
+	$rate = pg_currency_rate($currency, date('Y-m-d'));
+
+	return is_array($rate) ? (float)$rate['rate'] : null;
+
+}
+
+// The text of a failed call: every message eBay gave, else the status.
+function mp_ebay_call_error($result) {
+
+	$messages = pg_ebay_error_messages(isset($result['data']) ? $result['data'] : null);
+
+	return ($messages !== '') ? mb_substr('eBay: ' . $messages, 0, 500) : mp_ebay_error_text($result);
+
+}
+
+// The offer of one item on the account's site, created or brought up to
+// date: array(ok, offer_id, error, retry). An SKU has one offer a site, so
+// the one already there is replaced (updateOffer) rather than a second
+// asked for, which eBay refuses.
+function mp_ebay_offer_put($call, $item, $site, $choices, $price) {
+
+	$sku = (string)$item['code'];
+
+	$body = pg_ebay_offer_body($item, $site, $choices, $price);
+
+	$found = call_user_func($call, 'GET', '/sell/inventory/v1/offer?sku=' . rawurlencode($sku) . '&marketplace_id=' . rawurlencode($site));
+
+	if (!$found['ok'] && ((int)$found['status'] !== 404)) {
+
+		return array('ok' => false, 'offer_id' => '', 'error' => mp_ebay_call_error($found), 'retry' => mp_ebay_retry($found));
+
+	}
+
+	$offer = $found['ok'] ? pg_ebay_offer_of($found['data'], $site) : null;
+
+	if ($offer !== null) {
+
+		$answer = call_user_func($call, 'PUT', '/sell/inventory/v1/offer/' . rawurlencode($offer['offer_id']), $body);
+
+		$offer_id = $offer['offer_id'];
+
+	} else {
+
+		$answer = call_user_func($call, 'POST', '/sell/inventory/v1/offer', $body);
+
+		$offer_id = (isset($answer['data']['offerId']) && is_scalar($answer['data']['offerId'])) ? (string)$answer['data']['offerId'] : '';
+
+	}
+
+	if (!$answer['ok']) {
+
+		return array('ok' => false, 'offer_id' => '', 'error' => mp_ebay_call_error($answer), 'retry' => mp_ebay_retry($answer));
+
+	}
+
+	if ($offer_id === '') {
+
+		return array('ok' => false, 'offer_id' => '', 'error' => lang('eBay created the offer but named no offer id.'), 'retry' => false);
+
+	}
+
+	return array('ok' => true, 'offer_id' => $offer_id, 'error' => '', 'retry' => false);
+
+}
+
+// List one article's items on the account's eBay site.
+//
+// Refused before any call, as an article (mp_sync_send_listings() writes it
+// on the article's row): no location or policies chosen, no rate to the
+// site's currency, an item eBay would refuse (pg_ebay_item_problem()), no
+// price. Then each item's inventory item, for several items their group,
+// each item's offer, and the publish: one call for a single item, one for
+// the group, whose variants go live together or not at all.
+//
+// Every call puts or replaces, so a failure eBay may get over (no answer,
+// 429, 5xx) gives the whole article back to the queue to send again. Any
+// other refusal is that item's verdict in data['results'] (SKU => ok,
+// error); in a group, the other variants are not published either. $call
+// and $rate replace eBay and the rate table in tests.
+function mp_ebay_create_listings($account, $items, $call = null, $rate = null) {
+
+	$items = array_values((array)$items);
+
+	$site = mp_ebay_site($account);
+
+	$sites = pg_ebay_sites();
+
+	$currency = $sites[$site]['currency'];
+
+	$choices = mp_ebay_listing_choices($account);
+
+	if ($choices === null) {
+
+		return mp_error(lang('Choose the eBay account\'s inventory location and business policies first: test the connection, then pick them.'));
+
+	}
+
+	if (!$items) {
+
+		return mp_ok(array('task_id' => '', 'results' => array()));
+
+	}
+
+	$rate = ($rate === null) ? mp_ebay_rate($currency) : $rate;
+
+	if (!is_numeric($rate) || ((float)$rate <= 0)) {
+
+		return mp_error(lang(array(
+			'string' => 'There is no exchange rate from {var:1} to {var:2} yet, so the price on eBay cannot be worked out.',
+			'vars'   => array(defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : '', $currency)
+		)));
+
+	}
+
+	$prices = array();
+
+	foreach ($items as $item) {
+
+		$problem = pg_ebay_item_problem($item);
+
+		if ($problem !== '') {
+
+			return mp_error($problem);
+
+		}
+
+		$prices[(string)$item['code']] = pg_ebay_offer_price(isset($item['price_major']) ? $item['price_major'] : 0, $rate);
+
+		if ($prices[(string)$item['code']] === '') {
+
+			return mp_error(lang(array('string' => '{var:1} has no price.', 'vars' => array((string)$item['code']))));
+
+		}
+
+	}
+
+	$group = null;
+
+	if (count($items) > 1) {
+
+		$group = pg_ebay_inventory_group($items);
+
+		if (!$group['ok']) {
+
+			return mp_error($group['error']);
+
+		}
+
+	}
+
+	if ($call === null) {
+
+		$call = mp_ebay_api_call($account);
+
+		if ($call === null) {
+
+			return mp_error((mp_ebay_environment($account) === 'sandbox')
+				? lang('Connect an eBay (sandbox) account on Connections first.')
+				: lang('Connect an eBay account on Connections first.'));
+
+		}
+
+	}
+
+	$results = array();
+
+	foreach ($items as $item) {
+
+		$sku = (string)$item['code'];
+
+		$answer = call_user_func($call, 'PUT', '/sell/inventory/v1/inventory_item/' . rawurlencode($sku), pg_ebay_inventory_item($item, $site));
+
+		if ($answer['ok']) {
+
+			continue;
+
+		}
+
+		if (mp_ebay_retry($answer)) {
+
+			return mp_error(mp_ebay_call_error($answer), true);
+
+		}
+
+		$results[$sku] = array('ok' => false, 'error' => mp_ebay_call_error($answer));
+
+	}
+
+	$group_key = ($group !== null) ? pg_ebay_group_key($items[0]['group_code']) : '';
+
+	if (($group !== null) && !$results) {
+
+		$answer = call_user_func($call, 'PUT', '/sell/inventory/v1/inventory_item_group/' . rawurlencode($group_key), $group['body']);
+
+		if (!$answer['ok']) {
+
+			if (mp_ebay_retry($answer)) {
+
+				return mp_error(mp_ebay_call_error($answer), true);
+
+			}
+
+			return mp_ok(array('task_id' => '', 'results' => mp_ebay_all_failed($items, mp_ebay_call_error($answer))));
+
+		}
+
+	}
+
+	$offers = array();
+
+	foreach ($items as $item) {
+
+		$sku = (string)$item['code'];
+
+		if (isset($results[$sku])) {
+
+			continue;
+
+		}
+
+		$offer = mp_ebay_offer_put($call, $item, $site, $choices, $prices[$sku]);
+
+		if (!$offer['ok'] && $offer['retry']) {
+
+			return mp_error($offer['error'], true);
+
+		}
+
+		if (!$offer['ok']) {
+
+			$results[$sku] = array('ok' => false, 'error' => $offer['error']);
+
+			continue;
+
+		}
+
+		$offers[$sku] = $offer['offer_id'];
+
+	}
+
+	if ($group !== null) {
+
+		if ($results) {
+
+			return mp_ok(array('task_id' => '', 'results' => $results + mp_ebay_all_failed($items,
+				lang('Not published: another variant of this article was refused by eBay.'))));
+
+		}
+
+		$answer = call_user_func($call, 'POST', '/sell/inventory/v1/offer/publish_by_inventory_item_group',
+			array('inventoryItemGroupKey' => $group_key, 'marketplaceId' => $site));
+
+		if (!$answer['ok']) {
+
+			if (mp_ebay_retry($answer)) {
+
+				return mp_error(mp_ebay_call_error($answer), true);
+
+			}
+
+			return mp_ok(array('task_id' => '', 'results' => mp_ebay_all_failed($items, mp_ebay_call_error($answer))));
+
+		}
+
+		return mp_ok(array('task_id' => '', 'results' => mp_ebay_all_failed($items, '', true)));
+
+	}
+
+	foreach ($offers as $sku => $offer_id) {
+
+		$answer = call_user_func($call, 'POST', '/sell/inventory/v1/offer/' . rawurlencode($offer_id) . '/publish', array());
+
+		if (!$answer['ok'] && mp_ebay_retry($answer)) {
+
+			return mp_error(mp_ebay_call_error($answer), true);
+
+		}
+
+		$results[$sku] = $answer['ok'] ? array('ok' => true, 'error' => '') : array('ok' => false, 'error' => mp_ebay_call_error($answer));
+
+	}
+
+	return mp_ok(array('task_id' => '', 'results' => $results));
+
+}
+
+// The same verdict for every item: SKU => ok, error.
+function mp_ebay_all_failed($items, $error, $ok = false) {
+
+	$results = array();
+
+	foreach ($items as $item) {
+
+		$results[(string)$item['code']] = array('ok' => $ok, 'error' => $ok ? '' : $error);
+
+	}
+
+	return $results;
+
+}
+
+// Where each SKU's listing stands on the account's site
+// (pg_ebay_listing_state()): data['listings'], SKU => state. One getOffers
+// call a SKU; an SKU with no offer there (404) is unknown. $call replaces
+// eBay in tests.
+function mp_ebay_listing_status($account, $codes, $call = null) {
+
+	$site = mp_ebay_site($account);
+
+	if ($call === null) {
+
+		$call = mp_ebay_api_call($account);
+
+		if ($call === null) {
+
+			return mp_error(lang('Connect an eBay account on Connections first.'));
+
+		}
+
+	}
+
+	$listings = array();
+
+	foreach (array_unique(array_map('strval', (array)$codes)) as $sku) {
+
+		if ($sku === '') {
+
+			continue;
+
+		}
+
+		$answer = call_user_func($call, 'GET', '/sell/inventory/v1/offer?sku=' . rawurlencode($sku) . '&marketplace_id=' . rawurlencode($site));
+
+		if (!$answer['ok'] && ((int)$answer['status'] !== 404)) {
+
+			return mp_error(mp_ebay_call_error($answer), mp_ebay_retry($answer));
+
+		}
+
+		$listings[$sku] = pg_ebay_listing_state($answer['ok'] ? pg_ebay_offer_of($answer['data'], $site) : null);
+
+	}
+
+	return mp_ok(array('listings' => $listings));
 
 }

@@ -1,0 +1,10 @@
+{
+  "errors": [
+    {
+      "errorId": 25001,
+      "domain": "API_INVENTORY",
+      "category": "APPLICATION",
+      "message": "A system error has occurred."
+    }
+  ]
+}
