@@ -5,7 +5,9 @@ module: importers
 ---
 
 ## Which items get a redirect?
-- After a made item `pg_import_run()` calls `pg_import_redirect_after()` (`includes/import/write_redirect.php`). The old address: a WordPress post or page by its permalink (`data.link`; a `?p=` address has no path and gets none), a Shopify product at `/products/<handle>` (the handle from the source key). The WooCommerce products export carries no address, files and contacts have none; categories are names in the exports.
+- After a made item `pg_import_run()` calls `pg_import_redirect_after()` (`includes/import/write_redirect.php`), which answers one line per redirect.
+- The old addresses (`pg_import_redirect_old_addresses()`, pure): a WordPress or Squarespace post or page by its link (`data.link`; a `?p=` address has no path and gets none), a Shopify product at `/products/<handle>` (the handle from the source key), a Squarespace product at both its addresses (`data.addresses`, `import-squarespace.md`), one name once. The WooCommerce products export carries no address, files and contacts have none; categories are names in the exports.
+- The first redirect's `import_items` key is `redirect:<item key>`, a later one's ends in `:<n>` (`pg_import_redirect_source_key()`, cut to 191 characters with the number kept).
 - The name is the old path through `pg_short_link_name_from_address($address, '/')`: the old host dropped, decoded, stored form, so a visitor's `/2020/01/post/` finds it (`short-link-names.md`).
 
 ## Where does it lead?

@@ -181,7 +181,9 @@ function pg_import_wp_item($item, $site)
     $status = pg_import_wp_status((string) $wp->status);
     $post_id = (int) $wp->post_id;
 
-    if (($type === '') || ($post_id <= 0) || ($status === '') || in_array($type, pg_import_wp_skipped_types(), true)) {
+    // WordPress numbers posts from 1, Squarespace's export from 0: an item
+    // is left out only when it carries no number at all.
+    if (($type === '') || !ctype_digit(trim((string) $wp->post_id)) || ($status === '') || in_array($type, pg_import_wp_skipped_types(), true)) {
         return array();
     }
 
@@ -292,7 +294,9 @@ function pg_import_wp_item($item, $site)
 
 /**
  * The site part of an export: its host as the key prefix and the authors by
- * login. Read from the channel head, before the first <item>.
+ * login. Read from the channel head, before the first <item>. The host is
+ * base_site_url's; an export without one (Squarespace's) takes the channel's
+ * own <link>, so two such sites never share source keys.
  *
  * @param string $file
  * @return array{key:string,ns:string,authors:array,zone:string}
@@ -301,6 +305,7 @@ function pg_import_wp_site($file)
 {
     $site = array('key' => 'wp', 'ns' => PG_IMPORT_WP_NS . '1.2/', 'authors' => array(), 'zone' => '');
     $reader = pg_import_wp_reader($file);
+    $channel_host = '';
 
     if ($reader === null) {
         return $site;
@@ -314,6 +319,12 @@ function pg_import_wp_site($file)
 
         if ($reader->localName === 'item') {
             break;
+        }
+
+        // rss > channel > link, not a link inside the channel's <image>.
+        if (($reader->localName === 'link') && ((string) $reader->namespaceURI === '') && ($reader->depth === 2) && ($channel_host === '')) {
+            $channel_host = (string) preg_replace('/^www\./', '', strtolower((string) parse_url(trim($reader->readString()), PHP_URL_HOST)));
+            continue;
         }
 
         if (strpos((string) $reader->namespaceURI, PG_IMPORT_WP_NS) !== 0) {
@@ -353,6 +364,10 @@ function pg_import_wp_site($file)
     }
 
     $reader->close();
+
+    if (($site['key'] === 'wp') && ($channel_host !== '')) {
+        $site['key'] = $channel_host;
+    }
 
     return $site;
 }

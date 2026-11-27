@@ -4,9 +4,10 @@
  *
  * The redirects of a content import (includes/fn/importers.php): an item
  * made from something the old site showed at an address of its own (a
- * WordPress post or page, a Shopify product) gets a 301 short link from that
- * path to what it became, so links and search results that name the old
- * address keep working once the domain points here.
+ * WordPress or Squarespace post or page, a Shopify or Squarespace product)
+ * gets a 301 short link from that path to what it became, so links and
+ * search results that name the old address keep working once the domain
+ * points here.
  *
  * - The link goes through the short link rules (includes/fn/short_link_redirects.php):
  *   the name rule, a name no page, file or link holds, and the loop checks.
@@ -32,10 +33,49 @@ if (!function_exists('pg_short_link_name_from_address')) {
 }
 
 /**
- * The address the old site showed an item at, '' when it had none worth a
- * redirect: a WordPress post or page by its permalink (a ?p= address is the
- * home page's path), a Shopify product at /products/<handle>. The
- * WooCommerce products export carries no address. Pure.
+ * The addresses the old site showed an item at, none when it had none worth
+ * a redirect: a WordPress or Squarespace post or page by its <link> (a ?p=
+ * address is the home page's path), a Shopify product at /products/<handle>,
+ * a Squarespace product at both of its addresses (data.addresses: the file
+ * does not say whether the site ran 7.0 or 7.1). The WooCommerce products
+ * export carries no address. Two addresses with one name are one. Pure.
+ *
+ * @param string $import_kind the reader
+ * @param array  $item
+ * @return string[]
+ */
+function pg_import_redirect_old_addresses($import_kind, $item)
+{
+    $kind = (string) ($item['kind'] ?? '');
+    $addresses = array();
+
+    if (in_array($import_kind, array('wordpress', 'squarespace'), true) && in_array($kind, array('record', 'page'), true)) {
+        $addresses[] = (string) ($item['data']['link'] ?? '');
+    } elseif (($import_kind === 'shopify') && ($kind === 'product')) {
+        $key = (string) ($item['source_key'] ?? '');
+        $addresses[] = (strpos($key, 'shopify:product:') === 0) ? '/products/' . substr($key, strlen('shopify:product:')) : '';
+    } elseif (($import_kind === 'squarespace') && ($kind === 'product')) {
+        $addresses = (array) ($item['data']['addresses'] ?? array());
+    }
+
+    $kept = array();
+    $names = array();
+
+    foreach ($addresses as $address) {
+        $address = trim((string) $address);
+        $name = pg_import_redirect_name($address);
+
+        if (($name !== '') && !isset($names[$name])) {
+            $names[$name] = true;
+            $kept[] = $address;
+        }
+    }
+
+    return $kept;
+}
+
+/**
+ * The first old address of an item, '' when it has none. Pure.
  *
  * @param string $import_kind the reader
  * @param array  $item
@@ -43,17 +83,9 @@ if (!function_exists('pg_short_link_name_from_address')) {
  */
 function pg_import_redirect_old_address($import_kind, $item)
 {
-    $kind = (string) ($item['kind'] ?? '');
-    $address = '';
+    $addresses = pg_import_redirect_old_addresses($import_kind, $item);
 
-    if (($import_kind === 'wordpress') && in_array($kind, array('record', 'page'), true)) {
-        $address = trim((string) ($item['data']['link'] ?? ''));
-    } elseif (($import_kind === 'shopify') && ($kind === 'product')) {
-        $key = (string) ($item['source_key'] ?? '');
-        $address = (strpos($key, 'shopify:product:') === 0) ? '/products/' . substr($key, strlen('shopify:product:')) : '';
-    }
-
-    return (pg_import_redirect_name($address) === '') ? '' : $address;
+    return $addresses ? $addresses[0] : '';
 }
 
 /**
@@ -155,55 +187,79 @@ function pg_import_redirect_destination($kind, $id)
 }
 
 /**
- * Adds the redirect of an item just made. Null when the item has no old
- * address (nothing to count), else the redirect's own answer.
+ * The source key of an item's redirect: the first keeps the item's key, a
+ * second address of the same item adds its number, so each has its own
+ * import_items row. Pure.
+ *
+ * @param string $source_key the item's
+ * @param int    $index      the address's place, from 0
+ * @return string
+ */
+function pg_import_redirect_source_key($source_key, $index)
+{
+    $suffix = ((int) $index > 0) ? ':' . ((int) $index + 1) : '';
+
+    return mb_substr('redirect:' . (string) $source_key, 0, 191 - strlen($suffix)) . $suffix;
+}
+
+/**
+ * Adds the redirects of an item just made: none when the item has no old
+ * address (nothing to count), else one answer per address.
  *
  * @param array $import
  * @param array $item
  * @param int   $item_id what the item's writer made
- * @return array{result:string,id:int,reason:string}|null
+ * @return array[] each array{result:string,id:int,reason:string}
  */
 function pg_import_redirect_after($import, $item, $item_id)
 {
-    $address = pg_import_redirect_old_address((string) $import['kind'], $item);
+    $addresses = pg_import_redirect_old_addresses((string) $import['kind'], $item);
 
-    if ($address === '') {
-        return null;
+    if (!$addresses) {
+        return array();
     }
 
     if (!function_exists('pg_short_link_redirects_ready') || !pg_short_link_redirects_ready()) {
-        return array('result' => 'failed', 'id' => 0, 'reason' => lang('The database is not up to date.'));
+        return array(array('result' => 'failed', 'id' => 0, 'reason' => lang('The database is not up to date.')));
     }
 
     $destination = pg_import_redirect_destination((string) $item['kind'], $item_id);
 
     if ($destination === '') {
-        return null;
+        return array();
     }
 
     if (is_string($destination)) {
-        return array('result' => 'skipped', 'id' => 0, 'reason' => $destination);
+        return array(array('result' => 'skipped', 'id' => 0, 'reason' => $destination));
     }
 
-    $name = pg_import_redirect_name($address);
+    $page_name = ($destination['destination_type'] === 'page')
+        ? (string) db_value("SELECT page_name FROM page WHERE page_id = '" . (int) $destination['page_id'] . "'")
+        : '';
+    $answers = array();
 
-    // The page made under its old address answers there itself.
-    if (($destination['destination_type'] === 'page')
-        && pg_import_redirect_is_own_address($name, (string) db_value("SELECT page_name FROM page WHERE page_id = '" . (int) $destination['page_id'] . "'"))) {
-        return null;
+    foreach ($addresses as $index => $address) {
+        $name = pg_import_redirect_name($address);
+
+        // The page made under its old address answers there itself.
+        if (($page_name !== '') && pg_import_redirect_is_own_address($name, $page_name)) {
+            continue;
+        }
+
+        $answer = pg_import_redirect_add($import, $name, $destination);
+
+        if ($answer['result'] === 'made') {
+            db("INSERT IGNORE INTO import_items SET
+                import_id = '" . (int) $import['id'] . "',
+                kind = 'redirect',
+                item_id = '" . (int) $answer['id'] . "',
+                source_key = '" . e(pg_import_redirect_source_key((string) $item['source_key'], $index)) . "'");
+        }
+
+        $answers[] = $answer;
     }
 
-    $answer = pg_import_redirect_add($import, $name, $destination);
-
-    if ($answer['result'] === 'made') {
-        db("INSERT IGNORE INTO import_items SET
-            import_id = '" . (int) $import['id'] . "',
-            kind = 'redirect',
-            item_id = '" . (int) $answer['id'] . "',
-            source_key = '" . e(mb_substr('redirect:' . (string) $item['source_key'], 0, 191)) . "'");
-    }
-
-    return $answer;
+    return $answers;
 }
 
 /**

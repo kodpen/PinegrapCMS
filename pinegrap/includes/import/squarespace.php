@@ -2,10 +2,15 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * The Squarespace CSV reader of the content import framework (includes/fn/
- * importers.php). Squarespace exports two CSV files and either may be
+ * The Squarespace reader of the content import framework (includes/fn/
+ * importers.php). Squarespace exports its site content as one XML file and
+ * its products and customers as two CSV files; any of the three may be
  * uploaded:
  *
+ * - the site content: WordPress's export format, so the WordPress reader
+ *   (wordpress.php) reads it and its page, record, comment, file and author
+ *   writers take the items. A post's <link> is /<blog page slug>/<post
+ *   slug>, the post slug holding any date part, and becomes its redirect.
  * - products: a product's first row holds it (page, URL, title, description,
  *   categories, tags, pictures, visibility) and each row below it, with
  *   those cells blank, is one more variant (options, SKU, price, stock).
@@ -27,15 +32,31 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
- * The mapping rows: the product group categories go under, the folder
- * pictures are stored in, and the unit of the Weight column, which the file
- * does not name. Pounds are chosen at first: products.weight holds pounds
- * and the product screen shows them unless its metric switch is ticked.
+ * The mapping rows of the uploaded file. The site content asks what the
+ * WordPress reader asks; the customers file asks nothing. The products file
+ * asks the product group categories go under, the folder pictures are
+ * stored in, and the unit of the Weight column, which the file does not
+ * name. Pounds are chosen at first: products.weight holds pounds and the
+ * product screen shows them unless its metric switch is ticked. Without a
+ * file the products rows are given.
  *
+ * @param string $file the uploaded export
  * @return array
  */
-function pg_import_squarespace_mapping()
+function pg_import_squarespace_mapping($file = '')
 {
+    $file = (string) $file;
+
+    if (($file !== '') && pg_import_squarespace_is_xml(pg_import_squarespace_head($file))) {
+        require_once(__DIR__ . '/wordpress.php');
+
+        return pg_import_wordpress_mapping();
+    }
+
+    if (($file !== '') && (pg_import_squarespace_open($file)['kind'] === 'customers')) {
+        return array();
+    }
+
     return array(
         'product_group' => array('label' => lang('Product group the categories go under'), 'type' => 'product_group', 'required' => false),
         'file_folder'   => array('label' => lang('Folder for pictures'), 'type' => 'folder', 'required' => false),
@@ -86,12 +107,59 @@ function pg_import_squarespace_file_kind($header)
 }
 
 /**
+ * A file's first 8 KB, '' when it cannot be read.
+ *
+ * @param string $file
+ * @return string
+ */
+function pg_import_squarespace_head($file)
+{
+    $handle = @fopen((string) $file, 'rb');
+
+    if (!$handle) {
+        return '';
+    }
+
+    $head = (string) fread($handle, 8192);
+    fclose($handle);
+
+    return $head;
+}
+
+/**
+ * Whether an export is the site content XML rather than a CSV: after a byte
+ * order mark and white space it opens with a tag. Pure.
+ *
+ * @param string $head
+ * @return bool
+ */
+function pg_import_squarespace_is_xml($head)
+{
+    $head = (string) $head;
+
+    if (strncmp($head, "\xEF\xBB\xBF", 3) === 0) {
+        $head = substr($head, 3);
+    }
+
+    return (strncmp(ltrim($head), '<', 1) === 0);
+}
+
+/**
+ * The site content XML is given the WordPress reader's cursor under wxr;
+ * a CSV gets the reader's own.
+ *
  * @param string $file
  * @return array the cursor
  */
 function pg_import_squarespace_open($file)
 {
-    $cursor = array('file' => (string) $file, 'offset' => -1, 'separator' => ',', 'header' => array(), 'line' => 1, 'kind' => '');
+    if (pg_import_squarespace_is_xml(pg_import_squarespace_head($file))) {
+        require_once(__DIR__ . '/wordpress.php');
+
+        return array('format' => 'xml', 'wxr' => pg_import_wordpress_open($file));
+    }
+
+    $cursor = array('format' => 'csv', 'file' => (string) $file, 'offset' => -1, 'separator' => ',', 'header' => array(), 'line' => 1, 'kind' => '');
     $handle = @fopen($file, 'rb');
 
     if (!$handle) {
@@ -113,15 +181,25 @@ function pg_import_squarespace_open($file)
 }
 
 /**
- * The next item: a product with its variant rows, or a contact. Null at the
- * end.
+ * The next item: the WordPress reader's from the site content, else a
+ * product with its variant rows, or a contact. Null at the end.
  *
  * @param array $cursor
  * @return array|null
  */
 function pg_import_squarespace_next(&$cursor)
 {
-    if ((int) $cursor['offset'] < 0) {
+    if (($cursor['format'] ?? '') === 'xml') {
+        require_once(__DIR__ . '/wordpress.php');
+
+        $wxr = (array) $cursor['wxr'];
+        $item = pg_import_wordpress_next($wxr);
+        $cursor['wxr'] = $wxr;
+
+        return ($item === null) ? null : pg_import_squarespace_content_item($item);
+    }
+
+    if ((int) ($cursor['offset'] ?? -1) < 0) {
         return null;
     }
 
@@ -191,6 +269,12 @@ function pg_import_squarespace_plan($item)
 {
     $data = (array) ($item['data'] ?? array());
 
+    if (!in_array(($item['kind'] ?? ''), array('product', 'contact'), true)) {
+        require_once(__DIR__ . '/wordpress.php');
+
+        return pg_import_wordpress_plan($item);
+    }
+
     if (($item['kind'] ?? '') === 'contact') {
         return array('title' => (string) ($item['title'] ?? ''), 'detail' => (string) ($data['email_address'] ?? ''));
     }
@@ -200,6 +284,22 @@ function pg_import_squarespace_plan($item)
         : (string) ($data['sku'] ?? '');
 
     return array('title' => (string) ($item['title'] ?? ''), 'detail' => $detail);
+}
+
+/**
+ * An item of the site content as the WordPress reader gave it. A picture's
+ * excerpt is a placeholder (exc-<id>), not a caption, and is dropped. Pure.
+ *
+ * @param array $item
+ * @return array
+ */
+function pg_import_squarespace_content_item($item)
+{
+    if ((($item['kind'] ?? '') === 'file') && preg_match('/^exc-[0-9a-f]+$/i', (string) ($item['data']['caption'] ?? ''))) {
+        $item['data']['caption'] = '';
+    }
+
+    return $item;
 }
 
 // ---- Rows ------------------------------------------------------------------

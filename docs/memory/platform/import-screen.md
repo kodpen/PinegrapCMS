@@ -12,6 +12,10 @@ module: importers
 - Folders and product groups: `pg_import_tree_choices()` (pure): tree order, each label its path ("Shop › private"), a lone top node (the root folder) left out of the paths. Folders leave out the Recycle Bin, the Workspace and archived folders, each with its subtree; product groups take the live ones (`pg_catalog_bin_live_sql()`).
 - The choices are the save's whitelist (`pg_import_mapping_clean()`), so a refused place cannot be posted either.
 
+## What does the upload card say, and how are rows asked?
+- A note under the file field (`#file_kinds`) and the refusal name each export taken. The What Is Imported card adds that sign-in and the old look are left out: Import My Site, named, not linked (closed on hosted sites).
+- Rows come from `pg_import_<kind>_mapping($file)` with the kept upload, as one kind's files ask different rows (`import-squarespace.md`). A `select` row's `default` is the choice it starts on.
+
 ## Which fields does a field row offer?
 - A `form_field` row carries `field_types`, the types its writer fills (`includes/import/write_record.php`): title, body, summary text box/text area; date date, date and time, text box; featured image file upload; categories and tags check box, pick list, radio button, text box, text area. `pg_import_field_fits()` (pure) also refuses `information` fields. An empty list takes every type.
 - The fields of the offered forms are printed once as JSON (form id → [id, label, type]); the script fills a field select when its form is chosen. Printing them as options in each row made the page about 1 MB on a site with 1,900 fields.

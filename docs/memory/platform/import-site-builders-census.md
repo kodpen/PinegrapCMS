@@ -18,7 +18,7 @@ description: What Squarespace, Webflow and Wix let an owner export for the impor
 - Contacts CSV (Squarespace, Wix): a new reader making the data of `pg_import_shopify_customer()` (line 412) for `pg_import_write_contact()` (`includes/import/write_contact.php` line 133).
 - Collection CSV (Webflow, Wix): one reader with a column mapping, for `pg_import_write_record()` (`includes/import/write_record.php` line 345), whose rows take only a post's parts today (`pg_import_record_rows()` line 178).
 - Webflow redirects CSV: `pg_import_write_redirect()` (`includes/import/write_redirect.php` line 283).
-- Each new reader is named in `pg_import_kinds()` and `pg_import_detect_kind()` (`includes/fn/importers.php` lines 68, 104) and gives its old addresses through `pg_import_redirect_old_address()` (`write_redirect.php` line 44).
+- Each new reader is named in `pg_import_kinds()` and `pg_import_detect_kind()` (`includes/fn/importers.php`) and gives its old addresses, one or more per item, through `pg_import_redirect_old_addresses()` (`write_redirect.php`). `imports.kind` already holds `webflow` and `wix` (step 11.0.282, `import-squarespace.md`), so their steps need no schema change.
 
 ## What does no file carry, or the writers not take?
 - The design: Import My Site (`import-design-fetch.md`). Pictures: addresses on the service's servers, fetched by `pg_import_media_fetch()` (`includes/import/media.php` line 382) only while the old site is live.

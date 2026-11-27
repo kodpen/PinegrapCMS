@@ -190,8 +190,9 @@ $import_choices = function ($type) {
     return $choices;
 };
 
-// The reader's mapping rows with their choices filled in.
-$import_mapping_rows = function ($kind) use ($import_choices) {
+// The reader's mapping rows with their choices filled in. The kept file goes
+// to the reader, as one kind may hold files that ask different rows.
+$import_mapping_rows = function ($kind, $file = '') use ($import_choices) {
 
     $rows = array();
 
@@ -199,7 +200,7 @@ $import_mapping_rows = function ($kind) use ($import_choices) {
         return $rows;
     }
 
-    foreach ((array) call_user_func('pg_import_' . $kind . '_mapping') as $name => $row) {
+    foreach ((array) call_user_func('pg_import_' . $kind . '_mapping', (string) $file) as $name => $row) {
         $type = (string) ($row['type'] ?? 'select');
         $row['type'] = $type;
         $row['choices'] = ($type === 'select') ? (array) ($row['choices'] ?? array()) : $import_choices($type);
@@ -251,7 +252,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $kind = pg_import_detect_kind($head);
 
         if ($kind === '') {
-            $liveform->mark_error('file', h(lang('The file is not an export this screen knows: a WordPress export (XML), a WooCommerce products CSV or a Shopify products or customers CSV.')));
+            $liveform->mark_error('file', h(lang('The file is not an export this screen knows: a WordPress or Squarespace site export (XML), a WooCommerce, Shopify or Squarespace products CSV, or a Shopify or Squarespace customers CSV.')));
             go($screen_url);
         }
 
@@ -295,7 +296,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (($import_action === 'start') && ($import !== null) && ($import['status'] === 'dry_run')) {
 
-        $rows = $import_mapping_rows($import['kind']);
+        $rows = $import_mapping_rows($import['kind'], pg_import_source_path($import_id, $import['file_name']));
         $posted = (isset($_POST['map']) && is_array($_POST['map'])) ? $_POST['map'] : array();
         $clean = pg_import_mapping_clean($rows, $posted);
 
@@ -420,7 +421,8 @@ if ($import === null) {
             <div class="row">
                 <div class="col-12 pg-field-span-6">
                     <label for="file" class="form-label">' . h(lang('File')) . '</label>
-                    <input type="file" id="file" name="file" class="' . $liveform->create_error_class('file', 'form-control') . '" accept=".xml,.csv,.txt,text/xml,application/xml,text/csv" required>
+                    <input type="file" id="file" name="file" class="' . $liveform->create_error_class('file', 'form-control') . '" accept=".xml,.csv,.txt,text/xml,application/xml,text/csv" aria-describedby="file_kinds" required>
+                    <div id="file_kinds" class="form-text">' . h(lang('A WordPress or Squarespace site export (XML), a WooCommerce, Shopify or Squarespace products CSV, or a Shopify or Squarespace customers CSV.')) . '</div>
                     ' . pg_upload_limit_hint() . '
                 </div>
             </div>');
@@ -429,8 +431,9 @@ if ($import === null) {
 
     $side .= $card(lang('What Is Imported'), '
             <ul class="small ps-5 mb-0">
-                <li class="mb-2">' . h(lang('A WordPress export (Tools, Export), a WooCommerce products CSV or a Shopify products or customers CSV. The file is read first and nothing is written until you start.')) . '</li>
-                <li>' . h(lang('Nothing is overwritten: an item imported already is skipped and named in the report. Everything the import makes can be undone for 30 days.')) . '</li>
+                <li class="mb-2">' . h(lang('The file is read first and nothing is written until you start.')) . '</li>
+                <li class="mb-2">' . h(lang('Nothing is overwritten: an item imported already is skipped and named in the report. Everything the import makes can be undone for 30 days.')) . '</li>
+                <li>' . h(lang('Only the exported file is read: there is no sign-in to the old service, and the look of the old site is not brought over. Import My Site copies a look from a web address.')) . '</li>
             </ul>');
 
     $list = '';
@@ -481,7 +484,7 @@ if ($import === null) {
         // and fill a field row's select when a form is chosen, keeping the
         // types the row takes: printed as options in every row they weighed
         // a megabyte on a site with many forms.
-        $mapping_rows = $import_mapping_rows($import['kind']);
+        $mapping_rows = $import_mapping_rows($import['kind'], pg_import_source_path($import_id, $import['file_name']));
 
         foreach ($mapping_rows as $name => $row) {
 
@@ -499,8 +502,11 @@ if ($import === null) {
 
                 $for = ' data-pg-import-form="map_' . h((string) ($row['form'] ?? '')) . '" data-pg-import-types="' . h(json_encode(array_values((array) ($row['field_types'] ?? array())))) . '"';
             } else {
+                // A row may name the choice it starts on.
+                $default = (string) ($row['default'] ?? '');
+
                 foreach ($row['choices'] as $value => $choice) {
-                    $options .= '<option value="' . h((string) $value) . '">' . h((string) $choice) . '</option>';
+                    $options .= '<option value="' . h((string) $value) . '"' . ((($default !== '') && ((string) $value === $default)) ? ' selected' : '') . '>' . h((string) $choice) . '</option>';
                 }
             }
 

@@ -46,6 +46,32 @@ function test_import_redirect_old_address()
 	pg_assert_same('', pg_import_redirect_old_address('wordpress', $query), 'an address that is only a query string');
 }
 
+// A Squarespace post by its link, a product at both of its addresses; each
+// redirect has its own source key.
+function test_import_redirect_squarespace_addresses()
+{
+	$post = array('kind' => 'record', 'source_key' => 'pine-studio.example:post:2', 'data' => array('link' => '/blog/2026/3/14/opening-day'));
+	pg_assert_same(array('/blog/2026/3/14/opening-day'), pg_import_redirect_old_addresses('squarespace', $post), 'a post by its link');
+
+	$product = array('kind' => 'product', 'source_key' => 'squarespace:product:5f1a0001', 'data' => array('addresses' => array('/shop/linen-shirt', '/shop/p/linen-shirt')));
+	pg_assert_same(array('/shop/linen-shirt', '/shop/p/linen-shirt'), pg_import_redirect_old_addresses('squarespace', $product), 'a product at both addresses');
+	pg_assert_same('/shop/linen-shirt', pg_import_redirect_old_address('squarespace', $product), 'the first');
+
+	$same = array('kind' => 'product', 'source_key' => 'squarespace:product:x', 'data' => array('addresses' => array('/shop/a', '/shop/a/', '')));
+	pg_assert_same(array('/shop/a'), pg_import_redirect_old_addresses('squarespace', $same), 'one name once, none empty');
+
+	$contact = array('kind' => 'contact', 'source_key' => 'squarespace:email:a@b.c', 'data' => array());
+	pg_assert_same(array(), pg_import_redirect_old_addresses('squarespace', $contact), 'a contact');
+	pg_assert_same(array('/products/red-shirt'), pg_import_redirect_old_addresses('shopify', array('kind' => 'product', 'source_key' => 'shopify:product:red-shirt')), 'Shopify unchanged');
+
+	pg_assert_same('redirect:squarespace:product:5f', pg_import_redirect_source_key('squarespace:product:5f', 0), 'the first keeps the key');
+	pg_assert_same('redirect:squarespace:product:5f:2', pg_import_redirect_source_key('squarespace:product:5f', 1), 'the second is numbered');
+
+	$long = pg_import_redirect_source_key(str_repeat('a', 300), 1);
+	pg_assert_same(191, mb_strlen($long), 'cut to the column');
+	pg_assert_same(':2', mb_substr($long, -2), 'the number kept when cut');
+}
+
 function test_import_redirect_name()
 {
 	pg_assert_same('2020/01/hello-world', pg_import_redirect_name('https://example.com/2020/01/hello-world/'), 'path, no slashes at the ends');

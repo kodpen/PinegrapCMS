@@ -192,3 +192,75 @@ function test_import_squarespace_service_not_shipped()
 	pg_assert_same('0', pg_import_product_row($service, 1)['shippable'], 'service');
 	pg_assert_same('1', pg_import_product_row($mug, 1)['shippable'], 'physical');
 }
+
+function pg_test_import_squarespace_site()
+{
+	return dirname(__FILE__) . '/fixtures/import/squarespace_site.xml';
+}
+
+// The site content is told from a WordPress export by the Squarespace
+// addresses in its first bytes; the two CSVs by their header.
+function test_import_squarespace_detected()
+{
+	$head = function ($file) {
+		return (string) file_get_contents($file, false, null, 0, 8192);
+	};
+
+	pg_assert_same('squarespace', pg_import_detect_kind($head(pg_test_import_squarespace_site())), 'site content');
+	pg_assert_same('wordpress', pg_import_detect_kind($head(dirname(__FILE__) . '/fixtures/import/wordpress.xml')), 'a WordPress export stays WordPress');
+	pg_assert_same('squarespace', pg_import_detect_kind($head(pg_test_import_squarespace_file('products'))), 'products');
+	pg_assert_same('squarespace', pg_import_detect_kind($head(pg_test_import_squarespace_file('customers'))), 'customers');
+	pg_assert_same('squarespace', pg_import_detect_kind("First Name,Last Name,Email,Customer Since\nA,B,a@b.c,2026-01-01"), 'customers, the columns alone');
+	pg_assert_true(isset(pg_import_kinds()['squarespace']), 'a kind of its own');
+}
+
+// The WordPress reader reads the site content: a page numbered 0, keys on the
+// channel's host (the file has no base_site_url), a post at its old address,
+// an attachment without its placeholder caption.
+function test_import_squarespace_site_content()
+{
+	$cursor = pg_import_squarespace_open(pg_test_import_squarespace_site());
+	pg_assert_same('xml', $cursor['format'], 'read as XML');
+
+	$items = pg_test_import_squarespace_items('', $cursor);
+
+	pg_assert_same(array('pine-studio.example:author:owner@pine-studio.example', 'pine-studio.example:post:0', 'pine-studio.example:post:1', 'pine-studio.example:post:2'), array_keys($items), 'keys');
+
+	$page = $items['pine-studio.example:post:0'];
+	pg_assert_same('page', $page['kind'], 'page numbered 0');
+	pg_assert_same('/about-us', $page['data']['link'], 'page address');
+
+	$file = $items['pine-studio.example:post:1'];
+	pg_assert_same('file', $file['kind'], 'attachment');
+	pg_assert_same('', $file['data']['caption'], 'placeholder caption dropped');
+
+	$post = $items['pine-studio.example:post:2'];
+	pg_assert_same('record', $post['kind'], 'post');
+	pg_assert_same('/blog/2026/3/14/opening-day', $post['data']['link'], 'blog page slug, then the post slug');
+	pg_assert_same(array('title' => 'Opening Day', 'detail' => 'post, Deniz Kaya'), pg_import_squarespace_plan($post), 'plan');
+}
+
+// The XML cursor saved between requests and read back gives the rest.
+function test_import_squarespace_site_cursor_resumes()
+{
+	$cursor = pg_import_squarespace_open(pg_test_import_squarespace_site());
+	pg_import_squarespace_next($cursor);
+	pg_import_squarespace_next($cursor);
+	$saved = json_decode(json_encode($cursor), true);
+
+	pg_assert_same(array('pine-studio.example:post:1', 'pine-studio.example:post:2'), array_keys(pg_test_import_squarespace_items('', $saved)));
+}
+
+// Each file asks its own plan rows.
+function test_import_squarespace_mapping_by_file()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/import/wordpress.php');
+
+	pg_assert_same(array_keys(pg_import_wordpress_mapping()), array_keys(pg_import_squarespace_mapping(pg_test_import_squarespace_site())), 'site content asks what WordPress asks');
+	pg_assert_same(array(), pg_import_squarespace_mapping(pg_test_import_squarespace_file('customers')), 'customers ask nothing');
+
+	$rows = pg_import_squarespace_mapping(pg_test_import_squarespace_file('products'));
+
+	pg_assert_same(array('product_group', 'file_folder', 'weight_unit'), array_keys($rows), 'products');
+	pg_assert_same('lb', $rows['weight_unit']['default'], 'pounds at first');
+}

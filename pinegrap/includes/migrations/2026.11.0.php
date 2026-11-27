@@ -271,6 +271,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_form_old_address();        // 11.0.279
 	upgrade_2026_11_0_ws_agent_context_size();   // 11.0.280
 	upgrade_2026_11_0_software_language_codes(); // 11.0.281
+	upgrade_2026_11_0_import_site_builder_kinds(); // 11.0.282
 
 }
 
@@ -4982,7 +4983,7 @@ function upgrade_2026_11_0_imports() {
 
 	install_create_table('imports', "CREATE TABLE imports (
 		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
-		kind        ENUM('wordpress','woocommerce','shopify') NOT NULL DEFAULT 'wordpress',
+		kind        ENUM('wordpress','woocommerce','shopify','squarespace','webflow','wix') NOT NULL DEFAULT 'wordpress',
 		file_name   VARCHAR(255) NOT NULL DEFAULT '',
 		status      ENUM('uploaded','dry_run','running','done','failed','undone') NOT NULL DEFAULT 'uploaded',
 		mapping     TEXT NULL,
@@ -9550,5 +9551,51 @@ function upgrade_2026_11_0_software_language_codes() {
 	install_modify_column('config', 'software_language', "ENUM('en','tr','de','fr','es','it','pt','nl','pl','ru','uk','ar','fa','he','ja','ko','zh') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'en'");
 
 	install_note('Settings: the Software Language setting can hold the panel\'s further languages.');
+
+}
+
+// 11.0.282 - The site-builder exports an import can read
+// (includes/fn/importers.php, pg_import_kinds()): imports.kind gains
+// 'squarespace', 'webflow' and 'wix' after its three values. Nothing is
+// dropped; NOT NULL and the default 'wordpress' stay. The CREATE TABLE of
+// 11.0.156 lists the same values, so a new install and an upgraded site end
+// with the same column. The MODIFY runs only while a value is missing, with
+// every value the column already lists kept, so a second run changes nothing.
+function upgrade_2026_11_0_import_site_builder_kinds() {
+
+	$info = install_column_info('imports', 'kind');
+
+	if (!is_array($info)) {
+
+		install_skipped(lang(array('string' => '{var:1} does not exist, skipped', 'vars' => 'imports.kind')));
+
+		return;
+
+	}
+
+	preg_match_all("/'((?:[^']|'')*)'/", (string) $info['Type'], $matches);
+	$values = array();
+
+	foreach ($matches[1] as $value) {
+		$values[] = "'" . $value . "'";
+	}
+
+	$missing = array_diff(array("'squarespace'", "'webflow'", "'wix'"), $values);
+
+	if (!$missing) {
+
+		install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => 'imports.kind squarespace, webflow, wix')));
+
+		return;
+
+	}
+
+	$values = array_merge($values, array_values($missing));
+	$default = trim((string) $info['Default'], "'");
+	$default = ($default !== '') ? $default : 'wordpress';
+
+	install_modify_column('imports', 'kind', "ENUM(" . implode(',', $values) . ") NOT NULL DEFAULT '" . $default . "'");
+
+	install_note('Import: Squarespace exports can be imported.');
 
 }

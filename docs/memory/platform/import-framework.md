@@ -7,10 +7,10 @@ module: importers
 ## Where does an import keep its state?
 - `imports`: one row per uploaded export (kind, file name, status uploaded → dry_run → running → done/failed → undone, mapping, counts per writer kind and report as JSON, `cursor` = items read). `import_items`: every row a run made (kind, item id, source key); no column on the target tables (#5034).
 - The upload is `data/temp/import_<id>_source.<ext>`, a run's place `data/temp/import_<id>.json`, written after every item; a lost one restarts the reader, written keys skipped.
-- Both tables come with the upgrade: everything asks `pg_import_ready()` first.
+- Everything asks `pg_import_ready()` first.
 
 ## What does a reader provide?
-- `includes/import/<kind>.php`: `pg_import_<kind>_open($file)` (the first cursor, JSON-safe array), `pg_import_<kind>_next(&$cursor)` (next item or null), `pg_import_<kind>_plan($item)` (dry-run line: `title`, `detail`), optional `pg_import_<kind>_mapping()`.
+- `includes/import/<kind>.php`: `pg_import_<kind>_open($file)` (the first cursor, JSON-safe array), `pg_import_<kind>_next(&$cursor)` (next item or null), `pg_import_<kind>_plan($item)` (dry-run line: `title`, `detail`), optional `pg_import_<kind>_mapping($file)`.
 - An item: `kind` (record, page, file, comment, contact, product, redirect, user from 11.0.160), `source_key` (unique in the export; prefix by site when two could clash), `title`, `data`.
 - Mapping rows: name => `label`, `type` (`form`, `form_field` with `form` naming its form row, `folder`, `product_group`, `select` with its own `choices`), `required`, for `form_field` `field_types`. The screen fills the choices (`import-screen.md`); `pg_import_mapping_clean()` keeps only offered values.
 
@@ -34,6 +34,6 @@ module: importers
 - The job sweeps `import_items` of imports finished over 30 days ago (5000 a tick) and their source file; the `imports` row stays. Never-started uploads: `import-screen.md`.
 
 ## How is the kind told?
-- `pg_import_detect_kind()` (pure), first 8 KB: RSS with `wordpress.org/export/`; CSV header `handle` + `body (html)`, or name columns + `accepts (email) marketing` → shopify; `id`, `type`, `sku`, `regular price` → woocommerce. A kind with no reader file is refused on upload.
+- `pg_import_detect_kind()` (pure), first 8 KB: RSS with `wordpress.org/export/`; CSV header `handle` + `body (html)`, or name columns + `accepts (email) marketing` → shopify; `id`, `type`, `sku`, `regular price` → woocommerce; squarespace: `import-squarespace.md`. A kind with no reader file is refused on upload; `imports.kind` has webflow, wix too (11.0.282).
 
 Tests: `tests/import_framework_test.php`.

@@ -15,3 +15,8 @@ description: Decisions made, schema part 53 (2026-11-26 on): an agent's context 
 - An agent reports the tokens it uses and never guesses the size. With no size entered the row says the used tokens alone and draws no ring.
 - Architect (2026-11-26, agent channel request 3118), the reading the step builds: the report and the answer route take a context with `used` alone; a `size` an agent still sends is kept and used only while the form's field is empty, so a harness that does read its window keeps working. Used above the size shows as full, never as a refusal of the report.
 - Running sites: the column's default changes nothing; a context stored before reads as it did.
+
+## Does imports.kind gain squarespace, webflow and wix? (owner, 2026-11-27, agent channel poll 253)
+- Yes, all three: the ENUM gets them appended after wordpress, woocommerce and shopify, NOT NULL and the default `wordpress` kept, by step 11.0.282 and in the table's CREATE TABLE. Each import is recorded under its own builder's kind.
+- Asked in PR #12075: `squarespace` alone; all three in one step; a VARCHAR(16) with `pg_import_kinds()` as the whitelist; or no schema change, the files riding under kinds `wordpress` and `shopify` (the Earlier imports list would name the wrong kind). The owner chose the three values.
+- Built by PR #12075 (`platform/import-squarespace.md`); Webflow and Wix readers come with their own steps.
