@@ -168,7 +168,8 @@
         scrim.addEventListener('click', function () { closePicker(); });
         document.addEventListener('mousedown', outside, true);
 
-        var first = box.querySelector('input, [data-ws-tr-opt].is-on, [data-ws-tr-day][tabindex="0"], [data-ws-tr-opt], button');
+        var first = box.querySelector('.ws-tr-search') || box.querySelector('[data-ws-tr-day][tabindex="0"]')
+            || box.querySelector('[data-ws-tr-opt].is-on') || box.querySelector('[data-ws-tr-opt], input, select, button');
 
         if (first) {
             first.focus();
@@ -392,9 +393,14 @@
         area.setAttribute('aria-label', h.t('title'));
         area.setAttribute('data-ws-tr-key', 'title');
 
+        // Grows with the title; a drawer not shown yet has no height to
+        // measure, and field-sizing (backend.src.css) does it where it can.
         function fit() {
             area.style.height = 'auto';
-            area.style.height = area.scrollHeight + 'px';
+
+            if (area.scrollHeight) {
+                area.style.height = area.scrollHeight + 'px';
+            }
         }
 
         function commit() {
@@ -410,6 +416,7 @@
         }
 
         area.addEventListener('input', fit);
+        area.addEventListener('focus', fit);
         area.addEventListener('blur', commit);
         area.addEventListener('keydown', function (event) {
             if ((event.key === 'Enter') && !event.isComposing) {
@@ -872,7 +879,6 @@
 
         if (task.description_html) {
             h.setHtml(text, task.description_html);
-            h.chipMenus(text);
         } else {
             text.appendChild(h.el('span', 'ws-tr-quiet', h.t('tr_none')));
         }
@@ -882,6 +888,7 @@
         // A list a channel message carries: today's box, ticks and all.
         if (list.message && ctx.drawer.workBox) {
             Array.prototype.forEach.call(text.querySelectorAll('ul.ws-checklist'), function (node) { node.remove(); });
+            h.chipMenus(text);
             part.appendChild(ctx.drawer.workBox);
             why(ctx, part, 'description');
             return part;
@@ -901,13 +908,14 @@
                     text.appendChild(node);
                 }
             });
-            h.chipMenus(text);
             ticks(ctx, text);
 
             if (task.can_edit) {
                 part.appendChild(itemAdder(ctx));
             }
         }
+
+        h.chipMenus(text);
 
         if (list.progress) {
             var progress = h.el('div', 'ws-tr-progress');

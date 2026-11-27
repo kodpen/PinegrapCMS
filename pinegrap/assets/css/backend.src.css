@@ -20522,6 +20522,7 @@ button.ws-mt-done:focus-visible,
   line-height: 28px;
   letter-spacing: -0.018em;
   resize: none;
+  field-sizing: content;
 }
 textarea.ws-tr-title:hover {
   border-color: var(--pg-field-line);
