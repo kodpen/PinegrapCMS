@@ -1,6 +1,6 @@
 ---
 name: workspace-task-read-drawing
-description: The drawing of a task opened to read in My Tasks (step TM3 of plan workspace-tasks-modern): one sheet of eight boards, the read drawer, its states, New task, phone width, sizes and keys
+description: The drawing of a task opened to read in My Tasks (TM3): one sheet of eight boards, the read drawer, its states, New task, phone width, sizes and keys
 ---
 
 ## Where is the drawing?

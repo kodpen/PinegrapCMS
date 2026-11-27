@@ -1,11 +1,11 @@
 ---
 name: workspace-my-tasks-screen
-description: My Tasks list (TM1): open tasks under Overdue, Today, This week, Later, No date labels that fold (ws-tasks-folded), due_group from ws_task_due_group() on the reader's day, the one-line row
+description: My Tasks (TM1-TM4): open tasks under Overdue, Today, This week, Later, No date labels that fold, due_group from ws_task_due_group(), the one-line row; where add line, Board, drawer live
 ---
 
 ## When is the list gathered by date?
 - With "Open tasks" as the status and no search typed, in every view (Mine, Given by me, My departments, Everyone): the rows stand under `.pg-group-label` buttons with their count, in this order: Overdue, Today, This week, Later, No date. A group with no task is not drawn.
-- Finished tasks, All tasks and a search draw one list without labels, in the server's order. My time keeps its own view (`workspace_task_time.js`).
+- Finished tasks, All tasks and a search draw one list without labels, in the server's order. My time keeps its own view (`workspace_task_time.js`) and the bar's filters (`workspace-task-filters.md`).
 - `startTasks()` in `assets/js/workspace.js` hands the list to `PGWsMyTasks.list(container, tasks, grouped, helpers, parts, onChange, fresh)` in `assets/js/workspace_my_tasks.js` (in `workspace.min.js`); `parts` lends the row's menu and progress bar; `fresh`, a task id, opens its group (`workspace-my-tasks-add-line.md`). Without the part file it falls back to `taskRows()`.
 
 ## Where does a task's group come from?
@@ -20,8 +20,14 @@ description: My Tasks list (TM1): open tasks under Overdue, Today, This week, La
 ## What does a row show?
 - `.pg-list-row.ws-mt-row`, one line: the Mark done circle (`pg-icon-button-sm`, a tick on hover or focus; a closed or read-only task shows its state there), the number in `--pg-fg-3`, the title (`.pg-list-row-title`), then the due text (rose, `--pg-tone-rose-text`, when overdue), the priority pill only for High (`pg-tone-amber`) and Urgent (`pg-tone-rose`), the people's initials (no photos, at most three).
 - A second line (`.ws-mt-sub`) only for the agent channel, "Made by <application>" and the checklist's progress.
-- Left out of this row, still in the task drawer and in `taskRows()`: the status dot and label, the estimate, the time and link tags, the assistant tag, the notes count, the repeat icon.
-- A click or Enter opens the task drawer; the right-click menu is `taskMenu()` with the direct-message lines. On a phone (under 576 px) the title takes its own line and the rest goes under it. Finished and cancelled tasks are dimmed (`is-read`).
+- Left out of the row, still in the drawer and `taskRows()`: status dot and label, estimate, time and link tags, assistant tag, notes count, repeat icon.
+- Click or Enter opens the drawer; right-click is `taskMenu()`. Under 576 px the title takes its own line, the rest under it. Finished and cancelled tasks are dimmed (`is-read`).
 
-## Which lists keep the old rows?
-- A channel's Tasks tab and a record's window keep `taskRows()` (`workspace-channel-panes.md`).
+## What else stands on the screen?
+- Mine's "Add a task…" line (TM2): `workspace-my-tasks-add-line.md`. The List / Board layouts (TM4): `workspace-my-tasks-board.md`; the groups and the add line are List only.
+- A task opens as a page, New task as a short form (TM3): `workspace-task-read-page.md`, drawn in `workspace-task-read-drawing.md`.
+- A channel's task cards and a record's window keep `taskRows()` (`workspace-channel-panes.md`).
+
+## Why, and what was left out?
+- Owner (2026-11-27, agent channel message 14812): the Workspace's own screens modernised: My Tasks was one flat list of tall rows and a task a long form. Built in TM1 to TM4 (#12143 the last).
+- Tasks under a task, own fields on a task and saved views each need a table or a column: the owner's to ask for.

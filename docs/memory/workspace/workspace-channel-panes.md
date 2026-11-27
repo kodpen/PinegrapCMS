@@ -1,15 +1,15 @@
 ---
 name: workspace-channel-panes
-description: The channel's Tasks, Decisions and Files tabs as cards (CL2, CL4, TD1): tasks in columns, decisions one list of wide cards, each kind of file a card; a record's window keeps the task rows
+description: A channel's task cards (Board's List view or Tasks tab), Decisions and Files as cards (CL2, CL4, TD1): tasks in columns, decisions one list, files by kind; a record's window keeps rows
 ---
 
-## How does the Tasks tab draw the channel's tasks?
-- `drawTasks()` draws a quiet toolbar (`pg-toolbar ws-pane-toolbar`: no padding, no rule under it) with the status select and New task, then `taskRows()` into `div.ws-task-grid` (#8688).
-- `.ws-task-grid` flows its cards in columns (`columns: var(--ws-flow-col)`, 34rem, gap 1rem; the empty state `column-span: all`), as the decisions do (#8759): it fills the pane, one column on a phone. Each `.ws-list-row` in it is a card (border, 1rem radius, `--pg-card-bg`, `--ws-shadow-soft`, `break-inside: avoid`), with no rule under it; a done task is at 75% opacity and keeps its struck title.
-- The card holds the whole row unchanged: status dot, number, repeat icon and title, the due line with its tags, progress, notes, priority, people, Mark done. A click or Enter opens the task (`pressKeys()`); hover tints the border in the accent.
+## Where are the channel's task cards drawn?
+- `taskListInto()` (workspace.js) draws them into `div.ws-task-grid`: in a channel with the board, the Board tab's List view (`workspace-channel-board-tab.md`); without it, the Tasks tab, where `drawTasks()` puts a quiet toolbar (`pg-toolbar ws-pane-toolbar`) with the status select and New task above them (#8688).
+- `.ws-task-grid` flows its cards in columns (`columns: var(--ws-flow-col)`, 34rem, gap 1rem; the empty state `column-span: all`), one column on a phone (#8759). Each `.ws-list-row` is a card (border, 1rem radius, `--pg-card-bg`, `--ws-shadow-soft`, `break-inside: avoid`); a done task is at 75% opacity, its title struck.
+- The card holds `taskRows()`'s whole row: status dot, number, repeat icon, title, due line and tags, progress, notes, priority, people, Mark done. Click or Enter opens the task; hover tints the border in the accent.
 
 ## Which task lists keep their rows?
-- A record's window (`openRecord()`) calls the same `taskRows()` into its own box, so it keeps the `.ws-list-row` list with its rules. Only the channel's tab is in the channel-look plan; the card look is scoped to `.ws-task-grid`, not drawn by an option of `taskRows()`.
+- A record's window (`openRecord()`) calls `taskRows()` into its own box: the `.ws-list-row` list with its rules. The card look is scoped to `.ws-task-grid`, not an option of `taskRows()`.
 - My Tasks draws its own one-line rows under date groups (`workspace-my-tasks-screen.md`).
 
 ## How does the Decisions tab look?
@@ -26,7 +26,7 @@ description: The channel's Tasks, Decisions and Files tabs as cards (CL2, CL4, T
 ## Why?
 - Owner (2026-11-10): the channel screen is "line after line"; the before/after picture he approved shows tasks as cards in a grid. CL2 of the channel look (`workspace-channel-screen.md`).
 - Owner (2026-11-11), on the Decisions tab on dev (six narrow cards a row, gaps under short ones, a green edge on each): cards up to twice as wide and one under the other, the green gone, a modern card; Tasks the same. CL4 (#8759).
-- Owner (2026-11-19): the Decisions tab ran past the screen and scrolled sideways; long decisions folded, cards wider, one under the other. Architect (2026-11-19): one column, the fold at about eight lines and 60 tiles a page read his words, changed on his look if he wants; the Tasks tab keeps its columns. TD1 (#10396).
+- Owner (2026-11-19): the Decisions tab ran past the screen and scrolled sideways; long decisions folded, cards wider, one under the other. Architect (2026-11-19): one column, the fold at about eight lines and 60 tiles a page read his words, changed on his look if he wants; the task cards keep their columns. TD1 (#10396).
 
 ## How was it checked?
-- #8688: sandbox before/after at 1440 and 390 px, light and dark (Tasks open and all, Decisions with a decision and a note, Files with pictures and documents); `tests/workspace_channel_look_test.php` pins the source. Dev look after landing.
+- #8688: sandbox before/after at 1440 and 390 px, light and dark; `tests/workspace_channel_look_test.php` pins the source.
