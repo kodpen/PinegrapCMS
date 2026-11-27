@@ -2137,10 +2137,16 @@ function pg_office_docx_edit_mark(&$state, $paragraph)
 
     $state['edit']['texts'][(string) $position] = $edit['text'];
 
-    // Bold, italic and underline of the text, which the editor's format
-    // bar starts from (includes/fn/office_docx_format.php).
+    // The look of the text and the paragraph's alignment when it is not
+    // the start, which the editor's format bar starts from
+    // (includes/fn/office_docx_format.php).
     if (function_exists('pg_office_docx_paragraph_marks')) {
         $state['edit']['marks'][(string) $position] = pg_office_docx_paragraph_marks($edit);
+        $align = pg_office_docx_paragraph_align($paragraph);
+
+        if ($align !== 'start') {
+            $state['edit']['aligns'][(string) $position] = $align;
+        }
     }
 
     return ' data-p="' . $position . '"';
@@ -2200,7 +2206,7 @@ function pg_office_docx_read($path, $edit = false)
     }
 
     if ($edit && ($refusal === '')) {
-        $state['edit'] = array('index' => array(), 'texts' => array(), 'marks' => array(), 'kinds' => array(), 'keeps' => array(), 'shut' => array());
+        $state['edit'] = array('index' => array(), 'texts' => array(), 'marks' => array(), 'kinds' => array(), 'aligns' => array(), 'keeps' => array(), 'shut' => array());
 
         foreach (pg_office_docx_paragraphs($document) as $position => $paragraph) {
             $state['edit']['index'][$paragraph->getNodePath()] = $position;
@@ -2220,7 +2226,7 @@ function pg_office_docx_read($path, $edit = false)
         $out['edit'] = ($refusal !== '')
             ? array('ok' => false, 'why' => $refusal)
             : array('ok' => true, 'why' => '', 'paragraphs' => (object) $state['edit']['texts'], 'marks' => (object) $state['edit']['marks'], 'kinds' => (object) $state['edit']['kinds'],
-                'keeps' => (object) $state['edit']['keeps'], 'shut' => (object) $state['edit']['shut']);
+                'aligns' => (object) $state['edit']['aligns'], 'keeps' => (object) $state['edit']['keeps'], 'shut' => (object) $state['edit']['shut']);
         $out['version'] = $version;
     }
 

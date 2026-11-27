@@ -3292,11 +3292,11 @@ function pg_office_docx_edit_refusal($zip)
 }
 
 /**
- * The text, format and kind one entry of a save asks for, checked.
+ * The text, format, kind and alignment one entry of a save asks for, checked.
  *
  * @param array $change an entry of pg_office_docx_save()'s changes
  * @param bool  $added  whether it adds a paragraph, whose text is '' when not given
- * @return array|string text, format, kind (each null when not asked); or the refusal's code
+ * @return array|string text, format, kind, align (each null when not asked); or the refusal's code
  */
 function pg_office_docx_change_parts($change, $added)
 {
@@ -3320,9 +3320,19 @@ function pg_office_docx_change_parts($change, $added)
         }
     }
 
+    $align = null;
+
+    if (isset($change['align'])) {
+        $align = pg_office_docx_align_request($change['align']);
+
+        if ($align === null) {
+            return 'none';
+        }
+    }
+
     $text = null;
 
-    if ($added || (($format === null) && ($kind === null)) || isset($change['text'])) {
+    if ($added || (($format === null) && ($kind === null) && ($align === null)) || isset($change['text'])) {
         $text = pg_office_xlsx_clean_text(isset($change['text']) ? $change['text'] : '');
 
         if ($text === null) {
@@ -3334,7 +3344,7 @@ function pg_office_docx_change_parts($change, $added)
         }
     }
 
-    return array('text' => $text, 'format' => $format, 'kind' => $kind);
+    return array('text' => $text, 'format' => $format, 'kind' => $kind, 'align' => $align);
 }
 
 /**
@@ -3343,10 +3353,11 @@ function pg_office_docx_change_parts($change, $added)
  * @param string $path      the document
  * @param array  $changes   list of [p => the paragraph's position (pg_office_docx_paragraphs()), text => the new text,
  *                          format => stretches to make bold, italic or underlined (pg_office_docx_format_request()),
- *                          kind => normal, heading1 to heading3, bullet or number (pg_office_docx_kind_request())];
- *                          text, format or kind may be left out when another is there. [p, delete => true] deletes
+ *                          kind => normal, heading1 to heading3, bullet or number (pg_office_docx_kind_request()),
+ *                          align => start, center, end or justify (pg_office_docx_align_request())];
+ *                          text, format, kind or align may be left out when another is there. [p, delete => true] deletes
  *                          the paragraph; [after => a paragraph's position, text, format, kind] adds one after it
- *                          (includes/fn/office_docx_paragraphs.php), several after the same one in the order listed
+ *                          (includes/fn/office_docx_paragraphs.php), several after the same one in the order listed, with an align too
  * @param string $version   what the person opened (pg_office_version())
  * @param string $directory where the new package is built; data/temp when ''
  * @return array ok, code, error, size, version, changed
@@ -3372,7 +3383,8 @@ function pg_office_docx_save($path, $changes, $version, $directory = '')
     // A paragraph named twice takes the last change. A change holds a new
     // text, a format change of stretches of the text (written after the
     // text, counted in it: includes/fn/office_docx_format.php), a kind
-    // (includes/fn/office_docx_kind.php), or any of them together.
+    // (includes/fn/office_docx_kind.php), an alignment, or any of them
+    // together.
     $wanted = array();
     $added = array();
 
@@ -3398,7 +3410,7 @@ function pg_office_docx_save($path, $changes, $version, $directory = '')
         }
 
         if (!empty($change['delete'])) {
-            $wanted[(int) $change['p']] = array('text' => null, 'format' => null, 'kind' => null, 'delete' => true);
+            $wanted[(int) $change['p']] = array('text' => null, 'format' => null, 'kind' => null, 'align' => null, 'delete' => true);
             continue;
         }
 
@@ -3438,10 +3450,10 @@ function pg_office_docx_save($path, $changes, $version, $directory = '')
  *
  * @param ZipArchive $zip
  * @param array      $wanted paragraph position => [text => the new text or null, format => stretches or null, kind => a kind or null,
- *                           delete => true to delete it]
+ *                           align => an alignment or null, delete => true to delete it]
  * @param callable   $fail
  * @param callable   $spool  writes a part to a file (pg_office_save_package())
- * @param array      $added  paragraphs to add: list of [after => a position, text, format, kind]
+ * @param array      $added  paragraphs to add: list of [after => a position, text, format, kind, align]
  * @return array ok, parts (part name => file), changed; or a refusal
  */
 function pg_office_docx_save_parts($zip, $wanted, $fail, $spool, $added = array())
@@ -3527,7 +3539,14 @@ function pg_office_docx_save_parts($zip, $wanted, $fail, $spool, $added = array(
         $changed[spl_object_hash($paragraphs[$position])] = true;
     }
 
-    // Paragraphs added, with their own text, format and kind; then those
+    // Alignments (includes/fn/office_docx_format.php).
+    foreach ($wanted as $position => $change) {
+        if (empty($change['delete']) && ($change['align'] !== null) && pg_office_docx_paragraph_align_set($paragraphs[$position], $change['align'])) {
+            $changed[spl_object_hash($paragraphs[$position])] = true;
+        }
+    }
+
+    // Paragraphs added, with their own text, format, kind and alignment; then those
     // deleted, each refused when it may not go
     // (includes/fn/office_docx_paragraphs.php).
     $kinds = array();

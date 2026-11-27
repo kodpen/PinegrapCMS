@@ -2,9 +2,10 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Bold, italic and underline set on or taken off a stretch of a Word
- * paragraph's text, in the file itself (the file window and a channel's
- * preview send it with a save's paragraphs, through pg_office_docx_save()).
+ * Bold, italic, underline, a text colour, a highlight and a font size set
+ * on or taken off a stretch of a Word paragraph's text, and a paragraph's
+ * alignment, in the file itself (the file window and a channel's preview
+ * send them with a save's paragraphs, through pg_office_docx_save()).
  *
  * The stretch is counted in the paragraph's text as the preview reads it
  * (pg_office_docx_paragraph_edit()). A run the stretch starts or ends inside
@@ -41,14 +42,45 @@ function pg_office_docx_format_bits()
 }
 
 /**
+ * The formats that take a value rather than on or off: a text colour
+ * (RRGGBB), a highlight (one of pg_office_docx_highlight_names()) and a font
+ * size in points; false takes each off.
+ *
+ * @return array property => the key the editor's marks give it in
+ */
+function pg_office_docx_format_values()
+{
+    return array('color' => 'c', 'highlight' => 'h', 'size' => 's');
+}
+
+/**
+ * The highlight colours Word names (ST_HighlightColor, none left out): a
+ * highlight is one of these, never a colour of its own.
+ *
+ * @return string[]
+ */
+function pg_office_docx_highlight_names()
+{
+    return array('yellow', 'green', 'cyan', 'magenta', 'blue', 'red', 'darkBlue', 'darkCyan', 'darkGreen', 'darkMagenta', 'darkRed',
+        'darkYellow', 'darkGray', 'lightGray', 'black', 'white');
+}
+
+/**
+ * The smallest and the largest font size the format entry writes, in points.
+ */
+define('PG_OFFICE_DOCX_SIZE_MIN', 8);
+define('PG_OFFICE_DOCX_SIZE_MAX', 72);
+
+/**
  * The run properties each format sets: Word sets the complex-script twin of
- * bold and italic with them.
+ * bold, italic and the size with them.
  *
  * @return array property => element local names
  */
 function pg_office_docx_format_elements()
 {
-    return array('bold' => array('b', 'bCs'), 'italic' => array('i', 'iCs'), 'underline' => array('u'));
+    return array('bold' => array('b', 'bCs'), 'italic' => array('i', 'iCs'), 'underline' => array('u'), 'color' => array('color'),
+        'highlight' => array('highlight'), 'size' => array('sz', 'szCs'));
 }
 
 /**
@@ -119,11 +151,56 @@ function pg_office_docx_run_bits($run)
 }
 
 /**
+ * A run's text colour, highlight and font size as its own properties give
+ * them: a colour as RRGGBB (auto left out), a highlight Word names (none
+ * left out), a size in points.
+ *
+ * @param DOMElement $run
+ * @return array c, h, s, each only when the run has it
+ */
+function pg_office_docx_run_look($run)
+{
+    $look = array();
+    $properties = pg_office_docx_child($run, 'rPr');
+
+    if ($properties === null) {
+        return $look;
+    }
+
+    $color = pg_office_docx_child($properties, 'color');
+    $value = ($color !== null) ? (string) pg_office_attr($color, 'val') : '';
+
+    if (preg_match('/^[0-9A-Fa-f]{6}$/', $value)) {
+        $look['c'] = strtoupper($value);
+    }
+
+    $highlight = pg_office_docx_child($properties, 'highlight');
+    $value = ($highlight !== null) ? strtolower((string) pg_office_attr($highlight, 'val')) : '';
+
+    foreach (pg_office_docx_highlight_names() as $name) {
+        if (strtolower($name) === $value) {
+            $look['h'] = $name;
+        }
+    }
+
+    $size = pg_office_docx_child($properties, 'sz');
+    $value = ($size !== null) ? (string) pg_office_attr($size, 'val') : '';
+
+    if (ctype_digit($value) && ((int) $value > 0)) {
+        $look['s'] = ((int) $value % 2 === 0) ? (int) $value / 2 : (int) $value / 2.0;
+    }
+
+    return $look;
+}
+
+/**
  * The look of an editable paragraph's text, stretch by stretch: what the
- * editor starts from when it shows and changes bold, italic and underline.
+ * editor starts from when it shows and changes the format.
  *
  * @param array $edit pg_office_docx_paragraph_edit() of it
- * @return array [[characters, bits], ...] covering the text in order
+ * @return array [[characters, bits], ...] covering the text in order; a
+ *               stretch with a colour, highlight or size of its own carries
+ *               pg_office_docx_run_look() third: [characters, bits, {c, h, s}]
  */
 function pg_office_docx_paragraph_marks($edit)
 {
@@ -136,13 +213,19 @@ function pg_office_docx_paragraph_marks($edit)
             continue;
         }
 
-        $bits = pg_office_docx_run_bits($run['run']);
+        $mark = array($length, pg_office_docx_run_bits($run['run']));
+        $look = pg_office_docx_run_look($run['run']);
+
+        if (!empty($look)) {
+            $mark[] = $look;
+        }
+
         $last = count($marks) - 1;
 
-        if (($last >= 0) && ($marks[$last][1] === $bits)) {
+        if (($last >= 0) && (array_slice($marks[$last], 1) === array_slice($mark, 1))) {
             $marks[$last][0] += $length;
         } else {
-            $marks[] = array($length, $bits);
+            $marks[] = $mark;
         }
     }
 
@@ -151,7 +234,8 @@ function pg_office_docx_paragraph_marks($edit)
 
 /**
  * A paragraph's format change as a save sends it, checked: a list of
- * {start, end, set: {bold|italic|underline: true|false}}.
+ * {start, end, set: {bold|italic|underline: true|false, color: RRGGBB|false,
+ * highlight: a Word highlight name|false, size: points|false}}.
  *
  * @param mixed $format
  * @return array|null [[start, end, [property => bool]], ...]; null when it is not one
@@ -163,6 +247,7 @@ function pg_office_docx_format_request($format)
     }
 
     $bits = pg_office_docx_format_bits();
+    $values = pg_office_docx_format_values();
     $out = array();
 
     foreach ($format as $range) {
@@ -191,7 +276,13 @@ function pg_office_docx_format_request($format)
         $set = array();
 
         foreach ($range['set'] as $property => $on) {
-            if (!isset($bits[$property]) || !is_bool($on)) {
+            if (isset($values[$property]) && ($on !== false)) {
+                $on = pg_office_docx_format_value($property, $on);
+
+                if ($on === null) {
+                    return null;
+                }
+            } elseif (!(isset($bits[$property]) || isset($values[$property])) || !is_bool($on)) {
                 return null;
             }
 
@@ -202,6 +293,48 @@ function pg_office_docx_format_request($format)
     }
 
     return $out;
+}
+
+/**
+ * A colour, highlight or size a format change asks for, checked: a colour
+ * as six hex digits, a highlight by a name Word has (any case), a size in
+ * half points from PG_OFFICE_DOCX_SIZE_MIN to PG_OFFICE_DOCX_SIZE_MAX.
+ *
+ * @param string $property color, highlight or size
+ * @param mixed  $value
+ * @return string|int|float|null as written (RRGGBB, Word's name, points); null when it is not one
+ */
+function pg_office_docx_format_value($property, $value)
+{
+    if ($property === 'color') {
+        return (is_string($value) && preg_match('/^[0-9A-Fa-f]{6}$/', $value)) ? strtoupper($value) : null;
+    }
+
+    if ($property === 'highlight') {
+        if (!is_string($value)) {
+            return null;
+        }
+
+        foreach (pg_office_docx_highlight_names() as $name) {
+            if (strtolower($name) === strtolower($value)) {
+                return $name;
+            }
+        }
+
+        return null;
+    }
+
+    if (!is_int($value) && !is_float($value) && !(is_string($value) && is_numeric($value))) {
+        return null;
+    }
+
+    $half = (float) $value * 2;
+
+    if (($half != floor($half)) || ($half < PG_OFFICE_DOCX_SIZE_MIN * 2) || ($half > PG_OFFICE_DOCX_SIZE_MAX * 2)) {
+        return null;
+    }
+
+    return (fmod($half, 2) == 0) ? (int) ($half / 2) : $half / 2;
 }
 
 /**
@@ -346,8 +479,6 @@ function pg_office_docx_rpr_set($run, $property, $on, $styled)
         $made = true;
     }
 
-    $order = array_flip(pg_office_docx_rpr_order());
-
     foreach ($elements[$property] as $local) {
         $node = pg_office_docx_child($properties, $local);
         $val = ($node !== null) ? strtolower(pg_office_attr($node, 'val')) : '';
@@ -366,17 +497,7 @@ function pg_office_docx_rpr_set($run, $property, $on, $styled)
         }
 
         if ($node === null) {
-            $node = $document->createElementNS($namespace, $prefix . $local);
-            $before = null;
-
-            foreach ($properties->childNodes as $child) {
-                if (($child instanceof DOMElement) && isset($order[$child->localName]) && ($order[$child->localName] > $order[$local])) {
-                    $before = $child;
-                    break;
-                }
-            }
-
-            $properties->insertBefore($node, $before);
+            $node = pg_office_docx_rpr_place($properties, $local);
         }
 
         $value = $on ? (($local === 'u') ? 'single' : '') : (($local === 'u') ? 'none' : '0');
@@ -393,6 +514,98 @@ function pg_office_docx_rpr_set($run, $property, $on, $styled)
     }
 
     if ($made && !$properties->hasChildNodes()) {
+        $run->removeChild($properties);
+    }
+}
+
+/**
+ * A new, empty run property put in its place among the others (CT_RPr
+ * order).
+ *
+ * @param DOMElement $properties rPr
+ * @param string     $local      its local name
+ * @return DOMElement
+ */
+function pg_office_docx_rpr_place($properties, $local)
+{
+    $order = array_flip(pg_office_docx_rpr_order());
+    $prefix = ((string) $properties->prefix !== '') ? $properties->prefix . ':' : '';
+    $node = $properties->ownerDocument->createElementNS((string) $properties->namespaceURI, $prefix . $local);
+    $before = null;
+
+    foreach ($properties->childNodes as $child) {
+        if (($child instanceof DOMElement) && isset($order[$child->localName]) && ($order[$child->localName] > $order[$local])) {
+            $before = $child;
+            break;
+        }
+    }
+
+    $properties->insertBefore($node, $before);
+
+    return $node;
+}
+
+/**
+ * Sets a text colour, a highlight or a font size on a run, or takes it off
+ * (false), keeping every other property. A colour is written as RRGGBB with
+ * any theme colour it had left off, as the theme would win over it; a size
+ * in half points with its complex-script twin. Taken off where a style may
+ * give it back, a colour is written auto and a highlight none; a size has no
+ * value that means none, so it goes and the style's size is the one meant.
+ *
+ * @param DOMElement            $run
+ * @param string                $property color, highlight or size
+ * @param string|int|float|bool $value    pg_office_docx_format_value(), or false
+ * @param bool                  $styled   whether a style may set it
+ */
+function pg_office_docx_rpr_value_set($run, $property, $value, $styled)
+{
+    $elements = pg_office_docx_format_elements();
+    $namespace = (string) $run->namespaceURI;
+    $prefix = ((string) $run->prefix !== '') ? $run->prefix . ':' : '';
+    $properties = pg_office_docx_child($run, 'rPr');
+
+    if ($value === false) {
+        $write = ($styled && ($property !== 'size')) ? (($property === 'color') ? 'auto' : 'none') : '';
+    } else {
+        $write = ($property === 'size') ? (string) (int) round($value * 2) : (string) $value;
+    }
+
+    if ($properties === null) {
+        if ($write === '') {
+            return;
+        }
+
+        $properties = $run->ownerDocument->createElementNS($namespace, $prefix . 'rPr');
+        $run->insertBefore($properties, $run->firstChild);
+    }
+
+    foreach ($elements[$property] as $local) {
+        $node = pg_office_docx_child($properties, $local);
+
+        if ($write === '') {
+            if ($node !== null) {
+                $properties->removeChild($node);
+            }
+            continue;
+        }
+
+        if ($node === null) {
+            $node = pg_office_docx_rpr_place($properties, $local);
+        } elseif ((pg_office_attr($node, 'val') === $write) && !$node->hasAttributeNS($namespace, 'themeColor')) {
+            continue;
+        }
+
+        foreach (iterator_to_array($node->attributes) as $attribute) {
+            if (in_array($attribute->localName, array('val', 'themeColor', 'themeTint', 'themeShade'), true)) {
+                $node->removeAttributeNode($attribute);
+            }
+        }
+
+        $node->setAttributeNS($namespace, $prefix . 'val', $write);
+    }
+
+    if (!$properties->hasChildNodes()) {
         $run->removeChild($properties);
     }
 }
@@ -475,8 +688,8 @@ function pg_office_docx_runs_join($first, $second)
 }
 
 /**
- * Sets bold, italic or underline on stretches of an editable paragraph's
- * text, splitting the runs a stretch starts or ends inside and joining the
+ * Sets bold, italic, underline, a colour, a highlight or a size on
+ * stretches of an editable paragraph's text, splitting the runs a stretch starts or ends inside and joining the
  * reached runs that end up looking the same.
  *
  * @param DOMElement $paragraph
@@ -486,6 +699,7 @@ function pg_office_docx_runs_join($first, $second)
 function pg_office_docx_paragraph_format($paragraph, $ranges)
 {
     $reached = new SplObjectStorage();
+    $values = pg_office_docx_format_values();
 
     foreach ($ranges as $range) {
         list($start, $end, $set) = $range;
@@ -528,7 +742,11 @@ function pg_office_docx_paragraph_format($paragraph, $ranges)
                 $styled = pg_office_docx_run_styled($paragraph, $run['run']);
 
                 foreach ($set as $property => $on) {
-                    pg_office_docx_rpr_set($run['run'], $property, $on, $styled);
+                    if (isset($values[$property])) {
+                        pg_office_docx_rpr_value_set($run['run'], $property, $on, $styled);
+                    } else {
+                        pg_office_docx_rpr_set($run['run'], $property, $on, $styled);
+                    }
                 }
 
                 $reached[$run['run']] = true;
@@ -557,4 +775,99 @@ function pg_office_docx_paragraph_format($paragraph, $ranges)
     }
 
     return '';
+}
+
+/**
+ * The alignments a paragraph entry may ask for, with the value each is
+ * written as: left and right, which Word reads as the start and the end of
+ * a right-to-left paragraph too, rather than start and end, which older
+ * readers do not know.
+ *
+ * @return array alignment => jc value
+ */
+function pg_office_docx_aligns()
+{
+    return array('start' => 'left', 'center' => 'center', 'end' => 'right', 'justify' => 'both');
+}
+
+/**
+ * A paragraph entry's alignment, checked.
+ *
+ * @param mixed $align
+ * @return string|null start, center, end or justify; null when it is not one
+ */
+function pg_office_docx_align_request($align)
+{
+    return (is_string($align) && isset(pg_office_docx_aligns()[$align])) ? $align : null;
+}
+
+/**
+ * A paragraph's alignment as the editor's bar shows it, from its own
+ * properties: one the bar does not offer (distribute, thai) is start.
+ *
+ * @param DOMElement $paragraph
+ * @return string start, center, end or justify
+ */
+function pg_office_docx_paragraph_align($paragraph)
+{
+    $properties = pg_office_docx_child($paragraph, 'pPr');
+    $jc = ($properties !== null) ? pg_office_docx_child($properties, 'jc') : null;
+
+    if ($jc === null) {
+        return 'start';
+    }
+
+    $map = array('left' => 'start', 'start' => 'start', 'center' => 'center', 'right' => 'end', 'end' => 'end', 'both' => 'justify');
+    $value = strtolower((string) pg_office_attr($jc, 'val'));
+
+    return isset($map[$value]) ? $map[$value] : 'start';
+}
+
+/**
+ * Aligns a paragraph, every other property kept. Start is written only
+ * where a paragraph style may align it otherwise; without one the
+ * alignment, and properties left empty, go. Nothing is written when the
+ * paragraph is aligned so already.
+ *
+ * @param DOMElement $paragraph
+ * @param string     $align pg_office_docx_align_request()
+ * @return bool whether it was changed
+ */
+function pg_office_docx_paragraph_align_set($paragraph, $align)
+{
+    $properties = pg_office_docx_child($paragraph, 'pPr');
+    $jc = ($properties !== null) ? pg_office_docx_child($properties, 'jc') : null;
+    $styled = ($properties !== null) && (pg_office_docx_child($properties, 'pStyle') !== null);
+
+    if (($align === 'start') && !$styled) {
+        if ($jc === null) {
+            return false;
+        }
+
+        $properties->removeChild($jc);
+
+        if (!$properties->hasChildNodes()) {
+            $paragraph->removeChild($properties);
+        }
+
+        return true;
+    }
+
+    if (($jc !== null) && (pg_office_docx_paragraph_align($paragraph) === $align)) {
+        return false;
+    }
+
+    $namespace = (string) $paragraph->namespaceURI;
+    $prefix = ((string) $paragraph->prefix !== '') ? $paragraph->prefix . ':' : '';
+
+    if ($properties === null) {
+        $properties = $paragraph->ownerDocument->createElementNS($namespace, $prefix . 'pPr');
+        $paragraph->insertBefore($properties, $paragraph->firstChild);
+    }
+
+    $node = $paragraph->ownerDocument->createElementNS($namespace, $prefix . 'jc');
+    $node->setAttributeNS($namespace, $prefix . 'val', pg_office_docx_aligns()[$align]);
+    pg_office_docx_ppr_put($properties, $node);
+
+    return true;
 }
