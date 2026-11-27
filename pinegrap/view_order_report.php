@@ -863,6 +863,7 @@ if (!$_POST) {
             orders.surcharge,
             orders.installment_charges,
             orders.total,
+            " . (pg_order_charged_ready() ? 'orders.charged_currency, orders.charged_rate,' : '') . "
             orders.status
         FROM orders
         $join_order_items

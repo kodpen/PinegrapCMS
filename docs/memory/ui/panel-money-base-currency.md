@@ -6,7 +6,7 @@ description: Panel amounts print in the base currency (prepare_amount()), never 
 ## How does the panel print an amount?
 - A base-currency figure (prices, order totals, ERP account balances) under the base symbol, unconverted: `prepare_amount($minor / 100)` or `pg_format_money($minor / 100, BASE_CURRENCY_SYMBOL)`.
 - Never `prepare_price_for_output()` / `pg_visitor_money()` in the panel: they multiply by `VISITOR_CURRENCY_EXCHANGE_RATE` and print `VISITOR_CURRENCY_SYMBOL`, which follow the shop currency the session picked (`init.php`, `update_currency.php`). An operator who switched the shop to EUR in the same browser read panel figures converted, under €.
-- An amount stored in another currency (ERP invoice, receipt, incoming e-invoice, sales quote; an imported marketplace order) is printed in that currency, unconverted.
+- An amount stored in another currency (ERP invoice, receipt, incoming e-invoice, sales quote; an imported marketplace order) is printed in that currency, unconverted. An order's amounts: `pg_order_money_symbol($order)` or `pg_order_money()` (commerce/order-currency-screens.md).
 
 ## Which helpers do it in the Workspace?
 - `ws_money_out($minor)` (`includes/workspace/refs.php`): base amount, `prepare_amount()`, decoded plain text. Feeds the order, product and ERP account chips, watch `{{amount}}`, scheduled actions, the assistant, change cards and bulk changes. Until #3724 it went through `prepare_price_for_output()`.

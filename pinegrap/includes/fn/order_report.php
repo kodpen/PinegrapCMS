@@ -31,10 +31,13 @@ function pg_order_report_figure_names()
 }
 
 /**
- * One order's row of the report, in minor units. Pure.
+ * One order's row of the report, in base minor units: the report adds
+ * orders up, so an order kept in another currency counts at its rate
+ * (pg_order_base_amount(); 0 when the rate is not known). Pure.
  *
  * @param array      $row  the orders row (id, order_number, order_date,
- *                         status and the figure columns)
+ *                         status, the figure columns, and charged_currency
+ *                         and charged_rate when the site has them)
  * @param array|null $cart an incomplete order's active lines summed
  *                         (subtotal, tax, shipping), null when it has none
  * @return array id, order_number, order_date and the figures as int
@@ -49,7 +52,7 @@ function pg_order_report_order($row, $cart = null)
 
     if (($row['status'] ?? '') !== 'incomplete') {
         foreach (pg_order_report_figure_names() as $name) {
-            $order[$name] = (int) round((float) ($row[$name] ?? 0));
+            $order[$name] = pg_order_base_amount((int) round((float) ($row[$name] ?? 0)), $row);
         }
 
         return $order;

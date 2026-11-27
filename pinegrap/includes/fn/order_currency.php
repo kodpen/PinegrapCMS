@@ -312,6 +312,139 @@ function pg_order_money($order, $amount)
 }
 
 /**
+ * The symbol and suffix a panel screen writes an order's amounts with, ready
+ * for HTML: pg_format_money($major, $money['symbol'], $money['suffix']). The
+ * base symbol as stored (an entity prints as its glyph) for an order in the
+ * base currency, the order's currency symbol, else its code after the figure.
+ * Read once a request.
+ *
+ * @param array $order  charged_currency
+ * @return array  array('symbol' => string, 'suffix' => string)
+ */
+function pg_order_money_symbol($order)
+{
+    static $symbols = null;
+
+    $base = defined('BASE_CURRENCY_CODE') ? (string) BASE_CURRENCY_CODE : '';
+    $code = pg_order_amount_currency($order, $base);
+
+    if (($symbols === null) && ($code !== pg_order_currency_code($base))) {
+        $symbols = array();
+
+        foreach ((array) db_items("SELECT code, symbol FROM currencies") as $row) {
+            $symbols[pg_order_currency_code($row['code'])] = (string) $row['symbol'];
+        }
+    }
+
+    $parts = pg_order_money_parts($code, $base, defined('BASE_CURRENCY_SYMBOL') ? (string) BASE_CURRENCY_SYMBOL : '', (array) $symbols);
+
+    return array('symbol' => $parts['symbol'], 'suffix' => h($parts['suffix']));
+}
+
+/**
+ * How the site's order screens print while an order kept in another currency
+ * than the base is drawn: its amounts as they are (rate 1), its currency's
+ * symbol and its code after the figure. null for an order in the base
+ * currency, which keeps the visitor's display currency as before. Pure.
+ *
+ * @param array  $order    charged_currency
+ * @param string $base     BASE_CURRENCY_CODE
+ * @param array  $symbols  code => symbol from currencies
+ * @return array|null  code, symbol, suffix, rate
+ */
+function pg_order_display_for($order, $base, $symbols)
+{
+    $code = pg_order_currency_code(isset($order['charged_currency']) ? $order['charged_currency'] : '');
+
+    if (($code === '') || ($code === pg_order_currency_code($base))) {
+        return null;
+    }
+
+    return array(
+        'code'   => $code,
+        'symbol' => isset($symbols[$code]) ? trim((string) $symbols[$code]) : '',
+        'suffix' => ' ' . $code,
+        'rate'   => 1.0,
+    );
+}
+
+/**
+ * The display in force (pg_order_display_for()), null when none. $set
+ * replaces it: false clears it, an array sets it.
+ *
+ * @param array|false|null $set
+ * @return array|null
+ */
+function pg_order_display($set = null)
+{
+    static $display = null;
+
+    if ($set === false) {
+        $display = null;
+    } elseif (is_array($set)) {
+        $display = $set;
+    }
+
+    return $display;
+}
+
+/**
+ * Starts drawing an order on the site: until pg_order_display_end(), the
+ * site's money functions (prepare_price_for_output(), pg_visitor_amount(),
+ * pg_visitor_money()) print that order's amounts in its own currency when it
+ * is kept in another than the base. Reads the order's currency by id.
+ *
+ * @param int $order_id
+ * @return array|null  the display before, for pg_order_display_end()
+ */
+function pg_order_display_begin($order_id)
+{
+    $before = pg_order_display();
+
+    if (!pg_order_charged_ready() || ((int) $order_id < 1)) {
+        return $before;
+    }
+
+    $code = pg_order_currency_code(db_value("SELECT charged_currency FROM orders WHERE id = '" . (int) $order_id . "' LIMIT 1"));
+    $base = defined('BASE_CURRENCY_CODE') ? (string) BASE_CURRENCY_CODE : '';
+
+    if (($code === '') || ($code === pg_order_currency_code($base))) {
+        return $before;
+    }
+
+    $symbol = (string) db_value("SELECT symbol FROM currencies WHERE UPPER(code) = '" . e($code) . "' ORDER BY id LIMIT 1");
+    $display = pg_order_display_for(array('charged_currency' => $code), $base, array($code => $symbol));
+    pg_order_display(($display === null) ? false : $display);
+
+    return $before;
+}
+
+/**
+ * Ends what pg_order_display_begin() started, back to the display before.
+ *
+ * @param array|null $before
+ * @return void
+ */
+function pg_order_display_end($before)
+{
+    pg_order_display(is_array($before) ? $before : false);
+}
+
+/**
+ * Whether a site's order screen converts its amounts into the visitor's
+ * currency, and so adds the base total charged beside them: never while an
+ * order kept in its own currency is drawn.
+ *
+ * @return bool
+ */
+function pg_order_display_converts()
+{
+    return (pg_order_display() === null)
+        && defined('VISITOR_CURRENCY_CODE') && defined('BASE_CURRENCY_CODE')
+        && (VISITOR_CURRENCY_CODE != BASE_CURRENCY_CODE);
+}
+
+/**
  * Whether the fill gives an order read from the table its charged currency:
  * a marketplace order still without one whose currency code is another
  * currency than the base. Pure.

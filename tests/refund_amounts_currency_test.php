@@ -8,7 +8,9 @@
  * charges BASE_CURRENCY_CODE), while orders.currency_code is only the
  * currency the visitor was shown prices in. The amounts were labelled with
  * that code, so a 1.200 TL order whose buyer browsed in EUR read
- * '1.200,00 EUR'. The screens run queries, so they are read from source.
+ * '1.200,00 EUR'. The order screen now prints them in the currency the
+ * order is kept in (orders.charged_currency, the base one for every web
+ * order so far). The screens run queries, so they are read from source.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -74,11 +76,11 @@ function test_refund_amounts_order_screen_in_base_currency()
 
 	$refund = pg_test_refund_currency_slice($code, '$refund_amount_text   = ', 'if (in_array($refund_state');
 	pg_assert_true(strpos($refund, 'currency_code') === false, 'the refund texts do not use the visitor\'s currency');
-	pg_assert_same(2, substr_count($refund, 'BASE_CURRENCY_SYMBOL)'), 'the refund amount and the gift card part print the store\'s symbol');
+	pg_assert_same(2, substr_count($refund, '$order_amount('), 'the refund amount and the gift card part print the order\'s currency (pg_order_money_symbol())');
 
 	$cancel = pg_test_refund_currency_slice($code, 'of the payment was refunded already.', '} elseif ($cancel_payment_plan[\'action\'] === \'manual\') {');
 	pg_assert_true(strpos($cancel, 'currency_code') === false, 'the cancel note does not use the visitor\'s currency');
-	pg_assert_same(2, substr_count($cancel, 'BASE_CURRENCY_SYMBOL)'), 'refunded and remaining print the store\'s symbol');
+	pg_assert_same(2, substr_count($cancel, '$order_amount('), 'refunded and remaining print the order\'s currency');
 
 	$notice = pg_test_refund_currency_slice($code, 'if ($cancelled_gift_card_cents > 0) {', 'go(URL_SCHEME');
 	pg_assert_true(strpos($notice, 'currency_code') === false, 'the notice after cancelling does not use the visitor\'s currency');

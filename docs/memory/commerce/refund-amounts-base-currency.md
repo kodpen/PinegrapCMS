@@ -10,7 +10,7 @@ description: Refund and cancel amounts on the dashboard 'To refund' lane and the
 
 ## Where is this applied?
 - Dashboard Operations Desk, 'To refund' lane (`pg_dashboard_ops_refunds()`, `includes/dashboard/widgets/widget_9.php`): one `COUNT/SUM(total)` over the waiting refunds, no `GROUP BY currency_code`; rows and the lane sum print `pg_format_money(x / 100, BASE_CURRENCY_SYMBOL)`, like the 'To ship' lane. The old "In several currencies" sub-line is gone.
-- `view_order.php`: the Refund Pending banner and the "Mark refund as processed" dialog amount, the gift card sentence, the cancel dialog's refunded / remaining note and the gift card notice after cancelling all use `pg_format_money(cents / 100, BASE_CURRENCY_SYMBOL)`, as the payment refund dialog and the Totals card do.
+- `view_order.php`: the Refund Pending banner, the "Mark refund as processed" dialog amount, the gift card sentence, the cancel dialog's refunded / remaining note, the payment refund dialog and the Totals card print in the order's own currency (`pg_order_money_symbol()`, commerce/order-currency-screens.md), which is the base currency for every web order so far; the gift card notice after cancelling stays base.
 
 - Personal data export, the PDF summary's Orders table (`_pg_privacy_export_order_currency()`, `includes/fn/privacy_export.php`): the total carries `BASE_CURRENCY_CODE`, or `currency_code` on a marketplace order. Before, it printed `currency_code` for every order (#7148, `tests/privacy_export_test.php`).
 
