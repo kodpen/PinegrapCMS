@@ -688,9 +688,11 @@ function pg_office_xlsx_date_styles($zip, &$refused = null, &$looks = null)
 
 /**
  * What each cell format of a styles part looks like in the preview, and what
- * the format controls show as chosen: bold (b), italic (i), a text colour (c)
- * and a solid fill (bg) given as RRGGBB, a horizontal alignment (a: left,
- * center, right) and the kind of number format (n: number, money, percent,
+ * the format controls show as chosen: bold (b), italic (i), underline (u),
+ * strikethrough (st), a font size other than the default font's (sz, in
+ * points), a text colour (c) and a solid fill (bg) given as RRGGBB, a
+ * horizontal alignment (a: left, center, right), wrap text (w), the border
+ * sides drawn (bd: l, r, t, b in that order) and the kind of number format (n: number, money, percent,
  * date, or other for one the controls do not offer; general is left out).
  * A number, money or percent also carries its decimals (d) and grouping
  * (g), money its symbol (y) and its place (p: before or after).
@@ -744,8 +746,9 @@ function pg_office_xlsx_style_looks($styles)
     };
 
     $fonts = array();
+    $base_size = null;
 
-    foreach ($list('fonts', 'font') as $font) {
+    foreach ($list('fonts', 'font') as $index => $font) {
         $look = array();
 
         if ($on($child($font, 'b'))) {
@@ -754,6 +757,27 @@ function pg_office_xlsx_style_looks($styles)
 
         if ($on($child($font, 'i'))) {
             $look['i'] = 1;
+        }
+
+        $underline = $child($font, 'u');
+
+        if ($on($underline) && (strtolower(pg_office_attr($underline, 'val')) !== 'none')) {
+            $look['u'] = 1;
+        }
+
+        if ($on($child($font, 'strike'))) {
+            $look['st'] = 1;
+        }
+
+        // A size of its own: one the first font, the workbook's default,
+        // does not have.
+        $size = $child($font, 'sz');
+        $size = (($size !== null) && is_numeric(pg_office_attr($size, 'val'))) ? (float) pg_office_attr($size, 'val') : null;
+
+        if ($index === 0) {
+            $base_size = $size;
+        } elseif (($size !== null) && ($size !== $base_size) && ($size > 0) && ($size <= 409)) {
+            $look['sz'] = (floor($size) === $size) ? (int) $size : $size;
         }
 
         $color = $rgb($child($font, 'color'));
@@ -770,6 +794,27 @@ function pg_office_xlsx_style_looks($styles)
     foreach ($list('fills', 'fill') as $fill) {
         $pattern = $child($fill, 'patternFill');
         $fills[] = (($pattern !== null) && (pg_office_attr($pattern, 'patternType') === 'solid')) ? $rgb($child($pattern, 'fgColor')) : '';
+    }
+
+    // The sides each border draws, as l, r, t and b.
+    $borders = array();
+
+    foreach ($list('borders', 'border') as $border) {
+        $drawn = '';
+
+        foreach (array('l' => array('left', 'start'), 'r' => array('right', 'end'), 't' => array('top'), 'b' => array('bottom')) as $letter => $names) {
+            foreach ($names as $name) {
+                $side = $child($border, $name);
+
+                if ($side !== null) {
+                    $style = pg_office_attr($side, 'style');
+                    $drawn .= (($style !== '') && ($style !== 'none')) ? $letter : '';
+                    break;
+                }
+            }
+        }
+
+        $borders[] = $drawn;
     }
 
     $codes = array();
@@ -795,6 +840,16 @@ function pg_office_xlsx_style_looks($styles)
 
         if (isset($aligns[$horizontal])) {
             $look['a'] = $aligns[$horizontal];
+        }
+
+        if (($alignment !== null) && in_array(strtolower(pg_office_attr($alignment, 'wrapText')), array('1', 'true'), true)) {
+            $look['w'] = 1;
+        }
+
+        $border_id = (int) pg_office_attr($xf, 'borderId');
+
+        if (isset($borders[$border_id]) && ($borders[$border_id] !== '')) {
+            $look['bd'] = $borders[$border_id];
         }
 
         $format_id = (int) pg_office_attr($xf, 'numFmtId');

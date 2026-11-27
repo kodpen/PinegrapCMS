@@ -6,7 +6,8 @@ module: office
 
 ## What does the preview show of a cell's format?
 - `pg_office_xlsx_read()` sends `looks` (style number => look) for the styles the shown cells use, and each row `s` (column => style) and `show` (column => the number as its format writes it). `cells` keeps the raw value the editor changes.
-- A look (`pg_office_xlsx_style_looks()`, from the same read of the styles part as the date styles): `b`, `i`, `c` and `bg` (RRGGBB), `a` (left, center, right), `n` (number, money, percent, date, other; general left out), with `d` decimals, `g` grouping, money's `y` symbol and `p` place.
+- A look (`pg_office_xlsx_style_looks()`, from the same read of the styles part as the date styles): `b`, `i`, `u` (any underline but none), `st` (strikethrough), `sz` (points, only one other than the first font's), `c` and `bg` (RRGGBB), `a` (left, center, right),
+- also `w` (wrap text), `bd` (sides with a line, `l`, `r`, `t`, `b` in that order; diagonals left out), `n` (number, money, percent, date, other; general left out), with `d` decimals, `g` grouping, money's `y` symbol and `p` place.
 - Only RGB colours are drawn; a theme or palette colour needs the theme part, which is not read, so the cell keeps the page's look.
 - A coloured cell is drawn on paper: a text colour with no fill on white, a fill with no text colour under black, so it is not lost in the dark theme. A changed cell keeps its warning colour.
 - `pg_office_xlsx_shown_number()` writes number, money and percent with the site's separators (`pg_number_separators()`). Dates were already shown as dates.

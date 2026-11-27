@@ -112,7 +112,7 @@ function test_office_save_list_steps()
 
 	$refused = pg_office_xlsx_save_steps(array(
 		array('sheet' => 0, 'cell' => 'A1', 'value' => 'x'),
-		array('op' => 'format', 'sheet' => 0, 'range' => 'A1', 'set' => array('size' => 9)),
+		array('op' => 'format', 'sheet' => 0, 'range' => 'A1', 'set' => array('font' => 'Arial')),
 	));
 	pg_assert_same(array(false, 'none', 1), array($refused['ok'], $refused['code'], $refused['at']), 'a change that is not one is refused with its place');
 

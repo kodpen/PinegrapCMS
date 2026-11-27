@@ -5,8 +5,9 @@
  * The format of selected cells of an Excel workbook changed on the server,
  * in the file itself (the file window and a channel's preview send such
  * changes in a save's ordered list, through pg_office_xlsx_save()): bold, italic,
- * text colour, fill, horizontal alignment and the number format (general,
- * number, money, percent, date).
+ * underline, strikethrough, font size, text colour, fill, borders (none, all
+ * sides, outline, bottom), horizontal alignment, wrap text and the number
+ * format (general, number, money, percent, date).
  *
  * A cell's style is never changed in place, as other cells share it: each
  * style the range uses gets a new cell format with the asked changes, built
@@ -37,6 +38,12 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 define('PG_OFFICE_FORMAT_FIRST_CUSTOM', 164);
 
+/**
+ * The font sizes, in points, the format entry takes.
+ */
+define('PG_OFFICE_FORMAT_SIZE_MIN', 8);
+define('PG_OFFICE_FORMAT_SIZE_MAX', 72);
+
 /* ---------------------------------------------------------------------------
    The request
    --------------------------------------------------------------------------- */
@@ -46,10 +53,11 @@ define('PG_OFFICE_FORMAT_FIRST_CUSTOM', 164);
  * when the entry is not one.
  *
  * The entry: {op: format, sheet, name, range: "B2:D5", set: {...}}, where
- * set holds one or more of bold and italic (true or false), color and fill
- * ("RRGGBB" or "#RRGGBB"; "" takes it off), align ("", left, center, right)
- * and number (general, number, money, percent, date; money with an optional
- * symbol).
+ * set holds one or more of bold, italic, underline, strike and wrap (true
+ * or false), size (whole points, 8 to 72), border (none, all, outline,
+ * bottom), color and fill ("RRGGBB" or "#RRGGBB"; "" takes it off), align
+ * ("", left, center, right) and number (general, number, money, percent,
+ * date; money with an optional symbol).
  *
  * @param mixed $change
  * @return array|null sheet, name, range (pg_office_xlsx_range()), set (colours as AARRGGBB)
@@ -74,6 +82,9 @@ function pg_office_format_request($change)
         switch ($key) {
             case 'bold':
             case 'italic':
+            case 'underline':
+            case 'strike':
+            case 'wrap':
                 if (!is_bool($value)) {
                     return null;
                 }
@@ -97,6 +108,20 @@ function pg_office_format_request($change)
                 break;
             case 'number':
                 if (!in_array($value, array('general', 'number', 'money', 'percent', 'date'), true)) {
+                    return null;
+                }
+
+                $set[$key] = $value;
+                break;
+            case 'size':
+                if (!is_int($value) || ($value < PG_OFFICE_FORMAT_SIZE_MIN) || ($value > PG_OFFICE_FORMAT_SIZE_MAX)) {
+                    return null;
+                }
+
+                $set[$key] = $value;
+                break;
+            case 'border':
+                if (!in_array($value, array('none', 'all', 'outline', 'bottom'), true)) {
                     return null;
                 }
 
@@ -140,6 +165,48 @@ function pg_office_format_money_code($symbol)
     $symbol = trim(preg_replace('/["\\\\\x00-\x1F]/u', '', (string) $symbol));
 
     return ($symbol === '') ? '#,##0.00' : '#,##0.00\ "' . $symbol . '"';
+}
+
+/**
+ * The sides of one cell a border asked of a range sets: side => true for a
+ * thin line, false for none; a side left out keeps what the cell has.
+ * "all" lines every side of every cell, "none" takes every side off,
+ * "outline" lines the range's outer edges, "bottom" the bottom edge of its
+ * last row.
+ *
+ * @param string $border none, all, outline or bottom
+ * @param array  $range  pg_office_xlsx_range(): top, left, bottom, right
+ * @param int    $row    the cell's row number
+ * @param int    $column the cell's 0-based column
+ * @return array
+ */
+function pg_office_format_border_sides($border, $range, $row, $column)
+{
+    if (($border === 'all') || ($border === 'none')) {
+        return array_fill_keys(array('left', 'right', 'top', 'bottom'), $border === 'all');
+    }
+
+    $sides = array();
+
+    if ($border === 'outline') {
+        if ($column === $range[1]) {
+            $sides['left'] = true;
+        }
+
+        if ($column === $range[3]) {
+            $sides['right'] = true;
+        }
+
+        if ($row === $range[0]) {
+            $sides['top'] = true;
+        }
+    }
+
+    if ((($border === 'outline') || ($border === 'bottom')) && ($row === $range[2])) {
+        $sides['bottom'] = true;
+    }
+
+    return $sides;
 }
 
 /* ---------------------------------------------------------------------------
@@ -191,6 +258,107 @@ function pg_office_format_key($element)
     }
 
     return $key;
+}
+
+/**
+ * Whether a font's b, i, strike or u element is on: on unless its val says
+ * 0, false or (for an underline) none.
+ *
+ * @param DOMElement $node
+ * @return bool
+ */
+function pg_office_format_font_on($node)
+{
+    return !in_array(strtolower((string) $node->getAttribute('val')), array('0', 'false', 'none'), true);
+}
+
+/**
+ * Puts a font's part in the place Excel writes it: bold, italic,
+ * strikethrough, underline, size, colour, then the name and the rest. Parts
+ * of other names keep their places.
+ *
+ * @param DOMElement $font
+ * @param DOMElement $new
+ */
+function pg_office_format_font_insert($font, $new)
+{
+    $order = array('b', 'i', 'strike', 'condense', 'extend', 'outline', 'shadow', 'u', 'vertAlign', 'sz', 'color', 'name', 'family', 'charset', 'scheme');
+    $at = array_search($new->localName, $order, true);
+
+    foreach ($font->childNodes as $child) {
+        if (($child->nodeType === XML_ELEMENT_NODE) && (array_search($child->localName, $order, true) > $at)) {
+            $font->insertBefore($new, $child);
+
+            return;
+        }
+    }
+
+    $font->appendChild($new);
+}
+
+/**
+ * Sets the sides of a border: side => true for a thin line (a side drawn
+ * already keeps its own line and colour), false for none. Each side is
+ * written where it stands, or in the schema's order when the border lacks
+ * it; its diagonal and other parts stay.
+ *
+ * @param DOMElement $border
+ * @param array      $sides   left, right, top, bottom => bool
+ * @param callable   $element function (local name): DOMElement
+ */
+function pg_office_format_border_set($border, $sides, $element)
+{
+    $order = array('left', 'start', 'right', 'end', 'top', 'bottom', 'diagonal', 'vertical', 'horizontal');
+    $names = array('left' => array('left', 'start'), 'right' => array('right', 'end'), 'top' => array('top'), 'bottom' => array('bottom'));
+
+    foreach ($sides as $side => $on) {
+        $old = null;
+
+        foreach ($names[$side] as $local) {
+            $found = pg_office_format_children($border, $local);
+
+            if (!empty($found)) {
+                $old = $found[0];
+                break;
+            }
+        }
+
+        $style = ($old === null) ? '' : (string) $old->getAttribute('style');
+
+        if ($on && ($style !== '') && ($style !== 'none')) {
+            continue;
+        }
+
+        $new = $element(($old === null) ? $side : $old->localName);
+
+        if ($on) {
+            $new->setAttribute('style', 'thin');
+            $color = $element('color');
+            $color->setAttribute('indexed', '64');
+            $new->appendChild($color);
+        }
+
+        if ($old !== null) {
+            $border->replaceChild($new, $old);
+            continue;
+        }
+
+        $at = array_search($side, $order, true);
+        $before = null;
+
+        foreach ($border->childNodes as $child) {
+            if (($child->nodeType === XML_ELEMENT_NODE) && (array_search($child->localName, $order, true) > $at)) {
+                $before = $child;
+                break;
+            }
+        }
+
+        if ($before !== null) {
+            $border->insertBefore($new, $before);
+        } else {
+            $border->appendChild($new);
+        }
+    }
 }
 
 /**
@@ -284,7 +452,7 @@ function pg_office_format_styles($document)
 
         $xf = $xfs[$style]->cloneNode(true);
 
-        if (isset($set['bold']) || isset($set['italic']) || isset($set['color'])) {
+        if (array_intersect_key($set, array('bold' => 1, 'italic' => 1, 'underline' => 1, 'strike' => 1, 'size' => 1, 'color' => 1))) {
             $fonts = $list('fonts', false);
 
             if ($fonts === null) {
@@ -295,13 +463,21 @@ function pg_office_format_styles($document)
             $id = (int) $xf->getAttribute('fontId');
             $font = isset($existing[$id]) ? $existing[$id]->cloneNode(true) : $element('font');
 
-            foreach (array('bold' => 'b', 'italic' => 'i', 'color' => 'color') as $key => $local) {
+            foreach (array('bold' => 'b', 'italic' => 'i', 'strike' => 'strike', 'underline' => 'u', 'size' => 'sz', 'color' => 'color') as $key => $local) {
                 if (!isset($set[$key])) {
                     continue;
                 }
 
-                foreach (pg_office_format_children($font, $local) as $old) {
-                    $font->removeChild($old);
+                $old = pg_office_format_children($font, $local);
+
+                // What the font has already stays as it is written: a
+                // double underline is still underlined, 11 is 11.0.
+                if (!empty($old) && (($local === 'sz') ? ((float) $old[0]->getAttribute('val') === (float) $set[$key]) : (($set[$key] === true) && pg_office_format_font_on($old[0])))) {
+                    continue;
+                }
+
+                foreach ($old as $node) {
+                    $font->removeChild($node);
                 }
 
                 if (($set[$key] === false) || ($set[$key] === '')) {
@@ -311,26 +487,12 @@ function pg_office_format_styles($document)
                 $new = $element($local);
 
                 if ($local === 'color') {
-                    // Excel writes the colour before the font's name.
                     $new->setAttribute('rgb', $set[$key]);
-                    $before = array_merge(pg_office_format_children($font, 'name'), pg_office_format_children($font, 'family'), pg_office_format_children($font, 'scheme'));
-                } else {
-                    // Bold first, italic after it, before the size.
-                    $before = array();
-
-                    foreach ($font->childNodes as $child) {
-                        if (($child->nodeType === XML_ELEMENT_NODE) && (($local === 'b') || ($child->localName !== 'b'))) {
-                            $before[] = $child;
-                            break;
-                        }
-                    }
+                } elseif ($local === 'sz') {
+                    $new->setAttribute('val', (string) $set[$key]);
                 }
 
-                if (!empty($before)) {
-                    $font->insertBefore($new, $before[0]);
-                } else {
-                    $font->appendChild($new);
-                }
+                pg_office_format_font_insert($font, $new);
             }
 
             $set_id($xf, 'fontId', 'applyFont', $place($fonts, 'font', $font));
@@ -362,21 +524,49 @@ function pg_office_format_styles($document)
             $set_id($xf, 'fillId', 'applyFill', $place($fills, 'fill', $fill));
         }
 
-        if (isset($set['align'])) {
+        if (isset($set['sides'])) {
+            $borders = $list('borders', false);
+
+            if ($borders === null) {
+                return null;
+            }
+
+            $existing = pg_office_format_children($borders, 'border');
+            $id = (int) $xf->getAttribute('borderId');
+            $border = isset($existing[$id]) ? $existing[$id]->cloneNode(true) : $element('border');
+            pg_office_format_border_set($border, $set['sides'], $element);
+            $set_id($xf, 'borderId', 'applyBorder', $place($borders, 'border', $border));
+        }
+
+        if (isset($set['align']) || isset($set['wrap'])) {
             $alignments = pg_office_format_children($xf, 'alignment');
             $alignment = empty($alignments) ? null : $alignments[0];
-            $was = ($alignment === null) ? '' : (string) $alignment->getAttribute('horizontal');
+            $changes = array();
 
-            if ($was !== $set['align']) {
+            if (isset($set['align']) && ((($alignment === null) ? '' : (string) $alignment->getAttribute('horizontal')) !== $set['align'])) {
+                $changes['horizontal'] = $set['align'];
+            }
+
+            if (isset($set['wrap'])) {
+                $was = ($alignment !== null) && in_array(strtolower((string) $alignment->getAttribute('wrapText')), array('1', 'true'), true);
+
+                if ($was !== $set['wrap']) {
+                    $changes['wrapText'] = $set['wrap'] ? '1' : '';
+                }
+            }
+
+            if (!empty($changes)) {
                 if ($alignment === null) {
                     $alignment = $element('alignment');
                     $xf->insertBefore($alignment, $xf->firstChild);
                 }
 
-                if ($set['align'] === '') {
-                    $alignment->removeAttribute('horizontal');
-                } else {
-                    $alignment->setAttribute('horizontal', $set['align']);
+                foreach ($changes as $attribute => $value) {
+                    if ($value === '') {
+                        $alignment->removeAttribute($attribute);
+                    } else {
+                        $alignment->setAttribute($attribute, $value);
+                    }
                 }
 
                 if ($alignment->attributes->length === 0) {
@@ -438,7 +628,8 @@ function pg_office_format_styles($document)
  *
  * @param string   $xml     the sheet part
  * @param array    $range   pg_office_xlsx_range()
- * @param callable $restyle function (int old style): int new style, or null
+ * @param callable $restyle function (int old style, int row, int 0-based
+ *                          column): int new style, or null
  * @return array ok, xml, error (unusual, layout, xml, large, styles)
  */
 function pg_office_xlsx_format_sheet($xml, $range, $restyle)
@@ -478,7 +669,7 @@ function pg_office_xlsx_format_sheet($xml, $range, $restyle)
         $cells = '';
 
         for ($column = $range[1]; $column <= $range[3]; $column++) {
-            $style = $restyle(isset($column_styles[$column]) ? (int) $column_styles[$column] : 0);
+            $style = $restyle(isset($column_styles[$column]) ? (int) $column_styles[$column] : 0, $number, $column);
 
             if ($style === null) {
                 return null;
@@ -649,7 +840,7 @@ function pg_office_xlsx_format_row($row_xml, $number, $range, $restyle, $declara
     for ($column = $range[1]; $column <= $range[3]; $column++) {
         $cell = isset($cells[$column]) ? $cells[$column] : null;
         $old = ($cell !== null) ? (int) $cell->getAttribute('s') : (int) pg_office_xlsx_new_cell_style($row, $column, $column_styles);
-        $style = $restyle($old);
+        $style = $restyle($old, (int) $number, $column);
 
         if ($style === null) {
             return $fail('styles');
@@ -797,8 +988,20 @@ function pg_office_xlsx_format_parts($zip, $format, $fail, $spool)
 
     $writer = pg_office_format_styles($document);
     $set = $format['set'];
-    $patched = pg_office_xlsx_format_sheet($xml, $format['range'], function ($style) use ($writer, $set) {
-        return $writer['restyle']($style, $set);
+    $range = $format['range'];
+    $patched = pg_office_xlsx_format_sheet($xml, $range, function ($style, $row = 0, $column = 0) use ($writer, $set, $range) {
+        // A border is asked of the range: each cell gets the sides of it
+        // that are its own (outline and bottom only on the range's edges).
+        if (isset($set['border'])) {
+            $sides = pg_office_format_border_sides($set['border'], $range, $row, $column);
+            unset($set['border']);
+
+            if (!empty($sides)) {
+                $set['sides'] = $sides;
+            }
+        }
+
+        return empty($set) ? (int) $style : $writer['restyle']($style, $set);
     });
 
     unset($xml);
@@ -828,8 +1031,6 @@ function pg_office_xlsx_format_parts($zip, $format, $fail, $spool)
 
         $parts[$name] = $file;
     }
-
-    $range = $format['range'];
 
     return array('ok' => true, 'parts' => $parts, 'changed' => ($range[2] - $range[0] + 1) * ($range[3] - $range[1] + 1));
 }
