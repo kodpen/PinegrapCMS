@@ -778,11 +778,20 @@ function mp_order_write($account, $package, $map_id) {
 	// the order timeline reads.
 	$ship_to_id = mp_order_ship_to($order_id, $package);
 
+	$with_rate = pg_schema_has('order_items', 'tax_rate');
+
 	foreach ($matched as $index => $entry) {
 
 		$line = $entry['line'];
 
 		$quantity = max(1, (int)$line['quantity']);
+
+		// The line's tax and the rate it stands for, as the checkout stores
+		// them (order_items.tax_total and tax_rate).
+		$line_tax = mp_order_line_tax($line);
+
+		$line_tax_sql = $with_rate ? ",
+			tax_rate     = '" . e(format_tax_rate($line_tax['tax_rate'])) . "'" : '';
 
 		db("INSERT INTO order_items SET
 			order_id     = '" . e($order_id) . "',
@@ -792,6 +801,7 @@ function mp_order_write($account, $package, $map_id) {
 			quantity     = '" . e($quantity) . "',
 			price        = '" . e((int)$line['price']) . "',
 			tax          = '" . e((int)$line['tax']) . "',
+			tax_total    = '" . e($line_tax['tax_total']) . "'" . $line_tax_sql . ",
 			shipping     = 0");
 
 		// A bundle line keeps the contents it was sold with against its row.
@@ -837,6 +847,30 @@ function mp_order_write($account, $package, $map_id) {
 	}
 
 	return $order_id;
+
+}
+
+// A line's tax as order_items keeps it: tax_total, the unit tax x the
+// quantity (what mp_order_totals() adds up), and tax_rate, the rate that tax
+// stands for on the line's amount less its discount. The unit tax was rounded
+// a unit at a time, so the rate may miss it by up to the quantity. A
+// marketplace whose price holds its tax hands a tax of 0: none on top, rate 0.
+function mp_order_line_tax($line) {
+
+	$quantity = max(1, (int)$line['quantity']);
+
+	$tax_total = ((int)$line['tax']) * $quantity;
+
+	$discount = isset($line['discount_total'])
+		? (int)$line['discount_total']
+		: ((int)$line['discount']) * $quantity;
+
+	$base = ((int)$line['price']) * $quantity - $discount;
+
+	return array(
+		'tax_total' => $tax_total,
+		'tax_rate'  => pg_tax_line_rate($base, $tax_total, $quantity)
+	);
 
 }
 

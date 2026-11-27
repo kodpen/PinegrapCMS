@@ -538,7 +538,8 @@ function pg_subscription_renewal_first_order($row)
             . ($page_column ? ', checkout_page_id' : '') . "
         FROM orders WHERE id = '" . e((int) $row['order_id']) . "'");
 
-    $item = db_item("SELECT id, ship_to_id, product_id, product_name, quantity, price, tax_total, recurring_start_date, recurring_number_of_payments
+    $item = db_item("SELECT id, ship_to_id, product_id, product_name, quantity, price, tax_total, recurring_start_date, recurring_number_of_payments"
+            . (pg_schema_has('order_items', 'tax_rate') ? ', tax_rate' : '') . "
         FROM order_items
         WHERE (id = '" . e((int) $row['order_item_id']) . "') AND (order_id = '" . e((int) $row['order_id']) . "')");
 
@@ -584,6 +585,25 @@ function pg_subscription_renewal_save($row, $plan)
     }
 
     return true;
+}
+
+/**
+ * The rate the renewal's line is charged at (order_items.tax_rate): the first
+ * order's line rate when it was stored, since the renewal's tax keeps that
+ * line's rate (pg_subscription_renewal_figures()); else the rate the
+ * renewal's own tax stands for. Pure.
+ *
+ * @param array $item    the first order's line (tax_rate when read)
+ * @param array $figures pg_subscription_renewal_figures() (subtotal, tax)
+ * @return float
+ */
+function pg_subscription_renewal_line_rate($item, $figures)
+{
+    if (isset($item['tax_rate']) && ($item['tax_rate'] !== '')) {
+        return (float) $item['tax_rate'];
+    }
+
+    return pg_tax_line_rate((int) $figures['subtotal'], (int) $figures['tax']);
 }
 
 /**
@@ -649,10 +669,24 @@ function pg_subscription_renewal_order_write($row, $first, $answer, $now)
         }
     }
 
-    db_q("INSERT INTO order_items (order_id, ship_to_id, product_id, product_name, quantity, price, tax, tax_total)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)", array(
-        $order_id, $ship_to_id, (int) $item['product_id'], (string) $item['product_name'],
-        $figures['quantity'], $figures['price'], (int) round($figures['tax'] / $figures['quantity']), $figures['tax'])) or output_error('Query failed.');
+    $line = array(
+        'order_id'     => $order_id,
+        'ship_to_id'   => $ship_to_id,
+        'product_id'   => (int) $item['product_id'],
+        'product_name' => (string) $item['product_name'],
+        'quantity'     => $figures['quantity'],
+        'price'        => $figures['price'],
+        'tax'          => (int) round($figures['tax'] / $figures['quantity']),
+        'tax_total'    => $figures['tax'],
+    );
+
+    // The rate the line is charged at, as the checkout stores it.
+    if (pg_schema_has('order_items', 'tax_rate')) {
+        $line['tax_rate'] = format_tax_rate(pg_subscription_renewal_line_rate($item, $figures));
+    }
+
+    db_q("INSERT INTO order_items (" . implode(', ', array_keys($line)) . ")
+        VALUES (" . implode(', ', array_fill(0, count($line), '?')) . ")", array_values($line)) or output_error('Query failed.');
 
     $result = db_q(pg_order_lines_sql(), array((string) $order_id)) or output_error('Query failed.');
     $lines = array();

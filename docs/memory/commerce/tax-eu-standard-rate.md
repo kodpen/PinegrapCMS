@@ -12,7 +12,7 @@ module: tax_eu_rates
 ## Where is it decided?
 - `pg_tax_buyer_zone_rate($zone_rate, $country, $by_country, $date)` (includes/fn/ecommerce.php, beneath `pg_order_line_tax_rate()`, pure): the zone's rate unless it is false and the switch is on, then `pg_eu_vat_rate($country, 'standard', $date)`. The result is the `$zone_rate` that `pg_order_line_tax_rate()` takes, so the product rate, taxable flag and Tax switch apply as with a zone.
 - `pg_tax_rate_for_buyer_address($country, $state, $date)` reads the zone and the switch; `update_order_item_taxes()` calls it for the billing address and each recipient after the exempt branch. So the checkout and the express order follow, its widget's live tax totals (`eo_tax_totals`) too.
-- Not following: the counter sale and `POST /orders` over the API, which is a counter sale (the store's zone, architect 2026-11-27); the cart's preview of lines not yet taxed (`get_default_tax_rate()`, `cart-tax-estimate.md`); renewals and marketplace imports.
+- Not following: the counter sale and `POST /orders` over the API, which is a counter sale (the store's zone, architect 2026-11-27); the cart's preview of lines not yet taxed (`get_default_tax_rate()`, `cart-tax-estimate.md`); renewals and marketplace imports (their stored rate: `tax-line-rate-renewal-import.md`).
 
 ## Where does the rate list come from?
 - `pg_eu_vat_rates()` (includes/fn/tax_eu_rates.php): rows of member state (ISO code, GR for Greece), kind ('standard' only), rate, valid from. `pg_eu_vat_rate()` takes the row with the latest start on or before the day; EL is read as GR; false outside the 27, for another kind, a malformed day or a day before the first row.

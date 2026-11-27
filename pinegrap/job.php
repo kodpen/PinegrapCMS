@@ -185,6 +185,15 @@ if (ECOMMERCE && function_exists('pg_order_currency_fill_run')) {
 
 }
 
+// An update that changed a rate of the EU's VAT list (includes/fn/
+// tax_eu_rates.php) is told to the administrators once; a run with the list
+// as it was last seen is one settings read.
+if (ECOMMERCE && function_exists('pg_eu_vat_rate_notice_run')) {
+
+    pg_eu_vat_rate_notice_run();
+
+}
+
 // Customer rhythm (includes/fn/customer_rhythm_pass.php): each customer's
 // row and the product summary worked out again from the orders once a day,
 // at most PG_CUSTOMER_RHYTHM_TICK_SECONDS of this tick, going on from its
