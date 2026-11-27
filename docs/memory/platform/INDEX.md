@@ -198,6 +198,7 @@
 - office-save-list.md: One workbook save as an ordered list of changes of every kind (office_edit.php): steps, one lock and version check, each change on the workbook the one before left, refusals naming their place
 - office-sheet-bar-text-borders.md: The workbook format bar's Underline, Strikethrough, Size, Borders and Wrap text (SA2): the controls, the state they show, how the grid draws each, the words' own function
 - office-sheet-change-list.md: The workbook view's one list of changes (pg_office_view.js, PR #11946, #11964): cells, formats, rows, columns and sheets in order, the grid and tabs drawn from it, the count [decision: decisions-made-product-115.md]
+- office-sheet-clipboard.md: Copy, paste, fill down and clear of the workbook grid's selected cells (pg_office_view.js, SA5, PR #12168): the keys, the text format, locked cells, the limits a paste is refused by
 - office-sheet-format-borders.md: The border of a format entry (office_format.php): none, all sides, outline or bottom of the range turned into each cell's sides, how a side is written
 - office-sheet-format-controls.md: The sheet editor's format bar (OE3b) for the selected cells, its colour swatches, ranges waiting with the typed cells, and how each cell's look and number format is drawn [decision: here]
 - office-sheet-format.md: Format of selected cells of an .xlsx (office_format.php, OE3a): the save entry, how new styles are written beside the old ones, the number formats, what is refused and why

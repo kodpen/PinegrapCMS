@@ -312,7 +312,7 @@ description: Generated from the module field of the memory files: each includes/
 - `object_storage`: [[object-storage-client]]
 - `object_storage_health`: [[object-storage-health]]
 - `offer_list_edit`: [[list-table-own-code-screens]], [[list-table-quick-edit-offers]]
-- `office`: [[office-csv-preview]], [[office-ods-preview]], [[office-overview]], [[office-pptx-preview]], [[office-sheet-change-list]], [[office-sheet-format-controls]], [[office-sheet-sizes-grid]], [[office-sheet-tools]], [[office-sheet-undo]], [[office-xls-preview]]
+- `office`: [[office-csv-preview]], [[office-ods-preview]], [[office-overview]], [[office-pptx-preview]], [[office-sheet-change-list]], [[office-sheet-clipboard]], [[office-sheet-format-controls]], [[office-sheet-sizes-grid]], [[office-sheet-tools]], [[office-sheet-undo]], [[office-xls-preview]]
 - `office_docx_format`: [[office-docx-bar-look]], [[office-docx-format]], [[office-docx-format-look]]
 - `office_docx_kind`: [[office-docx-paragraph-kind]]
 - `office_docx_link`: [[office-docx-links]]
