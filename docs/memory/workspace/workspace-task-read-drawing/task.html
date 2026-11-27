@@ -1,0 +1,584 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Workspace: a task opened to read (the My Tasks drawer, New task)</title>
+<link rel="stylesheet" href="../../../../pinegrap/assets/fonts/bootstrap-icons/bootstrap-icons.min.css">
+<style>
+
+@font-face { font-family: "Inter"; src: url("../../../../pinegrap/assets/fonts/inter/InterVariable.woff2") format("woff2"); font-weight: 100 900; }
+:root {
+  --bg: #ffffff; --surface: rgb(245,245,245); --card: #ffffff; --ink: #1a1c1e; --ink2: #5a656c; --ink3: #8a949a;
+  --rule: rgba(128,128,128,.18); --tint: rgba(128,128,128,.10); --tint2: rgba(128,128,128,.16);
+  --primary: #64b5f6; --primary-ink: #1565c0; --primary-subtle: #e3f2fd; --primary-line: #bbdefb; --on-accent: #1a1c1e;
+  --ok-ink: #2e7d32; --ok-subtle: #e8f5e9; --bad-ink: #c62828; --bad-subtle: #ffebee;
+  --warn-ink: #8a6d00; --warn-subtle: #fff8e1; --info-ink: #006064; --info-subtle: #e0f7fa;
+  --violet-ink: #5e35b1; --violet-subtle: #ede7f6;
+  --shadow: 0 1px 2px rgba(0,0,0,.05), 0 1px 1px rgba(0,0,0,.03);
+  --lift: 0 14px 34px rgba(0,0,0,.18), 0 2px 6px rgba(0,0,0,.08);
+  --sheet: #eef0f2;
+}
+[data-theme="dark"] {
+  --bg: #16181b; --surface: #1e2125; --card: #272b30; --ink: #e8eaec; --ink2: #b3bcc2; --ink3: #808a91;
+  --rule: rgba(160,160,160,.20); --tint: rgba(160,160,160,.12); --tint2: rgba(160,160,160,.20);
+  --primary-ink: #90caf9; --primary-subtle: #10243a; --primary-line: #1e4976;
+  --ok-ink: #a5d6a7; --ok-subtle: #12261a; --bad-ink: #ef9a9a; --bad-subtle: #2e1719;
+  --warn-ink: #ffe082; --warn-subtle: #2c2511; --info-ink: #80deea; --info-subtle: #0d2a2e;
+  --violet-ink: #b39ddb; --violet-subtle: #211a35;
+  --shadow: 0 1px 2px rgba(0,0,0,.35);
+  --lift: 0 16px 38px rgba(0,0,0,.6);
+  --sheet: #0d0e10;
+}
+/* Look A's own tokens (ui/look-sheet/sheet.css, the panel's --pg-*): what stands inside a frame is drawn with these. */
+:root {
+  --page: #f3f4f8; --surf1: #ffffff; --surf2: #fdfdfe; --line: rgba(15,23,42,.085); --hi: rgba(255,255,255,.9); --hover: rgba(15,23,42,.04); --inset: rgba(15,23,42,.018);
+  --field: #ffffff; --field-line: rgba(15,23,42,.13); --field-shadow: inset 0 1px 2px rgba(15,23,42,.06);
+  --fg: #12151a; --fg2: #58606a; --fg3: #6b7480; --strong: #000000;
+  --a1: #4a88f7; --a2: #2a63e0; --accent: #2f6fed; --on-fill: #ffffff; --a-glow: rgba(47,111,237,.45); --quiet: rgba(15,23,42,.055);
+  --blue: #2f6fed; --violet: #7150e6; --amber: #b7791f; --teal: #0e9a74; --rose: #d43d6b; --gray: #6b7280;
+  --t1: 17%; --t2: 8%; --tl: 20%;
+  --shadow-sheet: 0 1px 0 var(--hi) inset, 0 24px 60px -24px rgba(15,23,42,.22), 0 2px 6px rgba(15,23,42,.04);
+  --shadow-float: 0 1px 0 var(--hi) inset, 0 18px 44px -14px rgba(15,23,42,.3), 0 2px 6px rgba(15,23,42,.06);
+  --pop: #ffffff; --scrim: rgba(22,27,38,.3);
+}
+[data-theme="dark"] {
+  --page: #090a0e; --surf1: #16181e; --surf2: #101217; --line: rgba(255,255,255,.075); --hi: rgba(255,255,255,.06); --hover: rgba(255,255,255,.045); --inset: rgba(255,255,255,.028);
+  --field: rgba(0,0,0,.28); --field-line: rgba(255,255,255,.09); --field-shadow: inset 0 1px 2px rgba(0,0,0,.45);
+  --fg: #eef0f3; --fg2: #a4a9b1; --fg3: #8d949d; --strong: #ffffff;
+  --a1: #8ab8ff; --a2: #5a90f6; --accent: #6aa5ff; --on-fill: #06101f; --a-glow: rgba(90,144,246,.55); --quiet: rgba(255,255,255,.065);
+  --blue: #6aa5ff; --violet: #b19cff; --amber: #f2b84b; --teal: #3fd0a8; --rose: #f58aa0; --gray: #9aa0a8;
+  --t1: 26%; --t2: 11%; --tl: 22%;
+  --shadow-sheet: 0 1px 0 var(--hi) inset, 0 30px 80px -20px rgba(0,0,0,.7);
+  --shadow-float: 0 1px 0 var(--hi) inset, 0 18px 44px -12px rgba(0,0,0,.75), 0 0 0 1px rgba(0,0,0,.3);
+  --pop: #1d2027; --scrim: rgba(3,4,7,.6);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { font-family: "Inter", system-ui, sans-serif; font-size: 13.5px; line-height: 1.4; color: var(--ink); background: var(--sheet); padding: 28px; width: 1416px; -webkit-font-smoothing: antialiased; }
+.frame-wrap { margin-bottom: 34px; }
+.frame-head { display: flex; align-items: baseline; gap: 12px; margin: 0 4px 12px; }
+.frame-letter { width: 30px; height: 30px; border-radius: 9px; background: var(--ink); color: var(--bg); font-weight: 700; display: inline-flex; align-items: center; justify-content: center; font-size: 15px; flex: none; align-self: center; }
+.frame-title { font-size: 19px; font-weight: 680; letter-spacing: -.01em; white-space: nowrap; }
+.frame-sub { color: var(--ink2); font-size: 13.5px; }
+.frame { background: var(--bg); border: 1px solid var(--rule); border-radius: 18px; overflow: hidden; position: relative; }
+.notes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 26px; margin: 14px 6px 0; color: var(--ink2); font-size: 13px; }
+.notes b { color: var(--ink); font-weight: 620; }
+.notes div { padding-left: 12px; border-left: 2px solid var(--tint2); }
+.side-notes { display: flex; flex-direction: column; gap: 14px; color: var(--ink2); font-size: 13px; padding-top: 6px; max-width: 520px; }
+.side-notes b { color: var(--ink); font-weight: 620; }
+.side-notes div { padding-left: 12px; border-left: 2px solid var(--tint2); }
+.sheet-title { font-size: 24px; font-weight: 700; letter-spacing: -.02em; margin: 0 4px 6px; }
+.sheet-sub { color: var(--ink2); margin: 0 4px 28px; max-width: 1040px; }
+
+/* the stage: My Tasks under the scrim, the drawer at today's width (34rem) on its right edge */
+.stage { position: relative; display: flex; justify-content: flex-end; align-items: stretch; gap: 28px; background: var(--page); color: var(--fg); font-size: 13.5px; line-height: 1.45; }
+.under { position: absolute; inset: 0; padding: 18px 22px; overflow: hidden; }
+.under::after { content: ""; position: absolute; inset: 0; background: var(--scrim); }
+.mt-title { font-size: 20px; font-weight: 650; letter-spacing: -.02em; margin-bottom: 10px; }
+.mt-g { display: flex; align-items: center; gap: 7px; margin: 14px 2px 4px; font-size: 12px; font-weight: 600; color: var(--fg3); }
+.mt-g em { font-style: normal; font-weight: 500; }
+.mt-r { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 8px; border-top: 1px solid var(--line); white-space: nowrap; }
+.mt-r.sel { background: var(--hover); }
+.mt-r .c { flex: none; width: 18px; height: 18px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--fg3); }
+.mt-r .n { flex: none; color: var(--fg3); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.mt-r .t { flex: 1; min-width: 0; font-weight: 500; }
+.mt-r .d { color: var(--fg2); font-size: 12.5px; }
+.late { color: var(--rose-text) !important; }
+.drawer { --rose-text: color-mix(in srgb, var(--rose) 80%, var(--strong)); position: relative; z-index: 1; flex: none; width: 544px; display: flex; flex-direction: column; background: linear-gradient(180deg, var(--surf1), var(--surf2)); border-left: 1px solid var(--line); box-shadow: var(--shadow-sheet); }
+.stage, .panel, .phone { --rose-text: color-mix(in srgb, var(--rose) 80%, var(--strong)); --accent-ink: color-mix(in srgb, var(--accent) 82%, var(--strong)); }
+.drawer.mid { border-right: 1px solid var(--line); }
+.cut { margin: 0; padding: 7px 20px; font-size: 12px; color: var(--fg3); border-bottom: 1px dashed var(--field-line); background: var(--inset); display: flex; align-items: center; gap: 7px; }
+.gapm { margin: 0 20px; padding: 9px 0; text-align: center; font-size: 12px; color: var(--fg3); border-top: 1px dashed var(--field-line); }
+.grow { flex: 1; }
+
+/* look A parts */
+.b { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 34px; padding: 0 14px; border-radius: 10px; font-size: 13px; font-weight: 550; white-space: nowrap; color: var(--fg); flex: none; }
+.b.fill { color: var(--on-fill); background: linear-gradient(180deg, var(--a1), var(--a2)); box-shadow: inset 0 1px 0 rgba(255,255,255,.38), 0 1px 2px rgba(0,0,0,.25), 0 8px 18px -8px var(--a-glow); }
+.b.quiet { background: var(--quiet); box-shadow: inset 0 0 0 1px var(--line), inset 0 1px 0 var(--hi); }
+.b.ghost { color: var(--fg2); }
+.b.danger { color: var(--rose-text); background: color-mix(in srgb, var(--rose) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rose) 22%, transparent); }
+.b.sm { height: 28px; padding: 0 11px; border-radius: 8px; }
+.ib { width: 32px; height: 32px; border-radius: 9px; color: var(--fg2); display: inline-grid; place-items: center; font-size: 15px; flex: none; }
+.ib.sm { width: 28px; height: 28px; font-size: 14px; border-radius: 8px; }
+.ib.on { background: var(--quiet); color: var(--fg); box-shadow: inset 0 0 0 1px var(--line); }
+.ib.t44 { width: 44px; height: 44px; font-size: 18px; }
+.lab { display: block; font-size: 13px; font-weight: 550; margin-bottom: 6px; }
+.help { font-size: 12px; color: var(--fg3); margin-top: 6px; }
+.in { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border-radius: 10px; background: var(--field); border: 1px solid var(--field-line); box-shadow: var(--field-shadow); font-size: 14px; white-space: nowrap; min-width: 0; }
+.in.sm { height: 32px; border-radius: 9px; font-size: 13px; }
+.in > i { color: var(--fg3); font-size: 13px; }
+.in .ph { color: var(--fg3); overflow: hidden; text-overflow: ellipsis; }
+.in .end { margin-left: auto; }
+.in.focus, .rich.focus { border-color: var(--accent); box-shadow: var(--field-shadow), 0 0 0 4px color-mix(in srgb, var(--accent) 24%, transparent); }
+.caret { display: inline-block; width: 1.5px; height: 1.1em; background: var(--accent); vertical-align: -3px; margin-left: 1px; }
+.pill { --c: var(--gray); display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 9px 0 8px; border-radius: 11px; font-size: 12px; font-weight: 550; white-space: nowrap; flex: none; color: color-mix(in srgb, var(--c) 70%, var(--strong)); background: color-mix(in srgb, var(--c) var(--t2), transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) var(--tl), transparent); }
+.pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 18%, transparent); }
+.pill.plain { padding: 0 9px; } .pill.plain::before { display: none; }
+.t-blue { --c: var(--blue); } .t-amber { --c: var(--amber); } .t-teal { --c: var(--teal); } .t-rose { --c: var(--rose); } .t-gray { --c: var(--gray); } .t-violet { --c: var(--violet); }
+.av { flex: none; width: 24px; height: 24px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 10.5px; font-weight: 600; color: #fff; background: linear-gradient(135deg, #8b6cf6, #5b8def); box-shadow: inset 0 1px 0 rgba(255,255,255,.3); }
+.av.a-T { background: linear-gradient(135deg, #2bb3a3, #3f8fd8); } .av.a-M { background: linear-gradient(135deg, #e08a4f, #d4577b); } .av.a-S { background: linear-gradient(135deg, #6a9a3a, #2f9a8a); }
+.av.s { width: 20px; height: 20px; font-size: 9.5px; margin-left: -5px; box-shadow: 0 0 0 2px var(--page); } .av.s:first-child { margin-left: 0; }
+.who { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+.spin { flex: none; width: 13px; height: 13px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--fg3) 35%, transparent); border-top-color: var(--accent); }
+.ck { flex: none; width: 17px; height: 17px; border-radius: 6px; box-shadow: inset 0 0 0 1.5px var(--fg3); display: inline-grid; place-items: center; font-size: 12px; }
+.ck.on { background: linear-gradient(180deg, var(--a1), var(--a2)); box-shadow: none; color: var(--on-fill); }
+.chip { display: inline-flex; align-items: center; gap: 5px; padding: 1px 9px; border-radius: 999px; font-size: 12.5px; white-space: nowrap; background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent-ink); }
+.lnk { color: var(--accent-ink); }
+.pop { background: var(--pop); border-radius: 12px; box-shadow: var(--shadow-float), 0 0 0 1px var(--line); padding: 5px; color: var(--fg); font-weight: 400; }
+.pop.abs { position: absolute; z-index: 6; top: 34px; left: 0; }
+.mi { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; border-radius: 8px; font-size: 13.5px; white-space: nowrap; }
+.mi.cur { background: var(--hover); }
+.mi .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c); flex: none; }
+.mi > .bi-check-lg { margin-left: auto; color: var(--accent); }
+.mi > i:first-child { color: var(--fg2); width: 16px; text-align: center; }
+.mi em { font-style: normal; color: var(--fg3); font-size: 12px; margin-left: auto; }
+.mdiv { height: 1px; background: var(--line); margin: 5px 0; }
+
+/* A: today's drawer (the form) */
+.th { display: flex; align-items: center; gap: 10px; height: 56px; padding: 0 12px 0 20px; border-bottom: 1px solid var(--line); flex: none; }
+.th b { font-size: 16.5px; font-weight: 650; letter-spacing: -.01em; }
+.tb { padding: 16px 20px 18px; display: flex; flex-direction: column; gap: 14px; flex: 1; }
+.tf { padding: 14px 20px; border-top: 1px solid var(--line); display: flex; justify-content: flex-end; gap: 8px; flex: none; }
+.info { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; font-size: 12.5px; color: var(--fg2); }
+.badge { padding: 2px 7px; border-radius: 6px; font-size: 11.5px; font-weight: 650; background: var(--gray); color: var(--surf1); }
+.badge.soft { background: var(--quiet); color: var(--fg2); }
+.quick { display: flex; gap: 4px; flex-wrap: wrap; margin-left: -6px; }
+.box { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px 11px; background: var(--inset); }
+.box-h { display: flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 600; color: var(--fg2); margin-bottom: 8px; }
+.box-h .r { margin-left: auto; font-weight: 400; }
+.sum { margin-top: 9px; padding: 7px 10px; border-radius: 8px; background: color-mix(in srgb, var(--accent) 8%, transparent); font-size: 12.5px; }
+.g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.grp { display: flex; } .grp .in:first-child { width: 64px; border-radius: 9px 0 0 9px; border-right: 0; } .grp .in:last-child { flex: 1; border-radius: 0 9px 9px 0; }
+.bar { height: 4px; border-radius: 2px; background: var(--quiet); overflow: hidden; } .bar b { display: block; height: 100%; border-radius: 2px; background: var(--accent); }
+.olist { margin: 8px 0 0; padding: 0; list-style: none; font-size: 13.5px; } .olist li { display: flex; align-items: center; gap: 9px; padding: 3px 0; }
+.olist li.done span:last-child, .cl li.done .tx { color: var(--fg3); text-decoration: line-through; }
+.ppl { display: flex; flex-wrap: wrap; gap: 6px; padding: 5px; border: 1px solid var(--line); border-radius: 10px; }
+.pt { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px 2px 3px; font-size: 13px; }
+.pt .av { width: 22px; height: 22px; }
+.pt.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); font-weight: 600; }
+.part { padding-top: 12px; border-top: 1px solid var(--line); }
+.part-h { display: flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 600; }
+.part-h > i { color: var(--fg2); } .part-h .r { margin-left: auto; font-weight: 400; font-size: 13px; color: var(--fg2); }
+.part-l { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-top: 8px; min-width: 0; }
+.part-l .q { color: var(--fg2); } .part-l .e { margin-left: auto; display: flex; align-items: center; gap: 2px; color: var(--fg2); }
+.rich { border: 1px solid var(--field-line); border-radius: 10px; background: var(--field); box-shadow: var(--field-shadow); }
+.rich .tx { padding: 9px 12px; font-size: 14px; line-height: 1.5; }
+.rich .tx p { margin: 0 0 4px; }
+.rich .tools { display: flex; align-items: center; gap: 1px; padding: 4px 6px; border-top: 1px solid var(--line); }
+.rich .tools .sep { width: 1px; height: 16px; background: var(--line); margin: 0 5px; }
+
+/* B: the task to read */
+.rh { display: flex; align-items: center; gap: 10px; height: 56px; padding: 0 12px 0 20px; border-bottom: 1px solid var(--line); flex: none; }
+.num { font-size: 13px; color: var(--fg3); font-weight: 550; font-variant-numeric: tabular-nums; }
+.stc { --c: var(--gray); position: relative; display: inline-flex; align-items: center; gap: 7px; height: 28px; padding: 0 9px 0 10px; border-radius: 14px; font-size: 13px; font-weight: 550; white-space: nowrap; color: color-mix(in srgb, var(--c) 70%, var(--strong)); background: color-mix(in srgb, var(--c) var(--t2), transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) var(--tl), transparent); }
+.stc > .d { width: 7px; height: 7px; border-radius: 50%; background: var(--c); }
+.stc > .bi { font-size: 10px; opacity: .85; }
+.stc.open { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 45%, transparent), 0 0 0 3px color-mix(in srgb, var(--c) 16%, transparent); }
+.saved { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--fg3); margin-right: 4px; }
+.rt { position: relative; margin: 14px 20px 8px; font-size: 22px; line-height: 28px; font-weight: 650; letter-spacing: -.018em; }
+.rt.hover::before { content: ""; position: absolute; inset: -6px -9px; border-radius: 10px; border: 1px solid var(--field-line); }
+.rt.edit::before { content: ""; position: absolute; inset: -6px -9px; border-radius: 10px; border: 1px solid var(--accent); background: var(--field); box-shadow: var(--field-shadow), 0 0 0 4px color-mix(in srgb, var(--accent) 24%, transparent); }
+.rt > span { position: relative; }
+.hint { margin: 2px 20px 0; font-size: 12px; color: var(--fg3); }
+.vrs { margin: 4px 20px 0; }
+.vr { position: relative; display: grid; grid-template-columns: 132px minmax(0, 1fr); column-gap: 12px; align-items: center; min-height: 44px; padding: 5px 0; }
+.vr + .vr { border-top: 1px solid var(--line); }
+.vr > * { position: relative; }
+.vr .k { color: var(--fg2); font-size: 13px; }
+.vr .v { display: flex; align-items: center; gap: 6px 12px; flex-wrap: wrap; min-width: 0; font-weight: 500; }
+.vr .v.none { color: var(--fg3); font-weight: 400; }
+.vr .v.busy { color: var(--fg3); }
+.vr .end { margin-left: auto; color: var(--fg3); font-size: 12px; display: inline-flex; }
+.vr .why { grid-column: 2; display: flex; gap: 6px; align-items: baseline; color: var(--rose-text); font-size: 12.5px; padding: 0 0 5px; }
+.vr.hover::before, .vr.open::before, .vr.focus::before { content: ""; position: absolute; inset: 3px -8px; border-radius: 10px; background: var(--hover); }
+.vr.focus::before { background: none; box-shadow: 0 0 0 2px var(--accent); }
+.glr { display: flex; align-items: center; margin: 16px 20px 4px; min-height: 28px; font-size: 12px; font-weight: 600; color: var(--fg3); }
+.glr .b { margin: 0 -8px 0 auto; }
+.desc { margin: 0 20px; font-size: 14px; line-height: 1.55; }
+.desc p { margin: 0 0 8px; }
+.cl { list-style: none; margin: 2px 0 0; padding: 0; }
+.cl li { display: flex; align-items: center; gap: 10px; min-height: 32px; }
+.cl .whn { margin-left: auto; font-size: 11.5px; color: var(--fg3); white-space: nowrap; }
+.tick { flex: none; width: 18px; height: 18px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--fg3); display: inline-grid; place-items: center; font-size: 11px; }
+.tick.on { background: linear-gradient(180deg, var(--a1), var(--a2)); box-shadow: none; color: var(--on-fill); }
+.tick.busy { opacity: .55; }
+.prog { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--fg2); margin-top: 6px; min-height: 24px; }
+.prog .bar { width: 96px; flex: none; }
+.addi { display: flex; align-items: center; gap: 10px; min-height: 32px; color: var(--fg3); font-size: 13.5px; }
+.addi i { width: 18px; text-align: center; }
+.folds { margin: 16px 20px 0; border-top: 1px solid var(--line); }
+.fr { display: flex; align-items: center; gap: 10px; height: 48px; font-size: 13.5px; font-weight: 550; border-bottom: 1px solid var(--line); }
+.fr > i:first-child { color: var(--fg3); font-size: 15px; width: 18px; text-align: center; }
+.fr .r { margin-left: auto; font-weight: 400; font-size: 12.5px; color: var(--fg2); white-space: nowrap; }
+.fr .chev { color: var(--fg3); font-size: 12px; }
+.fr.open { border-bottom: 0; } .fr.open .chev { transform: rotate(180deg); }
+.fb { padding: 0 0 16px 28px; border-bottom: 1px solid var(--line); font-size: 13px; }
+.fb .sub { font-size: 12px; font-weight: 600; color: var(--fg3); margin: 10px 0 4px; } .fb .sub:first-child { margin-top: 0; }
+.fb .part-l { margin-top: 6px; }
+.made { margin: 14px 20px 20px; font-size: 12px; color: var(--fg3); }
+.tl { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; }
+.clock { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
+.note { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 9px; margin-top: 10px; }
+.note .m { font-size: 12px; color: var(--fg3); } .note .m b { font-size: 13px; color: var(--fg); margin-right: 7px; font-weight: 600; }
+
+/* C, D: states in panels of the drawer's surface */
+.pad { padding: 20px 22px 22px; background: var(--page); color: var(--fg); font-size: 13.5px; line-height: 1.45; }
+.cells { display: grid; gap: 18px 24px; align-items: start; }
+.cells.c3 { grid-template-columns: repeat(3, 426px); }
+.cells.c2 { grid-template-columns: repeat(2, 544px); justify-content: center; }
+.cap { display: flex; align-items: baseline; gap: 8px; margin: 0 2px 7px; font-size: 12.5px; color: var(--fg2); }
+.cap b { color: var(--fg); font-weight: 650; font-size: 13px; white-space: nowrap; }
+.cap i { font-style: normal; flex: none; width: 19px; height: 19px; border-radius: 6px; background: var(--quiet); color: var(--fg2); font-size: 11.5px; font-weight: 650; display: inline-grid; place-items: center; align-self: center; }
+.panel { background: linear-gradient(180deg, var(--surf1), var(--surf2)); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-sheet); }
+.panel > .vrs { margin: 6px 20px; }
+.panel .rh { height: 48px; }
+.under-v { margin: 2px 0 12px 164px; }
+.dp { width: 242px; padding: 10px 9px 9px; }
+.dp-h { display: flex; align-items: center; gap: 2px; padding: 0 2px 6px 6px; font-weight: 600; font-size: 13.5px; }
+.dp-g { display: grid; grid-template-columns: repeat(7, 32px); font-size: 12.5px; text-align: center; }
+.dp-g span { height: 30px; display: grid; place-items: center; border-radius: 9px; font-variant-numeric: tabular-nums; }
+.dp-g .w { color: var(--fg3); font-size: 11.5px; height: 24px; } .dp-g .o { color: var(--fg3); opacity: .6; }
+.dp-g .now { box-shadow: inset 0 0 0 1.5px var(--accent); } .dp-g .on { background: linear-gradient(180deg, var(--a1), var(--a2)); color: var(--on-fill); font-weight: 600; }
+.dp-f { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding: 9px 3px 0; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--fg2); }
+.dp-f .in { width: 84px; } .dp-f .b { margin-left: auto; margin-right: -6px; }
+
+/* F: New task */
+.fbody { padding: 18px 20px 20px; display: flex; flex-direction: column; gap: 16px; flex: 1; }
+.more { border: 1px solid var(--line); border-radius: 14px; background: var(--inset); }
+.more-h { display: flex; align-items: center; gap: 11px; padding: 11px 14px; }
+.more-h > i:first-child { width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center; color: var(--gray); background: color-mix(in srgb, var(--gray) var(--t2), transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gray) var(--tl), transparent); font-size: 14px; }
+.more-h b { display: block; font-size: 14px; font-weight: 550; } .more-h small { display: block; font-size: 13px; color: var(--fg2); }
+.more-h .chev { margin-left: auto; color: var(--fg3); }
+.more.open { background: color-mix(in srgb, var(--accent) 3%, transparent); } .more.open .chev { transform: rotate(180deg); }
+.more-b { padding: 4px 14px 16px; display: flex; flex-direction: column; gap: 14px; }
+
+/* G: phone width */
+.narrow-row { display: flex; gap: 28px; align-items: flex-start; }
+.phone { position: relative; width: 390px; flex: none; border-radius: 26px; border: 1px solid var(--rule); overflow: hidden; background: linear-gradient(180deg, var(--surf1), var(--surf2)); color: var(--fg); font-size: 13.5px; line-height: 1.45; }
+.phone .rh { padding: 0 2px 0 2px; gap: 6px; }
+.phone .rt, .phone .glr, .phone .desc { margin-left: 16px; margin-right: 16px; }
+.phone .vrs, .phone .folds { margin-left: 16px; margin-right: 16px; }
+.phone .vr { grid-template-columns: 104px minmax(0, 1fr); }
+.phone .dimmer { position: absolute; inset: 0; background: var(--scrim); z-index: 3; }
+.bsheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 4; background: var(--pop); border-radius: 20px 20px 0 0; box-shadow: var(--shadow-float); padding: 8px 16px 18px; }
+.bsheet .grab { width: 36px; height: 4px; border-radius: 2px; background: var(--field-line); margin: 0 auto 6px; }
+.bsheet .dp-h { font-size: 15px; padding: 0 0 4px 4px; min-height: 44px; }
+.bsheet .dp-g { grid-template-columns: repeat(7, 1fr); font-size: 14px; } .bsheet .dp-g span { height: 44px; border-radius: 12px; } .bsheet .dp-g .w { height: 26px; font-size: 12px; }
+.bsheet .dp-f { min-height: 56px; font-size: 13.5px; } .bsheet .dp-f .in { height: 44px; width: 104px; font-size: 15px; } .bsheet .dp-f .b { height: 44px; margin-right: -10px; }
+
+/* H: sizes and keys */
+.sizes { display: grid; grid-template-columns: 980px minmax(0, 1fr); gap: 24px; align-items: start; }
+.mwrap { position: relative; padding: 34px 0 6px 76px; }
+.zoom { width: 300px; transform: scale(3); transform-origin: 0 0; border: 1px solid var(--line); border-radius: 6px; background: linear-gradient(180deg, var(--surf1), var(--surf2)); overflow: hidden; }
+.zoom .folds { margin-top: 12px; margin-bottom: 14px; }
+.mk { position: absolute; color: var(--violet); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.mk.v { border-left: 1.5px solid var(--violet); padding-left: 0; }
+.mk.v::before, .mk.v::after { content: ""; position: absolute; left: -5px; width: 9px; height: 1.5px; background: var(--violet); } .mk.v::before { top: 0; } .mk.v::after { bottom: 0; }
+.mk.v span { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); text-align: right; }
+.mk.h { border-top: 1.5px solid var(--violet); }
+.mk.h::before, .mk.h::after { content: ""; position: absolute; top: -5px; height: 9px; width: 1.5px; background: var(--violet); } .mk.h::before { left: 0; } .mk.h::after { right: 0; }
+.mk.h span { position: absolute; left: 50%; bottom: 5px; transform: translateX(-50%); }
+.keys { width: 100%; border-collapse: collapse; font-size: 13px; }
+.keys td { padding: 8px 0; border-top: 1px solid var(--line); vertical-align: top; } .keys tr:first-child td { border-top: 0; }
+.keys td:first-child { width: 112px; padding-right: 10px; white-space: nowrap; }
+.kbd { display: inline-block; font-size: 11.5px; font-weight: 550; color: var(--fg2); padding: 2px 6px; border-radius: 6px; background: var(--quiet); box-shadow: inset 0 0 0 1px var(--line); }
+.h3 { font-size: 13px; font-weight: 650; margin: 0 0 6px; } .h3 + .keys { margin-bottom: 18px; }
+.keys.sz td:first-child { width: auto; white-space: normal; color: var(--fg2); } .keys.sz td:last-child { text-align: right; font-weight: 550; white-space: nowrap; padding-left: 8px; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<p class="sheet-title">A task opened to read · the My Tasks drawer and New task</p>
+<p class="sheet-sub">Step TM3 of plan <b>workspace-tasks-modern</b>. An existing task’s drawer starts as a page: every value is changed in place by its own picker and saved at once; New task keeps a short form. Only fields and parts a task has today are drawn, under the labels the code has today. Sample tasks, names, dates and counts are examples; the day drawn is Fri 27.11. Add <b>?theme=dark</b> to the address for the dark look, <b>?f=A</b> (B to H) for one board.</p>
+<div id="root"></div>
+<script>
+var q = new URLSearchParams(location.search);
+if (q.get('theme') === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+var only = q.get('f');
+
+var PEOPLE = { N: 'Nora', T: 'Theo', M: 'Mila', S: 'Sami' };
+var ST = { todo: ['To do', 'gray'], doing: ['In progress', 'blue'], waiting: ['Waiting', 'amber'], done: ['Done', 'teal'], cancelled: ['Cancelled', 'rose'] };
+var PR = { low: ['Low', 'gray'], normal: ['Normal', 'gray'], high: ['High', 'amber'], urgent: ['Urgent', 'rose'] };
+var TITLE = 'Winter campaign landing page copy and the three banner lines';
+var LIST = [
+  ['Overdue', [[128, 'Winter campaign landing page copy and the three banner lines', '3 days late', 1, 'high', 'NT'], [121, 'Update the shipping texts', '1 day late', 1, '', 'S']]],
+  ['Today', [[133, 'Campaign budget approval', 'Today 14:00', 0, 'urgent', 'N'], [135, 'Reshoot the product photos', 'Today', 0, '', 'M'], [137, 'Clean the newsletter list', 'Today', 0, '', 'T']]],
+  ['This week', [[139, 'Set up the discount codes', 'Sat 28.11', 0, '', 'S'], [140, 'Ad pictures in three sizes', 'Sun 29.11', 0, 'high', 'MN']]],
+  ['Later', [[142, 'Price list from the supplier', 'Wed 02.12', 0, '', 'S'], [144, 'Plan the January newsletter', 'Mon 07.12', 0, '', 'T'], [145, 'Renew the shop’s gift card texts', 'Thu 10.12', 0, '', 'N']]],
+  ['No date', [[118, 'Tidy the shared pictures folder', '', 0, '', 'M'], [126, 'Collect ideas for the spring page', '', 0, '', 'NT']]]
+];
+
+function ic(n, c) { return '<i class="bi bi-' + n + (c ? ' ' + c : '') + '"></i>'; }
+function av(k, c) { return '<span class="av a-' + k + (c ? ' ' + c : '') + '">' + k + '</span>'; }
+function who(k) { return '<span class="who">' + av(k) + PEOPLE[k] + '</span>'; }
+function prio(k) { return '<span class="pill plain t-' + PR[k][1] + '">' + PR[k][0] + '</span>'; }
+function b(label, kind, icon) { return '<span class="b ' + (kind || '') + '">' + (icon ? ic(icon) : '') + label + '</span>'; }
+function ib(n, c) { return '<span class="ib' + (c ? ' ' + c : '') + '">' + ic(n) + '</span>'; }
+function stc(k, inner, c) { return '<span class="stc t-' + ST[k][1] + (c ? ' ' + c : '') + '"><i class="d"></i>' + ST[k][0] + ic('chevron-down') + (inner || '') + '</span>'; }
+function field(label, control, help) { return '<div><span class="lab">' + label + '</span>' + control + (help ? '<div class="help">' + help + '</div>' : '') + '</div>'; }
+function inp(v, c, icon, ph) { return '<div class="in ' + (c || '') + '">' + (ph ? '<span class="ph">' + v + '</span>' : '<span>' + v + '</span>') + (icon ? ic(icon, 'end') : '') + '</div>'; }
+function sel(v, c) { return inp(v, c, 'chevron-down'); }
+function under() {
+  var h = '<div class="under"><div class="mt-title">My Tasks</div>';
+  LIST.forEach(function (g) {
+    h += '<div class="mt-g">' + ic('chevron-down') + g[0] + '<em>' + g[1].length + '</em></div>';
+    g[1].forEach(function (r) {
+      h += '<div class="mt-r' + (r[0] === 128 ? ' sel' : '') + '"><span class="c"></span><span class="n">T-' + r[0] + '</span><span class="t">' + r[1] + '</span>' + (r[2] ? '<span class="d' + (r[3] ? ' late' : '') + '">' + r[2] + '</span>' : '') + (r[4] ? prio(r[4]) : '') + '<span>' + r[5].split('').map(function (k) { return av(k, 's'); }).join('') + '</span></div>';
+    });
+  });
+  return h + '</div>';
+}
+function stage(inner) { return '<div class="stage">' + under() + inner + '</div>'; }
+function drawer(inner, c) { return '<div class="drawer' + (c ? ' ' + c : '') + '">' + inner + '</div>'; }
+function cut(text) { return '<div class="cut">' + ic('arrows-vertical') + text + '</div>'; }
+function notes(list) { return '<div class="notes">' + list.map(function (n) { return '<div>' + n + '</div>'; }).join('') + '</div>'; }
+function wrap(letter, title, sub, body, list) {
+  return '<div class="frame-wrap" id="f' + letter + '"><div class="frame-head"><span class="frame-letter">' + letter + '</span><span class="frame-title">' + title + '</span><span class="frame-sub">' + sub + '</span></div>' + body + (list ? notes(list) : '') + '</div>';
+}
+function frame(inner) { return '<div class="frame">' + inner + '</div>'; }
+function menu(items, c, style) {
+  return '<span class="pop' + (c ? ' ' + c : '') + '" style="' + (style || '') + '">' + items.map(function (m) { return m === '-' ? '<span class="mdiv"></span>' : '<span class="mi' + (m[2] ? ' cur' : '') + '">' + m[0] + m[1] + (m[2] ? ic('check-lg') : '') + (m[3] ? '<em>' + m[3] + '</em>' : '') + '</span>'; }).join('') + '</span>';
+}
+function stMenu(cur, first) {
+  var items = Object.keys(ST).map(function (k) { return ['<i class="dot t-' + ST[k][1] + '"></i>', ST[k][0], k === cur]; });
+  return menu(first ? first.concat(items) : items, 'abs', 'width:204px;display:block');
+}
+
+/* ── A: today's drawer, as taskDrawer.render() builds it ── */
+var TOOLS = '<div class="tools">' + ib('at', 'sm') + ib('hash', 'sm') + ib('emoji-smile', 'sm') + '<span class="sep"></span>' + ib('list-ul', 'sm') + ib('list-ol', 'sm') + ib('quote', 'sm') + ib('ui-checks', 'sm');
+var ITEMS = [['Collect last year’s headlines', 1, 'Nora · 23.11 10:05'], ['Draft the headline and the lead', 1, 'Nora · 24.11 16:40'], ['Three banner lines', 0], ['Send to Mila for the pictures', 0], ['Final read', 0]];
+var P1 = 'Copy for the winter campaign’s landing page: one headline, a short lead and three banner lines, in the tone of last year’s page.';
+var P2 = 'Brief: <span class="lnk">example.com/winter-brief</span>';
+function oldList() { return '<ul class="olist">' + ITEMS.map(function (i) { return '<li' + (i[1] ? ' class="done"' : '') + '><span class="ck' + (i[1] ? ' on' : '') + '">' + (i[1] ? ic('check') : '') + '</span><span>' + i[0] + '</span></li>'; }).join('') + '</ul>'; }
+function thead(t) { return '<div class="th"><b>' + t + '</b><span class="grow"></span>' + ib('x-lg') + '</div>'; }
+function tfoot(label) { return '<div class="tf">' + b('Cancel', 'ghost sm') + b(label, 'fill sm', 'check2') + '</div>'; }
+function people(on) { return '<div class="ppl">' + Object.keys(PEOPLE).map(function (k) { return '<span class="pt' + (on.indexOf(k) > -1 ? ' on' : '') + '">' + av(k) + PEOPLE[k] + '</span>'; }).join('') + '</div>'; }
+function part(icon, name, right, body) { return '<div class="part"><div class="part-h">' + ic(icon) + name + (right ? '<span class="r">' + right + '</span>' : '') + '</div>' + body + '</div>'; }
+var TIME_ROWS = '<div class="part-l">' + av('N') + '<b>Nora</b><span class="q">Mon 23.11 · Headline drafts</span><span class="e">1 h 30 min' + ib('pencil', 'sm') + ib('trash', 'sm') + '</span></div>' +
+  '<div class="part-l">' + av('T') + '<b>Theo</b><span class="q">Tue 24.11</span><span class="e">1 h' + ib('pencil', 'sm') + ib('trash', 'sm') + '</span></div>';
+var DEP_ROW = '<div class="part-l">' + ic('lock', '" style="color:var(--amber)') + '<span class="lnk">T-121 · Update the shipping texts</span><span class="e"><span class="badge soft">In progress</span>' + ib('x-lg', 'sm') + '</span></div>';
+var REC = '<span class="chip">' + ic('receipt') + 'Order 1045</span><span class="chip">' + ic('file-earmark-text') + 'Page: Winter campaign</span>';
+var A1 = drawer(thead('T-128 · Task') + '<div class="tb">' +
+  '<div class="info"><span class="badge">In progress</span><span>Created by Nora, 19.11 09:12</span><span class="lnk">#winter-campaign</span></div>' +
+  '<div class="quick">' + b('To do', 'ghost sm') + b('Waiting', 'ghost sm') + b('Done', 'quiet sm') + b('Cancelled', 'ghost sm') + '</div>' +
+  '<div class="box"><div class="box-h" style="color:var(--fg)">Progress<span class="r" style="color:var(--fg2)">2 of 5 items · 40%</span></div><div class="bar"><b style="width:40%"></b></div>' +
+  '<div class="box-h" style="margin:10px 0 0">' + ic('list-check') + 'The task’s own list</div>' + oldList() +
+  '<div class="grp" style="margin-top:8px">' + '<div class="in sm" style="flex:1;width:auto;border-right:1px solid var(--field-line);border-radius:9px"><span class="ph">Add an item to the list…</span></div>' + '<span class="b quiet sm" style="margin-left:6px;padding:0 9px">' + ic('plus-lg') + '</span></div></div>' +
+  field('Title', inp(TITLE)) +
+  field('Description', '<div class="rich"><div class="tx"><p>' + P1 + '</p><p>' + P2 + '</p><p style="color:var(--fg2)">' + ic('ui-checks') + ' Checklist · 5 items</p></div>' + TOOLS + '</div></div>', 'A checklist in the description (the list button, or lines that start with - [ ]) becomes the task’s checklist.') +
+  '<div class="box"><div class="box-h">' + ic('calendar-event') + 'Dates and repeat</div><div class="g2">' + field('Starts', inp('16.11.2026', 'sm', 'calendar3')) + field('Due', inp('24.11.2026', 'sm', 'calendar3')) + '</div><div style="margin-top:10px">' + field('Repeat', sel('Does not repeat', 'sm')) + '</div></div>' +
+  '</div>', 'mid');
+var A2 = drawer(cut('The same drawer, scrolled on') + '<div class="tb">' +
+  '<div class="box"><div class="box-h">' + ic('bell') + 'Time and reminder</div><div class="g2">' + field('Due time', inp('09:30', 'sm', 'clock')) + field('Remind', '<div class="grp">' + inp('2', 'sm') + sel('hours before', 'sm') + '</div>') + '</div><div class="sum">The reminder went on 24.11.2026 07:30.</div></div>' +
+  '<div class="g2">' + field('Estimate (hours)', inp('4', 'sm'), 'Left empty, 1 h is counted.') + field('Task priority', sel('High', 'sm')) + field('Department', sel('Marketing', 'sm')) + '</div>' +
+  field('Responsible people', people('NT'), 'Everyone chosen is responsible for the task.') +
+  field('Tagged records', '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">' + REC + '</div>' + '<div class="in sm">' + ic('search') + '<span class="ph">Find a record to tag</span></div>') +
+  part('stars', 'Assistant', '', '<div class="part-l">' + sel('— Not selected —', 'sm" style="flex:1') + b('Hand to an assistant', 'quiet sm') + '</div>') +
+  part('stopwatch', 'Time spent', '2 h 30 min spent of 4 h', '<div class="bar" style="margin:8px 0 2px"><b style="width:62%"></b></div><div class="part-l"><span class="e">' + b('Start the timer', 'quiet sm', 'play-circle') + '</span></div>' +
+    '<div class="g2" style="grid-template-columns:1fr 1fr 1fr;margin-top:8px">' + field('Duration', inp('1:30', 'sm')) + field('Date', inp('27.11.2026', 'sm', 'calendar3')) + field('Note', inp('&nbsp;', 'sm')) + '</div>' +
+    '<div class="part-l"><span class="ck on">' + ic('check') + '</span>Billable<span class="e">' + b('Add time', 'quiet sm', 'plus-lg') + '</span></div>' + TIME_ROWS + '<div class="part-l q" style="justify-content:flex-end;font-weight:600">Total 2 h 30 min</div>') +
+  part('diagram-2', 'Dependencies', '', '<div class="help">Cannot start until these are done</div>' + DEP_ROW + '<div class="in sm" style="margin-top:8px"><span class="ph">Find a task by its number or title</span></div>') +
+  part('patch-check', 'Customer approval', '', '<div class="part-l q">Nobody has been asked to approve this task yet.<span class="e">' + b('Ask the customer to approve', 'quiet sm') + '</span></div>') +
+  part('journal-text', 'Notes <span class="badge" style="margin-left:4px">3</span>', '', '<div class="note">' + av('T') + '<div><div class="m"><b>Theo</b>26.11 11:20</div>The lead reads well. Two of the banner lines are still too long for a phone.</div></div>' +
+    '<div class="rich" style="margin-top:10px"><div class="tx" style="color:var(--fg3);font-size:13.5px">Write a note… @ mentions someone, # tags a record</div><div class="tools">' + ib('at', 'sm') + ib('hash', 'sm') + ib('emoji-smile', 'sm') + '<span class="grow"></span>' + b('Add a note', 'fill sm', 'plus-lg') + '</div></div>') +
+  '</div>' + tfoot('Save'));
+var A = frame(stage(A1 + A2));
+
+/* ── B: the task to read ── */
+function rhead(o) {
+  o = o || {};
+  return '<div class="rh">' + (o.back ? ib('arrow-left', 't44') : '') + '<span class="num">T-128</span>' + stc(o.st || 'doing', o.menu, o.menu ? 'open' : '') + '<span class="grow"></span>' + (o.saved ? '<span class="saved">' + ic('check2') + 'Saved</span>' : '') + ib('three-dots', o.back ? 't44' : '') + (o.back ? '' : ib('x-lg')) + '</div>';
+}
+function vr(k, v, o) {
+  o = o || {};
+  return '<div class="vr' + (o.c ? ' ' + o.c : '') + '"><span class="k">' + k + '</span><span class="v' + (o.v ? ' ' + o.v : '') + '">' + v + (o.end ? '<span class="end">' + o.end + '</span>' : '') + '</span>' + (o.why ? '<span class="why">' + ic('exclamation-circle') + '<span>' + o.why + '</span></span>' : '') + '</div>';
+}
+var DUE = 'Tue 24.11 09:30 · 3 days late';
+function rows(done, upTo) {
+  var list = [
+    vr('Responsible people', who('N') + who('T')),
+    vr('Starts', 'Mon 16.11'),
+    done ? vr('Due', 'Tue 24.11 09:30') : vr('Due', DUE, { v: 'late' }),
+    vr('Task priority', prio('high')),
+    vr('Department', '<span class="who"><i class="dot" style="width:8px;height:8px;border-radius:50%;background:var(--violet)"></i>Marketing</span>'),
+    vr('Channel', '<span class="lnk">#winter-campaign</span>'),
+    vr('Repeat', 'Does not repeat', { v: 'none' }),
+    vr('Remind', '2 hours before'),
+    vr('Estimate', 'None', { v: 'none' })
+  ];
+  return '<div class="vrs">' + list.slice(0, upTo || 9).join('') + '</div>';
+}
+function checklist(n, busy, noWho) {
+  return '<ul class="cl">' + ITEMS.map(function (i, x) {
+    var on = x < n;
+    return '<li' + (on ? ' class="done"' : '') + '><span class="tick' + (on ? ' on' : '') + (busy === x ? ' busy' : '') + '">' + (on ? ic('check') : '') + '</span><span class="tx">' + i[0] + '</span>' + (busy === x ? '<span class="whn"><span class="spin" style="display:block"></span></span>' : (on && !noWho ? '<span class="whn">' + (i[2] || 'Nora · 27.11 09:02') + '</span>' : '')) + '</li>';
+  }).join('') + '</ul>';
+}
+function progress(n) { return '<div class="prog"><span class="bar"><b style="width:' + (n * 20) + '%"></b></span>' + n + ' of 5 items · ' + (n * 20) + '%</div>'; }
+var ADD_ITEM = '<div class="addi">' + ic('plus-lg') + 'Add an item to the list…</div>';
+function descr(n, noWho) { return '<div class="glr">Description' + b('Edit', 'ghost sm') + '</div><div class="desc"><p>' + P1 + '</p><p>' + P2 + '</p>' + checklist(n, -1, noWho) + ADD_ITEM + progress(n) + '</div>'; }
+function fr(icon, name, right, open, body) { return '<div class="fr' + (open ? ' open' : '') + '">' + ic(icon) + name + '<span class="r">' + right + '</span>' + ic('chevron-down', 'chev') + '</div>' + (open ? '<div class="fb">' + body + '</div>' : ''); }
+var F_REC = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">' + REC + '</div><div class="in sm">' + ic('search') + '<span class="ph">Find a record to tag</span></div>';
+var F_DEP = '<div class="sub">Cannot start until these are done</div>' + DEP_ROW + '<div class="in sm" style="margin-top:8px"><span class="ph">Find a task by its number or title</span></div><div class="sub">Waiting for this task</div><div class="part-l q" style="margin-top:0">None</div>';
+var F_NOTES = '<div class="note" style="margin-top:0">' + av('T') + '<div><div class="m"><b>Theo</b>26.11 11:20</div>The lead reads well. Two of the banner lines are still too long for a phone.</div></div>' +
+  '<div class="note">' + av('N') + '<div><div class="m"><b>Nora</b>26.11 14:02</div>Shortened both. Waiting for the pictures before the final read.</div></div>' +
+  '<div class="rich" style="margin-top:12px"><div class="tx" style="color:var(--fg3);font-size:13.5px">Write a note… @ mentions someone, # tags a record</div><div class="tools">' + ib('at', 'sm') + ib('hash', 'sm') + ib('emoji-smile', 'sm') + '<span class="grow"></span>' + b('Add a note', 'fill sm', 'plus-lg') + '</div></div>';
+function timeBody(running) {
+  return '<div class="bar" style="margin:0 0 10px"><b style="width:62%"></b></div>' +
+    (running ? '<div class="tl">' + ic('record-circle', '" style="color:var(--rose)') + 'The timer is running <span class="clock">00:42:10</span><span class="grow"></span>' + b('Stop the timer', 'danger sm', 'stop-circle') + '</div>'
+      : '<div class="tl"><span class="grow"></span>' + b('Start the timer', 'quiet sm', 'play-circle') + '</div>') +
+    '<div class="g2" style="grid-template-columns:1fr 1fr 1fr;margin-top:10px">' + field('Duration', inp('1:30', 'sm')) + field('Date', inp('27.11.2026', 'sm', 'calendar3')) + field('Note', inp('&nbsp;', 'sm')) + '</div>' +
+    '<div class="part-l" style="margin-top:10px"><span class="ck on">' + ic('check') + '</span>Billable<span class="e">' + b('Add time', 'quiet sm', 'plus-lg') + '</span></div>' + TIME_ROWS + '<div class="part-l" style="justify-content:flex-end;font-weight:600">Total 2 h 30 min</div>';
+}
+function folds(open, timeRunning) {
+  open = open || {};
+  return '<div class="folds">' +
+    fr('tag', 'Tagged records', '2', open.rec, F_REC) +
+    fr('stars', 'Assistant', 'Not handed over', 0) +
+    fr('stopwatch', 'Time spent', '2 h 30 min spent of 4 h', open.time, timeBody(timeRunning)) +
+    fr('diagram-2', 'Dependencies', 'Waiting for T-121', open.dep, F_DEP) +
+    fr('patch-check', 'Customer approval', 'Nobody asked yet', 0) +
+    fr('journal-text', 'Notes', '2', open.notes, F_NOTES) + '</div>';
+}
+var MADE = '<div class="made">Created by Nora, 19.11 09:12</div>';
+var B1 = drawer(rhead({ saved: 1 }) + '<div class="rt"><span>' + TITLE + '</span></div>' + rows() + descr(2) + folds() + MADE, 'mid');
+var B2 = drawer(rhead() + cut('The same drawer, scrolled on: the head stays, two parts are open') + '<div class="desc" style="margin-top:10px">' + checklist(2, -1, 1).replace('<ul class="cl">', '<ul class="cl" style="margin-top:0">') + ADD_ITEM + progress(2) + '</div>' + folds({ dep: 1, notes: 1 }) + MADE);
+var B = frame(stage(B1 + B2));
+
+/* ── C: one value row in its states ── */
+function cell(n, name, line, inner, style) { return '<div' + (style ? ' style="' + style + '"' : '') + '><div class="cap"><i>' + n + '</i><b>' + name + '</b><span>' + line + '</span></div><div class="panel">' + inner + '</div></div>'; }
+function one(row) { return '<div class="vrs">' + row + '</div>'; }
+var PENCIL = ic('pencil');
+function cal(c) {
+  var h = '<span class="pop dp' + (c ? ' ' + c : '') + '" style="display:block"><span class="dp-h">November 2026<span class="grow"></span>' + ib('chevron-left', 'sm') + ib('chevron-right', 'sm') + '</span><span class="dp-g">';
+  ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].forEach(function (w) { h += '<span class="w">' + w + '</span>'; });
+  for (var d = -5; d <= 36; d++) {
+    var out = d < 1 || d > 30;
+    h += '<span class="' + (out ? 'o' : (d === 24 ? 'on' : (d === 27 ? 'now' : ''))) + '">' + (d < 1 ? d + 31 : (d > 30 ? d - 30 : d)) + '</span>';
+  }
+  return h + '</span><span class="dp-f">Due time' + inp('09:30', 'sm') + b('Clear', 'ghost sm') + '</span></span>';
+}
+var PPL_PICK = '<span class="pop" style="display:block;width:242px"><span class="in sm" style="margin:2px 2px 5px">' + ic('search') + '<span class="ph">Search people</span></span>' +
+  ['N', 'T', 'M', 'S'].map(function (k, x) { return '<span class="mi' + (x === 1 ? ' cur' : '') + '">' + av(k) + PEOPLE[k] + (x < 2 ? ic('check-lg') : '') + '</span>'; }).join('') + '</span>';
+var PRIO_MENU = menu(Object.keys(PR).map(function (k) { return [prio(k), '', k === 'high']; }), '', 'display:block;width:204px');
+var C = frame('<div class="pad"><div class="cells c3">' +
+  cell(1, 'At rest', 'label quiet, value in ink', one(vr('Due', DUE, { v: 'late' }))) +
+  cell(2, 'Pointed at', 'tint ground, a pencil at the end', one(vr('Due', DUE, { v: 'late', c: 'hover', end: PENCIL }))) +
+  cell(3, 'Focused by the keyboard', 'the ring, no tint', one(vr('Due', DUE, { v: 'late', c: 'focus', end: PENCIL }))) +
+  cell('4a', 'Picker open: people', 'search, ticked rows, several stay', one(vr('Responsible people', who('N') + who('T'), { c: 'open', end: ic('chevron-up') })) + '<div class="under-v">' + PPL_PICK + '</div>') +
+  cell('4b', 'Picker open: date', 'a month, the due time, “Clear”', one(vr('Due', DUE, { v: 'late', c: 'open', end: ic('chevron-up') })) + '<div class="under-v">' + cal() + '</div>') +
+  cell('4c', 'Picker open: menu', 'the pills, a check on the current one', one(vr('Task priority', prio('high'), { c: 'open', end: ic('chevron-up') })) + '<div class="under-v">' + PRIO_MENU + '</div>') +
+  cell(5, 'Saving', 'the new value quiet, a small spinner', one(vr('Due', 'Mon 30.11 09:30', { v: 'busy', end: '<span class="spin"></span>' }))) +
+  cell(6, 'Saved', 'the value in ink, the head says “Saved”', rhead({ saved: 1 }).replace(ib('x-lg'), '').replace(ib('three-dots'), '') + one(vr('Due', 'Mon 30.11 09:30'))) +
+  cell(7, 'Refused', 'the old value back, the store’s reason under it', one(vr('Due', DUE, { v: 'late', why: 'The task cannot start after it is due.' }))) +
+  '</div></div>');
+
+/* ── D: title and description changed in place ── */
+var D = frame('<div class="pad"><div class="cells c2">' +
+  cell(1, 'The title, pointed at', 'a faint field outline, the text does not move', rhead() + '<div class="rt hover" style="margin-bottom:18px"><span>' + TITLE + '</span></div>') +
+  cell(2, 'The title, being changed', 'the same size in a field', rhead() + '<div class="rt edit"><span>' + TITLE + '<span class="caret"></span></span></div><div class="hint" style="margin:10px 20px 14px">Enter saves · Esc gives up</div>') +
+  cell(3, 'The description, being changed', 'the writing box; the one thing saved by a button', '<div class="glr">Description</div><div style="margin:0 20px 18px"><div class="rich focus"><div class="tx"><p>' + P1 + '</p><p>' + P2 + '<span class="caret"></span></p>' + checklist(2, -1, 1) + '</div>' + TOOLS + '<span class="grow"></span>' + b('Cancel', 'ghost sm') + b('Save', 'fill sm', 'check2') + '</div></div></div>') +
+  cell(4, 'A checklist item, ticked in place', 'the tick waits, then the line and the count follow', '<div class="glr">Description' + b('Edit', 'ghost sm') + '</div><div class="desc" style="margin-bottom:16px"><p>' + P1 + '</p>' + checklist(3, 2) + ADD_ITEM + progress(3) + '</div>') +
+  '</div></div>');
+
+/* ── E: the status control, a finished task ── */
+var REOPEN = [[ic('arrow-counterclockwise'), 'Open it again', 0, 'to “To do”'], '-'];
+function crop(n, name, line, inner, h) { return '<div><div class="cap" style="margin-top:14px"><i>' + n + '</i><b>' + name + '</b><span>' + line + '</span></div><div class="panel" style="min-height:' + h + 'px">' + inner + '</div></div>'; }
+var E1 = '<div style="position:relative;z-index:1;width:544px;flex:none;padding-bottom:20px">' +
+  crop(1, 'The status menu', 'each status with its dot, a check on the current one', rhead({ menu: stMenu('doing') }) + '<div class="rt"><span>' + TITLE + '</span></div>' + rows(0, 2), 258) +
+  crop(2, 'On a finished task', '“Open it again” first, then the statuses', rhead({ st: 'done', menu: stMenu('done', REOPEN) }) + '<div class="rt"><span>' + TITLE + '</span></div>' + rows(1, 3), 306) +
+  crop(3, 'Time spent while the timer runs', 'today’s line, “Stop the timer” in the danger look', '<div class="folds" style="margin-top:0;border-top:0">' + fr('stopwatch', 'Time spent', '2 h 30 min spent of 4 h', 1, timeBody(1).split('<div class="g2"')[0]) + '</div>', 0) + '</div>';
+var E2 = drawer(rhead({ st: 'done' }) + '<div class="rt"><span>' + TITLE + '</span></div>' + rows(1, 4) + '<div class="gapm">Five more rows, the description and its list as on board B</div>' + folds({ time: 1 }).replace('margin: 16px', '').replace('class="folds"', 'class="folds" style="margin-top:0;border-top-style:dashed"') + '<div class="made">Created by Nora, 19.11 09:12 · Finished 26.11 16:40</div>');
+var E = frame(stage(E1 + E2));
+
+/* ── F: New task ── */
+function newTask(open) {
+  var more = '<div class="more' + (open ? ' open' : '') + '"><div class="more-h">' + ic('sliders') + '<div><b>More</b><small>Start, due time, reminder, repeat, estimate, department, channel, records</small></div>' + ic('chevron-down', 'chev') + '</div>' +
+    (open ? '<div class="more-b"><div class="g2">' + field('Starts', inp('&nbsp;', 'sm', 'calendar3')) + field('Due time', inp('&nbsp;', 'sm', 'clock')) + '</div>' +
+      '<div class="g2">' + field('Remind', '<div class="grp">' + inp('&nbsp;', 'sm') + sel('hours before', 'sm') + '</div>', 'Leave the number empty for no reminder.') + field('Repeat', sel('Does not repeat', 'sm')) + '</div>' +
+      '<div class="g2">' + field('Estimate (hours)', inp('&nbsp;', 'sm'), 'Left empty, 1 h is counted.') + field('Department', sel('No department', 'sm')) + '</div>' +
+      field('Post the card in', sel('#winter-campaign', 'sm')) +
+      field('Tagged records', '<div class="in sm">' + ic('search') + '<span class="ph">Find a record to tag</span></div>', 'No records tagged.') + '</div>' : '') + '</div>';
+  return thead('New task') + '<div class="fbody">' +
+    field('Title', '<div class="in focus"><span>Banner lines for the winter page<span class="caret"></span></span></div>') +
+    field('Description', '<div class="rich"><div class="tx" style="min-height:66px;color:var(--fg3)">Description</div>' + TOOLS + '</div></div>') +
+    field('Responsible people', people('N'), 'Everyone chosen is responsible for the task.') +
+    '<div class="g2">' + field('Due', inp('30.11.2026', 'sm', 'calendar3')) + field('Task priority', sel('Normal', 'sm')) + '</div>' + more + '</div>' +
+    '<div class="tf">' + b('Cancel', 'ghost sm') + b('Create the task', 'fill sm', 'check2') + '</div>';
+}
+var F = frame(stage(drawer(newTask(0), 'mid') + drawer(newTask(1))));
+
+/* ── G: phone width ── */
+function phone(extra) {
+  return '<div class="phone">' + rhead({ back: 1 }) + '<div class="rt"><span>' + TITLE + '</span></div>' + rows() +
+    '<div class="glr">Description' + b('Edit', 'ghost sm') + '</div><div class="desc"><p>' + P1 + '</p>' + checklist(2, -1, 1) + progress(2) + '</div>' + folds() + '<div style="height:14px"></div>' + (extra || '') + '</div>';
+}
+var SHEET = '<div class="dimmer"></div><div class="bsheet"><div class="grab"></div>' + cal().replace('class="pop dp"', 'class="dp" style="width:auto;padding:0').replace(' style="display:block"', '').replace('November 2026', 'Due · November 2026').replace(/ib sm/g, 'ib t44') + '</div>';
+var G = '<div class="narrow-row">' + phone() + phone(SHEET) +
+  '<div class="side-notes"><div><b>The drawer fills the screen.</b> A Back arrow takes Close’s place; the head keeps the number, the status control and the ⋯ menu, each a 44 px target, and stays while the page scrolls.</div><div><b>The label column narrows to 104 px;</b> a long label breaks into two lines and its row grows, a value never leaves its row. Rows and fold rows keep 44 px and 48 px.</div><div><b>A picker opens as a sheet from the bottom edge</b> over the scrim, with 44 px days: the date sheet here, the people list and the menus the same way. A day pressed saves and closes the sheet; the time and “Clear” save too.</div><div><b>The description’s writing box</b> opens over the whole screen with its “Save” and “Cancel” above the keyboard.</div></div></div>';
+
+/* ── H: sizes and keys ── */
+var KEYS = [['Tab', 'Moves through the head’s controls, the title, the value rows, “Edit”, the checklist and the fold rows, in the order drawn.'], ['Enter, Space', 'On a value row: opens its picker. On a fold row: opens or closes it. On a checklist item: ticks it.'], ['↑ ↓', 'Move in a menu or a people list; in the date picker the four arrows move by a day and a week.'], ['Enter', 'In a picker: chooses and saves. A people list stays open for more; a menu and a date close.'], ['Esc', 'Closes the open picker first; pressed again it closes the drawer.'], ['Title', 'Enter or F2 starts the change; Enter saves, Esc restores the old title.'], ['Ctrl+Enter', 'In the description’s writing box: “Save”. Esc there asks nothing when nothing changed.'], ['Focus', 'Goes back to the row once its picker has closed, and to the list’s row when the drawer closes.']];
+var SIZES = [['Drawer width (as today)', '544 px'], ['Side padding', '20 px'], ['Head', '56 px'], ['Status control', '28 px, radius 14'], ['Title', '22 / 28, weight 650'], ['Value row', '44 px or more'], ['Label column', '132 px (104 phone)'], ['Label to value', '12 px'], ['Label · value text', '13 · 13.5 px'], ['Hairline', '1 px'], ['Row tint, focus ring', 'radius 10, 8 px out'], ['Fold row', '48 px'], ['Picker', 'radius 12, 242 px wide'], ['Menu row', '34 px, radius 8']];
+var H = frame('<div class="pad"><div class="sizes"><div class="mwrap" id="mwrap"><div class="zoom" id="zoom">' + rhead().replace('class="rh"', 'class="rh" id="m-head"').replace('class="stc', 'id="m-stc" class="stc') +
+  '<div class="rt" id="m-title"><span>Landing page copy</span></div><div class="vrs">' + vr('Responsible people', who('N')).replace('class="vr"', 'class="vr" id="m-row"').replace('class="k"', 'class="k" id="m-k"').replace('class="v"', 'class="v" id="m-v"') + vr('Task priority', prio('high')) + '</div>' +
+  '<div class="folds">' + fr('stopwatch', 'Time spent', '2 h 30 min', 0).replace('class="fr"', 'class="fr" id="m-fold"') + '</div></div></div>' +
+  '<div><p class="h3">Keys</p><table class="keys">' + KEYS.map(function (k) { return '<tr><td><span class="kbd">' + k[0] + '</span></td><td>' + k[1] + '</td></tr>'; }).join('') + '</table>' +
+  '<p class="h3">Sizes</p><table class="keys sz">' + SIZES.map(function (k) { return '<tr><td>' + k[0] + '</td><td>' + k[1] + '</td></tr>'; }).join('') + '</table></div></div></div>');
+
+var frames = {
+  A: wrap('A', 'Today', 'The drawer My Tasks opens now: a form of every field with one “Save” at its foot', A, [
+    '<b>What it is:</b> the title bar “T-128 · Task”; the status as a badge and a row of buttons; the progress box; then every field as a field, the parts one under another, “Cancel” and “Save” at the foot.',
+    '<b>The fields in order:</b> Title, Description, Starts, Due, Repeat, Due time, Remind, Estimate (hours), Task priority, Department, Responsible people, Tagged records. A new task also has “Post the card in”.',
+    '<b>The parts:</b> Assistant, Time spent, Dependencies, Customer approval, a survey answer on a follow-up task, Notes. There is no history list and no file list on a task today.'
+  ]),
+  B: wrap('B', 'The task opened to read', 'The same task as a page: head, title, value rows, the description as it reads, the parts folded. No foot, no “Save”', B, [
+    '<b>Head:</b> the number quiet, the status control in its status’s tone, a place for “Saved”, the ⋯ menu (today’s task menu: copy the number, copy the link, put off) and Close. It stays while the page scrolls.',
+    '<b>Value rows:</b> one list without a card, a hairline between rows, the label in a 132 px column. Each row opens its own picker and saves at once; “Channel” is a link, as a task’s channel is not changed today. A row with no value reads a quiet word.',
+    '<b>Parts:</b> closed under today’s names with a count or a state at the right. Opened, a part holds what today’s drawer holds; several may be open. The line “Created by …” closes the page.'
+  ]),
+  C: wrap('C', 'A value row’s states', 'One row from rest to refusal, and the three pickers: the rule is one row, one picker, one save', C, [
+    '<b>Pointed at or focused,</b> a row shows a pencil at its end; open, the pencil turns into a chevron and the picker hangs under the value, 242 px wide, never wider than the drawer.',
+    '<b>The pickers</b> are the Workspace’s own: the people today’s people box offers (only those the reader may give work to) as a list with a search; the date field’s month with the due time under it; a menu of the four priorities.',
+    '<b>Refused:</b> the row takes its old value back and the store’s sentence stands under it in rose until the row is changed again or the drawer closes; nothing else on the page moves.'
+  ]),
+  D: wrap('D', 'Title and description changed in place', 'Short text saves on Enter; the long text is the one thing on the page saved by a button', D, [
+    '<b>The title</b> keeps its size and place in all three states, so nothing jumps: a faint outline when pointed at, the field’s ring while changed. An empty title is not saved: the field stays with the store’s sentence under it.',
+    '<b>The description</b> opens in the Workspace’s writing box with its row of tools (person, record, emoji, lists, quote, checklist); “Save” and “Cancel” stand at the row’s end, as on a note today.',
+    '<b>A tick</b> is not a change of the task: anyone who may tick today may tick here. While it is sent the tick waits; refused, it goes back and the reason is told as today.'
+  ]),
+  E: wrap('E', 'The status control and a finished task', 'One control changes the status and opens a task again; a finished task stays a page that can be read and changed', E, [
+    '<b>The menu</b> lists the five statuses with their dots: To do gray, In progress blue, Waiting amber, Done green, Cancelled rose. Today’s questions stay: a task that waits for others asks before “In progress”, a survey follow-up asks how it ended before “Done”.',
+    '<b>Finished:</b> the control is green, the title stays in ink without a line through it, the due date loses its rose, the rows still open their pickers for whoever may change the task. “Open it again” is the menu’s first row, not a button on the page.',
+    '<b>Time spent, open:</b> what today’s drawer has: the bar against the estimate, “Start the timer” or the running line with “Stop the timer”, the line that adds time, the entries with their pencil and bin, the total.'
+  ]),
+  F: wrap('F', 'New task', 'A form of five fields, the rest under “More”; left closed, right open', F, [
+    '<b>Five fields:</b> Title, Description (the writing box, small), Responsible people (today’s box, the reader chosen), Due and Task priority side by side. Each keeps today’s control and label.',
+    '<b>“More”</b> is one fold row with a line naming what it holds: Starts, Due time, Remind, Repeat, Estimate (hours), Department, Post the card in, Tagged records. Opened from a place that already set one of them, it starts open.',
+    '<b>Foot:</b> “Cancel” quiet and the one filled button under today’s label, “Create the task”. The warnings of today’s check stand above the foot as they do now.'
+  ]),
+  G: wrap('G', 'Phone width', 'The read drawer at 390 px, and the date picker as a sheet from the bottom edge', G, null),
+  H: wrap('H', 'Sizes and keys', 'The head, the title, two value rows and a fold row three times enlarged; whatever a pointer does, the keys do', H, null)
+};
+document.getElementById('root').innerHTML = Object.keys(frames).filter(function (k) { return !only || only === k; }).map(function (k) { return frames[k]; }).join('');
+
+/* H: the measure lines, read off the drawn crop */
+(function () {
+  var host = document.getElementById('mwrap'), zoom = document.getElementById('zoom');
+  if (!host) return;
+  host.style.height = (zoom.offsetHeight * 3 + 44) + 'px';
+  var o = host.getBoundingClientRect();
+  function box(id) { var r = document.getElementById(id).getBoundingClientRect(); return { x: r.left - o.left, y: r.top - o.top, w: r.width, h: r.height }; }
+  function mark(kind, x, y, len, text) { var m = document.createElement('div'); m.className = 'mk ' + kind; m.style.left = x + 'px'; m.style.top = y + 'px'; m.style[kind === 'v' ? 'height' : 'width'] = len + 'px'; m.innerHTML = '<span>' + text + '</span>'; host.appendChild(m); }
+  var head = box('m-head'), title = box('m-title'), row = box('m-row'), k = box('m-k'), v = box('m-v'), fold = box('m-fold'), stcb = box('m-stc'), z = box('zoom');
+  mark('v', 62, head.y, head.h, 'head 56');
+  mark('v', 62, title.y, title.h, 'title 22 / 28');
+  mark('v', 62, row.y, row.h, 'row 44');
+  mark('v', 62, fold.y, fold.h, 'fold 48');
+  mark('h', z.x, 22, k.x - z.x, '20');
+  mark('h', k.x, 22, v.x - k.x - 36, 'label column 132');
+  mark('h', v.x - 36, 22, 36, '12');
+  mark('h', stcb.x, head.y + head.h + 4, stcb.w, '28 high · radius 14');
+})();
+</script>
+</body>
+</html>
