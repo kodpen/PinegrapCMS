@@ -116,6 +116,7 @@ function test_workspace_my_calendar_short_label_fits_a_phone_bar()
 	pg_assert_same('9 – 15 Nov', ws_my_calendar_label_short(ws_my_calendar_range('week', '2026-11-14', '2026-11-14')), 'one month: named once');
 	pg_assert_same('30 Nov – 6 Dec', ws_my_calendar_label_short(ws_my_calendar_range('week', '2026-12-01', '2026-11-14')), 'two months: both named');
 	pg_assert_same('28 Dec – 3 Jan', ws_my_calendar_label_short(ws_my_calendar_range('week', '2026-12-30', '2026-11-14')), 'across the year: no year');
+	pg_assert_same('14 Nov', ws_my_calendar_label_short(ws_my_calendar_range('list', '2026-11-14', '2026-11-14')), 'a list: the day it runs on from');
 }
 
 function test_workspace_my_calendar_screen_is_for_team_members_and_reads_only_the_reader()

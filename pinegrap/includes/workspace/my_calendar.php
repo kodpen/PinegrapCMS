@@ -521,7 +521,8 @@ function ws_my_calendar_label($range)
 
 /**
  * The range's title short enough for a phone's bar: "Nov 2026" for a month,
- * "9 – 15 Nov" or "30 Nov – 6 Dec" for a week or a list (no year). Pure.
+ * "9 – 15 Nov" or "30 Nov – 6 Dec" for a week (no year), "14 Nov" for the
+ * list, the day it runs on from. Pure.
  *
  * @param array $range ws_my_calendar_range()
  * @return string
@@ -541,6 +542,12 @@ function ws_my_calendar_label_short($range)
     }
 
     $from = strtotime($range['from'] . ' 12:00:00');
+
+    // The list runs on from its day: that day alone names it.
+    if ($range['view'] === 'list') {
+        return date('j', $from) . ' ' . $names[(int) date('n', $from)];
+    }
+
     $to = strtotime($range['to'] . ' 12:00:00');
     $to_label = date('j', $to) . ' ' . $names[(int) date('n', $to)];
 
@@ -568,6 +575,7 @@ function ws_my_calendar_js_strings()
         'next'          => lang('Next'),
         'work_calendar' => lang('Work Calendar'),
         'nothing'       => lang('Nothing on your calendar in these days.'),
+        'nothing_day'   => lang('Nothing on your calendar this day.'),
         'own_calendar'  => lang('Your own calendar'),
     );
 }

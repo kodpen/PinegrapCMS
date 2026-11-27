@@ -22770,7 +22770,7 @@ button.ws-cal-more {
 }
 .ws-mycal-hours-row {
   display: grid;
-  grid-template-columns: var(--ws-mycal-gutter) repeat(7, minmax(0, 1fr));
+  grid-template-columns: var(--ws-mycal-gutter) repeat(var(--ws-mycal-days, 7), minmax(0, 1fr));
 }
 .ws-mycal-hours-head {
   background: var(--pg-bg-1);
@@ -22911,6 +22911,100 @@ button.ws-cal-more {
     margin: 0;
     border-radius: var(--ws-radius-xs);
     pointer-events: auto;
+  }
+}
+/* My calendar on a phone: the views keep their icons in the bar (no
+   select), the month's chosen day is ringed and listed under the grid, and
+   the week's one day shows its chips whole rather than as bars. */
+@container ws-bar (max-width: 1000px) {
+  .ws-mycal-screen .ws-bar-views-seg {
+    display: inline-flex;
+  }
+  .ws-mycal-screen .ws-bar-views-select {
+    display: none;
+  }
+}
+/* Hidden from 576 px; the panel's .pg-button sets a display of its own. */
+.ws-mycal-screen .ws-mycal-fab {
+  display: none;
+}
+@media (max-width: 575.98px) {
+  /* The Work Calendar is reached from the Workspace menu's Tools. */
+  .ws-mycal-screen .ws-bar > [data-ws-new-plan],
+  .ws-mycal-screen .ws-bar > [data-ws-work-calendar] {
+    display: none;
+  }
+  .ws-mycal-screen .ws-mycal-fab {
+    display: inline-flex;
+    position: fixed;
+    right: 16px;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    z-index: 1010;
+  }
+  /* Room under the last line for the floating New plan. */
+  .ws-mycal-screen .ws-mycal {
+    margin-bottom: 64px;
+  }
+}
+.ws-cal-day.ws-cal-chosen {
+  box-shadow: inset 0 0 0 2px var(--ws-accent);
+}
+.ws-mycal-picked {
+  padding: 4px 8px 12px;
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+.ws-mycal-picked-empty {
+  margin: 0;
+  padding: 4px 12px 8px;
+}
+@media (max-width: 575.98px) {
+  .ws-mycal-one-day :is(.ws-cal-task, .ws-cal-event) {
+    height: auto;
+    padding: .12rem .35rem;
+    font-size: .75rem;
+    border-radius: var(--ws-radius-xs);
+    pointer-events: auto;
+  }
+  .ws-mycal-one-day :is(.ws-cal-task, .ws-cal-event):not(.ws-mycal-block) {
+    margin-bottom: .18rem;
+  }
+  .ws-mycal-one-day .ws-cal-task.ws-cal-span,
+  .ws-mycal-one-day .ws-cal-lane-gap {
+    height: 1.3rem;
+  }
+  .ws-mycal-one-day .ws-cal-task > * {
+    display: block;
+  }
+  .ws-mycal-one-day .ws-cal-task .ws-avatars {
+    display: none;
+  }
+  .ws-mycal-one-day .ws-cal-task-title {
+    font-size: .75rem;
+  }
+  .ws-mycal-one-day .ws-cal-task {
+    background: color-mix(in srgb, var(--ws-accent) 10%, transparent);
+  }
+  .ws-mycal-one-day .ws-cal-task.ws-cal-late {
+    background: color-mix(in srgb, var(--pg-danger) 12%, transparent);
+  }
+  .ws-mycal-one-day .ws-cal-task.ws-cal-upcoming {
+    background: transparent;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ws-accent) 40%, transparent);
+  }
+  .ws-mycal-one-day .ws-cal-event {
+    background: color-mix(in srgb, var(--pg-info) 14%, transparent);
+  }
+  .ws-mycal-one-day .ws-cal-event:is(.ws-kind-leave, .ws-kind-holiday) {
+    background: var(--pg-bg-2);
+  }
+  .ws-mycal-one-day .ws-cal-event.ws-kind-visit {
+    background: color-mix(in srgb, var(--pg-warning) 16%, transparent);
+  }
+  .ws-mycal-one-day .ws-cal-event.ws-kind-booking {
+    background: color-mix(in srgb, var(--pg-success) 14%, transparent);
+  }
+  .ws-mycal-one-day .ws-cal-event.ws-kind-personal {
+    background: color-mix(in srgb, var(--pg-tone-violet) 16%, transparent);
   }
 }
 .ws-mycal-list {

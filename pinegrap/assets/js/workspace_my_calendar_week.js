@@ -50,9 +50,12 @@
         var h = kit.h;
         var el = h.el;
         var data = kit.data;
-        var wrap = el('div', 'ws-mycal-hours');
+        var wrap = el('div', 'ws-mycal-hours' + (data.days.length === 1 ? ' ws-mycal-one-day' : ''));
 
         window.clearInterval(nowTimer);
+
+        // Seven columns, or one day at a time on a phone.
+        wrap.style.setProperty('--ws-mycal-days', String(data.days.length));
 
         // ── the days' heads, each opening that day as a list ──
 
