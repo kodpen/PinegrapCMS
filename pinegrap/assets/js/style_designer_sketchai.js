@@ -137,10 +137,12 @@ StyleDesigner.definePart('sketchai', function (K) {
 
     // Pinegrap AI was switched off: the actions go, nothing more is sent.
     function _saOff() {
+        var was = [draw, write];
         host.off();
         _saClose();
         draw = null;
         write = null;
+        was.forEach(function (m) { if (m && m.cb) m.cb({ off: true }); });
         sdToast(esc(_sdT('Pinegrap AI is off.')), 'warning', 5000);
         host.redraw();
     }
@@ -212,10 +214,12 @@ StyleDesigner.definePart('sketchai', function (K) {
         field.focus();
     }
 
-    function _saDraw(frameId, text) {
+    // `cb` (optional, the site's run): called once with how it ended,
+    // {ok, boxes}, {ok: false, message}, {off: true} or {stopped: true}.
+    function _saDraw(frameId, text, cb) {
         words[frameId] = text;
         delete lines[frameId];
-        var mine = { frame: frameId, tok: ++tok };
+        var mine = { frame: frameId, tok: ++tok, cb: cb || null };
         draw = mine;
         host.redraw();
         host.announce(_sdT('Drawing the sketch…'));
@@ -226,6 +230,7 @@ StyleDesigner.definePart('sketchai', function (K) {
             var say = _saWhy(res, _sdT('The sketch could not be drawn. Nothing was changed.'));
             _saLine(frameId, 'rose', esc(say), _sdT('Try again'), again);
             host.announce(say);
+            if (mine.cb) mine.cb({ ok: false, message: (res && typeof res.message === 'string') ? res.message.trim() : '' });
         };
         host.post({ mode: 'describe', words: text }).then(function (res) {
             if (draw !== mine) return;
@@ -237,25 +242,30 @@ StyleDesigner.definePart('sketchai', function (K) {
             host.keep(page, boxes);
             lines[frameId] = { tone: 'teal', html: esc(boxes.length === 1 ? _sdT('Sketch drawn from your words: 1 box.') : _sdT('Sketch drawn from your words: {var:1} boxes.', boxes.length)), act: _sdT('Undo'), run: function () { delete lines[frameId]; host.undoSketch(); }, sig: JSON.stringify(page.boxes) };
             host.redraw();
+            if (mine.cb) mine.cb({ ok: true, boxes: boxes.length });
         }, function () { fail(null); });
     }
 
     // ── Write the texts ──
 
-    function texts(h, frameId) {
+    // `cb` (optional, the site's run): called once with how it ended,
+    // {ok, written}, {ok: false, written, message}, {off: true} or
+    // {stopped: true, written}.
+    function texts(h, frameId, cb) {
         host = h;
         var page = host.page(frameId);
         var p = (page && page.built) ? host.pageOf(page.built.uid) : null;
-        if (!p || write) return;
+        if (!p || write) { if (cb) cb({ ok: false, written: 0, message: '' }); return; }
         var name = host.name(page);
         var root = host.treeOf(p);
         var found = _saSections(root, host.fp);
         if (!found.sample.length) {
             _saLine(frameId, 'blue', _saBold(_sdT('Every section of {var:1} was edited. No text was changed.', '\u0001'), name));
+            if (cb) cb({ ok: true, written: 0 });
             return;
         }
         var d = page.details || {};
-        var mine = { frame: frameId, p: p, done: 0, total: found.sample.length, written: 0, left: found.edited, stepped: false };
+        var mine = { frame: frameId, p: p, done: 0, total: found.sample.length, written: 0, left: found.edited, stepped: false, cb: cb || null };
         write = mine;
         delete lines[frameId];
         host.redraw();
@@ -266,12 +276,14 @@ StyleDesigner.definePart('sketchai', function (K) {
             var undo = _saUndo(frameId, mine);
             if (failed) {
                 _saLine(frameId, 'rose', esc(_saWhy(res, _sdT('The texts could not be written. {var:1} sections were written, the rest keep their sample content.', mine.written))), _sdT('Try again'), function () { texts(host, frameId); });
+                if (mine.cb) mine.cb({ ok: false, written: mine.written, message: (res && typeof res.message === 'string') ? res.message.trim() : '' });
                 return;
             }
             var html = _saBold(mine.written === 1 ? _sdT('Texts written in 1 section of {var:1}.', '\u0001') : _sdT('Texts written in {var:1} sections of {var:2}.', [mine.written, '\u0001']), name);
             if (mine.left) html += ' ' + esc(mine.left === 1 ? _sdT('1 edited section was left as it is.') : _sdT('{var:1} edited sections were left as they are.', mine.left));
             _saLine(frameId, 'teal', html, undo ? _sdT('Undo') : '', undo, undo ? undo.valid : null);
             host.announce(_sdT('The texts are written.'));
+            if (mine.cb) mine.cb({ ok: true, written: mine.written });
         };
         // The section's node as it is now, while it still holds its sample.
         var current = function (id) {
@@ -357,11 +369,13 @@ StyleDesigner.definePart('sketchai', function (K) {
     // what is written so far.
     function stop() {
         if (draw) {
+            var was = draw;
             var frameId = draw.frame;
             draw = null;
             delete lines[frameId];
             host.redraw();
             host.announce(_sdT('Stopped. The page is as it was.'));
+            if (was.cb) was.cb({ stopped: true });
             return;
         }
         if (write) {
@@ -370,6 +384,7 @@ StyleDesigner.definePart('sketchai', function (K) {
             write = null;
             var undo = _saUndo(mine.frame, mine);
             _saLine(mine.frame, 'teal', esc(_sdT('Stopped. {var:1} sections were written.', mine.written)), undo ? _sdT('Undo') : '', undo, undo ? undo.valid : null);
+            if (mine.cb) mine.cb({ stopped: true, written: mine.written });
         }
     }
 
@@ -382,6 +397,18 @@ StyleDesigner.definePart('sketchai', function (K) {
     return {
         describe: describe,
         texts: texts,
+        // The site's run (style_designer_siterun.js): the page drawn from
+        // its words, then its texts, each a promise of how it ended.
+        draw: function (h, frameId, text) {
+            host = h;
+            return new Promise(function (resolve) {
+                if (draw || !host.page(frameId)) { resolve({ ok: false, message: '' }); return; }
+                _saDraw(frameId, String(text || '').slice(0, 2000), resolve);
+            });
+        },
+        write: function (h, frameId) {
+            return new Promise(function (resolve) { texts(h, frameId, resolve); });
+        },
         fill: fill,
         escape: escape,
         stop: stop,

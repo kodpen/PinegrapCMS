@@ -1592,6 +1592,7 @@
     "Drawing the draft…": "Taslak çiziliyor…",
     "Drawing the page on the site…": "Sitedeki sayfa çiziliyor…",
     "Drawing the same thing every day takes the pressure off. Some days the sketch is great, most days it is just a cat-shaped potato, and that is fine.": "Her gün aynı şeyi çizmek baskıyı kaldırıyor. Bazı günler çizim harika oluyor, çoğu gün kedi şeklinde bir patates; bu da gayet normal.",
+    "Drawing the sketch of {var:1}": "{var:1} sayfasının taslağı çiziliyor",
     "Drawing the sketch…": "Taslak çiziliyor…",
     "Drawing the system widgets…": "Sistem widget'ları çiziliyor…",
     "Drawings and Photos": "Çizimler ve Fotoğraflar",

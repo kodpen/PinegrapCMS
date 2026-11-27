@@ -3602,6 +3602,7 @@
     "Writing the rule from here needs the API token permission Zone › Cache Rules › Edit. Without it, open your domain in the Cloudflare dashboard, then Caching › Cache Rules › Create rule.": "Kuralı buradan yazmak için API anahtarının Zone › Cache Rules › Edit iznine sahip olması gerekir. Bu izin yoksa Cloudflare panelinde alan adınızı açın, ardından Caching › Cache Rules › Create rule.",
     "Writing the shipping methods, shipping zones and tax zones checkout charges by - reading them is under Orders": "Ödemede kargo ve verginin hesaplandığı kargo yöntemlerini, kargo bölgelerini ve vergi bölgelerini yazma - okuma Siparişler altındadır",
     "Writing the shipping zones and tax zones checkout charges by - reading them is under Orders": "Ödemede kargo ve verginin hesaplandığı kargo bölgelerini ve vergi bölgelerini yazma - okuma Siparişler altındadır",
+    "Writing the texts of {var:1}": "{var:1} sayfasının metinleri yazılıyor",
     "Writing the texts…": "Metinler yazılıyor…",
     "Writing the texts… {var:1} of {var:2}": "Metinler yazılıyor… {var:1} / {var:2}",
     "Writing to Google Calendar is off and its Workspace tasks calendar was removed.": "Google Takvim'e yazma kapatıldı ve Çalışma Alanı görevleri takvimi kaldırıldı.",

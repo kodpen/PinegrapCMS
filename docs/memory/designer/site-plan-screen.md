@@ -22,7 +22,7 @@ module: site_plan
 
 ## What does "Make my site" do?
 - Keeps in `localStorage` `pg_site_plan` (`{brief, pages, theme}`, the approved plan the editor's run reads) and `pg_proto_sketch_new` (one empty frame a page, the Canva start's places, `details` with the address, typed), then opens `add_system_style.php?framework=bootstrap5&start=describe` with `&answers=` (the given answers only).
-- `?start=describe` sets `auto_sketch` as `?start=canva` does: the editor opens the Prototype view on the sketch. The first save moves the sketch to the design's id (`canva-start.md`). Nothing is stored on the server and nothing is built yet: the run is SB5.
+- `?start=describe` sets `auto_sketch` as `?start=canva` does: the editor opens the Prototype view on the sketch. The first save moves the sketch to the design's id (`canva-start.md`). Nothing is stored on the server; the editor then makes the pages (`site-run.md`).
 
 ## Tests?
 - `tests/site_plan_screen_test.php`: the place and its words, the address, and in Node the twins of the address and the drafts, the rows' check, the sketch and the answers.

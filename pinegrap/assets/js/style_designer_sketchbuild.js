@@ -35,6 +35,8 @@ StyleDesigner.definePart('sketchbuild', function (K) {
     var SHARED = { header: true, footer: true };
 
     var host = null;
+    // The site run's host while auto() builds a page.
+    var pinned = null;
     // The frame being built (null: none), the unsure list and the "Build
     // again" question while open, the line under each frame, the readings
     // by frame.
@@ -569,8 +571,9 @@ StyleDesigner.definePart('sketchbuild', function (K) {
         }));
     }
 
-    function failed(frameId, name) {
+    function failed(frameId, name, cb) {
         busy = null;
+        if (cb) cb({ ok: false });
         say(frameId, 'rose', bold(_sdT('{var:1} could not be built. The sketch is kept as it is.', '\u0001'), name), _sdT('Try again'), function () { start(host, frameId); });
         host.redraw();
         host.announce(_sdT('The page could not be built.'));
@@ -588,7 +591,9 @@ StyleDesigner.definePart('sketchbuild', function (K) {
         return { uid: uid, sig: boxSig(page), secs: secs, page: copy };
     }
 
-    function first(frameId, page) {
+    // `cb` (optional, the site's run): called once with {ok, uid} or
+    // {ok: false}.
+    function first(frameId, page, cb) {
         var name = host.name(page);
         var r = read(page);
         var list = parts(r, null, page);
@@ -602,7 +607,7 @@ StyleDesigner.definePart('sketchbuild', function (K) {
             list.forEach(function (part, i) { byId[String(part.section)] = made[i]; });
             var key = host.addPage(page, name, made, meta(uid, page, r, r.sections.map(function (s) { return byId[String(s.id)]; })));
             busy = null;
-            if (!key) { failed(frameId, name); return; }
+            if (!key) { failed(frameId, name, cb); return; }
             host.blockStyles(list.blocks);
             page.built = { uid: uid, sig: boxSig(page) };
             var count = made.length;
@@ -614,7 +619,28 @@ StyleDesigner.definePart('sketchbuild', function (K) {
             if (r.skipped.length) say(frameId, 'amber', html, _sdT('Show them'), function () { host.pick(frameId, r.skipped[0]); });
             else say(frameId, 'teal', html, _sdT('Open the page'), function () { host.open(uid); });
             host.redraw();
-        }, function () { failed(frameId, name); });
+            if (cb) cb({ ok: true, uid: uid });
+        }, function () { failed(frameId, name, cb); });
+    }
+
+    // The site's run (style_designer_siterun.js): the page built at once,
+    // each unsure box taking the reader's best kind (no list to check, no
+    // one to answer it); a page already built is left as it is.
+    function auto(h, frameId) {
+        host = h;
+        return new Promise(function (done) {
+            // The run's host (its header, footer and menu) stays while the
+            // page is built: the frames' redraw hands fill() the core's.
+            pinned = h;
+            var resolve = function (r) { pinned = null; done(r); };
+            var page = host.page(frameId);
+            if (!page || busy || !page.boxes.length || !window.PGSketchReader || !window.PGSketchBuilder) { resolve({ ok: false }); return; }
+            var p = page.built ? host.pageOf(page.built.uid) : null;
+            if (p) { resolve({ ok: true, uid: page.built.uid }); return; }
+            if (!host.mayBuild()) { resolve({ ok: false, refused: true }); return; }
+            closeCheck(false);
+            first(frameId, page, resolve);
+        });
     }
 
     function again(frameId, page, p) {
@@ -781,8 +807,9 @@ StyleDesigner.definePart('sketchbuild', function (K) {
 
     return {
         start: start,
-        fill: function (h, frameId, node, head, body) { host = h; fill(frameId, node, head, body); },
-        reading: function (h, frameId, boxId) { host = h; return reading(frameId, boxId); },
+        auto: auto,
+        fill: function (h, frameId, node, head, body) { host = pinned || h; fill(frameId, node, head, body); },
+        reading: function (h, frameId, boxId) { host = pinned || h; return reading(frameId, boxId); },
         escape: escape,
         pure: { hash: hash, boxSig: boxSig, secSig: secSig, nodeFp: nodeFp, plan: plan, arrange: arrange, keptFp: keptFp, keptSig: keptSig }
     };

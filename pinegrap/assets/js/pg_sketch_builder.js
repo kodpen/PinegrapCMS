@@ -22,11 +22,12 @@
  *   caller's translated sample words for a section built here. opts.kept:
  *   section id => node, a section the operator already edited, given back as
  *   it is ("Build again").
- * - opts.site: {name, year, path, pages: [{name, address}]}, what the site
+ * - opts.site: {name, year, path, pages: [{name, address}], footer}, what the site
  *   knows: its name, the year, its site path ('/' when none) and the
  *   Prototype view's pages in their order. With it the header is a navbar of
  *   the name and the pages' links (at most six) and the footer the name, the
- *   year and the same links; the caller uses them only when the design has
+ *   year and the same links (or those of `footer`, a list of the same
+ *   shape, when given); the caller uses them only when the design has
  *   no header or footer of its own. opts.page: {title, description} of
  *   "Page details", the intro's heading and paragraph. opts.names: kind =>
  *   the caller's translated name, the heading of a section whose box has no
@@ -277,14 +278,15 @@
 
     // The page links of what the site knows: the pages' names to their
     // addresses under the site path, at most MAX_LINKS, nameless or
-    // addressless pages left out.
-    function siteLinks(site) {
+    // addressless pages left out. `list`: the pages to link, the site's
+    // pages when not given.
+    function siteLinks(site, list) {
         var path = str(site.path) || '/';
         if (path.charAt(path.length - 1) !== '/') {
             path += '/';
         }
         var out = [];
-        (Array.isArray(site.pages) ? site.pages : []).forEach(function (page) {
+        (Array.isArray(list) ? list : (Array.isArray(site.pages) ? site.pages : [])).forEach(function (page) {
             var name = page ? str(page.name) : '';
             var address = page ? str(page.address).replace(/^\/+|\/+$/g, '') : '';
             if (name && address && out.length < MAX_LINKS) {
@@ -329,12 +331,13 @@
         ]);
     }
 
-    // A new footer: the site's name, the year and its pages' links.
+    // A new footer: the site's name, the year and its pages' links (the
+    // footer's own list when the site gives one).
     /* @pg-site-output */
     function siteFooter(site, make) {
         var name = escapeText(str(site.name));
         var year = count(site.year);
-        var items = siteLinks(site).map(function (link) {
+        var items = siteLinks(site, Array.isArray(site.footer) ? site.footer : null).map(function (link) {
             return make('semantic', {tag: 'li', cssClass: 'nav-item', customName: link.text}, [linkNode(link, 'nav-link px-2 text-body-secondary', make)]);
         });
         return make('semantic', {tag: 'footer', cssClass: 'py-4 border-top bg-body', customName: 'Footer'}, [

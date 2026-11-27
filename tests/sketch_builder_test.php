@@ -366,6 +366,31 @@ JS
 	pg_assert_same(array('navbar-centered-logo', true), $out['noSite'], 'without the site the starter header stays; with it no navbar starter is asked for');
 }
 
+// A site with a footer list of its own: the header links the pages, the
+// footer that list (the site's run: the plan's main menu above, main and
+// footer pages below).
+function test_sketch_builder_site_footer_list()
+{
+	$out = sketch_builder_test_node(<<<'JS'
+function links(node, acc) {
+	if (node.type === 'content' && node.props.contentType === 'link') acc.push(node.props.href);
+	(node.children || []).forEach(function (c) { links(c, acc); });
+	return acc;
+}
+var site = {name: 'Fish', year: 2026, path: '/', pages: [{name: 'Home', address: 'home'}], footer: [{name: 'Home', address: 'home'}, {name: 'Privacy', address: 'privacy'}], toggle: 'Menu'};
+var page = B.build([sec('h', 'header'), sec('i', 'intro'), sec('o', 'footer')], {make: make, site: site});
+out = {header: links(page.header.node, []), footer: links(page.footer.node, [])};
+JS
+	);
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('/', '/home'), $out['header'], 'the header: the brand and the pages');
+	pg_assert_same(array('/home', '/privacy'), $out['footer'], 'the footer: its own list');
+}
+
 // Starters shaped as the palette's are: a badge (a heading drawn as a
 // <span>) before the headline, a card's badge before its title, and the
 // image-background hero whose picture sits in a style attribute and whose

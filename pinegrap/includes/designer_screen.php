@@ -446,6 +446,8 @@ function pg_designer_screen_render($ctx)
         'autoImport'    => !empty($ctx['auto_import']),
         // The Canva start: the Prototype view opens with the Sketch switch on.
         'autoSketch'    => !empty($ctx['auto_sketch']),
+        // The "Describe it" start: the plan of pages is made on the sketch.
+        'siteRun'       => !empty($ctx['site_run']),
         'autoPasteHtml' => !empty($ctx['auto_paste']),
         // ?start=document: the page is built from the rows the New design
         // window left in this tab's sessionStorage (style_designer_document.js).
