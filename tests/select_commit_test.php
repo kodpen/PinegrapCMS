@@ -3,10 +3,11 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for controls that act the moment they change. An arrow key on a closed
- * select changes its value and fires change on every step, so the
- * translation engine select (assets/js/translations.js) and the "Write with
- * AI" tone select (assets/js/pg_ai_write.js) save only on Enter or blur after
- * a navigation key; a pointer pick still saves at once. On Cloudflare Tools
+ * select changes its value and fires change on every step, so the "Write
+ * with AI" tone select (assets/js/pg_ai_write.js) asks only on Enter or blur
+ * after a navigation key; a pointer pick still asks at once. The Translations
+ * screen's engine is saved by its automation dialog's button, never on a
+ * pick. On Cloudflare Tools
  * the switch forms and Clear Cache carry disable_shortcut, so Ctrl+S never
  * flips a zone setting or purges the cache, and a toggled switch gets focus
  * back after the redirect.
@@ -38,13 +39,15 @@ function select_commit_test_deferred($source, $select, $flag, $commit, $what)
 		$what . ': a pointer pick commits at once');
 }
 
-function test_select_commit_translation_engine_waits_for_a_keyboard_pick()
+// The Translations screen has no engine select that saves on its pick: the
+// dialog "Automation for <language>" saves the engine with its button.
+function test_select_commit_translation_engine_saved_by_the_dialog()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/translations.js');
 
-	select_commit_test_deferred($source, 'engineSelect', 'engineKeyed', 'saveEngine', 'engine select');
-	pg_assert_true(preg_match('/if \(engineSelect\.disabled \|\| \(engineSelect\.value === config\.engine\)\) \{\s*return;/', $source) === 1,
-		'the saved engine is not posted again');
+	pg_assert_true(strpos($source, "action: 'engine'") === false, 'no save on an engine pick');
+	pg_assert_true(preg_match("/autoEngine\.addEventListener\('change', syncAutomation\);/", $source) === 1, 'a pick only updates the dialog');
+	pg_assert_true(preg_match("/autoGo\.addEventListener\('click', function \(\) \{[\s\S]{0,200}action: 'automation'/", $source) === 1, 'the button saves');
 }
 
 function test_select_commit_ai_tone_waits_for_a_keyboard_pick()

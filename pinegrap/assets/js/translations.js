@@ -39,6 +39,12 @@
     var progressText = progress ? progress.querySelector('.pg-tr-progress-text') : null;
     var progressBar = progress ? progress.querySelector('.pg-tr-progress-bar') : null;
     var cancelButton = progress ? progress.querySelector('.pg-tr-cancel') : null;
+    var progressTitle = progress ? progress.querySelector('.pg-tr-progress-title') : null;
+    var progressOpen = progress ? progress.querySelector('.pg-tr-progress-open') : null;
+    var automationLine = document.getElementById('pg_tr_automation');
+    var jobTitle = '';   // "Translating "<scope>" with <engine>…" of the update followed
+    var jobScope = '';
+    var jobEngine = '';
     var updateButton = document.getElementById('pg_tr_update');
     var running = null;   // { id, total, done, failed, stop }
 
@@ -110,11 +116,23 @@
         }
     } catch (e) { }
 
+    // The progress card takes the automation line's place while an update
+    // runs: what it covers and its engine, how far it got, "Stop", and
+    // "Open in Activity" once there is an update to open.
     function showProgress(message, done, total) {
         if (!progress) {
             return;
         }
         progress.classList.add('show');
+        if (automationLine) {
+            automationLine.hidden = true;
+        }
+        if (progressTitle) {
+            progressTitle.textContent = running ? jobTitle : '';
+        }
+        if (progressOpen) {
+            progressOpen.hidden = !running;
+        }
         if (progressText) {
             progressText.textContent = message;
         }
@@ -128,6 +146,15 @@
         if (progress) {
             progress.classList.remove('show');
         }
+        if (automationLine) {
+            automationLine.hidden = false;
+        }
+    }
+
+    function titleJob(scopeLabel, engine) {
+        jobScope = scopeLabel || config.scope_label || '';
+        jobEngine = engine || config.engine;
+        jobTitle = text('translating', scopeLabel || config.scope_label || '', (config.engine_labels || {})[engine] || engine || '');
     }
 
     // A job's own error, or any text that failed, comes back as an error.
@@ -1113,12 +1140,17 @@
     // Decided before anything is awaited: the click is the gesture a
     // download wants. Before the check has answered, a create() refused for
     // the language tells the same.
-    function prepareJob() {
-        var job = { engine: ((config.engine === 'chrome_ai') && (modelWrites === false) && modelSupported() && translatorSupported()) ? 'chrome' : config.engine };
+    // An update the server opens with a set engine ("Try again with the
+    // failed ones") is strict: it keeps that engine, so the browser AI is not
+    // swapped for the Translator API there.
+    function prepareJob(engine, strict) {
+        engine = engine || config.engine;
+
+        var job = { engine: (!strict && (engine === 'chrome_ai') && (modelWrites === false) && modelSupported() && translatorSupported()) ? 'chrome' : engine };
 
         job.ready = (job.engine === 'chrome') ? createTranslator().then(translatorItem)
             : ((job.engine === 'chrome_ai') ? createModel().then(modelItem, function (error) {
-                if (!error.unwritable || !translatorSupported()) {
+                if (strict || !error.unwritable || !translatorSupported()) {
                     throw error;
                 }
                 job.engine = 'chrome';
@@ -1130,8 +1162,9 @@
 
     // The job the server opened (data: its job_id, job, pending, queue and
     // error), with the message the opening is told with.
-    function followJob(job, translateItem, data, message) {
+    function followJob(job, translateItem, data, message, scopeLabel) {
         toast(message, 'info');
+        titleJob(scopeLabel, job.engine);
 
         if (translateItem) {
             return runBrowserJob(translateItem, { id: data.job_id, total: data.pending, done: 0, failed: 0 });
@@ -1184,6 +1217,7 @@
                 // A browser job an earlier visit left open is picked up where
                 // it stopped rather than opened again.
                 if (translateItem && config.open_job && (config.open_job.engine === job.engine) && ['queued', 'sent', 'running'].indexOf(config.open_job.status) !== -1) {
+                    titleJob(config.open_job.scope_label, job.engine);
                     return runBrowserJob(translateItem, { id: config.open_job.id, total: config.open_job.total, done: config.open_job.done, failed: config.open_job.failed });
                 }
 
@@ -1357,6 +1391,7 @@
         var resume = (config.open_job.engine === 'claude') ? watchQueueJob : runServerJob;
 
         if ((config.open_job.engine === 'claude') || (config.open_job.status !== 'sent')) {
+            titleJob(config.open_job.scope_label, config.open_job.engine);
             resume({ id: config.open_job.id, total: config.open_job.total, done_count: config.open_job.done, failed_count: config.open_job.failed }).catch(function (error) {
                 hideProgress();
                 running = null;
@@ -1365,59 +1400,313 @@
         }
     }
 
-    // ── the engine select in the toolbar: saved, then the screen reloads
-    //    with that engine's note and button. A pointer pick saves at once.
-    //    An arrow key on a closed select changes the value and fires change
-    //    on every step, and each save writes the engine (and can clear the
-    //    fallback engine), so after a navigation key the pick is saved on
-    //    Enter or when the select loses focus ──
+    // ── "Automation for <language>": the engine, its fallback and
+    //    "Translate on save" are saved together with the dialog's button,
+    //    never on a pick. The engine's note follows the select; "Translate
+    //    on save" is off with "By hand", and the five-minute line stands only
+    //    for an engine the scheduled job works ──
 
-    var engineSelect = document.getElementById('pg_tr_engine');
+    var automationModal = document.getElementById('pg_tr_automation_modal');
 
-    if (engineSelect) {
-        var engineKeyed = false;
+    if (automationModal && window.pgUI) {
+        var autoEngine = automationModal.querySelector('#pg_tr_auto_engine');
+        var autoFallback = automationModal.querySelector('#pg_tr_auto_fallback');
+        var autoSave = automationModal.querySelector('#pg_tr_auto_save');
+        var autoSaveOff = automationModal.querySelector('.pg-tr-auto-save-off');
+        var autoSchedule = automationModal.querySelector('.pg-tr-auto-schedule');
+        var autoGo = automationModal.querySelector('.pg-tr-auto-go');
+        var autoSaveWas = autoSave ? autoSave.checked : false;
 
-        var saveEngine = function () {
-            engineKeyed = false;
+        var syncAutomation = function () {
+            var engine = autoEngine.value;
+            var kind = (config.engine_kinds || {})[engine] || 'panel';
 
-            if (engineSelect.disabled || (engineSelect.value === config.engine)) {
+            Array.prototype.forEach.call(automationModal.querySelectorAll('[data-pg-tr-engine-note]'), function (note) {
+                note.hidden = (note.getAttribute('data-pg-tr-engine-note') !== engine);
+            });
+
+            // The engine is never its own fallback.
+            Array.prototype.forEach.call(autoFallback.options, function (option) {
+                option.disabled = (option.value !== '') && (option.value === engine);
+            });
+
+            if (autoFallback.value === engine) {
+                autoFallback.value = '';
+            }
+
+            if (autoSave) {
+                if (engine === 'manual') {
+                    if (!autoSave.disabled) {
+                        autoSaveWas = autoSave.checked;
+                    }
+                    autoSave.checked = false;
+                    autoSave.disabled = true;
+                } else if (autoSave.disabled) {
+                    autoSave.disabled = false;
+                    autoSave.checked = autoSaveWas;
+                }
+            }
+
+            if (autoSaveOff) {
+                autoSaveOff.hidden = (engine !== 'manual');
+            }
+
+            if (autoSchedule) {
+                autoSchedule.hidden = ['server', 'queue'].indexOf(kind) === -1;
+            }
+        };
+
+        autoEngine.addEventListener('change', syncAutomation);
+        syncAutomation();
+
+        autoGo.addEventListener('click', function () {
+            if (autoGo.disabled) {
                 return;
             }
 
-            var previous = config.engine;
-            engineSelect.disabled = true;
+            autoGo.disabled = true;
 
-            call({ action: 'engine', engine: engineSelect.value }).then(function () {
+            call({
+                action: 'automation',
+                engine: autoEngine.value,
+                fallback_engine: autoFallback.value,
+                auto_update: (autoSave && autoSave.checked) ? 1 : 0
+            }).then(function () {
+                // The head's jobs, the line and the notes follow the engine.
+                afterReload(text('automation_saved'), 'success');
                 window.location.reload();
             }).catch(function (error) {
-                engineSelect.value = previous;
-                engineSelect.disabled = false;
+                autoGo.disabled = false;
                 toast(error.message, 'error');
             });
-        };
-
-        engineSelect.addEventListener('keydown', function (event) {
-            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageUp', 'PageDown'].indexOf(event.key) !== -1) {
-                engineKeyed = true;
-            } else if (event.key === 'Enter') {
-                event.preventDefault();
-                saveEngine();
-            }
         });
-
-        engineSelect.addEventListener('pointerdown', function () {
-            engineKeyed = false;
-        });
-
-        engineSelect.addEventListener('change', function () {
-            if (!engineKeyed) {
-                saveEngine();
-            }
-        });
-
-        engineSelect.addEventListener('blur', saveEngine);
     }
 
+    // ── "Activity": a row opens its update's drawer with the figures, the
+    //    error as stored and the failed texts with their reasons. "Try again
+    //    with the failed ones" sends them to the same engine, its caret to
+    //    the fallback engine; an update still open has "Stop" ──
+
+    var jobDrawer = document.getElementById('pg_tr_job_drawer');
+    var drawerJob = null;   // { id, engine, scope_label, open, failed }
+
+    function fact(label, value, bad) {
+        var cell = el('div', 'pg-card pg-figure');
+        var number = el('span', 'pg-figure-value' + (bad ? ' fg-danger' : ''), value);
+        cell.appendChild(number);
+        cell.appendChild(el('span', 'pg-figure-label', label));
+        return cell;
+    }
+
+    function textAddress(hash) {
+        var address = new URL(config.tab_url || window.location.href, window.location.href);
+        ['page_id', 'group', 'filter', 'p', 'tab', 'af', 'ap'].forEach(function (key) {
+            address.searchParams.delete(key);
+        });
+        address.searchParams.set('q', String(hash).slice(0, 8));
+        return address.toString();
+    }
+
+    function renderJob(data) {
+        var body = jobDrawer.querySelector('.pg-tr-job-body');
+        var job = data.job || {};
+        var status = String(job.status || '');
+        var labels = strings.status_labels || {};
+        var pill = jobDrawer.querySelector('.pg-tr-job-pill');
+        var failedTotal = parseInt(data.failed_total, 10) || 0;
+
+        pill.className = 'pg-pill pg-tr-job-pill ' + ((status === 'done') ? 'pg-tone-teal' : ((['failed', 'cancelled'].indexOf(status) !== -1) ? 'pg-tone-rose' : 'pg-tone-amber'));
+        pill.textContent = labels[status] || status;
+        body.textContent = '';
+
+        var facts = el('div', 'pg-figures pg-tr-job-facts mb-5');
+        facts.appendChild(fact(text('translated'), String(parseInt(job.done_count, 10) || 0)));
+        facts.appendChild(fact(text('failed'), String(failedTotal), failedTotal > 0));
+        facts.appendChild(fact(text('skipped'), String(parseInt(data.skipped, 10) || 0)));
+        body.appendChild(facts);
+
+        if (data.open) {
+            var total = parseInt(job.total, 10) || 0;
+            var done = parseInt(job.done_count, 10) || 0;
+            var line = el('div', 'pg-tr-job-progress w-100 mb-5');
+            var meter = el('span', 'progress flex-grow-1');
+            var bar = el('span', 'progress-bar');
+            bar.style.width = ((total > 0) ? Math.round((done / total) * 100) : 0) + '%';
+            meter.appendChild(bar);
+            line.appendChild(el('span', 'pg-text-2 text-nowrap', text('progress', done, total)));
+            line.appendChild(meter);
+            body.appendChild(line);
+        }
+
+        var kv = el('dl', 'pg-kv mb-5');
+        [[text('engine_label'), data.engine_label || job.engine],
+            [text('started'), data.started_text + (data.by ? ' · ' + data.by : '')],
+            [text('finished_label'), data.finished_text || text('not_yet')]].forEach(function (pair) {
+            var item = el('div');
+            item.appendChild(el('dt', '', pair[0]));
+            item.appendChild(el('dd', '', pair[1]));
+            kv.appendChild(item);
+        });
+        body.appendChild(kv);
+
+        if (job.error) {
+            var note = el('div', 'pg-card-inner pg-tr-failed-reason p-3 mb-5');
+            note.appendChild(icon('bi-exclamation-circle'));
+            note.appendChild(el('span', '', job.error));
+            body.appendChild(note);
+        }
+
+        body.appendChild(el('div', 'pg-text-meta fw-medium mb-2', text('failed_texts')));
+
+        if (!data.failed || !data.failed.length) {
+            body.appendChild(el('p', 'pg-text-2 mb-0', data.open ? text('none_so_far') : text('none_failed')));
+        } else {
+            data.failed.forEach(function (item) {
+                var row = el('div', 'pg-tr-failed py-3');
+                var source = el('div', 'pg-tr-failed-source mb-1', item.source);
+                source.setAttribute('lang', config.source || '');
+                row.appendChild(source);
+                var reason = el('div', 'pg-tr-failed-reason');
+                reason.appendChild(icon('bi-exclamation-circle'));
+                reason.appendChild(el('span', '', item.error || text('no_reason')));
+                var open = el('a', 'ms-auto', text('open_text'));
+                open.href = textAddress(item.hash);
+                reason.appendChild(open);
+                row.appendChild(reason);
+                body.appendChild(row);
+            });
+
+            if (failedTotal > data.failed.length) {
+                body.appendChild(el('p', 'pg-text-2 mt-3 mb-0', text('details_more', failedTotal - data.failed.length)));
+            }
+        }
+
+        drawerJob.open = !!data.open;
+        drawerJob.failed = failedTotal;
+        footJob();
+    }
+
+    // The drawer's foot: "Stop" while the update is open, the retry once it
+    // ended with failed texts. The caret's fallback is offered only when it
+    // is another engine than the update's own.
+    function footJob() {
+        var retryWrap = jobDrawer.querySelector('.pg-tr-job-retry-wrap');
+        var stop = jobDrawer.querySelector('.pg-tr-job-stop');
+        var more = jobDrawer.querySelector('.pg-tr-job-retry-more');
+
+        stop.hidden = !drawerJob || !drawerJob.open;
+        retryWrap.hidden = !drawerJob || drawerJob.open || !drawerJob.failed;
+
+        if (more) {
+            more.hidden = !drawerJob || (config.fallback === drawerJob.engine);
+        }
+    }
+
+    function openJob(id, engine, scopeLabel) {
+        if (!jobDrawer || !window.pgUI) {
+            return;
+        }
+
+        drawerJob = { id: id, engine: engine, scope_label: scopeLabel, open: false, failed: 0 };
+        jobDrawer.querySelector('#pg_tr_job_drawer_title').textContent = text('job_title', scopeLabel || '');
+        jobDrawer.querySelector('.pg-tr-job-pill').textContent = '';
+        jobDrawer.querySelector('.pg-tr-job-body').textContent = text('loading');
+        footJob();
+        pgUI.drawer.show(jobDrawer);
+
+        call({ action: 'activity_job', job_id: id }).then(function (data) {
+            if (drawerJob && (drawerJob.id === id)) {
+                renderJob(data);
+            }
+        }).catch(function (error) {
+            jobDrawer.querySelector('.pg-tr-job-body').textContent = error.message;
+        });
+    }
+
+    if (jobDrawer) {
+        document.addEventListener('click', function (event) {
+            var row = event.target.closest ? event.target.closest('.pg-tr-job') : null;
+
+            if (!row || (event.target.closest('a') && !event.target.closest('.pg-tr-job-open'))) {
+                return;
+            }
+
+            openJob(parseInt(row.getAttribute('data-job-id'), 10), row.getAttribute('data-engine'), row.getAttribute('data-scope-label'));
+        });
+
+        var retryJob = function (fallback) {
+            if (!drawerJob || busy()) {
+                return;
+            }
+
+            var engine = fallback ? config.fallback : drawerJob.engine;
+            var scopeLabel = drawerJob.scope_label;
+            // A browser engine's translator is made in this click.
+            var job = prepareJob(engine, true);
+
+            pgUI.drawer.hide(jobDrawer);
+
+            job.ready.then(function (translateItem) {
+                return call({ action: 'retry', job_id: drawerJob.id, fallback: fallback ? 1 : 0 }).then(function (data) {
+                    if (!data.job_id) {
+                        toast(text('retry_none'), 'info');
+                        return;
+                    }
+
+                    return followJob(job, translateItem, data, text('sent', data.pending), scopeLabel);
+                });
+            }).catch(jobFailed);
+        };
+
+        jobDrawer.querySelector('.pg-tr-job-retry').addEventListener('click', function () {
+            retryJob(false);
+        });
+
+        var retryFallback = jobDrawer.querySelector('.pg-tr-job-retry-fallback');
+
+        if (retryFallback) {
+            retryFallback.addEventListener('click', function () {
+                retryJob(true);
+            });
+        }
+
+        // "Stop": the update this screen follows stops through its own loop;
+        // another one is cancelled here and the list read again.
+        jobDrawer.querySelector('.pg-tr-job-stop').addEventListener('click', function () {
+            if (!drawerJob || !window.confirm(text('confirm_cancel'))) {
+                return;
+            }
+
+            if (running && (running.id === drawerJob.id)) {
+                running.stop = true;
+                pgUI.drawer.hide(jobDrawer);
+                return;
+            }
+
+            call({ action: 'cancel', job_id: drawerJob.id }).then(function () {
+                afterReload(text('stopped'), 'info');
+                window.location.reload();
+            }).catch(function (error) {
+                toast(error.message, 'error');
+            });
+        });
+    }
+
+    // "Open in Activity" of the progress card: the tab, then the drawer of
+    // the update followed.
+    if (progressOpen) {
+        progressOpen.addEventListener('click', function (event) {
+            var tab = document.getElementById('pg_tr_tab_activity');
+
+            if (!running || !tab || !jobDrawer) {
+                return;
+            }
+
+            event.preventDefault();
+            tab.click();
+            openJob(running.id, jobEngine, jobScope);
+        });
+    }
     // ── "approve all": every machine translation of the scope reviewed at
     //    once, for a translation that is trusted as the engine gave it. The
     //    dialog names the count; the ones flagged suspicious go along only

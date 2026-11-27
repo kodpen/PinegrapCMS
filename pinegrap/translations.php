@@ -13,7 +13,11 @@
  * language's engine. On "Texts" the rail lists the pages and the other
  * groups with their coverage, the filter tiles count the scope's texts and
  * the list is the editor for the selected scope. "Clear translations"
- * deletes the ones of the selection so they are sent again. The browser engine runs here, in this
+ * deletes the ones of the selection so they are sent again. Under the head
+ * the automation line shows the engine, its fallback and "Translate on
+ * save", changed in one dialog; while an update runs the progress card takes
+ * its place. "Activity" lists the updates and opens one in a drawer with its
+ * failed texts and their reasons. The browser engine runs here, in this
  * screen's script (assets/js/translations.js), the server engines in
  * translations_action.php and the scheduled job.
  *
@@ -217,15 +221,25 @@ $engines = pg_tr_engines();
 $engine_key = $language_row ? (string) $language_row['engine'] : 'manual';
 $engine = isset($engines[$engine_key]) ? $engines[$engine_key] : $engines['manual'];
 
-// The engine select in the toolbar: the language's engine, changed here as
-// on the settings card. Pinegrap AI and Claude are listed only while the
-// Workspace is on (the one set now is kept in the list either way).
+// The dialog "Automation for <language>": the engines the language may be
+// set to, one not ready marked as on the settings card, and the fallback
+// engines ("By hand" is none). Pinegrap AI and Claude are listed only while
+// the Workspace is on; the ones set now are kept in the list either way.
+$fallback_key = $language_row ? (string) $language_row['fallback_engine'] : '';
+$auto_update_known = $language_row && array_key_exists('auto_update', $language_row);
+$auto_update_on = $auto_update_known && ((int) $language_row['auto_update'] === 1) && ($engine_key !== 'manual');
 $output_engine_options = '';
+$output_fallback_options = '<option value="">' . h(lang('-None-')) . '</option>';
 
-foreach (pg_tr_engine_options(array($engine_key)) as $option_key => $option_label) {
+foreach (pg_tr_engine_options(array($engine_key, $fallback_key)) as $option_key => $option_label) {
     $option_spec = isset($engines[$option_key]) ? $engines[$option_key] : null;
-    $output_engine_options .= '<option value="' . h($option_key) . '"' . (($option_key === $engine_key) ? ' selected="selected"' : '')
-        . '>' . h($option_label) . (($option_spec && !$option_spec['ready']) ? ' (' . h(lang('not ready')) . ')' : '') . '</option>';
+    $option_text = h($option_label) . (($option_spec && !$option_spec['ready']) ? ' (' . h(lang('not ready')) . ')' : '');
+    $option_kind = $option_spec ? $option_spec['kind'] : 'panel';
+    $output_engine_options .= '<option value="' . h($option_key) . '" data-kind="' . h($option_kind) . '"' . (($option_key === $engine_key) ? ' selected="selected"' : '') . '>' . $option_text . '</option>';
+
+    if ($option_key !== 'manual') {
+        $output_fallback_options .= '<option value="' . h($option_key) . '"' . (($option_key === $fallback_key) ? ' selected="selected"' : '') . '>' . $option_text . '</option>';
+    }
 }
 
 $selected_page = null;
@@ -304,7 +318,10 @@ if ($language !== '') {
 
     if ($search !== '') {
         $like = "'%" . e(escape_like($search)) . "%'";
-        $where[] = "(s.source_text LIKE $like OR t.text LIKE $like)";
+        // A row shows the first 8 characters of its hash; "Open the text"
+        // of an update's drawer searches for them.
+        $hash_like = preg_match('/^[0-9a-f]{8,64}$/', $search) ? " OR s.hash LIKE '" . e($search) . "%'" : '';
+        $where[] = "(s.source_text LIKE $like OR t.text LIKE $like$hash_like)";
     }
 
     $from = "FROM translation_uses u
@@ -411,21 +428,17 @@ $index_owner_label = function ($kind, $name) {
 
 $glossary = ($language !== '') ? pg_tr_glossary($language) : array();
 
-// ── the recent jobs ──
+// ── the updates: the one still open, which the screen follows, and the
+//    page of them the "Activity" tab lists ──
 
-$jobs = ($language !== '') ? db_items("SELECT * FROM translation_jobs WHERE language = '" . e($language) . "' ORDER BY id DESC LIMIT 8") : array();
-$jobs = is_array($jobs) ? $jobs : array();
-$open_job = null;
+$open_job = ($language !== '') ? db_item("SELECT * FROM translation_jobs WHERE language = '" . e($language) . "' AND status IN ('queued', 'sent', 'running') ORDER BY id DESC LIMIT 1") : null;
+$open_job = is_array($open_job) ? $open_job : null;
 // The count on the "Activity" tab: the updates still open, and the finished
 // ones that left failed texts.
 $activity_count = ($language !== '') ? (int) db_value("SELECT COUNT(*) FROM translation_jobs WHERE language = '" . e($language) . "' AND (status IN ('queued', 'sent', 'running') OR failed_count > 0)") : 0;
-
-foreach ($jobs as $job) {
-    if (in_array($job['status'], array('queued', 'sent', 'running'), true)) {
-        $open_job = $job;
-        break;
-    }
-}
+$activity_filter = (isset($_GET['af']) && is_string($_GET['af']) && in_array($_GET['af'], array('running', 'failed'), true)) ? $_GET['af'] : 'all';
+$activity_page = isset($_GET['ap']) ? max(1, (int) $_GET['ap']) : 1;
+$activity = ($language !== '') ? pg_tr_activity_jobs($language, $activity_filter, $activity_page) : array('rows' => array(), 'total' => 0);
 
 // ── output ──
 
@@ -692,10 +705,8 @@ if ($total_pages > 1) {
     $output_pagination .= '</ul></nav>';
 }
 
-// Recent jobs, each with what it covered: the whole site, a group of the
-// list (the catalog, the forms, the cookie window), one page by its name, the
-// records of a form a record save opened a job for, or a picture's texts.
-$output_jobs = '';
+// "Activity": every update of the language, 20 a page, newest first. A
+// row opens its drawer (the "activity_job" action reads its failed texts).
 $job_groups = pg_tr_owner_groups();
 $job_page_names = array();
 
@@ -703,37 +714,56 @@ foreach ($pages as $job_page) {
     $job_page_names[(int) $job_page['page_id']] = (string) $job_page['page_name'];
 }
 
-foreach ($jobs as $job) {
-    $job_scope = lang('One page');
+$job_people = pg_tr_activity_user_names(array_column($activity['rows'], 'created_by'));
+$job_tone = function ($status) {
+    return ($status === 'done') ? 'pg-tone-teal' : (in_array($status, array('failed', 'cancelled'), true) ? 'pg-tone-rose' : 'pg-tone-amber');
+};
+$output_jobs = '';
 
-    if ($job['scope'] === 'all') {
-        $job_scope = lang('All pages');
-    } elseif (preg_match('/^group:([a-z]+)$/', (string) $job['scope'], $job_match) && isset($job_groups[$job_match[1]])) {
-        $job_scope = $job_groups[$job_match[1]]['label'];
-    } elseif (preg_match('/^page:(\d+)$/', (string) $job['scope'], $job_match) && isset($job_page_names[(int) $job_match[1]])) {
-        $job_scope = $job_page_names[(int) $job_match[1]];
-    } elseif (preg_match('/^records:\d+$/', (string) $job['scope'])) {
-        // Opened by a record save (pg_tr_records_saved()).
-        $job_scope = $job_groups['forms']['label'];
-    } elseif (preg_match('/^file:\d+$/', (string) $job['scope']) && isset($job_groups['pictures'])) {
-        // A picture's texts, opened by its save or a page save
-        // (pg_picture_tr_texts_jobs()).
-        $job_scope = $job_groups['pictures']['label'];
-    }
+foreach ($activity['rows'] as $job) {
+    $job_total = (int) $job['total'];
+    $job_done = (int) $job['done_count'];
+    $job_failed = (int) $job['failed_count'];
+    $job_open = pg_tr_activity_open($job['status']);
+    $job_scope = pg_tr_activity_scope_label($job['scope'], $job_groups, $job_page_names);
+    $job_engine = isset($engine_labels[$job['engine']]) ? $engine_labels[$job['engine']] : (string) $job['engine'];
 
-    $output_jobs .= '<div class="d-flex align-items-center gap-3 py-3 border-top small" data-job-id="' . (int) $job['id'] . '">'
-        . '<span class="pg-pill ' . (in_array($job['status'], array('done'), true) ? 'pg-tone-teal' : (in_array($job['status'], array('failed', 'cancelled'), true) ? 'pg-tone-rose' : 'pg-tone-amber')) . '">' . h(isset($status_labels[$job['status']]) ? $status_labels[$job['status']] : $job['status']) . '</span>'
-        . '<span class="flex-grow-1 text-truncate">' . h(isset($engine_labels[$job['engine']]) ? $engine_labels[$job['engine']] : $job['engine']) . ' · ' . h($job_scope) . '</span>'
-        . '<span class="fg-secondary">' . (int) $job['done_count'] . '/' . (int) $job['total'] . (((int) $job['failed_count'] > 0) ? ' <span class="fg-danger">(' . (int) $job['failed_count'] . ')</span>' : '') . '</span>'
-        . '<span class="fg-secondary">' . get_relative_time(array('timestamp' => (int) $job['created_at'])) . '</span>'
-        . '</div>'
-        // The job's error as text under its row: a title on an icon is
-        // hover-only, out of reach of the keyboard and screen readers.
-        . (($job['error'] !== null && $job['error'] !== '') ? '<div class="d-flex align-items-baseline gap-2 pb-3"><i class="bi bi-exclamation-circle fg-danger small" aria-hidden="true"></i><span class="fg-danger small text-break">' . h($job['error']) . '</span></div>' : '');
+    $output_jobs .= '<tr class="pg-tr-job" data-job-id="' . (int) $job['id'] . '" data-scope-label="' . h($job_scope) . '" data-engine="' . h($job['engine']) . '">'
+        . '<td><span class="pg-pill ' . $job_tone($job['status']) . '">' . h(isset($status_labels[$job['status']]) ? $status_labels[$job['status']] : $job['status']) . '</span></td>'
+        . '<td><button type="button" class="pg-tr-job-open">' . h($job_scope) . '</button></td>'
+        . '<td class="pg-text-2">' . h($job_engine) . '</td>'
+        . '<td><span class="pg-tr-job-progress"><span class="text-nowrap">' . h(lang(array('string' => '{var:1} of {var:2}', 'vars' => array(number_format($job_done), number_format($job_total))))) . '</span>'
+        . ($job_open ? '<span class="progress" role="presentation"><span class="progress-bar" style="width: ' . (($job_total > 0) ? (int) round(($job_done / $job_total) * 100) : 0) . '%"></span></span>' : '')
+        . (($job_failed > 0) ? '<span class="fg-danger text-nowrap">' . h(lang(array('string' => '{var:1} failed', 'vars' => array(number_format($job_failed))))) . '</span>' : '')
+        . '</span></td>'
+        . '<td>' . h(isset($job_people[(int) $job['created_by']]) ? $job_people[(int) $job['created_by']] : '—') . '</td>'
+        . '<td class="pg-text-2 text-nowrap">' . get_relative_time(array('timestamp' => (int) $job['created_at'])) . '</td>'
+        . '<td class="pg-text-2 text-nowrap">' . h(pg_tr_activity_duration_text(pg_tr_activity_took($job))) . '</td>'
+        . '</tr>';
 }
 
-if ($output_jobs === '') {
-    $output_jobs = '<div class="small fg-secondary py-3">' . lang('No update has been run for this language yet.') . '</div>';
+$activity_link = function ($changes) use ($url, $activity_filter, $activity_page) {
+    return $url(array_merge(array('tab' => 'activity', 'af' => ($activity_filter === 'all') ? '' : $activity_filter, 'ap' => ($activity_page > 1) ? $activity_page : 0, 'p' => 0), $changes));
+};
+$output_activity_filter = '';
+
+foreach (array('all' => lang('All'), 'running' => lang('Running'), 'failed' => lang('Failed')) as $filter_key => $filter_label) {
+    $output_activity_filter .= '<a class="pg-seg-item' . (($filter_key === $activity_filter) ? ' active" aria-current="true' : '') . '" href="' . h($activity_link(array('af' => ($filter_key === 'all') ? '' : $filter_key, 'ap' => 0))) . '">' . h($filter_label) . '</a>';
+}
+
+if ($output_jobs !== '') {
+    $activity_from = (($activity_page - 1) * PG_TR_ACTIVITY_PER_PAGE) + 1;
+    $activity_to = min($activity['total'], $activity_page * PG_TR_ACTIVITY_PER_PAGE);
+    $output_jobs = '<div class="table-responsive"><table class="table table-hover align-middle mb-0 pg-tr-jobs">'
+        . '<thead class="pg-table-light"><tr><th scope="col">' . lang('Status') . '</th><th scope="col">' . lang('What') . '</th><th scope="col">' . lang('Engine') . '</th><th scope="col">' . lang('Progress') . '</th><th scope="col">' . lang('By') . '</th><th scope="col">' . lang('Started') . '</th><th scope="col">' . lang('Took') . '</th></tr></thead>'
+        . '<tbody>' . $output_jobs . '</tbody></table></div>'
+        . '<div class="d-flex align-items-center justify-content-end gap-3 p-3 border-top"><span class="pg-text-2">' . h(lang(array('string' => '{var:1}–{var:2} of {var:3}', 'vars' => array($activity_from, $activity_to, $activity['total'])))) . '</span>'
+        . (($activity_page > 1) ? '<a class="pg-icon-button pg-icon-button-sm" href="' . h($activity_link(array('ap' => $activity_page - 1))) . '" aria-label="' . h(lang('Previous')) . '"><i class="bi bi-chevron-left" aria-hidden="true"></i></a>' : '')
+        . (($activity_to < $activity['total']) ? '<a class="pg-icon-button pg-icon-button-sm" href="' . h($activity_link(array('ap' => $activity_page + 1))) . '" aria-label="' . h(lang('Next')) . '"><i class="bi bi-chevron-right" aria-hidden="true"></i></a>' : '')
+        . '</div>';
+} else {
+    $output_jobs = '<div class="pg-card-inner m-3"><div class="ws-empty py-5"><i class="bi bi-clock-history" aria-hidden="true"></i>'
+        . (($activity_filter === 'all') ? lang('No update has been run for this language yet.') : lang('No update matches this filter.')) . '</div></div>';
 }
 
 // The glossary rows. Each carries its values as data attributes, so the
@@ -787,24 +817,59 @@ $clear_machine_count = ($language !== '') ? pg_tr_clear_count($language, $scope,
 $clear_all_count = ($language !== '') ? pg_tr_clear_count($language, $scope, true) : 0;
 $export_base = 'translations_action.php?action=export&language=' . rawurlencode($language) . '&scope=' . rawurlencode($scope) . '&token=' . rawurlencode($token);
 
+// What each engine does, in the dialog under its select; a browser
+// engine's note also stands under the automation line, where it names the
+// browser's own pages and, for the browser AI, a language its model does not
+// write.
+$engine_notes = array(
+    'manual'    => lang(array('string' => 'This language is translated by hand: "{var:1}" scans the pages and lists the pending texts here.', 'vars' => h($scan_button_label))),
+    'chrome'    => lang('The browser engine translates on this computer with the Chrome Translator API (desktop Chrome 138 or Edge 148 and newer). The first run downloads the language model.'),
+    'chrome_ai' => lang('The browser AI translates on this computer with the browser\'s built-in model, Gemini Nano (Prompt API, a recent desktop Chrome): one text at a time, with where it stands, the glossary and the style note, keeping inline HTML. A text takes a few seconds; the first run downloads the model.') . ' ' . lang('The model does not officially read every language (Turkish, for one): look its translations over before approving them.'),
+    'ai'        => lang('Pinegrap AI translates on the server through the site\'s own model connection, a few texts at a time with their context, the glossary and the style note. The update runs while this screen is open; the scheduled job finishes what is left.'),
+    'claude'    => lang('Claude\'s routine in the Workspace is told there is work: it fetches the texts through the API with their context, the glossary and the style note, and posts the translations back. The run shares the routine\'s daily allowance; this screen follows its progress.'),
+);
 $engine_note = '';
 
-if ($language_row) {
-    if (!$engine['ready']) {
-        $engine_note = '<div class="alert theme-warning py-3 small mb-5"><i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>' . h($engine['reason']) . '</div>';
-    } elseif ($engine_key === 'chrome') {
-        $engine_note = '<div class="alert theme-secondary py-3 small mb-5 pg-tr-chrome-note"><i class="bi bi-browser-chrome me-1" aria-hidden="true"></i>' . lang('The browser engine translates on this computer with the Chrome Translator API (desktop Chrome 138 or Edge 148 and newer). The first run downloads the language model.') . pg_tr_browser_pages_html() . '</div>';
+if ($language_row && $engine['ready']) {
+    if ($engine_key === 'chrome') {
+        $engine_note = '<div class="pg-text-2 small mb-4 px-3 pg-tr-chrome-note"><i class="bi bi-browser-chrome me-1" aria-hidden="true"></i>' . $engine_notes['chrome'] . pg_tr_browser_pages_html() . '</div>';
     } elseif ($engine_key === 'chrome_ai') {
-        $engine_note = '<div class="alert theme-secondary py-3 small mb-5 pg-tr-chrome-note"><i class="bi bi-cpu me-1" aria-hidden="true"></i>' . lang('The browser AI translates on this computer with the browser\'s built-in model, Gemini Nano (Prompt API, a recent desktop Chrome): one text at a time, with where it stands, the glossary and the style note, keeping inline HTML. A text takes a few seconds; the first run downloads the model.') . ' ' . lang('The model does not officially read every language (Turkish, for one): look its translations over before approving them.')
+        $engine_note = '<div class="pg-text-2 small mb-4 px-3 pg-tr-chrome-note"><i class="bi bi-cpu me-1" aria-hidden="true"></i>' . $engine_notes['chrome_ai']
             . '<div class="small mt-3">' . lang('The model\'s state is shown at this browser address:') . ' <code class="user-select-all">chrome://on-device-internals</code></div></div>';
-    } elseif ($engine_key === 'manual') {
-        $engine_note = '<div class="alert theme-secondary py-3 small mb-5"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . lang(array('string' => 'This language is translated by hand: "{var:1}" scans the pages and lists the pending texts here.', 'vars' => h($scan_button_label))) . '</div>';
-    } elseif ($engine_key === 'ai') {
-        $engine_note = '<div class="alert theme-secondary py-3 small mb-5"><i class="bi bi-stars me-1" aria-hidden="true"></i>' . lang('Pinegrap AI translates on the server through the site\'s own model connection, a few texts at a time with their context, the glossary and the style note. The update runs while this screen is open; the scheduled job finishes what is left.') . '</div>';
-    } elseif ($engine_key === 'claude') {
-        $engine_note = '<div class="alert theme-secondary py-3 small mb-5"><i class="bi bi-robot me-1" aria-hidden="true"></i>' . lang('Claude\'s routine in the Workspace is told there is work: it fetches the texts through the API with their context, the glossary and the style note, and posts the translations back. The run shares the routine\'s daily allowance; this screen follows its progress.') . '</div>';
     }
 }
+
+$output_engine_notes = '';
+
+foreach ($engine_notes as $note_key => $note_text) {
+    $output_engine_notes .= '<p class="pg-field-help mb-0" data-pg-tr-engine-note="' . h($note_key) . '"' . (($note_key === $engine_key) ? '' : ' hidden') . '>' . $note_text . '</p>';
+}
+
+// The automation line: the engine, the fallback and "Translate on save" to
+// read, "Change" to open the dialog. Amber with what is missing while the
+// engine is not ready; "By hand" has no fallback and says how texts come in.
+$automation_value = function ($label, $value, $tone = 'pg-tone-gray') {
+    return '<span class="pg-pill ' . $tone . ' pg-tr-automation-value"><span class="fg-2">' . h($label) . '</span> <b>' . h($value) . '</b></span>';
+};
+$automation_warn = ($language_row && !$engine['ready']);
+$automation_values = $automation_value(lang('Engine'), $engine['label'], $automation_warn ? 'pg-tone-amber' : 'pg-tone-gray');
+
+if ($engine_key !== 'manual') {
+    $automation_values .= $automation_value(lang('Fallback'), (($fallback_key !== '') && isset($engines[$fallback_key])) ? $engines[$fallback_key]['label'] : lang('None'));
+}
+
+if ($auto_update_known) {
+    $automation_values .= $automation_value(lang('Translate on save'), $auto_update_on ? lang('On') : lang('Off'));
+}
+
+$output_automation = $language_row ? '<div class="pg-card pg-tr-automation' . ($automation_warn ? ' pg-tr-automation-warn' : '') . '" id="pg_tr_automation">'
+    . '<i class="bi ' . ($automation_warn ? 'bi-exclamation-triangle' : (($engine_key === 'manual') ? 'bi-pencil' : 'bi-lightning-charge')) . '" aria-hidden="true"></i>'
+    . '<span class="fw-medium">' . lang('Automation') . '</span>' . $automation_values
+    . ($automation_warn ? '<span class="pg-tr-automation-reason">' . h($engine['reason']) . '</span>' : '')
+    . (($engine_key === 'manual') ? '<span class="pg-text-2 small">' . $engine_notes['manual'] . '</span>' : '')
+    . '<span class="pg-toolbar-grow"></span>'
+    . '<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-bs-toggle="dialog" data-bs-target="#pg_tr_automation_modal">' . lang('Change') . '</button>'
+    . '</div>' : '';
 
 // The selected page under the reviewed policy: what it answered the search
 // engines when it was last drawn, and on request ("Why?", the blocking
@@ -895,7 +960,14 @@ $config = array(
     // session is made in the click itself, before the first package.
     'ai_instructions' => (($engine_key === 'chrome_ai') || ($open_job && ($open_job['engine'] === 'chrome_ai'))) ? pg_tr_ai_instructions($source, $language, 'item') : '',
     'scope'      => $scope,
-    'open_job'   => $open_job ? array('id' => (int) $open_job['id'], 'engine' => $open_job['engine'], 'status' => $open_job['status'], 'total' => (int) $open_job['total'], 'done' => (int) $open_job['done_count'], 'failed' => (int) $open_job['failed_count']) : null,
+    'open_job'   => $open_job ? array('id' => (int) $open_job['id'], 'engine' => $open_job['engine'], 'status' => $open_job['status'], 'total' => (int) $open_job['total'], 'done' => (int) $open_job['done_count'], 'failed' => (int) $open_job['failed_count'], 'scope_label' => pg_tr_activity_scope_label($open_job['scope'], $job_groups, $job_page_names)) : null,
+    // The progress card names what an update covers and its engine; the
+    // drawer's retry offers the fallback engine unless the update ran on it.
+    'scope_label' => pg_tr_activity_scope_label($scope, $job_groups, $job_page_names),
+    'engine_labels' => $engine_labels,
+    'engine_kinds' => array_map(function ($spec) { return $spec['kind']; }, $engines),
+    'fallback'   => $fallback_key,
+    'tab_url'    => $url(array('p' => 0)),
     'strings'    => array(
         'saving'            => lang('Saving'),
         'saved'             => lang('Saved'),
@@ -909,7 +981,7 @@ $config = array(
         'scanning'          => lang('Scanning the pages…'),
         'scanning_progress' => lang('Scanning the pages… {var} of {var2}'),
         'nothing_pending'   => lang('Every text already has a translation: nothing was sent.'),
-        'pending_by_hand'   => lang('{var} text(s) are pending. Translate them below or choose an engine in the toolbar.'),
+        'pending_by_hand'   => lang('{var} text(s) are pending. Translate them below or choose an engine under Automation.'),
         'scanned'           => lang('Scanned: {var} text(s) are pending.'),
         'scanned_none'      => lang('Scanned: every text has a translation.'),
         'sent'              => lang('{var} text(s) sent to the engine.'),
@@ -950,6 +1022,23 @@ $config = array(
         'selected'          => lang('{var} selected'),
         'show_all'          => lang('Show all'),
         'show_less'         => lang('Show less'),
+        'translating'       => lang('Translating "{var}" with {var2}…'),
+        'automation_saved'  => lang('The automation of this language was saved.'),
+        'job_title'         => lang('Update of "{var}"'),
+        'translated'        => lang('Translated'),
+        'skipped'           => lang('Skipped'),
+        'engine_label'      => lang('Engine'),
+        'started'           => lang('Started'),
+        'finished_label'    => lang('Finished'),
+        'not_yet'           => lang('Not yet'),
+        'failed_texts'      => lang('Failed texts'),
+        'none_so_far'       => lang('None so far.'),
+        'none_failed'       => lang('No text failed.'),
+        'open_text'         => lang('Open the text'),
+        'no_reason'         => lang('The engine gave no reason.'),
+        'loading'           => lang('Loading…'),
+        'retry_none'        => lang('The failed texts have been translated since: nothing was sent.'),
+        'status_labels'     => $status_labels,
     ),
 );
 
@@ -1021,12 +1110,27 @@ echo pg_page_shell(array(
         .pg-tr-selbar-label, .pg-tr-selbar-wide { display: none; }
         .pg-tr-selbar-narrow { display: block; }
     }
-    .pg-tr-progress { display: none; }
-    .pg-tr-progress.show { display: block; }
     /* The head: the language menu lists each language with its share. */
     .pg-tr-language-menu { min-width: 18rem; }
     .pg-tr-share { min-width: 2.5rem; text-align: end; }
-    .pg-tr-automation { padding: 8px 16px; min-height: 46px; border-radius: 14px; }
+    /* The automation line, and the progress card that takes its place while
+       an update runs: one line of 46 px, radius 14. */
+    .pg-tr-automation, .pg-tr-progress { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; min-height: 46px; margin-bottom: 1rem; padding: 8px 9px 8px 14px; border-radius: 14px; }
+    .pg-tr-automation > .bi { color: var(--pg-fg-2); }
+    .pg-tr-automation-warn { background: color-mix(in srgb, var(--pg-tone-amber) 7%, var(--pg-surface-1)); border-color: color-mix(in srgb, var(--pg-tone-amber) 28%, transparent); }
+    .pg-tr-automation-warn > .bi, .pg-tr-automation-reason { color: color-mix(in srgb, var(--pg-tone-amber) 80%, var(--pg-fg-emphasis)); font-size: var(--pg-text-2); }
+    .pg-tr-automation[hidden], .pg-tr-progress { display: none; }
+    .pg-tr-progress.show { display: flex; }
+    .pg-tr-progress-meter { flex: 1 1 60px; min-width: 60px; height: 4px; }
+    /* "Activity": a row opens the drawer of its update. */
+    .pg-tr-job { cursor: pointer; }
+    .pg-tr-job-open { padding: 0; border: 0; background: none; color: inherit; font-weight: var(--pg-weight-strong); text-align: start; }
+    .pg-tr-job-progress { display: inline-flex; align-items: center; gap: 8px; }
+    .pg-tr-job-progress .progress { width: 80px; height: 4px; }
+    .pg-tr-job-facts { --pg-figures: 3; gap: 10px; }
+    .pg-tr-failed + .pg-tr-failed { border-top: 1px solid var(--pg-border-color); }
+    .pg-tr-failed-source { display: -webkit-box; overflow: hidden; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    .pg-tr-failed-reason { display: flex; flex-wrap: wrap; gap: 7px; align-items: baseline; color: var(--pg-tone-rose-text); font-size: var(--pg-text-2); }
     /* The rail beside the main column: one card that stays in place while
        the list scrolls, and scrolls on its own when it is longer than the
        window. Under 992 px it stands above the list. */
@@ -1097,23 +1201,16 @@ echo pg_page_shell(array(
             <span class="pg-text-2">' . lang('No target language yet. Add one in Settings > Languages and Translation; the pages of the designs are then served under its address prefix as well.') . '</span>') . '
         </div>
         ' . ($targets ? '
-        <div class="pg-card pg-tr-automation d-flex flex-wrap align-items-center gap-3 mb-4">
-            <i class="bi bi-lightning-charge" aria-hidden="true"></i>
-            <span class="fw-medium">' . lang('Automation') . '</span>
-            <label class="pg-text-2 mb-0" for="pg_tr_engine">' . lang('Translation engine') . '</label>
-            <select class="form-control form-control-sm w-auto rounded-pill no-popover" id="pg_tr_engine" data-bs-toggle="tooltip" title="' . h(lang(array('string' => '{var:1} → {var:2} · engine', 'vars' => array($source, $language)))) . '">' . $output_engine_options . '</select>
+        ' . $output_automation . '
+        <div class="pg-card pg-tr-progress" id="pg_tr_progress" role="status">
+            <span class="spinner-border spinner-border-sm flex-shrink-0" aria-hidden="true"></span>
+            <span class="fw-medium pg-tr-progress-title"></span>
+            <span class="pg-text-2 small pg-tr-progress-text"></span>
+            <span class="progress pg-tr-progress-meter" role="presentation"><span class="progress-bar pg-tr-progress-bar" style="width: 0%"></span></span>
+            <button type="button" class="pg-button pg-button-quiet pg-button-sm pg-tr-cancel">' . lang('Stop') . '</button>
+            <a class="pg-text-2 small pg-tr-progress-open" href="' . h($url(array('tab' => 'activity', 'p' => 0))) . '" hidden>' . lang('Open in Activity') . '</a>
         </div>
         ' . $engine_note . '
-        <div class="pg-tr-progress alert theme-info py-3 mb-5" id="pg_tr_progress" role="status">
-            <div class="d-flex align-items-center gap-5">
-                <div class="spinner-border spinner-border-sm flex-shrink-0" role="status" aria-hidden="true"></div>
-                <div class="flex-grow-1">
-                    <div class="pg-tr-progress-text small"></div>
-                    <div class="progress mt-1" style="height: 4px;"><div class="progress-bar pg-tr-progress-bar" style="width: 0%"></div></div>
-                </div>
-                <button type="button" class="pg-button pg-button-quiet pg-button-sm pg-tr-cancel">' . lang('Stop') . '</button>
-            </div>
-        </div>
         <div class="tab-content">
         <div class="tab-pane fade' . (($tab === 'texts') ? ' show active' : '') . '" id="pg_tr_pane_texts" role="tabpanel" aria-labelledby="pg_tr_tab_texts">
         <div class="pg-tr-body">
@@ -1164,10 +1261,8 @@ echo pg_page_shell(array(
         </div>
         </div>
         <div class="tab-pane fade' . (($tab === 'activity') ? ' show active' : '') . '" id="pg_tr_pane_activity" role="tabpanel" aria-labelledby="pg_tr_tab_activity">
-            <section class="pg-card pg-tr-pane-card mb-5" aria-labelledby="pg_tr_jobs_title">
-                <h2 class="card-header bg-reset border-0 pg-title-section" id="pg_tr_jobs_title">' . lang('Recent updates') . '</h2>
-                <div class="card-body py-3" id="pg_tr_jobs">' . $output_jobs . '</div>
-            </section>
+            <div class="pg-seg mb-3" aria-label="' . h(lang('Filter')) . '">' . $output_activity_filter . '</div>
+            <section class="pg-card overflow-hidden mb-5" id="pg_tr_jobs" aria-label="' . h(lang('Activity')) . '">' . $output_jobs . '</section>
         </div>
         <div class="tab-pane fade' . (($tab === 'glossary') ? ' show active' : '') . '" id="pg_tr_pane_glossary" role="tabpanel" aria-labelledby="pg_tr_tab_glossary">
             <section class="pg-card pg-tr-pane-card mb-5" id="pg_tr_glossary" aria-labelledby="pg_tr_glossary_title">
@@ -1294,6 +1389,60 @@ echo pg_page_shell(array(
                         <button type="button" class="pg-button pg-button-danger pg-tr-clear-picked-go"><i class="bi bi-eraser" aria-hidden="true"></i>' . lang('Clear translations') . '</button>
                     </div>
         </dialog>
+        ' . ($language_row ? '<dialog class="dialog" id="pg_tr_automation_modal" aria-labelledby="pg_tr_automation_modal_title">
+                    <div class="dialog-header">
+                        <h5 class="dialog-title" id="pg_tr_automation_modal_title">' . h(lang(array('string' => 'Automation for {var:1}', 'vars' => array(pg_tr_language_label($language))))) . '</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
+                    </div>
+                    <div class="dialog-body">
+                        <div class="form-field mb-5">
+                            <label class="form-label pg-field-label" for="pg_tr_auto_engine">' . lang('Translation engine') . '</label>
+                            <select class="pg-input" id="pg_tr_auto_engine">' . $output_engine_options . '</select>
+                            ' . $output_engine_notes . '
+                        </div>
+                        <div class="form-field mb-5">
+                            <label class="form-label pg-field-label" for="pg_tr_auto_fallback">' . lang('Fallback engine') . '</label>
+                            <select class="pg-input" id="pg_tr_auto_fallback">' . $output_fallback_options . '</select>
+                            <p class="pg-field-help mb-0">' . lang('Offered when the texts the engine could not translate are sent again.') . '</p>
+                        </div>' . ($auto_update_known ? '
+                        <div class="pg-card-inner mb-5"><div class="pg-card-inner-row">
+                            <div class="flex-grow-1 min-w-0">
+                                <label class="pg-list-row-title d-block" for="pg_tr_auto_save">' . lang('Translate on save') . '</label>
+                                <div class="pg-text-meta">' . lang('A saved page, form record or picture is sent to the engine by itself.') . '</div>
+                                <div class="pg-text-meta pg-tr-automation-reason pg-tr-auto-save-off"' . (($engine_key === 'manual') ? '' : ' hidden') . '>' . lang('Off with "By hand": there is no engine to send the texts to.') . '</div>
+                            </div>
+                            <input type="checkbox" class="pg-switch" id="pg_tr_auto_save"' . ($auto_update_on ? ' checked="checked"' : '') . (($engine_key === 'manual') ? ' disabled="disabled"' : '') . '/>
+                        </div></div>' : '') . '
+                        <p class="pg-text-meta mb-0 pg-tr-auto-schedule"><i class="bi bi-clock me-1" aria-hidden="true"></i>' . lang('Waiting work is picked up every 5 minutes, with nobody on this screen.') . '</p>
+                    </div>
+                    <div class="dialog-footer">
+                        <a class="pg-text-meta fg-2 me-auto" href="' . h(pg_settings_link('languages', 'pgset-languages')) . '">' . lang('Languages and Translation') . '</a>
+                        <button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="dialog">' . lang('Cancel') . '</button>
+                        <button type="button" class="pg-button pg-button-fill pg-tr-auto-go">' . lang('Save') . '</button>
+                    </div>
+        </dialog>
+        <dialog class="drawer drawer-end" id="pg_tr_job_drawer" aria-labelledby="pg_tr_job_drawer_title" style="width:min(34rem,100%)">
+            <div class="d-flex flex-column h-100">
+                <div class="drawer-header">
+                    <div class="flex-grow-1 min-w-0 d-flex align-items-center gap-3">
+                        <h5 class="drawer-title mb-0 text-truncate" id="pg_tr_job_drawer_title"></h5>
+                        <span class="pg-pill pg-tr-job-pill"></span>
+                    </div>
+                    <button type="button" class="btn-close ms-auto" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '"></button>
+                </div>
+                <div class="drawer-body flex-grow-1 overflow-auto pg-tr-job-body" aria-live="polite"></div>
+                <div class="drawer-footer border-top p-5 d-flex align-items-center gap-3">
+                    <div class="pg-menu-wrap d-inline-flex pg-tr-job-retry-wrap" hidden>
+                        <button type="button" class="pg-button pg-button-fill pg-tr-job-retry"><i class="bi bi-arrow-repeat" aria-hidden="true"></i>' . lang('Try again with the failed ones') . '</button>' . ((($fallback_key !== '') && isset($engines[$fallback_key])) ? '
+                        <button type="button" class="pg-button pg-button-fill pg-tr-job-retry-more" data-bs-toggle="menu" data-bs-placement="top-start" aria-expanded="false" aria-label="' . h(lang('More')) . '"><i class="bi bi-chevron-up" aria-hidden="true"></i></button>
+                        <ul class="menu">
+                            <li><button type="button" class="menu-item pg-tr-job-retry-fallback"><i class="bi bi-arrow-repeat me-3" aria-hidden="true"></i>' . h(lang(array('string' => 'Try again with {var:1}', 'vars' => array($engines[$fallback_key]['label'])))) . '</button></li>
+                        </ul>' : '') . '
+                    </div>
+                    <button type="button" class="pg-button pg-button-quiet pg-tr-job-stop" hidden>' . lang('Stop') . '</button>
+                </div>
+            </div>
+        </dialog>' : '') . '
         <dialog class="dialog" id="pg_tr_glossary_modal" aria-labelledby="pg_tr_glossary_modal_title"' . ($glossary_back ? ' data-reopen="1"' : '') . '>
                 <form class="d-contents" method="post" action="translations_action.php">
                     <input type="hidden" name="action" value="glossary_save"/>
