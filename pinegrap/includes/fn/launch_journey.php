@@ -852,10 +852,10 @@ function pg_launch_journey_describe_line($problem)
 
     return array(
         'name' => lang('Make your site from a description'),
-        'line' => lang('Tell what the business does. Pinegrap AI plans the pages for you to check before anything is made.'),
+        'line' => lang('A whole site from your words'),
         'icon' => 'bi-stars',
         'tone' => 'violet',
-        'go'   => lang('Start'),
+        'go'   => lang('Describe it'),
         'url'  => 'view_system_styles.php?start=describe',
     );
 }
