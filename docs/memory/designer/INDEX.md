@@ -510,6 +510,7 @@
 - designer-new-version-publish.md: Publishing a live page's new version from the Publish sheet (NV3): its row, the save then the bundle's publish, "Replace anyway" or "Cancel", the tab moves
 - designer-new-version-server.md: A live page's new version on the server (NV1, page_versions.php): the bundle shape, Start and its refusals, one per page, Discard's order, the editor's versions block [decision: here]
 - designer-new-version-tab.md: A live page's new version in the Page Design Studio (NV2): the door "Save as a new version" / "Open the new version", the draft's tab and its pill, "Discard this version", the part versions
+- designer-new-version.md: Start file of a live page's new version (owner 2026-11-26): what it is, its decisions, which file holds the server, the tab, Publish, the phone and Compare, where the Bundles screen is in the menu [decision: decisions-made-product-116.md]
 - designer-node-attributes.md: The attributes every designer content, semantic and grid node writes on the page and in the editor HTML: one style order, font quoting, title and tooltip, Attributes panel rules, sizing on content
 - designer-node-ids.md: The designer's node ids (sd_N): each saved tree numbers its own, the counter kept above every loaded tree, a filled-in id never repeats one of its tree, issue badges on the issue's own node (#9958)
 - designer-note-author-stamping.md: Node notes get their author stamped in pg_designer_save_page via pg_stamp_note_authors, not in save_system_style; unchanged notes keep their stamp.
@@ -924,7 +925,7 @@
 - release-bundle-preview.md: A release bundle's preview (prototype.php?bundle=<id>): its waiting drafts, a link to a replaced page opening the replacement, the frame signed for the bundle, who opens it
 - release-bundle-publish-errors.md: A database error, fatal error or timeout while a release bundle publishes: what is taken back, what is left, why
 - release-bundle-publish.md: Publishing and taking back a release bundle: checks before any write, the writes, a failure taken back, partly published, what cannot come back
-- release-bundle-screen.md: The Bundles screen (page_bundles.php): the list, a bundle's pages with "Changed since", its dialogs, Publish and Take back, Remove and Delete [decision: here]
+- release-bundle-screen.md: The Bundles screen (page_bundles.php): the list, a bundle's pages with "Changed since", its dialogs, Publish and Take back, Remove and Delete
 - release-bundle-share-link.md: A release bundle's preview shared by a prototype link (prototype_links.bundle_id, RB6 #10518): who makes it, what it opens, when it stops, the frame signed for the bundle [decision: decisions-made-schema-29.md]
 - release-bundle-tables.md: Release bundles' two tables, statuses and moves, the hold on a bundled draft, the copy of a live page and "changed since" (includes/fn/page_bundles.php) [decision: decisions-made-schema-26.md]
 - release-bundle-time.md: A release bundle's publish time: the general job's pass, publishing once in the name of who set the time, a bundle held back to open with its reason, the bell line
@@ -936,6 +937,7 @@
 - search-index-resumable-pass.md: update_search_index.php as a resumable pass (stages, cursor file, skip rule, run budgets, panel window requests, sweep against the pass start) and the hourly delta run between full passes
 - search-index-run-failures.md: How update_search_index.php survives a bad page, event, record or file (isolated render, old row kept) and reports failures and an early stop in the Site Log
 - search-results-catalog-detail-page.md: Search Results widget: a product is a result only when a page opens it (chosen, else a Catalog Detail page the visitor can open); the editor names a site without one (#2062, #4453)
+- search-results-folder-and-article-suggest.md: The Search Results widget's "Search only in" folder (search_folder_id) and the public article_suggest.php that a form field set to "Offer articles from" calls as the visitor types (help centre HC2)
 - search-synonyms-promoted.md: Site search synonyms and promoted results: the two config_text rows, the box formats, pg_search_expand(), how the search widget merges and pins results. [decision: decisions-made-product-19.md]
 - sentence-with-values.md: Words beside a value (W26): props._sentence draws one translatable sentence, its N-th child at {var:N}; twins, panel row, code view lock, comment stars' label, order view's withdrawal line
 - seo-check-draft-render.md: The editor's SEO check renders the draft on the server (includes/fn/seo_draft.php): document mode, draft row override in get_page_content(), the save's gate, widgets as the Preview, fragment fallback

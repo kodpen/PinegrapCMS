@@ -835,7 +835,8 @@
 - toolbar-phone-fit.md: Toolbar filter forms capped to the bar (.pg-toolbar-filter), Edit Comment / Edit Theme File facts in the grow slot, Subscriptions date range wrapping at 375 px (#4264)
 - translations-screen-csv-import.md: Translations screen's Import CSV: which rows of a file are written, which are left as they are (unchanged), and what the import notice counts
 - translations-screen-drawing.md: The Translations screen's redraw (2026-11-27): where its sheet is, what each board A to J shows, the measures, the keys, and the drawn choices that bind the steps of the plan
-- translations-screen-editor-rows.md: Translations screen (translations.php, translations.js): engine wait, row state and count sync, scoped chips, glossary duplicates and refused saves, return view, CSV guard, box size
+- translations-screen-editor-rows.md: Translations screen (translations.php, translations.js): engine wait, row state and count sync, scoped tiles, glossary duplicates and refused saves, return view, CSV guard, box size
+- translations-screen-frame.md: Translations screen frame (TS1): head with language shares, tabs Texts/Activity/Glossary, Scan for new texts and Translate pending, the rail, the filter tiles, the tool line
 - translations-screen-noindex-reason.md: Translations screen: a page's search verdict in the page list, its own-noindex state, the "Why?" list of texts keeping it out (blocking filter) and "Keep as in the source and approve" [decision: decisions-made-product-38.md]
 - translations-screen-recent-jobs.md: Translations screen (translations.php), recent jobs list: how a job's scope is labelled, where its error shows, and which messages survive the reload after a job or a bulk action
 - translations-screen-text-language.md: Translations screen (translations.php): which elements carry lang and dir="rtl" so screen readers and right-to-left translators get the text's own language

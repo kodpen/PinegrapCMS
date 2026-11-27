@@ -42,7 +42,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - `workspace-editor-*`: 7 files.
 - `workspace-flows-*`: 151 files; start at `workspace-flows-overview.md`.
 - `workspace-message-*`: 6 files.
-- `workspace-my-*`: 6 files.
+- `workspace-my-*`: 7 files.
 - `workspace-notes-*`: 31 files; start at `workspace-notes.md`.
 - `workspace-personal-*`: 13 files; start at `workspace-personal-overview.md`.
 - `workspace-task-*`: 7 files.

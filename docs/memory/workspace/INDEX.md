@@ -607,6 +607,7 @@
 - workspace-my-calendar-week.md: My calendar's Week with hours (CM1): the strip of what has no hour, the hour grid 07:00-20:00 in view, what stands where, overlaps sharing the width, the line of now, New plan from an empty hour
 - workspace-my-calendar.md: My calendar (workspace_my_calendar.php, PC2): the Work Calendar opened on the reader alone by month, week and list; what it reads, its gate, its ways in from the E-mails toolbar and the Workspace menu
 - workspace-my-tasks-add-line.md: My Tasks' "Add a task…" line above the groups of Mine: Enter saves through ws_task_save given to the reader, Tab opens New task with the title, a refusal under the field in the server's words
+- workspace-my-tasks-board.md: My Tasks' Board layout (TM4): List/Board icons kept in ws-tasks-layout, ws_tasks_status_board() columns by status through the channel board's mountSource(), moves via ws_task_status
 - workspace-my-tasks-screen.md: My Tasks list (TM1): open tasks under Overdue, Today, This week, Later, No date labels that fold (ws-tasks-folded), due_group from ws_task_due_group() on the reader's day, the one-line row
 - workspace-nested-controls.md: Why the channel list's pin and the search palette's account link are aria-hidden mouse shortcuts inside their link/option, and the keyboard routes to the same actions (Shift+F10 menu, Shift+Enter)
 - workspace-new-sales-quote.md: "New sales quote" in a Workspace channel's menu: the quote editor opened on the current account the channel's customer is or is tied to; who sees it, how the account is found, what is never done

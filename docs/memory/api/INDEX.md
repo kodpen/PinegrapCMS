@@ -214,4 +214,5 @@
 - workspace-message-file-api.md: The API routes for files in a message (#9769): post a file of the file manager, put an edited file in place of the old one (own words, no tool), list a file's earlier versions
 - workspace-thread-approval-api.md: The API routes (#9794) that conclude or rename a discussion and take back or close an approval request: the panel function each runs, the check it shares for the dry run, who may and the refusals
 - xero-connection.md: Xero connected (#12069): the site's own app, provider and purpose, the organisation read from /connections, the three accounts, the sealed service entry, when Xero is called, Disconnect
+- xero-sync-driver.md: Xero's accounting sync driver: what each queued row becomes (invoice, payment, credit note, void), contacts and items, Idempotency-Key, limit headers
 - xero-tax-rates.md: Tax rates matched on Xero's Connections page after Ledger accounts: the site rates listed, the Xero rates offered, the match kept as an accounting_sync tax pairing

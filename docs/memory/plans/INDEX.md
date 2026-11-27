@@ -47,8 +47,6 @@
 - design-template-bikeshop.md: Plan: the Bike Shop design template (pinegrap-bikeshop): bikes and parts catalog, repair and service requests, bike fitting, group rides calendar, news; small steps
 - design-template-own-looks-order.md: Order of the polishing round after Launch: every shipped template's family and pages steps, in which order, and where each template stands
 - design-template-own-looks.md: Plan (owner 2026-11-07): block families in their own source files (B0), Launch as an Apple-like product page (L1-L3), then a polishing round for every template
-- designer-new-version-steps.md: Steps NV1 to NV5 of plan designer-new-version: the server call, "Save as a new version" and its tab, Publish from the sheet, the phone and Compare, the Bundles menu row and the close-out
-- designer-new-version.md: Plan (owner 2026-11-26): a live page's new version prepared in a draft that replaces it, from "Save as a new version" in the Page Design Studio; steps NV1 to NV5
 - designer-use-round.md: Plan (owner 2026-11-26): the Page Design Studio's features of 2026-11 used in a browser as a first-time person, their faults fixed, their look brought to the chrome's rules; steps UR1 to UR8
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-open-work.md: Paraşüt work left after the staging round of 2026-11-27 and its six fixes: what staging could not try, the decisions #2440-#2442, the queue worker, incoming e-invoices; where to start
