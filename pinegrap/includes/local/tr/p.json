@@ -3884,6 +3884,7 @@
     "products in this shop": "bu mağazadaki ürün",
     "products matched": "ürün eşleşti",
     "products on {var:1}": "{var:1} üzerindeki ürün",
+    "products: the tax rate class is being added; {var:1} follows in the next pass": "products: vergi oranı sınıfı ekleniyor; {var:1} sonraki geçişte gelecek",
     "profile": "profil",
     "profile, avatar, picture, bio, name": "profil, avatar, fotoğraf, biyografi, ad",
     "profile, public, visible, e-mail": "profil, herkese açık, görünür, e-posta",

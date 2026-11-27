@@ -36,7 +36,13 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  * the day it applies from (Y-m-d). A row applies from its day until the next
  * row of the same state and kind. A state's first row carries the earliest
  * day the source holds (2016-01-01 for a rate unchanged since), not the day
- * its law set the rate. Only the standard rate is listed. Pure.
+ * its law set the rate. Two kinds are listed: 'standard', and 'reduced',
+ * each state's lowest reduced rate that applies across its territory
+ * (TEDB's REDUCED_RATE outside its REGION category; no super-reduced or
+ * parking rate), which a product of the reduced class pays
+ * (pg_tax_class_line_rate()). A reduced row carries the first month from
+ * which the Commission's monthly figures show its rate without a break, not
+ * the day the state's law set it. Pure.
  *
  * @return array[] list of array(country, kind, rate, from)
  */
@@ -82,6 +88,34 @@ function pg_eu_vat_rates()
         array('SI', 'standard', 22.0, '2016-05-20'),
         array('SK', 'standard', 20.0, '2016-01-01'),
         array('SK', 'standard', 23.0, '2025-01-01'),
+        // The reduced rate: each state's lowest nationwide one (no
+        // super-reduced, parking or regional rate). Denmark has none.
+        array('AT', 'reduced', 10.0, '2022-01-01'),
+        array('BE', 'reduced', 6.0, '2023-07-01'),
+        array('BG', 'reduced', 9.0, '2023-07-01'),
+        array('CY', 'reduced', 5.0, '2024-01-01'),
+        array('CZ', 'reduced', 12.0, '2024-01-01'),
+        array('DE', 'reduced', 7.0, '2023-07-01'),
+        array('EE', 'reduced', 9.0, '2025-01-01'),
+        array('ES', 'reduced', 10.0, '2024-07-01'),
+        array('FI', 'reduced', 10.0, '2023-07-01'),
+        array('FR', 'reduced', 5.5, '2023-07-01'),
+        array('GR', 'reduced', 6.0, '2023-07-01'),
+        array('HR', 'reduced', 5.0, '2016-01-01'),
+        array('HU', 'reduced', 5.0, '2023-07-01'),
+        array('IE', 'reduced', 9.0, '2023-07-01'),
+        array('IT', 'reduced', 5.0, '2023-07-01'),
+        array('LT', 'reduced', 5.0, '2016-01-01'),
+        array('LU', 'reduced', 8.0, '2024-01-01'),
+        array('LV', 'reduced', 5.0, '2018-01-01'),
+        array('MT', 'reduced', 5.0, '2023-07-01'),
+        array('NL', 'reduced', 9.0, '2023-07-01'),
+        array('PL', 'reduced', 5.0, '2023-07-01'),
+        array('PT', 'reduced', 6.0, '2016-01-01'),
+        array('RO', 'reduced', 11.0, '2025-08-01'),
+        array('SE', 'reduced', 6.0, '2024-01-01'),
+        array('SI', 'reduced', 5.0, '2022-07-01'),
+        array('SK', 'reduced', 5.0, '2023-07-01'),
     );
 }
 
@@ -90,7 +124,7 @@ function pg_eu_vat_rates()
  * pg_eu_vat_rates() with the latest start on or before it. Pure.
  *
  * @param string $country ISO code, any case; EL (the EU's code for Greece) is read as GR
- * @param string $kind    'standard'
+ * @param string $kind    'standard' or 'reduced'
  * @param string $date    Y-m-d; a longer date-time is cut to its day
  * @return float|false    false outside the EU, for a kind the list does not
  *                        hold, a malformed day or a day before the state's first row
@@ -191,7 +225,10 @@ function pg_tax_line_rate($base, $tax, $slack = 0)
 /**
  * What changed between the list an earlier run saw and this one: for every
  * day a row was added, removed or corrected, the rate before and after on
- * that day, where they differ. Oldest first, then by country. Pure.
+ * that day, where they differ. Oldest first, then by country. A kind the
+ * earlier list did not hold at all (the reduced rates, when an update first
+ * brings them) is new to the software, not a changed rate, and is left out.
+ * Pure.
  *
  * @param array[] $seen the rows as stored by the last run
  * @param array[] $rows the rows now (pg_eu_vat_rates())
@@ -203,6 +240,15 @@ function pg_eu_vat_rate_changes($seen, $rows)
         return implode('|', array((string) $row[0], (string) $row[1], (string) (float) $row[2], (string) $row[3]));
     };
 
+    $seen_kinds = array();
+
+    foreach ((array) $seen as $row) {
+        $seen_kinds[(string) $row[1]] = true;
+    }
+
+    $rows = array_values(array_filter((array) $rows, function ($row) use ($seen_kinds) {
+        return isset($seen_kinds[(string) $row[1]]);
+    }));
     $seen_keys = array_map($key, (array) $seen);
     $row_keys = array_map($key, (array) $rows);
     $days = array();
@@ -232,8 +278,8 @@ function pg_eu_vat_rate_changes($seen, $rows)
 
 /**
  * The changes as the notice's row keeps them (notifications.title, 256
- * characters): "EE 22>24 2025-07-01, ...", "-" for no rate; cut at a whole
- * entry. Pure.
+ * characters): "EE 22>24 2025-07-01, ...", a reduced rate as
+ * "EE reduced 9>13 2025-07-01", "-" for no rate; cut at a whole entry. Pure.
  *
  * @param array[] $changes pg_eu_vat_rate_changes()
  * @return string
@@ -247,7 +293,8 @@ function pg_eu_vat_rate_notice_title($changes)
     $title = '';
 
     foreach ((array) $changes as $change) {
-        $entry = $change['country'] . ' ' . $rate($change['old']) . '>' . $rate($change['new']) . ' ' . $change['from'];
+        $kind = (isset($change['kind']) && ($change['kind'] !== 'standard')) ? ' ' . $change['kind'] : '';
+        $entry = $change['country'] . $kind . ' ' . $rate($change['old']) . '>' . $rate($change['new']) . ' ' . $change['from'];
         $next = ($title === '') ? $entry : $title . ', ' . $entry;
 
         if (strlen($next) > 256) {
@@ -264,22 +311,23 @@ function pg_eu_vat_rate_notice_title($changes)
  * The notice's row read back into changes. Pure.
  *
  * @param string $title pg_eu_vat_rate_notice_title()
- * @return array[] list of array(country, old, new, from)
+ * @return array[] list of array(country, kind, old, new, from)
  */
 function pg_eu_vat_rate_notice_parse($title)
 {
     $changes = array();
 
     foreach (explode(', ', (string) $title) as $entry) {
-        if (preg_match('/^([A-Z]{2}) (-|[0-9.]+)>(-|[0-9.]+) (\d{4}-\d{2}-\d{2})$/', $entry, $match) !== 1) {
+        if (preg_match('/^([A-Z]{2})(?: (reduced))? (-|[0-9.]+)>(-|[0-9.]+) (\d{4}-\d{2}-\d{2})$/', $entry, $match) !== 1) {
             continue;
         }
 
         $changes[] = array(
             'country' => $match[1],
-            'old'     => ($match[2] === '-') ? false : (float) $match[2],
-            'new'     => ($match[3] === '-') ? false : (float) $match[3],
-            'from'    => $match[4],
+            'kind'    => ($match[2] === '') ? 'standard' : $match[2],
+            'old'     => ($match[3] === '-') ? false : (float) $match[3],
+            'new'     => ($match[4] === '-') ? false : (float) $match[4],
+            'from'    => $match[5],
         );
     }
 
@@ -298,9 +346,13 @@ function pg_eu_vat_rate_change_text($change)
         return ($value === false) ? lang('none') : lang(array('string' => '{var:1}%', 'vars' => array(format_tax_rate($value))));
     };
 
-    return lang(array('string' => '{var:1}: {var:2} to {var:3} from {var:4}', 'vars' => array(
-        $change['country'], $rate($change['old']), $rate($change['new']), $change['from'],
-    )));
+    $vars = array($change['country'], $rate($change['old']), $rate($change['new']), $change['from']);
+
+    if (isset($change['kind']) && ($change['kind'] === 'reduced')) {
+        return lang(array('string' => '{var:1} reduced rate: {var:2} to {var:3} from {var:4}', 'vars' => $vars));
+    }
+
+    return lang(array('string' => '{var:1}: {var:2} to {var:3} from {var:4}', 'vars' => $vars));
 }
 
 /**
@@ -400,4 +452,64 @@ function pg_eu_vat_rate_notice_mail($changes)
             // A refused message leaves the others to go.
         }
     }
+}
+
+/**
+ * The rate classes a product can have (products.tax_class), the stored
+ * value => its label. Pure.
+ *
+ * @return string[]
+ */
+function pg_product_tax_classes()
+{
+    return array(
+        'standard' => lang('Standard'),
+        'reduced'  => lang('Reduced'),
+        'zero'     => lang('Zero'),
+    );
+}
+
+/**
+ * A posted rate class as it is stored: 'standard' for anything that is not
+ * one of pg_product_tax_classes(). Pure.
+ *
+ * @param mixed $value
+ * @return string
+ */
+function pg_product_tax_class_parse($value)
+{
+    $value = strtolower(trim((string) $value));
+
+    return in_array($value, array('standard', 'reduced', 'zero'), true) ? $value : 'standard';
+}
+
+/**
+ * The options of the product form's Rate Class field, the stored class
+ * selected.
+ *
+ * @param string $selected products.tax_class
+ * @return string HTML
+ */
+function pg_product_tax_class_options($selected)
+{
+    $selected = pg_product_tax_class_parse($selected);
+    $output = '';
+
+    foreach (pg_product_tax_classes() as $value => $label) {
+        $output .= '<option value="' . h($value) . '"' . (($value === $selected) ? ' selected' : '') . '>' . h($label) . '</option>';
+    }
+
+    return $output;
+}
+
+/**
+ * Whether the product form draws, and so saves, the Rate Class field: the
+ * upgrade has added products.tax_class and "Rates by the buyer's country" is
+ * on, the only place the class is used.
+ *
+ * @return bool
+ */
+function pg_product_tax_class_drawn()
+{
+    return function_exists('pg_schema_has') && pg_schema_has('products', 'tax_class') && pg_tax_by_country_on();
 }

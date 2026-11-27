@@ -3550,17 +3550,86 @@ function pg_tax_buyer_zone_rate($zone_rate, $country, $by_country, $date)
 }
 
 /**
+ * The EU member state whose rate list taxes a buyer address, the one
+ * pg_tax_buyer_zone_rate() took the standard rate of: the address in no tax
+ * zone, "Rates by the buyer's country" on and the state in the list on $date.
+ * '' otherwise, so a tax zone's rate is never read as the list's. Pure.
+ *
+ * @param mixed  $zone_rate  get_tax_rate_for_address(): false in no zone
+ * @param string $country    the address's ISO country code
+ * @param bool   $by_country pg_tax_by_country_on()
+ * @param string $date       Y-m-d
+ * @return string the ISO code in upper case (GR for EL), or ''
+ */
+function pg_tax_buyer_list_country($zone_rate, $country, $by_country, $date)
+{
+    $country = strtoupper(trim((string) $country));
+
+    if ($country === 'EL') {
+        $country = 'GR';
+    }
+
+    if (($zone_rate !== false) || !$by_country || (pg_eu_vat_rate($country, 'standard', $date) === false)) {
+        return '';
+    }
+
+    return $country;
+}
+
+/**
+ * The rate an order line is taxed at with its product's rate class
+ * (products.tax_class): pg_order_line_tax_rate(), except that while the
+ * line's rate comes from the EU list ($list_country set) and the product has
+ * no rate of its own, a 'reduced' product takes the member state's reduced
+ * rate (its standard one where the state has none, as Denmark) and a 'zero'
+ * product no tax. A tax zone's rate and a product's own rate are taken as
+ * they are, whatever the class. Pure.
+ *
+ * @param bool        $tax_on       pg_tax_switched_on()
+ * @param mixed       $taxable      products.taxable
+ * @param mixed       $product_rate products.tax_rate (NULL = the zone's rate)
+ * @param float|false $zone_rate    pg_tax_buyer_zone_rate()
+ * @param string      $list_country pg_tax_buyer_list_country()
+ * @param string      $class        products.tax_class: standard, reduced or zero
+ * @param string      $date         Y-m-d, the day the order is taxed
+ * @return float
+ */
+function pg_tax_class_line_rate($tax_on, $taxable, $product_rate, $zone_rate, $list_country, $class, $date)
+{
+    $own = !(($product_rate === null) || ($product_rate === ''));
+
+    if (!$own && ((string) $list_country !== '')) {
+        if ($class === 'zero') {
+            $product_rate = '0.000';
+        } elseif ($class === 'reduced') {
+            $reduced = pg_eu_vat_rate($list_country, 'reduced', $date);
+
+            if ($reduced !== false) {
+                $product_rate = $reduced;
+            }
+        }
+    }
+
+    return pg_order_line_tax_rate($tax_on, $taxable, $product_rate, $zone_rate);
+}
+
+/**
  * pg_tax_buyer_zone_rate() for a buyer's address, read from the tax zones and
  * the Commerce switch.
  *
- * @param string $country ISO country code
- * @param string $state   state code
- * @param string $date    Y-m-d
+ * @param string      $country      ISO country code
+ * @param string      $state        state code
+ * @param string      $date         Y-m-d
+ * @param string|null $list_country set to pg_tax_buyer_list_country()
  * @return mixed
  */
-function pg_tax_rate_for_buyer_address($country, $state, $date)
+function pg_tax_rate_for_buyer_address($country, $state, $date, &$list_country = null)
 {
-    return pg_tax_buyer_zone_rate(get_tax_rate_for_address($country, $state), $country, pg_tax_by_country_on(), $date);
+    $zone_rate = get_tax_rate_for_address($country, $state);
+    $by_country = pg_tax_by_country_on();
+    $list_country = pg_tax_buyer_list_country($zone_rate, $country, $by_country, $date);
+
+    return pg_tax_buyer_zone_rate($zone_rate, $country, $by_country, $date);
 }
 
 
@@ -5006,8 +5075,11 @@ function update_order_item_taxes($ship_to_addresses = array())
             && defined('ECOMMERCE_PAYMENT_GATEWAY') && (ECOMMERCE_PAYMENT_GATEWAY == 'ClearCommerce');
         $today = date('Y-m-d');
         // The billing address's zone rate; in no zone, an EU member state's
-        // standard rate while Rates by the buyer's country is on.
-        $billing_address_tax_rate = pg_tax_rate_for_buyer_address($billing_country, $billing_state, $today);
+        // standard rate while Rates by the buyer's country is on, and that
+        // state, whose list then gives a product's rate class its rate.
+        $billing_list_country = '';
+        $billing_address_tax_rate = pg_tax_rate_for_buyer_address($billing_country, $billing_state, $today, $billing_list_country);
+        $with_class = pg_schema_has('products', 'tax_class');
         // get all ship tos
         $query = "SELECT
 
@@ -5035,12 +5107,13 @@ function update_order_item_taxes($ship_to_addresses = array())
             // Cleared every pass so a recipient in no tax zone cannot inherit
             // the rate resolved for the previous one.
             $shipping_address_tax_rate = false;
+            $shipping_list_country = '';
             // if this ship to is a real recipient, get tax rate for shipping address
             if ($ship_to['ship_to_id'] > 0) {
                 $ship_to_address = isset($ship_to_addresses[(int) $ship_to['ship_to_id']])
                     ? $ship_to_addresses[(int) $ship_to['ship_to_id']]
                     : array('country' => $ship_to['country'], 'state' => $ship_to['state']);
-                $shipping_address_tax_rate = pg_tax_rate_for_buyer_address((string) ($ship_to_address['country'] ?? ''), (string) ($ship_to_address['state'] ?? ''), $today);
+                $shipping_address_tax_rate = pg_tax_rate_for_buyer_address((string) ($ship_to_address['country'] ?? ''), (string) ($ship_to_address['state'] ?? ''), $today, $shipping_list_country);
             }
             // get all order items for this ship to
             $query = "SELECT
@@ -5057,7 +5130,9 @@ function update_order_item_taxes($ship_to_addresses = array())
 
                         products.taxable,
 
-                        products.tax_rate,
+                        products.tax_rate," . ($with_class ? "
+
+                        products.tax_class," : "") . "
 
                         products.recurring,
 
@@ -5077,16 +5152,18 @@ function update_order_item_taxes($ship_to_addresses = array())
             // A line with a recipient is taxed on the recipient's address,
             // one without on the billing address.
             $zone_rate = ($ship_to['ship_to_id'] > 0) ? $shipping_address_tax_rate : $billing_address_tax_rate;
+            $list_country = ($ship_to['ship_to_id'] > 0) ? $shipping_list_country : $billing_list_country;
 
             foreach ($order_items as $order_item) {
                 // The zone says whether tax is due, the product at what rate
-                // (pg_order_line_tax_rate(), the counter sale's rule too). The
+                // (pg_order_line_tax_rate(), the counter sale's rule too; its
+                // rate class where the EU list sets the rate). The
                 // base is the whole line, not one unit: rounding a unit and then
                 // multiplying gives a different answer above quantity one.
                 $line_quantity = max(1, (int) $order_item['quantity']);
                 $lines[(int) $order_item['id']] = array(
                     'amount' => (int) $order_item['price'] * $line_quantity,
-                    'rate' => pg_order_line_tax_rate(pg_tax_switched_on(), $order_item['taxable'], $order_item['tax_rate'], $zone_rate),
+                    'rate' => pg_tax_class_line_rate(pg_tax_switched_on(), $order_item['taxable'], $order_item['tax_rate'], $zone_rate, $list_country, (string) ($order_item['tax_class'] ?? 'standard'), $today),
                     // A line saved for later is no part of the sale.
                     'alone' => !empty($order_item['saved_for_later'])
                         || !pg_order_line_charged_today($order_item['recurring'], $order_item['recurring_start_date'], $order_item['start'], $today, $clearcommerce),
@@ -10844,6 +10921,7 @@ function pg_assign_product_barcode($product_id, $barcode = '', $type = '')
  * list for the columns later versions added, each only where the source row,
  * read with SELECT *, has it: the AI write marks the copy keeps
  * (pg_ai_fields_copy()), the VAT exemption code a zero-rated ERP line reads,
+ * the VAT rate class,
  * and a bundle's switch, pricing, discount and back order choice, without
  * which a copied bundle would sell its cached stock as its own.
  *
@@ -10868,6 +10946,12 @@ function pg_product_copy_extra_sql($row, $ai_fields)
     if (array_key_exists('vat_exemption_code', $row)) {
         $columns .= 'vat_exemption_code,';
         $values .= "'" . e(substr(trim((string) $row['vat_exemption_code']), 0, 10)) . "',";
+    }
+
+    // The VAT rate class (11.0.285): the copy is the same kind of goods.
+    if (array_key_exists('tax_class', $row)) {
+        $columns .= 'tax_class,';
+        $values .= "'" . pg_product_tax_class_parse($row['tax_class']) . "',";
     }
 
     if (array_key_exists('bundle', $row) && array_key_exists('bundle_pricing', $row) && array_key_exists('bundle_discount_bp', $row)) {

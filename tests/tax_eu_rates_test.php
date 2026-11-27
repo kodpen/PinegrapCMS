@@ -59,8 +59,13 @@ function test_tax_eu_rates_rows_well_formed()
 		list($country, $kind, $rate, $from) = $row;
 
 		pg_assert_true(preg_match('/^[A-Z]{2}$/', $country) === 1, $country . ': an ISO code');
-		pg_assert_same('standard', $kind, $country . ': only the standard rate is listed');
-		pg_assert_true(is_float($rate) && ($rate >= 15.0) && ($rate < 30.0), $country . ' ' . $from . ': a standard rate of at least 15%');
+		pg_assert_true(in_array($kind, array('standard', 'reduced'), true), $country . ': the standard and the reduced rate are listed');
+
+		if ($kind === 'standard') {
+			pg_assert_true(is_float($rate) && ($rate >= 15.0) && ($rate < 30.0), $country . ' ' . $from . ': a standard rate of at least 15%');
+		} else {
+			pg_assert_true(is_float($rate) && ($rate >= 5.0) && ($rate < 15.0), $country . ' ' . $from . ': a reduced rate of at least 5%');
+		}
 
 		$day = DateTime::createFromFormat('!Y-m-d', $from);
 		pg_assert_true(($day !== false) && ($day->format('Y-m-d') === $from), $country . ' ' . $from . ': a real day');
@@ -109,7 +114,7 @@ function test_tax_eu_rates_codes_and_refusals()
 		pg_assert_false(pg_eu_vat_rate($country, 'standard', '2026-11-27'), '"' . $country . '" is not in the list');
 	}
 
-	pg_assert_false(pg_eu_vat_rate('DE', 'reduced', '2026-11-27'), 'a kind the list does not hold');
+	pg_assert_false(pg_eu_vat_rate('DE', 'super-reduced', '2026-11-27'), 'a kind the list does not hold');
 	pg_assert_false(pg_eu_vat_rate('DE', 'standard', '2015-12-31'), 'a day before the first row');
 	pg_assert_false(pg_eu_vat_rate('DE', 'standard', ''), 'no day');
 	pg_assert_false(pg_eu_vat_rate('DE', 'standard', '27.11.2026'), 'a day in another shape');
@@ -188,15 +193,16 @@ function test_tax_eu_rates_one_place()
 	$body = substr($ecommerce, (int) $start, ($end === false) ? null : ($end - $start));
 
 	$exempt = strpos($body, 'SET tax_total = 0, tax = 0');
-	$billing = strpos($body, '$billing_address_tax_rate = pg_tax_rate_for_buyer_address($billing_country, $billing_state, $today);');
-	$shipping = strpos($body, "\$shipping_address_tax_rate = pg_tax_rate_for_buyer_address((string) (\$ship_to_address['country'] ?? ''), (string) (\$ship_to_address['state'] ?? ''), \$today);");
+	$billing = strpos($body, '$billing_address_tax_rate = pg_tax_rate_for_buyer_address($billing_country, $billing_state, $today, $billing_list_country);');
+	$shipping = strpos($body, "\$shipping_address_tax_rate = pg_tax_rate_for_buyer_address((string) (\$ship_to_address['country'] ?? ''), (string) (\$ship_to_address['state'] ?? ''), \$today, \$shipping_list_country);");
 
 	pg_assert_true($billing !== false, 'the billing address');
 	pg_assert_true($shipping !== false, 'a recipient\'s address');
 	pg_assert_true(($exempt !== false) && ($exempt < $billing), 'an exempt order is cleared first');
 	pg_assert_false(strpos($body, 'get_tax_rate_for_address(') !== false, 'no address read past it');
 
-	pg_assert_contains('return pg_tax_buyer_zone_rate(get_tax_rate_for_address($country, $state), $country, pg_tax_by_country_on(), $date);', $ecommerce, 'the zone, then the switch');
+	pg_assert_contains('$zone_rate = get_tax_rate_for_address($country, $state);', $ecommerce, 'the zone');
+	pg_assert_contains('return pg_tax_buyer_zone_rate($zone_rate, $country, $by_country, $date);', $ecommerce, 'then the switch');
 	pg_assert_false(strpos($sale, 'pg_tax_rate_for_buyer_address') !== false, 'the counter sale keeps its store\'s zone');
 	pg_assert_false(strpos($order, 'pg_tax_rate_for_buyer_address') !== false, 'the counter sale\'s completion too');
 }

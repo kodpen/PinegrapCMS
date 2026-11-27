@@ -2051,6 +2051,7 @@
     "{var:1} recovered": "{var:1} kurtarıldı",
     "{var:1} recovery codes left. New codes replace them.": "{var:1} kurtarma kodu kaldı. Yeni kodlar bunların yerini alır.",
     "{var:1} red · {var:2} green": "{var:1} kırmızı · {var:2} yeşil",
+    "{var:1} reduced rate: {var:2} to {var:3} from {var:4}": "{var:1} indirimli oran: {var:4} tarihinden itibaren {var:2} yerine {var:3}",
     "{var:1} refund request{suffix:1}": "{var:1} iade talebi",
     "{var:1} refunded earlier has no return invoice yet. Issue it before refunding more, so the same goods are not refunded twice.": "Daha önce iade edilen {var:1} için henüz iade faturası yok. Aynı ürünler iki kez iade edilmesin diye daha fazla iade yapmadan önce kesin.",
     "{var:1} refund{suffix:1}": "{var:1} iade",
