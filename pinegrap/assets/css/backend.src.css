@@ -11117,9 +11117,14 @@ body.pg-side-panel-open .pg-chat-launcher {
      (one element to hide), so the first of them is the first child of a
      nested row and the rule above was never drawn on it: under Alerts,
      "Send alerts by e-mail" read as part of the master switch's
-     description. A cell holding only a nested row hands the line on. */
-  .pg-set-card .row > * + [class]:not(.collapse):has(> .row:only-child) > .row > [class]:first-child:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range),
-  .pg-set-card .row > * + [class]:not(.collapse):has(> .row:only-child) > .row > [class]:first-child:has(> .form-field > :is(input[type="checkbox"], .switch)) {
+     description. A cell holding only a nested row hands the line on.
+     Written with .row:only-child, never as :has(> .row:only-child) on the
+     cell: a :has() that is not the subject of its selector makes Chromium
+     restyle every [class] element under the body after any DOM change,
+     which in the visual designer cost a style pass over thousands of
+     elements on every click. */
+  .pg-set-card .row > * + [class]:not(.collapse) > .row:only-child > [class]:first-child:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range),
+  .pg-set-card .row > * + [class]:not(.collapse) > .row:only-child > [class]:first-child:has(> .form-field > :is(input[type="checkbox"], .switch)) {
     padding-top: var(--pg-set-row-y);
     border-top: 1px solid var(--pg-border-color-translucent);
   }

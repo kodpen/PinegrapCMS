@@ -26,6 +26,6 @@ description: A selection and a render() measure once after their last write (the
   - Long tasks: 859–948 ms before, 754–806 ms after.
   - `render`: 357–406 ms before, 244–247 after.
 - CPU profile with the source files served: `renderSelectionOnly()` 981 → 476 ms.
-- What is left is one layout per click (in `_sdTreeScrollRow()`, about 40 ms a click), the panes drawn after the frame, and the hover toolbar's flip.
+- Each of those layouts was mostly a style pass over the whole designer and canvas, which #11987 removed: numbers in `designer-performance.md`, cause in `ui/css-has-outside-subject.md`.
 
 Related: docs/memory/designer/designer-canvas-redraw-paths.md, docs/memory/designer/designer-performance.md, docs/memory/designer/designer-selection-in-place.md
