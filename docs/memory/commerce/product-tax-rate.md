@@ -8,7 +8,7 @@ description: How product tax_rate and tax_zones combine, NULL vs 0.000 semantics
 - `products.tax_rate` (`DECIMAL(6,3) NULL DEFAULT NULL`, step 4.26; no UNSIGNED, deprecated on DECIMAL since MySQL 8.0.17 and gone in MySQL 9, where the ALTER would fail) only changes the rate:
   - `NULL` = product has no own rate, the zone rate applies (meaning of every old row).
   - `0.000` = zero-rated, 0% wherever tax applies.
-  - Address in no zone = no tax, whatever rate the product carries.
+  - Address in no zone = no tax, whatever rate the product carries; with Rates by the buyer's country on, an EU address in no zone takes its member state's standard rate as the zone rate (`tax-eu-standard-rate.md`).
 - Single decision point: `get_effective_tax_rate($product_rate, $zone_rate)`; `update_order_item_taxes()` calls it per line.
 - `parse_tax_rate()` makes input storable (empty -> NULL, comma -> dot, 0-100 bound); `format_tax_rate()` prints it (0.000 does not turn into an empty box). Site default: `get_default_tax_rate()`.
 
