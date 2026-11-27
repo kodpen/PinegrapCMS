@@ -355,7 +355,7 @@
 - workspace-channel-new-line.md: The channel's "New" line (#11269, board C1): where it stands (newLineAt()), the read mark it is drawn by, Go to new messages scrolling to it [decision: decisions-made-workspace-48.md]
 - workspace-channel-overview.md: A Workspace channel screen as a whole: header, catch-up and pinned line, messages, writing box, info panel, the tabs, export, icon; which file holds each
 - workspace-channel-panels.md: The side panels as drawn (C6 of workspace-channel-screen.md): the channel info beside the conversation in the discussion's place, its parts, the discussion's head and follow line [decision: here]
-- workspace-channel-panes.md: The channel's Tasks, Decisions and Files tabs as cards (CL2, CL4, TD1): tasks in columns, decisions one list of wide cards, each kind of file a card; My tasks keeps its rows [decision: decisions-made-workspace-39.md]
+- workspace-channel-panes.md: The channel's Tasks, Decisions and Files tabs as cards (CL2, CL4, TD1): tasks in columns, decisions one list of wide cards, each kind of file a card; a record's window keeps the task rows [decision: decisions-made-workspace-39.md]
 - workspace-channel-screen.md: The Workspace channel screen as redrawn (C1–C8) and its card look (CL1-CL4, what it left alone): what every change keeps, the phone rules, who changes the design, where each part is [decision: decisions-made-workspace-5.md]
 - workspace-channel-search-scope.md: A search narrowed to one channel (palette "Only in #channel", ws_message_search) reads the channel's discussions too: ws_channel_search_ids()/ws_channel_search_sql(), #4239
 - workspace-channel-settings.md: Channel templates, voice transcripts and the GitHub card in Site Settings (Channels, mail and voice) and Workspace Settings: names, shared saves, where the GitHub links went
@@ -600,6 +600,7 @@
 - workspace-module-decisions.md: Binding decisions of the Workspace module (channels, tasks, plan board): rights not roles, private channel audit, chat bubble kept apart, multiple assignees, customer context, API scope ceiling
 - workspace-my-calendar-week.md: My calendar's Week with hours (CM1): the strip of what has no hour, the hour grid 07:00-20:00 in view, what stands where, overlaps sharing the width, the line of now, New plan from an empty hour
 - workspace-my-calendar.md: My calendar (workspace_my_calendar.php, PC2): the Work Calendar opened on the reader alone by month, week and list; what it reads, its gate, its ways in from the E-mails toolbar and the Workspace menu
+- workspace-my-tasks-screen.md: My Tasks list (TM1): open tasks under Overdue, Today, This week, Later, No date labels that fold (ws-tasks-folded), due_group from ws_task_due_group() on the reader's day, the one-line row
 - workspace-nested-controls.md: Why the channel list's pin and the search palette's account link are aria-hidden mouse shortcuts inside their link/option, and the keyboard routes to the same actions (Shift+F10 menu, Shift+Enter)
 - workspace-new-sales-quote.md: "New sales quote" in a Workspace channel's menu: the quote editor opened on the current account the channel's customer is or is tied to; who sees it, how the account is found, what is never done
 - workspace-note-changed-by-app.md: The application that changed a Workspace note: updated_app_id / app_id (11.0.257), the save, "Changed by @handle", the API's changed_by, the card and version lists (PR #10797, #10904) [decision: decisions-made-schema-37.md]
@@ -613,6 +614,7 @@
 - workspace-note-lock-readers.md: Notes lock beyond the notes screen: API and MCP (locked, 423 note_locked), assistants, get_file.php, export, blocks, record history, table import; the readers guard test
 - workspace-note-lock-screen.md: Notes lock on My Notes (workspace_note_lock.js): toolbar Lock and dialogs, Lock/Unlock in menus, list marks, the lock pane and e-mailed code, the time-out, note_locked answers
 - workspace-note-lock.md: Notes lock store (note_lock.php): PIN set-up and checks, open lock in the session, times, wrong-PIN pause, e-mailed code, actions ws_note_lock_*; the gate in workspace-note-lock-gate.md
+- workspace-note-page.md: My Notes' note as a page (.ws-nb-page): title and text in a 46rem column without a frame, one sticky row of tools folding into More; what other writing boxes keep
 - workspace-note-tabs.md: Note tabs over an open note on My Notes — workspace_note_tabs.js (group as ARIA tablist, marks, +, keys, drag to reorder via ws_note_place) and drawTabs() in startNotes()
 - workspace-notes-deletions.md: Deleting a note over the API (PR #1674) and ws_note_deletions (schema 11.0.85): who may, whom a deletion or a person share taken back is kept for, how long, deleted in the changes listing, no MCP tool
 - workspace-notes-export.md: Notes leaving the Workspace as files (workspace_notes_export.php, notes_io.php): one note as Markdown with front matter, a print page, "Export all" as a zip vault; what the tags and attachments become

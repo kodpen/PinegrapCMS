@@ -583,6 +583,8 @@ description: Generated from the module field of the memory files: each includes/
 - `wishlist`: [[wishlist]]
 - `workspace_file_gate`: [[workspace-file-address-gate]]
 - `workspace_mail_gate`: [[mail-workspace-off]]
+- `xero`: [[xero-connection]]
+- `xero_page`: [[xero-connection]]
 - `xlsx_write`: [[workflow-tables-export]]
 - `zone_list_edit`: [[list-table-quick-edit-zones]]
 
