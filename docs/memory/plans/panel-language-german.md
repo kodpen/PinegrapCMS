@@ -8,7 +8,7 @@ priority: 5
 - Owner (2026-11-27, poll 247, `workflow/decisions-made-product-117.md`): German is the first further language of the panel. The mechanism and the rules of translating: `plans/panel-language-packs.md`.
 
 ## When do the steps start?
-- The architect marks lines `free` by a docs PR. PL2 of `plans/panel-language-packs.md` has landed (#12091), so DE1 to DE8 are marked (2026-11-27); DE9 is marked when the eight have landed.
+- The architect marks lines `free` by a docs PR. PL2 of `plans/panel-language-packs.md` has landed (#12091), so DE1 to DE8 were marked (2026-11-27); the eight have landed (#12149 to #12179) and DE9 is marked.
 - The eight translating steps run side by side: each writes only its own shards under `includes/local/de/`, so they never meet in a file. One worker a step.
 
 ## Which translating steps are there? (keys counted on 2026-11-27; a language file does not count in a PR's product lines)
@@ -27,8 +27,8 @@ priority: 5
 - At the end `php tools/lang_pack.php de --check` and `php tools/check_lang.php` are clean for its shards and `--count` shows none missing; the PR names the figures and twenty wordings it read again in the panel's context.
 - A key whose meaning neither the English nor the Turkish settles is searched in the code once; the wording follows the screen that shows it.
 
-## What comes after the eight?
-- DE9 (S) German is offered, after DE1 to DE8 have landed.
+## Which step comes after the eight?
+- DE9 `free` (S): German is offered; DE1 to DE8 have landed.
   - `de` joins the shipped list of `pg_software_languages()` with its own name "Deutsch"; a top-up of the keys added since; the sandbox with German chosen at 1440 and 390 px.
   - The screens looked at: the dashboard, Site Settings, an order, the page editor, the designer's frame, the Workspace. Text that breaks a button or a table head is shortened in the wording, never in the screen's code.
   - Then the lasting figures into `core/`, and this file deleted with PL3.

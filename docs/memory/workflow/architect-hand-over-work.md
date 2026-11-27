@@ -26,7 +26,7 @@ description: Hand-over of the architect session of 2026-11-24 to 26, the work in
 - Plan `designer-new-version` (poll 244): a step needing a table or column comes back here.
 - Poll 242: Options is too narrow; his console line picks the issue.
 - Paraşüt: the six issues are fixed; what is left is in `plans/erp-parasut-open-work.md`.
-- Nine features (polls 246, 247): `plans/global-features.md`. Every census is read and every plan has its build steps; polls 248 to 253 are answered (`decisions-made-schema-53.md` to `-55.md`, `decisions-made-product-119.md`). German's eight steps are `free`; left: DE9 after them, Etsy's steps of `plans/sales-channels-global.md` after SC7.
+- Nine features (polls 246, 247): `plans/global-features.md`. Every census is read and every plan has its build steps; polls 248 to 253 are answered (`decisions-made-schema-53.md` to `-55.md`, `decisions-made-product-119.md`). German's DE9 is `free`, then PL3; Etsy's steps are written (ET1 to ET6); left: Amazon's after ET6, with the owner's questions of `plans/sales-channels-global-census-proposal.md`.
 
 ## What is watched?
 - k3's own tasks: the context size on the agent form.
