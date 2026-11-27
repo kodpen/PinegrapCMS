@@ -901,14 +901,14 @@ function pg_ebay_aspect_rows($data)
    --------------------------------------------------------------------------- */
 
 /**
- * The longest SKU and inventory item group key eBay takes, and the longest
- * title. Pure.
+ * The longest SKU and inventory item group key eBay takes, the longest
+ * title, and the most SKUs one bulkUpdatePriceQuantity call takes. Pure.
  *
- * @return array sku, group_key, title, pictures, product_description
+ * @return array sku, group_key, title, pictures, product_description, bulk
  */
 function pg_ebay_listing_limits()
 {
-    return array('sku' => 50, 'group_key' => 50, 'title' => 80, 'pictures' => 24, 'product_description' => 4000);
+    return array('sku' => 50, 'group_key' => 50, 'title' => 80, 'pictures' => 24, 'product_description' => 4000, 'bulk' => 25);
 }
 
 /**
@@ -1301,4 +1301,84 @@ function pg_ebay_error_messages($data)
     }
 
     return implode(' ', array_slice($messages, 0, 3));
+}
+
+/* ---------------------------------------------------------------------------
+   Stock and price (connectors/ebay.php): bulkUpdatePriceQuantity
+   --------------------------------------------------------------------------- */
+
+/**
+ * One SKU's request of a bulkUpdatePriceQuantity call: the quantity on the
+ * inventory item and on the offer when stock is sent, the offer's price in
+ * the site's currency when a price is given. A product that does not track
+ * stock sends no quantity: zero would take the listing off sale. null when
+ * there is nothing to say about the SKU. Pure.
+ *
+ * @param array  $row       mp_product_row(): remote_code, quantity, tracked
+ * @param string $offer_id
+ * @param bool   $with_stock
+ * @param string $price     pg_ebay_offer_price(), '' to send no price
+ * @param string $currency  the site's currency
+ * @return array|null
+ */
+function pg_ebay_bulk_request($row, $offer_id, $with_stock, $price, $currency)
+{
+    $offer = array('offerId' => (string) $offer_id);
+    $request = array('sku' => trim((string) $row['remote_code']));
+
+    if ($with_stock && !empty($row['tracked'])) {
+        $quantity = max(0, (int) $row['quantity']);
+        $request['shipToLocationAvailability'] = array('quantity' => $quantity);
+        $offer['availableQuantity'] = $quantity;
+    }
+
+    if ((string) $price !== '') {
+        $offer['price'] = array('value' => (string) $price, 'currency' => (string) $currency);
+    }
+
+    if (count($offer) === 1) {
+        return null;
+    }
+
+    $request['offers'] = array($offer);
+
+    return $request;
+}
+
+/**
+ * Each SKU's verdict in a bulkUpdatePriceQuantity answer (200 or 207): SKU
+ * => '' when every response of it is 200, else eBay's messages. A SKU the
+ * answer does not name is not in the result. Pure.
+ *
+ * @param mixed $data
+ * @return array
+ */
+function pg_ebay_bulk_verdicts($data)
+{
+    $verdicts = array();
+    $list = (is_array($data) && isset($data['responses']) && is_array($data['responses'])) ? $data['responses'] : array();
+
+    foreach ($list as $response) {
+        if (!is_array($response) || !isset($response['sku']) || !is_scalar($response['sku'])) {
+            continue;
+        }
+
+        $sku = (string) $response['sku'];
+        $status = isset($response['statusCode']) ? (int) $response['statusCode'] : 0;
+
+        if (!isset($verdicts[$sku])) {
+            $verdicts[$sku] = '';
+        }
+
+        if ($status === 200) {
+            continue;
+        }
+
+        $messages = pg_ebay_error_messages($response);
+        $text = ($messages !== '') ? $messages : ('HTTP ' . $status);
+
+        $verdicts[$sku] = ($verdicts[$sku] === '') ? $text : $verdicts[$sku] . ' ' . $text;
+    }
+
+    return $verdicts;
 }

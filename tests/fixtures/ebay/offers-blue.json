@@ -1,0 +1,20 @@
+{
+  "href": "https://api.ebay.com/sell/inventory/v1/offer?sku=CHAIR-BLUE&marketplace_id=EBAY_DE&limit=100&offset=0",
+  "limit": 100,
+  "offers": [
+    {
+      "offerId": "5005317011",
+      "sku": "CHAIR-BLUE",
+      "marketplaceId": "EBAY_DE",
+      "format": "FIXED_PRICE",
+      "availableQuantity": 2,
+      "categoryId": "63861",
+      "merchantLocationKey": "warehouse-1",
+      "pricingSummary": {"price": {"value": "45.50", "currency": "EUR"}},
+      "listing": {"listingId": "110554419322", "listingStatus": "ACTIVE", "soldQuantity": 0},
+      "status": "PUBLISHED"
+    }
+  ],
+  "size": 1,
+  "total": 1
+}

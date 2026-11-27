@@ -15,7 +15,8 @@ module: ebay
 
 ## What is refused, and when does it wait?
 - Refused on the mapping (`data['refused']`): no offer on this site ("not listed on eBay yet"), no price, no rate to the site's currency, eBay's own message for a SKU answered with an error in the bulk answer (`pg_ebay_bulk_verdicts()`).
-- No answer, 429 or 5xx: the rest of the batch is deferred (`data['deferred']`, `retry_after` 60 s for 429, else 30 s); when nothing went through, the batch fails as retryable. Products past the time budget (`PG_EBAY_PUSH_BUDGET`, 20 s) are deferred too.
+- No answer, 429 or 5xx on a look-up or a bulk call: that SKU and the rest of the batch are deferred (`data['deferred']`, `retry_after` 60 s for 429, else 30 s); SKUs already looked up still go. When nothing went through and nothing was refused, the batch fails as retryable (the queue's backoff, a minute for 429). Products past the time budget (`PG_EBAY_PUSH_BUDGET`, 20 s) are deferred too.
+- Another non-2xx answer of a bulk call refuses that call's SKUs with eBay's message. Sending neither stock nor price answers `task_id` '' and the rows close as done.
 
 ## What is not verified?
 - Built from eBay's Inventory API documentation; the answers in `tests/fixtures/ebay/bulk-*.json` were not recorded from a live account. Tests: `tests/ebay_stock_price_test.php`.
