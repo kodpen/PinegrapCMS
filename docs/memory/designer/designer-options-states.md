@@ -21,19 +21,19 @@ description: The Options panel's State row as built (DO10, #11588): Normal, Hove
 - The line under the row: "2 options set for Hover" with "Reset this state" (the state's rule removed, one undo step, no question), or "Nothing is set for Hover.". The first time, a line of what a state is for with "Got it".
 
 ## What marks a state that holds a value?
-- A ring after the state's name in the group (read "Hover, has values"); on Normal a ring after a Style section's name when a state changes a row in it, its tip naming the states.
+- A ring after the state's name in the group (read "Hover, has values") when its own rule, outside any at-rule, holds a declaration (`_sdStatesHeldIn()`; #12024: not in `@media`); on Normal a ring after a Style section's name when a state changes a row in it, its tip naming the states.
 - "Only what I changed": under the list, "In a state", one line per state with its count and "Show" (the Style tab opened on it); the switch's count and "Reset all" (one undo step) include the states' values.
 
 ## What does the canvas show?
 - The selected element with the state's declarations (style element `#sd-state-view` in the canvas, by `data-sd-id`) and the state's name before its toolbar. Never saved.
 
 ## How does it load?
-- Part `states` (`pg_option_states.js`, then `style_designer_states.js`), loaded the first time a state is chosen or an element whose class holds a state's rule is shown (`_sdStateAfter()`). The core keeps the row and the hooks. Core +3.6 KB minified; the part 15.4 KB (#11588).
+- Part `states` (`pg_option_states.js`, `style_designer_states.js`), loaded the first time a state is chosen or an element whose class holds a state's rule is shown (`_sdStateAfter()`). Core +3.6 KB minified; the part 15.4 KB (#11588).
 
 ## What is not built yet?
-- States for several selected elements (the drawing's "— Multiple —" under a state), and Custom Background Color under a state: both dimmed or absent for now.
+- States for several selected elements ("— Multiple —") and Custom Background Color under a state: dimmed or absent.
 
 ## Where is it tested?
-- `tests/designer_option_states_test.php`: the model and `_sdStatesFor()`; the panel and canvas are not unit tested.
+- `tests/designer_option_states_test.php`: the model, `_sdStatesFor()`, `_sdStatesHeldIn()`; not the panel or canvas.
 
 Related: docs/memory/designer/designer-options-states-drawing-state.md, docs/memory/designer/custom-style.md, docs/memory/designer/designer-options-review.md

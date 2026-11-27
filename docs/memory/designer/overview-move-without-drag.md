@@ -14,8 +14,8 @@ description: Designer Overview, moving without dragging (DP16): row buttons, key
 - The selected row is the tree's one tab stop (`tabIndex` 0, the rest -1); after a key move its row keeps the focus (`_sdTreeFocusSel()`).
 
 ## How is a move judged and done?
-- `_sdMoveCheck(nodes, ref, pos)` asks what a drop asks (`overview-drop-targets.md`): locked, outside the editable areas (`_sdCanEditNode()`, `_sdMayEdit()`), into itself, already there, then `canDrop()` for each moved element; into a shared component is into its cached tree. Its `why` is `_sdTreeDropWhy()`'s words; nothing goes before or after `<body>`.
-- `_sdMoveNodes()`: refused, a warning toast says why and nothing changes; else one `saveState()`, the move, `_sdTreeMoveSelect()` (moved elements selected, their rows opened and shown) and `scrollCanvasToNode()`. Drags already were one undo step.
+- `_sdMoveCheck(nodes, ref, pos)` asks what a drop asks (`overview-drop-targets.md`): locked, outside the editable areas (silent `_sdCanEditNode()` of the parent they land in: Before or After an area's own top element is refused, #12022), into itself, already there, then `canDrop()` for each moved element; into a shared component is into its cached tree. Its `why` is `_sdTreeDropWhy()`'s words; nothing goes before or after `<body>`.
+- `_sdMoveNodes()`: refused, a warning toast says why (after `_sdMayEdit()`'s nudge on a rights refusal) and nothing changes; else one `saveState()`, the move, `_sdTreeMoveSelect()` (moved elements selected, their rows opened and shown) and `scrollCanvasToNode()`. Drags already were one undo step.
 
 ## What does the "Move…" window draw?
 - The part `move` (`assets/js/style_designer_move.js`, `pg_designer_parts()`), loaded at the first open; it reads the page through `_sdMoveHost()` (the tree search's `kids` and `fields`) and takes only `_sdT` and `esc` from the kit.
