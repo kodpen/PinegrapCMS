@@ -4306,13 +4306,16 @@ const StyleDesigner = (function () {
         if (!nodes || !nodes.length) return;
         saveState();
         var spot = _sdPasteSpot(nodes);
-        var last = null;
+        var last = null, copies = [];
         nodes.forEach(function (n, i) {
             var clone = cloneTree(n);
             (function reId(nd) { nd._id = gid(); if (Array.isArray(nd.children)) nd.children.forEach(reId); })(clone);
             spot.parent.children.splice(spot.index + i, 0, clone);
+            copies.push(clone);
             last = clone;
         });
+        var owner = last ? _sdAnyParent(last) : null;
+        copies.forEach(function (c) { _sdCoCopyFields(c, owner ? owner.sid : 0); });
         // A control pasted into a custom form widget becomes a field of it,
         // exactly as if it had been dragged there.
         if (typeof _cfAdoptOnDrop === 'function') {
@@ -4320,7 +4323,6 @@ const StyleDesigner = (function () {
         }
         selectedNodes = [];
         if (last) { selectedNode = last; expandAncestors(last, tree); }
-        var owner = last ? _sdAnyParent(last) : null;
         if (owner && owner.sid) _sharedDirty[owner.sid] = true;
         render();
     }
@@ -26116,6 +26118,7 @@ const StyleDesigner = (function () {
         (function reId(n) { n._id = gid(); if (n.children) n.children.forEach(reId); })(clone);
         var idx = p.children.indexOf(node);
         p.children.splice(idx + 1, 0, clone);
+        _sdCoCopyFields(clone, sharedHit ? sharedHit.sid : 0);
         if (sharedHit) {
             // Mark the shared widget as dirty so its tree gets persisted
             // on the next save pass (otherwise the duplicate disappears
@@ -38469,6 +38472,55 @@ const StyleDesigner = (function () {
         if (_sdCoEntries(n).length) return true;
         if (n.type === 'shared_ref') return false;
         return (n.children || []).some(_sdCoHas);
+    }
+
+    // A new field id in the model's form (newFieldId() in
+    // pg_component_overrides.js, which may not be loaded): `of_` and eight
+    // random lower-case letters or digits, none of `taken`.
+    function _sdCoNewFieldId(taken) {
+        var chars = 'abcdefghijklmnopqrstuvwxyz0123456789', id, i;
+        do {
+            id = 'of_';
+            for (i = 0; i < 8; i++) id += chars.charAt(Math.floor(Math.random() * 36));
+        } while (taken.indexOf(id) !== -1);
+        return id;
+    }
+
+    // A copy put into a tree (Duplicate, Paste, Detach), after it is there:
+    // in an ordinary shared component (`sid`) each open field of the copy
+    // takes a new id, or the copy and its original would be one field whose
+    // place values only the first node takes; anywhere else an open field
+    // means nothing and goes. A component root's order and variants never
+    // travel with a copy. Labels stay as they were.
+    function _sdCoCopyFields(copy, sid) {
+        var c = sid > 0 ? _sharedCache[sid] : null;
+        var root = (c && c.tree && !c.system_region_config) ? c.tree : null;
+        var taken = [];
+        if (root) {
+            (function ids(n) {
+                if (!n || typeof n !== 'object') return;
+                _sdCoEntries(n).forEach(function (e) { taken.push(e.id); });
+                if (n.type !== 'shared_ref') (n.children || []).forEach(ids);
+            })(root);
+        }
+        (function walk(n) {
+            if (!n || typeof n !== 'object') return;
+            var p = n.props;
+            if (p && typeof p === 'object') {
+                delete p._openOrder;
+                delete p._variants;
+                if (root && Array.isArray(p._open)) {
+                    p._open.forEach(function (e) {
+                        if (!e || typeof e !== 'object') return;
+                        e.id = _sdCoNewFieldId(taken);
+                        taken.push(e.id);
+                    });
+                } else {
+                    delete p._open;
+                }
+            }
+            if (n.type !== 'shared_ref' && Array.isArray(n.children)) n.children.forEach(walk);
+        })(copy);
     }
 
     // The "Can change per place" rows of the "Shared Component" section:
@@ -62878,16 +62930,26 @@ const StyleDesigner = (function () {
     }
 
     // One selected element the operator may change, on the Design canvas of
-    // a Bootstrap design, with no element being dragged.
-    function _sdBandsDraw() {
+    // a Bootstrap design, with no element being dragged; null otherwise.
+    function _sdBandsNode() {
         var node = (selectedNode && selectedNodes.length <= 1) ? selectedNode : null;
         var show = !!(node && node.props && node.type !== 'root' && canvasDoc && canvasDoc.body && canvasIframe &&
             _collab.mayEdit && !_sdProto.open && !dragData && !_sdGuidesOff() && _sdUsesBootstrap() &&
             !_sdPanelLockReason([node]) && _sdCanvasInnerOf(node));
-        if (show) {
+        return show ? node : null;
+    }
+
+    function _sdBandsDraw() {
+        var node = _sdBandsNode();
+        if (node) {
             // The part writes through window.PGSpacingBox, which comes with
-            // the Spacing box's part: loaded first, once.
+            // the Spacing box's part: loaded first, once. A selection that
+            // changed while the parts loaded is not drawn: an emptied one
+            // could not hide a part that was not loaded yet.
             _sdPartLoad('spacing').then(function () {
+                return _sdPartLoad('bands');
+            }).then(function () {
+                if (_sdBandsNode() !== node) return;
                 return _sdPartCall('bands', 'draw', [_sdBandsHost(node)]);
             }).catch(_sdPartFailed);
         } else if (_sdPartLoaded('bands') && _sdPartApis.bands) {
@@ -71986,7 +72048,10 @@ const StyleDesigner = (function () {
         });
     }
 
-    // Detach a shared_ref node: replace it with a deep clone of the shared component's tree.
+    // Detach a shared_ref node: replace it with a copy of the component's
+    // elements as the place draws them, its own values and variant put in
+    // (the model of the part 'overrides', loaded first when the place has
+    // any).
     function detachShared(node) {
         if (!node || node.type !== 'shared_ref') return;
         var sid    = (node.props && node.props.sharedId) ? parseInt(node.props.sharedId, 10) : 0;
@@ -71995,13 +72060,28 @@ const StyleDesigner = (function () {
             window.alert(_sdT('The shared component is not in the cache. Refresh the page and try again.'));
             return;
         }
-        saveState();
+        var p = node.props, own = (typeof p._variant === 'string' && p._variant.trim() !== '') ||
+            !!(p._place && typeof p._place === 'object' && Object.keys(p._place).length);
+        if (!own || (_sdPartLoaded('overrides') && window.PGComponentOverrides)) { _sdDetachPlace(node, sid); return; }
+        // Never detached without its own values: a failed load leaves the place.
+        _sdPartLoad('overrides').then(function () { _sdDetachPlace(node, sid); }).catch(_sdPartFailed);
+    }
+
+    function _sdDetachPlace(node, sid) {
         var parent = findParent(node, tree);
-        if (!parent) return;
-        var idx = parent.children.indexOf(node);
-        if (idx === -1) return;
-        // Clone + re-id the shared tree so it becomes an independent copy
-        var clone = cloneTree(cached.tree);
+        var idx = parent ? parent.children.indexOf(node) : -1;
+        if (idx === -1 || !_sharedCache[sid] || !_sharedCache[sid].tree) return;
+        // A variant being edited is kept first: the component's tree carries it.
+        if (_sdCoVar && _sdCoVar.sid === sid) _sdCoVarFinish();
+        var C = window.PGComponentOverrides, ctree = _sharedCache[sid].tree;
+        if (C && _sdPartLoaded('overrides')) {
+            ctree = C.applyVariant(ctree, C.placeVariant(node));
+            ctree = C.apply(ctree, C.safeValues(ctree, C.placeValues(node)));
+        }
+        saveState();
+        // An independent copy: new ids, and none of the component's marks.
+        var clone = cloneTree(ctree);
+        _sdCoCopyFields(clone, 0);
         (function reId(nd) { nd._id = gid(); if (nd.children) nd.children.forEach(reId); })(clone);
         parent.children.splice(idx, 1, clone);
         selectedNode = clone;

@@ -468,3 +468,77 @@ function test_canvas_bands_and_lines_follow_the_area_size()
 	pg_assert_true(strpos($guides, 'L.ro = new ResizeObserver(linesSoon);') !== false && strpos($guides, 'L.ro.observe(area);') !== false, 'the lines observe the area');
 	pg_assert_true(strpos($guides, 'if (L.ro) { L.ro.disconnect(); L.ro = null; }') !== false, 'and let it go when they end');
 }
+
+// The bands of a selection that is gone before the part has loaded are not
+// drawn: the first selection of a visit waits for the part, and an
+// emptied selection could not hide what was not loaded yet, so the old
+// element's bands came up once the load ended (#12004).
+function test_canvas_bands_skip_a_selection_gone_while_loading()
+{
+	$core = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js'));
+	$fns = '';
+
+	foreach (array('_sdBandsNode', '_sdBandsDraw') as $name) {
+		$start = strpos($core, "\n    function " . $name . '(');
+		$end = ($start === false) ? false : strpos($core, "\n    }\n", $start);
+
+		if (!pg_assert_true($end !== false, 'the core has ' . $name . '()')) {
+			return;
+		}
+
+		$fns .= substr($core, $start, $end - $start + 6) . "\n";
+	}
+
+	if (!function_exists('exec')) {
+		return;
+	}
+
+	$out = array();
+	$status = 1;
+	@exec('node --version 2>&1', $out, $status);
+
+	if ($status !== 0) {
+		return;
+	}
+
+	// Each part loads when the script says so; a promise settles a tick later.
+	$script = 'var A = { _id: "a", type: "div", props: {} }, B = { _id: "b", type: "div", props: {} };'
+		. 'var selectedNode = null, selectedNodes = [], canvasDoc = { body: {} }, canvasIframe = {}, _collab = { mayEdit: true }, _sdProto = { open: false }, dragData = null;'
+		. 'function _sdGuidesOff() { return false; } function _sdUsesBootstrap() { return true; }'
+		. 'function _sdPanelLockReason() { return ""; } function _sdCanvasInnerOf() { return {}; }'
+		. 'function _sdBandsHost(n) { return n._id; } function _sdPartFailed(e) { draws.push("failed: " + e); }'
+		. 'var draws = [], hides = 0, loaded = {}, waits = {};'
+		. 'var _sdPartApis = { bands: { draw: function (h) { draws.push(h); }, hide: function () { hides++; } } };'
+		. 'function _sdPartLoaded(n) { return !!loaded[n]; }'
+		. 'function _sdPartLoad(n) { if (!waits[n]) { var go; waits[n] = new Promise(function (ok) { go = ok; }).then(function () { loaded[n] = true; }); waits[n].go = go; } return waits[n]; }'
+		. 'function _sdPartCall(n, m, a) { return _sdPartLoad(n).then(function () { return _sdPartApis[n][m].apply(null, a); }); }'
+		. "\n" . $fns . "\n"
+		. 'var tick = function () { return new Promise(function (ok) { setTimeout(ok, 0); }); };'
+		. 'selectedNode = A; selectedNodes = [A]; _sdBandsDraw();'
+		. 'selectedNode = null; selectedNodes = []; _sdBandsDraw();'
+		. '_sdPartLoad("spacing").go(); _sdPartLoad("bands").go();'
+		. 'tick().then(function () {'
+		. ' var gone = draws.slice();'
+		. ' selectedNode = B; selectedNodes = [B]; _sdBandsDraw();'
+		. ' return tick().then(function () {'
+		. '  var shown = draws.slice();'
+		. '  selectedNode = null; selectedNodes = []; _sdBandsDraw();'
+		. '  console.log(JSON.stringify({ gone: gone, shown: shown, hides: hides }));'
+		. ' });'
+		. '});';
+	$file = (string) tempnam(sys_get_temp_dir(), 'pgcb');
+	file_put_contents($file, $script . "\n");
+	$out = array();
+	@exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $status);
+	@unlink($file);
+	pg_assert_same(0, $status, 'the Node script runs: ' . implode("\n", array_slice($out, 0, 8)));
+	$res = json_decode(implode("\n", $out), true);
+
+	if (!pg_assert_true(is_array($res), 'JSON from Node')) {
+		return;
+	}
+
+	pg_assert_same(array(), $res['gone'], 'an element no longer selected gets no bands');
+	pg_assert_same(array('b'), $res['shown'], 'the next selection is drawn');
+	pg_assert_same(1, $res['hides'], 'and hidden once emptied');
+}
