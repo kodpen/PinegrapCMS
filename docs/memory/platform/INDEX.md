@@ -188,6 +188,7 @@
 - office-pptx-design-reader.md: The design file reader pg_pptx_design_read() (PR #11840): a .pptx read as slides of placed elements for the Artifact Canvas; units, what each element gives, what is left out and counted, limits
 - office-pptx-preview.md: .pptx as a list of slides in Quick Look, the file window and a channel's Preview (PR #10585): title, text in reading order, pictures, speaker notes; limits, refusals, view only
 - office-save-list.md: One workbook save as an ordered list of changes of every kind (office_edit.php): steps, one lock and version check, each change on the workbook the one before left, refusals naming their place
+- office-sheet-bar-text-borders.md: The workbook format bar's Underline, Strikethrough, Size, Borders and Wrap text (SA2): the controls, the state they show, how the grid draws each, the words' own function
 - office-sheet-change-list.md: The workbook view's one list of changes (pg_office_view.js, PR #11946, #11964): cells, formats, rows, columns and sheets in order, the grid and tabs drawn from it, the count [decision: decisions-made-product-115.md]
 - office-sheet-format-borders.md: The border of a format entry (office_format.php): none, all sides, outline or bottom of the range turned into each cell's sides, how a side is written
 - office-sheet-format-controls.md: The sheet editor's format bar (OE3b) for the selected cells, its colour swatches, ranges waiting with the typed cells, and how each cell's look and number format is drawn [decision: here]
