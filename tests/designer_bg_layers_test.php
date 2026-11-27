@@ -179,3 +179,28 @@ function test_designer_bg_layers_position_shown_at_css_default()
 	pg_assert_same('30% 20%', $r['own'], 'a place none of the nine is kept as it is');
 }
 
+// The Repeat list: a layer with no repeat of its own repeats, as CSS
+// draws it, and "No repeat" ('') writes no-repeat on a picture and on a
+// gradient alike.
+function test_designer_bg_layers_repeat_row()
+{
+	$r = designer_bg_layers_run(
+		'var pic = L.read({ "background-image": "url(a.jpg)", "background-size": "contain" }).layers[0];'
+		. 'var g = { kind: "gradient", type: "linear", angle: 90, stops: [{ c: { v: "#000000" }, pos: 0 }, { c: { v: "#ffffff" }, pos: 100 }] };'
+		. 'g.repeat = L.repeatOf("");'
+		. 'console.log(JSON.stringify({ pic: L.shownRepeat(pic), none: L.shownRepeat({ kind: "picture", repeat: "no-repeat" }),'
+		. ' x: L.shownRepeat({ kind: "gradient", repeat: "repeat-x" }), grad: L.shownRepeat(g), of: [L.repeatOf(""), L.repeatOf("repeat-y")],'
+		. ' written: L.write([g])["background-repeat"] }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_same('repeat', $r['pic'], 'a picture with no repeat set repeats');
+	pg_assert_same('', $r['none'], 'no-repeat is the "No repeat" line');
+	pg_assert_same('repeat-x', $r['x']);
+	pg_assert_same('', $r['grad'], '"No repeat" stays chosen on a gradient');
+	pg_assert_same(array('no-repeat', 'repeat-y'), $r['of']);
+	pg_assert_same('no-repeat', $r['written'], 'a gradient\'s "No repeat" is written');
+}

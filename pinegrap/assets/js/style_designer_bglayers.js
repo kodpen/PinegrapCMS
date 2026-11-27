@@ -139,7 +139,7 @@ StyleDesigner.definePart('bglayers', function (K) {
     function moreRows(l) {
         if (!ui.more) return '<button type="button" class="sd-tf-more" data-bgl-more aria-expanded="false"><i class="bi bi-chevron-down" aria-hidden="true"></i>' + esc(_sdT('More')) + '</button>';
         return row(_sdT('Repeat'), select('repeat', [['', _sdT('No repeat')], ['repeat', _sdT('Repeat')], ['repeat-x', _sdT('Across')], ['repeat-y', _sdT('Down')]],
-                l.repeat === 'no-repeat' ? '' : (l.repeat || (l.kind === 'picture' ? '' : 'repeat')))) +
+                L.shownRepeat(l))) +
             row(_sdT('Attach'), select('attach', [['', _sdT('Scroll')], ['fixed', _sdT('Fixed')]], l.attach === 'fixed' ? 'fixed' : '')) +
             row(_sdT('Blend'), select('blend', BLENDS.map(function (b) { return [b === 'normal' ? '' : b, b.charAt(0).toUpperCase() + b.slice(1).replace('-', ' ')]; }), l.blend || '')) +
             '<button type="button" class="sd-tf-more" data-bgl-more aria-expanded="true"><i class="bi bi-chevron-up" aria-hidden="true"></i>' + esc(_sdT('Less')) + '</button>';
@@ -309,7 +309,7 @@ StyleDesigner.definePart('bglayers', function (K) {
             if (/^[\d.]+$/.test(t)) t += 'px';
             wh[key === 'sw' ? 0 : 1] = t.replace(/[^\w.%-]/g, '');
             l.size = (wh[0] || 'auto') + ' ' + (wh[1] || 'auto');
-        } else if (key === 'repeat') l.repeat = v || (l.kind === 'picture' ? 'no-repeat' : '');
+        } else if (key === 'repeat') l.repeat = L.repeatOf(v);
         else l[key] = v;
     }
 

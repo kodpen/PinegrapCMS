@@ -256,6 +256,19 @@
         return place(v || CSS_DEFAULT.position);
     }
 
+    // The Repeat list's value for a layer: '' (No repeat) for no-repeat; a
+    // layer with no repeat of its own repeats, as CSS draws it.
+    function shownRepeat(l) {
+        var r = l && l.repeat ? String(l.repeat) : '';
+        return r === 'no-repeat' ? '' : (r || CSS_DEFAULT.repeat);
+    }
+
+    // What a choice of the Repeat list writes: '' (No repeat) is no-repeat,
+    // on a picture and on a gradient alike.
+    function repeatOf(v) {
+        return v || 'no-repeat';
+    }
+
     function move(list, from, to) {
         var a = list.slice();
         if (from < 0 || from >= a.length || to < 0 || to >= a.length) return a;
@@ -291,7 +304,7 @@
         PALETTE: PALETTE, PLACES: PLACES, MAX_LAYERS: MAX_LAYERS, MIN_STOPS: MIN_STOPS, MAX_STOPS: MAX_STOPS,
         read: read, write: write, color: color, parseColor: parseColor, gradient: gradient,
         parseImage: parseImage, move: move, widest: widest, mixAt: mixAt, hexRgb: hexRgb, place: place,
-        shownPlace: shownPlace
+        shownPlace: shownPlace, shownRepeat: shownRepeat, repeatOf: repeatOf
     };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (root) root.PGBgLayers = api;
