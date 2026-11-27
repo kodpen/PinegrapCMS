@@ -1289,3 +1289,130 @@ function pg_search_record_visit_term($term)
         array(pg_search_visit_terms_append((string) $row['site_search_terms'], $term), $visitor_id)
     );
 }
+
+/**
+ * The folder a Search Results widget searches only in ("Search only in",
+ * cfg `search_folder_id`), with its sub-folders; 0 for the whole site. Pure.
+ *
+ * @param mixed $cfg the widget's settings
+ * @return int
+ */
+function pg_search_folder_setting($cfg)
+{
+    if (!is_array($cfg) || !isset($cfg['search_folder_id']) || !is_scalar($cfg['search_folder_id'])) return 0;
+    return max(0, (int) $cfg['search_folder_id']);
+}
+
+/**
+ * The folders a search narrowed to one folder reads: the folder and its
+ * sub-folders ($subtree), and of them only the ones the visitor may view
+ * ($visible), or all of them for staff ($visible null). Positive ids, each
+ * once, in the subtree's order. Pure.
+ *
+ * @param array      $subtree folder ids
+ * @param array|null $visible folder ids, or null for no visitor fence
+ * @return int[]
+ */
+function pg_search_narrow_folders(array $subtree, $visible)
+{
+    $allowed = null;
+    if (is_array($visible)) {
+        $allowed = array();
+        foreach ($visible as $id) $allowed[(int) $id] = true;
+    }
+    $out = array();
+    foreach ($subtree as $id) {
+        $id = (int) $id;
+        if ($id <= 0 || isset($out[$id])) continue;
+        if ($allowed !== null && !isset($allowed[$id])) continue;
+        $out[$id] = $id;
+    }
+    return array_values($out);
+}
+
+// How many article suggestions an address may ask for in the window: a
+// visitor typing a subject asks once a pause, so a few a minute.
+define('PG_ARTICLE_SUGGEST_LIMIT', 120);
+define('PG_ARTICLE_SUGGEST_WINDOW', 600);
+// The suggestions one answer lists.
+define('PG_ARTICLE_SUGGEST_ROWS', 5);
+
+/**
+ * The text a form's subject field sent to article_suggest.php: as the site
+ * search reads it (pg_search_query_text()), '' under three characters, which
+ * match too much to help. Pure.
+ *
+ * @param mixed $raw
+ * @return string
+ */
+function pg_article_suggest_query($raw)
+{
+    $text = pg_search_query_text($raw);
+    return (mb_strlen($text, 'UTF-8') < 3) ? '' : $text;
+}
+
+/**
+ * The suggestions of one answer from a site search (_pg_sw_search_collect()):
+ * featured results, then the others, each address once, no file and no
+ * catalog item, at most $limit; the excerpt cut to 160 characters. Raw
+ * values: the script writes them as text. Pure.
+ *
+ * @param array $found ['featured' => rows, 'pages' => rows]
+ * @param int   $limit
+ * @return array[] ['title', 'url', 'excerpt']
+ */
+function pg_article_suggest_rows(array $found, $limit)
+{
+    $rows = array();
+    $seen = array();
+    foreach (array('featured', 'pages') as $group) {
+        if (empty($found[$group]) || !is_array($found[$group])) continue;
+        foreach ($found[$group] as $r) {
+            if (count($rows) >= (int) $limit) break 2;
+            if (!is_array($r) || !isset($r['url']) || (string) $r['url'] === '') continue;
+            if (isset($r['type']) && $r['type'] === 'file') continue;
+            $url = (string) $r['url'];
+            if (isset($seen[$url])) continue;
+            $seen[$url] = true;
+            $excerpt = trim(preg_replace('/\s+/u', ' ', strip_tags(isset($r['excerpt']) ? (string) $r['excerpt'] : '')));
+            if (mb_strlen($excerpt, 'UTF-8') > 160) $excerpt = rtrim(mb_substr($excerpt, 0, 160, 'UTF-8')) . '…';
+            $rows[] = array(
+                'title'   => isset($r['title']) ? (string) $r['title'] : '',
+                'url'     => $url,
+                'excerpt' => $excerpt,
+            );
+        }
+    }
+    return $rows;
+}
+
+/**
+ * Whether this address asked article_suggest.php too often
+ * (PG_ARTICLE_SUGGEST_LIMIT in PG_ARTICLE_SUGGEST_WINDOW seconds). Counted
+ * in waf_rate per address, so it works with the firewall off; a refusal is
+ * logged as rate-article-suggest and registers no offence.
+ *
+ * @return bool
+ */
+function pg_article_suggest_throttled()
+{
+    if (!function_exists('waf_rate_exceeded') || !function_exists('waf_client_ip') || !function_exists('waf_ip_subject')) {
+        return false;
+    }
+    $ip = (string) waf_client_ip();
+    if ($ip === '') return false;
+
+    $exceeded = waf_rate_exceeded(waf_ip_subject($ip), 'article_suggest', PG_ARTICLE_SUGGEST_LIMIT, PG_ARTICLE_SUGGEST_WINDOW);
+    if (function_exists('waf_rate_sweep') && (mt_rand(1, 50) === 1)) {
+        waf_rate_sweep();
+    }
+    if (!$exceeded) return false;
+
+    if (function_exists('waf_log_event') && isset(db::$con) && db::$con) {
+        waf_log_event('rate', 'rate-article-suggest', 'rate', 5, 'article_suggest.php', PG_ARTICLE_SUGGEST_LIMIT . '/' . (int) round(PG_ARTICLE_SUGGEST_WINDOW / 60) . 'min');
+    }
+    if (function_exists('waf_text_log')) {
+        waf_text_log('DENY', $ip, array('status' => 429, 'rule' => 'rate-article-suggest'));
+    }
+    return true;
+}

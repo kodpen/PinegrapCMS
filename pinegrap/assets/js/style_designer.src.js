@@ -2745,6 +2745,14 @@ const StyleDesigner = (function () {
                 urlHints);
         }
 
+        // A text box or text area can offer the articles of a folder as the
+        // visitor types (pg_cf_mark_article_suggest(), article_suggest.php).
+        if ((c.tag === 'textarea' || (isText && ['text', 'search', ''].indexOf(c.itype || '') !== -1)) && !rec.office_use_only) {
+            html += row(_sdT('Offer articles from'),
+                _cfSel('sd-cf-suggest', parseInt(rec.suggest_folder, 10) || 0, folders, _sdT('— Off —')) +
+                _cfHint(esc(_sdT('As the visitor types, the pages and records of this folder that match are listed under the field, so a question may be answered before it is sent.'))));
+        }
+
         html += row(_sdT('RSS / list role'),
             _cfSel('sd-cf-rss', rec.rss_field || '', rss, null) +
             _cfHint(_sdT('<strong>Title</strong> is the submission\'s name, address and RSS title; <strong>Description</strong> is the meta description; <strong>Media</strong> is the image (og:image). Each role belongs to one field in the form.')));
@@ -3052,6 +3060,18 @@ const StyleDesigner = (function () {
                 if (!Object.keys(rec).length) delete fl.props._cf;
             }
             commit(true);
+        });
+        on('sd-cf-suggest', 'change', function (el) {
+            var v = parseInt(el.value, 10) || 0;
+            var r = _cfRec(lead);
+            if (v > 0) {
+                r.suggest_folder = v;
+            } else {
+                delete r.suggest_folder;
+                // An empty `_cf` turns into an array on the server's round trip.
+                if (!Object.keys(r).length) delete lead.props._cf;
+            }
+            commit(false);
         });
         on('sd-cf-rss', 'change', function (el) {
             var role = el.value;
@@ -42199,6 +42219,23 @@ const StyleDesigner = (function () {
                 var _srPerPage = parseInt(_cfg.results_per_page, 10);
                 if (!(_srPerPage > 0)) _srPerPage = 20;
                 var _srNoResults = (typeof _cfg.empty_message === 'string') ? _cfg.empty_message : _sdT('No results found.');
+                // "Search only in": a folder and its sub-folders, from the
+                // search index, without products (pg_search_folder_setting()).
+                var _srFolder = parseInt(_cfg.search_folder_id, 10) || 0;
+                if (_srFolder < 0) _srFolder = 0;
+                var _srFolderOpts = '<option value="0"' + (_srFolder === 0 ? ' selected' : '') + '>' + esc(_sdT('— The whole site —')) + '</option>';
+                if (_swFoldersCache === null) {
+                    if (_srFolder > 0) _srFolderOpts += '<option value="' + _srFolder + '" selected>' + esc(_sdT('Loading...')) + '</option>';
+                    _fetchFolders(function () { renderProperties(); });
+                } else if (_swFoldersCache === false) {
+                    if (_srFolder > 0) _srFolderOpts += '<option value="' + _srFolder + '" selected>#' + _srFolder + '</option>';
+                } else {
+                    var _srFolderList = _swFolderOptions(_swFoldersCache, _srFolder);
+                    _srFolderOpts += _srFolderList.html;
+                    if (_srFolder > 0 && !_srFolderList.found) {
+                        _srFolderOpts += '<option value="' + _srFolder + '" selected>' + esc(_sdT('{var} (not found)', '#' + _srFolder)) + '</option>';
+                    }
+                }
                 if (!_catalogDetailPagesCache) _fetchCatalogDetailPages(function () { renderProperties(); });
                 // No page opens a product (none chosen, none on the site, none
                 // in this design): the search leaves products out.
@@ -42212,6 +42249,10 @@ const StyleDesigner = (function () {
                             '<option value="pages"'    + (_srScope === 'pages'    ? ' selected' : '') + '>' + esc(_sdT('Pages only')) + '</option>' +
                             '<option value="products"' + (_srScope === 'products' ? ' selected' : '') + '>' + esc(_sdT('Products only (ECOMMERCE required)')) + '</option>' +
                         '</select>'
+                    ) +
+                    row(_sdT('Search only in'),
+                        '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="search_folder_id" data-sw-cfg-kind="int" min="0">' + _srFolderOpts + '</select>' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The pages and records of this folder and its sub-folders, such as the articles of a help centre. Products and pinned results are left out.')) + '</div>'
                     ) +
                     row(_sdT('Results per page'),
                         '<input type="number" class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="results_per_page" data-sw-cfg-kind="int" min="1" max="200" value="' + _srPerPage + '">'
@@ -42227,7 +42268,7 @@ const StyleDesigner = (function () {
                     row(_sdT('No results message'),
                         '<input type="text" class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="empty_message" value="' + esc(_srNoResults) + '" maxlength="255">'
                     ) +
-                    (_srScope !== 'pages'
+                    (_srScope !== 'pages' && !_srFolder
                         ? row(_sdT('Product group searched'),
                             '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="product_group_id" data-sw-cfg-kind="int" min="0">' +
                                 _swProductGroupOptions(_cfg.product_group_id, _sdT('— Top-level group —')) +

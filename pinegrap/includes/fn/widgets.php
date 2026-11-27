@@ -6639,6 +6639,9 @@ function pg_search_highlight_inject($content)
 // catalog branch searched; 0 = the top-level group), catalog_detail_page_id
 // (the page a catalog item opens on; without one, chosen or found, the
 // catalog is left out: an item nobody can open is no result).
+// search_folder_id ("Search only in", pg_search_folder_setting()): that
+// folder and its sub-folders only, read from the search index whatever the
+// site's search type, without the catalog or the pinned results.
 // The advanced search covers the whole site, within what the visitor may view.
 // Returns ['featured' => rows, 'catalog' => rows, 'pages' => rows,
 // 'limited' => bool]; every row is ['title', 'url', 'full_url', 'excerpt',
@@ -6653,8 +6656,9 @@ function _pg_sw_search_collect($query, $cfg, $advanced = null)
     $found = _pg_sw_search_collect_one($query, $cfg, $advanced);
     if (trim((string)$query) === '' || !function_exists('pg_search_tuning_apply')) return $found;
     $groups   = pg_search_synonyms();
-    // A search of products only lists no pinned page.
-    $promoted = (is_array($cfg) && isset($cfg['search_scope']) && $cfg['search_scope'] === 'products') ? array() : pg_search_promoted();
+    // A search of products only, or only in a folder, lists no pinned page.
+    $promoted = ((is_array($cfg) && isset($cfg['search_scope']) && $cfg['search_scope'] === 'products') || pg_search_folder_setting($cfg) > 0)
+        ? array() : pg_search_promoted();
     if (!$groups && !$promoted) return $found;
     return pg_search_tuning_apply($query, $found, function ($alt) use ($cfg, $advanced) {
         return _pg_sw_search_collect_one($alt, $cfg, $advanced);
@@ -6674,6 +6678,19 @@ function _pg_sw_search_collect_one($query, $cfg, $advanced = null)
     $want_pages   = ($scope !== 'products');
     $want_catalog = ($scope !== 'pages') && defined('ECOMMERCE') && ECOMMERCE;
     if ($advanced === null) $advanced = defined('SEARCH_TYPE') && SEARCH_TYPE === 'advanced';
+    // "Search only in" a folder: the pages and records of that folder and
+    // its sub-folders, read from the search index (records, such as the
+    // articles of a collection, are only there), never the catalog.
+    $in_folder = pg_search_folder_setting($cfg);
+    $subtree   = null;
+    $all_folders = null;
+    if ($in_folder > 0) {
+        $want_pages   = true;
+        $want_catalog = false;
+        $advanced     = true;
+        $all_folders  = db_items("SELECT folder_id AS id, folder_parent AS parent_folder_id FROM folder");
+        $subtree      = pg_search_narrow_folders(array_merge(array($in_folder), get_child_folders($in_folder, (array)$all_folders)), null);
+    }
     $path         = defined('PATH') ? PATH : '/';
     $host         = (defined('URL_SCHEME') ? URL_SCHEME : '') . (defined('HOSTNAME') ? HOSTNAME : '');
     // $item: a search_items row read with its page's name and title
@@ -6785,6 +6802,7 @@ function _pg_sw_search_collect_one($query, $cfg, $advanced = null)
     $tr_pages = array();
     if (function_exists('pg_tr_search_pages')) {
         foreach (pg_tr_search_pages($query) as $hit) {
+            if ($subtree !== null && !in_array((int)$hit['folder_id'], $subtree, true)) continue;
             if (!pg_preview_as_view_access($hit['folder_id'], true)) continue;
             $tr_pages[] = $page_row($hit['title'], $hit['name'], $hit['excerpt']);
         }
@@ -6797,11 +6815,18 @@ function _pg_sw_search_collect_one($query, $cfg, $advanced = null)
         // A visitor (not a manager or above) searches only the folders they
         // may view — the same narrowing the legacy page applies.
         $sql_folders = '';
+        $folders = null;
         $viewer = pg_preview_as_viewer();
         if (!$viewer['signed_in'] || $viewer['role'] == 3) {
             $root    = (int)db_value("SELECT folder_id FROM folder WHERE folder_parent = '0' LIMIT 1");
-            $folders = array_merge(array($root), get_child_folders($root, db_items("SELECT folder_id AS id, folder_parent AS parent_folder_id FROM folder")));
+            if ($all_folders === null) $all_folders = db_items("SELECT folder_id AS id, folder_parent AS parent_folder_id FROM folder");
+            $folders = array_merge(array($root), get_child_folders($root, (array)$all_folders));
             $folders = array_values(array_filter($folders, function ($f) { return pg_preview_as_view_access($f, true); }));
+        }
+        // A folder search reads only that folder's branch, and of it only
+        // what the visitor may view.
+        if ($subtree !== null) $folders = pg_search_narrow_folders($subtree, $folders);
+        if ($folders !== null) {
             if (!$folders) return $out;
             $sql_folders = "(search_items.folder_id IN (" . implode(',', array_map('intval', $folders)) . ")) AND ";
         }
@@ -9340,6 +9365,14 @@ function _render_system_widget_custom_form($tree_json, $widget_id, $cfg = array(
     // Ids are final now, including the ones invented above, so a label that
     // names nothing can be pointed at the control beside it.
     pg_cf_link_labels($tree_decoded);
+    // A control set to offer articles (_cf.suggest_folder) asks
+    // article_suggest.php as the visitor types; not in an e-mail, the SEO
+    // pass or the editor's Preview. A form without one costs one strpos().
+    $cf_suggest = 0;
+    if ($mode !== 'background' && !pg_seo_rendering() && strpos((string)$tree_json, '"suggest_folder"') !== false) {
+        $cf_suggest = pg_cf_mark_article_suggest($tree_decoded,
+            (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/') . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY . '/' : '') . 'article_suggest.php');
+    }
 
     // Filled in on someone else's behalf: said on the form, as the legacy
     // screen says it. The messages node below prints and consumes it.
@@ -9411,7 +9444,8 @@ function _render_system_widget_custom_form($tree_json, $widget_id, $cfg = array(
                      ($cf_staff ? '<input type="hidden" name="office_use_only" value="true">' : '');
 
         $rendered = $form_open . $rendered . pg_cf_validation_script()
-                  . ($cf_steps > 1 ? pg_cf_steps_script() : '') . '</form>';
+                  . ($cf_steps > 1 ? pg_cf_steps_script() : '')
+                  . ($cf_suggest > 0 ? pg_cf_article_suggest_script() : '') . '</form>';
     }
 
     $values = array(
