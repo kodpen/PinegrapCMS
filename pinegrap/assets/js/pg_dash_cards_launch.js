@@ -7,7 +7,9 @@
  * purpose", "Agency summary" and "Hide set-up" on the card's menu, the
  * purpose dialog ("What is this site for?") and the agency summary's
  * drawer: its "What we need from you" lines and the customer's signed link
- * (panel action launch_summary); the foot "Ready to go live?" opens the
+ * (panel action launch_summary); under the steps, "Make your site from a
+ * description" opens the New design window's "Describe it" start; the
+ * foot "Ready to go live?" opens the
  * go-live check ("Must be fixed", "Worth a look", "Go live"). The data is what
  * includes/dashboard/v2/cards/launch.php returns; every text in it was
  * translated on the server. Choices are saved through the panel action
@@ -592,6 +594,37 @@
         summaryCall({op: "get"}, draw, failed);
     }
 
+    // "Make your site from a description": a row of its own under the
+    // steps, never counted in "N of M", leading to the New design window's
+    // "Describe it" start.
+    function describeLine(line) {
+        var el = pgDash.el;
+        var list = el("ul", "pg-dash-launch-rows pg-dash-launch-describe");
+        var item = el("li", "pg-list-row pg-dash-launch-row");
+
+        var tile = el("span", "pg-icon-tile pg-tone-" + line.tone);
+        tile.setAttribute("aria-hidden", "true");
+        tile.appendChild(el("i", "bi " + line.icon));
+        item.appendChild(tile);
+
+        var main = el("div", "pg-list-row-main");
+        var head = el("div", "pg-list-row-head pg-list-row-head-wrap");
+        head.appendChild(el("span", "pg-list-row-title", line.name));
+        main.appendChild(head);
+        main.appendChild(el("div", "pg-list-row-text", line.line));
+        item.appendChild(main);
+
+        var side = el("div", "pg-list-row-side pg-dash-launch-side");
+        var link = el("a", "pg-button pg-button-quiet pg-button-sm", line.go);
+        link.href = line.url;
+        link.setAttribute("aria-label", line.go + ": " + line.name);
+        side.appendChild(link);
+        item.appendChild(side);
+
+        list.appendChild(item);
+        return list;
+    }
+
     function row(step, data, body) {
         var el = pgDash.el;
         var labels = data.labels;
@@ -676,6 +709,10 @@
             list.appendChild(row(step, data, body));
         });
         body.appendChild(list);
+
+        if (data.describe) {
+            body.appendChild(describeLine(data.describe));
+        }
 
         // The foot: "Ready to go live?" opens the go-live check; once the
         // site went live, the time it did.

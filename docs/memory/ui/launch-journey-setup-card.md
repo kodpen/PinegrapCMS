@@ -6,7 +6,7 @@ module: launch_journey_site
 
 ## Where is it?
 - Card id `launch` in `pg_dashboard_v2_cards()` (General, width L, gate `launch`: role 0 and the card not closed, `pg_dashboard_v2_launch_gate()`); data from `includes/dashboard/v2/cards/launch.php`, renderer `pgDash.renderers.launch` in `assets/js/pg_dash_cards_launch.js`, styles "General cards: Set up your site" in `pg_dash.src.css`. Tests: `tests/launch_journey_test.php`, `launch_journey_facts_test.php`.
-- New dashboard only. `pg_dashboard_v2_launch_first()` puts the card first in any stored or preset layout that lacks it, so an administrator gets it without editing the dashboard; the gallery offers it too.
+- New dashboard only. `pg_dashboard_v2_launch_first()` puts the card first in any stored or preset layout lacking it; the gallery offers it too. The line under the steps: `launch-journey-describe-line.md`.
 
 ## What is stored?
 - One `config_text` row `launch_journey` (`PG_LAUNCH_JOURNEY_ROW`), JSON: `purpose` ('' until chosen), `suggested` (a template's purpose), `live_at`, `hidden` (card steps), `closed`. No schema (`data/config-table-no-varchar.md`). Read `pg_launch_journey_stored()`, written `pg_launch_journey_store($changes)`; `pg_launch_journey_stored_change()` keeps keys a later step adds.

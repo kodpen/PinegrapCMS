@@ -6,6 +6,7 @@ module: site_brief
 
 ## Where is it?
 - "Describe it" in "Start new" of the New design window, after Template (`pg_designer_start_kinds()`), icon `bi-stars`, line "A whole site from your words", pane head "Describe your site". Plan: `plans/site-from-brief.md`.
+- Also opened from the set-up card's line "Make your site from a description" (`ui/launch-journey-setup-card.md`), shown only while the start is offered.
 - The pane is drawn on the server (`pg_designer_describe_pane()` → `pg_site_brief_pane()`, `includes/fn/site_brief.php`); the part `assets/js/designer_describe.js` (loaded on first choice, `data-part="describe"`) presses the chips and the tone, checks, keeps the brief and draws the foot's "Plan my site".
 
 ## When is it disabled?
