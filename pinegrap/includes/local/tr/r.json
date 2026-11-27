@@ -1638,6 +1638,7 @@
     "Request this session": "Bu oturumu talep edin",
     "Request this visit": "Bu ziyareti iste",
     "Request this workshop": "Bu atölyeyi isteyin",
+    "Request {var:1}": "Talep {var:1}",
     "Requested": "Talep edildi",
     "Requested Arrival Date": "İstenen Varış Tarihi",
     "Requested Arrival Date for {var:1}": "{var:1} için İstenen Varış Tarihi",

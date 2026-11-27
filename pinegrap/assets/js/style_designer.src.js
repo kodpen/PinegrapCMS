@@ -48657,6 +48657,7 @@ const StyleDesigner = (function () {
             out.push(['store_credit_convert', _sdT('Reward points conversion form (hidden when the member cannot convert)')]);
             out.push(['tickets',              _sdT('My tickets (shop sites; hidden when there are none)')]);
             out.push(['volunteering',         _sdT('My volunteering (hidden when the member volunteers in no programme)')]);
+            out.push(['requests',             _sdT('My requests (hidden when the member has none)')]);
             out.push(['referral',             _sdT('Refer a friend (shop sites; hidden while the referral programme is off)')]);
         } else if (type === 'change_password' || type === 'set_password') {
             out.push(['password_rules',       _sdT('Strong password rules (hidden when the site setting is off)')]);
@@ -50495,6 +50496,21 @@ const StyleDesigner = (function () {
         }).join('') + '</div>';
     }
 
+    // pg_support_request_account_html() with two sample requests.
+    /* @pg-site-output */
+    function _sdAccountRequestsHtml() {
+        var rows = [
+            { subject: _sdT('The parcel came damaged'), number: '#T1024', answer: _sdT('Last answer {var:1}').replace('{var:1}', '18.11.2026'), tone: 'warning', label: _sdT('Waiting for your answer') },
+            { subject: _sdT('Change my delivery address'), number: '#T1019', answer: _sdT('Not answered yet'), tone: 'success', label: _sdT('Open') }
+        ];
+        return '<div class="list-group pg-sw-requests">' + rows.map(function (r) {
+            return '<a href="#" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center gap-2">'
+                + '<span><span class="fw-semibold">' + esc(r.subject) + '</span>'
+                + '<span class="d-block small text-body-secondary">' + esc(r.number) + ' · ' + esc(r.answer) + '</span></span>'
+                + '<span class="badge text-bg-' + esc(r.tone) + '">' + esc(r.label) + '</span></a>';
+        }).join('') + '</div>';
+    }
+
     // A new list of the member's tickets, as the tickets section draws it.
     /* @pg-site-output */
     function _sdAccountTicketsList(bs) {
@@ -50787,6 +50803,7 @@ const StyleDesigner = (function () {
         }
         if (section === 'store_credit_convert') return _sdAccountCreditConvertHtml('120', '₺12,00');
         if (section === 'tickets') return _sdAccountTicketsHtml([_SD_LIST_ROW_PREVIEWS].concat(SD_LIST_SAMPLE_ROWS['account.tickets']));
+        if (section === 'requests') return _sdAccountRequestsHtml();
         if (section === 'volunteering') return _sdAccountVolunteeringHtml([_SD_LIST_ROW_PREVIEWS].concat(SD_LIST_SAMPLE_ROWS['account.volunteering']));
         if (section === 'referral') return _sdAccountReferralHtml();
         if (section === 'store_credit') {
@@ -52235,6 +52252,7 @@ const StyleDesigner = (function () {
             ['has_subscriptions', _sdT('The member has subscriptions')],
             ['has_tickets', _sdT('The member has orders with event tickets')],
             ['has_volunteering', _sdT('The member volunteers in a programme')],
+            ['has_requests', _sdT('The member has support requests')],
             ['has_referral', _sdT('The referral programme is on for the member')],
             ['can_refer', _sdT('The member can refer friends (has a completed order, is no affiliate)')]
         ],

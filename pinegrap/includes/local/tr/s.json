@@ -6932,6 +6932,7 @@
     "supervisor, manager, shift lead, team lead, job": "sorumlu, müdür, vardiya amiri, ekip lideri, iş",
     "supplier feed buy price": "tedarikçi beslemesi alış fiyatı",
     "support": "destek",
+    "support request ({var:1}) answer on its page not taken in: {var:2}": "destek talebi ({var:1}) sayfasından yazılan yanıt alınamadı: {var:2}",
     "support the podcast, supporter, membership, bonus episodes": "podcast'i destekle, destekçi, üyelik, bonus bölümler",
     "support, request, ticket, status, my requests": "destek, talep, kayıt, durum, taleplerim",
     "support, supporter, membership, tier, price, monthly, bonus episodes": "destek, destekçi, üyelik, düzey, fiyat, aylık, bonus bölümler",
