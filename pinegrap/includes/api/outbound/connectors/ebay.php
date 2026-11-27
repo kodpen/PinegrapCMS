@@ -11,6 +11,11 @@
  * and answers them as data['choices'] for the account's selects
  * (mp_account_choices_merge()).
  *
+ * Categories and item specifics come from the Taxonomy API with an
+ * application token (the client credentials grant of the same keyset), and
+ * are cached under the account's site (mp_ebay_category_key()): eBay keeps
+ * one category tree a site.
+ *
  * The eBay functions of their own (sites, scopes, the parsers of these
  * answers) are in includes/fn/ebay.php.
  *
@@ -27,7 +32,10 @@ if (!defined('PG_INIT_LOADED')) {
 function mp_ebay_connector() {
 
 	return array(
-		'test_credentials' => 'mp_ebay_test_credentials'
+		'test_credentials'    => 'mp_ebay_test_credentials',
+		'category_key'        => 'mp_ebay_category_key',
+		'category_tree'       => 'mp_ebay_category_tree',
+		'category_attributes' => 'mp_ebay_category_attributes'
 	);
 
 }
@@ -224,5 +232,152 @@ function mp_ebay_test_credentials($account, $call = null) {
 	}
 
 	return mp_ebay_read_choices(mp_ebay_site($account), $call);
+
+}
+
+// The key the account's categories are cached under: one tree a site and
+// environment (pg_ebay_category_key()).
+function mp_ebay_category_key($account) {
+
+	return pg_ebay_category_key(mp_ebay_environment($account), mp_ebay_site($account));
+
+}
+
+// A GET on the Taxonomy API of the account's environment with an
+// application token, answering array(ok, status, data, error) as the
+// test's $call does; $max_body caps the answer kept.
+function mp_ebay_taxonomy_call($account) {
+
+	$environment = mp_ebay_environment($account);
+
+	$token = null;
+
+	return function ($path, $max_body = 4194304) use ($environment, &$token) {
+
+		require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/http.php');
+
+		if ($token === null) {
+
+			$token = pg_ebay_app_token($environment);
+
+		}
+
+		if ($token === '') {
+
+			return array('ok' => false, 'status' => 0, 'data' => array(), 'error' => lang('eBay refused the application\'s keys. Check the eBay application on Connections.'));
+
+		}
+
+		$hosts = pg_ebay_hosts($environment);
+
+		$result = api_http_request('GET', $hosts['api'] . $path, array(
+			'headers'  => array('Authorization: Bearer ' . $token, 'Accept: application/json'),
+			'decode'   => true,
+			'timeout'  => 120,
+			'max_body' => $max_body,
+			'agent'    => 'marketplace'
+		));
+
+		$data = json_decode((string)$result['body'], true);
+
+		$result['data'] = is_array($data) ? $data : array();
+
+		return $result;
+
+	};
+
+}
+
+// The id of the site's category tree (getDefaultCategoryTreeId).
+function mp_ebay_category_tree_id($account, $call) {
+
+	$answer = call_user_func($call, '/commerce/taxonomy/v1/get_default_category_tree_id?marketplace_id=' . rawurlencode(mp_ebay_site($account)));
+
+	if (!$answer['ok']) {
+
+		return mp_error(mp_ebay_error_text($answer), mp_ebay_retry($answer));
+
+	}
+
+	$id = isset($answer['data']['categoryTreeId']) && is_scalar($answer['data']['categoryTreeId']) ? trim((string)$answer['data']['categoryTreeId']) : '';
+
+	if (preg_match('/^[0-9]{1,10}$/', $id) !== 1) {
+
+		return mp_error(lang('eBay named no category tree for this site.'));
+
+	}
+
+	return mp_ok(array('tree_id' => $id));
+
+}
+
+// The site's whole category tree, flattened (pg_ebay_category_rows()). The
+// tree of a large site is tens of megabytes; the cap is generous because a
+// cut answer is not a smaller tree but broken JSON. $call replaces the calls
+// to eBay in tests.
+function mp_ebay_category_tree($account, $call = null) {
+
+	$call = ($call === null) ? mp_ebay_taxonomy_call($account) : $call;
+
+	$tree = mp_ebay_category_tree_id($account, $call);
+
+	if (!$tree['ok']) {
+
+		return $tree;
+
+	}
+
+	$answer = call_user_func($call, '/commerce/taxonomy/v1/category_tree/' . $tree['data']['tree_id'], 134217728);
+
+	if (!$answer['ok']) {
+
+		return mp_error(mp_ebay_error_text($answer), mp_ebay_retry($answer));
+
+	}
+
+	$rows = pg_ebay_category_rows($answer['data']);
+
+	if (!$rows) {
+
+		return mp_error(lang('eBay returned no categories.'));
+
+	}
+
+	return mp_ok(array('categories' => $rows));
+
+}
+
+// The item specifics one category asks for (getItemAspectsForCategory), as
+// attribute rows (pg_ebay_aspect_rows()).
+function mp_ebay_category_attributes($account, $category_id, $call = null) {
+
+	$category_id = trim((string)$category_id);
+
+	if (preg_match('/^[0-9]{1,20}$/', $category_id) !== 1) {
+
+		return mp_error(lang('No category to ask about.'));
+
+	}
+
+	$call = ($call === null) ? mp_ebay_taxonomy_call($account) : $call;
+
+	$tree = mp_ebay_category_tree_id($account, $call);
+
+	if (!$tree['ok']) {
+
+		return $tree;
+
+	}
+
+	$answer = call_user_func($call, '/commerce/taxonomy/v1/category_tree/' . $tree['data']['tree_id']
+		. '/get_item_aspects_for_category?category_id=' . $category_id, 16777216);
+
+	if (!$answer['ok']) {
+
+		return mp_error(mp_ebay_error_text($answer), mp_ebay_retry($answer));
+
+	}
+
+	return mp_ok(array('attributes' => pg_ebay_aspect_rows($answer['data'])));
 
 }

@@ -1143,7 +1143,7 @@ function mp_products_listing_step($account, $action, $id, $user) {
 
 		$found = array();
 
-		foreach (mp_articles_category_search($account['provider'], (isset($_POST['q']) && is_string($_POST['q'])) ? mb_substr($_POST['q'], 0, 200) : '') as $row) {
+		foreach (mp_articles_category_search(mp_category_key($account), (isset($_POST['q']) && is_string($_POST['q'])) ? mb_substr($_POST['q'], 0, 200) : '') as $row) {
 
 			$label = mp_articles_category_label($row['path']);
 
@@ -1334,14 +1334,40 @@ function mp_products_attribute_field($group_id, $attribute, $value, $required) {
 
 	$id = (string) $attribute['attribute_id'];
 
-	$field = 'attr_' . $group_id . '_' . $id;
+	// An id that is a name (eBay's item specifics: "Brand Name", "Größe")
+	// is not an HTML id; its hash is.
+	$field = 'attr_' . $group_id . '_' . ((preg_match('/^[A-Za-z0-9_-]{1,64}$/', $id) === 1) ? $id : substr(md5($id), 0, 12));
 
 	$variant = !empty($attribute['is_variant']);
 
 	$output = '<div class="col-12 md:col-6"><label class="pg-field-label" for="' . h($field) . '">' . h((string) $attribute['name'])
 		. ($required ? ' <span class="fg-danger">*</span>' : '') . '</label>';
 
-	if (!empty($attribute['values'])) {
+	if (!empty($attribute['values']) && !empty($attribute['custom_allowed'])) {
+
+		// A value of the shop's own is allowed: typed, with theirs offered. An
+		// answer kept as one of their value ids is shown as its text; the
+		// listing matches a text back to its id (mp_listing_value()).
+		$shown = $value;
+
+		$options = '';
+
+		foreach ((array) $attribute['values'] as $option) {
+
+			if ((string) $option['id'] === $value) {
+
+				$shown = (string) $option['value'];
+
+			}
+
+			$options .= '<option value="' . h((string) $option['value']) . '"></option>';
+
+		}
+
+		$output .= '<input type="text" class="form-control form-control-sm" id="' . h($field) . '" name="attribute[' . h($id) . ']" value="' . h($shown) . '" list="' . h($field) . '_values" autocomplete="off">'
+			. '<datalist id="' . h($field) . '_values">' . $options . '</datalist>';
+
+	} elseif (!empty($attribute['values'])) {
 
 		$output .= '<select class="form-control form-control-sm" id="' . h($field) . '" name="attribute[' . h($id) . ']">'
 			. '<option value="">' . h($required ? lang('Choose') : lang('Leave empty')) . '</option>';
@@ -1765,7 +1791,7 @@ if ($account && ($mode === 'listings')) {
 	$article_counts = mp_articles_counts($articles);
 
 	$category_count = (int) db_value("SELECT COUNT(*) FROM marketplace_categories
-		WHERE (provider = '" . e($account['provider']) . "') AND (is_leaf = '1')");
+		WHERE (provider = '" . e(mp_category_key($account)) . "') AND (is_leaf = '1')");
 
 	if (mp_articles_filter_states($view) === null) {
 

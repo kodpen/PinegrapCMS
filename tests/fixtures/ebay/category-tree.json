@@ -1,0 +1,50 @@
+{
+  "categoryTreeId": "77",
+  "categoryTreeVersion": "129",
+  "applicableMarketplaceIds": ["EBAY_DE"],
+  "rootCategoryNode": {
+    "category": {"categoryId": "0", "categoryName": "Root"},
+    "categoryTreeNodeLevel": 0,
+    "childCategoryTreeNodes": [
+      {
+        "category": {"categoryId": "11450", "categoryName": "Kleidung & Accessoires"},
+        "categoryTreeNodeLevel": 1,
+        "parentCategoryTreeNodeHref": "https://api.ebay.com/commerce/taxonomy/v1/category_tree/77/get_category_subtree?category_id=0",
+        "childCategoryTreeNodes": [
+          {
+            "category": {"categoryId": "15724", "categoryName": "Damen"},
+            "categoryTreeNodeLevel": 2,
+            "childCategoryTreeNodes": [
+              {
+                "category": {"categoryId": "63861", "categoryName": "Kleider"},
+                "categoryTreeNodeLevel": 3,
+                "leafCategoryTreeNode": true
+              },
+              {
+                "category": {"categoryId": "53159", "categoryName": "Tops & Shirts"},
+                "categoryTreeNodeLevel": 3,
+                "leafCategoryTreeNode": true
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "category": {"categoryId": "293", "categoryName": "Foto & Camcorder"},
+        "categoryTreeNodeLevel": 1,
+        "childCategoryTreeNodes": [
+          {
+            "category": {"categoryId": "31388", "categoryName": "Digitalkameras"},
+            "categoryTreeNodeLevel": 2,
+            "leafCategoryTreeNode": true
+          },
+          {
+            "category": {"categoryName": "No id"},
+            "categoryTreeNodeLevel": 2,
+            "leafCategoryTreeNode": true
+          }
+        ]
+      }
+    ]
+  }
+}
