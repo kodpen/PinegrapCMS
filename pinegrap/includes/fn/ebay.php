@@ -902,13 +902,14 @@ function pg_ebay_aspect_rows($data)
 
 /**
  * The longest SKU and inventory item group key eBay takes, the longest
- * title, and the most SKUs one bulkUpdatePriceQuantity call takes. Pure.
+ * title, the most SKUs one bulkUpdatePriceQuantity call takes and the most
+ * orders one getOrders page answers. Pure.
  *
- * @return array sku, group_key, title, pictures, product_description, bulk
+ * @return array sku, group_key, title, pictures, product_description, bulk, orders
  */
 function pg_ebay_listing_limits()
 {
-    return array('sku' => 50, 'group_key' => 50, 'title' => 80, 'pictures' => 24, 'product_description' => 4000, 'bulk' => 25);
+    return array('sku' => 50, 'group_key' => 50, 'title' => 80, 'pictures' => 24, 'product_description' => 4000, 'bulk' => 25, 'orders' => 200);
 }
 
 /**
@@ -1381,4 +1382,342 @@ function pg_ebay_bulk_verdicts($data)
     }
 
     return $verdicts;
+}
+
+/* ---------------------------------------------------------------------------
+   Orders (connectors/ebay.php): getOrders and createShippingFulfillment
+   --------------------------------------------------------------------------- */
+
+/**
+ * An eBay amount ({value, currency}) in minor units, rounded half away
+ * from zero. Every eBay site's currency has two decimals. A discount eBay
+ * gives as a negative amount counts as its size. 0 when there is none. Pure.
+ *
+ * @param mixed $amount
+ * @return int
+ */
+function pg_ebay_minor($amount)
+{
+    $value = (is_array($amount) && isset($amount['value'])) ? $amount['value'] : null;
+
+    if (!is_numeric($value)) {
+        return 0;
+    }
+
+    return (int) abs(round(round((float) $value * 100, 6)));
+}
+
+/**
+ * A moment as eBay's filters write it: UTC with milliseconds. Pure.
+ *
+ * @param int $seconds
+ * @return string
+ */
+function pg_ebay_iso_time($seconds)
+{
+    return gmdate('Y-m-d\TH:i:s', (int) $seconds) . '.000Z';
+}
+
+/**
+ * Unix seconds of an eBay timestamp, 0 when it does not read. Pure.
+ *
+ * @param mixed $text
+ * @return int
+ */
+function pg_ebay_seconds($text)
+{
+    $seconds = is_string($text) ? strtotime($text) : false;
+
+    return ($seconds === false) ? 0 : (int) $seconds;
+}
+
+/**
+ * The window of last modification one pull asks for: from five minutes
+ * before the cursor (the importer skips what it has seen), never older than
+ * the ninety days getOrders keeps (an hour inside them), to now or a week
+ * past the cursor, whichever is first, so a backlog is read a week a pass
+ * and the cursor still moves. A first pull reads the last week. Pure.
+ *
+ * @param int $since the cursor, 0 before the first pull
+ * @param int $now
+ * @return array array(start, end) in unix seconds
+ */
+function pg_ebay_order_window($since, $now)
+{
+    $since = (int) $since;
+    $now = (int) $now;
+
+    if ($since <= 0) {
+        $since = $now - 604800;
+    }
+
+    $oldest = $now - 7776000 + 3600;
+
+    return array(max($since - 300, $oldest), min($now, max($since, $oldest) + 604800));
+}
+
+/**
+ * One page of getOrders over a window of last modification. Pure.
+ *
+ * @param int $start
+ * @param int $end
+ * @param int $offset
+ * @return string
+ */
+function pg_ebay_orders_path($start, $end, $offset)
+{
+    $filter = 'lastmodifieddate:[' . pg_ebay_iso_time($start) . '..' . pg_ebay_iso_time($end) . ']';
+
+    return '/sell/fulfillment/v1/order?filter=' . rawurlencode($filter)
+        . '&limit=' . pg_ebay_listing_limits()['orders'] . '&offset=' . (int) $offset;
+}
+
+/**
+ * The one word an order's state is kept under (marketplace_order_map's
+ * remote_status): CANCELED once eBay granted a cancellation, else its
+ * fulfilment status (NOT_STARTED, IN_PROGRESS for part shipped, FULFILLED).
+ * A cancellation only asked for leaves the order as it is. Pure.
+ *
+ * @param array $order
+ * @return string
+ */
+function pg_ebay_order_status($order)
+{
+    $cancel = (isset($order['cancelStatus']['cancelState']) && is_string($order['cancelStatus']['cancelState']))
+        ? $order['cancelStatus']['cancelState'] : '';
+
+    if ($cancel === 'CANCELED') {
+        return 'CANCELED';
+    }
+
+    return (isset($order['orderFulfillmentStatus']) && is_string($order['orderFulfillmentStatus']))
+        ? mb_substr($order['orderFulfillmentStatus'], 0, 40) : '';
+}
+
+/**
+ * A text field of an eBay answer, trimmed; '' when it is not text. Pure.
+ *
+ * @param mixed  $row
+ * @param string $key
+ * @return string
+ */
+function pg_ebay_text($row, $key)
+{
+    return (is_array($row) && isset($row[$key]) && is_scalar($row[$key])) ? trim((string) $row[$key]) : '';
+}
+
+/**
+ * The delivery address of an order (its first shipping step's shipTo) in
+ * the importer's shape, or an empty array (a collected or digital order).
+ * Pure.
+ *
+ * @param array $order
+ * @return array
+ */
+function pg_ebay_order_address($order)
+{
+    $ship_to = (isset($order['fulfillmentStartInstructions'][0]['shippingStep']['shipTo'])
+        && is_array($order['fulfillmentStartInstructions'][0]['shippingStep']['shipTo']))
+        ? $order['fulfillmentStartInstructions'][0]['shippingStep']['shipTo'] : array();
+
+    if (!$ship_to) {
+        return array();
+    }
+
+    $address = (isset($ship_to['contactAddress']) && is_array($ship_to['contactAddress'])) ? $ship_to['contactAddress'] : array();
+
+    return array(
+        'name'      => pg_ebay_text($ship_to, 'fullName'),
+        'company'   => pg_ebay_text($ship_to, 'companyName'),
+        'address_1' => pg_ebay_text($address, 'addressLine1'),
+        'address_2' => pg_ebay_text($address, 'addressLine2'),
+        'city'      => pg_ebay_text($address, 'city'),
+        'state'     => pg_ebay_text($address, 'stateOrProvince'),
+        'district'  => pg_ebay_text($address, 'county'),
+        'zip'       => pg_ebay_text($address, 'postalCode'),
+        'country'   => pg_ebay_text($address, 'countryCode'),
+        'phone'     => isset($ship_to['primaryPhone']) ? pg_ebay_text($ship_to['primaryPhone'], 'phoneNumber') : '',
+        'email'     => pg_ebay_text($ship_to, 'email'),
+    );
+}
+
+/**
+ * One eBay order as the package mp_import_order() takes, or null: no order
+ * id, or not paid yet (PENDING, FAILED), which comes back once paid since
+ * paying changes it. The order is the package: getOrders has no smaller
+ * unit that ships.
+ *
+ * Amounts are in the order's own currency (pricingSummary's), in minor
+ * units: a line's price per unit is its lineItemCost (unit price times
+ * quantity) over the quantity, its discount the seller's promotions on the
+ * whole line, the shipping the delivery cost less its discount. The price
+ * is what the buyer was shown, tax included where the site's prices
+ * include it; the taxes eBay collects and remits itself
+ * (ebayCollectAndRemitTaxes) are not the seller's money and are left out.
+ * Only what delivering the order needs is kept of the buyer: the delivery
+ * address, which stands in as the billing address, its name, telephone
+ * and e-mail. Pure.
+ *
+ * @param array $order
+ * @return array|null
+ */
+function pg_ebay_order_package($order)
+{
+    $order_id = pg_ebay_text($order, 'orderId');
+
+    if ($order_id === '') {
+        return null;
+    }
+
+    if (in_array(pg_ebay_text($order, 'orderPaymentStatus'), array('PENDING', 'FAILED'), true)) {
+        return null;
+    }
+
+    $lines = array();
+    $currency = '';
+
+    foreach ((isset($order['lineItems']) && is_array($order['lineItems'])) ? $order['lineItems'] : array() as $item) {
+        if (!is_array($item)) {
+            continue;
+        }
+
+        $quantity = isset($item['quantity']) ? max(1, (int) $item['quantity']) : 1;
+        $discount = 0;
+
+        foreach ((isset($item['appliedPromotions']) && is_array($item['appliedPromotions'])) ? $item['appliedPromotions'] : array() as $promotion) {
+            $discount += pg_ebay_minor(is_array($promotion) && isset($promotion['discountAmount']) ? $promotion['discountAmount'] : null);
+        }
+
+        $tax = 0;
+
+        foreach ((isset($item['taxes']) && is_array($item['taxes'])) ? $item['taxes'] : array() as $entry) {
+            $tax += pg_ebay_minor(is_array($entry) && isset($entry['amount']) ? $entry['amount'] : null);
+        }
+
+        if (($currency === '') && isset($item['lineItemCost']['currency'])) {
+            $currency = pg_ebay_text($item['lineItemCost'], 'currency');
+        }
+
+        $sku = pg_ebay_text($item, 'sku');
+
+        $lines[] = array(
+            'remote_line_id' => pg_ebay_text($item, 'lineItemId'),
+            'code'           => $sku,
+            'sku'            => $sku,
+            'name'           => pg_ebay_text($item, 'title'),
+            'quantity'       => $quantity,
+            'price'          => (int) round(pg_ebay_minor(isset($item['lineItemCost']) ? $item['lineItemCost'] : null) / $quantity),
+            'tax'            => (int) round($tax / $quantity),
+            'discount'       => (int) round($discount / $quantity),
+            'discount_total' => $discount,
+            'status'         => pg_ebay_text($item, 'lineItemFulfillmentStatus'),
+        );
+    }
+
+    $summary = (isset($order['pricingSummary']) && is_array($order['pricingSummary'])) ? $order['pricingSummary'] : array();
+
+    if (isset($summary['total']['currency'])) {
+        $currency = pg_ebay_text($summary['total'], 'currency');
+    }
+
+    $shipping = max(0, pg_ebay_minor(isset($summary['deliveryCost']) ? $summary['deliveryCost'] : null)
+        - pg_ebay_minor(isset($summary['deliveryDiscount']) ? $summary['deliveryDiscount'] : null));
+
+    $address = pg_ebay_order_address($order);
+    $billing = $address ? $address : array_fill_keys(array('name', 'company', 'address_1', 'address_2', 'city', 'state', 'district', 'zip', 'country', 'phone', 'email'), '');
+    $name = isset($address['name']) ? $address['name'] : '';
+    $space = ($name !== '') ? strrpos($name, ' ') : false;
+
+    return array(
+        'remote_order_id'   => $order_id,
+        'remote_package_id' => $order_id,
+        'remote_status'     => pg_ebay_order_status($order),
+        // The modification time, on the scale the feed is asked on: "Try
+        // again" moves the pull cursor back to it.
+        'placed_at'         => pg_ebay_seconds(isset($order['lastModifiedDate']) ? $order['lastModifiedDate'] : null),
+        'currency'          => strtoupper($currency),
+        'customer'          => array(
+            'first_name' => ($space === false) ? $name : trim(substr($name, 0, $space)),
+            'last_name'  => ($space === false) ? '' : trim(substr($name, $space + 1)),
+            'email'      => isset($address['email']) ? $address['email'] : '',
+            'phone'      => isset($address['phone']) ? $address['phone'] : '',
+            'company'    => isset($address['company']) ? $address['company'] : '',
+        ),
+        'billing'           => $billing,
+        'shipping_address'  => $address,
+        'shipping_cost'     => $shipping,
+        'lines'             => $lines,
+    );
+}
+
+/**
+ * The shippingCarrierCode a parcel is reported with: eBay's code for a
+ * carrier of the shop's list it knows, else the carrier's name as the shop
+ * has it. '' when the parcel names none. Pure.
+ *
+ * @param string $carrier the carrier's key in pg_shipping_carriers(), or ''
+ * @param string $name    the carrier's name as the order screen shows it
+ * @return string
+ */
+function pg_ebay_carrier_code($carrier, $name)
+{
+    $codes = array(
+        'ups'          => 'UPS',
+        'usps'         => 'USPS',
+        'fedex'        => 'FedEx',
+        'dhl'          => 'DHL',
+        'deutschepost' => 'DeutschePost',
+        'dpd'          => 'DPD',
+        'royalmail'    => 'RoyalMail',
+    );
+
+    $carrier = trim((string) $carrier);
+
+    if (isset($codes[$carrier])) {
+        return $codes[$carrier];
+    }
+
+    return mb_substr(trim((string) $name), 0, 50);
+}
+
+/**
+ * The body of a createShippingFulfillment call: every line of the package
+ * in its quantity, shipped with that carrier under that number. null when
+ * there is no number, no carrier or no line. Pure.
+ *
+ * @param array  $package     the imported package (mp_sync_package_from_row())
+ * @param string $number
+ * @param string $carrier_code pg_ebay_carrier_code()
+ * @param int    $shipped_at  unix seconds
+ * @return array|null
+ */
+function pg_ebay_fulfillment_body($package, $number, $carrier_code, $shipped_at)
+{
+    $number = trim((string) $number);
+    $carrier_code = trim((string) $carrier_code);
+
+    if (($number === '') || ($carrier_code === '')) {
+        return null;
+    }
+
+    $items = array();
+
+    foreach ((isset($package['lines']) && is_array($package['lines'])) ? $package['lines'] : array() as $line) {
+        $id = is_array($line) ? pg_ebay_text($line, 'remote_line_id') : '';
+
+        if ($id !== '') {
+            $items[] = array('lineItemId' => $id, 'quantity' => isset($line['quantity']) ? max(1, (int) $line['quantity']) : 1);
+        }
+    }
+
+    if (!$items) {
+        return null;
+    }
+
+    return array(
+        'lineItems'           => $items,
+        'shippedDate'         => pg_ebay_iso_time($shipped_at),
+        'shippingCarrierCode' => $carrier_code,
+        'trackingNumber'      => $number,
+    );
 }

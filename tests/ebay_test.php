@@ -165,7 +165,7 @@ function test_ebay_marketplace_fields_are_the_site_and_four_remote_selects()
 	}
 
 	pg_assert_true(mp_can('ebay', 'test_credentials'));
-	pg_assert_false(mp_can('ebay', 'pull_orders'), 'nothing it does not do yet');
+	pg_assert_false(mp_can('ebay', 'approve_lines'), 'nothing it does not do');
 }
 
 function test_ebay_remote_select_keeps_only_a_value_the_account_holds()

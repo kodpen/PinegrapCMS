@@ -29,6 +29,12 @@
  * since a price is set on an offer and the map keeps the listing id, and
  * answers what went through, what eBay refused and what waits.
  *
+ * Orders are read on the schedule (getOrders by last modification, no
+ * notice subscription), one order a package, in the order's own currency;
+ * an unpaid order waits until it is paid. A seller on eBay always ships
+ * with a carrier of its own, so a parcel the shop records is reported back
+ * (createShippingFulfillment) with its carrier and tracking number.
+ *
  * The eBay functions of their own (sites, scopes, the parsers of these
  * answers) are in includes/fn/ebay.php.
  *
@@ -57,7 +63,10 @@ function mp_ebay_connector() {
 		'category_attributes' => 'mp_ebay_category_attributes',
 		'create_listings'     => 'mp_ebay_create_listings',
 		'listing_status'      => 'mp_ebay_listing_status',
-		'push_stock_price'    => 'mp_ebay_push_stock_price'
+		'push_stock_price'    => 'mp_ebay_push_stock_price',
+		'pull_orders'         => 'mp_ebay_pull_orders',
+		'order_stage'         => 'mp_ebay_order_stage',
+		'ship_package'        => 'mp_ebay_ship_package'
 	);
 
 }
@@ -1095,5 +1104,146 @@ function mp_ebay_push_stock_price($account, $rows, $call = null, $rate = null, $
 		'deferred'    => array_values(array_unique($deferred)),
 		'retry_after' => $retry_after
 	));
+
+}
+
+/* ---------------------------------------------------------------- orders */
+
+// The message for an account whose environment has no connected account.
+function mp_ebay_not_connected($account) {
+
+	return (mp_ebay_environment($account) === 'sandbox')
+		? lang('Connect an eBay (sandbox) account on Connections first.')
+		: lang('Connect an eBay account on Connections first.');
+
+}
+
+// The orders modified since $since, as packages (pg_ebay_order_package()).
+//
+// One window a pass (pg_ebay_order_window()), read in pages of 200 by
+// offset. eBay does not sort the answer by modification time, so the cursor
+// can only move to the window's end once every page was read: data['read_to']
+// is that end, data['complete'] says the window was read through. A fault on
+// a page answers the packages read so far with the cursor kept, so they are
+// imported and the window is asked for again; fifty pages (ten thousand
+// orders in one window) are the most a pass reads.
+//
+// $call and $now replace eBay and the clock in tests; $call false is an
+// account with no connection.
+function mp_ebay_pull_orders($account, $since, $call = null, $now = null) {
+
+	$call = ($call === null) ? mp_ebay_api_call($account) : $call;
+
+	if (!is_callable($call)) {
+
+		return mp_error(mp_ebay_not_connected($account));
+
+	}
+
+	$now = ($now === null) ? time() : (int)$now;
+
+	list($start, $end) = pg_ebay_order_window($since, $now);
+
+	$size = pg_ebay_listing_limits()['orders'];
+
+	$packages = array();
+
+	for ($page = 0; $page < 50; $page++) {
+
+		$answer = call_user_func($call, 'GET', pg_ebay_orders_path($start, $end, $page * $size));
+
+		if (!$answer['ok']) {
+
+			return mp_error(mp_ebay_call_error($answer), mp_ebay_retry($answer),
+				array('packages' => $packages, 'complete' => false));
+
+		}
+
+		$orders = (isset($answer['data']['orders']) && is_array($answer['data']['orders'])) ? $answer['data']['orders'] : array();
+
+		foreach ($orders as $order) {
+
+			$package = is_array($order) ? pg_ebay_order_package($order) : null;
+
+			if ($package !== null) {
+
+				$packages[] = $package;
+
+			}
+
+		}
+
+		$total = isset($answer['data']['total']) ? (int)$answer['data']['total'] : 0;
+
+		$more = !empty($answer['data']['next']) || (($page + 1) * $size < $total);
+
+		if (!$orders || !$more) {
+
+			return mp_ok(array('packages' => $packages, 'complete' => true, 'read_to' => $end));
+
+		}
+
+	}
+
+	return mp_ok(array('packages' => $packages, 'complete' => false));
+
+}
+
+// Where an order stands, from the word it is kept under
+// (pg_ebay_order_status()). eBay says nothing of a delivery.
+function mp_ebay_order_stage($remote_status) {
+
+	switch ((string)$remote_status) {
+
+		case 'CANCELED':
+			return 'cancelled';
+
+		case 'FULFILLED':
+			return 'shipped';
+
+	}
+
+	return 'open';
+
+}
+
+// Tell eBay the order was shipped: every line of the package under the
+// parcel's tracking number and carrier (createShippingFulfillment), as
+// mp_sync_ship_pending() reports a parcel the shop recorded. The parcel is
+// $package['parcel'], mp_sync_shipment_link()'s answer; the tracking page
+// eBay does not take. Answers data['remote_status'] FULFILLED, the word the
+// next pull brings. $call and $now replace eBay and the clock in tests.
+function mp_ebay_ship_package($account, $package, $tracking_url, $call = null, $now = null) {
+
+	$parcel = (isset($package['parcel']) && is_array($package['parcel'])) ? $package['parcel'] : array();
+
+	$body = pg_ebay_fulfillment_body($package, isset($parcel['number']) ? $parcel['number'] : '',
+		pg_ebay_carrier_code(isset($parcel['carrier']) ? $parcel['carrier'] : '', isset($parcel['carrier_name']) ? $parcel['carrier_name'] : ''),
+		($now === null) ? time() : (int)$now);
+
+	if ($body === null) {
+
+		return mp_error(lang('eBay needs the parcel\'s carrier and tracking number. Choose the carrier on the order screen.'));
+
+	}
+
+	$call = ($call === null) ? mp_ebay_api_call($account) : $call;
+
+	if (!is_callable($call)) {
+
+		return mp_error(mp_ebay_not_connected($account), true);
+
+	}
+
+	$answer = call_user_func($call, 'POST', '/sell/fulfillment/v1/order/'
+		. rawurlencode((string)$package['remote_package_id']) . '/shipping_fulfillment', $body);
+
+	if (!$answer['ok']) {
+
+		return mp_error(mp_ebay_call_error($answer), mp_ebay_retry($answer));
+
+	}
+
+	return mp_ok(array('shipped' => true, 'remote_status' => 'FULFILLED'));
 
 }

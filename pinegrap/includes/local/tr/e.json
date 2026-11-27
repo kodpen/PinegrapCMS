@@ -2628,6 +2628,7 @@
     "eBay asks for their data to be erased. The request names their orders: answer it from Contacts › Privacy centre › Requests.": "eBay verilerinin silinmesini istiyor. Talep siparişlerini sayar: Kişiler › Gizlilik merkezi › Talepler'den yanıtlayın.",
     "eBay created the offer but named no offer id.": "eBay teklifi oluşturdu ama teklif numarası vermedi.",
     "eBay named no category tree for this site.": "eBay bu site için bir kategori ağacı bildirmedi.",
+    "eBay needs the parcel's carrier and tracking number. Choose the carrier on the order screen.": "eBay, paketin kargo firmasını ve takip numarasını istiyor. Kargo firmasını sipariş ekranında seçin.",
     "eBay only takes pictures on https addresses; {var:1} has one that is not.": "eBay yalnızca https adreslerindeki resimleri kabul eder; {var:1} ürününde öyle olmayan bir resim var.",
     "eBay refused the application's keys. Check the eBay application on Connections.": "eBay uygulamanın anahtarlarını kabul etmedi. Bağlantılar'daki eBay uygulamasını kontrol edin.",
     "eBay reports that its member {var:1} closed their eBay account and asks for their data to be erased. Their orders here: {var:2}.": "eBay, üyesi {var:1} kullanıcısının eBay hesabını kapattığını bildiriyor ve verilerinin silinmesini istiyor. Buradaki siparişleri: {var:2}.",
