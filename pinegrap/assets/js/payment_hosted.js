@@ -12,6 +12,13 @@
  *
  * One adapter per service; the server only ever sees the token.
  *
+ * Where the box offers BLIK beside the service's fields, choosing it shows
+ * the six-digit code field instead and the form is posted with the code and
+ * no token. The page the server answers with then waits while the visitor
+ * approves the payment in the bank's app ([data-pg-payment-step]): Stripe.js
+ * reads the payment until it is decided and the page goes to the checkout's
+ * return address.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -79,6 +86,55 @@
             };
         }
     };
+
+    // The waiting page of a payment approved elsewhere (BLIK in the bank's
+    // app): a countdown, Stripe.js waiting for the result, then the return
+    // address, where the server reads the payment again. Without Stripe.js,
+    // or when the wait runs long, the page goes there anyway.
+    function waitStep(node) {
+        var config;
+
+        try {
+            config = JSON.parse(node.getAttribute('data-pg-payment-step') || '{}');
+        } catch (error) {
+            return;
+        }
+
+        if (!config.return_url) {
+            return;
+        }
+
+        var left = config.seconds || 60;
+        var count = node.querySelector('.pg-payment-step-count');
+        var gone = false;
+        var go = function () {
+            if (!gone) {
+                gone = true;
+                window.location.assign(config.return_url);
+            }
+        };
+        var timer = window.setInterval(function () {
+            left = Math.max(0, left - 1);
+
+            if (count) {
+                count.textContent = String(left);
+            }
+
+            if (left === 0) {
+                window.clearInterval(timer);
+            }
+        }, 1000);
+
+        window.setTimeout(go, ((config.seconds || 60) + 30) * 1000);
+
+        if ((config.driver === 'stripe') && (typeof window.Stripe === 'function') && config.client_secret) {
+            var stripe = window.Stripe(config.publishable_key, { locale: config.locale || 'auto' });
+
+            stripe.handleNextAction({ clientSecret: config.client_secret }).then(go, go);
+        } else {
+            go();
+        }
+    }
 
     function chosenMethod(form) {
         var radio = form.querySelector('input[name="payment_method"]:checked');
@@ -233,8 +289,40 @@
             return;
         }
 
-        var state = { instance: instance, token: token, error: error, messages: messages, ready: false, busy: false, submitter: null };
+        var choice = box.querySelector('.pg-eo-hosted-choice');
+        var code = box.querySelector('input[name="payment_blik_code"]');
+        var state = { instance: instance, token: token, error: error, messages: messages, ready: false, busy: false, submitter: null, code: null };
         form.pgHosted = state;
+
+        // BLIK beside the service's fields: its code field replaces them
+        // while it is chosen, and only then is the code posted.
+        if (choice && code) {
+            var element = box.querySelector('.pg-eo-hosted-card-element');
+            var codeBox = box.querySelector('.pg-eo-hosted-blik');
+            var showChoice = function () {
+                var checked = choice.querySelector('input[name="payment_hosted_choice"]:checked');
+                var blik = !!checked && (checked.value === 'blik');
+
+                state.code = blik ? code : null;
+                code.disabled = !blik;
+                code.required = blik;
+
+                if (codeBox) {
+                    codeBox.hidden = !blik;
+                }
+
+                if (element) {
+                    element.style.display = blik ? 'none' : '';
+                }
+
+                if (error) {
+                    error.textContent = '';
+                }
+            };
+
+            choice.addEventListener('change', showChoice);
+            showChoice();
+        }
 
         // A box outside the card section follows the payment method itself.
         if (!section) {
@@ -280,6 +368,24 @@
             return;
         }
 
+        // BLIK: the code goes with the form; there is no token to make.
+        if (state.code) {
+            state.token.value = '';
+
+            if (!/^[0-9]{6}$/.test(state.code.value.replace(/[\s-]+/g, ''))) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+
+                if (state.error) {
+                    state.error.textContent = state.messages.code || '';
+                }
+
+                state.code.focus();
+            }
+
+            return;
+        }
+
         event.preventDefault();
         event.stopImmediatePropagation();
 
@@ -320,6 +426,12 @@
 
     function setUpAll() {
         document.querySelectorAll('[data-pg-payment-hosted]').forEach(setUp);
+        document.querySelectorAll('[data-pg-payment-step]').forEach(function (node) {
+            if (!node.pgStepStarted) {
+                node.pgStepStarted = true;
+                waitStep(node);
+            }
+        });
     }
 
     window.pgPaymentHosted = { setUp: setUpAll };

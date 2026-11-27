@@ -59,7 +59,7 @@ function payment_stripe_methods_test_params($path)
 
 function payment_stripe_methods_test_all_on()
 {
-	return array('ideal' => true, 'bancontact' => true, 'eps' => true, 'p24' => true, 'klarna' => true, 'afterpay_clearpay' => true, 'sepa_debit' => true);
+	return array('ideal' => true, 'bancontact' => true, 'eps' => true, 'p24' => true, 'klarna' => true, 'afterpay_clearpay' => true, 'sepa_debit' => true, 'blik' => true);
 }
 
 function payment_stripe_methods_test_settings($changes = array())
@@ -104,7 +104,7 @@ function test_payment_stripe_methods_list()
 {
 	$methods = pg_payment_stripe_methods();
 
-	pg_assert_same(array('ideal', 'bancontact', 'eps', 'p24', 'klarna', 'afterpay_clearpay', 'sepa_debit'), array_keys($methods));
+	pg_assert_same(array('ideal', 'bancontact', 'eps', 'p24', 'klarna', 'afterpay_clearpay', 'sepa_debit', 'blik'), array_keys($methods));
 
 	foreach ($methods as $type => $method) {
 		pg_assert_same(array('label', 'currencies', 'immediate', 'hold', 'step'), array_keys($method), $type);
@@ -116,9 +116,10 @@ function test_payment_stripe_methods_list()
 		}
 
 		// A bank debit settles days later and is given in the Payment
-		// Element; every other method is paid on its own page.
+		// Element; BLIK has the checkout's own code field and waiting page;
+		// every other method is paid on its own page.
 		pg_assert_same($type !== 'sepa_debit', $method['immediate'], $type . ': Stripe answers the result when the visitor is back');
-		pg_assert_same(($type === 'sepa_debit') ? 'element' : 'redirect', $method['step'], $type);
+		pg_assert_same(($type === 'sepa_debit') ? 'element' : (($type === 'blik') ? 'page' : 'redirect'), $method['step'], $type);
 		pg_assert_same(in_array($type, array('klarna', 'afterpay_clearpay'), true), $method['hold'], $type . ': only these can be held');
 	}
 
@@ -129,6 +130,7 @@ function test_payment_stripe_methods_list()
 	pg_assert_same(array('AUD', 'CAD', 'EUR', 'GBP', 'NZD', 'USD'), $methods['afterpay_clearpay']['currencies']);
 	pg_assert_same(array('EUR'), $methods['sepa_debit']['currencies']);
 	pg_assert_same('SEPA Direct Debit', $methods['sepa_debit']['label']);
+	pg_assert_same(array('PLN'), $methods['blik']['currencies']);
 	pg_assert_true(in_array('SEK', $methods['klarna']['currencies'], true));
 	pg_assert_false(in_array('TRY', $methods['klarna']['currencies'], true));
 }
@@ -151,7 +153,8 @@ function test_payment_stripe_method_types_by_currency_and_switches()
 	$on = payment_stripe_methods_test_settings(array('methods' => $all));
 	pg_assert_same(array('card', 'ideal', 'bancontact', 'eps', 'p24', 'klarna', 'afterpay_clearpay', 'sepa_debit'), pg_payment_stripe_method_types('eur', $on));
 	pg_assert_same(array('card', 'ideal', 'bancontact', 'eps', 'p24', 'klarna', 'afterpay_clearpay', 'sepa_debit'), pg_payment_stripe_method_types('EUR', $on), 'any case');
-	pg_assert_same(array('card', 'p24', 'klarna'), pg_payment_stripe_method_types('pln', $on));
+	pg_assert_same(array('card', 'p24', 'klarna'), pg_payment_stripe_method_types('pln', $on), 'BLIK is never in the Payment Element');
+	pg_assert_same(array('card'), pg_payment_stripe_method_types('pln', payment_stripe_methods_test_settings(array('methods' => array('blik' => true)))));
 	pg_assert_same(array('card', 'klarna', 'afterpay_clearpay'), pg_payment_stripe_method_types('usd', $on));
 	pg_assert_same(array('card', 'klarna'), pg_payment_stripe_method_types('sek', $on));
 	pg_assert_same(array('card'), pg_payment_stripe_method_types('try', $on), 'no method takes the currency');
@@ -230,6 +233,7 @@ function test_payment_stripe_methods_prepare_gives_the_page_the_methods()
 		'payment_method_types' => array('card', 'ideal', 'klarna'),
 		'capture_method'       => 'automatic',
 		'locale'               => 'nl',
+		'blik'                 => false,
 	), $answer['client']);
 }
 
@@ -358,7 +362,11 @@ function test_payment_stripe_method_fields()
 {
 	$fields = pg_payment_fields_normalize(pg_payment_stripe_method_fields('EUR'));
 
-	pg_assert_same(array('method_ideal', 'method_bancontact', 'method_eps', 'method_p24', 'method_klarna', 'method_afterpay_clearpay', 'method_sepa_debit'), array_column($fields, 'name'));
+	pg_assert_same(array('method_ideal', 'method_bancontact', 'method_eps', 'method_p24', 'method_klarna', 'method_afterpay_clearpay', 'method_sepa_debit', 'method_blik'), array_column($fields, 'name'));
+	$blik = array_pop($fields);
+	pg_assert_same('BLIK', $blik['label']);
+	pg_assert_contains('PLN', $blik['help']);
+	pg_assert_contains(lang('Not offered while Transaction type is Authorize.'), $blik['help'], 'BLIK cannot be held');
 
 	foreach ($fields as $index => $field) {
 		pg_assert_same('switch', $field['type'], $field['name']);
@@ -387,4 +395,288 @@ function test_payment_stripe_method_fields()
 	foreach (pg_payment_fields_normalize(pg_payment_stripe_method_fields('')) as $field) {
 		pg_assert_same('', $field['unavailable'], 'no reason without a known currency');
 	}
+}
+
+/* ---------------------------------------------------------------------------
+   BLIK: the checkout's code field and waiting page
+   --------------------------------------------------------------------------- */
+
+function payment_stripe_methods_test_blik_settings($changes = array())
+{
+	return payment_stripe_methods_test_settings(array_merge(array('currency' => 'pln', 'locale' => 'pl', 'methods' => array('blik' => true)), $changes));
+}
+
+function payment_stripe_methods_test_blik_payment($changes = array())
+{
+	return array_merge(array(
+		'blik_code'  => '123 456',
+		'token'      => '',
+		'return_url' => 'https://shop.example/pinegrap/express_order.php?mode=stripe_return&page_id=1023',
+	), $changes);
+}
+
+function test_payment_stripe_blik_offered()
+{
+	$on = payment_stripe_methods_test_blik_settings();
+
+	pg_assert_true(pg_payment_stripe_blik_offered('pln', $on));
+	pg_assert_true(pg_payment_stripe_blik_offered('PLN', $on), 'any case');
+	pg_assert_false(pg_payment_stripe_blik_offered('eur', $on), 'zloty only');
+	pg_assert_false(pg_payment_stripe_blik_offered('pln', $on, true), 'a repeating order keeps cards only');
+	pg_assert_false(pg_payment_stripe_blik_offered('pln', payment_stripe_methods_test_blik_settings(array('capture' => 'manual'))), 'BLIK cannot be held');
+	pg_assert_false(pg_payment_stripe_blik_offered('pln', payment_stripe_methods_test_blik_settings(array('methods' => array()))), 'off at first');
+	pg_assert_false(pg_payment_stripe_blik_offered('pln', payment_stripe_methods_test_blik_settings(array('methods' => array('p24' => true)))));
+}
+
+function test_payment_stripe_blik_code()
+{
+	pg_assert_same('123456', pg_payment_stripe_blik_code('123456'));
+	pg_assert_same('123456', pg_payment_stripe_blik_code(' 123 456 '));
+	pg_assert_same('123456', pg_payment_stripe_blik_code('123-456'));
+	pg_assert_same('', pg_payment_stripe_blik_code('12345'));
+	pg_assert_same('', pg_payment_stripe_blik_code('1234567'));
+	pg_assert_same('', pg_payment_stripe_blik_code('12a456'));
+	pg_assert_same('', pg_payment_stripe_blik_code(array('123456')));
+	pg_assert_same('', pg_payment_stripe_blik_code(null));
+}
+
+// The page is told to draw BLIK only where it can show the waiting page.
+function test_payment_stripe_blik_prepare()
+{
+	$settings = payment_stripe_methods_test_blik_settings();
+	$client = function ($order, $settings) {
+		return pg_payment_answer('prepare', pg_payment_stripe_prepare_with($order, 4714, $settings))['client'];
+	};
+
+	pg_assert_true($client(payment_stripe_methods_test_order(array('page_step' => true)), $settings)['blik']);
+	pg_assert_same(array('card'), $client(payment_stripe_methods_test_order(array('page_step' => true)), $settings)['payment_method_types']);
+	pg_assert_false($client(payment_stripe_methods_test_order(), $settings)['blik'], 'a form payment shows no waiting page');
+	pg_assert_false($client(payment_stripe_methods_test_order(array('page_step' => true, 'recurring' => true)), $settings)['blik']);
+	pg_assert_false($client(payment_stripe_methods_test_order(array('page_step' => true)), payment_stripe_methods_test_blik_settings(array('currency' => 'eur')))['blik']);
+
+	$box = pg_payment_box('stripe', pg_payment_stripe_prepare_with(payment_stripe_methods_test_order(array('page_step' => true)), 4714, $settings), array('csp' => array('script-src' => array('https://js.stripe.com'))), _eo_hosted_blik_choice_html(array('card')));
+	pg_assert_contains('name="payment_blik_code"', $box);
+	pg_assert_contains('inputmode="numeric"', $box);
+	pg_assert_contains('autocomplete="one-time-code"', $box);
+	pg_assert_contains('value="blik"', $box);
+	pg_assert_contains('disabled>', $box, 'not posted until BLIK is chosen');
+	pg_assert_true(strpos($box, 'payment_blik_code') < strpos($box, 'pg-eo-hosted-card-element'), 'above the Payment Element');
+	pg_assert_contains(h(lang('Card')) . '</label>', $box);
+	pg_assert_contains(h(lang('Card and other methods')), _eo_hosted_blik_choice_html(array('card', 'p24')));
+
+	$plain = pg_payment_box('stripe', pg_payment_stripe_prepare_with(payment_stripe_methods_test_order(), 4714, $settings), array('csp' => array('script-src' => array('https://js.stripe.com'))));
+	pg_assert_false(strpos($plain, 'payment_blik_code') !== false);
+}
+
+// The request body: the code goes in the confirm call only, BLIK alone, no
+// mandate, no hold, nothing kept.
+function test_payment_stripe_blik_authorize_request()
+{
+	$answer = pg_payment_answer('authorize', pg_payment_stripe_authorize_with(payment_stripe_methods_test_order(), 4714, payment_stripe_methods_test_blik_payment(), payment_stripe_methods_test_blik_settings(), payment_stripe_methods_test_http(array(
+		'POST /v1/payment_intents' => array(200, payment_stripe_methods_test_intent(array(
+			'currency'      => 'pln',
+			'status'        => 'requires_action',
+			'client_secret' => 'pi_3Abc_secret_Zz9',
+			'next_action'   => array('type' => 'blik_authorize', 'blik_authorize' => array()),
+		))),
+	))));
+
+	pg_assert_same(array(
+		'amount'                 => 4714,
+		'currency'               => 'pln',
+		'confirm'                => true,
+		'payment_method_types'   => array('blik'),
+		'payment_method_data'    => array('type' => 'blik', 'billing_details' => array('email' => 'anna@example.com')),
+		'payment_method_options' => array('blik' => array('code' => '123456')),
+		'metadata'               => array('order_id' => '438', 'reference_code' => 'AB12CD34EF'),
+		'expand'                 => array('payment_method', 'latest_charge.balance_transaction'),
+		'description'            => 'anna@example.com',
+	), payment_stripe_methods_test_params('/v1/payment_intents'));
+
+	// The waiting page: the order is not placed, the state is the return's.
+	pg_assert_true($answer['success']);
+	pg_assert_same('redirect', $answer['status']);
+	pg_assert_same('', $answer['redirect_url'], 'never an address with the secret');
+	pg_assert_same(array('payment_intent' => 'pi_3Abc', 'order_id' => '438', 'amount' => 4714), $answer['state']);
+	pg_assert_contains('data-pg-payment-step=', $answer['html']);
+	pg_assert_contains('pi_3Abc_secret_Zz9', $answer['html']);
+	pg_assert_contains('https://js.stripe.com/v3/', $answer['html']);
+	pg_assert_contains('href="https://shop.example/pinegrap/express_order.php?mode=stripe_return&amp;page_id=1023"', $answer['html']);
+	pg_assert_false(strpos($answer['html'], '123456') !== false, 'the code is not in the page');
+	pg_assert_false(strpos(json_encode($answer['log']), '123456') !== false, 'nor in the log');
+}
+
+function test_payment_stripe_blik_authorize_refused_before_stripe()
+{
+	$http = payment_stripe_methods_test_http();
+	$try = function ($payment, $settings) use ($http) {
+		return pg_payment_answer('authorize', pg_payment_stripe_authorize_with(payment_stripe_methods_test_order(), 4714, $payment, $settings, $http));
+	};
+
+	$answer = $try(payment_stripe_methods_test_blik_payment(array('blik_code' => '12345')), payment_stripe_methods_test_blik_settings());
+	pg_assert_false($answer['success']);
+	pg_assert_same(lang('Please enter the six-digit BLIK code from your bank\'s app.'), $answer['error']);
+
+	foreach (array(
+		'euro'      => array(payment_stripe_methods_test_blik_payment(), payment_stripe_methods_test_blik_settings(array('currency' => 'eur'))),
+		'off'       => array(payment_stripe_methods_test_blik_payment(), payment_stripe_methods_test_blik_settings(array('methods' => array()))),
+		'held'      => array(payment_stripe_methods_test_blik_payment(), payment_stripe_methods_test_blik_settings(array('capture' => 'manual'))),
+		'repeating' => array(payment_stripe_methods_test_blik_payment(array('recurring' => true)), payment_stripe_methods_test_blik_settings()),
+		'no return' => array(payment_stripe_methods_test_blik_payment(array('return_url' => '')), payment_stripe_methods_test_blik_settings()),
+	) as $label => $case) {
+		$answer = $try($case[0], $case[1]);
+		pg_assert_false($answer['success'], $label);
+		pg_assert_same(lang('This payment method is not available.'), $answer['error'], $label);
+	}
+
+	pg_assert_same(array(), $GLOBALS['payment_stripe_methods_test_calls'], 'Stripe is not asked');
+}
+
+function test_payment_stripe_blik_wrong_code_at_once()
+{
+	$answer = pg_payment_answer('authorize', pg_payment_stripe_authorize_with(payment_stripe_methods_test_order(), 4714, payment_stripe_methods_test_blik_payment(), payment_stripe_methods_test_blik_settings(), payment_stripe_methods_test_http(array(
+		'POST /v1/payment_intents' => array(402, array('error' => array('type' => 'card_error', 'code' => 'payment_method_invalid_parameter', 'decline_code' => 'code_invalid', 'message' => 'The BLIK code is invalid.'))),
+	))));
+
+	pg_assert_false($answer['success']);
+	pg_assert_contains('BLIK', $answer['error']);
+	pg_assert_false(strpos(json_encode($answer['log']), '123456') !== false);
+}
+
+// Back at the return address: the intent is read again and decides.
+function test_payment_stripe_blik_return()
+{
+	$state = array('payment_intent' => 'pi_3Abc', 'order_id' => '438', 'amount' => 4714);
+	$complete = function ($intent) use ($state) {
+		return pg_payment_answer('complete', pg_payment_stripe_complete_with(payment_stripe_methods_test_order(), 4714, array(), $state, payment_stripe_methods_test_blik_settings(), payment_stripe_methods_test_http(array(
+			'GET /v1/payment_intents/pi_3Abc'  => array(200, payment_stripe_methods_test_intent(array_merge(array('currency' => 'pln'), $intent))),
+			'POST /v1/payment_intents/pi_3Abc/cancel' => array(200, payment_stripe_methods_test_intent(array('currency' => 'pln', 'status' => 'canceled'))),
+		))));
+	};
+
+	$paid = $complete(array('status' => 'succeeded', 'payment_method' => array('id' => 'pm_1', 'object' => 'payment_method', 'type' => 'blik', 'blik' => array())));
+	pg_assert_true($paid['success']);
+	pg_assert_same('paid', $paid['status']);
+
+	$timeout = $complete(array('status' => 'requires_payment_method', 'last_payment_error' => array('code' => 'payment_method_provider_timeout', 'decline_code' => 'generic_decline', 'payment_method' => array('type' => 'blik'))));
+	pg_assert_false($timeout['success']);
+	pg_assert_same(lang('The BLIK payment was not approved in time. Please get a new code and try again.'), $timeout['error']);
+
+	$declined = $complete(array('status' => 'requires_payment_method', 'last_payment_error' => array('code' => 'payment_method_provider_decline', 'decline_code' => 'generic_decline', 'payment_method' => array('type' => 'blik'))));
+	pg_assert_same(lang('The BLIK payment was not approved. Please get a new code and try again, or choose another payment method.'), $declined['error'], 'not a card sentence');
+
+	$waiting = $complete(array('status' => 'requires_action', 'client_secret' => 'pi_3Abc_secret_Zz9', 'next_action' => array('type' => 'blik_authorize')));
+	pg_assert_false($waiting['success'], 'no waiting page twice');
+	pg_assert_same(lang('The BLIK payment was not approved in time. Please get a new code and try again.'), $waiting['error']);
+	pg_assert_same('', $waiting['html']);
+}
+
+// Another driver's answer or another method's next step never gets the page.
+function test_payment_stripe_blik_page_only_for_blik_authorize()
+{
+	$answer = pg_payment_answer('authorize', pg_payment_stripe_authorize_with(payment_stripe_methods_test_order(), 4714, payment_stripe_methods_test_blik_payment(), payment_stripe_methods_test_blik_settings(), payment_stripe_methods_test_http(array(
+		'POST /v1/payment_intents' => array(200, payment_stripe_methods_test_intent(array(
+			'currency'      => 'pln',
+			'status'        => 'requires_action',
+			'client_secret' => 'pi_9Other_secret_Zz9',
+			'next_action'   => array('type' => 'blik_authorize'),
+		))),
+	))));
+
+	pg_assert_false($answer['success'], 'a client secret of another intent');
+
+	$answer = pg_payment_answer('authorize', pg_payment_stripe_authorize_with(payment_stripe_methods_test_order(), 4714, array(
+		'token'      => 'ctoken_1Xyz',
+		'return_url' => 'https://shop.example/r',
+	), payment_stripe_methods_test_settings(), payment_stripe_methods_test_http(array(
+		'POST /v1/payment_intents' => array(200, payment_stripe_methods_test_intent(array(
+			'status'        => 'requires_action',
+			'client_secret' => 'pi_3Abc_secret_Zz9',
+			'next_action'   => array('type' => 'blik_authorize'),
+		))),
+	))));
+
+	pg_assert_false($answer['success'], 'the Payment Element path still refuses a step it cannot show');
+	pg_assert_same('', $answer['html']);
+}
+
+// The waiting page's script (assets/js/payment_hosted.js, the source): Stripe.js
+// waits with the client secret, then the page goes to the return address;
+// without Stripe.js it goes there at once. Skipped without Node.
+function test_payment_stripe_blik_waiting_page_script()
+{
+	if (!function_exists('exec')) {
+		return;
+	}
+
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		return;
+	}
+
+	$script = <<<'JS'
+var fs = require('fs');
+var source = fs.readFileSync(process.argv[2], 'utf8');
+var config = process.argv[3];
+
+function run(withStripe) {
+    var seen = { assigned: [], secret: null };
+    var node = {
+        getAttribute: function () { return config; },
+        querySelector: function () { return { textContent: '' }; }
+    };
+    var sandbox = {
+        setInterval: function () { return 1; }, clearInterval: function () {}, setTimeout: function () { return 1; },
+        location: { assign: function (url) { seen.assigned.push(url); } },
+        Promise: Promise
+    };
+    sandbox.window = sandbox;
+    sandbox.document = {
+        readyState: 'complete',
+        addEventListener: function () {},
+        querySelectorAll: function (selector) { return (selector === '[data-pg-payment-step]') ? [node] : []; }
+    };
+
+    if (withStripe) {
+        sandbox.Stripe = function (key) {
+            seen.key = key;
+            return { handleNextAction: function (options) { seen.secret = options.clientSecret; return Promise.resolve({ paymentIntent: { status: 'succeeded' } }); } };
+        };
+    }
+
+    new Function('window', 'document', 'setInterval', 'clearInterval', 'setTimeout', source)(sandbox, sandbox.document, sandbox.setInterval, sandbox.clearInterval, sandbox.setTimeout);
+
+    return seen;
+}
+
+var a = run(true);
+var b = run(false);
+
+setTimeout(function () { console.log(JSON.stringify({ stripe: a, none: b })); }, 10);
+JS;
+
+	$file = @tempnam(sys_get_temp_dir(), 'pgblik');
+
+	if ($file === false) {
+		return;
+	}
+
+	$html = pg_payment_stripe_blik_step_html(array('publishable_key' => 'pk_test_123', 'client_secret' => 'pi_3Abc_secret_Zz9', 'locale' => 'pl', 'return_url' => 'https://shop.example/pinegrap/express_order.php?mode=stripe_return&page_id=1023', 'script' => 'https://js.stripe.com/v3/', 'bundle' => ''));
+	pg_assert_same(1, preg_match('/data-pg-payment-step="([^"]*)"/', $html, $match));
+
+	file_put_contents($file, $script);
+	$out = array();
+	@exec('node ' . escapeshellarg($file) . ' ' . escapeshellarg(PG_FUNCTIONS_DIR . '/assets/js/payment_hosted.js') . ' ' . escapeshellarg(html_entity_decode($match[1], ENT_QUOTES, 'UTF-8')) . ' 2>&1', $out, $code);
+	@unlink($file);
+
+	$result = json_decode(implode("\n", $out), true);
+	pg_assert_true(($code === 0) && is_array($result), 'node ran: ' . implode("\n", $out));
+
+	pg_assert_same('pi_3Abc_secret_Zz9', $result['stripe']['secret']);
+	pg_assert_same('pk_test_123', $result['stripe']['key']);
+	pg_assert_same(array('https://shop.example/pinegrap/express_order.php?mode=stripe_return&page_id=1023'), $result['stripe']['assigned'], 'once, after Stripe.js answered');
+	pg_assert_same(array('https://shop.example/pinegrap/express_order.php?mode=stripe_return&page_id=1023'), $result['none']['assigned'], 'without Stripe.js: at once');
 }

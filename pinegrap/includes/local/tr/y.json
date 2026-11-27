@@ -752,6 +752,7 @@
     "Your author desk": "Yazar masanız",
     "Your baking class": "Fırın atölyeniz",
     "Your baking classes": "Pişirme atölyeleriniz",
+    "Your bank did not allow this BLIK payment. Please check your account or choose another payment method.": "Bankanız bu BLIK ödemesine izin vermedi. Lütfen hesabınızı kontrol edin ya da başka bir ödeme yöntemi seçin.",
     "Your bank did not approve the payment ({var:1}). Please check your card with your bank or try another card.": "Bankanız ödemeyi onaylamadı ({var:1}). Lütfen kartınızı bankanızla kontrol edin veya başka bir kartla deneyin.",
     "Your bank did not approve the payment. Please check your card with your bank or try another card.": "Bankanız ödemeyi onaylamadı. Lütfen kartınızı bankanızla kontrol edin veya başka bir kartla deneyin.",
     "Your basket": "Sepetiniz",

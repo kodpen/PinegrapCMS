@@ -8,9 +8,10 @@ module: payments
 - `pg_payment_stripe_methods()` in `includes/payments/stripe.php`: Stripe type => `label`, `currencies` (uppercase ISO), `immediate` (the result is known when the visitor is back), `hold` (can be held: manual capture), `step` (`redirect`).
 - `immediate` and `redirect`: `ideal`, `bancontact`, `eps` (EUR), `p24` (EUR, PLN), `klarna` (13 currencies), `afterpay_clearpay` (AUD, CAD, EUR, GBP, NZD, USD). Only `klarna` and `afterpay_clearpay` have `hold`.
 - `sepa_debit` (EUR): not `immediate`, `step` `element` (IBAN and mandate in the Payment Element); the order waits for its payment: `payment-stripe-later-result.md`.
+- `blik` (PLN): `step` `page`, never in the Payment Element; the checkout draws its code field and a waiting page: `payment-stripe-blik-deferred.md`.
 
 ## Which types are sent?
-- `pg_payment_stripe_method_types($currency, $settings, $recurring)`, pure: `card` (+ `link` with its switch), then each listed type switched on in `$settings['methods']` whose currencies hold `$currency`. Transaction type Authorize (`capture` `manual`) keeps only `hold` types. `$recurring` gives cards only.
+- `pg_payment_stripe_method_types($currency, $settings, $recurring)`, pure: `card` (+ `link` with its switch), then each listed type (but `step` `page`) switched on in `$settings['methods']` whose currencies hold `$currency`. Transaction type Authorize (`capture` `manual`) keeps only `hold` types. `$recurring` gives cards only.
 - `prepare_with()` (order `recurring`) and `authorize_with()` (payment `recurring`) both call it, so the Payment Element's `allowedPaymentMethodTypes` and the intent's `payment_method_types` agree; renewal and card update call it with `$recurring` true.
 - The currency is the site's base currency (`pg_payment_stripe_settings()['currency']`); the charge is never converted.
 
