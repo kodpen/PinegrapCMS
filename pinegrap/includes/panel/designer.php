@@ -551,6 +551,13 @@ function pg_panel_designer($request, $action)
             respond(pg_sketch_ai_request($request, $user));
             break;
 
+        // The plan of pages of the New design window's "Describe it"
+        // start: one Pinegrap AI call, nothing written on the server.
+        case 'site_plan':
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/site_plan.php');
+            respond(pg_site_plan_request($request, $user));
+            break;
+
         // Pages the "Select Page" picker may offer: every visual-designer
         // page not already on this design, with the design it belongs to
         // now so the picker can say what attaching it will change.
