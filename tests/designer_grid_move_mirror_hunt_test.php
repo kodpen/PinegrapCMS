@@ -143,3 +143,30 @@ JS
 	pg_assert_true($r['strip'], 'the mirror takes the tint out of its copy');
 	pg_assert_same(array(false, false, true), array($r['added'], $r['inside'], $r['page']), 'only the page\'s own changes draw the mirror again');
 }
+
+// On a right-to-left page a grid's first column is its right one: the
+// tint of an area stands over the cells the area holds there.
+function test_designer_gmm_hunt_tint_rtl()
+{
+	$r = designer_gmm_hunt_run('', array(), <<<'JS'
+var a = { name: 'side', c: 1, r: 2, w: 1, h: 1 };
+var cols = [100, 200, 300], rows = [50, 60];
+out = {
+	ltr: A.box(a, cols, rows, 10, 5, false, 620),
+	rtl: A.box(a, cols, rows, 10, 5, true, 620),
+	wide: A.box({ name: 'main', c: 2, r: 1, w: 2, h: 2 }, cols, rows, 10, 5, true, 620)
+};
+JS
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_same(array('x' => 0, 'y' => 55, 'w' => 100, 'h' => 60), $r['ltr'], 'left to right: column 1 at the left edge');
+	pg_assert_same(array('x' => 520, 'y' => 55, 'w' => 100, 'h' => 60), $r['rtl'], 'right to left: column 1 at the right edge');
+	pg_assert_same(array('x' => 0, 'y' => 0, 'w' => 510, 'h' => 115), $r['wide'], 'right to left: columns 2 and 3 to the left of it');
+
+	$part = designer_gmm_hunt_js('style_designer_grid.js');
+	pg_assert_true(strpos($part, "cs.direction === 'rtl'") !== false, 'the canvas tint reads the grid\'s direction');
+}

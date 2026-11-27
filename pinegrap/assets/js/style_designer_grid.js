@@ -803,14 +803,14 @@ StyleDesigner.definePart('grid', function (K) {
         var x0 = b.left + win.scrollX + parseFloat(cs.borderLeftWidth) + parseFloat(cs.paddingLeft);
         var y0 = b.top + win.scrollY + parseFloat(cs.borderTopWidth) + parseFloat(cs.paddingTop);
         var gx = parseFloat(cs.columnGap) || 0, gy = parseFloat(cs.rowGap) || 0;
-        var edge = function (list, gap, i) { var s = 0; for (var k = 0; k < i && k < list.length; k++) s += list[k] + gap; return s; };
+        // A right-to-left grid starts its columns at the right edge.
+        var rtl = cs.direction === 'rtl';
+        var cw = b.width - parseFloat(cs.borderLeftWidth) - parseFloat(cs.paddingLeft) - parseFloat(cs.borderRightWidth) - parseFloat(cs.paddingRight);
         var h = '';
         _ov.areas.forEach(function (a, i) {
             var t = _OV_TINTS[i % 6], hot = a.name === _ov.hot;
-            var x = x0 + edge(colsW, gx, a.c - 1), y = y0 + edge(rowsH, gy, a.r - 1);
-            var w = edge(colsW, gx, a.c - 1 + a.w) - gx - edge(colsW, gx, a.c - 1);
-            var hh = edge(rowsH, gy, a.r - 1 + a.h) - gy - edge(rowsH, gy, a.r - 1);
-            h += '<div style="position:absolute;left:' + x + 'px;top:' + y + 'px;width:' + Math.max(0, w) + 'px;height:' + Math.max(0, hh) +
+            var at = A.box(a, colsW, rowsH, gx, gy, rtl, cw);
+            h += '<div style="position:absolute;left:' + (x0 + at.x) + 'px;top:' + (y0 + at.y) + 'px;width:' + at.w + 'px;height:' + at.h +
                 'px;border-radius:8px;background:' + t + (hot ? '57' : '33') + ';outline:' + (hot ? '2px solid ' : '1.5px dashed ') + t +
                 ';outline-offset:-1px"><span style="position:absolute;right:6px;top:6px;height:19px;padding:0 7px;border-radius:5px;background:' + t +
                 ';color:#0b1220;font:600 11px/19px system-ui,sans-serif;white-space:nowrap;max-width:calc(100% - 12px);overflow:hidden;text-overflow:ellipsis">' +

@@ -19,6 +19,7 @@
  *   PGGridAreas.rect(a, b)                 // the rectangle between two cells
  *   PGGridAreas.fit(areas, cols, rows)     // { areas, cut: [names], gone: [names] }
  *   PGGridAreas.item(value)                // the area name a child's grid-area holds, '' none
+ *   PGGridAreas.box(area, colsW, rowsH, gapX, gapY, rtl, width) // where an area stands in the box, px
  *
  * Cells count from 1; an area is { name, c: column, r: row, w: width,
  * h: height }. `skip` is the index of an area left out of a check (the
@@ -152,13 +153,30 @@
         return out;
     }
 
+    // Where area `a` stands in a grid box's content, in px from its top
+    // left corner: `colsW` and `rowsH` the tracks' sizes, the gaps between
+    // them, and for a right-to-left grid (column 1 at the right edge) the
+    // content's `width`. { x, y, w, h }.
+    function box(a, colsW, rowsH, gapX, gapY, rtl, width) {
+        var edge = function (list, gap, i) {
+            var s = 0;
+            for (var k = 0; k < i && k < list.length; k++) s += list[k] + gap;
+            return s;
+        };
+        var x = edge(colsW, gapX, a.c - 1), y = edge(rowsH, gapY, a.r - 1);
+        var w = Math.max(0, edge(colsW, gapX, a.c - 1 + a.w) - gapX - x);
+        var h = Math.max(0, edge(rowsH, gapY, a.r - 1 + a.h) - gapY - y);
+        if (rtl) x = (Number(width) || 0) - x - w;
+        return { x: x, y: y, w: w, h: h };
+    }
+
     function item(value) {
         var v = String(value == null ? '' : value).trim();
         return NAME.test(v) && !KEYWORD.test(v) ? v : '';
     }
 
     var api = { CSS: CSS, ITEM: ITEM, MAX: MAX, parse: parse, build: build, count: count, nameError: nameError,
-        nextName: nextName, at: at, free: free, rect: rect, fit: fit, item: item };
+        nextName: nextName, at: at, free: free, rect: rect, fit: fit, item: item, box: box };
 
     root.PGGridAreas = api;
 
