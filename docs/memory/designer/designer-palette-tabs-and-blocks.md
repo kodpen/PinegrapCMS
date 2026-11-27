@@ -23,7 +23,7 @@ description: Designer palette Components tab with a Components / Blocks list swi
 - **The recents strip is in the Components list**; it writes there whichever list the item came from. Its head is a quiet label "Recently used" with the link "Clear" (`.sd-pal-label`), not a folding group head.
 
 ## How wide may the tab strip get?
-- `#sd-panel-tabs` is the palette's head: a tab holder with three words (Components, Shared, System) and the dock button, no title row above it (`designer-left-column-heads.md`). At 250 px the three words fit at 12.5 px; under 230 px a tab that is not open is its rail icon. Before adding a tab, measure whether titles are clipped (`scrollWidth > clientWidth`).
+- `#sd-panel-tabs` is the palette's head: a tab holder with three words (Components, Shared, System) and the dock button, no title row above it (`designer-left-column-heads.md`, #11973: the palette's and the Overview's title rows left, the list switch stays). At 250 px the three words fit at 12.5 px; under 230 px a tab that is not open is its rail icon. Before adding a tab, measure whether titles are clipped (`scrollWidth > clientWidth`).
 - Do not shorten a title to fix it: they are shared `_sdT()` keys.
 - Rail buttons derive from this strip, so the rail has no Blocks button: see docs/memory/designer/designer-sticky-panel-layout.md.
 
