@@ -167,7 +167,7 @@ JS
 	pg_assert_same(array('head' => 'Hell', 'tail' => 'orld', 'headBits' => array(0, 0, 0, 0), 'tailBits' => array(1, 1, 1, 1)), $result['selection'], 'a selection is taken out before the cut');
 	pg_assert_same(array('head' => 'Hi', 'tail' => '', 'headBits' => array(2, 2), 'tailBits' => array()), $result['end'], 'at the end the new paragraph is empty');
 	pg_assert_same(array('head' => '', 'tail' => 'Hi', 'headBits' => array(), 'tailBits' => array(4, 0)), $result['start'], 'at the start all goes on');
-	pg_assert_same(array(7, 6, 0, 2), $result['exact'], 'a base differing in every bit makes a save send each one');
+	pg_assert_same(array(15, 14, 8, 10), $result['exact'], 'a base differing in every bit and of an unknown colour, highlight and size makes a save send each one');
 }
 
 // What a unit test cannot type: each paragraph that may change is typed
