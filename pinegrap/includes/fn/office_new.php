@@ -85,16 +85,20 @@ function pg_office_new_bytes($kind)
         return '';
     }
 
-    $path = tempnam(sys_get_temp_dir(), 'pg_office_new_');
+    $reserved = tempnam(sys_get_temp_dir(), 'pg_office_new_');
 
-    if ($path === false) {
+    if ($reserved === false) {
         return '';
     }
 
-    // The writer makes the archive itself: an empty file in its place is no zip.
-    @unlink($path);
+    // The reserved file stays until the end and the archive goes beside it:
+    // on Windows tempnam() can hand a name that was just deleted to the
+    // writer's own temporary sheet file, and ZipArchive::close() then fails
+    // on the shared path.
+    $path = $reserved . '.' . $kind;
     $bytes = pg_office_new_write($kind, $path) ? (string) @file_get_contents($path) : '';
     @unlink($path);
+    @unlink($reserved);
 
     return $bytes;
 }

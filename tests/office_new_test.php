@@ -140,6 +140,22 @@ function test_office_new_bytes()
 	}
 }
 
+function test_office_new_bytes_repeated()
+{
+	// On Windows a deleted tempnam() name came back to the writer's sheet
+	// file and about one call in fifty gave no bytes; the loop shows the
+	// clash there and checks that no temporary file is left anywhere.
+	$before = count((array) glob(sys_get_temp_dir() . '/pg_office_new_*'));
+
+	for ($i = 0; $i < 40; $i++) {
+		foreach (array('xlsx', 'docx') as $kind) {
+			pg_assert_same('PK', substr(pg_office_new_bytes($kind), 0, 2), $kind . ' call ' . $i . ': a zip');
+		}
+	}
+
+	pg_assert_same($before, count((array) glob(sys_get_temp_dir() . '/pg_office_new_*')), 'no temporary file left');
+}
+
 function test_office_new_doors()
 {
 	$explorer = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');

@@ -19,7 +19,11 @@ module: office_new
 - Why the grid: the file window types only into rows a sheet holds (`pg_office_xlsx_patch_sheet()` refuses a missing row) and draws an empty sheet as a note; the head menus add rows and columns past it. The empty cells stay in the file after a save; spreadsheets read them as empty.
 - Document: [Content_Types], `_rels`, `word/document.xml` with one empty paragraph and an A4 page (2.5 cm margins), `styles.xml` (Normal, Calibri 11) and `settings.xml` (compatibility mode 15, no protection). Its paragraph is typed into at once; more paragraphs wait for OD3.
 
+## Why does pg_office_new_bytes() write beside its tempnam() file?
+- It keeps the `tempnam()` file until the end and writes the archive to `<name>.xlsx` / `<name>.docx` beside it, deleting both afterwards (PR fixing #12095).
+- Before, it deleted the reserved file and wrote to that path. On Windows `tempnam()` keeps only the `pg_` part of the prefix and can hand out a name just deleted, so `pg_xlsx_write_book()` put its temporary sheet file on the same path and `ZipArchive::close()` failed: about 1 in 50 calls gave '' and "New spreadsheet" in a channel had no file.
+
 ## How is it tested?
-- `tests/office_new_test.php`: names, the blank cell, both files read back by the preview as editable, a first edit saved and read back (also by `pg_sheet_rows()`), the doors. Checked by hand: openpyxl, python-docx and LibreOffice 24 open both. Not checked: Excel, Word, the screens in a browser.
+- `tests/office_new_test.php`: names, the blank cell, both files read back by the preview as editable, a first edit saved and read back (also by `pg_sheet_rows()`), the doors, 40 calls of each kind all zips with no temporary file left (the clash shows only on Windows). Checked by hand: openpyxl, python-docx and LibreOffice 24 open both. Not checked: Excel, Word, the screens in a browser.
 
 Related: docs/memory/platform/office-cell-edits.md, docs/memory/platform/office-paragraph-edits.md, docs/memory/workspace/workspace-office-edits.md, docs/memory/platform/office-overview.md
