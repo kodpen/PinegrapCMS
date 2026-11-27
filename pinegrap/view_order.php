@@ -2388,7 +2388,7 @@ if (!$_POST) {
                 <button type="submit" name="submit_create" value="Create" class="menu-item pg-link-body-emphasis" data-confirm-content="' . h(lang('An invoice is issued for this order from the ERP, with a number from the sales series. Continue?')) . '"><i class="bi bi-receipt me-3" aria-hidden="true"></i>' . lang('Issue the Invoice') . '</button>
             </form>', $output_erp_waybill);
             } else {
-                $output_erp_menu_items = array('<span class="menu-item disabled" aria-disabled="true" title="' . h(lang('No walk-in sales account is named on the ERP settings card, so this sale cannot be invoiced unless a customer is picked.')) . '"><i class="bi bi-receipt me-3" aria-hidden="true"></i>' . lang('Issue the Invoice') . '</span>');
+                $output_erp_menu_items = array('<span class="menu-item disabled" aria-disabled="true" title="' . h(lang('No walk-in sales account is named in Site Settings › Accounting › Sales, so this sale cannot be invoiced unless a customer is picked.')) . '"><i class="bi bi-receipt me-3" aria-hidden="true"></i>' . lang('Issue the Invoice') . '</span>');
             }
         }
     }

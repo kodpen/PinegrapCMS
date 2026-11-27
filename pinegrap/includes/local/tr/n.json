@@ -2730,6 +2730,7 @@
     "No volunteer had a shift or hours in this period.": "Bu dönemde hiçbir gönüllünün vardiyası ya da saati yok.",
     "No votes yet": "Henüz oy yok",
     "No vouchers on sale online right now: ask in the shop.": "Şu an çevrim içi satışta hediye çeki yok: dükkâna sorun.",
+    "No walk-in sales account is named in Site Settings › Accounting › Sales, so this sale cannot be invoiced unless a customer is picked.": "Site Ayarları › Muhasebe › Satış bölümünde sıcak satış carisi tanımlı değil; müşteri seçilmezse bu satış faturalanamaz.",
     "No walk-in sales account is named on the ERP settings card, so this sale cannot be invoiced unless a customer is picked.": "ERP ayar kartında sıcak satış carisi tanımlı değil; müşteri seçilmezse bu satış faturalanamaz.",
     "No warning": "Uyarı yok",
     "No way to send e-mail is set": "E-posta gönderme yolu ayarlanmamış",

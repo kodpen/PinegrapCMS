@@ -154,7 +154,7 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
                     </div>
                     <div class="form-text">' . h((defined('ERP_OVERDUE_NOTIFY_CUSTOMER') && ERP_OVERDUE_NOTIFY_CUSTOMER)
                         ? lang('Goes to the account\'s e-mail address under Contact Information. Switch it off for a customer who asked not to be written to.')
-                        : lang('Reminder e-mails to customers are switched off on the ERP settings card; this choice takes effect once they are on.')) . '</div>
+                        : lang('Reminder e-mails to customers are switched off in Site Settings › Accounting › Reminders and notices; this choice takes effect once they are on.')) . '</div>
                 </div>
             </div>' . (waf_table_has_column('erp_accounts', 'lead_days') ? '
             <div class="row">
@@ -184,7 +184,7 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
                     </div>
                     <div class="form-text">' . h((function_exists('erp_mail_auto_on') && erp_mail_auto_on())
                         ? lang('Each issued invoice goes to the account by e-mail. Switch it off for a customer who does not want them; an invoice can still be sent from its own screen.')
-                        : lang('Sending invoices on their own is switched off on the ERP settings card; this choice takes effect once it is on. An invoice can always be sent from its own screen.')) . '</div>
+                        : lang('Sending invoices on their own is switched off in Site Settings › Accounting › Web orders; this choice takes effect once it is on. An invoice can always be sent from its own screen.')) . '</div>
                 </div>
             </div>' : '') . ((function_exists('erp_credit_ready') && erp_credit_ready()) ? '
             <div class="row">
