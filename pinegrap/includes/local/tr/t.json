@@ -6500,6 +6500,7 @@
     "The phone preview has ended.": "Telefon önizlemesi sonlandırıldı.",
     "The phone shows the pages as last saved and redraws after each save.": "Telefon sayfaları en son kaydedildiği hâliyle gösterir ve her kayıttan sonra yeniden çizer.",
     "The phone, in the colour and size you chose": "Seçtiğiniz renk ve boyutta telefon",
+    "The photo could not be placed.": "Fotoğraf yerleştirilemedi.",
     "The photo could not be sent as a canvas.": "Fotoğraf tuval olarak gönderilemedi.",
     "The photo is larger than {var:1} MB, the most a Workspace file may be, so it cannot be sent as a canvas.": "Fotoğraf {var:1} MB'tan büyük, bir Workspace dosyasının olabileceği en büyük boyut bu; bu yüzden tuval olarak gönderilemez.",
     "The photo of the cards and the share image.": "Kartların fotoğrafı ve paylaşım görseli.",

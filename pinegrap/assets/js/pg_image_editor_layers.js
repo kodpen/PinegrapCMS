@@ -90,6 +90,11 @@
                     resolve(img);
                 };
                 img.onerror = reject;
+                // An Unsplash photo is kept by its address on another host:
+                // asked with CORS, a save's canvas can still read it.
+                if (M.corsPicture(src)) {
+                    img.crossOrigin = 'anonymous';
+                }
                 img.src = src;
             });
         }

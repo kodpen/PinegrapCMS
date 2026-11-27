@@ -14450,6 +14450,53 @@
     var FRAMES = { FRAME_ZOOM: FRAME_ZOOM, frameShapes: frameShapes, frameLayer: frameLayer, frameClear: frameClear, frameFill: frameFill,
         frameFit: frameFit, frameMove: frameMove, frameZoom: frameZoom };
 
+    // ---- From Unsplash (pg_image_editor_unsplash.js) ----
+
+    // A picked photo (pgUnsplash.pure.photo()) as a picture layer in the
+    // middle of the view, at most 60 % of it, w x h its loaded size. The layer
+    // keeps the returned address, not a files row, and the photographer's
+    // credit, as the Unsplash API guidelines ask; null without a photo.
+    function unsplashLayer(info, w, h, vr) {
+        if (!info || (typeof info.src !== 'string') || !(w > 0) || !(h > 0)) {
+            return null;
+        }
+
+        var fit = Math.min(1, 0.6 * vr.w / w, 0.6 * vr.h / h), lw = w * fit, lh = h * fit;
+        var layer = {
+            type: 'image', src: info.src, x: vr.x + (vr.w - lw) / 2, y: vr.y + (vr.h - lh) / 2, w: lw, h: lh, rot: 0, opacity: 1,
+            credit: { source: 'unsplash', name: String(info.name || ''), profile: String(info.profile || ''), page: String(info.page || '') }
+        };
+
+        if (info.alt) {
+            layer.alt = String(info.alt);
+        }
+
+        return layer;
+    }
+
+    // A picture layer's credit as its panel may show it: an Unsplash one
+    // with a name and both links on unsplash.com, else null.
+    function pictureCredit(l) {
+        var c = l && l.credit, on = function (href) {
+            return (typeof href === 'string') && /^https:\/\/unsplash\.com(\/|\?|$)/.test(href);
+        };
+
+        if (!c || (c.source !== 'unsplash') || (typeof c.name !== 'string') || (c.name.trim() === '') || !on(c.profile) || !on(c.page)) {
+            return null;
+        }
+
+        return { source: 'unsplash', name: c.name, profile: c.profile, page: c.page };
+    }
+
+    // Whether a picture is loaded asking for CORS: Unsplash's host answers
+    // it, so a save's canvas can read the pixels; anything else is loaded as
+    // before (a host without CORS would not load at all).
+    function corsPicture(src) {
+        return (typeof src === 'string') && (src.indexOf('https://images.unsplash.com/') === 0);
+    }
+
+    var UNSPLASH = { unsplashLayer: unsplashLayer, pictureCredit: pictureCredit, corsPicture: corsPicture };
+
     var api = {
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,
         flipRot: flipRot, coverScale: coverScale, fitZoom: fitZoom, centred: centred, fitView: fitView, zoomAt: zoomAt,
@@ -14467,7 +14514,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, FOLLOW, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU, VIDEO, SOUND, CLIP, MIX, UPLOAD, PHONE, GROUP, ATTACH, DATA, SEND, SITECOLORS, TEXTSTYLES, ELEMENTS, STARTS, RESIZE, FRAMES].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, FOLLOW, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU, VIDEO, SOUND, CLIP, MIX, UPLOAD, PHONE, GROUP, ATTACH, DATA, SEND, SITECOLORS, TEXTSTYLES, ELEMENTS, STARTS, RESIZE, FRAMES, UNSPLASH].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');
