@@ -276,6 +276,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_accounting_sync();         // 11.0.284
 	upgrade_2026_11_0_product_tax_class();       // 11.0.285
 	upgrade_2026_11_0_markets();                 // 11.0.286
+	upgrade_2026_11_0_order_item_tax_country();  // 11.0.287
 
 }
 
@@ -9769,5 +9770,42 @@ function upgrade_2026_11_0_markets() {
 	}
 
 	install_note('Markets: a set of countries can be sold to in its own currency, set up under Commerce > Markets. Nothing changes until a market is made.');
+
+}
+
+
+// 11.0.287 - The EU member state an order line was taxed in
+// (order_items.tax_country), written by the checkout with the line's tax and
+// rate (update_order_item_taxes()): the address that taxed the line, the
+// recipient's or else the billing one, when it is in an EU member state; ''
+// for a line taxed elsewhere, an exempt order or tax switched off. NULL on a
+// line stored before this step and on lines of the doors that do not decide a
+// buyer's country (counter sale, renewal, marketplace import): the
+// one-stop-shop report (includes/fn/tax_oss_report.php) shows those apart,
+// their country taken from the addresses. No stored line is rewritten. Added
+// in place where the server allows it, the step runs twice without a change.
+function upgrade_2026_11_0_order_item_tax_country() {
+
+	$columns = array(
+		'tax_country' => "CHAR(2) NULL DEFAULT NULL",
+	);
+
+	if (!install_add_columns_instant('order_items', $columns)) {
+
+		foreach ($columns as $column => $definition) {
+
+			if (install_pass_spent() && !install_column_exists('order_items', $column)) {
+
+				install_pause(lang(array('string' => 'order_items: the taxed country is being added; {var:1} follows in the next pass', 'vars' => $column)));
+
+			}
+
+			install_add_column('order_items', $column, $definition);
+
+		}
+
+	}
+
+	install_note('Orders: each order line now keeps the EU member state it was taxed in, for the One-Stop Shop Report under Commerce. Lines of earlier orders are shown apart there.');
 
 }

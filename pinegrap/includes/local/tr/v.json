@@ -3,6 +3,7 @@
     "VAT": "KDV",
     "VAT %": "KDV %",
     "VAT (currency)": "KDV (para birimi)",
+    "VAT ({var:1})": "KDV ({var:1})",
     "VAT (₺)": "KDV (₺)",
     "VAT = Subtotal * 20%": "KDV = Ara toplam * 20%",
     "VAT Amount": "KDV Tutarı",

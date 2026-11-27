@@ -1,6 +1,6 @@
 ---
 name: import-decisions
-description: Why the content importers (WordPress, WooCommerce, Shopify) are built as they are: tables, nothing overwritten, readers on fixtures, reused writers, authors, what stays out
+description: Why the content importers (WordPress, WooCommerce, Shopify, Squarespace, Webflow, Wix) are built as they are: tables, nothing overwritten, readers on fixtures, reused writers, authors, what stays out
 ---
 
 ## Why an import framework and not one screen per source?
@@ -14,6 +14,10 @@ description: Why the content importers (WordPress, WooCommerce, Shopify) are bui
 
 ## Why are readers pure and tested on fixtures?
 - Exports vary by plugin and version; nothing is guessed from a live site. `tests/fixtures/import/` keeps a WXR (posts, pages, attachments, comments, a custom post type), a WooCommerce CSV with variations, Shopify products with options and a customers file.
+- Site builders (owner, 2026-11-27, poll 246, `workflow/decisions-made-product-117.md`): each fixture is built from the columns the service documents, and the PR says it is not a real export (`import-sources.md`).
+
+## Why does an importer read files only?
+- Squarespace, Webflow and Wix came in as readers of their owner's export files, never a sign-in to the service; their look and pages by address are Import My Site (`import-design-fetch.md`), which the import screen names.
 
 ## Why are the existing writers reused?
 - The product import keeps its screen; its row writer and price reader are shared, not copied (`import-woocommerce.md`). Media goes through `pg_curl_run()` with the upload caps and the stored-name rule (`import-media.md`); a failed fetch leaves its text and a note, never a broken row.

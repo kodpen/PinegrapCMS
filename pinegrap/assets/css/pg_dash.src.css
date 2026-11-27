@@ -5650,6 +5650,14 @@
     color: var(--pgd-good);
   }
 
+  /* "Make your site from a description": a row of its own under the
+     steps, set off by a line, since it is not a step. */
+  .pg-dash-launch-describe {
+    margin-top: .5rem;
+    padding-top: .5rem;
+    border-top: 1px solid var(--pgd-line);
+  }
+
   /* The foot: "Ready to go live?" or the go-live time. */
   .pg-dash-launch-foot {
     display: flex;

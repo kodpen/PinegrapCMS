@@ -444,7 +444,55 @@ if (!$translations_is_import && !$translations_is_export) {
                 $accept_message .= ' ' . lang(array('string' => '{var:1} text(s) were skipped because their source contains markup that cannot be kept as written; translate them by hand.', 'vars' => array($accepted['changed'])));
             }
 
-            translations_respond(array('status' => 'success', 'count' => $accepted['written'], 'kept' => $accepted['kept'], 'changed' => $accepted['changed'], 'message' => $accept_message));
+            translations_respond(array('status' => 'success', 'count' => $accepted['written'], 'kept' => $accepted['kept'], 'changed' => $accepted['changed'], 'ids' => $accepted['ids'], 'message' => $accept_message));
+            break;
+
+        // "Approve" of the selection bar: the ticked machine translations
+        // marked as reviewed; a pending or reviewed text is left as it is.
+        case 'approve':
+            $string_ids = pg_tr_screen_string_ids(isset($request['string_ids']) ? $request['string_ids'] : null);
+
+            if (!$string_ids || ($language === '')) {
+                translations_respond(array('status' => 'error', 'message' => lang('Invalid request.')));
+            }
+
+            $marked = pg_tr_screen_approve($language, $string_ids, (int) $user['id']);
+
+            if ($marked) {
+                log_activity(lang(array('string' => 'machine translations were marked as reviewed ({var:1}, {var:2} text(s))', 'vars' => array($language, count($marked)))), $_SESSION['sessionusername']);
+            }
+
+            translations_respond(array('status' => 'success', 'count' => count($marked), 'ids' => $marked, 'message' => lang(array('string' => '{var:1} translation(s) marked as reviewed.', 'vars' => array(count($marked))))));
+            break;
+
+        // "Translate again" of the selection bar or a row's details: the
+        // ticked texts' translations deleted (the reviewed ones only when
+        // the dialog says so) and sent to the language's engine in a job,
+        // which the screen then follows as it follows "Translate pending".
+        case 'again':
+            $scope = isset($request['scope']) ? (string) $request['scope'] : 'all';
+            $string_ids = pg_tr_screen_string_ids(isset($request['string_ids']) ? $request['string_ids'] : null);
+
+            if (!$string_ids || ($language === '') || !preg_match('/^(all|page:\d+|group:[a-z]+)$/', $scope)) {
+                translations_respond(array('status' => 'error', 'message' => lang('Invalid request.')));
+            }
+
+            $engine = isset($request['engine']) ? (string) $request['engine'] : '';
+            $again = pg_tr_screen_translate_again($language, $scope, $string_ids, !empty($request['reviewed']), (int) $user['id'], $engine);
+
+            if (!$again['ok']) {
+                translations_respond(array('status' => 'error', 'message' => $again['error']));
+            }
+
+            if ($again['job_id']) {
+                log_activity(lang(array('string' => 'translations were updated ({var:1}, {var:2} text(s) sent)', 'vars' => array($language, $again['pending']))), $_SESSION['sessionusername']);
+            }
+
+            $again['message'] = $again['kept']
+                ? lang(array('string' => '{var:1} text(s) sent to the engine again; {var:2} reviewed translation(s) left as they were.', 'vars' => array($again['pending'], count($again['kept']))))
+                : lang(array('string' => '{var:1} text(s) sent to the engine again.', 'vars' => array($again['pending'])));
+
+            translations_respond(array('status' => 'success') + $again);
             break;
 
         // The translations of the scope deleted, so the next update sends
@@ -452,6 +500,23 @@ if (!$translations_is_import && !$translations_is_export) {
         case 'clear':
             $scope = isset($request['scope']) ? (string) $request['scope'] : 'all';
             $with_reviewed = !empty($request['reviewed']);
+
+            // "Clear" of the selection bar: the ticked texts only.
+            if (isset($request['string_ids'])) {
+                $string_ids = pg_tr_screen_string_ids($request['string_ids']);
+
+                if (!$string_ids || ($language === '')) {
+                    translations_respond(array('status' => 'error', 'message' => lang('Invalid request.')));
+                }
+
+                $cleared = pg_tr_screen_clear($language, $string_ids, $with_reviewed);
+
+                if ($cleared) {
+                    log_activity(lang(array('string' => 'translations were cleared ({var:1}, {var:2}, {var:3} text(s))', 'vars' => array($language, $scope, count($cleared)))), $_SESSION['sessionusername']);
+                }
+
+                translations_respond(array('status' => 'success', 'count' => count($cleared), 'ids' => $cleared, 'message' => lang(array('string' => '{var:1} translation(s) deleted.', 'vars' => array(count($cleared))))));
+            }
 
             if (!preg_match('/^(all|page:\d+|group:[a-z]+)$/', $scope) || ($language === '')) {
                 translations_respond(array('status' => 'error', 'message' => lang('Invalid request.')));

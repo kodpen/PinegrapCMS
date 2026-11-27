@@ -860,7 +860,21 @@ function pg_tr_reviewed_kept($string_id, $language, $status, $force = false)
         return false;
     }
 
-    return (db_value("SELECT status FROM translations WHERE string_id = '" . ((int) $string_id) . "' AND language = '" . e($language) . "' LIMIT 1") === 'reviewed');
+    return pg_tr_reviewed_kept_status(db_value("SELECT status FROM translations WHERE string_id = '" . ((int) $string_id) . "' AND language = '" . e($language) . "' LIMIT 1"), $status, $force);
+}
+
+/**
+ * pg_tr_reviewed_kept()'s rule on a status already read: a machine write
+ * leaves a reviewed translation as it is unless forced.
+ *
+ * @param string|null $current the stored status, null when there is none
+ * @param string      $status  machine | reviewed, as it would be written
+ * @param bool        $force
+ * @return bool
+ */
+function pg_tr_reviewed_kept_status($current, $status, $force = false)
+{
+    return !$force && ($status !== 'reviewed') && ($current === 'reviewed');
 }
 
 /**

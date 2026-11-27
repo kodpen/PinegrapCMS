@@ -435,3 +435,15 @@ function test_launch_journey_report()
 	pg_assert_same(0, $none['live_at']);
 	pg_assert_same(array(), $none['blockers']);
 }
+
+function test_launch_journey_describe_line()
+{
+	$line = pg_launch_journey_describe_line('');
+	pg_assert_true(is_array($line), 'offered while Pinegrap AI can write');
+	pg_assert_same('view_system_styles.php?start=describe', $line['url'], 'opens the New design window on Describe it');
+	pg_assert_same('bi-stars', $line['icon'], 'the start\'s own icon');
+	pg_assert_true(($line['name'] !== '') && ($line['line'] !== '') && ($line['go'] !== ''), 'named');
+
+	pg_assert_same(null, pg_launch_journey_describe_line('Pinegrap AI is not set up.'), 'left out without Pinegrap AI');
+	pg_assert_same(null, pg_launch_journey_describe_line(null), 'an unknown answer leaves it out');
+}

@@ -578,9 +578,31 @@ function pg_tr_update($language, $scope, $user_id = 0, $engine = '', $from = -1)
         return $result;
     }
 
-    $job_id = pg_tr_job_create($language, $engine, $scope, $pending, $user_id);
-    $result['job_id'] = $job_id;
-    $result['finished'] = false;
+    return pg_tr_job_open($language, $engine, $spec, $scope, $pending, $user_id) + $result;
+}
+
+/**
+ * Opens a job of the given texts for an engine that is ready and hands it
+ * over as its kind wants: Claude's routine is told of it, a browser job is
+ * marked sent, a server job waits for its run calls.
+ *
+ * @param string $language
+ * @param string $engine
+ * @param array  $spec     pg_tr_engine($engine)
+ * @param string $scope
+ * @param array  $string_ids
+ * @param int    $user_id
+ * @return array job_id, job, finished, error, and queue for Claude
+ */
+function pg_tr_job_open($language, $engine, $spec, $scope, $string_ids, $user_id = 0)
+{
+    $job_id = pg_tr_job_create($language, $engine, $scope, $string_ids, $user_id);
+    $result = array('job_id' => $job_id, 'finished' => ($job_id === 0), 'error' => '');
+
+    if (!$job_id) {
+        $result['job'] = null;
+        return $result;
+    }
 
     if ($spec['kind'] === 'queue') {
         // The job waits for the routine; busy or held, the scheduled job

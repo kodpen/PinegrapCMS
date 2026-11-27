@@ -123,3 +123,31 @@ function test_translations_row_refusal_keys_and_details()
 	pg_assert_contains("pg_tr_screen_details(\$string_id, \$language)", $action, 'reads the text\'s details');
 	pg_assert_false(strpos($action, "in_array(\$editor_action, array('node', 'save', 'status', 'details')") !== false, 'not offered to a user limited to a page');
 }
+
+// The selection (TS3): a tick on every row, the bar's actions answered with
+// the ids they changed and applied to the rows in place, none of them
+// offered to a user limited to a page.
+function test_translations_selection_bar()
+{
+	$root = dirname(__DIR__) . '/pinegrap/';
+	$js = file_get_contents($root . 'assets/js/translations.js');
+	$screen = file_get_contents($root . 'translations.php');
+	$action = file_get_contents($root . 'translations_action.php');
+
+	pg_assert_contains('<input class="check pg-tr-pick" type="checkbox" value="\' . $row_id . \'"', $screen, 'every row has a tick');
+	pg_assert_false(strpos($screen, 'pg-tr-pick-spacer') !== false, 'a reviewed row is not left without one');
+	pg_assert_contains('id="pg_tr_selbar"', $screen, 'the bar');
+	pg_assert_contains('id="pg_tr_again_modal"', $screen, 'the "Translate again" dialog');
+	pg_assert_contains('id="pg_tr_clear_picked_modal"', $screen, 'the "Clear" dialog');
+
+	foreach (array('approve', 'again') as $name) {
+		pg_assert_contains("case '" . $name . "':", $action, 'the ' . $name . ' action');
+		pg_assert_contains("action: '" . $name . "'", $js, 'the bar calls ' . $name);
+	}
+
+	pg_assert_contains("string_ids: rowIds(rows), reviewed: clearPickedReviewed.checked ? 1 : 0", $js, 'Clear sends the ticked ids');
+	pg_assert_contains("rowsOf(data.ids).forEach(rowCleared);", $js, 'cleared rows turn pending in place');
+	pg_assert_contains("rowsOf(data.sent).forEach(rowCleared);", $js, 'texts sent again turn pending in place');
+	pg_assert_contains("'ids' => \$accepted['ids']", $action, 'keep as in the source names what it wrote');
+	pg_assert_true((bool) preg_match("/in_array\\(\\\$editor_action, array\\('node', 'save', 'status'\\), true\\)/", $action), 'a user limited to a page has the editor\'s three calls only');
+}

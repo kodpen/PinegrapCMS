@@ -623,10 +623,8 @@ foreach ($rows as $row) {
     // source and the translation and is read when first opened.
     $output_rows .= '
             <div class="pg-tr-row" data-string-id="' . $row_id . '" data-format="' . h($row['format']) . '" data-state="' . h($state) . '">
-                <div class="pg-tr-tick">'
-                    // A reviewed translation is not offered for "keep as
-                    // in the source": the action leaves it as it is.
-                    . (($state !== 'reviewed') ? '<input class="check pg-tr-pick" type="checkbox" value="' . $row_id . '" aria-label="' . h(lang('Select this text')) . '"/>' : '<span class="pg-tr-pick-spacer"></span>') . '
+                <div class="pg-tr-tick">
+                    <input class="check pg-tr-pick" type="checkbox" value="' . $row_id . '" aria-label="' . h(lang('Select this text')) . '"/>
                 </div>
                 <div class="pg-tr-src min-w-0">
                     <div class="pg-tr-source pg-tr-clamp' . (($row['format'] === 'inline') ? ' pg-tr-inline' : '') . '" id="pg_tr_source_' . $row_id . '"' . $text_lang($source) . '>' . h($row['source_text']) . '</div>
@@ -854,26 +852,36 @@ if ($index_watch && $selected_page) {
     $output_index_note .= '</div>';
 }
 
-// "Keep as in the source": the selected texts get their source text as the
-// translation, approved. Offered while a listed text is not reviewed yet.
-$accept_offered = false;
+// The selection: a tick on every row, "Select all on this page" above the
+// rows, and the bar that rises at the foot of the list once a row is ticked
+// with what can be done to the ticked texts. "Translate again" needs an
+// engine to send to: with "By hand" or an engine not ready it says why.
+$again_reason = ($engine['kind'] === 'panel')
+    ? lang('This language is translated by hand: there is no engine to send the texts to.')
+    : ($engine['ready'] ? '' : (string) $engine['reason']);
 
-foreach ($rows as $row) {
-    if (($row['text'] === null) || ((string) $row['status'] !== 'reviewed')) {
-        $accept_offered = true;
-        break;
-    }
-}
-
-$output_bulk = $accept_offered ? '<div class="d-flex flex-wrap align-items-center gap-3 py-3 border-bottom pg-tr-bulk">
-                            <div class="form-field mb-0">
-                                <input class="check pg-tr-pick-all" type="checkbox" id="pg_tr_pick_all"/>
-                                <label class="small" for="pg_tr_pick_all">' . lang('Select all on this page') . '</label>
-                            </div>
-                            <button type="button" class="pg-button pg-button-quiet pg-button-sm no-popover" id="pg_tr_accept_source" disabled="disabled" data-bs-toggle="tooltip" title="' . h(lang('A name, a code, a word that reads the same in both languages: the source text is approved as the translation')) . '">
-                                <i class="bi bi-check2-square" aria-hidden="true"></i>' . lang('Keep as in the source and approve') . ' <span class="opacity-75 pg-tr-pick-count">0</span>
-                            </button>
+$output_bulk = $rows ? '<div class="pg-tr-bulk">
+                            <input class="check pg-tr-pick-all" type="checkbox" id="pg_tr_pick_all"/>
+                            <label class="mb-0" for="pg_tr_pick_all">' . lang('Select all on this page') . '</label>
                         </div>' : '';
+
+$output_selection_bar = $rows ? '<div class="pg-tr-selbar-wrap">
+                        <div class="pg-tr-selbar" id="pg_tr_selbar" role="region" aria-label="' . h(lang('Selected texts')) . '" hidden>
+                            <span class="pg-tr-selbar-count" aria-live="polite"></span>
+                            <button type="button" class="pg-button pg-button-quiet pg-button-sm no-popover pg-tr-sel-approve" title="' . h(lang('Approve')) . '"><i class="bi bi-check2" aria-hidden="true"></i><span class="pg-tr-selbar-label">' . lang('Approve') . '</span></button>
+                            <button type="button" class="pg-button pg-button-quiet pg-button-sm no-popover pg-tr-sel-again" title="' . h(($again_reason !== '') ? $again_reason : lang('Translate again')) . '"' . (($again_reason !== '') ? ' disabled="disabled"' : '') . '><i class="bi bi-arrow-repeat" aria-hidden="true"></i><span class="pg-tr-selbar-label">' . lang('Translate again') . '</span></button>
+                            <button type="button" class="pg-button pg-button-quiet pg-button-sm no-popover pg-tr-sel-keep pg-tr-selbar-wide"><i class="bi bi-check2-square" aria-hidden="true"></i>' . lang('Keep as in the source and approve') . '</button>
+                            <button type="button" class="pg-button pg-button-ghost pg-button-sm no-popover pg-tr-sel-clear pg-tr-selbar-wide">' . lang('Clear') . '</button>
+                            <div class="pg-menu-wrap pg-tr-selbar-narrow">
+                                <button class="pg-icon-button pg-icon-button-sm no-popover" type="button" data-bs-toggle="menu" data-bs-placement="top-end" aria-expanded="false" aria-label="' . h(lang('More')) . '"><i class="bi bi-three-dots" aria-hidden="true"></i></button>
+                                <ul class="menu pg-menu-end">
+                                    <li><button type="button" class="menu-item pg-tr-sel-keep"><i class="bi bi-check2-square me-3" aria-hidden="true"></i>' . lang('Keep as in the source and approve') . '</button></li>
+                                    <li><button type="button" class="menu-item pg-tr-sel-clear"><i class="bi bi-eraser me-3" aria-hidden="true"></i>' . lang('Clear') . '</button></li>
+                                </ul>
+                            </div>
+                            <button type="button" class="pg-icon-button pg-icon-button-sm no-popover pg-tr-sel-none" title="' . h(lang('Take the ticks off')) . '" aria-label="' . h(lang('Take the ticks off')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+                        </div>
+                    </div>' : '';
 
 $config = array(
     'action_url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/translations_action.php',
@@ -882,6 +890,7 @@ $config = array(
     'source'     => $source,
     'engine'     => $engine_key,
     'engine_ready' => (bool) $engine['ready'],
+    'engine_label' => (string) $engine['label'],
     // What the browser's language model is told before the texts: the
     // session is made in the click itself, before the first package.
     'ai_instructions' => (($engine_key === 'chrome_ai') || ($open_job && ($open_job['engine'] === 'chrome_ai'))) ? pg_tr_ai_instructions($source, $language, 'item') : '',
@@ -935,6 +944,10 @@ $config = array(
         'details_more'      => lang('and {var} more'),
         'details_unused'    => lang('No page shows it now.'),
         'keep_source'       => lang('Keep as in the source and approve'),
+        'again'             => lang('Translate again'),
+        'again_count'       => lang('{var} text(s) will be sent to {var2} again.'),
+        'again_reason'      => $again_reason,
+        'selected'          => lang('{var} selected'),
         'show_all'          => lang('Show all'),
         'show_less'         => lang('Show less'),
     ),
@@ -992,6 +1005,21 @@ echo pg_page_shell(array(
         .pg-tr-state { flex-direction: row; flex-wrap: wrap; align-items: center; padding-top: 0; gap: 8px; }
         .pg-tr-acts { margin: 0 0 0 auto; gap: 6px; }
         .pg-tr-details { grid-template-columns: minmax(0, 1fr); margin-top: 0; }
+    }
+    /* The selection: "Select all on this page" above the rows, and the bar
+       that rises at the foot of the list once a row is ticked and stays at
+       the lower edge of the window while the list scrolls. */
+    .pg-tr-bulk { display: flex; align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--pg-border-color); font-size: var(--pg-text-2); color: var(--pg-fg-2); }
+    .pg-tr-selbar-wrap { position: sticky; bottom: 0; z-index: 3; padding-top: 2px; }
+    .pg-tr-selbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; width: max-content; max-width: 100%; min-height: 48px; margin: 0 auto 12px; padding: 6px 9px 6px 16px; border-radius: 14px; background: var(--pg-surface-float); box-shadow: inset 0 0 0 1px var(--pg-accent), var(--pg-shadow-float); font-size: var(--pg-text-2); }
+    .pg-tr-selbar[hidden] { display: none; }
+    .pg-tr-selbar-count { margin-right: 6px; font-weight: var(--pg-weight-strong); white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .pg-tr-selbar-narrow { display: none; }
+    /* On a phone "Approve" and "Translate again" are icons; the rest goes
+       under "More". */
+    @media (max-width: 767.98px) {
+        .pg-tr-selbar-label, .pg-tr-selbar-wide { display: none; }
+        .pg-tr-selbar-narrow { display: block; }
     }
     .pg-tr-progress { display: none; }
     .pg-tr-progress.show { display: block; }
@@ -1128,7 +1156,7 @@ echo pg_page_shell(array(
                     </div>
                     <div class="card-body pt-0">' . $output_index_note . (($group === 'ui') ? '<div class="small fg-secondary py-3 border-bottom"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . lang('The texts of the cookie window: the notice, its settings and what each cookie is for. This language has no language file, so the window is translated here; until a text is translated, the English wording is shown. The rest of the software\'s wording is not translated here.') . '</div>' : '')
                         . (($group === 'pictures') ? '<div class="small fg-secondary py-3 border-bottom"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . lang('The texts of pictures made in the Artifact Canvas whose words are text layers. A picture is listed once a page that shows it is saved in the Visual Page Editor or opened in another language; a photo or an uploaded picture whose words are in its pixels is not. Once all of a language\'s texts are translated, its picture is drawn by itself: by an open panel, or, with nobody in the panel, by the server where it can. "Draw the waiting pictures" draws them now.') . '</div>' : '')
-                        . $output_bulk . $output_rows . '
+                        . $output_bulk . $output_rows . $output_selection_bar . '
                         ' . ($output_pagination !== '' ? '<div class="d-flex justify-content-center pt-5">' . $output_pagination . '</div>' : '') . '
                     </div>
                 </div>
@@ -1228,6 +1256,42 @@ echo pg_page_shell(array(
                     <div class="dialog-footer">
                         <button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="dialog">' . lang('Cancel') . '</button>
                         <button type="button" class="pg-button pg-button-fill pg-tr-accept-go"><i class="bi bi-check2-square" aria-hidden="true"></i>' . lang('Approve') . '</button>
+                    </div>
+        </dialog>
+        <dialog class="dialog" id="pg_tr_again_modal" aria-labelledby="pg_tr_again_modal_title">
+                    <div class="dialog-header">
+                        <h5 class="dialog-title" id="pg_tr_again_modal_title">' . lang('Translate again') . '</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
+                    </div>
+                    <div class="dialog-body">
+                        <p class="fw-semibold pg-tr-again-count"></p>
+                        <div class="form-field mb-1">
+                            <input value="1" class="check pg-tr-again-reviewed" type="checkbox" id="pg_tr_again_reviewed"/>
+                            <label class="" for="pg_tr_again_reviewed">' . lang('Replace the reviewed ones as well') . ' <span class="opacity-75 pg-tr-again-reviewed-count">0</span></label>
+                        </div>
+                        <p class="small fg-secondary ms-7 mb-0">' . lang('Their translations are deleted first: until the engine answers, the page shows the source text.') . '</p>
+                    </div>
+                    <div class="dialog-footer">
+                        <button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="dialog">' . lang('Cancel') . '</button>
+                        <button type="button" class="pg-button pg-button-fill pg-tr-again-go"><i class="bi bi-arrow-repeat" aria-hidden="true"></i>' . lang('Translate again') . '</button>
+                    </div>
+        </dialog>
+        <dialog class="dialog" id="pg_tr_clear_picked_modal" aria-labelledby="pg_tr_clear_picked_modal_title">
+                    <div class="dialog-header">
+                        <h5 class="dialog-title" id="pg_tr_clear_picked_modal_title">' . lang('Clear translations') . '</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
+                    </div>
+                    <div class="dialog-body">
+                        <p class="small fg-secondary">' . lang(array('string' => 'The translations of the selected texts are deleted, so the next "{var:1}" sends the texts to the engine again. A text that is also used elsewhere loses its translation there too.', 'vars' => h($update_button_label))) . '</p>
+                        <div class="form-field mb-5">
+                            <input value="1" class="check pg-tr-clear-picked-reviewed" type="checkbox" id="pg_tr_clear_picked_reviewed"/>
+                            <label class="" for="pg_tr_clear_picked_reviewed">' . lang('Delete the reviewed translations as well') . ' <span class="opacity-75 pg-tr-clear-picked-reviewed-count">0</span></label>
+                        </div>
+                        <p class="fw-semibold mb-0 pg-tr-clear-picked-count"></p>
+                    </div>
+                    <div class="dialog-footer">
+                        <button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="dialog">' . lang('Cancel') . '</button>
+                        <button type="button" class="pg-button pg-button-danger pg-tr-clear-picked-go"><i class="bi bi-eraser" aria-hidden="true"></i>' . lang('Clear translations') . '</button>
                     </div>
         </dialog>
         <dialog class="dialog" id="pg_tr_glossary_modal" aria-labelledby="pg_tr_glossary_modal_title"' . ($glossary_back ? ' data-reopen="1"' : '') . '>

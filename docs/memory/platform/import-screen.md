@@ -13,7 +13,7 @@ module: importers
 - The choices are the save's whitelist (`pg_import_mapping_clean()`), so a refused place cannot be posted either.
 
 ## What does the upload card say, and how are rows asked?
-- A note under the file field (`#file_kinds`) and the refusal name each export taken. The What Is Imported card adds that sign-in and the old look are left out: Import My Site, named, not linked (closed on hosted sites).
+- A note under the file field (`#file_kinds`) and the refusal name each export taken, the labels of `pg_import_kinds()` (`import-sources.md`). The What Is Imported card adds that sign-in and the old look are left out: Import My Site, named, not linked (closed on hosted sites).
 - Rows come from `pg_import_<kind>_mapping($file)` with the kept upload, as one kind's files ask different rows (`import-squarespace.md`). A `select` row's `default` is the choice it starts on.
 - A `text` row is an input (`placeholder`, `help` under it), used for a Webflow collection's old address. A `form_field` row with a `guess` starts on the field whose label matches it, letters and digits only, case ignored (`data-pg-import-guess`, the screen's script), when nothing was chosen.
 

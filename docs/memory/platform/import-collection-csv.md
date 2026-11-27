@@ -6,7 +6,7 @@ module: importers
 
 ## Where is it?
 - `includes/import/collection.php` (PR #12134), shared by `webflow.php` (whose products and redirects files are `import-webflow.md`) and `wix.php`. Cells go to `write_record.php` (`import-records.md`).
-- Tests: `tests/import_collection_test.php` on `tests/fixtures/import/webflow_collection.csv` and `wix_collection.csv`, built from the columns the census names (`import-site-builders-census-webflow.md`, `-wix.md`), not from a real export.
+- Tests: `tests/import_collection_test.php` on `tests/fixtures/import/webflow_collection.csv` and `wix_collection.csv`, built from the columns the help pages name (`import-sources.md`), not from a real export.
 
 ## How is the file told?
 - `pg_import_detect_kind()`: a header with `Item ID` and `Slug` is webflow; `ID` with `Owner`, or with `Created Date` and `Updated Date`, is wix. A Wix file exported without its system fields is not recognised.

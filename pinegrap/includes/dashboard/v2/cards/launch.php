@@ -12,6 +12,9 @@
  * left the journey ends by itself: the card is closed and answers denied, which takes it off the dashboard; Site Settings
  * › General brings it back.
  *
+ * Under the steps, while Pinegrap AI can write, the line "Make your site
+ * from a description" opens the New design window on its "Describe it" start.
+ *
  * The card's foot, "Ready to go live?", opens the go-live check: "Must be
  * fixed" and "Worth a look", and "Go live", which turns maintenance mode off
  * and removes the robots.txt rule closing the whole site itself
@@ -95,6 +98,7 @@ function pg_dashboard_v2_launch_labels()
  */
 function pg_dashboard_v2_card_launch($user, $period, $compare)
 {
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/site_brief.php');
     $stored = pg_launch_journey_stored();
 
     if (!pg_dashboard_v2_launch_gate($user['role'], $stored['closed'])) {
@@ -128,6 +132,10 @@ function pg_dashboard_v2_card_launch($user, $period, $compare)
         'purpose'  => ($stored['purpose'] !== '') ? $stored['purpose'] : $stored['suggested'],
         'purposes' => $purposes,
         'labels'   => pg_dashboard_v2_launch_labels(),
+        // "Make your site from a description" under the steps, while
+        // Pinegrap AI can write; the New design window's brief takes the
+        // stored purpose (pg_designer_describe_pane()).
+        'describe' => pg_launch_journey_describe_line(pg_site_brief_problem()),
         // The foot: "Ready to go live?" and its check, or the go-live time.
         'golive'   => pg_launch_journey_golive_view($purpose, $facts, $stored['hidden'], (string) ($_SESSION['software']['token'] ?? '')),
         'live_at'  => ($stored['live_at'] > 0) ? get_absolute_time(array('timestamp' => $stored['live_at'], 'format' => 'plain_text', 'size' => 'short')) : '',

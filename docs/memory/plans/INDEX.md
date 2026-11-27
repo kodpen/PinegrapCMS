@@ -59,7 +59,6 @@
 - help-centre-census-proposal.md: Help centre census proposal: a support request is a support-box mail conversation with a priority and a source, every door ends there; the columns and tables to ask one by one, the screens in words
 - help-centre-census.md: Help centre HC1 census from the code: what collections lack for a knowledge base, what a Workspace mail conversation stores, where requests come in, the proposal, the owner's questions
 - help-centre.md: Plan (owner 2026-11-27, poll 246): a knowledge base and support requests; the census is done, HC2 to HC6 need no table and no column, HC7 and HC8 add the columns and the table he approved (poll 252)
-- import-site-builders.md: Plan (owner 2026-11-27, poll 246): importers from Squarespace, Webflow and Wix as new readers of the import framework, each from the files its owner can export; steps IB1 to IB6
 - integrations-census-aggregators.md: Census (2026-11-17) of services where one integration brings many: marketplace integrators, channel and feed tools, cargo and payment aggregators, what each states and whether its API is open
 - integrations-census-connectors.md: Census (2026-11-17) of AI assistants' connector directories for a site's own MCP server: Claude's URL pattern and install link, the MCP Registry, the ecosystem's size, what may be claimed
 - integrations-census-machinery.md: Census (2026-11-17) of what an outside program can do with a site: API size, webhooks as REST hooks, the OAuth and MCP servers, no address shared by all sites, what an automation app would miss
@@ -88,7 +87,6 @@
 - mobile-api-shelved-m8.md: Plan mobile-api-shelved, steps M8a to M8d (owner 2026-11-22, beside the other plans): sort=newest on the remaining lists, several reads in one request, a list of deleted records, a CORS allow-list
 - mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what exists (M1–M7), M8 given out beside the other plans, decisions, how its needs arrive
 - office-document-abilities.md: Plan (owner 2026-11-26, poll 235): the document editor's new abilities once it is typed on a page: alignment, text and highlight colour, font size, links, tables, pictures from Files; steps DA1 to DA8
-- office-sheet-abilities.md: Plan (owner 2026-11-26, poll 235): the steady spreadsheet editor's new abilities: more formats, column widths, row heights, a frozen top row, copy, paste, fill down, clear; steps SA1 to SA6
 - office-sheet-formulas.md: Plan (owner 2026-11-26, poll 235): simple formulas in the spreadsheet editor: SUM, AVERAGE, MIN, MAX, COUNT and the four operations, worked out again when a cell changes; steps SF1 to SF4
 - panel-language-german.md: Plan (owner 2026-11-27, poll 247): the German language pack, 79,407 keys in eight steps side by side by shard; the mechanism has landed and the eight steps are free, DE9 waits for them
 - panel-language-packs.md: Plan (owner 2026-11-27, poll 247): the panel in further languages, first the mechanism (one list of languages, the column's type, the checks, the pack tool); German follows in its own plan

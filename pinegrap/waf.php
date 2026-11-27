@@ -2758,7 +2758,7 @@ function waf_sensitive_scripts()
         'privacy_request.php', 'privacy_download.php', 'reorder.php',
         'feedback.php', 'queue.php', 'application_juror.php', 'application_fix.php',
         'volunteer.php', 'volunteer_check_in.php', 'volunteer_certificate.php',
-        'workspace_share.php', 'launch_summary.php',
+        'workspace_share.php', 'launch_summary.php', 'support_request.php',
     );
 }
 
@@ -3624,6 +3624,7 @@ function waf_credential_params($script)
         'launch_summary.php'        => array('t'),
         'mail_webhook.php'          => array('t'),
         'queue.php'                 => array('t'),
+        'support_request.php'       => array('t'),
         'tickets.php'               => array('t'),
         'volunteer.php'             => array('t'),
         'workspace_approval.php'    => array('t'),

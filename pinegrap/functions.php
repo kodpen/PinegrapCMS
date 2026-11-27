@@ -392,6 +392,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/shipping_methods.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/vat_check.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/vat_checkout.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/tax_eu_rates.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/tax_oss_report.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/stock_locations.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/stock_sales.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/stock_pickup.php');

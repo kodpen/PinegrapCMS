@@ -6,7 +6,7 @@ module: importers
 
 ## Where is it?
 - Reader `includes/import/squarespace.php`: the site XML goes on to the WordPress reader (`import-wordpress.md`), products to `write_product.php` (`import-woocommerce.md`), customers to `write_contact.php` (`import-shopify.md`). Built by PR #12075.
-- Tests: `tests/import_squarespace_test.php` on `tests/fixtures/import/squarespace_products.csv`, `squarespace_customers.csv` and `squarespace_site.xml`, built from Squarespace's help pages and the export's public shape (`import-site-builders-census-squarespace.md`), not from a real export.
+- Tests: `tests/import_squarespace_test.php` on `tests/fixtures/import/squarespace_products.csv`, `squarespace_customers.csv` and `squarespace_site.xml`, built from Squarespace's help pages and the export's public shape (`import-sources.md`), not from a real export.
 
 ## Which kind is it and how is it told?
 - `imports.kind` `squarespace`, added by step 11.0.282 with `webflow` and `wix` (their readers come later; `pg_import_kinds()` lists only kinds with a reader). Owner (2026-11-27): the three are ENUM values (agent channel poll 253, `workflow/decisions-made-schema-53.md`).

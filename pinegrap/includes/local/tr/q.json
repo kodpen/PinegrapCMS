@@ -241,6 +241,7 @@
     "Quotes for your company's breakfasts, lunches and events.": "Şirketinizin kahvaltıları, öğle yemekleri ve etkinlikleri için teklifler.",
     "Quotes made from a cart": "Sepetten hazırlanan teklifler",
     "Quotes, permits and life on site. Not answered here? Write to us.": "Teklifler, ruhsatlar ve şantiye hayatı. Yanıtını bulamadınız mı? Bize yazın.",
+    "Q{var:1} {var:2}": "{var:2} {var:1}. çeyrek",
     "quantity": "adet",
     "quantity must be a whole number.": "quantity tam sayı olmalıdır.",
     "quantity must be between {var:1} and {var:2}.": "quantity {var:1} ile {var:2} arasında olmalıdır.",
