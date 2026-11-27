@@ -158,6 +158,70 @@ function test_find_replace_plan_per_page_with_the_left_out()
 	pg_assert_same(array('count' => 2, 'pages' => 1, 'left' => 2), $res['totals'], 'only the pages that change are counted');
 }
 
+// A content element's text is markup: a word inside a tag or an entity is
+// never found nor replaced, "&" finds the "&amp;" a text shows as "&", and
+// a replacement typed with < or & goes in as text. A plain prop (a
+// button's words) is read as it is.
+function test_find_replace_keeps_the_markup_of_a_text()
+{
+	$res = find_replace_test_node(
+		'function t(text) { return n("r", "root", {}, [n("p", "content", { contentType: "paragraph", text: text }), n("b", "component", { btnText: "A & B" })]); }'
+		. 'var html = "<a href=\"/about\" class=\"lead\">About us</a> &amp; our&nbsp;<b>team</b>";'
+		. 'var T1 = t(html), about = F.pattern({ search: "about" }).re, amp = F.pattern({ search: "&" }).re;'
+		. 'var n1 = F.treeReplace(T1, about, "Hakkımızda", false);'
+		. 'var T2 = t(html), n2 = F.treeCount(T2, amp), r2 = F.treeReplace(T2, amp, "and", false);'
+		. 'var T3 = t(html), r3 = F.treeReplace(T3, F.pattern({ search: "team" }).re, "<team> & co", false);'
+		. 'var T4 = t(html), r4 = F.treeReplace(T4, F.pattern({ search: "(\\\\w+) us", regex: true }).re, "$1 Us", true);'
+		. 'var T5 = t(html), r5 = F.treeReplace(T5, F.pattern({ search: "our team" }).re, "the team", false);'
+		. 'out = { n1: n1, t1: T1.children[0].props.text, n2: n2, r2: r2, t2: T2.children[0].props.text, b2: T2.children[1].props.btnText,'
+		. ' t3: T3.children[0].props.text, t4: T4.children[0].props.text, t5: T5.children[0].props.text,'
+		. ' none: [F.treeCount(t(html), F.pattern({ search: "amp" }).re), F.treeCount(t(html), F.pattern({ search: "nbsp" }).re), F.treeCount(t(html), F.pattern({ search: "class" }).re), F.treeCount(t(html), F.pattern({ search: "href" }).re)] };'
+	);
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(1, $res['n1'], 'the link\'s address and class are no words');
+	pg_assert_same('<a href="/about" class="lead">Hakkımızda us</a> &amp; our&nbsp;<b>team</b>', $res['t1'], 'only the words changed, the tag kept');
+	pg_assert_same(2, $res['n2'], '"&" finds the text\'s &amp; and the button\'s &');
+	pg_assert_same('<a href="/about" class="lead">About us</a> and our&nbsp;<b>team</b>', $res['t2'], 'the entity replaced whole');
+	pg_assert_same('A and B', $res['b2'], 'a plain prop is read as it is');
+	pg_assert_same('<a href="/about" class="lead">About us</a> &amp; our&nbsp;<b>&lt;team&gt; &amp; co</b>', $res['t3'], 'a replacement with < and & goes in as text');
+	pg_assert_same('<a href="/about" class="lead">About Us</a> &amp; our&nbsp;<b>team</b>', $res['t4'], 'a regular expression\'s groups inside a text');
+	pg_assert_same(array(0, 0, 0, 0), $res['none'], 'nothing found inside an entity or a tag');
+	pg_assert_same('<a href="/about" class="lead">About us</a> &amp; our&nbsp;<b>team</b>', $res['t5'], 'words across a tag are not one match');
+}
+
+// A content-level operator changes only the text of an element outside a
+// marked area, and everything inside one (the save keeps no more): a
+// button's words outside one are neither counted nor replaced.
+function test_find_replace_content_level_words_only()
+{
+	$res = find_replace_test_node(
+		'var T = n("r", "root", {}, [n("p", "content", { text: "çerez" }), n("b", "component", { btnText: "çerez" }),'
+		. ' n("a", "semantic", { tag: "div", _editable: true }, [n("ib", "component", { btnText: "çerez", title: "çerez" })])]);'
+		. 'var re = F.pattern({ search: "çerez" }).re, may = function (node, prop, inArea) { return inArea || prop === "text"; };'
+		. 'var all = F.treeCount(T, re), c = F.treeCount(T, re, may), rows = F.plan([{ key: "a", name: "A", tree: T }], re, null, may);'
+		. 'var r = F.treeReplace(T, re, "x", false, may);'
+		. 'out = { all: all, c: c, plan: rows[0].count, r: r, p: T.children[0].props.text, b: T.children[1].props.btnText, ib: T.children[2].children[0].props };'
+	);
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(4, $res['all'], 'without a filter every word');
+	pg_assert_same(3, $res['c'], 'the button outside the marked area is left');
+	pg_assert_same(3, $res['plan'], 'the list per page counts the same');
+	pg_assert_same(3, $res['r'], 'as many replaced');
+	pg_assert_same(array('x', 'çerez'), array($res['p'], $res['b']), 'the text changed, the button outside did not');
+	pg_assert_same(array('x', 'x'), array($res['ib']['btnText'], $res['ib']['title']), 'inside the marked area every word');
+
+	$part = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_findreplace.js');
+	pg_assert_true(strpos($part, "K._sdAccess() !== 'content'") !== false, 'the part filters at the content level');
+}
+
 function test_find_replace_opens_the_part()
 {
 	$src = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
