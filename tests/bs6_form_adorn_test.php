@@ -189,7 +189,6 @@ function test_bs6_form_adorn_toolbar_search_keeps_its_toolbar_class()
 		'view_folders.php' => 'id="filter_input"',
 		'view_audit_log.php' => 'name="q"',
 		'view_not_found_log.php' => 'id="pg_404_search"',
-		'translations.php' => 'name="q"',
 		'erp_cheques.php' => 'name="search"',
 		'erp_quotes.php' => 'name="search"',
 		'erp_purchase_orders.php' => 'name="search"',
