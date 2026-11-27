@@ -282,6 +282,13 @@ function pg_notification_visible($notification, $rights)
 		return ((int) $rights['role'] === 0);
 	}
 
+	// An update that changed a rate of the EU's VAT list while Rates by the
+	// buyer's country is on (pg_eu_vat_rate_notice_run()): for the
+	// administrators, as the mail is, while the shop is on.
+	if ($action == 'tax_rate_change') {
+		return (((int) $rights['role'] === 0) && (ECOMMERCE === true));
+	}
+
 	// A privacy request's 30 days ending (includes/fn/privacy_requests.php):
 	// for whoever opens the Privacy centre, manager and above.
 	if ($action == 'privacy_request') {
@@ -718,6 +725,18 @@ function pg_notification_display($notification, $reader_role = null)
 		$display['url']     = 'edit_submitted_form.php?id=' . (int) $notification['form_id'];
 		$display['icon']     = 'assets/images/notification-form.png';
 		$display['badge']    = 'assets/images/notification-form-badge.png';
+		$display['action']  = $action;
+
+	} elseif ($action == 'tax_rate_change') {
+
+		// title is the changes (pg_eu_vat_rate_notice_title()), order_total
+		// how many there were.
+		$lines = array_map('pg_eu_vat_rate_change_text', pg_eu_vat_rate_notice_parse((string) $notification['title']));
+		$display['title']   = lang('An update changed EU VAT rates.');
+		$display['details'] = implode('<br/>', array_map('h', $lines));
+		$display['short']   = lang('EU VAT rates changed');
+		$display['brief']   = h(implode(', ', $lines));
+		$display['url']     = 'settings.php';
 		$display['action']  = $action;
 
 	} elseif ($action == 'software_update') {

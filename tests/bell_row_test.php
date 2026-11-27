@@ -81,6 +81,7 @@ function test_bell_row_module_of_every_known_action()
 		'privacy_request'  => 'system',
 		'launch_answer'    => 'system',
 		'webhook_scope'    => 'system',
+		'tax_rate_change'  => 'system',
 		'bundle_held'      => 'content',
 	);
 	$known = bell_row_known_actions();
