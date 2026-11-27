@@ -14583,6 +14583,102 @@
 
     var UNSPLASH = { unsplashLayer: unsplashLayer, pictureCredit: pictureCredit, corsPicture: corsPicture };
 
+    // ---- Free photos from Openverse (pg_image_editor_openverse.js) ----
+
+    var OPENVERSE_API = 'https://api.openverse.org/v1/images/';
+    var OPENVERSE_LICENCES = ['cc0', 'pdm'];
+
+    // The search address: CC0 and public domain photographs only, twenty a
+    // page (the most a keyless caller gets); '' for an empty search.
+    function openverseListUrl(q, page) {
+        q = String(q || '').trim();
+
+        if (q === '') {
+            return '';
+        }
+
+        return OPENVERSE_API + '?q=' + encodeURIComponent(q) + '&license=' + OPENVERSE_LICENCES.join(',') + '&category=photograph&page_size=20&page=' + Math.max(1, parseInt(page, 10) || 1);
+    }
+
+    // A link kept only over https, else ''.
+    function openverseLink(href) {
+        return ((typeof href === 'string') && /^https:\/\/[^\s"'<>]+$/.test(href)) ? href : '';
+    }
+
+    // One record of the answer as the canvas keeps it, or null for one under
+    // another licence or without a proper id. The picture addresses are
+    // built from the id on Openverse's own host (its thumbnail proxy, which
+    // answers CORS), never taken from the record.
+    function openverseRecord(r) {
+        var id = r && (typeof r.id === 'string') ? r.id.toLowerCase() : '', licence = r ? String(r.license || '').toLowerCase() : '';
+
+        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id) || (OPENVERSE_LICENCES.indexOf(licence) < 0)) {
+            return null;
+        }
+
+        var thumb = OPENVERSE_API + id + '/thumb/';
+
+        return {
+            id: id, title: String(r.title || '').trim(), creator: String(r.creator || '').trim(), creatorUrl: openverseLink(r.creator_url),
+            license: licence, licenseUrl: openverseLink(r.license_url), page: openverseLink(r.foreign_landing_url),
+            thumb: thumb, full: thumb + '?full_size=true', width: parseInt(r.width, 10) || 0, height: parseInt(r.height, 10) || 0
+        };
+    }
+
+    // A search's answer: its usable records and whether a next page is there.
+    function openverseList(answer) {
+        var list = (answer && Array.isArray(answer.results)) ? answer.results : [];
+
+        return {
+            photos: list.map(openverseRecord).filter(function (p) { return p !== null; }),
+            more: !!answer && ((parseInt(answer.page, 10) || 1) < (parseInt(answer.page_count, 10) || 0))
+        };
+    }
+
+    // The credit a layer keeps, from a record or read back from a layer;
+    // null without the source or under another licence.
+    function openverseCreditOf(c) {
+        if (!c || (OPENVERSE_LICENCES.indexOf(c.license) < 0)) {
+            return null;
+        }
+
+        return {
+            source: 'openverse', title: String(c.title || ''), creator: String(c.creator || ''), creatorUrl: openverseLink(c.creatorUrl),
+            license: c.license, licenseUrl: openverseLink(c.licenseUrl), page: openverseLink(c.page)
+        };
+    }
+
+    // A picked photo (openverseRecord()) as a picture layer in the middle of
+    // the view, at most 60 % of it; src its own pixels as a data: address,
+    // so a save keeps it as the site's file like any inserted picture; w x h
+    // their size. Null without a record or with an address from elsewhere.
+    function openverseLayer(info, src, w, h, vr) {
+        var credit = openverseCreditOf(info);
+
+        if (!credit || (typeof src !== 'string') || (src.indexOf('data:image/') !== 0) || !(w > 0) || !(h > 0)) {
+            return null;
+        }
+
+        var fit = Math.min(1, 0.6 * vr.w / w, 0.6 * vr.h / h), lw = w * fit, lh = h * fit;
+        var layer = {
+            type: 'image', src: src, fileName: credit.title || 'Openverse', x: vr.x + (vr.w - lw) / 2, y: vr.y + (vr.h - lh) / 2, w: lw, h: lh, rot: 0, opacity: 1,
+            credit: credit
+        };
+
+        if (credit.title) {
+            layer.alt = credit.title;
+        }
+
+        return layer;
+    }
+
+    // A picture layer's Openverse credit as its panel shows it, else null.
+    function openverseCredit(l) {
+        return (l && l.credit && (l.credit.source === 'openverse')) ? openverseCreditOf(l.credit) : null;
+    }
+
+    var OPENVERSE = { openverseListUrl: openverseListUrl, openverseRecord: openverseRecord, openverseList: openverseList, openverseLayer: openverseLayer, openverseCredit: openverseCredit };
+
     var api = {
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,
         flipRot: flipRot, coverScale: coverScale, fitZoom: fitZoom, centred: centred, fitView: fitView, zoomAt: zoomAt,
@@ -14600,7 +14696,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, FOLLOW, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU, VIDEO, SOUND, CLIP, MIX, UPLOAD, PHONE, GROUP, ATTACH, DATA, SEND, SITECOLORS, TEXTSTYLES, ELEMENTS, TABLER, STARTS, RESIZE, FRAMES, UNSPLASH].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, FOLLOW, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU, VIDEO, SOUND, CLIP, MIX, UPLOAD, PHONE, GROUP, ATTACH, DATA, SEND, SITECOLORS, TEXTSTYLES, ELEMENTS, TABLER, STARTS, RESIZE, FRAMES, UNSPLASH, OPENVERSE].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');

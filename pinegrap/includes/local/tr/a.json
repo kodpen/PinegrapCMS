@@ -9271,6 +9271,7 @@
     "an incoming mail rule was deleted from the mailbox {var:1}: {var:2}": "{var:1} e-posta kutusundan gelen e-posta kuralı silindi: {var:2}",
     "an item": "bir öğe",
     "an overdue task": "geciken bir görev",
+    "an unknown author": "bilinmeyen bir yazar",
     "an unknown country": "bilinmeyen bir ülke",
     "analyzed HTML structure": "HTML yapısını denetledi",
     "and": "ve",
