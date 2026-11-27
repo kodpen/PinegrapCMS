@@ -712,6 +712,15 @@ function mp_order_write($account, $package, $map_id) {
 
 	}
 
+	// The order is kept in the marketplace's currency, with the rate of its
+	// day beside it (includes/fn/order_currency.php), so the sums count it in
+	// base units. Left out while the columns are not there yet.
+	$charged = pg_order_charged_for((string)$package['currency'], $placed_at);
+
+	$charged_sql = ($charged === null) ? '' : "
+		charged_currency = '" . e($charged['currency']) . "',
+		charged_rate    = '" . e($charged['rate']) . "',";
+
 	// A marketplace order is a sale to a customer, so it is typed as one and
 	// shows up in the order list beside the web orders rather than behind a
 	// filter nobody changed.
@@ -737,7 +746,7 @@ function mp_order_write($account, $package, $map_id) {
 		shipping        = '" . e((int)$shipping) . "',
 		surcharge       = 0,
 		total           = '" . e((int)$total) . "',
-		currency_code   = '" . e(mb_substr((string)$package['currency'], 0, 3)) . "',
+		currency_code   = '" . e(mb_substr((string)$package['currency'], 0, 3)) . "'," . $charged_sql . "
 		transaction_id  = '" . e(mb_substr((string)$package['remote_order_id'], 0, 50)) . "',
 		billing_first_name   = '" . e(mb_substr((string)$customer['first_name'], 0, 50)) . "',
 		billing_last_name    = '" . e(mb_substr((string)$customer['last_name'], 0, 50)) . "',

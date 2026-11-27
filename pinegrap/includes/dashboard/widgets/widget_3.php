@@ -40,17 +40,21 @@ function pg_dashboard_widget_3($request, $user)
         $from_week  = pg_dashboard_days_back($midnight, 6);
         $from_month = pg_dashboard_days_back($midnight, 29);
 
+        // An order kept in another currency counts in base units at its
+        // rate (includes/fn/order_currency.php).
+        $base_total = pg_order_base_sql('orders.total');
+
         $order_summary = db_item(
             "SELECT
                 COUNT(*) AS all_count,
-                COALESCE(SUM(orders.total), 0) AS all_total,
+                COALESCE(SUM($base_total), 0) AS all_total,
                 COALESCE(MAX(orders.order_date), 0) AS last_order_date,
                 COALESCE(SUM(CASE WHEN orders.order_date >= $midnight THEN 1 ELSE 0 END), 0) AS today_count,
-                COALESCE(SUM(CASE WHEN orders.order_date >= $midnight THEN orders.total ELSE 0 END), 0) AS today_total,
+                COALESCE(SUM(CASE WHEN orders.order_date >= $midnight THEN $base_total ELSE 0 END), 0) AS today_total,
                 COALESCE(SUM(CASE WHEN orders.order_date >= $from_week THEN 1 ELSE 0 END), 0) AS week_count,
-                COALESCE(SUM(CASE WHEN orders.order_date >= $from_week THEN orders.total ELSE 0 END), 0) AS week_total,
+                COALESCE(SUM(CASE WHEN orders.order_date >= $from_week THEN $base_total ELSE 0 END), 0) AS week_total,
                 COALESCE(SUM(CASE WHEN orders.order_date >= $from_month THEN 1 ELSE 0 END), 0) AS month_count,
-                COALESCE(SUM(CASE WHEN orders.order_date >= $from_month THEN orders.total ELSE 0 END), 0) AS month_total
+                COALESCE(SUM(CASE WHEN orders.order_date >= $from_month THEN $base_total ELSE 0 END), 0) AS month_total
             FROM orders
             WHERE orders.status IN ('complete', 'exported')"
         );

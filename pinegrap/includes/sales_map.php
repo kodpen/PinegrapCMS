@@ -556,7 +556,7 @@ function pg_sales_map_period_columns($periods)
 
         $columns .=
             ", COALESCE(SUM(CASE WHEN orders.order_date >= $from THEN 1 ELSE 0 END), 0) AS " . $key . "_count"
-            . ", COALESCE(SUM(CASE WHEN orders.order_date >= $from THEN orders.total ELSE 0 END), 0) AS " . $key . "_total";
+            . ", COALESCE(SUM(CASE WHEN orders.order_date >= $from THEN " . pg_order_base_sql('orders.total') . " ELSE 0 END), 0) AS " . $key . "_total";
     }
 
     return $columns;
@@ -599,7 +599,7 @@ function pg_sales_map_collect()
             orders.billing_country,
             orders.billing_state,
             COUNT(*) AS all_count,
-            COALESCE(SUM(orders.total), 0) AS all_total,
+            COALESCE(SUM(" . pg_order_base_sql('orders.total') . "), 0) AS all_total,
             COALESCE(MIN(orders.order_date), 0) AS first_date
             $columns
         FROM orders
@@ -666,7 +666,7 @@ function pg_sales_map_collect()
             orders.billing_state,
             orders.billing_city,
             COUNT(*) AS all_count,
-            COALESCE(SUM(orders.total), 0) AS all_total
+            COALESCE(SUM(" . pg_order_base_sql('orders.total') . "), 0) AS all_total
             $columns
         FROM orders
         WHERE orders.status IN ('complete', 'exported')

@@ -79,7 +79,7 @@ function pg_dashboard_v2_shop_columns($windows)
     foreach ($windows as $name => $window) {
         $in = "orders.order_date >= " . (int) $window[0] . " AND orders.order_date < " . (int) $window[1];
         $columns[] = "COALESCE(SUM(CASE WHEN " . $in . " THEN 1 ELSE 0 END), 0) AS " . $name . "_count";
-        $columns[] = "COALESCE(SUM(CASE WHEN " . $in . " THEN orders.total ELSE 0 END), 0) AS " . $name . "_total";
+        $columns[] = "COALESCE(SUM(CASE WHEN " . $in . " THEN " . pg_order_base_sql('orders.total') . " ELSE 0 END), 0) AS " . $name . "_total";
     }
 
     return implode(",\n            ", $columns);

@@ -175,6 +175,16 @@ if (($audiences['added'] + $audiences['removed']) > 0) {
 
 }
 
+// The charged currency and rate of the marketplace orders written before the
+// columns (includes/fn/order_currency.php), a batch at a time within
+// PG_ORDER_CURRENCY_FILL_SECONDS of this tick until they are through; then
+// one small read of the marker.
+if (ECOMMERCE && function_exists('pg_order_currency_fill_run')) {
+
+    pg_order_currency_fill_run(pg_cron_time_left(PG_ORDER_CURRENCY_FILL_SECONDS));
+
+}
+
 // Customer rhythm (includes/fn/customer_rhythm_pass.php): each customer's
 // row and the product summary worked out again from the orders once a day,
 // at most PG_CUSTOMER_RHYTHM_TICK_SECONDS of this tick, going on from its

@@ -636,7 +636,9 @@ function pg_audience_sql_condition(array $c, $now, array &$params)
 
         case 'order_count':
         case 'order_total':
-            $measure = ($c['key'] === 'order_count') ? 'COUNT(*)' : 'SUM(orders.total)';
+            // The amount spent counts an order kept in another currency in
+            // base units at its rate (includes/fn/order_currency.php).
+            $measure = ($c['key'] === 'order_count') ? 'COUNT(*)' : 'SUM(' . pg_order_base_sql('orders.total') . ')';
             $grouped = "SELECT orders.contact_id FROM orders WHERE " . $complete . " GROUP BY orders.contact_id HAVING " . $measure;
 
             if ($op === 'gte') {

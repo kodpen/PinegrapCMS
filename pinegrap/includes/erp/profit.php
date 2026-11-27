@@ -732,7 +732,9 @@ function erp_profit_uninvoiced_orders($from, $to)
         return array('count' => 0, 'net' => 0);
     }
 
-    $row = db_item("SELECT COUNT(*) AS count, COALESCE(SUM(orders.total + orders.gift_card_discount - COALESCE(orders.tax, 0)), 0) AS net
+    // An order kept in another currency counts in base units at its rate
+    // (includes/fn/order_currency.php).
+    $row = db_item("SELECT COUNT(*) AS count, COALESCE(SUM(" . pg_order_base_sql('orders.total + orders.gift_card_discount - COALESCE(orders.tax, 0)') . "), 0) AS net
         FROM orders WHERE " . erp_profit_orders_where($from, $to));
 
     return array('count' => is_array($row) ? (int) $row['count'] : 0, 'net' => is_array($row) ? (int) $row['net'] : 0);
@@ -741,7 +743,8 @@ function erp_profit_uninvoiced_orders($from, $to)
 /**
  * The lines the uninvoiced orders of a period would be invoiced with, one
  * entry per line: order, month, product, quantity and net (without tax, in
- * the base currency: an order is kept in it). Only the lines the checkout
+ * the base currency: an order kept in another one is converted at its rate,
+ * pg_order_base_amount()). Only the lines the checkout
  * charged count (erp_order_charged_items()): a recurring line that starts
  * later took no money, so the sum meets erp_profit_uninvoiced_orders().
  *
@@ -803,7 +806,7 @@ function erp_profit_order_lines($from, $to)
                 'month' => $month,
                 'product_id' => (int) ($line['product_id'] ?? 0),
                 'quantity' => (float) ($line['quantity'] ?? 0),
-                'net' => (int) $line['line_total'] - (int) $line['discount_amount'],
+                'net' => pg_order_base_amount((int) $line['line_total'] - (int) $line['discount_amount'], $order),
             );
         }
     }
