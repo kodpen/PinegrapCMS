@@ -8,7 +8,7 @@ description: Generated from the module field of the memory files: each includes/
 ## Which memory file describes an `includes/fn/` module?
 - `a11y`: [[accessibility-report]], [[editor-a11y-measurements]]
 - `accounting_settings_fold`: [[settings-accounting]], [[settings-accounting-open-rows]]
-- `accounting_sync`: [[accounting-sync-queue]]
+- `accounting_sync`: [[accounting-sync-queue]], [[xero-tax-rates]]
 - `activitypub`: [[activitypub-actor]], [[activitypub-decisions]]
 - `activitypub_comments`: [[activitypub-comments]], [[activitypub-reactions]]
 - `activitypub_inbox`: [[activitypub-inbox]]
@@ -591,8 +591,8 @@ description: Generated from the module field of the memory files: each includes/
 - `wishlist`: [[wishlist]]
 - `workspace_file_gate`: [[workspace-file-address-gate]]
 - `workspace_mail_gate`: [[mail-workspace-off]]
-- `xero`: [[xero-connection]]
-- `xero_page`: [[xero-connection]]
+- `xero`: [[xero-connection]], [[xero-tax-rates]]
+- `xero_page`: [[xero-connection]], [[xero-tax-rates]]
 - `xlsx_write`: [[workflow-tables-export]]
 - `zone_list_edit`: [[list-table-quick-edit-zones]]
 
