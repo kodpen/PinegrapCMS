@@ -574,12 +574,16 @@ function pg_page_version_publish_answer($result, $version)
  * page changed since the version was started is replaced only with
  * $replace ("Replace anyway").
  *
- * @param int   $draft_page_id
- * @param array $user
- * @param bool  $replace
+ * The editor's own page locks (its session key) do not count: it has the
+ * draft open while it publishes it.
+ *
+ * @param int    $draft_page_id
+ * @param array  $user
+ * @param bool   $replace
+ * @param string $session_key the editor's collaboration key
  * @return array pg_page_version_publish_answer()
  */
-function pg_page_version_publish($draft_page_id, $user, $replace = false)
+function pg_page_version_publish($draft_page_id, $user, $replace = false, $session_key = '')
 {
     if (!pg_page_bundle_user_may($user)) {
         return pg_page_version_answer(lang('Only administrators and designers can publish a release bundle.')) + array('changed' => false);
@@ -595,13 +599,19 @@ function pg_page_version_publish($draft_page_id, $user, $replace = false)
     $version['draft_name'] = (string) db_value("SELECT page_name FROM page WHERE page_id = '" . (int) $version['draft_page_id'] . "' LIMIT 1");
     $choices = $replace ? array((int) $version['item_id'] => 'replace') : array();
 
-    $result = pg_page_bundle_with_lock($bundle, $user, pg_page_bundle_busy_answer(), function ($fresh) use ($user, $choices) {
-        if (!pg_page_version_shape($fresh, pg_page_bundle_items($fresh['id']))) {
-            return array('ok' => false, 'error' => lang('This page is not a new version of a page on the site.'));
-        }
+    pg_page_bundle_acting_session((string) $session_key);
 
-        return pg_page_bundle_publish_locked($fresh, $user, $choices);
-    });
+    try {
+        $result = pg_page_bundle_with_lock($bundle, $user, pg_page_bundle_busy_answer(), function ($fresh) use ($user, $choices) {
+            if (!pg_page_version_shape($fresh, pg_page_bundle_items($fresh['id']))) {
+                return array('ok' => false, 'error' => lang('This page is not a new version of a page on the site.'));
+            }
+
+            return pg_page_bundle_publish_locked($fresh, $user, $choices);
+        });
+    } finally {
+        pg_page_bundle_acting_session('');
+    }
 
     return pg_page_version_publish_answer($result, $version);
 }

@@ -81,3 +81,19 @@ function test_designer_versions_core_hooks()
 	pg_assert_true(strpos($screen, "lang('The page on the site stays as it is.')") !== false, 'with its line under it');
 	pg_assert_true(strpos($screen, "'versionsReady' => pg_page_bundles_ready()") !== false, 'the door waits for the upgrade');
 }
+
+// Publish from the sheet: the part posts version_publish, says a refusal
+// other than a changed live page, and on success closes the draft's tab and
+// lays the page as the site has it onto the live tab.
+function test_designer_versions_publish()
+{
+	$part = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_versions.js');
+	$fn = substr($part, strpos($part, 'function publish('));
+
+	pg_assert_contains("K._pgApiPost('version_publish', { page_id: p.page_id, replace: replace ? 1 : 0, session_key: K._collabKey() })", $fn, 'with the editor\'s own lock key');
+	pg_assert_contains('if (!res.changed) K.sdToast(', $fn, 'a changed page is asked by the sheet, not toasted');
+	$done = substr($part, strpos($part, 'function published('));
+	pg_assert_true(strpos($done, 'forget(own)') < strpos($done, 'closeTab(p, own)'), 'the version leaves the state, then its tab');
+	pg_assert_contains('K._pgContentLay(live, sp.tree || K.createDefaultTree(), sp, true)', $done);
+	pg_assert_contains('publish: publish', $part);
+}

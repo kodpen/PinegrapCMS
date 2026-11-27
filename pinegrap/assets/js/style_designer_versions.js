@@ -9,7 +9,10 @@
  * selected and lays the page as it is on the site back onto the live tab.
  * Where the page has a version the same door reads "Open the new version"
  * and selects its tab. The draft's tab menu has "Discard this version"
- * (designer/version_discard), which asks first. Not needed to open a page:
+ * (designer/version_discard), which asks first. Checked in the Publish
+ * sheet, a version is published by its bundle (designer/version_publish)
+ * after the sheet's save: its tab closes and the live page's tab shows the
+ * page as the site has it now. Not needed to open a page:
  * the core runs this file on the first press (_sdPartLoad()).
  *
  * @author      Erdal Güral (Kodpen)
@@ -55,8 +58,9 @@ StyleDesigner.definePart('versions', function (K) {
     }
 
     // The started version joins the editor's state: the versions block,
-    // and the draft held like any bundled draft until NV3's Publish (the
-    // server answers the same after a reload, pg_experiment_editor_config()).
+    // and the draft held like any bundled draft (the server answers the same
+    // after a reload, pg_experiment_editor_config()): only its bundle
+    // publishes it, from the Publish sheet's row.
     function remember(answer, liveName) {
         var rows = entries(answer, liveName);
         var v = versions();
@@ -188,19 +192,65 @@ StyleDesigner.definePart('versions', function (K) {
             return K._pgApiPost('version_discard', { page_id: p.page_id }).then(function (res) {
                 if (!res || !res.ok) throw new Error((res && res.error) || _sdT('The new version could not be discarded.'));
                 forget(own);
-                var idx = K.pages.indexOf(p);
-                if (idx !== -1) K.pages.splice(idx, 1);
-                if (!K.pages.length) { window.location.reload(); return; }
-                if (K.activeKey === key) {
-                    var live = K._pgPageByKey('p' + own.live_page_id) || K.pages[Math.max(0, idx - 1)];
-                    K._pgTabsSwitch(live.key);
-                }
-                K._pgTabsLayoutChanged();
+                closeTab(p, own);
                 busy = false;
                 K.sdToast(esc(_sdT('The new version was discarded. Its draft is in the Recycle Bin.')), 'success', 6000);
             });
         }).catch(fail);
     }
 
-    return { start: start, discard: discard, entries: entries };
+    // A version's tab leaves the strip: the live page's tab is selected
+    // when it was the open one.
+    function closeTab(p, own) {
+        var idx = K.pages.indexOf(p);
+        if (idx === -1) return;
+        K.pages.splice(idx, 1);
+        if (!K.pages.length) { window.location.reload(); return; }
+        if (K.activeKey === p.key) {
+            var live = K._pgPageByKey('p' + own.live_page_id) || K.pages[Math.max(0, idx - 1)];
+            K._pgTabsSwitch(live.key);
+        }
+        K._pgTabsLayoutChanged();
+    }
+
+    // Published: the version leaves the editor's state, its tab closes and
+    // an open live tab gets the page as the site has it now (`force`: the
+    // live tab's own unsaved changes were made on the page it replaced).
+    function published(p, own) {
+        forget(own);
+        closeTab(p, own);
+        var live = K._pgPageByKey('p' + own.live_page_id);
+        if (!live) return Promise.resolve();
+        return load(own.live_page_id).then(function (sp) {
+            K._pgContentLay(live, sp.tree || K.createDefaultTree(), sp, true);
+            K._pgTabsRender();
+        }, function (err) {
+            K.sdToast(esc((err && err.message) || _sdT('The page could not be loaded.')), 'warning', 6000);
+        });
+    }
+
+    // "Publish selected" with a version's row checked, after the sheet's
+    // save: its bundle writes the draft onto the live page. Resolves with
+    // the server's answer (ok, changed, error); `changed` is asked in the
+    // sheet ("Replace anyway" sends `replace`), any other refusal is said
+    // here.
+    function publish(key, replace) {
+        var p = K._pgPageByKey(key);
+        var own = p ? K._pgVersionOf(p) : null;
+        if (!own || own.role !== 'version') {
+            return Promise.resolve({ ok: false, changed: false, error: _sdT('This page is not a new version of a page on the site.') });
+        }
+        return K._pgApiPost('version_publish', { page_id: p.page_id, replace: replace ? 1 : 0, session_key: K._collabKey() }).then(function (res) {
+            if (!res) throw new Error(_sdT('The new version could not be published.'));
+            if (res.ok) return published(p, own).then(function () { return res; });
+            if (!res.changed) K.sdToast(esc(res.error || _sdT('The new version could not be published.')), 'error', 8000);
+            return res;
+        }).catch(function (err) {
+            var msg = (err && err.message) || _sdT('Network error.');
+            K.sdToast(esc(msg), 'error', 8000);
+            return { ok: false, changed: false, error: msg };
+        });
+    }
+
+    return { start: start, discard: discard, publish: publish, entries: entries };
 });

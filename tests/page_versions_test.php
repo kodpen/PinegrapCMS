@@ -259,3 +259,26 @@ function test_page_version_publish_uses_the_bundle()
 	pg_assert_contains("\$sub === 'version_publish'", $panel);
 	pg_assert_true(strpos($panel, "\$sub === 'version_publish'") > strpos($panel, 'if (!pg_designer_is_full($user))'), 'after the content-level gate');
 }
+
+// The editor publishing a version has its draft open: its own page locks do
+// not count, every other caller's lock does; the key is cleared afterwards.
+function test_page_version_publish_acting_session()
+{
+	pg_assert_same('', pg_page_bundle_acting_session(), 'nobody by default');
+	pg_assert_same('sdabc', pg_page_bundle_acting_session('sdabc'));
+	pg_assert_same('sdabc', pg_page_bundle_acting_session());
+	pg_assert_same('', pg_page_bundle_acting_session(''));
+
+	$bundles = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/page_bundles.php');
+	$check = substr($bundles, strpos($bundles, 'function pg_page_bundle_check_item('));
+	$check = substr($check, 0, strpos($check, "\n}\n"));
+	pg_assert_contains('pg_collab_may_edit_page($acting, $draft_id)', $check);
+	$write = substr($bundles, strpos($bundles, 'function pg_page_bundle_write_item('));
+	$write = substr($write, 0, strpos($write, 'function pg_page_bundle_undo_item('));
+	pg_assert_true(strpos($write, "pg_collab_may_edit_page(''") === false, 'the write asks with the acting session too');
+
+	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/page_versions.php');
+	$fn = substr($src, strpos($src, 'function pg_page_version_publish('));
+	pg_assert_true(strpos($fn, 'pg_page_bundle_acting_session((string) $session_key)') < strpos($fn, 'pg_page_bundle_with_lock('), 'set before the publish');
+	pg_assert_contains("finally {\n        pg_page_bundle_acting_session('');", $fn, 'and cleared whatever happens');
+}
