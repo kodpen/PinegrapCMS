@@ -101,21 +101,45 @@ StyleDesigner.definePart('phone', function (K) {
             else if (what === 'end') _phEnd();
             else if (what === 'open') { if (state.answer && state.answer.url) window.open(state.answer.url, '_blank', 'noopener'); }
             else if (what === 'save') _phSave(b);
+            else if (what === 'version') _phVersion();
             else if (what === 'team') _phAsk('team');
             else if (what === 'again') _phAsk(state.audience);
         });
         return d;
     }
 
-    // The info line under the code: a page never saved, changes not saved
-    // (with the designer's own Save), or what the phone shows.
+    // Which info line goes under the code: 'new' (a page never saved),
+    // 'start' or 'open' (a page on the site with unsaved changes: its Save
+    // would publish them and the phone shows saved drafts, so they go to a
+    // new version, or to the one it has), 'dirty' (changes not saved) or
+    // 'saved'. Pure.
+    function _phInfoKind(host) {
+        if (host.page && !host.page.saved) return 'new';
+        var door = host.version ? host.version() : '';
+        if (door === 'start' || door === 'open') return door;
+        return host.dirty() ? 'dirty' : 'saved';
+    }
+
+    // The info line under the code: a page never saved, a page on the site
+    // with changes (with "Save as a new version" or "Open the new
+    // version"), changes not saved (with the designer's own Save), or what
+    // the phone shows.
     function _phInfoLine() {
         var host = state.host;
-        if (host.page && !host.page.saved) {
+        var kind = _phInfoKind(host);
+        if (kind === 'new') {
             return '<p class="sd-phone-line"><span class="bi bi-info-circle" aria-hidden="true"></span><span>' +
                 esc(_sdT('“{var}” has not been saved yet. Save it and it joins the phone\'s page list.', host.page.name || _sdT('New page'))) + '</span></p>';
         }
-        if (host.dirty()) {
+        if (kind === 'start' || kind === 'open') {
+            return '<p class="sd-phone-line sd-phone-warn sd-phone-line-wrap"><span class="bi bi-exclamation-triangle" aria-hidden="true"></span><span>' +
+                esc(kind === 'start'
+                    ? _sdT('The phone shows saved drafts, not the changes on this page on the site. Save them as a new version to see them there; the page on the site stays as it is.')
+                    : _sdT('The phone shows saved drafts, not the changes on this page on the site. This page has a new version: open it to see that draft on the phone.')) + '</span>' +
+                '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-ph="version">' +
+                esc(kind === 'start' ? _sdT('Save as a new version') : _sdT('Open the new version')) + '</button></p>';
+        }
+        if (kind === 'dirty') {
             return '<p class="sd-phone-line sd-phone-warn"><span class="bi bi-exclamation-triangle" aria-hidden="true"></span><span>' +
                 esc(_sdT('You have changes that are not saved. The phone shows them after a save.')) + '</span>' +
                 '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-ph="save">' + esc(_sdT('Save')) + '</button></p>';
@@ -180,7 +204,10 @@ StyleDesigner.definePart('phone', function (K) {
                 '<p class="sd-phone-head">' + esc(_phNarrow() ? _sdT('Point another phone\'s camera here') : _sdT('Point your phone\'s camera here')) + '</p>' +
                 '<p class="sd-phone-sub">' + _sdT('Opens {var} on the site', '<b>' + esc(res.start_page || '') + '</b>') + '</p>' +
                 '<p class="sd-phone-line"><span class="bi bi-info-circle" aria-hidden="true"></span><span>' +
-                esc(_sdT('This design has no draft pages, so the code opens the live page as visitors see it.')) + '</span></p>';
+                esc(_sdT('This design has no draft pages, so the code opens the live page as visitors see it.')) + '</span></p>' +
+                // A live tab's changes are not on the phone either way: they
+                // are offered their new version here too.
+                (/^(start|open)$/.test(_phInfoKind(state.host)) ? _phInfoLine() : '');
             footHtml = _phFoot(true, true);
         }
         body.innerHTML = html;
@@ -286,6 +313,15 @@ StyleDesigner.definePart('phone', function (K) {
             var info = state.el.querySelector('.sd-phone-line');
             if (info) info.outerHTML = _phInfoLine();
         });
+    }
+
+    // "Save as a new version" / "Open the new version": the window closes
+    // first (it is modal), then the editor starts or opens the version and
+    // asks the window again for its draft.
+    function _phVersion() {
+        var go = state.host && state.host.newVersion;
+        if (!go || !state.el || !window.pgUI) return;
+        Promise.resolve(pgUI.dialog.hide(state.el)).then(function () { setTimeout(go, 0); });
     }
 
     function _phClose() {

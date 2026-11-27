@@ -97,3 +97,42 @@ function test_designer_versions_publish()
 	pg_assert_contains('K._pgContentLay(live, sp.tree || K.createDefaultTree(), sp, true)', $done);
 	pg_assert_contains('publish: publish', $part);
 }
+
+// "Preview on a phone" asks the window again only when start() ends with
+// the version's draft selected: it resolves true then, false otherwise.
+function test_designer_versions_start_says_whether_the_draft_opened()
+{
+	$out = designer_versions_node(
+		'var tabs = { p12: { key: "p12", page_id: 12, page_draft: 0 }, p41: { key: "p41", page_id: 41, page_draft: 1 }, p9: { key: "p9", page_id: 9, page_draft: 1 } };'
+		. ' K._pgPageByKey = function (k) { return tabs[k] || null; };'
+		. ' K._pgVersionOf = function (p) { return p.page_id === 12 ? { role: "live", draft_page_id: 41, live_page_id: 12 } : null; };'
+		. ' K.activeKey = "p12"; K._pgTabsSwitch = function (k) { K.activeKey = k; };'
+		. ' var got = [], say = console.log; console.log = function () {};'
+		. ' api.start("nope").then(function (v) { got.push(v); return api.start("p9"); })'
+		. '.then(function (v) { got.push(v); return api.start("p12"); })'
+		. '.then(function (v) { got.push(v, K.activeKey); say(JSON.stringify(got)); });'
+	);
+
+	if ($out === null && !function_exists('exec')) {
+		return;
+	}
+
+	pg_assert_same(array(false, false, true, 'p41'), $out, 'no page or a plain draft: false; the open version selected: true');
+}
+
+// "Compare with the live page" on a version's tab: the core sends the live
+// page it replaces, and the part draws the page on the site from it.
+function test_designer_versions_compare_with_the_replaced_page()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$cmp = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_compare.js');
+
+	pg_assert_contains("case 'compare':  _sdCompareLive(p); break;", $js, 'the tab menu');
+	pg_assert_contains('_sdCompareLive(_pgActivePage());', $js, 'the command palette');
+	pg_assert_contains('_sdCompareLive(_pgPageByKey(key));', $js, 'the Publish sheet');
+	pg_assert_contains("(state === 'live' && changed || state === 'version') && p.page_id > 0", $js, 'a version\'s row of the sheet carries the compare icon');
+	pg_assert_contains("var livePageId = parseInt(opts.livePageId, 10) || 0;", $cmp);
+	pg_assert_contains('if (w.livePageId > 0) return !!(w.livePage ? L.liveTree(w.livePage.baseline) : w.liveRevisions.length);', $cmp, 'a version has a page on the site');
+	pg_assert_contains("K._sdRevisionFetch(w.livePageId, w.liveRevisions[0].revision_no)", $cmp, 'drawn from the live page\'s last revision when its tab is closed');
+	pg_assert_contains("var id = (s.kind === 'live' && w.livePageId > 0) ? w.livePageId : w.pageId;", $cmp, 'and rendered as that page');
+}

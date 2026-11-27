@@ -86359,6 +86359,13 @@ const StyleDesigner = (function () {
         _sdPartCall('compare', 'open', [opts]).catch(_sdPartFailed);
     }
 
+    // "Compare with the live page" for a tab (its menu, the command palette,
+    // the Publish sheet's row).
+    function _sdCompareLive(p) {
+        var t = _pgCompareTarget(p, _pgVersionOf(p));
+        if (t) _sdCompareOpen(t);
+    }
+
     function _sdRevisionOpenCompare(pageId, no, done) {
         _sdCompareOpen({ pageId: pageId, left: 'rev:' + no, right: 'now', history: no, done: done });
     }
@@ -87350,6 +87357,17 @@ const StyleDesigner = (function () {
         if (entry && entry.role === 'live') return 'open';
         if (entry || opts.experiment) return '';
         return 'start';
+    }
+
+    // What "Compare with the live page" opens for a tab: the page saved
+    // here against the page on the site, and a new version's draft (its
+    // `entry` of the versions block, role 'version') against the live page
+    // it replaces. Null for a page never saved or picked from another
+    // design. Pure.
+    function _pgCompareTarget(p, entry) {
+        if (!p || !(p.page_id > 0) || p.pickedPending) return null;
+        var live = (entry && entry.role === 'version') ? (parseInt(entry.live_page_id, 10) || 0) : 0;
+        return live > 0 ? { pageId: p.page_id, livePageId: live } : { pageId: p.page_id };
     }
 
     // One tab. A <div>, not a <button>: the label becomes an <input> while
@@ -88662,7 +88680,7 @@ const StyleDesigner = (function () {
             switch (act) {
                 case 'view':     if (viewUrl) window.open(viewUrl, '_blank', 'noopener'); break;
                 case 'prototype': if (protoUrl) window.open(protoUrl, '_blank', 'noopener'); break;
-                case 'compare':  _sdCompareOpen({ pageId: p.page_id }); break;
+                case 'compare':  _sdCompareLive(p); break;
                 case 'share-prototype': _pgPrototypeShareDialog((p.page_id > 0 && p.page_draft && !p.pickedPending) ? p.page_id : 0); break;
                 case 'draft':    _pgSetDraft([key], true); break;
                 case 'publish':  _pgSetDraft([key], false); break;
@@ -91624,7 +91642,9 @@ const StyleDesigner = (function () {
 
     // What the phone part reads the editor through: the design, the page on
     // screen (its id only when it is a saved draft of this design), whether
-    // anything is unsaved, and the designer's own save.
+    // anything is unsaved, the designer's own save, and for a page on the
+    // site with unsaved changes its door to a new version ('start' or
+    // 'open', the phone shows saved drafts) with the press.
     function _sdPhoneHost() {
         var p = _pgActivePage();
         // A saved page is named whether it is a draft or on the site: a
@@ -91636,6 +91656,18 @@ const StyleDesigner = (function () {
             styleId: _design.styleId,
             page: { id: saved ? p.page_id : 0, name: p ? String(p.page_title || p.page_name || '') : '', saved: !!(p && p.page_id > 0) },
             dirty: function () { return _pages.some(_pgPageDirty); },
+            version: function () {
+                var q = p ? _pgPageByKey(p.key) : null;
+                return (q && !q.page_draft && _pgPageDirty(q)) ? _pgVersionDoorOf(q) : '';
+            },
+            // The window has closed by now: the version's draft opens
+            // selected and the window is asked again for it.
+            newVersion: function () {
+                if (!p) return;
+                _sdPartCall('versions', 'start', [p.key]).then(function (opened) {
+                    if (opened) _sdPhoneOpen();
+                }).catch(_sdPartFailed);
+            },
             save: function (done) {
                 var b = document.getElementById('sd-ajax-save');
                 if (!b || b.disabled) { done(); return; }
@@ -92140,8 +92172,9 @@ const StyleDesigner = (function () {
                 replaces: ver ? String(ver.live_name || '') : '',
                 replacesKey: ver ? 'p' + ver.live_page_id : '',
                 changed: changed,
-                // A page on the site that changed can be compared with it.
-                compare: state === 'live' && changed && p.page_id > 0 && !p.pickedPending,
+                // A page on the site that changed can be compared with it, a
+                // new version with the page it replaces.
+                compare: (state === 'live' && changed || state === 'version') && p.page_id > 0 && !p.pickedPending,
                 locked: p.access === 'locked',
                 home: !!p.page_home,
                 active: p.key === _activeKey
@@ -92199,8 +92232,7 @@ const StyleDesigner = (function () {
             },
             // Opened over the sheet; closing it gives the sheet back.
             compare: function (key) {
-                var p = _pgPageByKey(key);
-                if (p && p.page_id > 0) _sdCompareOpen({ pageId: p.page_id });
+                _sdCompareLive(_pgPageByKey(key));
             }
         };
         // The Publish check (the part 'publishcheck'): the ticked pages'
@@ -93324,8 +93356,7 @@ const StyleDesigner = (function () {
         if (cmpPage && cmpPage.page_id > 0 && !cmpPage.pickedPending) {
             items.splice(items.findIndex(function (it) { return it.id === 'act_preview'; }) + 1, 0,
                 { id: 'act_compare_live', label: _sdT('Compare with the live page'), icon: 'bi-arrow-left-right', meta: _sdT('Page'), action: function () {
-                    var a = _pgActivePage();
-                    if (a && a.page_id > 0) _sdCompareOpen({ pageId: a.page_id });
+                    _sdCompareLive(_pgActivePage());
                 }});
         }
 

@@ -134,28 +134,28 @@ StyleDesigner.definePart('versions', function (K) {
     }
 
     // "Save as a new version" on a live tab, or "Open the new version"
-    // where it has one.
+    // where it has one. Resolves true once the version's draft is the
+    // selected tab, false otherwise ("Preview on a phone" asks again then).
     function start(key) {
         var p = K._pgPageByKey(key);
-        if (!p || busy) return;
+        if (!p || busy) return Promise.resolve(false);
         var own = K._pgVersionOf(p);
         if (own && own.role === 'live') {
             busy = true;
-            openDraft(own.draft_page_id, key).then(function () { busy = false; }, fail);
-            return;
+            return openDraft(own.draft_page_id, key).then(function () { busy = false; return true; }, function (err) { fail(err); return false; });
         }
-        if (!(p.page_id > 0) || p.page_draft || p.pickedPending) return;
+        if (!(p.page_id > 0) || p.page_draft || p.pickedPending) return Promise.resolve(false);
         K._pgTabsPersistActive();
         // The tab as the save would send it; a tab nothing changed sends no
         // page and the copy stays as the page on the site is.
         var recs = K._pgTabsSerialize(key);
-        if (!recs) return;
+        if (!recs) return Promise.resolve(false);
         var rec = recs[0];
         var changed = !!rec && !rec.unchanged;
         var liveName = p.savedName || p.page_name || '';
         busy = true;
         waiting = K.sdToast('<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>' + esc(_sdT('Saving the new version…')), 'info', 15000);
-        K._pgApiPost('version_start', { page_id: p.page_id, page: changed ? JSON.stringify(rec) : '' }).then(function (res) {
+        return K._pgApiPost('version_start', { page_id: p.page_id, page: changed ? JSON.stringify(rec) : '' }).then(function (res) {
             if (!res || !res.ok) throw new Error((res && res.error) || _sdT('The new version could not be saved.'));
             remember(res, liveName);
             // An existing version is opened as it is: this tab's changes
@@ -171,8 +171,9 @@ StyleDesigner.definePart('versions', function (K) {
                     ? _sdT('This page already has a new version. It was opened; your changes stay on the page\'s own tab.')
                     : _sdT('The new version was saved as a draft. The page on the site stays as it is.')), res.existing ? 'warning' : 'success', 6000);
                 (res.warnings || []).forEach(function (w) { K.sdToast(esc(String(w)), 'warning', 8000); });
+                return true;
             });
-        }).catch(fail);
+        }).catch(function (err) { fail(err); return false; });
     }
 
     // "Discard this version" on its draft's tab: asked first, then the

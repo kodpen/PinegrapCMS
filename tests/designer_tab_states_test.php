@@ -188,3 +188,28 @@ function test_designer_version_door()
 	pg_assert_same('', $out[9], 'no door while the page has an open experiment');
 	pg_assert_same('start', $out[10], 'the home page may have a new version');
 }
+
+function test_designer_compare_target_of_a_tab()
+{
+	$out = designer_tab_states_node('out = ' . json_encode(array(
+		array(array('page_id' => 7, 'page_draft' => 0), null),
+		array(array('page_id' => 8, 'page_draft' => 1), array('role' => 'version', 'live_page_id' => 7)),
+		array(array('page_id' => 7, 'page_draft' => 0), array('role' => 'live', 'live_page_id' => 7, 'draft_page_id' => 8)),
+		array(array('page_id' => 9, 'page_draft' => 1), null),
+		array(array('page_id' => 0), null),
+		array(array('page_id' => 8, 'pickedPending' => true), array('role' => 'version', 'live_page_id' => 7)),
+		array(array('page_id' => 8, 'page_draft' => 1), array('role' => 'version', 'live_page_id' => '7')),
+	)) . '.map(function (c) { return _pgCompareTarget(c[0], c[1]); });');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('pageId' => 7), $out[0], 'a page on the site is compared with itself on the site');
+	pg_assert_same(array('pageId' => 8, 'livePageId' => 7), $out[1], 'a new version is compared with the live page it replaces');
+	pg_assert_same(array('pageId' => 7), $out[2], 'the live page that has a version is compared with itself');
+	pg_assert_same(array('pageId' => 9), $out[3], 'a plain draft keeps its own page id');
+	pg_assert_same(null, $out[4], 'a page never saved has nothing to compare');
+	pg_assert_same(null, $out[5], 'a page picked from another design has nothing to compare');
+	pg_assert_same(array('pageId' => 8, 'livePageId' => 7), $out[6], 'a live page id sent as text is read as a number');
+}
