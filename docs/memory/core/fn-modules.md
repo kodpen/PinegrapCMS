@@ -104,7 +104,7 @@ description: Generated from the module field of the memory files: each includes/
 - `commission_list`: [[affiliate-approval-and-commission-edit]], [[api-commission-writes]], [[commission-list-affiliate-join]], [[commission-list-paging]], [[order-cancel-commissions]], [[referral-commission-readers]]
 - `common_regions`: [[api-design-dialogs-regions]]
 - `communication_settings_fold`: [[settings-communication]]
-- `component_overrides`: [[component-overrides-fields]], [[component-overrides-model]], [[component-overrides-overview]], [[component-overrides-render]], [[component-overrides-this-place]], [[component-overrides-variants]]
+- `component_overrides`: [[component-overrides-fields]], [[component-overrides-model]], [[component-overrides-overview]], [[component-overrides-render]], [[component-overrides-this-place]], [[component-overrides-variant-places]], [[component-overrides-variants]]
 - `config_text`: [[config-table-no-varchar]], [[job-pass-time-claim]]
 - `connect`: [[api-connected-accounts-renewal]]
 - `connections_registry`: [[connections-registry]], [[connections-registry-rows]]
