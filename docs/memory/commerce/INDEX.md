@@ -494,6 +494,7 @@
 - supplier-feed.md: Supplier feeds (Products › Supplier feeds, SF1 to SF7, #10771 to #11121): the store pulls suppliers' XML, CSV or JSON lists and keeps price and stock in step; F1 to F14, which file holds what [decision: decisions-made-product-87.md, decisions-made-schema-48.md]
 - tax-eu-standard-rate.md: Rates by the buyer's country (Site Settings › Commerce, beside Tax): an EU buyer in no tax zone pays their state's standard VAT rate; the dated list, its source, who follows [decision: here]
 - tax-line-rate-renewal-import.md: The rate a subscription renewal and a marketplace import store on their line (order_items.tax_rate, pg_tax_line_rate()), and the notice when an update changes a row of the EU VAT list
+- tax-oss-report.md: The One-Stop Shop Report (Commerce, oss_report.php): order_items.tax_country (11.0.287), lines shown apart, discount, euro at the period's last day, CSV
 - tax-zone-commission-reward-boxes.md: Rate, commission and whole-number boxes read as their columns store them: tax zone rate, commission, reward points and goal, Site Settings whole numbers (pg_parse_whole_number())
 - tr-district-carriers.md: What sends and writes ship_tos.district (#3654): the four Turkish carrier drivers (district first, city fallback), the needs-district hook, the n11 and Trendyol imports [decision: decisions-made-product-12.md]
 - tr-district-plate-code.md: ship_tos.district and states.plate_code (step 11.0.134, decision #3569): the district as free text, the plate fill by province name, the readiness probe, what reads them so far [decision: here]
