@@ -4,8 +4,8 @@
  *
  * Source test for what the Workspace's move to the panel look must keep:
  * a disabled icon button or segment shows faded, the command palette's
- * "Only in #channel" segment fits a phone, and a table board's Group by
- * row wraps.
+ * "Only in #channel" segment fits a phone, a table board's Group by row
+ * wraps, and the composer's Send and Send later are one split button.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -64,4 +64,37 @@ function test_workspace_look_palette_scope_fits()
 function test_workspace_look_board_group_by_wraps()
 {
 	pg_assert_contains('<div class="pg-seg pg-seg-wrap" role="group" aria-label="\' . h(lang(\'Group by\'))', workspace_look_regressions_source('workspace_wtables.php'));
+}
+
+// The composer's Send and Send later are one split button: the group is the
+// look's .pg-button-split (as on the Design examples screen), Send its first
+// half, the clock its .pg-button-split-more half; without scheduled
+// messages Send stands alone.
+function test_workspace_look_send_split_button()
+{
+	$script = workspace_look_regressions_source('assets/js/workspace.js');
+	$from = strpos($script, 'if (CFG.scheduled_messages && !self.era) {');
+
+	pg_assert_true($from !== false, 'the scheduled send branch is found');
+
+	$branch = substr($script, (int) $from, (int) strpos($script, 'self.sendNode = sendGroup || send;', (int) $from) - (int) $from);
+	$parts = explode('} else {', $branch);
+
+	pg_assert_same(2, count($parts), 'one branch with scheduling, one without');
+	pg_assert_contains("var sendGroup = el('span', 'pg-button-split ws-send-group');", $parts[0]);
+	pg_assert_same(0, preg_match('/(?<![\w-])btn-group(?![\w-])/', $branch), 'no Bootstrap button group');
+	pg_assert_contains("button('pg-button pg-button-fill pg-button-sm pg-button-split-more ws-send-later', '', 'bi-clock', t('sm_send_later'))", $parts[0]);
+	pg_assert_same(1, preg_match('/sendGroup\.appendChild\(send\);\s+sendGroup\.appendChild\(later\);/', $parts[0]), 'Send is the first half, the clock the second');
+	pg_assert_contains('parts.push(send);', $parts[1]);
+	pg_assert_same(false, strpos($parts[1], 'pg-button-split'), 'a lone Send is a plain button');
+
+	$css = workspace_look_regressions_source('assets/css/backend.src.css');
+	$main = workspace_look_regressions_rule($css, '.pg-button-split > .pg-button:first-child');
+	$more = workspace_look_regressions_rule($css, '.pg-button-split > .pg-button-split-more');
+
+	pg_assert_contains('border-top-right-radius: 0;', $main);
+	pg_assert_contains('border-bottom-right-radius: 0;', $main);
+	pg_assert_contains('border-top-left-radius: 0;', $more);
+	pg_assert_contains('border-bottom-left-radius: 0;', $more);
+	pg_assert_contains('inset 1px 0 0', $more);
 }
