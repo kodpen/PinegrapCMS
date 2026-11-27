@@ -11,7 +11,7 @@ module: office
 - In the cell being typed in the keys are the field's while its value differs from the one it opened with; with that value they go to the list. A press of the button while typing keeps the typed value first, so that is the change undone.
 
 ## What is one change?
-- Each change made to the list (`office-sheet-change-list.md`): a cell's value kept (Enter, Tab, a click away, Delete), one part chosen on the bar for the selection, a row or column inserted or deleted, a sheet added, renamed, deleted or moved.
+- Each change made to the list (`office-sheet-change-list.md`): a cell's value kept (Enter, Tab, a click away, Delete), one part chosen on the bar for the selection, a row or column inserted or deleted, a sheet added, renamed, deleted or moved, a paste, a fill down or a clear of the selection (`office-sheet-clipboard.md`).
 - A state is a copy of the whole list (`listHistory()`, `window.pgOfficeView.sheetList.history`), kept only when the change altered the list; so Bold then Italic on one range, one entry of the list, are two presses, and a value typed back to the file's leaves no empty step.
 - The last 100 states stay (`changeList(100)`); a new change drops what could be redone. `view.reset()` (after a save, or dropping every change) empties both ways.
 
