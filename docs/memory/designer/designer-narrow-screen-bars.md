@@ -4,8 +4,8 @@ description: Designer toolbars hide labels, never controls: the page bar at 1024
 ---
 
 ## What happens to the page toolbar at 1024px and below?
-- Toolbars hide the **label**, not the control. Under `@media (max-width: 1024px)` Add Page (`.sd-tabs-add-txt`), Preview and Publish lose their words; each stays an icon with its name in `title`. At 1024px the columns are 190 and 240px, and board F6 of `designer-frame-tidy-drawing.md` draws the bar's three buttons as icons there (FR4). The Assistant's word goes below 1280px.
-- Under 576px (FR4): no lines around Undo and Redo, 3px between the bar's controls and 8px at its ends, so the open page's tab keeps more of its name; the status bar's Help is its icon (its tip says "Help (?)").
+- Toolbars hide the **label**, not the control. Under `@media (max-width: 1024px)` Add Page (`.sd-tabs-add-txt`), Preview and Publish lose their words; each stays an icon with its name in `title`. At 1024px the columns are 190 and 240px, and board F6 of `designer-frame-tidy-drawing.md` draws the bar's three buttons as icons there (FR4, #12031). The Assistant's word goes below 1280px.
+- Under 576px (FR4, #12031): no lines around Undo and Redo, 3px between the bar's controls and 8px at its ends, so the open page's tab keeps more of its name; the status bar's Help is its icon (its tip says "Help (?)").
 
 ## How does the canvas bar (.sd-bp-bar) give way?
 - By its **own width**, not the window's, in a fixed order (DP22): `_sdCanvasBarFold(avail, needs)` picks `data-fold` on `#sd-bp-bar`: 0 everything, 1 hides the width text (`#sd-bp-label`), 2 folds the six sizes into one list (`#sd-bp-size-select`), 3 hides the labels (`.sd-vb-txt`) and puts 12px between zones instead of their lines. Narrower still, the zones wrap to a second row; a control is never hidden.
