@@ -142,6 +142,37 @@ function test_editor_bridge_unsplash()
 	pg_assert_same(array('https://unsplash.com/@a?utm_source=pinegrap&utm_medium=referral', 'https://unsplash.com?utm_source=pinegrap&utm_medium=referral'), $out['referral']);
 }
 
+// A picked photo as the canvas keeps it: the returned address, its size,
+// the photographer's name and the two links with the referral; a photo
+// without an https address on images.unsplash.com gives null.
+function test_editor_bridge_unsplash_photo()
+{
+	$out = editor_bridge_js_test_run('return {
+			full: U.photo({width: 4000, height: 6000, alt_description: "A cup", urls: {regular: "https://images.unsplash.com/photo-1?w=1080"},
+				user: {name: "Ada Lens", links: {html: "https://unsplash.com/@ada"}}, links: {html: "https://unsplash.com/photos/abc"}}),
+			bare: U.photo({urls: {regular: "https://images.unsplash.com/photo-2"}}),
+			other: U.photo({urls: {regular: "https://example.com/a.jpg"}}),
+			plain: U.photo({urls: {regular: "http://images.unsplash.com/photo-3"}}),
+			none: U.photo(null)
+		};');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		'src' => 'https://images.unsplash.com/photo-1?w=1080', 'width' => 4000, 'height' => 6000, 'alt' => 'A cup', 'name' => 'Ada Lens',
+		'profile' => 'https://unsplash.com/@ada?utm_source=pinegrap&utm_medium=referral',
+		'page' => 'https://unsplash.com/photos/abc?utm_source=pinegrap&utm_medium=referral',
+	), $out['full']);
+	pg_assert_same('https://images.unsplash.com/photo-2', $out['bare']['src']);
+	pg_assert_same('', $out['bare']['name']);
+	pg_assert_same('https://unsplash.com?utm_source=pinegrap&utm_medium=referral', $out['bare']['profile']);
+	pg_assert_same(null, $out['other']);
+	pg_assert_same(null, $out['plain']);
+	pg_assert_same(null, $out['none']);
+}
+
 // The bridge is printed behind the same gate as Browse and Upload, after
 // CKEditor, and served in its bundle.
 function test_editor_bridge_wired()

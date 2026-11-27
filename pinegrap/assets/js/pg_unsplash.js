@@ -9,6 +9,8 @@
  *
  *   pgUnsplash.open({key, texts}) -> Promise of the photo's address or null,
  *   settled once the dialog has closed (docs/memory/ui/dialog-result-after-close.md).
+ *   With photo: true the promise gives photo() of the pick instead: what the
+ *   Artifact Canvas keeps with a picture layer.
  *
  * pgUnsplash.pure holds the address builders without the DOM
  * (tests/editor_bridge_js_test.php runs them in Node). Served in
@@ -56,7 +58,29 @@
         return (href ? String(href) : fallback) + UTM;
     }
 
-    var pure = { listUrl: listUrl, readAnswer: readAnswer, referral: referral };
+    // A picked photo as the Artifact Canvas keeps it: the returned address
+    // (the guidelines ask for it to be used as given), its size, its text and
+    // the photographer's credit with both links; null for an answer without
+    // an https address on Unsplash's picture host.
+    function photo(p) {
+        var src = (p && p.urls && (typeof p.urls.regular === 'string')) ? p.urls.regular : '';
+
+        if (src.indexOf('https://images.unsplash.com/') !== 0) {
+            return null;
+        }
+
+        return {
+            src: src,
+            width: parseInt(p.width, 10) || 0,
+            height: parseInt(p.height, 10) || 0,
+            alt: String(p.alt_description || ''),
+            name: String((p.user && p.user.name) || ''),
+            profile: referral(p.user && p.user.links && p.user.links.html, 'https://unsplash.com'),
+            page: referral(p.links && p.links.html, 'https://unsplash.com')
+        };
+    }
+
+    var pure = { listUrl: listUrl, readAnswer: readAnswer, referral: referral, photo: photo };
 
     var doc = root.document;
 
@@ -129,7 +153,7 @@
                 // Counted as a download, as the API guidelines ask.
                 root.fetch(download + (download.indexOf('?') === -1 ? '?' : '&') + 'client_id=' + encodeURIComponent(key)).catch(function () {});
             }
-            state.result = (photo.urls && photo.urls.regular) || null;
+            state.result = opts.photo ? pure.photo(photo) : ((photo.urls && photo.urls.regular) || null);
             root.pgUI.dialog.hide(parts.root);
         }
 
