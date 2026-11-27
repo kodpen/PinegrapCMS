@@ -636,6 +636,18 @@ function mp_sync_send_listings($account, &$summary) {
 
 		$task_id = isset($result['data']['task_id']) ? (string)$result['data']['task_id'] : '';
 
+		// A marketplace that answers each listing at once (eBay) hands back
+		// its verdicts with no task to read: the lines get a task id of this
+		// shop's own and are closed below, once the mappings exist.
+		$verdicts = (isset($result['data']['results']) && is_array($result['data']['results']) && ($task_id === ''))
+			? $result['data']['results'] : null;
+
+		if ($verdicts !== null) {
+
+			$task_id = 'now:' . bin2hex(random_bytes(8));
+
+		}
+
 		$summary['listed'] += count($assembled['items']);
 
 		db("UPDATE marketplace_sync_queue
@@ -668,6 +680,12 @@ function mp_sync_send_listings($account, &$summary) {
 				(account_id, product_id, remote_code, status, created_timestamp)
 				VALUES ('" . e($account_id) . "', '" . e((int)$item['product_id']) . "',
 					'" . e((string)$item['code']) . "', 'active', UNIX_TIMESTAMP())");
+
+		}
+
+		if ($verdicts !== null) {
+
+			mp_sync_apply_results($account, $task_id, $verdicts, $summary);
 
 		}
 

@@ -1,0 +1,14 @@
+{
+  "limit": 100,
+  "offers": [
+    {
+      "offerId": "5005317011",
+      "sku": "CHAIR-BLUE",
+      "marketplaceId": "EBAY_DE",
+      "format": "FIXED_PRICE",
+      "status": "UNPUBLISHED"
+    }
+  ],
+  "size": 1,
+  "total": 1
+}

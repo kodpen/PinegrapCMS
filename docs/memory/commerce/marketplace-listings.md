@@ -25,7 +25,11 @@ description: Rules for opening products on a marketplace (listings.php): product
 ## What is a listed product's key?
 - The seller's code (`products.name`) for n11. For a provider with `'key' => 'barcode'` (Trendyol) the mapped `remote_code`, else the product's first barcode; no barcode = article refused (`mp_listing_items()`, `trendyol-listings.md`); approved: `remote_id` = content id (`trendyol-listing-status.md`). Items carry `stock_code` (the name), `barcode`, `brand`, `taxable` and `price_major` = the checkout's tax-inclusive price (`marketplace-price.md`).
 
+## What else does an item carry?
+- For a provider not keyed by barcode, `barcode` is the product's first one or '' (no refusal): eBay's identifier. `group_title` is the article's title.
+
 ## Where does a refusal show?
+- A connector that answers at once (eBay) returns `data['results']` (code => ok, error) with `task_id` '': `mp_sync_send_listings()` gives the lines a local task id `now:…` and applies them with `mp_sync_apply_results()` after writing the mappings (`ebay-listings.md`).
 - A non-retryable refusal from the connector's `create_listings` is written to the article row (`marketplace_category_map.last_error`) as well as to the queue rows; a retryable one only to the queue rows.
 
 ## How are VAT and images handled?

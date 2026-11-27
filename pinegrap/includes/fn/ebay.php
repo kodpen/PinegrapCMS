@@ -894,3 +894,411 @@ function pg_ebay_aspect_rows($data)
 
     return $rows;
 }
+
+
+/* ---------------------------------------------------------------------------
+   Listings (connectors/ebay.php): inventory item, group, offer and publish
+   --------------------------------------------------------------------------- */
+
+/**
+ * The longest SKU and inventory item group key eBay takes, and the longest
+ * title. Pure.
+ *
+ * @return array sku, group_key, title, pictures, product_description
+ */
+function pg_ebay_listing_limits()
+{
+    return array('sku' => 50, 'group_key' => 50, 'title' => 80, 'pictures' => 24, 'product_description' => 4000);
+}
+
+/**
+ * The words a site takes for a product identifier the product does not have
+ * ("Does not apply" on the English sites), from eBay's product identifier
+ * text page. Pure.
+ *
+ * @param string $site marketplace id
+ * @return string
+ */
+function pg_ebay_does_not_apply($site)
+{
+    $texts = array(
+        'EBAY_DE' => 'Nicht zutreffend',
+        'EBAY_AT' => 'Nicht zutreffend',
+        'EBAY_CH' => 'Nicht zutreffend',
+        'EBAY_FR' => 'Non applicable',
+        'EBAY_IT' => 'Non applicabile',
+        'EBAY_ES' => 'No aplicable',
+        'EBAY_NL' => 'Niet van toepassing',
+        'EBAY_BE' => 'Niet van toepassing',
+        'EBAY_PL' => 'Nie dotyczy',
+    );
+
+    return isset($texts[$site]) ? $texts[$site] : 'Does not apply';
+}
+
+/**
+ * The product identifier of an inventory item from the product's barcode:
+ * twelve digits are a UPC, eight, thirteen or fourteen an EAN (GTIN-14 is
+ * sent as one); anything else, or none, is the site's "does not apply" text,
+ * under UPC on the American sites and EAN elsewhere. Pure.
+ *
+ * @param string $barcode
+ * @param string $site
+ * @return array 'upc' or 'ean' => array(value)
+ */
+function pg_ebay_identifier($barcode, $site)
+{
+    $barcode = trim((string) $barcode);
+
+    if (preg_match('/^[0-9]{12}$/', $barcode) === 1) {
+        return array('upc' => array($barcode));
+    }
+
+    if (preg_match('/^([0-9]{8}|[0-9]{13}|[0-9]{14})$/', $barcode) === 1) {
+        return array('ean' => array($barcode));
+    }
+
+    $field = in_array($site, array('EBAY_US', 'EBAY_CA'), true) ? 'upc' : 'ean';
+
+    return array($field => array(pg_ebay_does_not_apply($site)));
+}
+
+/**
+ * A listing item's attributes (mp_listing_attributes()) as eBay's aspects:
+ * name => array(value). eBay's item specifics have no ids, so the value id
+ * is the value's own text; a free answer is its custom value. Pure.
+ *
+ * @param array $attributes id, value_id, custom_value
+ * @return array
+ */
+function pg_ebay_aspects($attributes)
+{
+    $aspects = array();
+
+    foreach ((array) $attributes as $attribute) {
+        $name = isset($attribute['id']) ? trim((string) $attribute['id']) : '';
+        $value = (isset($attribute['value_id']) && ((string) $attribute['value_id'] !== ''))
+            ? trim((string) $attribute['value_id'])
+            : (isset($attribute['custom_value']) ? trim((string) $attribute['custom_value']) : '');
+
+        if (($name === '') || ($value === '')) {
+            continue;
+        }
+
+        $aspects[$name] = array($value);
+    }
+
+    return $aspects;
+}
+
+/**
+ * The price an offer is sent at, in the site's currency: the shop's price
+ * (price_major) times the rate from the shop's currency to the site's,
+ * rounded half away from zero to the cent. Every eBay site's currency has
+ * two decimals. '' when there is no price or no rate. Pure.
+ *
+ * @param float      $price_major
+ * @param float|null $rate
+ * @return string "12.34"
+ */
+function pg_ebay_offer_price($price_major, $rate)
+{
+    if (!is_numeric($price_major) || !is_numeric($rate) || ((float) $rate <= 0)) {
+        return '';
+    }
+
+    // The shop's price in hundredths first, so a float like 19.989999 is
+    // the 1999 it stands for before the rate is applied.
+    $cents = (int) round(round((float) $price_major * 100, 6) * (float) $rate);
+
+    if ($cents <= 0) {
+        return '';
+    }
+
+    return number_format($cents / 100, 2, '.', '');
+}
+
+/**
+ * The key an article's variants are grouped under on eBay: the product
+ * group's name when it is a key eBay takes, else a stable one made from it.
+ * Pure.
+ *
+ * @param string $group_code
+ * @return string
+ */
+function pg_ebay_group_key($group_code)
+{
+    $group_code = trim((string) $group_code);
+    $limits = pg_ebay_listing_limits();
+
+    if (preg_match('/^[A-Za-z0-9._-]+$/', $group_code) === 1 && (strlen($group_code) <= $limits['group_key'])) {
+        return $group_code;
+    }
+
+    return 'pg-' . substr(md5($group_code), 0, 24);
+}
+
+/**
+ * The plain text of a description, for the inventory item's product
+ * description, which takes 4,000 characters: tags left out and the text cut
+ * at a word, which cannot break any markup. The offer carries the full HTML.
+ * Pure.
+ *
+ * @param string $html
+ * @return string
+ */
+function pg_ebay_plain_description($html)
+{
+    $text = trim(preg_replace('/\s+/u', ' ', html_entity_decode(strip_tags(str_replace(array('<br', '</p>', '</li>'), array(' <br', ' </p>', ' </li>'), (string) $html)), ENT_QUOTES, 'UTF-8')));
+    $limits = pg_ebay_listing_limits();
+
+    if (mb_strlen($text) <= $limits['product_description']) {
+        return $text;
+    }
+
+    $cut = mb_substr($text, 0, $limits['product_description']);
+    $space = mb_strrpos($cut, ' ');
+
+    return ($space !== false && $space > 0) ? mb_substr($cut, 0, $space) : $cut;
+}
+
+/**
+ * Whether one listing item can go to eBay as it is: '' or the reason it
+ * cannot. Never cut: a cut title or SKU is another listing. Pure.
+ *
+ * @param array $item mp_listing_items()
+ * @return string
+ */
+function pg_ebay_item_problem($item)
+{
+    $limits = pg_ebay_listing_limits();
+    $sku = isset($item['code']) ? (string) $item['code'] : '';
+    $title = isset($item['title']) ? trim((string) $item['title']) : '';
+
+    if (($sku === '') || (mb_strlen($sku) > $limits['sku'])) {
+        return lang(array('string' => 'eBay takes a product code of 1 to {var:1} characters; {var:2} is not one.', 'vars' => array($limits['sku'], $sku)));
+    }
+
+    if ($title === '') {
+        return lang(array('string' => '{var:1} has no title.', 'vars' => array($sku)));
+    }
+
+    if (mb_strlen($title) > $limits['title']) {
+        return lang(array('string' => 'The title of {var:1} is longer than the {var:2} characters eBay takes.', 'vars' => array($sku, $limits['title'])));
+    }
+
+    foreach ((array) (isset($item['images']) ? $item['images'] : array()) as $url) {
+        if (stripos((string) $url, 'https://') !== 0) {
+            return lang(array('string' => 'eBay only takes pictures on https addresses; {var:1} has one that is not.', 'vars' => array($sku)));
+        }
+    }
+
+    return '';
+}
+
+/**
+ * The createOrReplaceInventoryItem body of one listing item: a new product,
+ * its quantity, title, plain description, aspects, up to 24 pictures and its
+ * identifier (pg_ebay_identifier()). Pure.
+ *
+ * @param array  $item mp_listing_items()
+ * @param string $site
+ * @return array
+ */
+function pg_ebay_inventory_item($item, $site)
+{
+    $limits = pg_ebay_listing_limits();
+    $product = array(
+        'title'       => trim((string) $item['title']),
+        'description' => pg_ebay_plain_description(isset($item['description']) ? $item['description'] : ''),
+        'aspects'     => (object) pg_ebay_aspects(isset($item['attributes']) ? $item['attributes'] : array()),
+        'imageUrls'   => array_slice(array_values((array) $item['images']), 0, $limits['pictures']),
+    );
+
+    $product += pg_ebay_identifier(isset($item['barcode']) ? $item['barcode'] : '', $site);
+
+    return array(
+        'availability' => array('shipToLocationAvailability' => array('quantity' => max(0, (int) $item['quantity']))),
+        'condition'    => 'NEW',
+        'product'      => $product,
+    );
+}
+
+/**
+ * The createOrReplaceInventoryItemGroup body of an article's variants: the
+ * aspects all of them share, the ones they differ by with every value
+ * (variesBy), the article's title and pictures, and their SKUs. Answers
+ * array(ok, body, error): variants that differ by nothing cannot be one
+ * listing. Pure.
+ *
+ * @param array $items mp_listing_items() of one article, two or more
+ * @return array
+ */
+function pg_ebay_inventory_group($items)
+{
+    $items = array_values((array) $items);
+    $limits = pg_ebay_listing_limits();
+    $aspects = array();
+    $names = array();
+
+    foreach ($items as $index => $item) {
+        $aspects[$index] = pg_ebay_aspects(isset($item['attributes']) ? $item['attributes'] : array());
+        $names += array_fill_keys(array_keys($aspects[$index]), true);
+    }
+
+    $common = array();
+    $varies = array();
+
+    foreach (array_keys($names) as $name) {
+        $values = array();
+
+        foreach ($aspects as $own) {
+            $values[] = isset($own[$name]) ? $own[$name][0] : '';
+        }
+
+        if (count(array_unique($values)) === 1) {
+            $common[$name] = array($values[0]);
+        } elseif (!in_array('', $values, true)) {
+            $varies[] = array('name' => (string) $name, 'values' => array_values(array_unique($values)));
+        }
+    }
+
+    if (!$varies) {
+        return array('ok' => false, 'body' => array(), 'error' => lang('The variants of this article differ by no item specific, so eBay cannot list them as one listing. Give each product its own option.'));
+    }
+
+    $title = isset($items[0]['group_title']) && (trim((string) $items[0]['group_title']) !== '') ? trim((string) $items[0]['group_title']) : trim((string) $items[0]['title']);
+
+    if (mb_strlen($title) > $limits['title']) {
+        return array('ok' => false, 'body' => array(), 'error' => lang(array('string' => 'The title of this article is longer than the {var:1} characters eBay takes.', 'vars' => array($limits['title']))));
+    }
+
+    $pictures = array();
+
+    foreach ($items as $item) {
+        foreach ((array) $item['images'] as $url) {
+            $pictures[(string) $url] = true;
+        }
+    }
+
+    return array('ok' => true, 'error' => '', 'body' => array(
+        'title'       => $title,
+        'description' => pg_ebay_plain_description(isset($items[0]['description']) ? $items[0]['description'] : ''),
+        'aspects'     => (object) $common,
+        'imageUrls'   => array_slice(array_keys($pictures), 0, $limits['pictures']),
+        'variantSKUs' => array_values(array_map(function ($item) {
+            return (string) $item['code'];
+        }, $items)),
+        'variesBy'    => array('aspectsImageVariesBy' => array(), 'specifications' => $varies),
+    ));
+}
+
+/**
+ * The createOffer (or updateOffer) body of one listing item on a site: a
+ * fixed price offer in the account's category, at the account's location,
+ * under its three business policies, at $price in the site's currency. Pure.
+ *
+ * @param array  $item     mp_listing_items()
+ * @param string $site
+ * @param array  $choices  location, fulfillment_policy, payment_policy, return_policy
+ * @param string $price    pg_ebay_offer_price()
+ * @return array
+ */
+function pg_ebay_offer_body($item, $site, $choices, $price)
+{
+    $sites = pg_ebay_sites();
+
+    return array(
+        'sku'                 => (string) $item['code'],
+        'marketplaceId'       => $site,
+        'format'              => 'FIXED_PRICE',
+        'availableQuantity'   => max(0, (int) $item['quantity']),
+        'categoryId'          => (string) $item['category_id'],
+        'listingDescription'  => (string) $item['description'],
+        'merchantLocationKey' => (string) $choices['location'],
+        'listingPolicies'     => array(
+            'fulfillmentPolicyId' => (string) $choices['fulfillment_policy'],
+            'paymentPolicyId'     => (string) $choices['payment_policy'],
+            'returnPolicyId'      => (string) $choices['return_policy'],
+        ),
+        'pricingSummary'      => array('price' => array('value' => (string) $price, 'currency' => $sites[$site]['currency'])),
+    );
+}
+
+/**
+ * The offer of a getOffers answer for one site: array(offer_id, status,
+ * listing_id, listing_status), or null when the SKU has none there. Pure.
+ *
+ * @param mixed  $data
+ * @param string $site
+ * @return array|null
+ */
+function pg_ebay_offer_of($data, $site)
+{
+    $list = (is_array($data) && isset($data['offers']) && is_array($data['offers'])) ? $data['offers'] : array();
+
+    foreach ($list as $offer) {
+        if (!is_array($offer) || !isset($offer['offerId']) || !is_scalar($offer['offerId']) || ((string) $offer['offerId'] === '')) {
+            continue;
+        }
+
+        if (isset($offer['marketplaceId']) && ($offer['marketplaceId'] !== $site)) {
+            continue;
+        }
+
+        $listing = (isset($offer['listing']) && is_array($offer['listing'])) ? $offer['listing'] : array();
+
+        return array(
+            'offer_id'       => (string) $offer['offerId'],
+            'status'         => isset($offer['status']) && is_string($offer['status']) ? $offer['status'] : '',
+            'listing_id'     => isset($listing['listingId']) && is_scalar($listing['listingId']) ? (string) $listing['listingId'] : '',
+            'listing_status' => isset($listing['listingStatus']) && is_string($listing['listingStatus']) ? $listing['listingStatus'] : '',
+        );
+    }
+
+    return null;
+}
+
+/**
+ * Where one SKU's listing stands, as the marketplace layer's listing state
+ * (mp_sync_listing_row_update()): a published offer with a listing id is
+ * 'approved' with the listing id as its content id, and an ended listing is
+ * noted as archived; anything else is 'unknown', since eBay reviews
+ * nothing and a refused publish was written when it was sent. Pure.
+ *
+ * @param array|null $offer pg_ebay_offer_of()
+ * @return array
+ */
+function pg_ebay_listing_state($offer)
+{
+    if (!is_array($offer) || ($offer['status'] !== 'PUBLISHED') || ($offer['listing_id'] === '')) {
+        return array('state' => 'unknown');
+    }
+
+    return array(
+        'state'      => 'approved',
+        'content_id' => $offer['listing_id'],
+        'archived'   => in_array($offer['listing_status'], array('ENDED', 'EBAY_ENDED'), true),
+    );
+}
+
+/**
+ * Every message of an eBay error answer, joined, at most three. Pure.
+ *
+ * @param mixed $data
+ * @return string
+ */
+function pg_ebay_error_messages($data)
+{
+    $messages = array();
+
+    foreach ((is_array($data) && isset($data['errors']) && is_array($data['errors'])) ? $data['errors'] : array() as $error) {
+        $text = (is_array($error) && isset($error['message']) && is_string($error['message'])) ? trim($error['message']) : '';
+
+        if (($text !== '') && !in_array($text, $messages, true)) {
+            $messages[] = $text;
+        }
+    }
+
+    return implode(' ', array_slice($messages, 0, 3));
+}
