@@ -236,7 +236,7 @@ description: Generated from the module field of the memory files: each includes/
 - `lang_files`: [[lang-file-writes]], [[lang-files]]
 - `lang_pack`: [[lang-pack-translating]]
 - `language_redirect`: [[language-redirect-matching]]
-- `launch_journey`: [[api-launch-journey]], [[launch-journey]], [[launch-journey-catalogue]], [[system-status-payment-mode]]
+- `launch_journey`: [[api-launch-journey]], [[launch-journey]], [[launch-journey-catalogue]], [[launch-journey-describe-line]], [[system-status-payment-mode]]
 - `launch_journey_path`: [[launch-journey-first-week-path]]
 - `launch_journey_site`: [[launch-journey-go-live]], [[launch-journey-setup-card]]
 - `launch_summary`: [[launch-summary-agency]], [[launch-summary-file-lines]]
