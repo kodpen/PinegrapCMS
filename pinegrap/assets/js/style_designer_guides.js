@@ -40,7 +40,8 @@ StyleDesigner.definePart('guides', function (K) {
     // inside the frame is turned into the layer's pixels: `k` scales it
     // (the zoom on the canvas' <html> where the rectangle is not zoomed yet,
     // and the Fit scale) and `zoom` turns the layer's pixels back into the
-    // page's CSS pixels for the numbers.
+    // page's CSS pixels for the numbers; `rect` is a rectangle's pixels per
+    // CSS pixel.
     function view(doc) {
         var win = doc && doc.defaultView;
         var frame = win ? win.frameElement : null;
@@ -56,13 +57,11 @@ StyleDesigner.definePart('guides', function (K) {
         var h = Math.min(fr.bottom, ar.top + area.clientTop + area.clientHeight) - top;
         if (w <= 0 || h <= 0) return null;
         var docEl = doc.documentElement;
-        var cssZoom = parseFloat(docEl.style.zoom) || 1;
-        // Browsers that follow the standard CSS zoom answer rectangles
-        // already zoomed: the <html> box is then its client width times the
-        // zoom. Older ones answer the page's pixels and draw the zoom on top.
-        var inPage = Math.abs(docEl.getBoundingClientRect().width - docEl.clientWidth * cssZoom) >= 2;
-        var k = inPage ? cssZoom : 1;
-        if (frame.offsetWidth > 0) k *= fr.width / frame.offsetWidth;
+        // Chromium answers rectangles inside the zoomed canvas already
+        // zoomed, other browsers in the page's pixels: the <html> box's
+        // width on screen against its CSS width tells which (G.zoomScales()).
+        var sc = G.zoomScales(parseFloat(docEl.style.zoom) || 1, frame.offsetWidth > 0 ? fr.width / frame.offsetWidth : 1,
+            docEl.getBoundingClientRect().width, docEl.offsetWidth);
         return {
             host: host,
             left: left - hr.left,
@@ -71,8 +70,9 @@ StyleDesigner.definePart('guides', function (K) {
             height: h,
             ox: fr.left - left,
             oy: fr.top - top,
-            k: k,
-            zoom: k * (inPage ? 1 : cssZoom)
+            k: sc.k,
+            zoom: sc.zoom,
+            rect: sc.rect
         };
     }
 
@@ -164,6 +164,14 @@ StyleDesigner.definePart('guides', function (K) {
         }
     }
 
+    // A spacing or column handle being dragged or stepped (the part
+    // 'bands' marks its layer is-live): its Alt means all four sides and its
+    // Escape puts the value back, so Measure draws nothing over it and the
+    // lines leave its Escape alone.
+    function bandHeld() {
+        return !!document.querySelector('.sd-cgb-layer.is-live');
+    }
+
     function clear() {
         if (M && M.layer) M.layer.hidden = true;
     }
@@ -173,7 +181,7 @@ StyleDesigner.definePart('guides', function (K) {
         M.frame = 0;
         var sel = M.host.selected();
         var hov = M.target;
-        if (!sel || !hov || hov === sel || !hov.isConnected || !sel.isConnected) return clear();
+        if (!sel || !hov || hov === sel || !hov.isConnected || !sel.isConnected || bandHeld()) return clear();
         var v = view(M.host.doc);
         if (!v) return clear();
         var a = place(G.box(M.host.rectOf(sel)), v);
@@ -259,7 +267,7 @@ StyleDesigner.definePart('guides', function (K) {
     // the selected element's wrapper (null once the selection is not one
     // element of that document), its rectangle and its name.
     function measure(host) {
-        if (!G || !host || !host.doc || !host.doc.defaultView) return;
+        if (!G || !host || !host.doc || !host.doc.defaultView || bandHeld()) return;
         if (M && M.host.doc === host.doc) {
             M.host = host;
             return;
@@ -336,10 +344,12 @@ StyleDesigner.definePart('guides', function (K) {
             return;
         }
         var page = docEl.getBoundingClientRect();
-        var s = page.width / docEl.clientWidth || 1;
+        // A rectangle's pixels per CSS pixel; the page is as wide as its
+        // <html> box, which a zoom lays out narrower in CSS pixels.
+        var s = v.rect;
         var found = pageGrid(doc);
         var root = parseFloat(doc.defaultView.getComputedStyle(docEl).fontSize) || 16;
-        var g = G.layout({ left: page.left, top: 0, right: page.left + docEl.clientWidth * s, bottom: 1 }, {
+        var g = G.layout({ left: page.left, top: 0, right: page.left + (docEl.offsetWidth || docEl.clientWidth) * s, bottom: 1 }, {
             zoom: s,
             root: root,
             gutter: found ? found.gutter : undefined,
@@ -374,10 +384,10 @@ StyleDesigner.definePart('guides', function (K) {
         if (L && !L.frame) L.frame = requestAnimationFrame(linesDraw);
     }
 
-    // Escape ends the lines and only that, outside a text being typed or a
-    // window over the editor.
+    // Escape ends the lines and only that, outside a text being typed, a
+    // window over the editor or a handle being changed.
     function linesEsc(e) {
-        if (e.key !== 'Escape' || !L) return;
+        if (e.key !== 'Escape' || !L || bandHeld()) return;
         var t = e.target;
         if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName || '') || (t.closest && t.closest('dialog')))) return;
         e.preventDefault();
@@ -396,6 +406,14 @@ StyleDesigner.definePart('guides', function (K) {
             w[fn]('resize', linesSoon);
         });
         if (win) win[fn]('scroll', linesSoon, { passive: true, capture: true });
+        // A panel docked or a column resized moves a canvas of a fixed
+        // width without resizing its window or the editor's.
+        if (L.ro) { L.ro.disconnect(); L.ro = null; }
+        var area = on && win && win.frameElement && win.frameElement.closest ? win.frameElement.closest('.sd-iframe-area') : null;
+        if (area && typeof ResizeObserver === 'function') {
+            L.ro = new ResizeObserver(linesSoon);
+            L.ro.observe(area);
+        }
     }
 
     // Shows the lines, or draws them again for the canvas `host.doc` (a
@@ -405,7 +423,7 @@ StyleDesigner.definePart('guides', function (K) {
         if (!G || !host || !host.doc || !host.doc.defaultView) return;
         if (L && L.win !== host.doc.defaultView) linesOff();
         if (!L) {
-            L = { host: host, win: host.doc.defaultView, layer: null, frame: 0 };
+            L = { host: host, win: host.doc.defaultView, layer: null, frame: 0, ro: null };
             linesListen(true);
         }
         L.host = host;

@@ -354,6 +354,21 @@
         return best;
     }
 
+    // How the canvas' rectangles and its CSS lengths reach the layer at a
+    // canvas zoom `cssZoom` (the zoom on its <html>) and a Fit scale `fit`.
+    // `rectWidth` and `cssWidth` are the <html> box's width as a rectangle
+    // and in CSS pixels (offsetWidth): Chromium answers rectangles inside a
+    // zoomed canvas already zoomed (rect 2 at zoom 2), other browsers in the
+    // page's pixels (rect 1). The viewport's width (clientWidth) cannot tell
+    // them apart: a zoom does not change it. `k` scales a rectangle, `zoom`
+    // a CSS length, `rect` is a rectangle's pixels per CSS pixel.
+    function zoomScales(cssZoom, fit, rectWidth, cssWidth) {
+        var z = zoomOf(cssZoom), f = zoomOf(fit);
+        var r = num(rectWidth, 0) / num(cssWidth, 0);
+        if (!(isFinite(r) && r > 0)) r = 1;
+        return { k: f * z / r, zoom: f * z, rect: r };
+    }
+
     window.PGCanvasGuides = {
         COLUMNS: COLUMNS,
         box: box,
@@ -370,6 +385,7 @@
         spanAt: spanAt,
         gaps: gaps,
         equalGaps: equalGaps,
-        snap: snap
+        snap: snap,
+        zoomScales: zoomScales
     };
 })();

@@ -292,3 +292,20 @@ function test_spacing_box_offers_variables()
 	pg_assert_contains("host.kind === 'space'", $vars, 'the list offers the spacing variables and the units');
 	pg_assert_contains("host.kind === 'radius'", $vars, 'the list offers Corners');
 }
+
+// A side's drag in the Spacing box: only a release heard on the button is
+// followed by the click a drag swallows; a cancel or a release the button
+// did not hear (a move without the main button) ends the drag without
+// eating the next click. Before, a cancel after a move ate the next click
+// (the field did not open) and a missed release kept changing the number
+// as the pointer passed over, writing nothing.
+function test_spacing_box_drag_ends_without_its_release()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_spacing.js');
+
+	pg_assert_true(strpos($js, 'btn._spbDragged = clicks;') !== false, 'the click is swallowed only where one follows');
+	pg_assert_true(strpos($js, "end(ev, ev.type === 'pointerup', ev.type === 'pointerup');") !== false, 'a release writes and is followed by its click');
+	pg_assert_true(strpos($js, "if (typeof ev.buttons === 'number' && !(ev.buttons & 1)) { end(ev, true, false); return; }") !== false, 'a missed release writes, no click follows');
+	pg_assert_true(strpos($js, "btn.addEventListener('lostpointercapture', up);") !== false, 'a lost capture ends it');
+	pg_assert_true(strpos($js, 'btn._spbDragged = true;') === false, 'never swallowed unconditionally');
+}

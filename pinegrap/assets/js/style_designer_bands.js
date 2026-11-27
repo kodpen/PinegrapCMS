@@ -49,9 +49,9 @@ StyleDesigner.definePart('bands', function (K) {
 
     // The layer, its bands and handles (made once, placed on every draw),
     // the host of the last draw and the layer's place it gave, the drag or
-    // key change under way, and the listeners held while the bands are
-    // shown.
-    var S = { layer: null, bands: {}, handles: {}, col: null, grid: null, gaps: null, label: null, host: null, g: null, live: null, area: null, doc: null, tip: null, tipAsked: false };
+    // key change under way, and the listeners and the area's size observer
+    // held while the bands are shown.
+    var S = { layer: null, bands: {}, handles: {}, col: null, grid: null, gaps: null, label: null, host: null, g: null, live: null, area: null, ro: null, doc: null, tip: null, tipAsked: false };
     var COLS = 12;
     // How far past the next step (screen pixels) the pointer goes before a
     // step with an equal gap lets go.
@@ -167,6 +167,11 @@ StyleDesigner.definePart('bands', function (K) {
         var host = S.host, g = host.geo(), el = host.el;
         S.g = g;
         if (!g || g.w <= 0 || g.h <= 0 || !el.isConnected) { S.layer.hidden = true; return; }
+        // `g.k` scales the canvas' rectangles; a margin or padding read in
+        // CSS pixels needs `g.z`, which differs where the browser answers
+        // rectangles already zoomed (Chromium at a canvas zoom).
+        var docEl = el.ownerDocument.documentElement;
+        g.z = C.lengthScale(g.k, docEl.getBoundingClientRect().width, docEl.offsetWidth);
         if (S.layer.parentNode !== g.wrapper) g.wrapper.appendChild(S.layer);
         S.layer.hidden = false;
         S.layer.style.left = g.left + 'px';
@@ -179,7 +184,7 @@ StyleDesigner.definePart('bands', function (K) {
         var read = function (p) {
             return { top: _bdPx(cs[p + 'Top']), right: _bdPx(cs[p + 'Right']), bottom: _bdPx(cs[p + 'Bottom']), left: _bdPx(cs[p + 'Left']) };
         };
-        var L = C.layout(b, read('margin'), read('padding'), g.k, _bdRtl(el));
+        var L = C.layout(b, read('margin'), read('padding'), g.z, _bdRtl(el));
         [['m', L.outer], ['p', L.inner]].forEach(function (pair) {
             pair[1].forEach(function (it) {
                 _bdBox(S.bands[pair[0] + it.side], it.band);
@@ -215,7 +220,7 @@ StyleDesigner.definePart('bands', function (K) {
         S.grid.hidden = !(on && live);
         if (S.grid.hidden) return;
         var row = _bdRect(S.host.col.row);
-        C.colGrid(row, COLS, live.gutter * S.g.k).forEach(function (box, i) {
+        C.colGrid(row, COLS, live.gutter * S.g.z).forEach(function (box, i) {
             _bdBox(S.grid.children[i], box);
         });
     }
@@ -318,18 +323,27 @@ StyleDesigner.definePart('bands', function (K) {
         _bdEnd(false);
     }
 
+    // A move with the main button no longer held: the button was let go
+    // where the handle did not hear it (outside the window, a capture
+    // lost). The drag ends there as a release would, or it went on
+    // following the pointer and every handle refused the next drag.
+    function _bdLetGo(ev) {
+        return typeof ev.buttons === 'number' && !(ev.buttons & 1);
+    }
+
     function _bdDown(e) {
         if (e.button !== 0 || S.live || !S.host) return;
         e.preventDefault();
         var h = e.currentTarget;
         var live = _bdBegin(h, 'drag');
-        var k = S.g ? S.g.k : 1;
+        var k = S.g ? S.g.z : 1;
         var lr = S.layer.getBoundingClientRect();
         live.x = e.clientX;
         live.y = e.clientY;
         try { h.setPointerCapture(e.pointerId); } catch (err) { /* the drag still follows the handle */ }
         var raf = 0, last = e;
         var move = function (ev) {
+            if (_bdLetGo(ev)) { up({ type: 'pointerup' }); return; }
             last = ev;
             if (raf) return;
             raf = requestAnimationFrame(function () {
@@ -347,12 +361,14 @@ StyleDesigner.definePart('bands', function (K) {
             h.removeEventListener('pointermove', move);
             h.removeEventListener('pointerup', up);
             h.removeEventListener('pointercancel', up);
+            h.removeEventListener('lostpointercapture', up);
             if (raf) cancelAnimationFrame(raf);
             if (S.live === live) _bdEnd(ev.type === 'pointerup');
         };
         h.addEventListener('pointermove', move);
         h.addEventListener('pointerup', up);
         h.addEventListener('pointercancel', up);
+        h.addEventListener('lostpointercapture', up);
         window.addEventListener('keydown', _bdEsc, true);
         _bdLabel(live.from.step, live.from.px, 'one', e.clientX - lr.left, e.clientY - lr.top);
     }
@@ -396,7 +412,7 @@ StyleDesigner.definePart('bands', function (K) {
         if (live.kind === 'm' && S.host && S.host.siblings && S.g) {
             if (!live.sibs) live.sibs = S.host.siblings();
             var others = live.sibs.filter(function (el) { return el.isConnected; }).map(_bdRect);
-            m = C.equalGap(_bdRect(live.el), others, live.edge, S.g.k);
+            m = C.equalGap(_bdRect(live.el), others, live.edge, S.g.z);
         }
         live.held = m ? live.step : null;
         _bdGapsShow(m);
@@ -484,13 +500,14 @@ StyleDesigner.definePart('bands', function (K) {
         try { h.setPointerCapture(e.pointerId); } catch (err) { /* the drag still follows the handle */ }
         var raf = 0, last = e;
         var move = function (ev) {
+            if (_bdLetGo(ev)) { up({ type: 'pointerup' }); return; }
             last = ev;
             if (raf) return;
             raf = requestAnimationFrame(function () {
                 raf = 0;
                 if (S.live !== live || !S.g) return;
                 var x = last.clientX - lr.left;
-                var span = C.colSpan(live.box, x, _bdRect(S.host.col.row), COLS, live.gutter * S.g.k, live.rtl);
+                var span = C.colSpan(live.box, x, _bdRect(S.host.col.row), COLS, live.gutter * S.g.z, live.rtl);
                 if (span && span !== live.span) _bdColPreview(live, span);
                 _bdColLabel(live.span, x, last.clientY - lr.top);
             });
@@ -499,12 +516,14 @@ StyleDesigner.definePart('bands', function (K) {
             h.removeEventListener('pointermove', move);
             h.removeEventListener('pointerup', up);
             h.removeEventListener('pointercancel', up);
+            h.removeEventListener('lostpointercapture', up);
             if (raf) cancelAnimationFrame(raf);
             if (S.live === live) _bdEnd(ev.type === 'pointerup');
         };
         h.addEventListener('pointermove', move);
         h.addEventListener('pointerup', up);
         h.addEventListener('pointercancel', up);
+        h.addEventListener('lostpointercapture', up);
         window.addEventListener('keydown', _bdEsc, true);
         _bdPlace();
         _bdColLabel(live.from, e.clientX - lr.left, e.clientY - lr.top);
@@ -539,12 +558,22 @@ StyleDesigner.definePart('bands', function (K) {
         if (S.host && S.host.el.isConnected) _bdPlace();
     }
 
+    // The canvas area's scroll, and its size: a panel docked or a column
+    // resized moves a canvas of a fixed width without resizing its window,
+    // so no canvas draw follows and the bands stayed where they were.
     function _bdListen(host) {
         var area = S.g ? S.g.area : null;
         if (area !== S.area) {
             if (S.area) S.area.removeEventListener('scroll', _bdAreaScroll);
+            if (S.ro) { S.ro.disconnect(); S.ro = null; }
             S.area = area;
-            if (area) area.addEventListener('scroll', _bdAreaScroll, { passive: true });
+            if (area) {
+                area.addEventListener('scroll', _bdAreaScroll, { passive: true });
+                if (typeof ResizeObserver === 'function') {
+                    S.ro = new ResizeObserver(_bdAreaScroll);
+                    S.ro.observe(area);
+                }
+            }
         }
         var doc = host.el.ownerDocument;
         if (doc !== S.doc) {
@@ -556,6 +585,7 @@ StyleDesigner.definePart('bands', function (K) {
 
     function _bdUnlisten() {
         if (S.area) S.area.removeEventListener('scroll', _bdAreaScroll);
+        if (S.ro) { S.ro.disconnect(); S.ro = null; }
         if (S.doc) S.doc.removeEventListener('dragstart', _bdDragStart, true);
         S.area = null;
         S.doc = null;
