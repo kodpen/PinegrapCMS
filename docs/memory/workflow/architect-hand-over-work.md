@@ -4,7 +4,7 @@ description: Hand-over of the architect session of 2026-11-24 to 26, the work in
 ---
 
 ## Who works now?
-- Owner (2026-11-27, messages 14812, 14844): k2 and k3 work at the usual limits; with no work left, one short hunt round, then the night ends as in `bug-hunt-areas-6.md`.
+- Owner (2026-11-27, messages 14812, 14844, 15067): k3 works at the usual limits, k2 has ended; with no work left, one short hunt round, then the night ends as in `bug-hunt-areas-6.md`.
 
 ## What is still to do with the sheets?
 - No sheet is left to draw; what a sheet holds is in `designer-sheet-rules.md`.
@@ -22,9 +22,9 @@ description: Hand-over of the architect session of 2026-11-24 to 26, the work in
 - AC1's census may show that shared component and theme changes need a store, a schema question for the owner.
 - The office editors (`decisions-made-product-115.md`): both ability plans are free; `plans/office-sheet-formulas.md` waits: the architect marks its lines `free` by a docs PR when SA5 has landed, and tells k3.
 - The owner asked for the designer first (`designer-faults-first.md`): an open designer `bug` issue goes ahead of a plan step, with k3.
-- His stutter is the design's size (`designer/designer-performance.md`); he has not tried design 838 again (poll 245).
+- The Translations screen (message 15186): `plans/translations-screen-modern.md`; a step needing a stored value comes back here.
 - Plan `designer-new-version` (poll 244): a step needing a table or column comes back here.
-- Poll 242: Options is too narrow; his console line under it picks the issue.
+- Poll 242: Options is too narrow; his console line picks the issue.
 - Paraşüt: the six issues are fixed; what is left is in `plans/erp-parasut-open-work.md`.
 - The Workspace's own screens (message 14812): `plans/workspace-areas-modern.md` and its four plans; a step marked "drawing" is asked of the architect before its worker starts. TM3 is drawn: `workspace/workspace-task-read-drawing.md`.
 - Nine features (polls 246, 247): `plans/global-features.md`. Every census is read and every plan has its build steps; polls 248 to 253 are answered (`decisions-made-schema-53.md` to `-55.md`, `decisions-made-product-119.md`). German's eight steps are `free`; left: DE9 after them, Etsy's steps of `plans/sales-channels-global.md` after SC7.
