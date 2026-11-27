@@ -137,6 +137,7 @@
 - ebay-account-deletion.md: ebay_account_deletion.php, the deletion address eBay needs before production keys: challenge, signature and key cache, status codes, WAF entry, the privacy request it records
 - ebay-categories.md: eBay categories and item specifics on the Listings view: Taxonomy API with an application token, the cache key a site (ebay:EBAY_DE), aspects as attribute rows, free text with suggested values
 - ebay-connection.md: eBay marketplace accounts: the ebay and ebay_sandbox connect providers (RuName, three sell scopes), the connector test, the eBay site, remote selects for location and policies
+- ebay-listings.md: eBay listings: inventory item, variant group, offer and publish, price in the site currency, the "does not apply" identifier, verdicts at once, listing id read back
 - edit-product-undrawn-columns-kept.md: Edit Product's save leaves out the shipping, customs, zone, gift card and unlabelled custom-field columns the screen does not draw.
 - eu-vat-check.md: EU VAT ids checked against VIES: the clean function and patterns per member state, the REST request, answer mapping, a day's cache, the reverse-charge decision; where it is wired [decision: decisions-made-product-19.md, decisions-made-product-26.md]
 - eu-vat-checkout.md: The EU VAT check at checkout: when it runs, what each VIES answer does to tax_exempt and the three orders.vat_* columns, where the customer, the order screen, the API and the ERP invoice show it
@@ -484,6 +485,7 @@
 - supplier-feed-sync.md: Supplier feed sync (SF3a, #10895): the job tick, one lock per feed, the phases over one file, matching, price and stock writers, closing and reopening, held prices, brakes, run rows
 - supplier-feed.md: Supplier feeds (Products › Supplier feeds, SF1 to SF7, #10771 to #11121): the store pulls suppliers' XML, CSV or JSON lists and keeps price and stock in step; F1 to F14, which file holds what [decision: decisions-made-product-87.md, decisions-made-schema-48.md]
 - tax-eu-standard-rate.md: Rates by the buyer's country (Site Settings › Commerce, beside Tax): an EU buyer in no tax zone pays their state's standard VAT rate; the dated list, its source, who follows [decision: here]
+- tax-line-rate-renewal-import.md: The rate a subscription renewal and a marketplace import store on their line (order_items.tax_rate, pg_tax_line_rate()), and the notice when an update changes a row of the EU VAT list
 - tax-zone-commission-reward-boxes.md: Rate, commission and whole-number boxes read as their columns store them: tax zone rate, commission, reward points and goal, Site Settings whole numbers (pg_parse_whole_number())
 - tr-district-carriers.md: What sends and writes ship_tos.district (#3654): the four Turkish carrier drivers (district first, city fallback), the needs-district hook, the n11 and Trendyol imports [decision: decisions-made-product-12.md]
 - tr-district-plate-code.md: ship_tos.district and states.plate_code (step 11.0.134, decision #3569): the district as free text, the plate fill by province name, the readiness probe, what reads them so far [decision: here]

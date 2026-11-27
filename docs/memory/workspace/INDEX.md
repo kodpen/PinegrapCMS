@@ -268,6 +268,7 @@
 - workflow-tables-data-list.md: The Data list (CO6 #8978, CO6b #9192): workflow tables named Data, the list table driver, its scopes, windows, Deleted tables view, the canvases that use a table, the channel seam
 - workflow-tables-export.md: A workflow table downloads as an Excel file (TX1): who may, what each cell becomes, the shared xlsx writer the ERP export also uses
 - workflow-tables-grid-drawer.md: A Data table's grid (workspace_wtables.php?id=N, DM2): one-line cells, widths by type, the box with its head, "#" and totals held in view; the row and New row in one form drawer
+- workflow-tables-grid-order.md: A Data table's column menu (workspace_wtables.php?id=N, DM4): sorts, Filter, Rename, Change type, Move left/right, Delete, the "+" head; rows moved by a handle or Move up/down; ws_wtable_column_move()
 - workflow-tables-grid.md: A Data table's cells changed in the grid (workspace_wtables.php?id=N, DM3): double click, Enter or F2, the row_cell action, refusals under the cell, changed_meanwhile, workspace_wtable_grid.js
 - workflow-tables-import.md: The import route workspace.tables.import (TX2, #8427): a site file or a note's table into a workflow table over the API and MCP, the pairing, the dry run through ws_wtable_import_check(), refusals [decision: decisions-made-workspace-10.md]
 - workflow-tables-later.md: What workflow tables leave for later (T1-T6 done): a "my tables" strip, table versions, the CRM pipeline; exports still to come and the planned bin [decision: decisions-made-product-11.md]
@@ -326,6 +327,7 @@
 - workspace-bulk-sources.md: A person's own bulk product drafts (bulk_sources.php): several lines under /create product, /create product answering or sent with a channel spreadsheet, the table reader, ws_bulk_create_card() [decision: decisions-made-workspace-2.md]
 - workspace-bulk-step.md: The slice runner of Workspace bulk changes (ws_bulk_step()): status read again under the lock, a start still matching waited for, place kept before a write; generate asks Pinegrap AI's own readiness
 - workspace-calc-numbers.md: Figures inside a workspace sum (ws_calc_tokens(), ws_calc_inline(), #3398): read the site's way, leading %, English comma separates arguments, "=" line errors [decision: decisions-made-product-32.md]
+- workspace-calendar-cells.md: The Work Calendar's cells (CM4): chips that give the title the cell's width, three a day then "+N more" opening the day's list in a card beside the cell, the side column folded behind "Figures"
 - workspace-calendar-month-days.md: Which days of the Work Calendar a plan item is drawn on (ws_calendar_plan_place()): the end is exclusive, so a meeting until midnight draws no 00:00 line on the next day
 - workspace-calendar-read.md: Reading a person's Google/Outlook calendar back (calendar_sync.php, #4490): syncToken and delta, what is a move, the drawer's check, refused moves written back, calendar_refused [decision: decisions-made-workspace-6.md]
 - workspace-calendar-side-cards.md: Work calendar side cards at laptop width (#5189): ws_minutes_label() uses no-break spaces, the "who carries the work" row puts the task count under the whole name
