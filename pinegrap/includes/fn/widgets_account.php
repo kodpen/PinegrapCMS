@@ -1947,7 +1947,9 @@ function _pg_acct_staff_url($staff_page_id)
 // (shop sites with the referral programme on: the link, its share links,
 // the referrals and the credit they earned, or why the customer cannot
 // refer yet, pg_referral_account_html()) with flags has_referral and
-// can_refer; section volunteering (the member's volunteer programmes:
+// can_refer; section requests (the member's support requests, each linking
+// to its signed page, pg_support_request_account_html()) with flag
+// has_requests; section volunteering (the member's volunteer programmes:
 // next shifts, shifts for them, documents, pg_volunteer_account_html()) with
 // flag has_volunteering, 'volunteering' its views (pg_volunteer_account_views(),
 // the account.volunteering list's rows). 'bookings': the booking lists' rows
@@ -1971,11 +1973,11 @@ function _pg_my_account_extras($logged_in, $cfg = array())
     // 'orders' and 'order_view_url': the history's rows and the view order
     // page, for a list of the member's orders (pg_sw_list_account_rows()).
     $out = array('links' => $links, 'sections' => array('order_history' => '', 'subscriptions' => '', 'bookings' => '', 'store_credit' => '',
-                                                        'store_credit_convert' => '', 'tickets' => '', 'referral' => '', 'volunteering' => ''),
+                                                        'store_credit_convert' => '', 'tickets' => '', 'referral' => '', 'volunteering' => '', 'requests' => ''),
                  'flags' => array('has_orders' => false, 'no_orders' => true, 'is_staff' => false, 'has_bookings' => false,
                                   'has_upcoming_bookings' => false, 'has_past_bookings' => false, 'has_store_credit' => false,
                                   'has_store_credit_cards' => false, 'has_subscriptions' => false, 'has_tickets' => false,
-                                  'has_referral' => false, 'can_refer' => false, 'has_volunteering' => false),
+                                  'has_referral' => false, 'can_refer' => false, 'has_volunteering' => false, 'has_requests' => false),
                  'orders' => array(), 'order_view_url' => '', 'bookings' => array('upcoming' => array(), 'past' => array()),
                  'subscriptions' => array(), 'store_credit' => array('balance_info' => '', 'cards' => array()), 'tickets' => array(),
                  'volunteering' => array());
@@ -2021,6 +2023,11 @@ function _pg_my_account_extras($logged_in, $cfg = array())
                 pg_safe_redirect_path(isset($_SERVER['REQUEST_URI']) ? strtok((string)$_SERVER['REQUEST_URI'], '?') : '', defined('PATH') ? PATH : '/'));
             $out['flags']['has_volunteering'] = ($out['sections']['volunteering'] !== '');
         }
+        // The member's support requests, each with its signed page link.
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_support_requests.php');
+        $requests = pg_support_request_account($viewer['id']);
+        $out['sections']['requests'] = $requests['section'];
+        $out['flags']['has_requests'] = $requests['has'];
     }
 
     if ($shop && $viewer['id'] > 0) {

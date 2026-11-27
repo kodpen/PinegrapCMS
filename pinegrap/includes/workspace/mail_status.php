@@ -590,6 +590,17 @@ function ws_mail_auto_reply($box, $item_id)
 
     $text = mb_substr(trim((string) $box['auto_reply_text']), 0, WS_MAIL_AUTO_REPLY_MAX);
 
+    // A request of a box answered by e-mail: the customer's signed link to
+    // its page, where a guest reads the answers and writes back.
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/support_requests.php');
+
+    // The box's text gives way so the send's own cut never takes the link.
+    $url = pg_support_request_box_shown($box) ? pg_support_request_url($conversation) : '';
+
+    if ($url !== '') {
+        $text = pg_support_request_auto_reply_text(mb_substr($text, 0, WS_MAIL_AUTO_REPLY_MAX - 500), $url);
+    }
+
     return ws_mail_auto_reply_send($box, $item, $conversation, $text, (string) $conversation['customer_email'], (string) $conversation['customer_name']);
 }
 
