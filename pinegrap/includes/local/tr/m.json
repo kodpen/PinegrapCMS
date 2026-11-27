@@ -311,6 +311,7 @@
     "Making the link…": "Bağlantı oluşturuluyor…",
     "Making these pages takes about {var:1} drafts and {var:2} are left today. Remove a page, or make the site tomorrow.": "Bu sayfaları yapmak yaklaşık {var:1} taslak gerektirir, bugün {var:2} taslak kaldı. Bir sayfayı kaldırın ya da siteyi yarın yapın.",
     "Making these pages takes about {var:1} of the {var:2} drafts left today.": "Bu sayfaları yapmak, bugün kalan {var:2} taslağın yaklaşık {var:1} tanesini kullanır.",
+    "Making your site: page {var:1} of {var:2}": "Siteniz yapılıyor: sayfa {var:1} / {var:2}",
     "Making {done} of {n} sizes…": "{n} boyuttan {done} tanesi oluşturuluyor…",
     "Making {var:1} pages": "{var:1} sayfa yapılıyor",
     "Making…": "Yapılıyor…",

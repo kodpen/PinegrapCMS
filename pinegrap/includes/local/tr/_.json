@@ -1888,6 +1888,7 @@
     "{var:1} page(s), {var:2} time(s)": "{var:1} sayfa, {var:2} kez",
     "{var:1} pages": "{var:1} sayfa",
     "{var:1} pages are being edited in the Page Design Studio.": "{var:1} sayfa Sayfa Tasarım Stüdyosu'nda düzenleniyor.",
+    "{var:1} pages are made; the others wait as sketches.": "{var:1} sayfa yapıldı; diğerleri taslak çizim olarak bekliyor.",
     "{var:1} pages are still waiting for \"Approve this page\" or \"Request changes\".": "{var:1} sayfa hâlâ \"Bu sayfayı onayla\" ya da \"Değişiklik iste\" bekliyor.",
     "{var:1} pages checked in this request, {var:2} could not be rendered.": "Bu istekte {var:1} sayfa denetlendi, {var:2} sayfa işlenemedi.",
     "{var:1} pages checked in this request.": "Bu istekte {var:1} sayfa denetlendi.",

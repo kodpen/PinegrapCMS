@@ -81373,6 +81373,35 @@ const StyleDesigner = (function () {
         // Zoomed to the page (Esc or "All" goes back to the map): a frame
         // taller than the view shows its head.
         if (item) _sdProtoZoomTo(item.id);
+        _sdSiteRun();
+    }
+
+    // The "Describe it" start (sdDesign.siteRun): the plan of pages is made
+    // once the sketch is shown, by the part 'siterun'.
+    function _sdSiteRun() {
+        if (!_design || !_design.siteRun || _sdProto.siteRun) return;
+        _sdProto.siteRun = true;
+        _sdPartCall('siterun', 'start', [_sdSiteRunHost()]).catch(_sdPartFailed);
+    }
+
+    // What the part 'siterun' drives: the sketch pages, the hosts of
+    // "Describe the page" / "Write the texts" and "Build the page", their
+    // parts, a new reference to a shared component it made.
+    function _sdSiteRunHost() {
+        var read = _sdSketchReadHost();
+        return {
+            pages: function () { return _sdSketchData().pages; },
+            page: _sdSketchPage,
+            name: function (page) { return _sdSketchItem(page).name; },
+            ai: _sdSketchAiHost,
+            build: _sdSketchBuildHost,
+            aiOn: function () { return !!(_design && _design.sketchAi); },
+            part: function (name) { return _sdPartLoad(name).then(function () { return _sdPartApis[name]; }); },
+            ref: _sdSketchRef,
+            zoom: function (frameId) { if (_sdProto.open) _sdProtoZoomTo(frameId); },
+            el: read.el,
+            announce: read.announce
+        };
     }
 
     // A stored sketch made safe to draw: numbers whole and finite, boxes

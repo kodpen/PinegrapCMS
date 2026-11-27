@@ -140,7 +140,7 @@ function test_designer_parts_for_follow_their_condition()
 		pg_assert_same($condition, pg_designer_part_files()[$part]['when'], $part . ' is handed on ' . $condition);
 	}
 
-	pg_assert_same(array('cleanup', 'libraryfile', 'librarymanage', 'sketchai', 'styleguide'), array_values(array_diff(pg_designer_parts_for(array('designer' => true)), $every)), 'designer adds Clean up, My library\'s file, the Sketch tool\'s AI actions and the Style guide');
+	pg_assert_same(array('cleanup', 'libraryfile', 'librarymanage', 'siterun', 'sketchai', 'styleguide'), array_values(array_diff(pg_designer_parts_for(array('designer' => true)), $every)), 'designer adds Clean up, My library\'s file, the site\'s run, the Sketch tool\'s AI actions and the Style guide');
 	pg_assert_same(array('ai'), array_values(array_diff(pg_designer_parts_for(array('ai' => true)), $every)), 'ai adds the assistant only');
 }
 

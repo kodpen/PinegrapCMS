@@ -154,6 +154,9 @@ if (!$_POST) {
         // pages wait in this browser as sketch pages; the Prototype view
         // opens with the Sketch switch on.
         'auto_sketch'    => ($start === 'canva' || $start === 'describe'),
+        // ?start=describe: the approved plan of pages is then made, one
+        // page after the other (style_designer_siterun.js).
+        'site_run'       => ($start === 'describe'),
         'figma'          => $sd_figma,
         'template'       => $template ? pg_design_template_summary($template) : null,
         // ?folder= from the design chooser: the first page's folder.

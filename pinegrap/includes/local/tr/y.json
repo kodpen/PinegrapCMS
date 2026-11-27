@@ -1374,6 +1374,8 @@
     "Your sign-up opens its own page, and an account for you if you have none.": "Kaydınız kendi sayfasını açar; hesabınız yoksa sizin için bir hesap da açılır.",
     "Your site": "Siteniz",
     "Your site at a glance: visitors, orders and health": "Sitenize bir bakış: ziyaretçiler, siparişler ve sağlık",
+    "Your site is made: 1 page, as a draft.": "Siteniz hazır: 1 sayfa, taslak olarak.",
+    "Your site is made: {var:1} pages, as drafts.": "Siteniz hazır: {var:1} sayfa, taslak olarak.",
     "Your site will be online in five short steps. If you already have a backup, you can restore it from the same wizard.": "Beş kısa adımda siteniz yayında olacak. Elinizde bir yedek varsa aynı sihirbazdan geri yükleyebilirsiniz.",
     "Your site will be online in six short steps. If you already have a backup, you can restore it from the same wizard.": "Altı kısa adımda siteniz yayında olacak. Elinizde bir yedek varsa aynı sihirbazdan geri yükleyebilirsiniz.",
     "Your situation": "Durumunuz",
