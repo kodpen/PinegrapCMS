@@ -4849,6 +4849,10 @@ function output_menu($properties = false)
             // PAGE DESIGN STUDIO > Experiments: the A/B experiments of designed
             // pages and their results (experiments.php, designers).
             $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/experiments.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-bar-chart-line bi-me-2\'>' . lang('Experiments') . '</a>';
+            // PAGE DESIGN STUDIO > Bundles: release bundles, drafts that go
+            // on the site together and a live page's new version
+            // (page_bundles.php, designers, as its area gate).
+            $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/page_bundles.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-collection bi-me-2\'>' . lang('Bundles') . '</a>';
         }
     }
 
@@ -5460,6 +5464,7 @@ function output_menu($properties = false)
         // since slot 20 was retired, so they mark none.
         case 'experiments.php':
         case 'page_experiments.php':
+        case 'page_bundles.php':
             $active_menu = 21;
             break;
         case 'translations.php':
