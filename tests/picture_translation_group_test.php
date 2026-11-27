@@ -106,7 +106,7 @@ function test_picture_group_one_current_row()
 {
 	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/translations.php');
 
-	pg_assert_contains("(((\$page_id === 0) && (\$group === '')) ? ' active\" aria-current=\"page' : '')", $screen, 'All pages is not current while a group is');
+	pg_assert_contains("(\$page_id === 0) && (\$group === ''), 'bi-collection'", $screen, 'All texts is not current while a group is');
 	pg_assert_contains("\$url(array('page_id' => 0, 'group' => '', 'p' => 0))", $screen, 'All pages leaves the group');
 	pg_assert_contains("\$url(array('page_id' => \$pid, 'group' => '', 'p' => 0))", $screen, 'a page leaves the group');
 }
