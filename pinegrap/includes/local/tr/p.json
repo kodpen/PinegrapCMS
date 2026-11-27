@@ -909,6 +909,7 @@
     "Payment methods (radio buttons, per site setting)": "Ödeme Yöntemleri (radyo düğmeleri, site ayarına göre)",
     "Payment needs your confirmation": "Ödeme onayınızı bekliyor",
     "Payment pending on PayPal": "PayPal ödemesi beklemede",
+    "Payment pending on Stripe": "Stripe ödemesi beklemede",
     "Payment period (Monthly, Yearly…)": "Ödeme periyodu (Aylık, Yıllık…)",
     "Payment period of a recurring product": "Yinelenen ürünün ödeme dönemi",
     "Payment recorded": "Ödeme kaydedildi",

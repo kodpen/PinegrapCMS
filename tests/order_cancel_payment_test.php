@@ -92,3 +92,13 @@ function test_order_cancel_payment_pending_method_unpaid()
 	pg_assert_same('void', pg_order_cancel_payment_plan(10000, 0, 'PayPal Checkout', true, 'paypal', true, 0)['action'], 'a driver still cancels what it holds');
 	pg_assert_same('manual', pg_order_cancel_payment_plan(10000, 0, 'Credit/Debit Card', true, '', false, 0)['action'], 'paid_at 0 of another method means nothing');
 }
+
+function test_order_cancel_payment_stripe_processing_unpaid()
+{
+	// The order's transaction id tells a Stripe payment still processing
+	// from a card order of another gateway.
+	pg_assert_same('none', pg_order_cancel_payment_plan(10000, 0, 'Credit/Debit Card', 'pi_3PqXyZ', 'stripe', false, 0)['action'], 'processing, auto refund off');
+	pg_assert_same('void', pg_order_cancel_payment_plan(10000, 0, 'Credit/Debit Card', 'pi_3PqXyZ', 'stripe', true, 0)['action'], 'the driver still tries to cancel it');
+	pg_assert_same('manual', pg_order_cancel_payment_plan(10000, 0, 'Credit/Debit Card', 'pi_3PqXyZ', 'stripe', false, 1793000000)['action'], 'settled, auto refund off');
+	pg_assert_same('manual', pg_order_cancel_payment_plan(10000, 0, 'Credit/Debit Card', 'ch_1', '', false, 0)['action'], 'a classic charge with paid_at 0');
+}

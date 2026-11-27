@@ -1788,6 +1788,9 @@ function _pg_lc_view_order_map($none)
             '$tax_exempt' => $flag('is_tax_exempt'),
             '$payment_method' => $flag('has_payment_method'),
             "\$payment_method == 'Credit/Debit Card'" => $flag('has_card_number'),
+            // A payment the service has not settled: the widget's status
+            // badge reads Awaiting Payment instead.
+            "\$payment_confirming_note !== ''" => $widget,
         ),
         'else' => array(
             "\$status != 'incomplete'" => 'widget',

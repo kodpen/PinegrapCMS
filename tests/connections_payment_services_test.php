@@ -76,7 +76,7 @@ function test_connections_payment_services_fields_part()
 	};
 
 	pg_assert_same(array('publishable_key', 'secret_key', 'webhook_secret'), $keys('stripe'));
-	pg_assert_same(array('link', 'method_ideal', 'method_bancontact', 'method_eps', 'method_p24', 'method_klarna', 'method_afterpay_clearpay'), $card('stripe'), 'Link and the payment methods stay on the card');
+	pg_assert_same(array('link', 'method_ideal', 'method_bancontact', 'method_eps', 'method_p24', 'method_klarna', 'method_afterpay_clearpay', 'method_sepa_debit'), $card('stripe'), 'Link and the payment methods stay on the card');
 	pg_assert_same(array('client_id', 'client_secret', 'webhook_id'), $keys('paypal'));
 	pg_assert_same(array('mode'), $card('paypal'), 'Mode stays on the card');
 	pg_assert_same(array('merchant_id', 'merchant_key', 'merchant_salt'), $keys('paytr'));

@@ -47,7 +47,7 @@ if (!$_POST) {
     // is sometimes what the customer needs before they pay.
     $open_orders = (array) db_items("SELECT orders.id, orders.order_number, orders.total, orders.order_date,
             orders.billing_first_name, orders.billing_last_name, orders.billing_company,
-            orders.status, orders.payment_method, orders.paid_at, orders.type,
+            orders.status, orders.payment_method, orders.transaction_id, orders.paid_at, orders.type,
             TRIM(CONCAT(COALESCE(contacts.first_name, ''), ' ', COALESCE(contacts.last_name, ''))) AS contact_name,
             COALESCE(contacts.company, '') AS contact_company,
             COALESCE(erp_accounts.title, '') AS account_title

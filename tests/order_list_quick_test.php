@@ -30,8 +30,8 @@ function _order_list_quick_samples()
 	$address = function ($ship_date, $delivery_date, array $lines, array $parcels = array()) {
 		return array('ship_date' => $ship_date, 'delivery_date' => $delivery_date, 'lines' => $lines, 'parcels' => $parcels);
 	};
-	$order = function ($status, $method, $paid_at, $total, array $addresses) {
-		return array('status' => $status, 'payment_method' => $method, 'paid_at' => $paid_at, 'total' => $total, 'addresses' => $addresses);
+	$order = function ($status, $method, $paid_at, $total, array $addresses, $transaction = '') {
+		return array('status' => $status, 'payment_method' => $method, 'transaction_id' => $transaction, 'paid_at' => $paid_at, 'total' => $total, 'addresses' => $addresses);
 	};
 	$none = '0000-00-00';
 
@@ -61,6 +61,9 @@ function _order_list_quick_samples()
 		17 => $order('incomplete', '', 0, 0, array(171 => $address($none, $none, array($line(1, 0))))),
 		18 => $order('complete', 'Credit/Debit Card', 1, 1000, array(181 => $address($none, $none, array($line(1, 0)), array('X18' => 'mystery')))),
 		19 => $order('cancelled', 'Credit/Debit Card', 1, 1000, array(191 => $address($none, $none, array($line(1, 0))))),
+		20 => $order('complete', 'Credit/Debit Card', 0, 1000, array(201 => $address($none, $none, array($line(1, 0)))), 'pi_3PqXyZ'),
+		21 => $order('complete', 'Credit/Debit Card', 0, 1000, array(211 => $address($none, $none, array($line(1, 0)))), 'ch_1'),
+		22 => $order('complete', 'Credit/Debit Card', 0, 1000, array(221 => $address($none, $none, array($line(1, 0)))), null),
 	);
 }
 
@@ -133,13 +136,13 @@ function _order_list_quick_by_sql(array $orders, $today, $status_ready)
 	}
 
 	$db = new PDO('sqlite::memory:');
-	$db->exec('CREATE TABLE orders (id INTEGER PRIMARY KEY, status TEXT, payment_method TEXT, paid_at INT, total INT)');
+	$db->exec('CREATE TABLE orders (id INTEGER PRIMARY KEY, status TEXT, payment_method TEXT, transaction_id TEXT, paid_at INT, total INT)');
 	$db->exec('CREATE TABLE order_items (id INTEGER PRIMARY KEY, order_id INT, ship_to_id INT, quantity INT, shipped_quantity INT, show_shipped_quantity INT)');
 	$db->exec('CREATE TABLE ship_tos (id INTEGER PRIMARY KEY, ship_date TEXT, delivery_date TEXT)');
 	$db->exec('CREATE TABLE shipping_tracking_numbers (id INTEGER PRIMARY KEY, order_id INT, ship_to_id INT, number TEXT, status TEXT)');
 
 	foreach ($orders as $id => $order) {
-		$db->prepare('INSERT INTO orders VALUES (?, ?, ?, ?, ?)')->execute(array($id, $order['status'], $order['payment_method'], $order['paid_at'], $order['total']));
+		$db->prepare('INSERT INTO orders VALUES (?, ?, ?, ?, ?, ?)')->execute(array($id, $order['status'], $order['payment_method'], $order['transaction_id'], $order['paid_at'], $order['total']));
 
 		foreach ($order['addresses'] as $ship_to_id => $address) {
 			$db->prepare('INSERT INTO ship_tos VALUES (?, ?, ?)')->execute(array($ship_to_id, $address['ship_date'], $address['delivery_date']));
@@ -215,6 +218,9 @@ function test_order_list_quick_sql_keeps_what_the_pills_say()
 	pg_assert_same(array(), $by_rule[11], 'no address, nothing to ship');
 	pg_assert_same(array('to_ship'), $by_rule[12], 'a ship date to come is not shipped');
 	pg_assert_same(array('awaiting_payment'), $by_rule[15], 'a payment left pending awaits payment');
+	pg_assert_same(array('awaiting_payment'), $by_rule[20], 'a Stripe payment still processing awaits payment');
+	pg_assert_same(array('to_ship'), $by_rule[21], 'an older card order with paid_at 0 is not unpaid');
+	pg_assert_same(array('to_ship'), $by_rule[22], 'nor one without a transaction id');
 	pg_assert_same(array('shipped'), $by_rule[18], 'an unknown parcel status reads as created: shipped');
 }
 

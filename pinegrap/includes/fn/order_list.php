@@ -833,14 +833,10 @@ function pg_order_list_quick_value($value)
 function pg_order_list_quick_sql($quick, $today, $paid_known, $status_ready)
 {
     $today = preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $today) ? (string) $today : date('Y-m-d');
-    $methods = array();
-    foreach (array_merge(array('Offline Payment'), pg_order_pending_payment_methods()) as $method) {
-        $methods[] = "'" . str_replace("'", "''", $method) . "'";
-    }
 
     // Without paid_at nothing is known to be unpaid, as on View Order.
     $awaiting = $paid_known
-        ? "((orders.payment_method IN (" . implode(', ', $methods) . ")) AND (orders.paid_at = 0) AND (orders.status IN ('complete', 'exported')) AND (orders.total > 0))"
+        ? "(((orders.payment_method = 'Offline Payment') OR " . pg_order_payment_may_pend_sql('orders') . ") AND (orders.paid_at = 0) AND (orders.status IN ('complete', 'exported')) AND (orders.total > 0))"
         : '(1 = 0)';
 
     // One address (a.ship_to_id) of the order, and its state.

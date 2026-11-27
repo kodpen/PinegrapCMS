@@ -6,8 +6,8 @@ module: payments
 
 ## What is the list?
 - `pg_payment_stripe_methods()` in `includes/payments/stripe.php`: Stripe type => `label`, `currencies` (uppercase ISO), `immediate` (the result is known when the visitor is back), `hold` (can be held: manual capture), `step` (`redirect`).
-- First rows, all `immediate` and `redirect`: `ideal`, `bancontact`, `eps` (EUR), `p24` (EUR, PLN), `klarna` (13 currencies), `afterpay_clearpay` (AUD, CAD, EUR, GBP, NZD, USD). Only `klarna` and `afterpay_clearpay` have `hold`.
-- A row with `immediate` false needs the waiting state of a later step; a `step` other than `redirect` needs the checkout to show it. Until then such a row is not added.
+- `immediate` and `redirect`: `ideal`, `bancontact`, `eps` (EUR), `p24` (EUR, PLN), `klarna` (13 currencies), `afterpay_clearpay` (AUD, CAD, EUR, GBP, NZD, USD). Only `klarna` and `afterpay_clearpay` have `hold`.
+- `sepa_debit` (EUR): not `immediate`, `step` `element` (IBAN and mandate in the Payment Element); the order waits for its payment: `payment-stripe-later-result.md`.
 
 ## Which types are sent?
 - `pg_payment_stripe_method_types($currency, $settings, $recurring)`, pure: `card` (+ `link` with its switch), then each listed type switched on in `$settings['methods']` whose currencies hold `$currency`. Transaction type Authorize (`capture` `manual`) keeps only `hold` types. `$recurring` gives cards only.

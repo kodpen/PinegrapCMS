@@ -14,7 +14,7 @@ description: PayPal Checkout on Orders v2 (method 'PayPal Checkout', 11.0.50): r
 - `transaction_id` = the capture id. Transaction Type Authorize is not followed: always CAPTURE.
 - The wait (session state) goes on when the return was not this checkout's, PayPal was not reached, or the capture answer may hide a capture (5xx, not JSON, no capture in a 2xx; `pg_payment_paypal_capture_unclear()`); only PayPal's own refusal ends it. A retry from the checkout page runs `authorize()` (a new PayPal order), not `complete()`.
 - A PENDING capture (PENDING_REVIEW, eCheck) places the order unpaid: `pg_order_checkout_paid_at()` writes `paid_at = 0`, so `pg_order_awaiting_payment()` / `pg_order_payment_pending()` (`includes/fn/ecommerce.php`) read it as awaiting payment: list badge, order screen banner "Payment pending on PayPal" (check before shipping), Payment Received records it (`erp/erp-awaiting-transfer-orders.md`); the auto invoice waits for that moment. PayPal's capture webhooks record it or alert: `payment-driver-paypal-webhook.md`.
-- Only methods in `pg_order_pending_payment_methods()`: another method's older paid orders may have `paid_at = 0`. Stripe `processing` keeps `paid_at` as before.
+- Only methods in `pg_order_pending_payment_methods()`: another method's older paid orders may have `paid_at = 0`. A Stripe card intent still `processing` (`pi_` id) pends too: `payment-stripe-later-result.md`.
 
 ## Refund and cancel?
 - `refund()`: POST `/v2/payments/captures/<capture>/refund` with the amount; request id from order, capture, amount and `refunded_amount` (a double click is one refund). COMPLETED → refunded, PENDING → pending; unreached → unclear. `cancel()`: the same call with `{}` (what is left of the capture). Log name `PayPal`.

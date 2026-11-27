@@ -66,6 +66,10 @@ function test_order_cancel_refund_owed()
 	$card = array('payment_method' => 'Credit/Debit Card', 'paid_at' => 0, 'total' => 10000, 'refunded_amount' => 2500, 'gift_card_owed' => 0);
 	pg_assert_same(7500, pg_order_cancel_refund_owed($card)['payment'], 'a card payment less what was refunded');
 
+	$processing = array('transaction_id' => 'pi_3PqXyZ', 'refunded_amount' => 0) + $card;
+	pg_assert_same(0, pg_order_cancel_refund_owed($processing)['payment'], 'a Stripe payment still processing is not owed');
+	pg_assert_same(10000, pg_order_cancel_refund_owed(array('paid_at' => 1761900000) + $processing)['payment'], 'once it settled it is');
+
 	$old_schema = array('payment_method' => 'Offline Payment', 'total' => 10000, 'gift_card_owed' => 0);
 	pg_assert_same(10000, pg_order_cancel_refund_owed($old_schema)['payment'], 'no paid_at column: the payment counts as arrived');
 
@@ -79,6 +83,7 @@ function test_order_cancel_refund_owed_sql()
 	pg_assert_contains("orders.paid_at = 0", $sql, 'the unpaid test');
 	pg_assert_contains("'Offline Payment'", $sql, 'the offline method');
 	pg_assert_contains("'PayPal Checkout'", $sql, 'the pending method');
+	pg_assert_contains('OR ' . pg_order_payment_may_pend_sql('orders') . ') AND orders.paid_at = 0', $sql, 'a payment that may pend, as pg_order_cancel_refund_owed() reads it');
 	pg_assert_contains('orders.refunded_amount', $sql, 'what was refunded');
 	pg_assert_contains('applied_gift_cards.amount', $sql, 'the gift card part the cards gave');
 

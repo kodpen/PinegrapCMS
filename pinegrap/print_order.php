@@ -133,7 +133,7 @@ if ($order_awaiting_payment) {
     if ($order_on_account) {
         $output_status_note = ' (' . lang('On account') . ')';
     } elseif ($order_payment_pending) {
-        $output_status_note = ' (' . lang('Payment pending on PayPal') . ')';
+        $output_status_note = ' (' . pg_order_payment_pending_label($row) . ')';
     } else {
         $output_status_note = ' (' . lang('Awaiting bank transfer') . ')';
     }

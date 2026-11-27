@@ -465,7 +465,7 @@ function pg_form_payment_record($record_id)
 
     $row = db_item(
         "SELECT forms.order_id, forms.paid_at, orders.id AS found_order_id, orders.order_number,
-            orders.payment_method, orders.status, orders.paid_at AS order_paid_at
+            orders.payment_method, orders.transaction_id, orders.status, orders.paid_at AS order_paid_at
         FROM forms
         LEFT JOIN orders ON orders.id = forms.order_id
         WHERE forms.id = '" . e((int) $record_id) . "'"
@@ -481,6 +481,7 @@ function pg_form_payment_record($record_id)
             'id'             => (int) $row['found_order_id'],
             'order_number'   => (string) $row['order_number'],
             'payment_method' => (string) $row['payment_method'],
+            'transaction_id' => (string) $row['transaction_id'],
             'status'         => (string) $row['status'],
             'paid_at'        => (int) $row['order_paid_at'],
         ) : null,

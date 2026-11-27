@@ -400,6 +400,7 @@ function pg_dashboard_ops_refund_list($limit)
             orders.billing_last_name,
             orders.total,
             orders.payment_method,
+            orders.transaction_id,
             " . pg_order_gift_card_owed_sql('orders.id', $has_refunded_amount) . " AS gift_card_owed,
             " . ($has_paid_at ? 'orders.paid_at,' : '') . "
             " . ($has_refunded_amount ? 'orders.refunded_amount,' : '') . "

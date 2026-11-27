@@ -99,6 +99,8 @@ function get_view_order_screen_content($properties)
             orders.payment_installment,
             orders.installment_charges,
             orders.payment_method,
+            orders.transaction_id,
+            " . (pg_schema_has('orders', 'paid_at') ? 'orders.paid_at,' : '') . "
             orders.card_type,
             orders.card_number,
             orders.cardholder,
@@ -160,6 +162,10 @@ function get_view_order_screen_content($properties)
     $card_type = $row['card_type'];
     $card_number = $row['card_number'];
     $cardholder = $row['cardholder'];
+
+    // A payment the service has not settled yet (a bank debit still
+    // processing, a PayPal payment under review).
+    $payment_confirming_note = pg_order_payment_confirming_note($row);
     $order_user_id = $row['user_id'];
     $reference_code = $row['reference_code'];
 
@@ -1646,7 +1652,9 @@ function get_view_order_screen_content($properties)
                 '<div class="payment heading">' . lang('Payment Information') . '</div>
                 <div class="payment data">
                 ' . lang('Payment Method') . ': ' . $output_payment_method . '<br />' 
-                . $output_credit_debit_card_information . '</div>';
+                . $output_credit_debit_card_information
+                . (($payment_confirming_note !== '') ? '<span class="payment_confirming_note">' . h($payment_confirming_note) . '</span><br />' : '')
+                . '</div>';
         }
 
         // if order is complete, then prepare to output order number
@@ -2705,6 +2713,7 @@ function get_view_order_screen_content($properties)
             'fields' => $fields,
             'payment_method' => $payment_method,
             'payment_method_label' => $payment_method_label,
+            'payment_confirming_note' => $payment_confirming_note,
             'card_type' => $card_type,
             'card_number' => $card_number,
             'cardholder' => $cardholder,

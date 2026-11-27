@@ -1093,7 +1093,8 @@ function _pg_order_status_stage($status)
 
 /**
  * Whether an order is still waiting for its money: a bank transfer that has
- * not arrived, or a PayPal Checkout payment PayPal left pending.
+ * not arrived, or a payment its service left pending (a PayPal Checkout
+ * capture under review, a Stripe payment still processing).
  *
  * Derived, not a status of its own: the order stays 'complete' (or 'exported')
  * so every report, filter and export keyed on orders.status keeps working, and
@@ -1108,7 +1109,7 @@ function pg_order_awaiting_payment(array $order): bool
 {
     $method = (string) ($order['payment_method'] ?? '');
 
-    return (($method === 'Offline Payment') || in_array($method, pg_order_pending_payment_methods(), true))
+    return (($method === 'Offline Payment') || pg_order_payment_may_pend($method, (string) ($order['transaction_id'] ?? '')))
         && ((int) ($order['paid_at'] ?? 0) === 0)
         && in_array((string) ($order['status'] ?? ''), array('complete', 'exported'), true);
 }
@@ -1129,16 +1130,118 @@ function pg_order_pending_payment_methods(): array
 }
 
 /**
+ * The start of the transaction id of a card payment that may be answered as
+ * pending: a Stripe PaymentIntent still processing (a bank debit such as SEPA
+ * Direct Debit settles days later). Every card gateway stores
+ * 'Credit/Debit Card', and orders of the other card gateways placed before
+ * paid_at existed carry paid_at = 0, so the method alone cannot tell; Stripe's
+ * PaymentIntents came after paid_at and every order of theirs wrote it.
+ *
+ * @return string
+ */
+function pg_order_pending_card_transaction_prefix(): string
+{
+    return 'pi_';
+}
+
+/**
+ * Whether a payment of this method and transaction may wait with paid_at = 0
+ * for its service to settle it: a method of pg_order_pending_payment_methods(),
+ * or a card payment whose transaction id is a Stripe PaymentIntent's.
+ *
+ * @param string $payment_method orders.payment_method
+ * @param string $transaction_id orders.transaction_id ('' when not known)
+ * @return bool
+ */
+function pg_order_payment_may_pend(string $payment_method, string $transaction_id): bool
+{
+    if (in_array($payment_method, pg_order_pending_payment_methods(), true)) {
+        return true;
+    }
+
+    $prefix = pg_order_pending_card_transaction_prefix();
+
+    return ($payment_method === 'Credit/Debit Card') && (strncmp($transaction_id, $prefix, strlen($prefix)) === 0);
+}
+
+/**
+ * pg_order_payment_may_pend() as a SQL condition over an orders row. SUBSTR
+ * and COALESCE, so it reads the same on MySQL and SQLite and a NULL
+ * transaction_id is no match.
+ *
+ * @param string $table the orders table's name or alias in the query
+ * @return string
+ */
+function pg_order_payment_may_pend_sql(string $table = 'orders'): string
+{
+    $methods = array();
+    foreach (pg_order_pending_payment_methods() as $method) {
+        $methods[] = "'" . addslashes($method) . "'";
+    }
+
+    $prefix = pg_order_pending_card_transaction_prefix();
+
+    return "((" . $table . ".payment_method IN (" . implode(', ', $methods) . "))"
+        . " OR ((" . $table . ".payment_method = 'Credit/Debit Card') AND (SUBSTR(COALESCE(" . $table . ".transaction_id, ''), 1, " . strlen($prefix) . ") = '" . addslashes($prefix) . "')))";
+}
+
+/**
  * Whether an order waits on a payment its service left pending, rather than
  * on a bank transfer.
  *
- * @param array $order Row carrying payment_method, paid_at and status
+ * @param array $order Row carrying payment_method, transaction_id, paid_at
+ *                     and status
  * @return bool
  */
 function pg_order_payment_pending(array $order): bool
 {
-    return in_array((string) ($order['payment_method'] ?? ''), pg_order_pending_payment_methods(), true)
+    return pg_order_payment_may_pend((string) ($order['payment_method'] ?? ''), (string) ($order['transaction_id'] ?? ''))
         && pg_order_awaiting_payment($order);
+}
+
+/**
+ * The service an order's pending payment waits on, for the texts that name
+ * it: 'stripe' for a card payment Stripe is still processing, 'paypal'
+ * otherwise.
+ *
+ * @param array $order Row carrying payment_method
+ * @return string
+ */
+function pg_order_payment_pending_service(array $order): string
+{
+    return ((string) ($order['payment_method'] ?? '') === 'Credit/Debit Card') ? 'stripe' : 'paypal';
+}
+
+/**
+ * The order screen's short name of a pending payment: its pill, the print
+ * header's note.
+ *
+ * @param array $order Row carrying payment_method
+ * @return string
+ */
+function pg_order_payment_pending_label(array $order): string
+{
+    return (pg_order_payment_pending_service($order) === 'stripe')
+        ? lang('Payment pending on Stripe')
+        : lang('Payment pending on PayPal');
+}
+
+/**
+ * The line the buyer reads beside the payment method on the order's receipt,
+ * its mail and the account's order page while the service has not settled
+ * the payment; '' once it has, or when the row cannot tell (no paid_at).
+ *
+ * @param array $order Row carrying payment_method, transaction_id, paid_at
+ *                     and status
+ * @return string
+ */
+function pg_order_payment_confirming_note(array $order): string
+{
+    if (!array_key_exists('paid_at', $order) || !pg_order_payment_pending($order)) {
+        return '';
+    }
+
+    return lang('Your payment is being confirmed. We will start on your order once it arrives.');
 }
 
 /**
@@ -1158,7 +1261,7 @@ function pg_order_checkout_paid_at(string $payment_method, string $transaction_i
         return 0;
     }
 
-    if (($payment_status === 'pending') && in_array($payment_method, pg_order_pending_payment_methods(), true)) {
+    if (($payment_status === 'pending') && pg_order_payment_may_pend($payment_method, $transaction_id)) {
         return 0;
     }
 
@@ -12202,7 +12305,7 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
         $order['total'],
         $order['refunded_amount'],
         $order['payment_method'],
-        !empty($order['transaction_id']),
+        (string) ($order['transaction_id'] ?? ''),
         $cancel_driver,
         $auto_refund,
         ($order['paid_at'] === null) ? null : (int) $order['paid_at']
@@ -12331,7 +12434,7 @@ function pg_order_cancel_refund_owed(array $order)
     $method = (string) ($order['payment_method'] ?? '');
     $unpaid = array_key_exists('paid_at', $order)
         && ((int) $order['paid_at'] === 0)
-        && (($method === 'Offline Payment') || in_array($method, pg_order_pending_payment_methods(), true));
+        && (($method === 'Offline Payment') || pg_order_payment_may_pend($method, (string) ($order['transaction_id'] ?? '')));
 
     $payment = $unpaid ? 0 : max(0, (int) round((float) ($order['total'] ?? 0)) - (int) round((float) ($order['refunded_amount'] ?? 0)));
     if (array_key_exists('gift_card_owed', $order)) {
@@ -12351,11 +12454,7 @@ function pg_order_cancel_refund_owed_sql($has_paid_at, $has_refunded_amount)
     $payment = $has_refunded_amount ? 'GREATEST(0, CAST(orders.total AS SIGNED) - CAST(COALESCE(orders.refunded_amount, 0) AS SIGNED))' : 'orders.total';
 
     if ($has_paid_at) {
-        $methods = array();
-        foreach (array_merge(array('Offline Payment'), pg_order_pending_payment_methods()) as $method) {
-            $methods[] = "'" . addslashes($method) . "'";
-        }
-        $payment = "(CASE WHEN orders.payment_method IN (" . implode(', ', $methods) . ") AND orders.paid_at = 0 THEN 0 ELSE " . $payment . " END)";
+        $payment = "(CASE WHEN ((orders.payment_method = 'Offline Payment') OR " . pg_order_payment_may_pend_sql('orders') . ") AND orders.paid_at = 0 THEN 0 ELSE " . $payment . " END)";
     }
 
     // order_refunds arrived with refunded_amount (2026.1.14).
@@ -12513,21 +12612,26 @@ function pg_order_log_status($status)
 //           the operator returns it (REFUND ACTION REQUIRED, manual_required);
 //  'none'   nothing is left (refunded in full, a free order), no method took
 //           the money, or it never arrived: a bank transfer (Offline Payment)
-//           or a pending payment method with $paid_at 0.
+//           or a payment that may pend (pg_order_payment_may_pend()) with
+//           $paid_at 0.
+// $transaction is orders.transaction_id; a bool still says only whether there
+// is one, and then a card payment cannot be told pending.
 // $paid_at is orders.paid_at, null when the schema has not got it; then the
 // payment counts as arrived, as pg_order_cancel_refund_owed() reads it, so
 // the flag and the owed amount follow one rule.
 // A void takes no amount and reverses the whole payment, so a payment partly
 // refunded already (the order screen's or a return's refund) is not voided:
 // what is left goes to the operator. Amounts are minor units.
-function pg_order_cancel_payment_plan($total_cents, $refunded_cents, $payment_method, $has_transaction, $cancel_driver, $auto_refund, $paid_at = null)
+function pg_order_cancel_payment_plan($total_cents, $refunded_cents, $payment_method, $transaction, $cancel_driver, $auto_refund, $paid_at = null)
 {
-    $total_cents    = (int) $total_cents;
-    $refunded_cents = max(0, (int) $refunded_cents);
-    $remaining      = max(0, $total_cents - $refunded_cents);
-    $payment_method = (string) $payment_method;
-    $unpaid         = ($paid_at !== null) && ((int) $paid_at === 0)
-        && (($payment_method === 'Offline Payment') || in_array($payment_method, pg_order_pending_payment_methods(), true));
+    $total_cents     = (int) $total_cents;
+    $refunded_cents  = max(0, (int) $refunded_cents);
+    $remaining       = max(0, $total_cents - $refunded_cents);
+    $payment_method  = (string) $payment_method;
+    $transaction_id  = is_bool($transaction) ? '' : (string) $transaction;
+    $has_transaction = is_bool($transaction) ? $transaction : ($transaction_id !== '');
+    $unpaid          = ($paid_at !== null) && ((int) $paid_at === 0)
+        && (($payment_method === 'Offline Payment') || pg_order_payment_may_pend($payment_method, $transaction_id));
 
     if ($remaining <= 0) {
         $action = 'none';

@@ -68,13 +68,12 @@ function test_reviews_purchase_sql()
 	$bought = pg_review_bought_sql();
 
 	pg_assert_contains("orders.status IN ('complete', 'exported')", $bought);
-	pg_assert_contains("orders.payment_method NOT IN ('Offline Payment'", $bought);
+	pg_assert_contains("orders.payment_method <> 'Offline Payment'", $bought);
 
-	// Every method an order can wait on money with, as pg_order_awaiting_payment()
-	// reads them: a pending PayPal Checkout payment is not bought either.
-	foreach (array_merge(array('Offline Payment'), pg_order_pending_payment_methods()) as $method) {
-		pg_assert_true(preg_match("/orders\\.payment_method NOT IN \\([^)]*'" . preg_quote($method, '/') . "'/", $bought) === 1, $method . ' waits for its money');
-	}
+	// Every payment an order can wait on money with, as pg_order_awaiting_payment()
+	// reads them: a pending PayPal Checkout payment or a Stripe payment still
+	// processing is not bought either.
+	pg_assert_contains('AND NOT ' . pg_order_payment_may_pend_sql('orders'), $bought);
 
 	pg_assert_contains('orders.paid_at > 0', $bought);
 	pg_assert_contains('orders.erp_on_account = 1', $bought);

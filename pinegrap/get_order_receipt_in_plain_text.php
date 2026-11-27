@@ -965,6 +965,7 @@ function get_order_receipt_in_plain_text($order_id)
     $po_number = $row['po_number'];
     $tax_exempt = $row['tax_exempt'];
     $payment_method = $row['payment_method'];
+    $payment_confirming_note = pg_order_payment_confirming_note($row);
 
     // Only a card order has a card, but the number is protected below for
     // every order.
@@ -1197,7 +1198,8 @@ function get_order_receipt_in_plain_text($order_id)
             lang('Payment Information') . ':' . "\n" .
             '-------------------------' . "\n" .
             lang('Payment Method') . ': ' . $output_payment_method .
-            $output_credit_debit_card_information;
+            $output_credit_debit_card_information .
+            (($payment_confirming_note !== '') ? "\n" . $payment_confirming_note : '');
     }
 
     // If a user account was created via the auto-registration feature,

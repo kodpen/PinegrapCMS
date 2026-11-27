@@ -14,7 +14,7 @@ description: PayPal Checkout's notify(): webhook_id, PayPal's verify-webhook-sig
 ## What does each event do?
 - `PAYMENT.CAPTURE.COMPLETED` → `paid`; `PAYMENT.CAPTURE.DENIED` → `cancelled` (log line "DENIED: nothing was taken. Do not ship it"); every other event and an id that is not PayPal's shape → ignored (200).
 - The order: `custom_id` when it is an order id, else the capture id kept as `orders.transaction_id`; a capture other than the order's own is `unknown_order`. `amount` in hundredths only when the currency is the store's.
-- `pg_payment_notify_outcome()` (`payment-callback.md`): `paid` for an order `pg_order_payment_pending()` and `amount` = `orders.total` → `recorded`, `mark_paid`; the receiver calls `pg_order_mark_paid($id, 0)` ("marked paid automatically", the auto invoice's paid moment). Another amount → alert, nothing recorded. Already paid → `nothing`. DENIED → alert, the order is not changed (the operator cancels it).
+- `pg_payment_notify_outcome()` (`payment-callback.md`): `paid` for an order `pg_order_payment_pending()` and `amount` = `orders.total` → `recorded`, `mark_paid`; the receiver calls `pg_order_mark_paid($id, 0)` ("marked paid automatically", the auto invoice's paid moment). Another amount → alert, nothing recorded. Already paid → `nothing`. DENIED → alert, the order is not changed (the operator cancels it); for an `incomplete` order `nothing`.
 
 ## How was it verified?
 - `tests/payment_paypal_webhook_test.php` (fixture `tests/fixtures/paypal/webhook_capture_completed.json`, shaped from PayPal's webhook event and verify-signature docs). No real PayPal delivery or signature check ran.

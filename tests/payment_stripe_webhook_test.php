@@ -457,8 +457,10 @@ function test_payment_stripe_webhook_mismatch_alerts_and_completes_nothing()
 
 function test_payment_stripe_webhook_completed_order_is_a_no_op()
 {
+	// The visitor's return placed it paid (pg_payment_notify_order() always
+	// reads paid_at).
 	$answer = payment_stripe_webhook_test_notify(payment_stripe_webhook_test_event('payment_intent.succeeded', payment_stripe_webhook_test_intent()));
-	$outcome = pg_payment_notify_outcome('stripe', $answer, payment_stripe_webhook_test_incomplete_order(array('status' => 'complete')), 'TRY');
+	$outcome = pg_payment_notify_outcome('stripe', $answer, payment_stripe_webhook_test_incomplete_order(array('status' => 'complete', 'paid_at' => '1760949000')), 'TRY');
 
 	pg_assert_same('nothing', $outcome['status'], 'the visitor came back first, or a second event');
 	pg_assert_false($outcome['complete']);
@@ -508,10 +510,148 @@ function test_payment_stripe_webhook_renewal_failure_names_its_subscription()
 	pg_assert_true($answer['raw']['ignored']);
 	pg_assert_false(isset($answer['raw']['renewal_failed']));
 
-	// An order's failed payment is not read.
+	// An order's failed payment is its own answer, never a renewal's.
 	$order = payment_stripe_webhook_test_notify(payment_stripe_webhook_test_event('payment_intent.payment_failed', payment_stripe_webhook_test_intent(array('status' => 'requires_payment_method'))));
-	pg_assert_true($order['raw']['ignored']);
+	pg_assert_true($order['success']);
+	pg_assert_same('cancelled', $order['status']);
 	pg_assert_false(isset($order['raw']['renewal_failed']));
+
+	// A failed payment that names neither is not read.
+	$none = payment_stripe_webhook_test_notify(payment_stripe_webhook_test_event('payment_intent.payment_failed', payment_stripe_webhook_test_intent(array('status' => 'requires_payment_method', 'metadata' => array()))));
+	pg_assert_true($none['raw']['ignored']);
+	pg_assert_false(isset($none['raw']['renewal_failed']));
+}
+
+/* ---------------------------------------------------------------------------
+   A payment whose result comes later (status processing at the return)
+   --------------------------------------------------------------------------- */
+
+function payment_stripe_webhook_test_processing_order($changes = array())
+{
+	return array_merge(payment_stripe_webhook_test_incomplete_order(array('status' => 'complete', 'paid_at' => '0')), $changes);
+}
+
+function payment_stripe_webhook_test_failed($changes = array())
+{
+	return payment_stripe_webhook_test_notify(payment_stripe_webhook_test_event('payment_intent.payment_failed', payment_stripe_webhook_test_intent(array_merge(array(
+		'status'             => 'requires_payment_method',
+		'amount_received'    => 0,
+		'last_payment_error' => array('code' => 'insufficient_funds', 'message' => 'The account has insufficient funds.'),
+	), $changes))));
+}
+
+function test_payment_stripe_webhook_order_payment_failed_answer()
+{
+	$answer = payment_stripe_webhook_test_failed();
+
+	pg_assert_true($answer['success']);
+	pg_assert_same('cancelled', $answer['status']);
+	pg_assert_same('pi_3Abc', $answer['transaction_id']);
+	pg_assert_same('438', $answer['order_reference']);
+	pg_assert_same(4714, $answer['amount'], 'the amount asked, nothing was received');
+	pg_assert_same('insufficient_funds', $answer['raw']['code']);
+	pg_assert_same('TRY', $answer['raw']['currency']);
+	pg_assert_same(array('Stripe reports that payment pi_3Abc of 47.14 TRY failed (insufficient_funds): nothing was taken. Do not ship it'), $answer['log']);
+
+	$quiet = payment_stripe_webhook_test_failed(array('last_payment_error' => null));
+	pg_assert_same('Stripe reports that payment pi_3Abc of 47.14 TRY failed (none given): nothing was taken. Do not ship it', $quiet['log'][0], 'no error given');
+
+	// An order id or a payment id that is not one is not read.
+	pg_assert_true(payment_stripe_webhook_test_failed(array('metadata' => array('order_id' => 'x438')))['raw']['ignored']);
+	pg_assert_true(payment_stripe_webhook_test_failed(array('id' => 'ch_3Abc'))['raw']['ignored']);
+}
+
+// Each declined attempt at the checkout reports a failure: the order was
+// never placed and the visitor may pay again, so no log line and no alert.
+function test_payment_stripe_webhook_failed_attempt_at_the_checkout_is_quiet()
+{
+	$outcome = pg_payment_notify_outcome('stripe', payment_stripe_webhook_test_failed(), payment_stripe_webhook_test_incomplete_order(), 'TRY');
+
+	pg_assert_same(200, $outcome['http']);
+	pg_assert_same('nothing', $outcome['status']);
+	pg_assert_same(array(), $outcome['log']);
+	pg_assert_same('', $outcome['alert']);
+	pg_assert_false($outcome['complete']);
+	pg_assert_false($outcome['mark_paid']);
+}
+
+// A debit that bounced days after the order was placed: an alert, the order
+// is not changed, and the operator cancels it (as PayPal's DENIED).
+function test_payment_stripe_webhook_processing_order_failed_alerts()
+{
+	$order = payment_stripe_webhook_test_processing_order();
+	pg_assert_true(pg_order_payment_pending($order), 'placed awaiting its payment');
+
+	$outcome = pg_payment_notify_outcome('stripe', payment_stripe_webhook_test_failed(), $order, 'TRY');
+
+	pg_assert_same(200, $outcome['http']);
+	pg_assert_same('alerted', $outcome['status']);
+	pg_assert_false($outcome['mark_paid']);
+	pg_assert_false($outcome['complete']);
+	pg_assert_same(array('Stripe reports that payment pi_3Abc of 47.14 TRY failed (insufficient_funds): nothing was taken. Do not ship it for order #438. The order was not changed.'), $outcome['log']);
+	pg_assert_same($outcome['log'][0], $outcome['alert']);
+
+	// Cancelled before the failure came: the alert says no refund is owed.
+	$outcome = pg_payment_notify_outcome('stripe', payment_stripe_webhook_test_failed(), payment_stripe_webhook_test_processing_order(array('status' => 'cancelled')), 'TRY');
+	pg_assert_same('alerted', $outcome['status']);
+	pg_assert_false($outcome['mark_paid']);
+	pg_assert_contains('nothing was taken', $outcome['alert']);
+}
+
+// The debit settled: payment_intent.succeeded records the order paid.
+function test_payment_stripe_webhook_processing_order_succeeded_is_recorded()
+{
+	$answer = payment_stripe_webhook_test_notify(payment_stripe_webhook_test_event('payment_intent.succeeded', payment_stripe_webhook_test_intent()));
+	$outcome = pg_payment_notify_outcome('stripe', $answer, payment_stripe_webhook_test_processing_order(), 'TRY');
+
+	pg_assert_same(200, $outcome['http']);
+	pg_assert_same('recorded', $outcome['status']);
+	pg_assert_true($outcome['mark_paid'], 'the receiver marks it paid');
+	pg_assert_false($outcome['complete'], 'the order is already placed');
+	pg_assert_same('', $outcome['alert']);
+	pg_assert_same(array('Stripe reports that payment pi_3Abc of 47.14 TRY succeeded for order #438, which was awaiting it. The payment was recorded.'), $outcome['log']);
+
+	$outcome = pg_payment_notify_outcome('stripe', $answer, payment_stripe_webhook_test_processing_order(array('total' => '4715')), 'TRY');
+	pg_assert_same('alerted', $outcome['status'], 'another amount');
+	pg_assert_false($outcome['mark_paid']);
+	pg_assert_contains('not for the order\'s total. The payment was not recorded', $outcome['alert']);
+
+	$outcome = pg_payment_notify_outcome('stripe', $answer, payment_stripe_webhook_test_processing_order(array('transaction_id' => 'pi_3Other')), 'TRY');
+	pg_assert_same('unknown_order', $outcome['status'], 'another payment than the order\'s');
+	pg_assert_false($outcome['mark_paid']);
+
+	// The receiver's write only takes an order still unpaid, so a second
+	// delivery of the event records nothing twice.
+	$receive = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/payments/callback.php');
+	pg_assert_contains("pg_order_mark_paid((int) \$order['id'], 0);", $receive);
+	$mark = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/ecommerce.php');
+	$mark = substr($mark, strpos($mark, 'function pg_order_mark_paid('), 600);
+	pg_assert_contains("AND paid_at = 0\");", $mark);
+}
+
+// A late succeeded for an order that is already paid, or was cancelled, does
+// nothing harmful: never marked paid, never completed again.
+function test_payment_stripe_webhook_late_succeeded_changes_nothing()
+{
+	$answer = payment_stripe_webhook_test_notify(payment_stripe_webhook_test_event('payment_intent.succeeded', payment_stripe_webhook_test_intent()));
+
+	$paid = pg_payment_notify_outcome('stripe', $answer, payment_stripe_webhook_test_processing_order(array('paid_at' => '1761600000')), 'TRY');
+	pg_assert_same('nothing', $paid['status'], 'already recorded (a second delivery, or the operator recorded it)');
+	pg_assert_false($paid['mark_paid']);
+	pg_assert_false($paid['complete']);
+	pg_assert_same('', $paid['alert']);
+
+	$refunded = pg_payment_notify_outcome('stripe', $answer, payment_stripe_webhook_test_processing_order(array('status' => 'cancelled', 'paid_at' => '1761600000')), 'TRY');
+	pg_assert_same('nothing', $refunded['status'], 'cancelled after its payment was recorded');
+	pg_assert_false($refunded['mark_paid']);
+
+	// Cancelled while the debit was processing, then it settled: the money
+	// arrived on an order the store no longer ships.
+	$cancelled = pg_payment_notify_outcome('stripe', $answer, payment_stripe_webhook_test_processing_order(array('status' => 'cancelled')), 'TRY');
+	pg_assert_same('alerted', $cancelled['status']);
+	pg_assert_false($cancelled['mark_paid'], 'the cancelled order is not marked paid');
+	pg_assert_false($cancelled['complete']);
+	pg_assert_contains('which was cancelled before its payment was recorded. The order was not changed: refund the payment on Stripe\'s own screen or restore the order.', $cancelled['alert']);
 }
 
 function test_payment_stripe_webhook_order_payment_answers_the_kept_card()
