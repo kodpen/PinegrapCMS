@@ -226,6 +226,7 @@
 - decisions-made-product-116.md: Decisions made, product part 116 (2026-11-26 on): a live page's new version is prepared in a draft that replaces it ("Save as a new version"); a live page still has no working copy
 - decisions-made-product-117.md: Decisions made, product part 117 (2026-11-27 on): nine features for selling and working outside Turkey enter plans; the European e-invoice does not
 - decisions-made-product-118.md: Decisions made, product part 118 (2026-11-27 on): panel languages start with the mechanism and German; a touched old screen is brought to the look; a new setting sits beside its kin
+- decisions-made-product-119.md: Decisions made, product part 119 (2026-11-27 on): US sales tax is not built for now; automatic tax stays the EU's rates and the one-stop-shop report
 - decisions-made-product-12.md: Decisions list, product part 12 (2026-10-31 on): ERP settings cards for role 3, Trendyol address order, old n11 rows data step, phone toolbar, Trendyol Luxe, shipment rules confirmed
 - decisions-made-product-13.md: Decisions list, product part 13 (2026-10-31 on): Site Settings group headings, no notes secret feed, no hint on forgot password, IIS preflight nudge
 - decisions-made-product-14.md: Decisions list, product part 14 (2026-10-31 on): own image editor, nothing alone under a screen's title, no PDF of ours for a purchase invoice, Site Settings regrouped

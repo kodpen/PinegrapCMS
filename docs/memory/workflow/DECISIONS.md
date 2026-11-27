@@ -198,6 +198,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-118.md: What does a feature do with an old screen it touches? (owner, 2026-11-27, agent channel message 14844)
 - decisions-made-product-118.md: Where does a new setting go? (owner, 2026-11-27, agent channel message 14844)
 - decisions-made-product-118.md: What else did he say in that message?
+- decisions-made-product-119.md: Where are the rules and the earlier parts?
+- decisions-made-product-119.md: Is US sales tax built? (owner, 2026-11-27, agent channel poll 249, message 14895)
 - decisions-made-product-12.md: Where are the rules and the earlier parts?
 - decisions-made-product-12.md: Where does a role-3 user edit the ERP settings cards? (#3828)
 - decisions-made-product-12.md: Trendyol import: which column holds the province? (#3835)
