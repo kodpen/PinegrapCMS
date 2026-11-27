@@ -17,6 +17,7 @@ module: output
 
 ## How are the header and footer made?
 - Once: the run's build host gives the builder `site` = the brief's name, the header's pages (menu Main) and `footer` (Main and Footer only); `pg_sketch_builder.js` links `site.footer` in the footer when given. The first page makes the two shared components; every later page gets a new reference to them (`host.ref()`), as `_sdSketchDesignShared()` skips sketch-built pages.
+- `auto()` pins the run's host while it builds: the frames' redraw hands `fill()` the core's host, which made a header and footer per page.
 - The theme is not the run's: the answers came with the address (`design-variables-questions.md`).
 
 ## What does the line say?
@@ -27,6 +28,7 @@ module: output
 
 ## Tests and what was not checked?
 - `tests/site_run_test.php`: the pure parts, and in Node a run against stand-in parts (order, header and footer once, details, refusal, Try again, Stop, no second start), the wiring. `tests/sketch_builder_test.php`: the footer's own list.
-- Not run against a live Pinegrap AI; the browser run used stand-in answers of `designer/sketch_ai`.
+- Sandbox at 1440 and 390 px with stand-in `designer/sketch_ai` answers (#12165): four pages, two shared rows; refusal, Try again, Stop. Not run against a live Pinegrap AI.
+- Sizes: core `style_designer.min.js` +404 bytes (+191 gzip); the part 7,839 (3,429 gzip), loaded only on `?start=describe`.
 
 Related: docs/memory/designer/site-plan-screen.md, docs/memory/designer/sketch-ai.md, docs/memory/designer/sketch-build.md

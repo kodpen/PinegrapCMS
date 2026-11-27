@@ -10072,7 +10072,7 @@ button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible, bu
    its toned tile, the page under way, a thin bar and Stop; on a phone it
    takes the width less the gutters. */
 .sd-sr {
-    position: fixed; left: 50%; bottom: 20px; z-index: 1060; transform: translateX(-50%);
+    position: fixed; left: 50%; bottom: 48px; z-index: 1060; transform: translateX(-50%);
     display: flex; align-items: center; gap: .7rem; width: min(460px, calc(100vw - 32px)); padding: .65rem .8rem;
     background: var(--sd-panel-bg); color: var(--sd-text); border: 1px solid var(--sd-panel-border); border-radius: 12px; box-shadow: var(--sd-shadow);
 }

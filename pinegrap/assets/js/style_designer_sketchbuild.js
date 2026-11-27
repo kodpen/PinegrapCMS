@@ -35,6 +35,8 @@ StyleDesigner.definePart('sketchbuild', function (K) {
     var SHARED = { header: true, footer: true };
 
     var host = null;
+    // The site run's host while auto() builds a page.
+    var pinned = null;
     // The frame being built (null: none), the unsure list and the "Build
     // again" question while open, the line under each frame, the readings
     // by frame.
@@ -626,7 +628,11 @@ StyleDesigner.definePart('sketchbuild', function (K) {
     // one to answer it); a page already built is left as it is.
     function auto(h, frameId) {
         host = h;
-        return new Promise(function (resolve) {
+        return new Promise(function (done) {
+            // The run's host (its header, footer and menu) stays while the
+            // page is built: the frames' redraw hands fill() the core's.
+            pinned = h;
+            var resolve = function (r) { pinned = null; done(r); };
             var page = host.page(frameId);
             if (!page || busy || !page.boxes.length || !window.PGSketchReader || !window.PGSketchBuilder) { resolve({ ok: false }); return; }
             var p = page.built ? host.pageOf(page.built.uid) : null;
@@ -802,8 +808,8 @@ StyleDesigner.definePart('sketchbuild', function (K) {
     return {
         start: start,
         auto: auto,
-        fill: function (h, frameId, node, head, body) { host = h; fill(frameId, node, head, body); },
-        reading: function (h, frameId, boxId) { host = h; return reading(frameId, boxId); },
+        fill: function (h, frameId, node, head, body) { host = pinned || h; fill(frameId, node, head, body); },
+        reading: function (h, frameId, boxId) { host = pinned || h; return reading(frameId, boxId); },
         escape: escape,
         pure: { hash: hash, boxSig: boxSig, secSig: secSig, nodeFp: nodeFp, plan: plan, arrange: arrange, keptFp: keptFp, keptSig: keptSig }
     };

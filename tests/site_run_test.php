@@ -265,4 +265,5 @@ function test_site_run_wiring()
 	pg_assert_true(strpos($ai, 'draw: function (h, frameId, text)') !== false && strpos($ai, 'write: function (h, frameId)') !== false, 'the AI part answers the run');
 	$build = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_sketchbuild.js');
 	pg_assert_true(strpos($build, 'auto: auto,') !== false, 'the build part builds without the list to check');
+	pg_assert_true(strpos($build, 'host = pinned || h; fill(') !== false, 'a redraw keeps the run\'s host while a page is built (else a header and footer a page)');
 }
