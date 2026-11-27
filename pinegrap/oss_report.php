@@ -62,7 +62,7 @@ if (($_GET['export'] ?? '') === 'csv') {
 
     $out = fopen('php://output', 'w');
     foreach (pg_oss_report_csv_rows($stored, $apart, $labels) as $row) {
-        fputcsv($out, $row, ',', '"', '');
+        fputcsv($out, $row, ',', '"', '\\');
     }
     fclose($out);
     exit();
