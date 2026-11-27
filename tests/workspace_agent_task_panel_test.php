@@ -112,8 +112,8 @@ function test_workspace_agent_task_holder_avatar_wiring()
 	pg_assert_same('', ws_task_holder_avatar('claude'), 'Claude keeps its icon');
 	pg_assert_same('', ws_task_holder_avatar('mcp:3'));
 	pg_assert_contains("'delegate_avatar'", agent_task_panel_source_of('ws_task_brief'));
-	pg_assert_contains("'delegate_avatar'", agent_task_panel_source_of('ws_channel_board_tasks'), 'the Board card carries the holder');
-	pg_assert_contains("'delegate_name'", agent_task_panel_source_of('ws_channel_board_tasks'));
+	pg_assert_contains("'delegate_avatar'", agent_task_panel_source_of('ws_channel_board_task_card'), 'the Board card carries the holder');
+	pg_assert_contains("'delegate_name'", agent_task_panel_source_of('ws_channel_board_task_card'));
 
 	$board = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_board_channel.js');
 	pg_assert_contains('window.PGWsTaskDelegate.rowTag(meta, item, k)', $board, 'the card shows the holder as a task row does');

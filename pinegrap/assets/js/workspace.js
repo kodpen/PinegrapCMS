@@ -26268,6 +26268,8 @@
         var frame = el('div', 'ws-bar-frame');
         var list = el('div', 'card');
         var listBody = el('div', 'card-body p-0');
+        // The Board layout's columns (workspace_my_tasks_board.js).
+        var boardPane = el('div', 'ws-pane-board ws-mt-board');
         // Says how many tasks the list holds after a filter or a search.
         var countLine = el('div', 'visually-hidden');
 
@@ -26314,6 +26316,10 @@
             [agents, searchGroup].forEach(function (control) {
                 control.hidden = (name === 'time');
             });
+
+            if (layout) {
+                layout.shown(name !== 'time');
+            }
         }
 
         var status = formParts.select([['open', t('open_tasks')], ['closed', t('closed_tasks')], ['all', t('all_tasks')]], state.status, true);
@@ -26401,6 +26407,13 @@
         });
         bar.appendChild(searchGroup);
 
+        // List or Board, kept per browser; not in My time.
+        var layout = (window.PGWsMyTasksBoard && window.PGWsChannelBoard) ? window.PGWsMyTasksBoard.control(partHelpers(), function () { load(); }) : null;
+
+        if (layout) {
+            bar.appendChild(layout.node);
+        }
+
         // "Add a task…" above the groups (workspace_my_tasks.js). It sits
         // outside listBody, so a reload keeps what is typed and the focus.
         var addLine = window.PGWsMyTasks ? window.PGWsMyTasks.addLine(partHelpers(), {
@@ -26420,6 +26433,7 @@
         root.appendChild(filter.tags);
         root.appendChild(countLine);
         root.appendChild(list);
+        root.appendChild(boardPane);
 
         // Only the answer to the latest question is drawn: a filter changed
         // quickly would otherwise let an earlier, slower answer win.
@@ -26438,10 +26452,20 @@
                 addLine.shown((state.scope === 'mine') && (state.status === 'open') && !state.search && !filter.isSet() && (state.agent_channels !== 'only'));
             }
 
+            var onBoard = !!layout && (layout.value() === 'board') && (state.scope !== 'time');
+
+            list.hidden = onBoard;
+            boardPane.hidden = !onBoard;
+
             if (state.scope === 'time') {
                 countLine.textContent = '';
                 views.count(null);
                 window.PGWsTaskTime.myTime(listBody, partHelpers());
+                return;
+            }
+
+            if (onBoard) {
+                drawTaskBoard();
                 return;
             }
 
@@ -26483,6 +26507,33 @@
                 });
             }
         };
+
+        // The Board layout reads the same tasks with their columns, again
+        // after every move; the counts follow each reading.
+        function drawTaskBoard() {
+            var helpers = partHelpers();
+
+            helpers.form = formParts;
+            window.PGWsMyTasksBoard.mount(boardPane, helpers, {
+                read: function () {
+                    return api('ws_tasks', Object.assign({}, state, { layout: 'board' })).then(function (data) {
+                        agents.shown(data.agent_channels || 0);
+                        madeByField.off = !data.made_by_ready;
+                        filter.refresh();
+                        views.count(data.tasks.length);
+                        countLine.textContent = data.tasks.length ? t('task_count', data.tasks.length) : t('nothing_found');
+
+                        return data.board;
+                    });
+                },
+                openTask: function (taskId) {
+                    taskDrawer.open(taskId, null, load);
+                },
+                menu: function (item, extra) {
+                    return taskMenu({ id: item.id, number: item.number, title: item.title, status: item.status, open: item.open, due_date: item.due_date || '' }, load, extra);
+                }
+            });
+        }
 
         function drawMyTasks(tasks, fresh) {
             if (!window.PGWsMyTasks) {

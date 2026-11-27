@@ -577,7 +577,7 @@
                 node.classList.toggle('ws-cb-col-current', index === self.current);
             });
         });
-        if (self.source) {
+        if (self.source && (self.source.picker !== false)) {
             pane.appendChild(picker);
         }
 
@@ -616,7 +616,7 @@
             var face = k.avatar(column.person, '1.4rem');
             face.classList.add('ws-cb-face');
             head.appendChild(face);
-        } else if (!self.source && (self.data.group_by === 'status')) {
+        } else if ((!self.source && (self.data.group_by === 'status')) || column.dot) {
             // A status column: the status's dot.
             head.appendChild(k.el('span', 'ws-cb-dot ws-cb-dot-' + column.key));
         } else {
@@ -663,7 +663,7 @@
         });
 
         // The dashed drop place, shown while a card is over this column.
-        if (!self.source && (column.drop !== null)) {
+        if ((!self.source || self.source.slots) && (column.drop !== null)) {
             var slot = k.el('div', 'ws-cb-slot');
 
             slot.setAttribute('aria-hidden', 'true');
@@ -769,7 +769,15 @@
         card.addEventListener('focus', function () { self.focusKey = key; });
         card.addEventListener('keydown', function (event) { cardKey(self, event, card, item, columnIndex, movable); });
 
-        if (item.kind === 'task') {
+        // A source's task cards take the menu it builds, with a way to put
+        // the card in another column ("Move to…").
+        if ((item.kind === 'task') && self.source && self.source.menu) {
+            k.onContext(card, function () {
+                return self.source.menu(item, function (drop) {
+                    moveToDrop(self, item, columnIndex, drop);
+                });
+            });
+        } else if (item.kind === 'task') {
             k.onContext(card, function () {
                 return k.taskMenu({ id: item.id, number: item.number, title: item.title, status: item.status, open: item.open, due_date: item.due_date || '' }, reload);
             });
@@ -937,6 +945,18 @@
 
             reload();
         });
+    }
+
+    // A card put in the column whose drop value is drop, from a menu.
+    function moveToDrop(self, item, fromIndex, drop) {
+        var columns = (self.data && self.data.columns) || [];
+
+        for (var index = 0; index < columns.length; index++) {
+            if (columns[index].drop === drop) {
+                move(self, item, fromIndex, index);
+                return;
+            }
+        }
     }
 
     // A card put in another column: what that column stands for is written
@@ -1622,9 +1642,14 @@
         load(board);
     }
 
-    // A board over another source of cards (a workflow table's rows).
+    // A board over another source of cards (a workflow table's rows, My
+    // Tasks' Board layout).
     // source: texts, load({all}) -> Promise of the board's data,
-    // move(item, drop) -> Promise of the sentence to show, open(item).
+    // move(item, drop) -> Promise of the sentence to show, open(item);
+    // optional: picker (false: no column picker on a phone, the columns
+    // scroll), slots (true: the dashed drop place), menu(item, moveTo) ->
+    // a task card's menu items, moveTo(drop) putting it in that column.
+    // A column with dot: true shows the status's dot for its key.
     function mountSource(pane, source) {
         board = state(pane, { id: 0 }, {});
         board.source = source;

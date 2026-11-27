@@ -270,6 +270,14 @@ function ws_js_strings()
         'mt_add'                 => lang('Add a task…'),
         'mt_add_hint'            => lang('Enter adds it to your tasks; Tab opens it in New task.'),
         'mt_add_label'           => lang('Add a task'),
+        // My Tasks' layouts (workspace_my_tasks_board.js).
+        'mt_layout'              => lang('List or board'),
+        'mt_layout_board'        => lang('Board'),
+        'mt_layout_list'         => lang('List'),
+        'mt_move'                => lang('Move'),
+        'mt_move_column'         => lang('Column'),
+        'mt_move_q'              => ws_js_template('Move {var:1} to which column?', 1),
+        'mt_move_to'             => lang('Move to…'),
         // A task opened to read in the task drawer (workspace_task_read.js).
         'tr_approval'            => lang('Customer approval'),
         'tr_assistant'           => lang('Assistant'),
