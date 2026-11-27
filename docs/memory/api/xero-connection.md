@@ -18,6 +18,7 @@ module: xero, xero_page
 - Ids are lower-case UUIDs. Accounts are dropped while no organisation is chosen; choosing another organisation empties them.
 
 ## Which organisation is used?
+- None while QuickBooks keeps the books (a company connected): the return says to disconnect QuickBooks first (`quickbooks-connection.md`).
 - After the return, `xero_after_connect()` lists `GET https://api.xero.com/connections`, keeps ORGANISATION tenants only and picks: the one chosen before if still listed, else the single one allowed in this sign-in (`authEventId` equal to the token's `authentication_event_id`), else the only one. Otherwise the page asks under Connection details.
 - Every accounting call sends `xero-tenant-id`.
 

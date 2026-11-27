@@ -1762,11 +1762,39 @@ function pg_connect_start($provider_key, $purpose_key, $owner, $user, $return, $
 }
 
 /**
+ * The parameters of the return address a provider names to be kept
+ * ('return_params': name => pattern), such as QuickBooks' realmId, the one
+ * place its company is named. A value missing or not matching its pattern
+ * is left out. Pure.
+ *
+ * @param array $provider
+ * @param array $query the callback's query parameters
+ * @return array name => value
+ */
+function pg_connect_return_params($provider, $query)
+{
+    $kept = array();
+    $names = (is_array($provider) && isset($provider['return_params']) && is_array($provider['return_params'])) ? $provider['return_params'] : array();
+
+    foreach ($names as $name => $pattern) {
+        $value = (is_array($query) && isset($query[$name]) && is_string($query[$name])) ? $query[$name] : '';
+
+        if (($value !== '') && (strlen($value) <= 200) && is_string($pattern) && (preg_match($pattern, $value) === 1)) {
+            $kept[(string) $name] = $value;
+        }
+    }
+
+    return $kept;
+}
+
+/**
  * Finishes connecting an account, from the provider's redirect.
  *
  * @param array $query the callback's query parameters
  * @param array $user  the signed-in person
- * @return array ok, error, return, connection_id, label
+ * @return array ok, error, return, connection_id, label, params (the
+ *               return's parameters the provider keeps,
+ *               pg_connect_return_params())
  */
 function pg_connect_finish($query, $user)
 {
@@ -1780,7 +1808,7 @@ function pg_connect_finish($query, $user)
     }
 
     $fail = function ($error, $return = 'connections.php') {
-        return array('ok' => false, 'error' => $error, 'return' => $return, 'connection_id' => 0, 'label' => '');
+        return array('ok' => false, 'error' => $error, 'return' => $return, 'connection_id' => 0, 'label' => '', 'params' => array());
     };
 
     if (!is_array($pending) || ((int) $pending['user_id'] !== (int) $user['id'])) {
@@ -1970,7 +1998,8 @@ function pg_connect_finish($query, $user)
             'vars'   => array($provider['label'], $identity['label'], $purpose['label']))), $_SESSION['sessionusername'] ?? '');
     }
 
-    return array('ok' => true, 'error' => '', 'return' => $return, 'connection_id' => $connection_id, 'label' => $identity['label']);
+    return array('ok' => true, 'error' => '', 'return' => $return, 'connection_id' => $connection_id, 'label' => $identity['label'],
+        'params' => pg_connect_return_params($provider, $query));
 }
 
 /**
@@ -1981,10 +2010,13 @@ function pg_connect_finish($query, $user)
  * @param string $kind          'notice' or 'error'
  * @param string $text
  * @param int    $connection_id the account connected, 0 for none
+ * @param array  $params        the return's parameters the provider keeps
+ *                              (pg_connect_finish()'s params)
  */
-function pg_connect_flash($kind, $text, $connection_id = 0)
+function pg_connect_flash($kind, $text, $connection_id = 0, $params = array())
 {
-    $_SESSION['software']['connect_flash'] = array('kind' => ($kind === 'error') ? 'error' : 'notice', 'text' => (string) $text, 'connection_id' => (int) $connection_id);
+    $_SESSION['software']['connect_flash'] = array('kind' => ($kind === 'error') ? 'error' : 'notice', 'text' => (string) $text, 'connection_id' => (int) $connection_id,
+        'params' => is_array($params) ? $params : array());
     $_SESSION['software']['connect_last'] = $_SESSION['software']['connect_flash'];
 }
 

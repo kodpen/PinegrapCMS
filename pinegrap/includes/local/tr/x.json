@@ -7,6 +7,8 @@
     "Xero gave no id.": "Xero bir kimlik vermedi.",
     "Xero has to be connected again: {var:1}": "Xero yeniden bağlanmalı: {var:1}",
     "Xero is not connected to this organisation.": "Xero bu kuruluşa bağlı değil.",
+    "Xero keeps the site's books. Disconnect Xero first, then connect QuickBooks again.": "Sitenin defterlerini Xero tutuyor. Önce Xero bağlantısını kesin, ardından QuickBooks'u yeniden bağlayın.",
+    "Xero keeps the site's books. Disconnect Xero first: one accounting service at a time.": "Sitenin defterlerini Xero tutuyor. Önce Xero bağlantısını kesin: aynı anda tek bir muhasebe hizmeti kullanılır.",
     "Xero organisation": "Xero kuruluşu",
     "Xero takes no record of this kind.": "Xero bu türde bir kayıt almıyor.",
     "Xero takes no withheld tax and no second tax on a line, so this invoice was not sent.": "Xero satırda tevkifat ya da ikinci vergi almadığı için bu fatura gönderilmedi.",

@@ -137,7 +137,7 @@ function test_accounting_sync_log_wiring()
 	pg_assert_same('pg_ops_alerts_check_accounting_sync', pg_ops_alert_sources()['accounting_sync']);
 
 	$connections = accounting_sync_log_test_source('connections.php');
-	pg_assert_true(strpos($connections, 'pg_accounting_sync_log_card(true)') !== false, 'the Events card on Xero\'s page');
+	pg_assert_true(strpos($connections, 'pg_accounting_sync_log_card(true, $page_id)') !== false, 'the Events card on Xero\'s and QuickBooks\' pages');
 	pg_assert_true(strpos($connections, "\$action === 'accounting_sync_again') && connections_accounting_may_manage(\$user)") !== false, 'Try again under the Accounting gate');
 
 	pg_assert_true(strpos(accounting_sync_log_test_source('view_order.php'), "pg_accounting_sync_record_line('orders'") !== false, 'View Order\'s line');

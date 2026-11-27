@@ -906,6 +906,8 @@
     "Development Mode": "Geliştirme Modu",
     "Development Mode toggle failed": "Geliştirme Modu değiştirilemedi",
     "Development Mode updated to {var:1}.": "Geliştirme Modu {var:1} olarak güncellendi.",
+    "Development keys reach only sandbox companies, whose sales are not real. Production keys come after Intuit's App Assessment Questionnaire.": "Geliştirme anahtarları yalnızca satışları gerçek olmayan sandbox şirketlerine ulaşır. Üretim anahtarları Intuit'in App Assessment Questionnaire anketinden sonra verilir.",
+    "Development keys reach only sandbox companies: choose Sandbox as the environment to try them.": "Geliştirme anahtarları yalnızca sandbox şirketlerine ulaşır: denemek için ortam olarak Sandbox'ı seçin.",
     "Develops new plays with writers and directs in the Studio.": "Yazarlarla yeni oyunlar geliştirir ve Stüdyo'da yönetir.",
     "Deviation": "Sapma",
     "Device": "Cihaz",

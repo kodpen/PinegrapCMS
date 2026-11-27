@@ -606,6 +606,16 @@ function xero_after_connect($connection_id)
 {
     $answer = array('notices' => array(), 'warnings' => array(), 'log' => '');
 
+    // One accounting service at a time: while QuickBooks keeps the books, no
+    // organisation is picked.
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/quickbooks.php');
+
+    if (quickbooks_ready() && (quickbooks_state()['realm_id'] !== '')) {
+        $answer['warnings'][] = lang('QuickBooks keeps the site\'s books. Disconnect QuickBooks first, then connect Xero again.');
+
+        return $answer;
+    }
+
     $token = pg_connect_access_token((int) $connection_id);
 
     if (empty($token['ok'])) {
