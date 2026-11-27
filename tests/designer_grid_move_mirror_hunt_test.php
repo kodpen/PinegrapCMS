@@ -176,7 +176,7 @@ JS
 function designer_gmm_hunt_grid_fns()
 {
 	return array('_cls', '_readsCss', '_reads', '_write', '_writeCss', '_writeMany', '_gridState', '_held', '_childWalk',
-		'_areasValue', '_setNote', '_commitAreas', '_writeTracks');
+		'_areasValue', '_setNote', '_noteKey', '_noteHolds', '_commitAreas', '_writeTracks');
 }
 
 function designer_gmm_hunt_grid_host()
@@ -245,4 +245,31 @@ JS
 
 	pg_assert_same(array(2, 0, -1, 0), $r['start'], 'the list starts on the target\'s row when it is shown');
 	pg_assert_same(array(4, 'go', 1, 'go', null), $r['enter'], 'Enter chooses the lit row, or moves when it is the target');
+}
+
+// The line under the areas tells the last change; once an Undo (or any
+// other change of the box's tracks or areas) has taken that change back,
+// the line is not drawn again.
+function test_designer_gmm_hunt_note_after_undo()
+{
+	$r = designer_gmm_hunt_run('style_designer_grid.js', designer_gmm_hunt_grid_fns(), designer_gmm_hunt_grid_host() . <<<'JS'
+text = Z.write(text, 'pgs-aaaaaa', G.CSS.columns, 'xs', 'repeat(3, minmax(0, 1fr))');
+text = Z.write(text, 'pgs-aaaaaa', G.CSS.rows, 'xs', 'repeat(2, minmax(0, 1fr))');
+text = Z.write(text, 'pgs-aaaaaa', A.CSS, 'xs', '"head head head" "side main main"');
+var before = text;
+_writeTracks(host, 'columns', 'repeat(2, minmax(0, 1fr))');
+var st = _gridState(host, box, text);
+out = { after: _noteHolds(st, text), note: _ui.note };
+text = before;
+out.undone = _noteHolds(_gridState(host, box, text), text);
+JS
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_true($r['note'] !== '', 'the change leaves its line');
+	pg_assert_true($r['after'], 'the line stands while the change does');
+	pg_assert_false($r['undone'], 'after Undo the line is gone');
 }

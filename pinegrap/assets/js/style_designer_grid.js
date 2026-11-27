@@ -323,7 +323,7 @@ StyleDesigner.definePart('grid', function (K) {
     // Per grid box (node id): folded by hand, the chosen area, the name
     // being typed, the line left by the last change, a refusal.
     var _fold = {};
-    var _ui = { id: '', sel: '', edit: '', fresh: false, note: '', err: '', key: null };
+    var _ui = { id: '', sel: '', edit: '', fresh: false, note: '', noteKey: '', err: '', key: null };
     var _ov = { timer: 0, box: null, hot: '', host: null, node: null };
 
     function _tint(i) { return 'sd-ga-t' + (i % 6 + 1); }
@@ -410,14 +410,28 @@ StyleDesigner.definePart('grid', function (K) {
             text = w.text;
             moved = w.count;
         }
-        _setNote(st.node.id, note ? note(moved) : '');
+        _setNote(st.node.id, note ? note(moved) : '', text, st.cls);
         host.commit(text, [null]);
     }
 
-    function _setNote(id, text) {
+    // `after`: the User Styles text the change leaves, so the line goes
+    // once the change is taken back (_noteHolds()).
+    function _setNote(id, text, after, cls) {
         _ui.id = id;
         _ui.note = text;
+        _ui.noteKey = after == null ? '' : _noteKey(after, cls);
         _ui.err = '';
+    }
+
+    // The grid box's areas, columns and rows at every size.
+    function _noteKey(text, cls) {
+        return JSON.stringify([A.CSS, G.CSS.columns, G.CSS.rows].map(function (css) { return cls ? Z.read(text, cls, css) : {}; }));
+    }
+
+    // Whether the line left by the last change still tells the box as it
+    // is: an Undo or another change of its tracks or areas ends it.
+    function _noteHolds(st, text) {
+        return !!_ui.note && _ui.id === st.node.id && _ui.noteKey === _noteKey(text, st.cls);
     }
 
     function _remove(host, st, i) {
@@ -468,7 +482,7 @@ StyleDesigner.definePart('grid', function (K) {
         var line = (axis === 'columns' ? _sdT('Columns went from {var:1} to {var:2}.', [was, n]) : _sdT('Rows went from {var:1} to {var:2}.', [was, n]));
         if (f.cut.length) line += ' ' + _sdT('Made smaller: {var}.', q(f.cut));
         if (f.gone.length) line += ' ' + _sdT('Removed: {var}.', q(f.gone));
-        _setNote(node.id, line);
+        _setNote(node.id, line, text, st.cls);
         host.commit(text, [null]);
     }
 
@@ -540,6 +554,7 @@ StyleDesigner.definePart('grid', function (K) {
         var st = _gridState(host, node, text);
         if (!st.ok) { box.innerHTML = ''; return; }
         if (_ui.id !== node.id) { _ui.id = node.id; _ui.sel = ''; _ui.edit = ''; _ui.note = ''; _ui.err = ''; _ui.key = null; }
+        if (_ui.note && !_noteHolds(st, text)) _ui.note = '';
         var off = !st.cols || !st.rows;
         var open = !off && (Object.prototype.hasOwnProperty.call(_fold, node.id) ? !_fold[node.id] : st.areas.length > 0);
         var h = _foldHtml(st, open, off);
