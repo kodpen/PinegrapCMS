@@ -372,7 +372,7 @@ function pg_accounting_sync_pair_sql()
    --------------------------------------------------------------------------- */
 
 /**
- * Whether the table is there (the 11.0.282 step has run).
+ * Whether the table is there (the 11.0.284 step has run).
  *
  * @return bool
  */

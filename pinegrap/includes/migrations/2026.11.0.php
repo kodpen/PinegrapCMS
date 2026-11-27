@@ -271,7 +271,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_form_old_address();        // 11.0.279
 	upgrade_2026_11_0_ws_agent_context_size();   // 11.0.280
 	upgrade_2026_11_0_software_language_codes(); // 11.0.281
-	upgrade_2026_11_0_accounting_sync();         // 11.0.282
+	upgrade_2026_11_0_accounting_sync();         // 11.0.284
 
 }
 
@@ -9554,7 +9554,7 @@ function upgrade_2026_11_0_software_language_codes() {
 
 }
 
-// 11.0.282 - The accounting sync's queue and pairing
+// 11.0.284 - The accounting sync's queue and pairing
 // (includes/fn/accounting_sync.php): one row per local record and what it
 // became in an accounting service (Xero, later QuickBooks Online), within one
 // of its companies (a Xero organisation, a QuickBooks realm). A row is both
