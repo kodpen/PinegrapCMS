@@ -3,7 +3,8 @@
  *
  * Workspace - My calendar (workspace_my_calendar.php): the reader's own
  * tasks, the plan items they are in, their bookings and their own iCal
- * layer, by month, by week or as a list of days. The data comes from the
+ * layer, by month, by week (its hour grid drawn by
+ * workspace_my_calendar_week.js) or as a list of days. The data comes from the
  * ws_my_calendar action (includes/workspace/my_calendar.php), always the
  * reader's own; the Work Calendar's cell classes (.ws-cal-*) draw the grid.
  *
@@ -103,6 +104,12 @@
             // The list starts on today; earlier days are one step back.
             if (view === 'list' && state.view !== 'list') {
                 state.date = '';
+            }
+
+            // The week of a month that holds today is today's week, not the
+            // month's first.
+            if (view === 'week' && data && data.view === 'month' && data.today.slice(0, 7) === data.anchor.slice(0, 7)) {
+                state.date = data.today;
             }
 
             state.view = view;
@@ -252,7 +259,13 @@
             ]);
         }
 
-        // ── month and week: the grid ──
+        function openDay(day) {
+            state.view = 'list';
+            state.date = day.date;
+            load();
+        }
+
+        // ── month: the grid ──
 
         function drawGrid(box) {
             var head = el('div', 'ws-cal-head');
@@ -264,7 +277,7 @@
             box.appendChild(head);
 
             var grid = el('div', 'ws-cal-grid');
-            var limit = (data.view === 'week') ? 1000 : 4;
+            var limit = 4;
             var weeks = [];
 
             for (var i = 0; i < data.days.length; i += 7) {
@@ -341,16 +354,8 @@
 
                     // A day opens as the list from that day: on a phone the
                     // cells show only bars.
-                    cell.addEventListener('click', function () {
-                        state.view = 'list';
-                        state.date = day.date;
-                        load();
-                    });
-                    h.pressKeys(cell, function () {
-                        state.view = 'list';
-                        state.date = day.date;
-                        load();
-                    });
+                    cell.addEventListener('click', function () { openDay(day); });
+                    h.pressKeys(cell, function () { openDay(day); });
                     h.onContext(cell, function () { return dayMenu(day); });
                     grid.appendChild(cell);
                 });
@@ -453,6 +458,22 @@
 
             if (data.view === 'list') {
                 drawList(box);
+            } else if (data.view === 'week' && window.PGWsMyCalendarWeek) {
+                window.PGWsMyCalendarWeek.draw(box, {
+                    h: h,
+                    data: data,
+                    eventChip: eventChip,
+                    taskChip: taskChip,
+                    dayMenu: dayMenu,
+                    openDay: openDay,
+                    newPlanLabel: s('new_plan'),
+                    // An empty hour: New plan on that day, for that hour.
+                    newPlan: data.plans ? function (day, hour) {
+                        var clock = window.PGWsMyCalendarWeek.clock;
+
+                        plans.drawer(null, { start: day.date, start_time: clock(hour * 60), end_time: clock(Math.min(hour + 1, 23) * 60 + (hour === 23 ? 59 : 0)) });
+                    } : null
+                });
             } else {
                 drawGrid(box);
             }
