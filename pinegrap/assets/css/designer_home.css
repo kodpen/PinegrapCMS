@@ -1665,4 +1665,69 @@ button.sdh-page:hover {
   }
 }
 
+  /* The "Describe it" start's brief (pg_site_brief_pane(),
+     assets/js/designer_describe.js): the page chips wrap, a pressed chip
+     shows its tick, the colour field opens with its swatch. */
+  .sd-sb-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+  }
+
+  .sd-sb-chip > .bi-check-lg {
+    display: none;
+  }
+
+  .sd-sb-chip[aria-pressed="true"] > .bi-check-lg,
+  .sd-sb-chip[data-own] > .bi-check-lg {
+    display: inline-block;
+  }
+
+  .sd-sb-chip[aria-pressed="true"],
+  .sd-sb-chip[data-own] {
+    border-color: var(--pg-accent);
+    background: color-mix(in srgb, var(--pg-accent) 10%, transparent);
+  }
+
+  .sd-sb-add {
+    display: flex;
+    gap: .5rem;
+    max-width: 24rem;
+  }
+
+  .sd-sb-swatch {
+    flex: none;
+    width: 1.25rem;
+    height: 1.25rem;
+    margin-inline-start: .5rem;
+    border: 1px dashed var(--pg-border-color);
+    border-radius: 6px;
+    background: var(--sd-sb-colour, transparent);
+  }
+
+  .sd-sb-swatch.is-set {
+    border-style: solid;
+  }
+
+  .sd-sb-pick {
+    position: relative;
+    cursor: pointer;
+  }
+
+  .sd-sb-pick input[type="color"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .sd-sb-count {
+    display: block;
+    text-align: end;
+  }
+
+  .sd-sb-count.is-over {
+    color: var(--pg-danger);
+  }
+
 }

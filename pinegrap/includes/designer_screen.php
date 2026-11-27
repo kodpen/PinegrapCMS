@@ -1835,22 +1835,32 @@ function pg_designer_start_icon($key)
  * @param bool $has_templates whether a template can be offered
  * @param bool $figma         whether the Figma start is listed
  *                            (pg_designer_figma_start_on())
+ * @param string $describe    why "Describe it" cannot be offered, '' when it
+ *                            can (pg_site_brief_problem())
  * @return array list of array('key', 'group', 'icon', 'title', 'line',
- *               'heading', 'lead', 'go', 'disabled')
+ *               'heading', 'lead', 'go', 'disabled', 'off' (a disabled
+ *               row's line), 'why' (its whole reason))
  */
-function pg_designer_start_kinds($has_templates, $figma = false)
+function pg_designer_start_kinds($has_templates, $figma = false, $describe = '')
 {
-    $kind = function ($key, $group, $title, $line, $heading, $lead, $go, $disabled = false) {
+    $kind = function ($key, $group, $title, $line, $heading, $lead, $go, $disabled = false, $off = '', $why = '') {
         return array('key' => $key, 'group' => $group, 'icon' => pg_designer_start_icon($key), 'title' => $title, 'line' => $line,
-                     'heading' => $heading, 'lead' => $lead, 'go' => $go, 'disabled' => $disabled);
+                     'heading' => $heading, 'lead' => $lead, 'go' => $go, 'disabled' => $disabled, 'off' => $off, 'why' => $why);
     };
     $create = lang('Create design');
+    $describe = is_string($describe) ? $describe : '';
 
     $kinds = array(
         $kind('blank', 'new', lang('Blank'), lang('An empty page'), lang('Start with a blank page'),
               lang('The editor opens on an empty page. Add sections from the palette, then more pages as tabs.'), $create),
         $kind('template', 'new', lang('Template'), lang('A ready design'), lang('Start from a template'),
-              lang('A ready-made design with its pages, colours and fonts. Change anything afterwards.'), lang('Use this template'), !$has_templates),
+              lang('A ready-made design with its pages, colours and fonts. Change anything afterwards.'), lang('Use this template'), !$has_templates,
+              lang('There are no templates.')),
+        // Pinegrap AI only: without it the row says why, as Template does
+        // without templates (pg_site_brief_problem()).
+        $kind('describe', 'new', lang('Describe it'), lang('A whole site from your words'), lang('Describe your site'),
+              lang('Tell what the business does. Pinegrap AI plans the pages for you to check before anything is made.'), '', $describe !== '',
+              lang('Needs Pinegrap AI'), $describe),
     );
     if ($figma) {
         $kinds[] = $kind('figma', 'tool', lang('Figma'), lang('Frames of a Figma file'), lang('Start from a Figma file'),
@@ -1893,7 +1903,7 @@ function pg_designer_figma_start_on()
  */
 function pg_designer_start_part_attrs($key)
 {
-    if (!in_array($key, array('figma', 'canva', 'document'), true)) {
+    if (!in_array($key, array('figma', 'canva', 'document', 'describe'), true)) {
         return '';
     }
     return ' data-part="' . $key . '" data-part-stamp="' . h(pg_designer_asset_stamp('assets/js/designer_' . $key . '.js')) . '"';
@@ -1965,6 +1975,28 @@ function pg_designer_canva_pane($from_pages)
         . '<div class="sd-cv-rows" aria-live="polite"></div>'
         . '<div class="sd-cv-colors" hidden></div>'
         . '</div>';
+}
+
+/**
+ * The "Describe it" start's pane: the brief's fields (includes/fn/site_brief.php),
+ * the business's name taken from the site's and the kind from the set-up
+ * card's purpose. The part assets/js/designer_describe.js checks and keeps
+ * the brief in the browser and draws the foot's "Plan my site".
+ *
+ * @return string
+ */
+function pg_designer_describe_pane()
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/site_brief.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/ai_write.php');
+    $purpose = '';
+    if (function_exists('pg_launch_journey_stored')) {
+        $stored = pg_launch_journey_stored();
+        $purpose = $stored['purpose'] !== '' ? $stored['purpose'] : $stored['suggested'];
+    }
+    $language = pg_ai_write_site_language();
+
+    return pg_site_brief_pane(defined('ORGANIZATION_NAME') ? (string) ORGANIZATION_NAME : '', $purpose, $language['name']);
 }
 
 /**
@@ -2172,6 +2204,8 @@ function pg_designer_start_pane($kind, $templates, $from_pages)
                 . ' data-href="' . h(pg_designer_start_go_href('document', 'bootstrap5', $from_pages)) . '"></div>';
         case 'canva':
             return pg_designer_canva_pane($from_pages);
+        case 'describe':
+            return pg_designer_describe_pane();
         case 'paste':
             return pg_designer_start_framework_choice('paste', $from_pages);
         default:
@@ -2189,13 +2223,19 @@ function pg_designer_start_pane($kind, $templates, $from_pages)
  * The home's start cards open it on their own start (data-sd-start), and
  * ?start=<key> opens it on load (assets/js/designer_home.js).
  *
- * @param array $templates pg_design_templates()
- * @param bool  $from_pages
+ * @param array       $templates pg_design_templates()
+ * @param bool        $from_pages
+ * @param string|null $describe  why "Describe it" cannot be offered, ''
+ *                               when it can; null asks the site
  * @return string
  */
-function pg_designer_start_window($templates, $from_pages)
+function pg_designer_start_window($templates, $from_pages, $describe = null)
 {
-    $kinds  = pg_designer_start_kinds(!empty($templates), pg_designer_figma_start_on());
+    if ($describe === null) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/site_brief.php');
+        $describe = pg_site_brief_problem();
+    }
+    $kinds  = pg_designer_start_kinds(!empty($templates), pg_designer_figma_start_on(), $describe);
     $groups = array('new' => lang('Start new'), 'tool' => lang('From a design tool'), 'have' => lang('From what you have'));
     $tabs   = '';
     $panes  = '';
@@ -2209,10 +2249,10 @@ function pg_designer_start_window($templates, $from_pages)
         }
         $tabs .= '<button type="button" class="pg-sm-link sd-ns-item' . ($i === 0 ? ' is-active' : '') . '" role="tab" id="sd-ns-tab-' . $key . '" aria-controls="sd-ns-pane-' . $key . '"'
                . ' aria-selected="' . ($i === 0 ? 'true' : 'false') . '" tabindex="' . ($i === 0 ? '0' : '-1') . '" data-start="' . $key . '"'
-               . ($k['disabled'] ? ' aria-disabled="true"' : '') . '>'
+               . ($k['disabled'] ? ' aria-disabled="true"' : '') . (($k['disabled'] && $k['why'] !== '') ? ' title="' . h($k['why']) . '"' : '') . '>'
                . '<span class="pg-icon-tile sd-ns-tile"><i class="bi ' . h($k['icon']) . '" aria-hidden="true"></i></span>'
                . '<span class="sd-ns-text"><span class="sd-ns-title">' . h($k['title']) . '</span>'
-               . '<span class="sd-ns-line">' . h($k['disabled'] ? lang('There are no templates.') : $k['line']) . '</span></span>'
+               . '<span class="sd-ns-line">' . h($k['disabled'] ? $k['off'] : $k['line']) . '</span></span>'
                . '<i class="bi bi-chevron-right sd-ns-chev" aria-hidden="true"></i>'
                . '</button>';
         $panes .= '<section class="sd-ns-pane" role="tabpanel" id="sd-ns-pane-' . $key . '" aria-labelledby="sd-ns-tab-' . $key . '" tabindex="0"'

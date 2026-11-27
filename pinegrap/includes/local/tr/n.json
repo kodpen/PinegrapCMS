@@ -216,6 +216,7 @@
     "Needed for the site to work, so they cannot be turned off.": "Sitenin çalışması için gereklidir, bu yüzden kapatılamaz.",
     "Needed only for labels that already have a pickup booked: a second pickup may be charged again.": "Yalnızca kurye zaten çağrılmış etiketler için gerekir: ikinci çağrı yeniden ücretlendirilebilir.",
     "Needed when the reason is \"Another reason\".": "Neden \"Başka bir neden\" ise gerekli.",
+    "Needs Pinegrap AI": "Pinegrap AI gerekir",
     "Needs a look": "Bakılmalı",
     "Needs an encryption key": "Şifreleme anahtarı gerekiyor",
     "Needs attention": "İnceleme gerekiyor",

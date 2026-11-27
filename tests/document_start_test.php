@@ -140,7 +140,7 @@ function test_document_start_texts()
 function test_document_start_in_the_window()
 {
 	$keys = array_map(function ($k) { return $k['key']; }, pg_designer_start_kinds(true, true));
-	pg_assert_same(array('blank', 'template', 'figma', 'canva', 'document', 'import', 'paste'), $keys, 'its place: after Canva, before ZIP file');
+	pg_assert_same(array('blank', 'template', 'describe', 'figma', 'canva', 'document', 'import', 'paste'), $keys, 'its place: after Canva, before ZIP file');
 	pg_assert_same('add_system_style.php?framework=bootstrap5&start=document&from=pages', pg_designer_start_go_href('document', 'bootstrap5', true), 'its address');
 }
 

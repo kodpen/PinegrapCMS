@@ -140,7 +140,7 @@ function test_designer_home_design_picture_is_the_page_edit_opens()
 function test_designer_start_kinds_order()
 {
 	$keys = array_map(function ($k) { return $k['key']; }, pg_designer_start_kinds(true));
-	pg_assert_same(array('blank', 'template', 'canva', 'document', 'import', 'paste'), $keys, 'blank, template, Canva, from a document, ZIP file, pasted markup');
+	pg_assert_same(array('blank', 'template', 'describe', 'canva', 'document', 'import', 'paste'), $keys, 'blank, template, Describe it, Canva, from a document, ZIP file, pasted markup');
 	foreach (pg_designer_start_kinds(true, true) as $k) {
 		pg_assert_true($k['title'] !== '' && $k['line'] !== '' && $k['heading'] !== '' && $k['lead'] !== '', $k['key'] . ': a title, one line, a pane title and a pane sentence');
 		pg_assert_true($k['lead'] !== $k['line'], $k['key'] . ': the pane never repeats the row\'s line');
@@ -157,7 +157,7 @@ function test_designer_start_kinds_groups()
 		$groups[$k['group']][] = $k['key'];
 	}
 	pg_assert_same(array(
-		'new'  => array('blank', 'template'),
+		'new'  => array('blank', 'template', 'describe'),
 		'tool' => array('figma', 'canva'),
 		'have' => array('document', 'import', 'paste'),
 	), $groups, 'Start new, From a design tool, From what you have');
@@ -189,7 +189,7 @@ function test_designer_start_kinds_foot_words()
 		pg_assert_same(lang('Create design'), $go[$key], $key . ': Create design');
 	}
 	pg_assert_same(lang('Use this template'), $go['template'], 'template: Use this template');
-	foreach (array('figma', 'canva', 'document') as $key) {
+	foreach (array('figma', 'canva', 'document', 'describe') as $key) {
 		pg_assert_same('', $go[$key], $key . ': its own words');
 	}
 }

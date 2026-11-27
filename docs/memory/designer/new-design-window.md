@@ -12,11 +12,11 @@ description: The New design window (#sdStartModal): the grouped rail of starts, 
 - Opened by the home's "New design" (Blank) and its first-visit cards (`data-sd-start`, `designer-home-screen.md`); `view_system_styles.php?start=<key>` opens it on load.
 
 ## Which starts does it list today?
-- In order (`pg_designer_start_kinds()`): Blank, Template, Figma (once its import is there), Canva, From a document (`document-start.md`), ZIP file, Pasted markup.
+- In order (`pg_designer_start_kinds()`): Blank, Template, Describe it (`describe-start.md`), Figma (once its import is there), Canva, From a document (`document-start.md`), ZIP file, Pasted markup.
 - Blank, ZIP file and Pasted markup ask "Built on": two choice cards, "Bootstrap 5" (chosen first; "Recommended" only on Blank's) and "Custom", one line and three ticks each, a grey lock line under them; a press anywhere on a card chooses it.
 - Each radio carries the address the foot's "Create design" takes (`pg_designer_start_go_href()`: `add_system_style.php?framework=…`, plus `&start=import|paste`, plus `&from=pages`); the editor then shows its file box or paste box.
 - Template: the gallery (`pg_designer_template_gallery()`, the theme picker and the cards, three a row). No card has a button: a press chooses a card (`.is-chosen`, the ring), the foot's "Use this template" (grey until a card is chosen) leads to the card's `data-use`; a double press or Enter uses it at once. "Preview" stays a link. The theme picker keeps `data-use` on its choice.
-- Without templates the Template row is shown disabled ("There are no templates.") and `?start=template` falls back to Blank (`pg_designer_start_key()`).
+- A disabled row shows its kind's `off` line, `why` as its title (Template without templates, Describe it without Pinegrap AI); `?start=` on it falls back to Blank (`pg_designer_start_key()`).
 
 ## How is a new start added (Sketch it, Figma, Canva, Describe it)?
 - One entry in `pg_designer_start_kinds()` at its place and group (Start new: Blank, Template, Sketch it, Describe it; From a design tool: Figma, Canva; From what you have: From a document, ZIP file, Pasted markup), its icon in `pg_designer_start_icon()`, and a case in `pg_designer_start_pane()`.
@@ -28,4 +28,4 @@ description: The New design window (#sdStartModal): the grouped rail of starts, 
 - A start's own foot (`.sd-ns-part-foot`) draws no Cancel: the window's stays beside the filled button, and the part's `.me-auto` words come first. After "Turn into a template" the gallery printed with the page is stale: choosing the Template start reloads `?start=template`.
 
 ## Tests?
-- `tests/designer_home_test.php`: the starts' order and groups, one icon a start, the foot's words, the template start waiting for a template, the start key, the button's address, the window's rows, panes and heads, the framework cards, template cards without a button.
+- `tests/designer_home_test.php`: the starts' order, groups, icons and foot words, the start key, the button's address, the rows, panes and heads, the framework and template cards.
