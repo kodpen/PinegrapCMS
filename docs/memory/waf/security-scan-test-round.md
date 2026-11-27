@@ -9,7 +9,12 @@ module: security_scan_files
 - Clean install: the git-tracked software tree gives no finding (first run and with an empty baseline); every design template's strings and its JSON give no content finding under the default CSP; template pictures copied as `data/files/store-<name>`; every kept upload type and every refused name after `prepare_file_name()`.
 - Quarantine then Restore leaves content, mode and time as before; Restore never writes over a file that came back.
 - A walk cut every 1, 4, 7 or 50 files and resumed through the stored JSON sees each file once.
-- 10,000 files are walked and scaled to 50,000 (0.7 s measured for 50,000), asserted under a quarter of `SEO_ANALYZE_TIME_BUDGET`; the walk holds no list.
+- 10,000 files are walked and scaled to 50,000 (about 0.4 s of processor time for 50,000), asserted under a quarter of `SEO_ANALYZE_TIME_BUDGET`; the walk holds no list.
+
+## Why is the walk timed in processor time and against a bare walk?
+- Wall-clock time failed `tools/pre_push.sh` on a machine running other test runs (75 to 90 s scaled), and pushes went out with `--no-verify` (#12080). Inside the full suite the walk also took 1.6 s for 10,000 files instead of 0.08 s: the 1 MB read buffer per picture (`security-scan-file-scan.md`), now 64 KB.
+- The test now takes `getrusage()` user plus system time (wall clock only where it is missing), best of three passes: a pause while other processes hold the processor costs no processor time.
+- The walk must also stay under 20 times a bare walk (`scandir()` per folder, `is_link()` and `is_dir()` per name) timed the same way in the same run: 5 to 8 times measured, idle, under load and inside the full suite. A walk that lists its folder again per name (about 28 times) fails; a few extra `stat()` calls per file do not.
 
 ## Which false alarms became exceptions?
 - `data/layouts/<id>.bak.php`: the 2017.2.2 password pages step's copy of a layout.

@@ -576,11 +576,65 @@ function test_security_scan_round_a_file_finding_carries_the_file_digest()
 	_test_scan_round_remove($site);
 }
 
+// Seconds of processor time this process has used (user and system), so a
+// measure does not grow while other processes hold the processor; wall-clock
+// time where getrusage() is missing.
+function _test_scan_round_cpu_time()
+{
+	$usage = function_exists('getrusage') ? getrusage() : false;
+
+	if (!is_array($usage) || !isset($usage['ru_utime.tv_sec'], $usage['ru_stime.tv_sec'])) {
+		return microtime(true);
+	}
+
+	return $usage['ru_utime.tv_sec'] + $usage['ru_utime.tv_usec'] / 1000000 + $usage['ru_stime.tv_sec'] + $usage['ru_stime.tv_usec'] / 1000000;
+}
+
+// The least processor time of three calls: a pass slowed by another process
+// (cache, scheduler) is not the pass's own cost.
+function _test_scan_round_best_time(callable $pass)
+{
+	$best = INF;
+
+	for ($round = 0; $round < 3; $round++) {
+		$start = _test_scan_round_cpu_time();
+		$pass();
+		$best = min($best, _test_scan_round_cpu_time() - $start);
+	}
+
+	return $best;
+}
+
+// A bare walk: one scandir() per folder and the link and folder checks per
+// name, the least any walk of the tree does. Gives the number of files.
+function _test_scan_round_bare_walk($folder)
+{
+	$files = 0;
+
+	foreach (scandir($folder) as $name) {
+		if (($name === '.') || ($name === '..')) {
+			continue;
+		}
+
+		$path = $folder . '/' . $name;
+
+		if (is_link($path)) {
+			continue;
+		}
+
+		$files += is_dir($path) ? _test_scan_round_bare_walk($path) : 1;
+	}
+
+	return $files;
+}
+
 function test_security_scan_round_fifty_thousand_files_inside_the_budget()
 {
 	// 10,000 files are walked and the time is scaled to 50,000: the walk is
 	// one pass over the names, and making 50,000 files costs the test run
-	// more than walking them.
+	// more than walking them. Times are processor time, best of three, so a
+	// busy machine (other test runs) does not stretch them; the walk is also
+	// held against a bare walk of the same tree, measured the same way.
 	$site = _test_scan_round_folder('large');
 	$count = 10000;
 
@@ -595,18 +649,31 @@ function test_security_scan_round_fifty_thousand_files_inside_the_budget()
 	}
 
 	$budget = defined('SEO_ANALYZE_TIME_BUDGET') ? (int) SEO_ANALYZE_TIME_BUDGET : 120;
-	$start = microtime(true);
-	$memory = memory_get_usage();
-	$walk = pg_security_files_advance(pg_security_files_state(array('baseline' => array())), array('data/files' => $site . '/files'), null, function () {
-		return false;
-	}, function () {
-	});
-	$fifty_thousand = (microtime(true) - $start) * 50000 / $count;
+	$roots = array('data/files' => $site . '/files');
+	$advance = function () use ($roots) {
+		return pg_security_files_advance(pg_security_files_state(array('baseline' => array())), $roots, null, function () {
+			return false;
+		}, function () {
+		});
+	};
 
+	$memory = memory_get_usage();
+	$walk = $advance();
+	pg_assert_true(memory_get_usage() - $memory < 4 * 1048576, 'the walk keeps no list of the files');
 	pg_assert_false($walk['stopped']);
 	pg_assert_same($count, $walk['files']);
-	pg_assert_true($fifty_thousand < $budget / 4, sprintf('50,000 files in about %.1f s, a quarter of the %d s budget at most', $fifty_thousand, $budget));
-	pg_assert_true(memory_get_usage() - $memory < 4 * 1048576, 'the walk keeps no list of the files');
+
+	$walked = _test_scan_round_best_time($advance);
+	$bare = _test_scan_round_best_time(function () use ($site, $count) {
+		pg_assert_same($count, _test_scan_round_bare_walk($site . '/files'));
+	});
+	$fifty_thousand = $walked * 50000 / $count;
+
+	pg_assert_true($fifty_thousand < $budget / 4, sprintf('50,000 files in about %.1f s of processor time, a quarter of the %d s budget at most', $fifty_thousand, $budget));
+	// About 5 to 8 times a bare walk measured, also under load; 20 leaves
+	// room for another machine and still fails a walk that lists its folder
+	// again per name (about 28 times) or does three times its work per name.
+	pg_assert_true($walked < 20 * max($bare, 0.001), sprintf('the walk took %.3f s, %.1f times a bare walk of the same files', $walked, $walked / max($bare, 0.001)));
 
 	_test_scan_round_remove($site);
 }

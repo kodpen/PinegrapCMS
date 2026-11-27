@@ -172,8 +172,12 @@ function test_security_files_walk_resumes_after_cursor()
 function test_security_files_read_finds_a_mark_across_chunks()
 {
 	$file = tempnam(sys_get_temp_dir(), 'pgsec');
-	// The mark straddles the first 1 MB chunk's end.
-	file_put_contents($file, str_repeat('a', 1048576 - 6) . ' eval(base64_decode("x"));');
+	// The mark straddles the first chunk's end, then a later one's.
+	file_put_contents($file, str_repeat('a', PG_SECURITY_FILES_READ_CHUNK - 6) . ' eval(base64_decode("x"));');
+	$facts = pg_security_files_read($file, array('shell'));
+	pg_assert_same('eval(base64_decode(', $facts['shell']);
+
+	file_put_contents($file, str_repeat('a', 3 * PG_SECURITY_FILES_READ_CHUNK - 6) . ' eval(base64_decode("x"));');
 	$facts = pg_security_files_read($file, array('shell'));
 	pg_assert_same('eval(base64_decode(', $facts['shell']);
 
