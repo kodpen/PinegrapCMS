@@ -25,8 +25,11 @@ module: page_bundles
 - B1-B4, B6: module and screen (RB1, RB2). B5: the hold in the save, bin and API delete (RB1), the sheet row (RB2b). B7-B9, B11, B12: in the module (RB3), reached from the screen since #10557, the time and the API. B13 (RB4), B14 (RB5), B15 (RB6), B16 (RB7), B17 and B18 (RB3) as written.
 - B10: the Site Log names the bundle; History does not show its name yet: `pg_page_bundle_revision_names()` exists with no caller.
 
+## Where is the Bundles screen reached?
+- Page Design Studio row (21) › Bundles in the main menu (NV5), the bell line and the preview's Close; no link from Pages.
+- A live page's new version is a bundle of one replacement, started from the studio: `designer-new-version.md`.
+
 ## What is not built yet?
-- No menu row and no link from Pages to the Bundles screen; the architect's follow-up is free now that the screen publishes (`release-bundle-screen.md`). It is reached from the bell line and the preview's Close.
 - B10's History label (above).
 
 ## How is a new part added?

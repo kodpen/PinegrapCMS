@@ -8,23 +8,23 @@ description: The visual designer's Publish sheet: which pages it lists and check
 - `_pgPublishSheet()` falls back to a plain `saveAjax()` when there is no sheet: a shared component opened alone, a site without drafts, a user who cannot change states (the markup is printed only for full access with `pg_page_draft_ready()`), or `pg_designer_publish.js` missing.
 
 ## What does it list and check?
-- One row per tab, from `_pgPublishRows()`: state `live`, `draft`, `scheduled` (a draft whose publish time is ahead) or `held` (an experiment's variant, a release bundle's draft or a draft waiting for approval, `designer-publish-sheet-held-row.md`); `changed` = a new page or `!_pgPageUnchanged()` (the save's own rule, shared components included); `locked` = no content rights for the folder. Rows are read once when it opens.
+- One row per tab, from `_pgPublishRows()`: state `live`, `draft`, `scheduled` (a draft whose publish time is ahead) or `held` (an experiment's variant, a release bundle's draft or a draft waiting for approval, `designer-publish-sheet-held-row.md`; a new version is no held row, `designer-new-version-publish.md`); `changed` = a new page or `!_pgPageUnchanged()` (the save's rule, shared components too); `locked` = no content rights for the folder. Rows are read once when it opens.
 - Checked at opening (`PgDesignerPublish.defaults()`): drafts and changed live pages. Not checked: scheduled pages (checking one publishes it now and drops its time), held and locked rows (their box is disabled).
 
 ## What does Publish selected do?
-- `PgDesignerPublish.plan()`: `publish` = checked drafts and scheduled pages, `hold` = unchecked changed live pages. Then the bridge calls `_pgSetDraft(publish, false, hold)` (its confirm, marks, rollback and message) or, with no draft checked, `saveAjax({ hold })`. One save either way.
+- `PgDesignerPublish.plan()`: `publish` = checked drafts and scheduled pages, `hold` = unchecked changed live pages. The bridge calls `_pgSetDraft(publish, false, hold)` (confirm, marks, rollback, message) or, with no draft checked, `saveAjax({ hold })`: one save.
 - A held page is sent as `unchanged` (`_pgTabsSerialize()`, the hold read from `opts.hold` into `_pgSaveHold` by `_saveAjaxImpl()`): the server keeps its stored row and writes nothing for it. After the save its baseline, saved name and rename follow-up are left alone (`_pgTabsAfterSave()`), so it stays dirty in the editor. A shared component it shows is still flushed: a component is its own row, written for every page that shows it.
 - An unchecked draft is saved as it is, off the site: the save is the whole design; only changes going live can be held back.
 
 ## Where did the publishing menu go?
-- The chevron menu beside the main button is gone. "Save this page as a draft" and "Take every page of the design off the site" are the sheet's foot buttons (`_pgSetDraft(keys, true)`, which asks first); "Publish this page" and "Publish every page" are rows to check ("Select all").
-- Its texts come from `lang()` in hidden `data-sdp-text` spans in the markup: `pg_designer_publish.js` is not scanned for `_sdT()` keys.
+- The chevron menu beside the main button is gone. "Save this page as a draft" and "Take every page of the design off the site" are the sheet's foot buttons (`_pgSetDraft(keys, true)`, which asks first), with "Save as a new version" (`designer-new-version-tab.md`); "Publish this page" and "Publish every page" are rows to check ("Select all").
+- Its texts are `lang()` in hidden `data-sdp-text` spans: `pg_designer_publish.js` is not scanned for `_sdT()`.
 
 ## What does the sheet show during and after the save?
 - Publish selected keeps the sheet open: the button turns into a spinner and "Publishing…", the rows and the other actions are disabled (`busy()`). The bridge call is `publish(keys, hold, report)`.
-- The editor hands the reply to `report` through `opts.reportSaved` of `saveAjax()` (from `_pgSetDraft(keys, false, hold, report)` or the plain save). It returns whether the sheet was open to show it; only when it was not does the success toast appear. Warnings and notes still come as toasts.
-- `PgDesignerPublish.outcome(rows, reply.pages, hold)` groups the pages: on the site now, stayed drafts, not saved (held by the sheet, or another user's page, which comes back without `draft`). The result view (`data-sdp-result`) lists them and Done closes the sheet; the next opening starts from the pick view.
-- A save that did not run (shared components loading, view mode, nothing to publish, a server or network error) calls `report(null)`: the sheet gives the pick back; the editor already said why.
-- Take off the site still closes the sheet first: it asks in a confirm that must not sit under the sheet.
+- The editor hands the reply to `report` through `opts.reportSaved` of `saveAjax()` (from `_pgSetDraft(keys, false, hold, report)` or the plain save). It returns whether the sheet was open to show it; only when it was not does the success toast appear. Warnings and notes stay toasts.
+- `PgDesignerPublish.outcome(rows, reply.pages, hold)` groups the pages: on the site now, stayed drafts, not saved (held by the sheet, or another user's page, which comes back without `draft`). The result view (`data-sdp-result`) lists them; Done closes it, the next opening starts at the pick view.
+- A save that did not run (components loading, view mode, nothing to publish, a server or network error) calls `report(null)`: the pick comes back; the editor said why.
+- Take off the site closes the sheet first: its confirm must not sit under it.
 
 Built in #8009 and #8073.
