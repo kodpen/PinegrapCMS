@@ -100,7 +100,7 @@
 - sales-channels-global-census-tiktok.md: Census (2026-11-27): TikTok Shop's Partner API: connecting a shop, a shop cipher per country, products, stock and price, orders and packages, partner registration and reviews
 - sales-channels-global-census-unread.md: Census (2026-11-27): the Amazon, Etsy and TikTok Shop developer pages that could not be read (missing, refused, behind a sign-in) and the points the pages leave unclear or contradict
 - sales-channels-global-census.md: Census (2026-11-27) for selling on Amazon, eBay, Etsy and TikTok Shop: what the marketplace connector base gives a new marketplace, what n11 and Trendyol each added, where the census's other files are
-- sales-channels-global.md: Plan (owner 2026-11-27, poll 246): products listed and orders taken from eBay, then Etsy, Amazon and TikTok Shop; the census is done, eBay's steps SC2 to SC7 need no table and no column
+- sales-channels-global.md: Plan (owner 2026-11-27, poll 246): products listed and orders taken from eBay (built), then Etsy, Amazon and TikTok Shop; Etsy's steps ET1 to ET6 need no table and no column
 - settings-scan-findings.md: Faults the 2026-11-21 scan of the Site Settings panes left on SEO, Languages, Channels, Team and Maintenance; a step deletes its lines, the last one the file
 - settings-tidy-census-order.md: Survey of the Site Settings categories, its second part: which categories still look old, their plans, and what is decided for every tidy
 - settings-tidy-census.md: Survey of the Site Settings categories (owner 2026-11-21: tidy every settings screen): the contradictions and scattered settings still open, with the plan that takes each
