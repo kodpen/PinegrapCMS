@@ -4754,10 +4754,18 @@
         }
 
         // The colour, highlight or size all the selected text has; '' when
-        // it has none, null when it differs or nothing is selected.
+        // it has none, null when it differs. With only a caret, the one of
+        // the character before it, which typed text takes (carryMarks()).
         function selectionLook(key) {
             var parts = selectedParts() || [];
+            var caret = !parts.length && !!shown.editor && !!shown.editor.range && document.activeElement === paper;
             var found;
+
+            if (caret) {
+                var at = shown.editor.range[0];
+
+                parts = [{ position: shown.editor.position, start: Math.max(0, at - 1), end: Math.max(1, at) }];
+            }
 
             parts.forEach(function (part) {
                 var look = lookOf(part.position, true);
@@ -4770,7 +4778,7 @@
                 }
             });
 
-            return found === undefined ? null : found;
+            return found === undefined ? (caret ? '' : null) : found;
         }
 
         // The bar's menu of colours: "None" first, then the swatches
