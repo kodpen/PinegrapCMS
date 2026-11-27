@@ -5042,6 +5042,18 @@ button.pgie-sndfile:hover {
   width: 100%;
 }
 
+/* -- Tabler Icons (pg_image_editor_tabler.js) -- */
+
+/* The set switch sits in the Icons box, which spaces its rows. */
+.pgie-seg.pgie-iconsets {
+  margin-bottom: 0;
+}
+
+.pgie .pgie-glyph-tb svg {
+  width: 24px;
+  height: 24px;
+}
+
 /* -- Shape builder (pg_image_editor_builder.js) -- */
 
 /* Five operations: three tiles a row. */

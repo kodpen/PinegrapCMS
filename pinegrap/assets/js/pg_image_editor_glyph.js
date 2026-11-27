@@ -187,10 +187,19 @@
         var grid = el('div', { class: 'pgie-glyphs', role: 'group', 'aria-label': t('glyphIcons') });
         var search = el('input', { type: 'search', class: 'pgie-input pgie-glyphfind', value: st.query, placeholder: t('glyphIconFind'), 'aria-label': t('glyphIconFind'), autocomplete: 'off', spellcheck: 'false' });
         var note = el('p', { class: 'pgie-note' });
+        // The second icon set's switch and grid (pg_image_editor_tabler.js);
+        // Change replaces a Bootstrap icon, so it keeps this set.
+        var setSwitch = this.iconSetSwitch ? this.iconSetSwitch() : null;
+        var other = setSwitch && (st.set !== 'bi');
 
         var fill = function () {
             grid.textContent = '';
             note.textContent = '';
+
+            if (other) {
+                self.tablerFill(grid, note, st.query);
+                return;
+            }
 
             if (st.error) {
                 note.textContent = t('glyphIconError');
@@ -224,7 +233,7 @@
             }, 200);
         });
 
-        if (!st.map && !st.error) {
+        if (!other && !st.map && !st.error) {
             Promise.all([loadIconMap(), loadIconFont()]).then(function (r) {
                 st.map = r[0];
                 fill();
@@ -235,7 +244,7 @@
         }
 
         fill();
-        body.appendChild(el('div', { class: 'pgie-stkfilebox' }, [toggle, search, grid, note]));
+        body.appendChild(el('div', { class: 'pgie-stkfilebox' }, setSwitch ? [toggle, setSwitch, search, grid, note] : [toggle, search, grid, note]));
     };
 
     // "Emoji": a recent row and the set by category.
@@ -399,7 +408,7 @@
     };
 
     Editor.inits.push(function () {
-        this.glyphs = { icons: false, emoji: false, query: '', map: null, error: false, category: M.EMOJI.order[0] };
+        this.glyphs = { icons: false, emoji: false, set: 'bi', query: '', map: null, error: false, category: M.EMOJI.order[0] };
         this.swapId = null;
     });
 

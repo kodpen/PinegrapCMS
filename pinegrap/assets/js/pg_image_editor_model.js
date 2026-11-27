@@ -13901,6 +13901,92 @@
     var ELEMENTS = { ELEMENT_SETS: ELEMENT_SETS, ELEMENT_MAX: ELEMENT_MAX, ELEMENT_WIDTH: ELEMENT_WIDTH, elementSets: elementSets, elementMarkup: elementMarkup,
         elementPaint: elementPaint, elementRepaint: elementRepaint, elementLayer: elementLayer };
 
+    // -- Tabler Icons (pg_image_editor_tabler.js) --
+
+    // The icons' own box, the stroke width range in its units (Tabler draws
+    // at 2) and its step, the share of the visible board a placed icon takes
+    // (a fifth, as a Bootstrap icon).
+    var TABLER_BOX = 24;
+    var TABLER_WIDTH = [0.5, 3];
+    var TABLER_STEP = 0.25;
+    var TABLER_SHARE = 0.2;
+
+    // The checked icons of the file: name => path, a name [a-z0-9-] and a
+    // path of path commands and numbers only, starting with a move; none
+    // when the file is not a map.
+    function tablerIcons(data) {
+        var out = Object.create(null), icons = (data && data.icons && (typeof data.icons === 'object') && !Array.isArray(data.icons)) ? data.icons : {};
+
+        Object.keys(icons).forEach(function (name) {
+            var d = icons[name];
+
+            if (/^[a-z0-9-]{1,60}$/.test(name) && (typeof d === 'string') && (d.length <= 4000) && /^[Mm][MmLlHhVvCcSsQqTtAaZz0-9.,\s-]*$/.test(d)) {
+                out[name] = d;
+            }
+        });
+
+        return out;
+    }
+
+    // The icons whose name holds the query, as iconSearch() finds them:
+    // [{ name, d }], at most limit of them and the total in found.
+    function tablerSearch(map, query, limit) {
+        var codes = {};
+
+        Object.keys(map || {}).forEach(function (name) { codes[name] = 1; });
+
+        var r = iconSearch(codes, query, limit);
+
+        return { icons: r.icons.map(function (i) { return { name: i.name, d: map[i.name] }; }), found: r.found };
+    }
+
+    function tablerWidth(n) {
+        return clamp(Math.round((Number(n) || 0) / TABLER_STEP) * TABLER_STEP, TABLER_WIDTH[0], TABLER_WIDTH[1]);
+    }
+
+    // An icon's one path, stroked in the colour with its width and round
+    // ends, as Tabler draws it.
+    function tablerMarkup(d, color, width) {
+        return '<path d="' + svgEscape(d) + '" fill="none" stroke="' + svgEscape(color) + '" stroke-width="' + tablerWidth(width)
+            + '" stroke-linecap="round" stroke-linejoin="round"/>';
+    }
+
+    var TABLER_PAINT = /^<path d="([^"]*)" fill="none" stroke="([^"]*)" stroke-width="([0-9.]+)" stroke-linecap="round" stroke-linejoin="round"\/>$/;
+
+    // The colour and width of an icon's markup; null for markup
+    // tablerMarkup() did not write.
+    function tablerPaint(markup) {
+        var m = TABLER_PAINT.exec(String(markup || ''));
+
+        return m ? { color: m[2], width: Number(m[3]) } : null;
+    }
+
+    // The markup with a new colour (null keeps it) and width (undefined
+    // keeps it); other markup is left as it is.
+    function tablerRepaint(markup, color, width) {
+        var m = TABLER_PAINT.exec(String(markup || ''));
+
+        if (!m) {
+            return markup;
+        }
+
+        // The path is written back as it was read, already escaped.
+        return '<path d="' + m[1] + '" fill="none" stroke="' + svgEscape((color === null) || (color === undefined) ? m[2] : color) + '" stroke-width="'
+            + tablerWidth((width === undefined) ? Number(m[3]) : width) + '" stroke-linecap="round" stroke-linejoin="round"/>';
+    }
+
+    // A placed icon: one svg path layer in the icons' box, TABLER_SHARE of
+    // the visible board's shorter side, its middle on the point given.
+    function tablerLayer(name, d, vr, centre, color) {
+        var box = svgFit(TABLER_BOX, TABLER_BOX, vr, TABLER_SHARE, true);
+
+        return { type: 'svg', kind: 'path', tabler: name, markup: tablerMarkup(d, color, 2), vb: { x: 0, y: 0, w: TABLER_BOX, h: TABLER_BOX },
+            x: centre[0] - box.w / 2, y: centre[1] - box.h / 2, w: box.w, h: box.h, rot: 0, opacity: 1 };
+    }
+
+    var TABLER = { TABLER_BOX: TABLER_BOX, TABLER_WIDTH: TABLER_WIDTH, TABLER_STEP: TABLER_STEP, tablerIcons: tablerIcons, tablerSearch: tablerSearch,
+        tablerMarkup: tablerMarkup, tablerPaint: tablerPaint, tablerRepaint: tablerRepaint, tablerLayer: tablerLayer };
+
     // -- Start from a design (pg_image_editor_starts.js) --
 
     // The purpose chips in order ('all' shows every design); the index's
@@ -14514,7 +14600,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, FOLLOW, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU, VIDEO, SOUND, CLIP, MIX, UPLOAD, PHONE, GROUP, ATTACH, DATA, SEND, SITECOLORS, TEXTSTYLES, ELEMENTS, STARTS, RESIZE, FRAMES, UNSPLASH].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, FOLLOW, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU, VIDEO, SOUND, CLIP, MIX, UPLOAD, PHONE, GROUP, ATTACH, DATA, SEND, SITECOLORS, TEXTSTYLES, ELEMENTS, TABLER, STARTS, RESIZE, FRAMES, UNSPLASH].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');
