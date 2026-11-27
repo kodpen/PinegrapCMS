@@ -461,7 +461,9 @@
 .sd-design-menu .sd-menu-item-danger:focus-visible { background: color-mix(in srgb, var(--sd-danger) 18%, transparent); }
 .sd-design-menu .menu-divider { height: 1px; margin: .3rem .2rem; border: 0; background: var(--sd-panel-border); opacity: 1; }
 .sd-toolbar-actions { flex: 0 0 auto; margin-left: auto; }
-@media (max-width: 1023.98px) {
+/* At 1024 px the columns are 190 and 240 px (the :root rule further down),
+   so the bar's words go from that width on: Add Page keeps its plus. */
+@media (max-width: 1024px) {
     .sd-tabs-add-txt { display: none; }
 }
 /* The Pages button after the strip, shown while the strip overflows.
@@ -2819,6 +2821,8 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     #sd-panel-tabs .sd-panel-tab:not(.active) { flex: none; width: 30px; padding: 0; }
     #sd-panel-tabs .sd-panel-tab:not(.active) .sd-pal-tab-ic { display: inline-block; }
     #sd-panel-tabs .sd-panel-tab:not(.active) .sd-pal-tab-txt { display: none; }
+    /* At 1024 px the column is 190 px: the open tab's word still fits whole. */
+    #sd-panel-tabs .sd-panel-tab.active { padding: 0 4px; }
 }
 @media (forced-colors: active) {
     #sd-panel-tabs .sd-panel-tab.active,
@@ -7870,14 +7874,6 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-rail-btn:hover { color: var(--sd-text); background: rgba(255,255,255,.06); }
 .sd-rail-btn.active { color: var(--sd-accent); background: rgba(var(--sd-accent-rgb),.14); }
 .sd-rail.sd-rail-open .sd-rail-btn.active { box-shadow: inset 0 0 0 1px rgba(var(--sd-accent-rgb),.45); }
-.sd-rail-label {
-    writing-mode: vertical-rl;
-    margin-top: .35rem;
-    font-size: .6rem; font-weight: 700; letter-spacing: .08em;
-    text-transform: uppercase; color: var(--sd-text-muted);
-    white-space: nowrap; overflow: hidden; min-height: 0;
-    -webkit-user-select: none; user-select: none;
-}
 
 /* ── Docked side panels ── */
 .sd-body.sd-dock-left  > .sd-panel-left,
@@ -7953,6 +7949,36 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
     font-size: .68rem; opacity: .6; transition: transform .18s;
 }
 .sd-panel-bottom.sd-docked .sd-bp-quad.sd-dock-open .sd-dock-caret { transform: rotate(180deg); opacity: 1; }
+/* Shut, the docked panel is one 28 px strip like the undocked one:
+   "HTML · Attributes · Styles" and the chevron at its right end. Each name
+   is still its part's header, so a press opens that part as the sheet; with
+   a part open the three strips stand one above the other again. */
+/* The headers keep the strip's full height, so each name is a 28 px target. */
+.sd-panel-bottom.sd-docked:not(.sd-dock-open) .sd-bp-grid {
+    flex-direction: row; align-items: stretch;
+    height: 28px; padding: 0 .5rem;
+    border-top: 1px solid var(--sd-panel-border);
+}
+.sd-panel-bottom.sd-docked:not(.sd-dock-open) .sd-bp-quad {
+    flex-direction: row; align-items: stretch;
+    border-top: 0; background: transparent;
+}
+.sd-panel-bottom.sd-docked:not(.sd-dock-open) .sd-bp-quad-hdr {
+    min-height: 0; padding: 0 .4rem;
+    background: transparent; border-bottom: 0;
+    font-size: 12px; color: var(--sd-label);
+}
+.sd-panel-bottom.sd-docked:not(.sd-dock-open) .sd-bp-quad-tr,
+.sd-panel-bottom.sd-docked:not(.sd-dock-open) .sd-bp-quad-tr .sd-bp-quad-hdr { flex: 1 1 auto; }
+.sd-panel-bottom.sd-docked:not(.sd-dock-open) .sd-bp-quad-bl::before,
+.sd-panel-bottom.sd-docked:not(.sd-dock-open) .sd-bp-quad-tr::before {
+    content: '\00b7'; color: var(--sd-text-muted); font-weight: 700;
+}
+.sd-panel-bottom.sd-docked:not(.sd-dock-open) .sd-bp-quad-spacer,
+.sd-panel-bottom.sd-docked:not(.sd-dock-open) .sd-attrs-elem-badge,
+.sd-panel-bottom.sd-docked:not(.sd-dock-open) .sd-bp-quad-bl .bi,
+.sd-panel-bottom.sd-docked:not(.sd-dock-open) .sd-bp-quad-tr .bi:not(.sd-dock-caret),
+.sd-panel-bottom.sd-docked:not(.sd-dock-open) .sd-bp-quad-tl .sd-dock-caret { display: none; }
 
 /* ===================== SETTINGS MODAL ===================== */
 /* The largest dialog from 1024px up (dialog-xl), the whole screen below it
@@ -8178,7 +8204,7 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
     font-weight: 600;
     white-space: nowrap;
 }
-@media (max-width: 1023.98px) {
+@media (max-width: 1024px) {
     #sd-ajax-save.sd-publish-btn,
     #sd-publish-page.sd-publish-btn { width: 32px; padding: 0; }
     #sd-ajax-save .sd-publish-txt,
@@ -8200,7 +8226,7 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 #sd-preview-menu-btn[aria-expanded="true"] { background: var(--sd-raised-bg); }
 .sd-preview-menu .sd-vb-row[hidden] { display: none; }
 .sd-preview-menu a.sd-vb-row { text-decoration: none; }
-@media (max-width: 1023.98px) {
+@media (max-width: 1024px) {
     #sd-preview-menu-btn.sd-preview-btn { padding: 0 .4rem; }
     #sd-preview-menu-btn .sd-preview-txt { display: none; }
 }
@@ -8210,6 +8236,14 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 @media (max-width: 767.98px) {
     #sd-preview-menu-btn.sd-preview-btn { width: 32px; padding: 0; order: 1; }
     #sd-preview-menu-btn .sd-preview-caret { display: none; }
+}
+/* A phone's bar is one 48 px row over the canvas bar: no lines around Undo
+   and Redo, 3 px between controls, so the open page's tab keeps its name.
+   The status bar's Help is its icon, the word in its tip. */
+@media (max-width: 575.98px) {
+    .sd-toolbar.sd-toolbar-tabs { gap: 3px; padding-left: 8px; padding-right: 8px; }
+    .sd-toolbar-actions .sd-bar-line { display: none; }
+    #sd-status-shortcuts .sd-status-txt { display: none; }
 }
 
 /* ── Template: "your design is being prepared" ──

@@ -65218,10 +65218,6 @@ const StyleDesigner = (function () {
             } else {
                 rail.appendChild(_sdRailFallbackBtn('left', 'bi-puzzle', _sdT('Components')));
             }
-            var lbl = document.createElement('span');
-            lbl.className = 'sd-rail-label';
-            lbl.textContent = _sdT('Components');
-            rail.appendChild(lbl);
         } else {
             var rtabs = document.querySelectorAll('#sd-rcol-tabs .sd-rcol-tab');
             if (rtabs.length) {
@@ -65246,10 +65242,6 @@ const StyleDesigner = (function () {
             } else {
                 rail.appendChild(_sdRailFallbackBtn('right', 'bi-sliders', _sdT('Options')));
             }
-            var rlbl = document.createElement('span');
-            rlbl.className = 'sd-rail-label';
-            rlbl.textContent = _sdT('Options');
-            rail.appendChild(rlbl);
         }
         return rail;
     }
