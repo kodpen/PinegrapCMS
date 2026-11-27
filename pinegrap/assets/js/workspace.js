@@ -26365,6 +26365,22 @@
         });
         bar.appendChild(searchGroup);
 
+        // "Add a task…" above the groups (workspace_my_tasks.js). It sits
+        // outside listBody, so a reload keeps what is typed and the focus.
+        var addLine = window.PGWsMyTasks ? window.PGWsMyTasks.addLine(partHelpers(), {
+            onAdded: load,
+            openDrawer: function (title, onSaved) {
+                taskDrawer.open(0, { title: title }, function (taskId) {
+                    onSaved();
+                    load(taskId);
+                });
+            }
+        }) : null;
+
+        if (addLine) {
+            list.insertBefore(addLine.node, listBody);
+        }
+
         root.appendChild(filter.tags);
         root.appendChild(countLine);
         root.appendChild(list);
@@ -26373,10 +26389,18 @@
         // quickly would otherwise let an earlier, slower answer win.
         var serial = 0;
 
-        function load() {
+        // fresh: the id of a task just made or saved (the drawer's onSaved
+        // and the add line pass it), whose group is then drawn open.
+        function load(fresh) {
             var mine = ++serial;
 
             filter.refresh();
+
+            // The add line stands only where a task given to the reader
+            // with no date shows up: Mine, open, nothing narrowing it.
+            if (addLine) {
+                addLine.shown((state.scope === 'mine') && (state.status === 'open') && !state.search && !filter.isSet() && (state.agent_channels !== 'only'));
+            }
 
             if (state.scope === 'time') {
                 countLine.textContent = '';
@@ -26399,7 +26423,7 @@
                     countLine.textContent = data.tasks.length ? t('task_count', data.tasks.length) : t('nothing_found');
 
                     if (data.tasks.length) {
-                        drawMyTasks(data.tasks);
+                        drawMyTasks(data.tasks, fresh);
                     } else {
                         clear(listBody).appendChild(tasksEmpty());
                     }
@@ -26424,13 +26448,13 @@
             }
         };
 
-        function drawMyTasks(tasks) {
+        function drawMyTasks(tasks, fresh) {
             if (!window.PGWsMyTasks) {
                 taskRows(listBody, tasks, load);
                 return;
             }
 
-            window.PGWsMyTasks.list(listBody, tasks, (state.status === 'open') && !state.search, partHelpers(), rowParts, load);
+            window.PGWsMyTasks.list(listBody, tasks, (state.status === 'open') && !state.search, partHelpers(), rowParts, load, fresh);
         }
 
         // Nothing in the list: narrowed by a filter or the search, it says

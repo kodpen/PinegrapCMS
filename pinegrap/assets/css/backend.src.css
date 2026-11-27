@@ -20408,6 +20408,27 @@ button.ws-mt-done:focus-visible,
     flex-basis: 100%;
   }
 }
+/* "Add a task…" above the groups of the Mine view: the field of the
+   Design examples (a .pg-input label holding its icon and a bare input),
+   the keys' one line of help while it has the focus, and a refusal under
+   it in place of that line. The help names Tab, so a phone leaves it out. */
+.ws-mt-add {
+  padding: 12px 12px 6px;
+}
+.ws-mt-add-icon {
+  color: var(--pg-fg-3);
+}
+.ws-mt-add-hint {
+  display: none;
+}
+.ws-mt-add:focus-within:not(.is-refused) > .ws-mt-add-hint {
+  display: block;
+}
+@media (max-width: 575.98px) {
+  .ws-mt-add:focus-within:not(.is-refused) > .ws-mt-add-hint {
+    display: none;
+  }
+}
 /* The channel's Tasks tab (drawTasks()): a quiet toolbar row, then each
    task a card; the cards flow in columns as the decisions do, one on a
    phone. A record's window draws the same .ws-list-row as a list and keeps

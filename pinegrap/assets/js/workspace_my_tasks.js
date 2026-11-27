@@ -7,7 +7,12 @@
  * assets/js/workspace.js asks this file for the list and lends it its own
  * helpers (api, t, el, icon, button, ...) and the parts of a task row it
  * keeps (the row's menu, the progress bar):
- *   PGWsMyTasks.list(container, tasks, grouped, helpers, parts, onChange)
+ *   PGWsMyTasks.list(container, tasks, grouped, helpers, parts, onChange, fresh)
+ * and for the line that adds a task above the groups of the Mine view:
+ *   PGWsMyTasks.addLine(helpers, { onAdded(taskId), openDrawer(title, onSaved) })
+ *     -> { node, shown(on) }
+ * A fresh task id opens the group that holds it for that drawing, without
+ * keeping it open.
  *
  * The server sends each task's group (due_group: overdue, today, week,
  * later, none) worked out on the reader's day (ws_task_due_group(),
@@ -217,9 +222,11 @@
     }
 
     // The list: grouped by date (the open tasks without a search), else
-    // one list in the server's order.
-    function list(container, tasks, grouped, h, parts, onChange) {
+    // one list in the server's order. fresh is the id of a task just made
+    // or saved: its group is drawn open even when it was left folded.
+    function list(container, tasks, grouped, h, parts, onChange, fresh) {
         var box = h.el('div', 'ws-mt-list');
+        var freshId = parseInt(fresh, 10) || 0;
 
         h.clear(container);
 
@@ -246,13 +253,133 @@
                 return (known[task.due_group] ? task.due_group : 'none') === item[0];
             });
 
+            var holdsFresh = freshId && inGroup.some(function (task) {
+                return (parseInt(task.id, 10) || 0) === freshId;
+            });
+
             if (inGroup.length) {
-                box.appendChild(group(item[0], h.t(item[1]), inGroup, h, parts, onChange, !!folded[item[0]]));
+                box.appendChild(group(item[0], h.t(item[1]), inGroup, h, parts, onChange, !!folded[item[0]] && !holdsFresh));
             }
         });
 
         container.appendChild(box);
     }
 
-    window.PGWsMyTasks = { list: list };
+    // The line above the groups that adds a task: a title and Enter make a
+    // task given to the reader through the New task drawer's own action
+    // (ws_task_save); Tab from a typed title opens that drawer with the
+    // title in it. A refusal stands under the field in the server's words
+    // until the title is changed.
+    function addLine(h, opts) {
+        var node = h.el('div', 'ws-mt-add');
+        var field = h.el('label', 'pg-input ws-mt-add-field');
+        var input = h.el('input');
+        var hint = h.el('div', 'pg-field-help ws-mt-add-hint', h.t('mt_add_hint'));
+        // Polite live region: a refusal is read out while the field keeps
+        // the focus.
+        var note = h.el('div', 'ws-mt-add-note');
+        var busy = false;
+
+        hint.id = h.nextId('ws-mt-add-hint-');
+        note.id = h.nextId('ws-mt-add-note-');
+        note.setAttribute('aria-live', 'polite');
+
+        input.type = 'text';
+        input.maxLength = 255;
+        input.autocomplete = 'off';
+        input.placeholder = h.t('mt_add');
+        input.setAttribute('aria-label', h.t('mt_add_label'));
+        input.setAttribute('aria-describedby', hint.id + ' ' + note.id);
+
+        field.appendChild(h.icon('bi-plus-lg', 'ws-mt-add-icon'));
+        field.appendChild(input);
+        node.appendChild(field);
+        node.appendChild(hint);
+        node.appendChild(note);
+
+        function refuse(message) {
+            h.clear(note);
+
+            if (message) {
+                note.appendChild(h.el('div', 'pg-field-help pg-field-error', message));
+                input.setAttribute('aria-invalid', 'true');
+                node.classList.add('is-refused');
+            } else {
+                input.removeAttribute('aria-invalid');
+                node.classList.remove('is-refused');
+            }
+        }
+
+        // The title sent is cleared only if nothing new was typed meanwhile.
+        function done(title) {
+            if (input.value.trim() === title) {
+                input.value = '';
+            }
+
+            refuse('');
+        }
+
+        function save(title) {
+            busy = true;
+            node.setAttribute('aria-busy', 'true');
+
+            h.api('ws_task_save', { title: title, assignees: [h.boot().me.id] }).then(function (result) {
+                busy = false;
+                node.removeAttribute('aria-busy');
+
+                // A clash with the reader's own leave or load: the drawer
+                // shows it and asks, as it does for New task.
+                if (result.needs_confirm) {
+                    opts.openDrawer(title, function () { done(title); });
+                    return;
+                }
+
+                done(title);
+                h.toast(h.t('task_created'), 'success');
+                opts.onAdded(result.task_id);
+            }).catch(function (error) {
+                busy = false;
+                node.removeAttribute('aria-busy');
+                refuse((error && error.message) ? error.message : h.t('error_generic'));
+            });
+        }
+
+        input.addEventListener('input', function () {
+            if (node.classList.contains('is-refused')) {
+                refuse('');
+            }
+        });
+
+        input.addEventListener('keydown', function (event) {
+            if (event.isComposing) {
+                return;
+            }
+
+            var title = input.value.trim();
+
+            if (event.key === 'Enter') {
+                event.preventDefault();
+
+                if (title && !busy) {
+                    save(title);
+                }
+
+                return;
+            }
+
+            if ((event.key === 'Tab') && title && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey) {
+                event.preventDefault();
+                opts.openDrawer(title, function () { done(title); });
+            }
+        });
+
+        return {
+            node: node,
+            shown: function (on) {
+                node.hidden = !on;
+            }
+        };
+    }
+
+    window.PGWsMyTasks = { list: list, addLine: addLine };
 })();
