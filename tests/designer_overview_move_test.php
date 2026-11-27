@@ -89,7 +89,7 @@ function findParentIn(n, at) { for (var i = 0; i < (at.children || []).length; i
 function _findParentAnywhere(n) { var p = findParentIn(n, tree); return p ? { parent: p, sid: 0 } : null; }
 function hasLockedAncestor(n) { for (var p = findParentIn(n, tree); p; p = findParentIn(p, tree)) if (p.props._locked) return true; return false; }
 function _sdCanEditNode(n) { return !n.props._noEdit; }
-function _sdMayEdit(n) { return !n.props._noEdit; }
+function _sdMayEdit(n) { if (n.props._noEdit) { log.toasts.push('nudge'); return false; } return true; }
 function canDrop(data, parent) { log.asked.push(data.node.name + '>' + parent.name); return !refuse[parent.name]; }
 function _sdTreeDropCode() { return 'rule'; }
 function _sdTreeDropName(p) { return p === tree ? '<body>' : p.name; }
@@ -179,7 +179,7 @@ page(); refuse.A = true; _sdTreeKeyMove(b, 'in');
 out([names(box), names(a), log.steps, log.toasts, log.selected]);
 page(); b.props._locked = true; _sdTreeKeyMove(b, 'up');
 out([names(box), log.steps, log.toasts]);
-page(); a.props._noEdit = true; _sdTreeKeyMove(b, 'up');
+page(); box.props._noEdit = true; _sdTreeKeyMove(b, 'up');
 out([names(box), log.steps, log.toasts]);
 page(); _collab.mayEdit = false; _sdTreeKeyMove(b, 'up'); _collab.mayEdit = true;
 out([names(box), log.steps, log.toasts]);
@@ -199,7 +199,7 @@ JS
 	pg_assert_same(array(0, array('The element is already at the top level')), $r[6], 'a section cannot go one level out');
 	pg_assert_same(array(array('A', 'B', 'C', 'D'), array(), 0, array('A does not take this element'), null), $r[7], 'canDrop() refusing: nothing moves, no undo step, the reason is said');
 	pg_assert_same(array(array('A', 'B', 'C', 'D'), 0, array('B is locked')), $r[8], 'a locked element does not move');
-	pg_assert_same(array(array('A', 'B', 'C', 'D'), 0, array('Box is outside the areas you may edit')), $r[9], 'a place outside the editable areas refuses');
+	pg_assert_same(array(array('A', 'B', 'C', 'D'), 0, array('nudge', 'Box is outside the areas you may edit')), $r[9], 'a place outside the editable areas refuses, with the nudge on the move');
 	pg_assert_same(array(array('A', 'B', 'C', 'D'), 0, array('read-only')), $r[10], 'a session that may not edit moves nothing');
 }
 
@@ -247,6 +247,53 @@ JS
 	pg_assert_same(array(0, array('Nothing can go before or after <body>')), $r[5], 'before the page body: refused');
 	pg_assert_same(array(array('Sec', 'Foot', 'B'), 1), $r[6], 'into the page body: at the end of the page');
 	pg_assert_same(array(array('A', 'B', 'C', 'D'), array(), 0, array('Foot does not take this element')), $r[7], 'one refused by canDrop() keeps all in place');
+}
+
+// The rights a move asks are those of the parent the elements land in, as a
+// drop's are: before or after an editable area's own top element is the
+// closed part around it; into a shared component is into its tree. The
+// judgement the window asks on every click raises no nudge; the move does.
+function test_designer_overview_move_rights_of_landing_parent()
+{
+	$fns = array('_sdTreeDropWhy', '_sdMoveCheck', '_sdMoveNodes', 'isDescendant');
+	$r = designer_overview_move_run('style_designer.src.js', $fns, designer_overview_move_stubs() . <<<'JS'
+var t1, t2, area, box, sref, comp;
+function page() {
+    t1 = N('T1'); t2 = N('T2'); area = N('Area', [t1, t2]);
+    box = N('Box', [area, N('Other', [], { _noEdit: true })], { _noEdit: true });
+    sref = N('Ref', [], { sharedId: '5' }); sref.type = 'shared_ref';
+    comp = N('Comp', [N('Inner')], { _noEdit: true }); comp.type = 'root';
+    _sharedCache = { 5: { tree: comp } };
+    tree = N('body', [N('Sec', [box, sref], { _noEdit: true })]); tree.type = 'root';
+    reset();
+}
+function judge(ref, pos) { var c = _sdMoveCheck([t1], ref, pos); return [c.code, c.why, c.parent ? c.parent.name : null]; }
+page();
+out([judge(area, 'after'), judge(area, 'before'), log.toasts]);
+page();
+out([judge(area, 'inside'), judge(t2, 'after'), log.toasts]);
+page(); _sdMoveNodes([t1], area, 'after');
+out([names(box), names(area), log.steps, log.toasts]);
+page(); _sdMoveNodes([t1], area, 'inside');
+out([names(area), log.steps, log.toasts]);
+page();
+out([judge(sref, 'inside'), log.toasts]);
+page(); comp.props._noEdit = false; sref.props._noEdit = true;
+out([judge(sref, 'inside')]);
+JS
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	$no = 'Box is outside the areas you may edit';
+	pg_assert_same(array(array('rights', $no, 'Box'), array('rights', $no, 'Box'), array()), $r[0], 'before or after the area\'s own top element: refused, the closed parent named, no toast while judging');
+	pg_assert_same(array(array('', '', 'Area'), array('', '', 'Area'), array()), $r[1], 'into the area or beside an element inside it: allowed');
+	pg_assert_same(array(array('Area', 'Other'), array('T1', 'T2'), 0, array('nudge', $no)), $r[2], 'the move out of the area changes nothing, the nudge and the reason are said');
+	pg_assert_same(array(array('T2', 'T1'), 1, array()), $r[3], 'a move inside the area is done');
+	pg_assert_same(array(array('rights', 'Comp is outside the areas you may edit', 'Comp'), array()), $r[4], 'into a shared component: its tree\'s rights');
+	pg_assert_same(array('', '', 'Comp'), $r[5][0], 'an editable component\'s tree takes it wherever it is placed');
 }
 
 // The "Move…" window's targets: by name with Turkish letters folded, each
@@ -312,5 +359,6 @@ test_designer_overview_move_row_keys();
 test_designer_overview_move_key_plan();
 test_designer_overview_move_keys_move();
 test_designer_overview_move_window_moves();
+test_designer_overview_move_rights_of_landing_parent();
 test_designer_overview_move_window_search();
 test_designer_overview_move_wiring();

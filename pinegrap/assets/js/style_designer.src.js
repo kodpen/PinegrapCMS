@@ -35473,7 +35473,10 @@ const StyleDesigner = (function () {
             if (n === ref && pos !== 'inside') return say('same');
             if (n === parent || isDescendant(n, parent)) return say('self');
         }
-        if (!_sdMayEdit(ref)) return say('rights');
+        // The parent the elements land in, as handleDrop() asks of a drop:
+        // before or after an editable area's own top element is the closed
+        // part around it. Silent, as the window judges on every click.
+        if (!_sdCanEditNode(parent)) return say('rights');
         for (var j = 0; j < nodes.length; j++) {
             var data = { source: 'node', node: nodes[j], type: nodes[j].type };
             if (!canDrop(data, parent)) return say(_sdTreeDropCode(data, parent));
@@ -35495,7 +35498,13 @@ const StyleDesigner = (function () {
     function _sdMoveNodes(nodes, ref, pos) {
         if (!_collab.mayEdit) { _sdReadOnlyNudge(); return false; }
         var c = _sdMoveCheck(nodes, ref, pos);
-        if (c.code) { sdToast(esc(c.why), 'warning'); return false; }
+        if (c.code) {
+            // The content level's nudge comes with a refused move, never
+            // with the judgement alone.
+            if (c.code === 'rights' && c.parent) _sdMayEdit(c.parent);
+            sdToast(esc(c.why), 'warning');
+            return false;
+        }
         saveState();
         var parent = c.parent;
         nodes.forEach(function (n) {
