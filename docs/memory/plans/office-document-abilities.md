@@ -8,7 +8,8 @@ priority: 6
 - Owner (2026-11-26, agent channel poll 235, message 14401): all eight abilities offered for the two editors (`workflow/decisions-made-product-115.md`). This plan holds the document's four: format, link, table, picture.
 
 ## When does it start?
-- After OP3 of the document page (PR #11963; the page `platform/office-docx-page.md`, its Undo `platform/office-docx-undo.md`): every step draws on that page and joins its Undo. Until then no step is free: the architect marks lines `free` when OP3 has landed.
+- Free since 2026-11-27, OP3 of the document page having landed (#11963; the page `platform/office-docx-page.md`, its Undo `platform/office-docx-undo.md`): every step draws on that page and joins its Undo.
+- Both editors live in `pg_office_view.js`: DA2, DA3, DA5 and DA7 are not given out while a step on that file (SA2, SA4, SA5 of `plans/office-sheet-abilities.md` too) has an open PR.
 
 ## Which steps? (M about 1,000 product lines, S under 400; each waits for the one before it)
 - DA1 (M, `includes/fn/office_docx_format.php`): the format entry also takes a text colour, a highlight (Word's own highlight names) and a font size (8 to 72 points) on selected text, split and joined as bold is; a paragraph entry takes its alignment (start, centre, end, justified). The reader gives them in the marks. Tests as for bold: read back, an untouched paragraph byte for byte.
