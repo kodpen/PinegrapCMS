@@ -14,6 +14,7 @@
  *   PGBgLayers.move(list, from, to) // a new list with one item moved
  *   PGBgLayers.widest(stops)     // the middle of the widest gap between stops
  *   PGBgLayers.mixAt(stops, pos, rgbOf) // the colour found at pos
+ *   PGBgLayers.focusLeft(style, vals) // whether a focus per screen is left unread by vals
  *
  * `style` holds the style attribute's background properties by name
  * (`background-image`, `-size`, `-position`, `-repeat`, `-attachment`,
@@ -250,6 +251,36 @@
         return out;
     }
 
+    // The place the nine places show for a layer's position: one with no
+    // value of its own sits where CSS puts it, the top left corner.
+    function shownPlace(v) {
+        return place(v || CSS_DEFAULT.position);
+    }
+
+    // The Repeat list's value for a layer: '' (No repeat) for no-repeat; a
+    // layer with no repeat of its own repeats, as CSS draws it.
+    function shownRepeat(l) {
+        var r = l && l.repeat ? String(l.repeat) : '';
+        return r === 'no-repeat' ? '' : (r || CSS_DEFAULT.repeat);
+    }
+
+    // What a choice of the Repeat list writes: '' (No repeat) is no-repeat,
+    // on a picture and on a gradient alike.
+    function repeatOf(v) {
+        return v || 'no-repeat';
+    }
+
+    // True when `style` holds a focus per screen (--pg-focus-d, written by
+    // the Focus control with the pg-focus class) that nothing reads once
+    // `vals` (write()'s) are set: neither the new background-position nor
+    // the style's object-position (a video's) goes through var(--pg-focus).
+    function focusLeft(style, vals) {
+        style = style || {};
+        if (style['--pg-focus-d'] === undefined) return false;
+        var reads = function (v) { return /var\(\s*--pg-focus\s*[,)]/i.test(String(v || '')); };
+        return !reads((vals || {})['background-position']) && !reads(style['object-position']);
+    }
+
     function move(list, from, to) {
         var a = list.slice();
         if (from < 0 || from >= a.length || to < 0 || to >= a.length) return a;
@@ -284,7 +315,8 @@
     var api = {
         PALETTE: PALETTE, PLACES: PLACES, MAX_LAYERS: MAX_LAYERS, MIN_STOPS: MIN_STOPS, MAX_STOPS: MAX_STOPS,
         read: read, write: write, color: color, parseColor: parseColor, gradient: gradient,
-        parseImage: parseImage, move: move, widest: widest, mixAt: mixAt, hexRgb: hexRgb, place: place
+        parseImage: parseImage, move: move, widest: widest, mixAt: mixAt, hexRgb: hexRgb, place: place,
+        shownPlace: shownPlace, shownRepeat: shownRepeat, repeatOf: repeatOf, focusLeft: focusLeft
     };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (root) root.PGBgLayers = api;

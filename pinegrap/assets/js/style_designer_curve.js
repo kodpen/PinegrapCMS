@@ -157,6 +157,7 @@ StyleDesigner.definePart('curve', function (K) {
     // one it came from is named in the line.
     function commit(focus, force) {
         clearTimeout(E.timer);
+        E.timer = 0;
         var m = memo[E.host.at] || (memo[E.host.at] = {});
         if (E.host.stored && !m.from) m.from = E.host.stored;
         m.focus = focus || '';
@@ -211,9 +212,22 @@ StyleDesigner.definePart('curve', function (K) {
             E.p = C.move(E.p, i, E.p[i * 2] + dx, E.p[i * 2 + 1] + dy);
             draw(false);
             // Written once the keys rest: one undo step.
-            clearTimeout(E.timer);
-            E.timer = setTimeout(function () { run(); commit('h' + i); }, 500);
+            rest(i);
         });
+    }
+
+    // Writes the keys' curve once they rest, through the editor that took
+    // them: an editor opened in the meantime is not written by this timer.
+    function rest(i) {
+        var ed = E;
+        clearTimeout(ed.timer);
+        ed.key = i;
+        ed.timer = setTimeout(function () {
+            ed.timer = 0;
+            if (E !== ed) return;
+            run();
+            commit('h' + i);
+        }, 500);
     }
 
     function bind() {
@@ -282,11 +296,18 @@ StyleDesigner.definePart('curve', function (K) {
 
     // Opens the editor under host.row; a second open replaces the first.
     function open(host) {
-        if (E && E.el.parentNode) E.el.parentNode.removeChild(E.el);
+        var old = E;
+        if (old) {
+            clearTimeout(old.timer);
+            if (old.el.parentNode) old.el.parentNode.removeChild(old.el);
+        }
+        // The same row drawn again while the arrow keys rest (the panel was
+        // drawn by another change) keeps the curve the keys reached.
+        var keys = old && old.timer && old.host.at === host.at && !host.custom ? { p: old.p.slice(), i: old.key } : null;
         var m = memo[host.at] || (memo[host.at] = {});
         // A stored curve chosen again from the list ends its "Changed from".
-        if (host.stored || !/^cubic-bezier/.test(host.value)) m.from = null;
-        var p = C.points(host.value) || C.points(host.look) || C.NAMED['ease-in-out'].slice();
+        if (!keys && (host.stored || !/^cubic-bezier/.test(host.value))) m.from = null;
+        var p = keys ? keys.p : C.points(host.value) || C.points(host.look) || C.NAMED['ease-in-out'].slice();
         var el = document.createElement('div');
         el.className = 'sd-curve';
         E = { el: el, host: host, p: p, held: false, timer: 0 };
@@ -296,6 +317,7 @@ StyleDesigner.definePart('curve', function (K) {
         draw(false);
         bind();
         if (host.custom) commit('nums', true);
+        else if (keys) rest(keys.i);
         if (m.said) { say(m.said); m.said = ''; }
         var f = m.focus === 'h0' || m.focus === 'h1' ? el.querySelectorAll('.sd-curve-handle')[+m.focus.charAt(1)]
             : m.focus === 'nums' ? el.querySelector('.sd-curve-nums') : m.focus === 'name' ? el.querySelector('[data-act="name"]') : null;

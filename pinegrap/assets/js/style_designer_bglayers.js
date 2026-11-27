@@ -139,7 +139,7 @@ StyleDesigner.definePart('bglayers', function (K) {
     function moreRows(l) {
         if (!ui.more) return '<button type="button" class="sd-tf-more" data-bgl-more aria-expanded="false"><i class="bi bi-chevron-down" aria-hidden="true"></i>' + esc(_sdT('More')) + '</button>';
         return row(_sdT('Repeat'), select('repeat', [['', _sdT('No repeat')], ['repeat', _sdT('Repeat')], ['repeat-x', _sdT('Across')], ['repeat-y', _sdT('Down')]],
-                l.repeat === 'no-repeat' ? '' : (l.repeat || (l.kind === 'picture' ? '' : 'repeat')))) +
+                L.shownRepeat(l))) +
             row(_sdT('Attach'), select('attach', [['', _sdT('Scroll')], ['fixed', _sdT('Fixed')]], l.attach === 'fixed' ? 'fixed' : '')) +
             row(_sdT('Blend'), select('blend', BLENDS.map(function (b) { return [b === 'normal' ? '' : b, b.charAt(0).toUpperCase() + b.slice(1).replace('-', ' ')]; }), l.blend || '')) +
             '<button type="button" class="sd-tf-more" data-bgl-more aria-expanded="true"><i class="bi bi-chevron-up" aria-hidden="true"></i>' + esc(_sdT('Less')) + '</button>';
@@ -161,7 +161,7 @@ StyleDesigner.definePart('bglayers', function (K) {
                     (custom ? '<div class="sd-bgl-wh"><input type="text" class="form-control form-control-sm" data-bgl="sw" value="' + esc(wh[0] || 'auto') + '" aria-label="' + esc(_sdT('Width')) + '">' +
                         '<input type="text" class="form-control form-control-sm" data-bgl="sh" value="' + esc(wh[1] || 'auto') + '" aria-label="' + esc(_sdT('Height')) + '"></div>' : ''));
             // One picture alone that its box cuts takes the Focus control.
-            h += layers.length === 1 && K._sdFocusTakes(node, 'background') ? K._sdFocusPlace('background') : row(_sdT('Position'), places('position', L.place(l.position || 'center'), _sdT('Position')));
+            h += layers.length === 1 && K._sdFocusTakes(node, 'background') ? K._sdFocusPlace('background') : row(_sdT('Position'), places('position', L.shownPlace(l.position), _sdT('Position')));
             return h + moreRows(l);
         }
         var s = l.stops[Math.min(ui.stop, l.stops.length - 1)], n = l.stops.length;
@@ -255,7 +255,14 @@ StyleDesigner.definePart('bglayers', function (K) {
         if (K.selectedNode !== node) return;
         K.saveState();
         var vals = L.write(layers);
+        // A focus per screen the new position no longer reads goes with
+        // its class, or the Focus control would show it again.
+        var left = L.focusLeft(styleOf(node), vals);
         Object.keys(vals).forEach(function (k) { K.setAttrStyleProp(node, k, vals[k]); });
+        if (left) {
+            ['--pg-focus-d', '--pg-focus-t', '--pg-focus-p'].forEach(function (k) { K.setAttrStyleProp(node, k, ''); });
+            node.props.cssClass = String(node.props.cssClass || '').split(/\s+/).filter(function (c) { return c && c !== 'pg-focus'; }).join(' ');
+        }
         if (node.props._bgGrad) node.props._bgGrad = null;
         if (say) ui.said = say;
         K._sdRenderNode(node, K.renderCanvas);
@@ -309,7 +316,7 @@ StyleDesigner.definePart('bglayers', function (K) {
             if (/^[\d.]+$/.test(t)) t += 'px';
             wh[key === 'sw' ? 0 : 1] = t.replace(/[^\w.%-]/g, '');
             l.size = (wh[0] || 'auto') + ' ' + (wh[1] || 'auto');
-        } else if (key === 'repeat') l.repeat = v || (l.kind === 'picture' ? 'no-repeat' : '');
+        } else if (key === 'repeat') l.repeat = L.repeatOf(v);
         else l[key] = v;
     }
 

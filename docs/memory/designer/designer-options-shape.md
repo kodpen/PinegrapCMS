@@ -26,7 +26,7 @@ description: Clip shape and Mask under Shadow and effect's "More" as built (DO14
 
 ## What does the canvas show?
 - The written rule, through User Styles. A dragged slider sets the value inline with `!important` on the canvas element and drops it when let go.
-- While the selected element's class holds a shape or a mask, a dashed outline (`#sd-shape-outline` in the canvas body) follows its whole box; `_sdShapeOutline()` places or removes it at each panel drawing.
+- While the selected element's own rules hold a shape or a mask (`PGClipShape.has()`), a dashed outline (`#sd-shape-outline` in the canvas body) follows its whole box; `_sdShapeOutline()` places or removes it at each panel drawing.
 
 ## How does it load, and what did it cost?
 - Part `shape` (`includes/designer_parts/shape.php`, `when: always`): loaded when "More" is drawn or an element with a shape is selected.

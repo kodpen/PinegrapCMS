@@ -305,11 +305,11 @@ StyleDesigner.definePart('shape', function (K) {
 
     // The dashed outline of the element's whole box while it has a shape
     // or a mask, so what is cut away shows as the gap between the two.
-    // host null takes it away.
+    // host null, or an element whose own rules hold neither, takes it away.
     function outline(host, doc) {
         doc = host ? host.canvasDoc : doc;
         var g = doc ? doc.getElementById(OUTLINE_ID) : null;
-        var el = host ? host.canvasEl() : null;
+        var el = host && host.node && C.has(host.text(), host.cls() || '') ? host.canvasEl() : null;
         if (!el || !el.getBoundingClientRect || !doc || !doc.body) {
             if (g && g.parentNode) g.parentNode.removeChild(g);
             return;

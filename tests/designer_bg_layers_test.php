@@ -155,3 +155,84 @@ function test_designer_bg_layers_order_and_stops()
 	pg_assert_same('#000000', $r['edge']['v']);
 	pg_assert_same(array('center center', 'center top', 'right top', 'left bottom', '10px 20px'), $r['places']);
 }
+
+// A picture with no position of its own sits where CSS puts it, the top
+// left corner, and the nine places show that corner; choosing it and
+// reading the style back shows the same corner, not the middle.
+function test_designer_bg_layers_position_shown_at_css_default()
+{
+	$r = designer_bg_layers_run(
+		'var back = L.read(L.write([{ kind: "picture", url: "a.jpg", size: "cover", position: "left top" }])).layers[0];'
+		. 'console.log(JSON.stringify({ none: L.shownPlace(""), back: back.position, shown: L.shownPlace(back.position),'
+		. ' set: L.shownPlace("right bottom"), pct: L.shownPlace("50% 100%"), own: L.shownPlace("30% 20%") }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_same('left top', $r['none'], 'no position is CSS\'s top left');
+	pg_assert_same('', $r['back'], 'the default is not written');
+	pg_assert_same('left top', $r['shown'], 'the chosen top left shows after the write');
+	pg_assert_same('right bottom', $r['set']);
+	pg_assert_same('center bottom', $r['pct']);
+	pg_assert_same('30% 20%', $r['own'], 'a place none of the nine is kept as it is');
+}
+
+// The Repeat list: a layer with no repeat of its own repeats, as CSS
+// draws it, and "No repeat" ('') writes no-repeat on a picture and on a
+// gradient alike.
+function test_designer_bg_layers_repeat_row()
+{
+	$r = designer_bg_layers_run(
+		'var pic = L.read({ "background-image": "url(a.jpg)", "background-size": "contain" }).layers[0];'
+		. 'var g = { kind: "gradient", type: "linear", angle: 90, stops: [{ c: { v: "#000000" }, pos: 0 }, { c: { v: "#ffffff" }, pos: 100 }] };'
+		. 'g.repeat = L.repeatOf("");'
+		. 'console.log(JSON.stringify({ pic: L.shownRepeat(pic), none: L.shownRepeat({ kind: "picture", repeat: "no-repeat" }),'
+		. ' x: L.shownRepeat({ kind: "gradient", repeat: "repeat-x" }), grad: L.shownRepeat(g), of: [L.repeatOf(""), L.repeatOf("repeat-y")],'
+		. ' written: L.write([g])["background-repeat"] }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_same('repeat', $r['pic'], 'a picture with no repeat set repeats');
+	pg_assert_same('', $r['none'], 'no-repeat is the "No repeat" line');
+	pg_assert_same('repeat-x', $r['x']);
+	pg_assert_same('', $r['grad'], '"No repeat" stays chosen on a gradient');
+	pg_assert_same(array('no-repeat', 'repeat-y'), $r['of']);
+	pg_assert_same('no-repeat', $r['written'], 'a gradient\'s "No repeat" is written');
+}
+
+// A picture with a focus per screen keeps --pg-focus-d/-t/-p and reads
+// them through its background-position. A write whose position no longer
+// reads them (a place chosen, the picture removed) leaves them stale: the
+// Focus control then showed a phone's focus the page no longer draws.
+function test_designer_bg_layers_focus_left_behind()
+{
+	$r = designer_bg_layers_run(
+		'var st = { "background-image": "url(a.jpg)", "background-size": "cover", "background-position": "var(--pg-focus,30% 20%)",'
+		. ' "--pg-focus-d": "30% 20%", "--pg-focus-t": "30% 20%", "--pg-focus-p": "10% 0%" };'
+		. 'var l = L.read(st).layers;'
+		. 'var kept = L.write(l);'
+		. 'l[0].position = "right bottom";'
+		. 'var placed = L.write(l);'
+		. 'var video = Object.assign({}, st, { "object-position": "var(--pg-focus,30% 20%)" });'
+		. 'console.log(JSON.stringify([L.focusLeft(st, kept), L.focusLeft(st, placed), L.focusLeft(st, L.write([])),'
+		. ' L.focusLeft({ "background-image": "url(a.jpg)" }, L.write([])), L.focusLeft(video, placed)]));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_same(false, $r[0], 'the position still reads the focus');
+	pg_assert_same(true, $r[1], 'a place chosen in the nine places');
+	pg_assert_same(true, $r[2], 'every layer removed');
+	pg_assert_same(false, $r[3], 'no focus per screen');
+	pg_assert_same(false, $r[4], 'a video\'s object-position still reads them');
+
+	$part = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_bglayers.js');
+	pg_assert_contains('L.focusLeft(styleOf(node), vals)', $part, 'a write takes the stale focus out');
+}
