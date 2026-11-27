@@ -61,9 +61,8 @@ function pg_import_ready()
 }
 
 /**
- * The export kinds this site reads, each a value of the imports.kind ENUM.
- * The ENUM also holds 'webflow' and 'wix' (11.0.282), which have no reader
- * yet and so are not listed: pg_import_reader_file() takes only these.
+ * The export kinds this site reads, each a value of the imports.kind ENUM:
+ * pg_import_reader_file() takes only these.
  *
  * @return array<string,string> kind => label
  */
@@ -74,6 +73,8 @@ function pg_import_kinds()
         'woocommerce' => lang('WooCommerce products (CSV)'),
         'shopify'     => lang('Shopify products or customers (CSV)'),
         'squarespace' => lang('Squarespace site (XML), products or customers (CSV)'),
+        'webflow'     => lang('Webflow collection (CSV)'),
+        'wix'         => lang('Wix collection (CSV)'),
     );
 }
 
@@ -162,6 +163,16 @@ function pg_import_detect_kind($head)
     // name columns with Customer Since (the file has no consent column).
     if ($has(array('product page', 'product url')) || $has(array('first name', 'last name', 'email', 'customer since'))) {
         return 'squarespace';
+    }
+
+    // A collection's CMS export: Webflow's carries Item ID and Slug, Wix's
+    // the system fields ID with Owner or with its two dates.
+    if ($has(array('item id', 'slug'))) {
+        return 'webflow';
+    }
+
+    if ($has(array('id', 'owner')) || $has(array('id', 'created date', 'updated date'))) {
+        return 'wix';
     }
 
     return '';
@@ -389,9 +400,10 @@ function pg_import_undo_open($status, $finished_at, $now)
 
 /**
  * The mapping the screen posted, kept to the rows the reader asked for and
- * the choices offered for each; anything else is dropped. Pure.
+ * the choices offered for each; anything else is dropped. A text row takes
+ * what was typed, trimmed and cut to 191 characters. Pure.
  *
- * @param array $rows    name => array('choices' => array(value => label), 'required' => bool)
+ * @param array $rows    name => array('choices' => array(value => label), 'required' => bool, 'type' => string)
  * @param array $posted  name => value
  * @return array{mapping:array<string,string>,missing:string[]}
  */
@@ -403,6 +415,11 @@ function pg_import_mapping_clean($rows, $posted)
     foreach ((array) $rows as $name => $row) {
         $value = (isset($posted[$name]) && is_scalar($posted[$name])) ? (string) $posted[$name] : '';
         $choices = (array) ($row['choices'] ?? array());
+
+        if (($row['type'] ?? '') === 'text') {
+            $value = mb_substr(trim($value), 0, 191);
+            $choices = array($value => $value);
+        }
 
         if (($value !== '') && array_key_exists($value, $choices)) {
             $mapping[$name] = $value;

@@ -37,14 +37,17 @@ if (!function_exists('pg_short_link_name_from_address')) {
  * a redirect: a WordPress or Squarespace post or page by its <link> (a ?p=
  * address is the home page's path), a Shopify product at /products/<handle>,
  * a Squarespace product at both of its addresses (data.addresses: the file
- * does not say whether the site ran 7.0 or 7.1). The WooCommerce products
- * export carries no address. Two addresses with one name are one. Pure.
+ * does not say whether the site ran 7.0 or 7.1), a Webflow collection item
+ * at the collection's address the mapping gives, then its slug. The
+ * WooCommerce products export and Wix's collection file carry no address.
+ * Two addresses with one name are one. Pure.
  *
  * @param string $import_kind the reader
  * @param array  $item
+ * @param array  $mapping the import's mapping
  * @return string[]
  */
-function pg_import_redirect_old_addresses($import_kind, $item)
+function pg_import_redirect_old_addresses($import_kind, $item, $mapping = array())
 {
     $kind = (string) ($item['kind'] ?? '');
     $addresses = array();
@@ -56,6 +59,8 @@ function pg_import_redirect_old_addresses($import_kind, $item)
         $addresses[] = (strpos($key, 'shopify:product:') === 0) ? '/products/' . substr($key, strlen('shopify:product:')) : '';
     } elseif (($import_kind === 'squarespace') && ($kind === 'product')) {
         $addresses = (array) ($item['data']['addresses'] ?? array());
+    } elseif (($import_kind === 'webflow') && ($kind === 'record')) {
+        $addresses[] = pg_import_redirect_collection_address((string) ($mapping['address_base'] ?? ''), (string) ($item['data']['slug'] ?? ''));
     }
 
     $kept = array();
@@ -72,6 +77,29 @@ function pg_import_redirect_old_addresses($import_kind, $item)
     }
 
     return $kept;
+}
+
+/**
+ * A collection item's old address: the collection's address as typed (a
+ * path or a whole address, slashes around it dropped), then the item's
+ * slug; '' when either is missing. Pure.
+ *
+ * @param string $base
+ * @param string $slug
+ * @return string
+ */
+function pg_import_redirect_collection_address($base, $slug)
+{
+    $base = trim((string) $base);
+    $slug = trim((string) $slug, " \t/");
+
+    if (preg_match('#^[a-z][a-z0-9+.\-]*://#i', $base)) {
+        $base = (string) parse_url($base, PHP_URL_PATH);
+    }
+
+    $base = trim($base, " \t/");
+
+    return (($base === '') || ($slug === '')) ? '' : '/' . $base . '/' . $slug;
 }
 
 /**
@@ -213,7 +241,7 @@ function pg_import_redirect_source_key($source_key, $index)
  */
 function pg_import_redirect_after($import, $item, $item_id)
 {
-    $addresses = pg_import_redirect_old_addresses((string) $import['kind'], $item);
+    $addresses = pg_import_redirect_old_addresses((string) $import['kind'], $item, (array) ($import['mapping'] ?? array()));
 
     if (!$addresses) {
         return array();

@@ -3080,6 +3080,7 @@
     "Column {var:1}: \"{var:2}\" is not yes or no, so it was imported as no.": "{var:1} sütunu: \"{var:2}\" evet ya da hayır değil, bu yüzden hayır olarak içe aktarıldı.",
     "Column {var:1}: the affiliate code \"{var:2}\" belongs to another contact, so it was left empty.": "Sütun {var:1}: \"{var:2}\" ortaklık kodu başka bir kişiye ait olduğu için boş bırakıldı.",
     "Column {var:1}: the value was longer than {var:2} characters and was cut.": "{var:1} sütunu: değer {var:2} karakterden uzundu ve kısaltıldı.",
+    "Column: {var:1}": "Sütun: {var:1}",
     "Columnist": "Köşe Yazarı",
     "Columnists": "Köşe Yazarları",
     "Columns": "Sütun",

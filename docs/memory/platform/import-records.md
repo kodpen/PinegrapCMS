@@ -8,7 +8,7 @@ module: importers
 - `includes/import/write_record.php` and `write_comment.php`, the framework's record and comment writers (`import-framework.md`). Tests: `tests/import_record_test.php`; the undo order in `tests/import_user_test.php`.
 
 ## Which rows does a post become?
-- `pg_import_record_rows()` (pure) over the mapping's fields; a part without a field, or a field of another form, is left out. Title: plain text, else the slug. Body and summary: a rich text area takes the HTML (`html` row), any other text area or text box the plain text (`pg_import_record_plain_text()`). Date: `date` as `Y-m-d`, `date and time` and a text box as `Y-m-d H:i`. Featured image: only a file upload field, by `file_id`.
+- `pg_import_record_rows()` (pure) over the mapping's fields, a collection's cells too (`import-collection-csv.md`); a part without a field, or a field of another form, is left out. Title: plain text, else the slug. Body and summary: a rich text area takes the HTML (`html` row), any other text area or text box the plain text (`pg_import_record_plain_text()`). Date: `date` as `Y-m-d`, `date and time` and a text box as `Y-m-d H:i`. Featured image: only a file upload field, by `file_id`.
 - Categories and tags may share a field. A text field takes the names joined by ", "; an option field (`form_field_options`) or a reference field (`pg_coll_kind_options()`) the choices whose label or value matches, case ignored: check box and multiple pick list one row each, pick list and radio the first. Unmatched names go into the report as a note; no option or category record is made.
 
 ## How is the body prepared?

@@ -12,7 +12,7 @@ module: importers
 ## What does a reader provide?
 - `includes/import/<kind>.php`: `pg_import_<kind>_open($file)` (the first cursor, JSON-safe array), `pg_import_<kind>_next(&$cursor)` (next item or null), `pg_import_<kind>_plan($item)` (dry-run line: `title`, `detail`), optional `pg_import_<kind>_mapping($file)`.
 - An item: `kind` (record, page, file, comment, contact, product, redirect, user from 11.0.160), `source_key` (unique in the export; prefix by site when two could clash), `title`, `data`.
-- Mapping rows: name => `label`, `type` (`form`, `form_field` with `form` naming its form row, `folder`, `product_group`, `select` with its own `choices`), `required`, for `form_field` `field_types`. The screen fills the choices (`import-screen.md`); `pg_import_mapping_clean()` keeps only offered values.
+- Mapping rows: name => `label`, `type` (`form`, `form_field` with `form` naming its form row, `folder`, `product_group`, `select` with its own `choices`, `text`), `required`, for `form_field` `field_types` and `guess`. The screen fills the choices (`import-screen.md`); `pg_import_mapping_clean()` keeps only offered values.
 
 ## What does a writer provide?
 - `includes/import/write_<kind>.php`: `pg_import_write_<kind>($item, $import)` → `result` made/skipped/failed, `id`, `reason`; `pg_import_unwrite_<kind>($item_id)` deletes through the kind's own path. Any other answer, made without an id, or a thrown error is failed (`pg_import_writer_answer()`).
@@ -34,6 +34,6 @@ module: importers
 - The job sweeps `import_items` of imports finished over 30 days ago (5000 a tick) and their source file; the `imports` row stays. Never-started uploads: `import-screen.md`.
 
 ## How is the kind told?
-- `pg_import_detect_kind()` (pure), first 8 KB: RSS with `wordpress.org/export/`; CSV header `handle` + `body (html)`, or name columns + `accepts (email) marketing` → shopify; `id`, `type`, `sku`, `regular price` → woocommerce; squarespace: `import-squarespace.md`. A kind with no reader file is refused on upload; `imports.kind` has webflow, wix too (11.0.282).
+- `pg_import_detect_kind()` (pure), first 8 KB: RSS with `wordpress.org/export/`; CSV header `handle` + `body (html)`, or name columns + `accepts (email) marketing` → shopify; `id`, `type`, `sku`, `regular price` → woocommerce; squarespace: `import-squarespace.md`; webflow, wix: `import-collection-csv.md`. A kind with no reader file is refused on upload.
 
 Tests: `tests/import_framework_test.php`.
