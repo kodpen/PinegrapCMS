@@ -415,7 +415,12 @@
             saveValue(ctx, 'title');
         }
 
-        area.addEventListener('input', fit);
+        // The hint shows once the title is being changed, so a click
+        // elsewhere does not move the rows under the pointer.
+        area.addEventListener('input', function () {
+            wrap.classList.toggle('is-changing', area.value !== task.title);
+            fit();
+        });
         area.addEventListener('focus', fit);
         area.addEventListener('blur', commit);
         area.addEventListener('keydown', function (event) {
@@ -426,6 +431,7 @@
                 event.preventDefault();
                 event.stopPropagation();
                 area.value = task.title;
+                wrap.classList.remove('is-changing');
                 fit();
                 area.blur();
             }
@@ -880,7 +886,7 @@
         if (task.description_html) {
             h.setHtml(text, task.description_html);
         } else {
-            text.appendChild(h.el('span', 'ws-tr-quiet', h.t('tr_none')));
+            text.appendChild(h.el('span', 'ws-tr-quiet', h.t('tr_no_description')));
         }
 
         part.appendChild(text);
@@ -1095,7 +1101,7 @@
         }
 
         if (drawer.delegatePart) {
-            box.appendChild(fold(ctx, 'assistant', 'bi-stars', t('tr_assistant'), task.delegate_name || t('tr_not_handed'), drawer.delegatePart.node));
+            box.appendChild(fold(ctx, 'assistant', 'bi-stars', t('tr_assistant'), task.delegate_name || t('tr_no_assistant'), drawer.delegatePart.node));
         }
 
         if (time) {

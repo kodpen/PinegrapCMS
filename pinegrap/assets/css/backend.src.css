@@ -20446,7 +20446,7 @@ button.ws-mt-done:focus-visible,
   font-weight: var(--pg-weight-strong);
   font-variant-numeric: tabular-nums;
 }
-.ws-tr-back {
+.ws-tr .ws-tr-back {
   display: none;
 }
 .ws-tr-head-end {
@@ -20539,7 +20539,7 @@ textarea.ws-tr-title:focus {
   color: var(--pg-fg-3);
   font-size: var(--pg-text-meta);
 }
-.ws-tr-title-wrap:focus-within > .ws-tr-hint {
+.ws-tr-title-wrap.is-changing:focus-within > .ws-tr-hint {
   display: block;
 }
 .ws-tr-rows {
@@ -20822,6 +20822,7 @@ button.ws-tr-row:focus-visible > .ws-tr-pen {
 }
 .ws-tr-time-label {
   color: var(--pg-fg-2);
+  white-space: nowrap;
   font-size: var(--pg-text-2);
 }
 .ws-tr-clear {
@@ -21022,7 +21023,7 @@ button.ws-tr-row:focus-visible > .ws-tr-pen {
   .ws-tr .drawer-header .btn-close {
     display: none;
   }
-  .ws-tr-back {
+  .ws-tr .ws-tr-back {
     display: inline-grid;
     width: 44px;
     height: 44px;
