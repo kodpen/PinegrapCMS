@@ -45,8 +45,9 @@
     // Classes the editor puts on a canvas element to show its own state.
     var STATE_CLASSES = ['sd-selected', 'sd-multi-selected', 'sd-drop-hl', 'sd-ghost', 'sd-resizing',
         'sd-ctrl-flash', 'sd-tree-drag-src', 'sd-validate-warn', 'sd-tb-inside', 'sd-tb-below', 'sd-tb-end',
-        // The Outline lines and the snap grid drawn over the canvas body.
-        'sd-outline-grid', 'sd-grid-overlay'];
+        // The Outline lines, the snap grid and the Shared parts tint drawn
+        // over the canvas body.
+        'sd-outline-grid', 'sd-grid-overlay', 'sd-parts-lit'];
     // Elements the editor adds to the canvas around the design: element
     // toolbars, notes, badges, chips, drop zones, the align guide, the
     // grid areas tinted over a grid box (the part 'grid').

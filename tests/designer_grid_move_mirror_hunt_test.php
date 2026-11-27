@@ -273,3 +273,25 @@ JS
 	pg_assert_true($r['after'], 'the line stands while the change does');
 	pg_assert_false($r['undone'], 'after Undo the line is gone');
 }
+
+// View › Shared parts tints the shared components on the canvas through a
+// body class: a Side by side mirror leaves the tint out as it leaves the
+// Outline lines and the snap grid.
+function test_designer_gmm_hunt_mirror_without_parts_tint()
+{
+	$r = designer_gmm_hunt_run('', array(), 'require(' . json_encode(PG_FUNCTIONS_DIR . '/assets/js/pg_mirror_schedule.js') . ");\n" . <<<'JS'
+var S = window.PGMirrorSchedule;
+out = {
+	clean: S.clean('home sd-parts-lit sd-outline-grid'),
+	toggled: S.matters({ type: 'attributes', name: 'class', cls: 'home', old: 'home', now: 'home sd-parts-lit' })
+};
+JS
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_same('home', $r['clean'], 'the mirror\'s body has no Shared parts class');
+	pg_assert_false($r['toggled'], 'switching Shared parts draws no mirror again');
+}
