@@ -29,4 +29,4 @@ module: office_format
 - `tests/office_format_test.php`: the request (SA1's parts too), the money code, the style writer (reuse, new fonts/fills/formats, existing entries untouched), the sheet splice with new cells and rows, a save read back by `pg_office_read()` (a number shown as a date) with untouched parts compared byte for byte, every refusal; underline, strikethrough, size, borders and wrap read back as looks. Not opened in Excel or LibreOffice.
 
 ## Where are the editor's controls?
-- `office-sheet-format-controls.md` (OE3b): the format bar and the preview drawing each cell's look.
+- `office-sheet-format-controls.md` (OE3b): the format bar and the preview drawing each cell's look; its Underline, Strikethrough, Size, Borders and Wrap text: `office-sheet-bar-text-borders.md`.

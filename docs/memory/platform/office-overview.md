@@ -6,7 +6,7 @@ module: office
 
 ## What is it?
 - Office files opened in the File Manager (Quick Look, the file window) and a channel's Preview, read and written by the product's own code, drawn by `assets/js/pg_office_view.js`: the same view and controls in both places.
-- Readers: `includes/fn/office.php` (`pg_office_read()`; .ods and .xls via `sheet-reader.md`). Writers: `office_edit.php` and one module a kind of change (`office_shift`, `office_sheets`, `office_format`, `office_size`, `office_docx_format`, `office_docx_kind`, `office_docx_paragraphs`, `office_docx_link`, `office_new`); the shared xlsx writer `xlsx_write.php`.
+- Readers: `includes/fn/office.php` (`pg_office_read()`, .ods and .xls `sheet-reader.md`). Writers: `office_edit.php` and one module a kind of change (`office_shift`, `office_sheets`, `office_format`, `office_size`, `office_docx_format`, `office_docx_kind`, `office_docx_paragraphs`, `office_docx_link`, `office_new`); the shared xlsx writer `xlsx_write.php`.
 
 ## Which decisions bind it?
 - Owner (2026-10-19): no library; the readers are the product's own (SheetJS stale with CVEs, its CDN unreachable): `office-files.md`.
@@ -17,7 +17,8 @@ module: office
 ## Which parts are there, by what a person sees?
 - Previews, limits, doors and security: `office-files.md`, `office-dom-ceiling.md`, `office-xlsx-cell-values.md`, `office-docx-controls-numbering.md`. View only: `office-csv-preview.md`, `office-ods-preview.md`, `office-xls-preview.md` (Save a copy as .xlsx), `office-pptx-preview.md`.
 - Workbook view tools (sort, filter, find, Download as CSV): `office-sheet-tools.md`.
-- Excel editing: the list of changes `office-sheet-change-list.md`, its save `office-save-list.md`, Undo and Redo `office-sheet-undo.md`; cells `office-cell-edits.md` and their locks `office-cell-locks.md`; the row and column head menu `office-sheet-head-menu.md` over `office-sheet-rows-columns.md`; the sheet tabs' menu `office-sheet-tabs.md` over `office-sheets.md`; the format bar `office-sheet-format-controls.md` over `office-sheet-format.md`.
+- Excel editing: the list of changes `office-sheet-change-list.md`, its save `office-save-list.md`, Undo and Redo `office-sheet-undo.md`; cells `office-cell-edits.md` and their locks `office-cell-locks.md`; the row and column head menu `office-sheet-head-menu.md` over `office-sheet-rows-columns.md`; the sheet tabs' menu `office-sheet-tabs.md` over `office-sheets.md`.
+- Workbook formats: the bar `office-sheet-format-controls.md`, `office-sheet-bar-text-borders.md` over `office-sheet-format.md`, `office-sheet-format-borders.md`; sizes, Freeze top row `office-sheet-sizes-grid.md` over `office-sheet-sizes.md`; copy, paste, fill down, clear `office-sheet-clipboard.md`.
 - Word editing (the page, its keys, Undo, text, the bar's formats, styles, links, added and deleted paragraphs): `office-docx-overview.md`.
 - New spreadsheet and New document: `office-new-files.md`. In a channel (who may, replace or copy): `workspace/workspace-office-edits.md`.
 - Across the panel: Export to Excel on lists `list-excel-export.md`; importers taking .xlsx, .ods and .xls with the sheet question `sheet-import-upload.md`.
