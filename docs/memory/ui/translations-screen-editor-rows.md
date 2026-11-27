@@ -31,7 +31,7 @@ To the view it was posted from: each form carries `$view_fields` (page_id, group
 `pg_tr_csv_export()` writes source and translation through `pg_csv_formula_guard()` (hash, format, status as they are); `pg_tr_csv_import()` reads the translation through `pg_csv_formula_unguard()`, so an unchanged export imports without a leading apostrophe. (#5995)
 
 ## How tall is a translation box, and what is it called?
-`rows` comes from `pg_tr_screen_target_rows()` (one row per 70 characters of each line, 2 to 12); `field-sizing: content` with `max-height: 24rem` grows it while typing where supported. The box and the Save button are described by the source text (`aria-describedby="pg_tr_source_<id>"`). (#5998)
+`rows` comes from `pg_tr_screen_target_rows()` (one row per 50 characters of each line, 1 to 12); `field-sizing: content` with `max-height: 24rem` grows it while typing where supported (`translations-screen-row.md`). The box and the Save button are described by the source text (`aria-describedby="pg_tr_source_<id>"`). (#5998)
 
 ## Which Turkish words does the screen use?
 A page is "açıldı / gösterilen" (never "çizildi"), the setting is "üslup notu", the menu says "CSV içe aktar" / "CSV dışa aktar". (#6000)

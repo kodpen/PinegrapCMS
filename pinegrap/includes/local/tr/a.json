@@ -9300,6 +9300,7 @@
     "and {var:1} more line(s) that could not be used.": "ve kullanılamayan {var:1} satır daha.",
     "and {var:1} more.": "ve {var:1} tane daha.",
     "and {var:1} {var:2} {var:3}": "ve {var:1} {var:3} {var:2}",
+    "and {var} more": "ve {var} tane daha",
     "and/or": "ve/veya",
     "animal": "hayvan",
     "animal of the month, giraffe, endangered, red list, spotlight": "ayın hayvanı, zürafa, nesli tükenmekte, kırmızı liste, öne çıkan",

@@ -38,8 +38,8 @@ function test_translations_screen_language_texts()
 	$source = translations_screen_language_source();
 
 	pg_assert_true((bool) preg_match('/<div class="pg-tr-source[^\n]*\$text_lang\(\$source\)/', $source), 'source text in the source language');
-	pg_assert_true((bool) preg_match('/<textarea class="form-control pg-tr-target"[^\n]*\$text_lang\(\$language\)/', $source), 'target box in the target language');
-	pg_assert_true((bool) preg_match('/<textarea class="form-control pg-tr-target"[^\n]*aria-label=/', $source), 'target box keeps its name');
+	pg_assert_true((bool) preg_match('/<textarea class="pg-input pg-tr-target"[^\n]*\$text_lang\(\$language\)/', $source), 'target box in the target language');
+	pg_assert_true((bool) preg_match('/<textarea class="pg-input pg-tr-target"[^\n]*aria-label=/', $source), 'target box keeps its name');
 	pg_assert_false((bool) preg_match('/pg-tr-target"[^\n]*lang="\' \. h\(\$language\)/', $source), 'no second lang on the target box');
 }
 

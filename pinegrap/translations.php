@@ -600,7 +600,6 @@ $open_picture_label = lang('Edit in Artifact Canvas');
 
 // The editor rows.
 $output_rows = '';
-$suspicious_text = lang('The length of the translation is out of proportion to the source text.');
 
 foreach ($rows as $row) {
     $has = ($row['text'] !== null);
@@ -614,43 +613,49 @@ foreach ($rows as $row) {
     $row_owner = isset($index_row_owners[(int) $row['id']]) ? $index_row_owners[(int) $row['id']] : null;
     $row_owner_name = $row_owner ? (isset($index_owner_names[$row_owner['kind'] . ':' . $row_owner['id']]) ? $index_owner_names[$row_owner['kind'] . ':' . $row_owner['id']] : '') : '';
 
+    $row_id = (int) $row['id'];
+    $flagged = ($has && ((int) $row['suspicious'] === 1));
+    $flag_reason = $flagged ? pg_tr_screen_suspicious_reason((string) $row['source_text'], (string) $row['text']) : '';
+
+    // One grid a row: the tick, the source, the translation, the state
+    // column (the pill, the engine, "Suspicious" on a line of its own, then
+    // Save, the eye and the "Details" caret). "Details" opens under the
+    // source and the translation and is read when first opened.
     $output_rows .= '
-            <div class="pg-tr-row border-bottom py-5" data-string-id="' . (int) $row['id'] . '" data-format="' . h($row['format']) . '" data-state="' . h($state) . '">
-                <div class="row g-5">
-                    <div class="col-12 xl:col-5 d-flex gap-3">'
-                        // A reviewed translation is not offered for "keep as
-                        // in the source": the action leaves it as it is.
-                        . (($state !== 'reviewed') ? '<input class="check flex-shrink-0 mt-1 pg-tr-pick" type="checkbox" value="' . (int) $row['id'] . '" aria-label="' . h(lang('Select this text')) . '"/>' : '<span class="flex-shrink-0 pg-tr-pick-spacer" style="width: 1em;"></span>') . '
-                        <div class="flex-grow-1 min-w-0">
-                        <div class="pg-tr-source' . (($row['format'] === 'inline') ? ' pg-tr-inline' : '') . '" id="pg_tr_source_' . (int) $row['id'] . '"' . $text_lang($source) . '>' . h($row['source_text']) . '</div>
-                        <div class="mt-1 small fg-secondary">'
-                            . ($row_owner ? '<span class="pg-pill pg-tone-gray me-1">' . h($index_owner_label($row_owner['kind'], $row_owner_name)) . '</span>' : '')
-                            . implode('', array_map(function ($picture) use ($open_picture_label) {
-                                return '<button type="button" class="badge badge-subtle theme-secondary border me-1 pg-tr-picture" data-pg-image-edit="' . h($picture['name']) . '" title="' . h($open_picture_label) . '"><i class="bi bi-image me-1" aria-hidden="true"></i>' . h($picture['name']) . '<span class="visually-hidden"> · ' . h($open_picture_label) . '</span></button>';
-                            }, isset($row_pictures[(int) $row['id']]) ? $row_pictures[(int) $row['id']] : array()))
-                            . (($row['kind'] === 'seo') ? '<span class="pg-pill pg-tone-gray me-1">SEO</span>' : '')
-                            . (($row['format'] === 'inline') ? '<span class="pg-pill pg-tone-gray me-1">HTML</span>' : '')
-                            . '<span class="font-monospace opacity-50">' . h(substr($row['hash'], 0, 8)) . '</span>'
-                        . '</div>
-                        </div>
-                    </div>
-                    <div class="col-12 xl:col-5">
-                        <textarea class="form-control pg-tr-target" rows="' . pg_tr_screen_target_rows($has ? (string) $row['text'] : '') . '" aria-label="' . h(lang('Translation')) . '" aria-describedby="pg_tr_source_' . (int) $row['id'] . '"' . $text_lang($language) . ' placeholder="' . h(lang('Not translated yet: the source text is shown on the page.')) . '">' . h($has ? (string) $row['text'] : '') . '</textarea>
-                    </div>
-                    <div class="col-12 xl:col-2">
-                        <div class="d-flex xl:flex-column align-items-start gap-3">
-                            <div class="pg-tr-state">
-                                <span class="pg-pill ' . $state_class . ' pg-tr-state-badge">' . h($state_label) . '</span>
-                                <span class="pg-text-meta pg-tr-engine">' . h($engine_label) . '</span>'
-                                . '<span class="badge theme-danger pg-tr-suspicious' . (($has && ((int) $row['suspicious'] === 1)) ? '' : ' d-none') . '" title="' . h($suspicious_text) . '"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i><span class="visually-hidden">' . h($suspicious_text) . '</span></span>' . '
-                            </div>
-                            <div class="d-flex align-items-center gap-2">
-                                <button type="button" class="pg-button pg-button-quiet pg-button-sm pg-tr-save" title="' . h(lang('Save')) . '" aria-describedby="pg_tr_source_' . (int) $row['id'] . '"><i class="bi bi-check-lg" aria-hidden="true"></i>' . lang('Save') . '</button>
-                                <button type="button" class="pg-icon-button pg-icon-button-sm pg-tr-review no-popover' . ($has ? '' : ' d-none') . '" title="' . h($review_label) . '" aria-label="' . h($review_label) . '" data-state="' . h($state) . '"><i class="bi ' . (($state === 'reviewed') ? 'bi-eye-slash' : 'bi-eye') . '" aria-hidden="true"></i></button>
-                            </div>
-                        </div>
+            <div class="pg-tr-row" data-string-id="' . $row_id . '" data-format="' . h($row['format']) . '" data-state="' . h($state) . '">
+                <div class="pg-tr-tick">'
+                    // A reviewed translation is not offered for "keep as
+                    // in the source": the action leaves it as it is.
+                    . (($state !== 'reviewed') ? '<input class="check pg-tr-pick" type="checkbox" value="' . $row_id . '" aria-label="' . h(lang('Select this text')) . '"/>' : '<span class="pg-tr-pick-spacer"></span>') . '
+                </div>
+                <div class="pg-tr-src min-w-0">
+                    <div class="pg-tr-source pg-tr-clamp' . (($row['format'] === 'inline') ? ' pg-tr-inline' : '') . '" id="pg_tr_source_' . $row_id . '"' . $text_lang($source) . '>' . h($row['source_text']) . '</div>
+                    <button type="button" class="pg-tr-show-all d-none" aria-controls="pg_tr_source_' . $row_id . '" aria-expanded="false">' . lang('Show all') . '</button>
+                    <div class="pg-tr-marks">'
+                        . ($row_owner ? '<span class="pg-pill pg-tone-gray">' . h($index_owner_label($row_owner['kind'], $row_owner_name)) . '</span>' : '')
+                        . implode('', array_map(function ($picture) use ($open_picture_label) {
+                            return '<button type="button" class="badge badge-subtle theme-secondary border pg-tr-picture" data-pg-image-edit="' . h($picture['name']) . '" title="' . h($open_picture_label) . '"><i class="bi bi-image me-1" aria-hidden="true"></i>' . h($picture['name']) . '<span class="visually-hidden"> · ' . h($open_picture_label) . '</span></button>';
+                        }, isset($row_pictures[$row_id]) ? $row_pictures[$row_id] : array()))
+                        . (($row['kind'] === 'seo') ? '<span class="pg-pill pg-tone-gray">SEO</span>' : '')
+                        . (($row['format'] === 'inline') ? '<span class="pg-pill pg-tone-gray">HTML</span>' : '')
+                        . '<span class="font-monospace pg-tr-hash">' . h(substr($row['hash'], 0, 8)) . '</span>'
+                    . '</div>
+                </div>
+                <div class="pg-tr-text min-w-0">
+                    <textarea class="pg-input pg-tr-target" rows="' . pg_tr_screen_target_rows($has ? (string) $row['text'] : '') . '" aria-label="' . h(lang('Translation')) . '" aria-describedby="pg_tr_source_' . $row_id . ' pg_tr_why_' . $row_id . '"' . $text_lang($language) . ' placeholder="' . h(lang('Not translated yet: the source text is shown on the page.')) . '">' . h($has ? (string) $row['text'] : '') . '</textarea>
+                    <div class="pg-field-help pg-field-error pg-tr-why" id="pg_tr_why_' . $row_id . '" role="alert" hidden><i class="bi bi-exclamation-circle" aria-hidden="true"></i><span class="pg-tr-why-text"></span></div>
+                </div>
+                <div class="pg-tr-state">
+                    <span class="pg-pill ' . $state_class . ' pg-tr-state-badge">' . h($state_label) . '</span>
+                    <span class="pg-text-meta pg-tr-engine">' . h($engine_label) . '</span>
+                    <span class="pg-pill pg-tone-rose pg-tr-suspicious' . ($flagged ? '' : ' d-none') . '"' . ($flagged ? ' title="' . h($flag_reason) . '"' : '') . '>' . lang('Suspicious') . '</span>
+                    <div class="pg-tr-acts">
+                        <button type="button" class="pg-button pg-button-quiet pg-button-sm pg-tr-save" title="' . h(lang('Save')) . '" aria-describedby="pg_tr_source_' . $row_id . '"><i class="bi bi-check-lg" aria-hidden="true"></i>' . lang('Save') . '</button>
+                        <button type="button" class="pg-icon-button pg-icon-button-sm pg-tr-review no-popover' . ($has ? '' : ' d-none') . '" title="' . h($review_label) . '" aria-label="' . h($review_label) . '" data-state="' . h($state) . '"><i class="bi ' . (($state === 'reviewed') ? 'bi-eye-slash' : 'bi-eye') . '" aria-hidden="true"></i></button>
+                        <button type="button" class="pg-icon-button pg-icon-button-sm pg-tr-details-toggle no-popover" title="' . h(lang('Details')) . '" aria-label="' . h(lang('Details')) . '" aria-expanded="false" aria-controls="pg_tr_details_' . $row_id . '"><i class="bi bi-chevron-down" aria-hidden="true"></i></button>
                     </div>
                 </div>
+                <div class="pg-tr-details" id="pg_tr_details_' . $row_id . '" hidden></div>
             </div>';
 }
 
@@ -923,6 +928,15 @@ $config = array(
         'select_text'       => lang('Select this text'),
         'retrying'          => lang('The server did not answer in time; trying again…'),
         'accept_count'      => lang('{var} text(s) will be approved as written in the source language.'),
+        'suspicious_same'   => lang('The translation is the same as the source text.'),
+        'suspicious_length' => lang('The length of the translation is out of proportion to the source text.'),
+        'details_used'      => lang('Used in:'),
+        'details_earlier'   => lang('Earlier wording:'),
+        'details_more'      => lang('and {var} more'),
+        'details_unused'    => lang('No page shows it now.'),
+        'keep_source'       => lang('Keep as in the source and approve'),
+        'show_all'          => lang('Show all'),
+        'show_less'         => lang('Show less'),
     ),
 );
 
@@ -937,10 +951,48 @@ echo pg_page_shell(array(
     <style>@layer custom {
     /* The source text is read, the translation is typed: the source gets the
        quiet treatment and keeps the line breaks of a multi-line text. */
-    .pg-tr-source { white-space: pre-wrap; word-break: break-word; font-size: var(--pg-text-base); }
-    .pg-tr-inline { font-family: var(--pg-font-mono); font-size: var(--pg-text-2); }
-    .pg-tr-target { font-size: var(--pg-text-base); field-sizing: content; min-height: 3.5rem; max-height: 24rem; }
-    .pg-tr-row.pg-tr-dirty .pg-tr-save { color: var(--pg-accent); box-shadow: inset 0 0 0 1px var(--pg-accent); }
+    .pg-tr-source { white-space: pre-wrap; word-break: break-word; font-size: var(--pg-text-base); line-height: 1.5; }
+    .pg-tr-inline { font-family: var(--pg-font-mono); font-size: var(--pg-text-2); color: var(--pg-fg-2); }
+    /* A long source shows four lines until "Show all". */
+    .pg-tr-clamp { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; line-clamp: 4; overflow: hidden; }
+    .pg-tr-show-all { padding: 0; margin-top: 2px; border: 0; background: none; color: var(--pg-accent); font-size: var(--pg-text-meta); }
+    /* One grid for every row: tick 28 px, the source and the translation in
+       halves, the state column 176 px. */
+    .pg-tr-row { display: grid; grid-template-columns: 28px minmax(0, 1fr) minmax(0, 1fr) 176px; column-gap: 16px; align-items: start; padding: 14px 0; }
+    .pg-tr-row + .pg-tr-row { border-top: 1px solid var(--pg-border-color); }
+    .pg-tr-tick { display: flex; padding-top: 10px; }
+    .pg-tr-src { padding-top: 8px; }
+    .pg-tr-marks { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; min-height: 20px; }
+    .pg-tr-hash { font-size: var(--pg-text-meta); color: var(--pg-fg-3); }
+    textarea.pg-input.pg-tr-target { min-height: 39px; max-height: 24rem; padding: 8px 12px; resize: none; field-sizing: content; }
+    .pg-tr-why { display: flex; gap: 6px; align-items: baseline; }
+    .pg-tr-why[hidden] { display: none; }
+    .pg-tr-state { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; padding-top: 8px; min-width: 0; }
+    .pg-tr-engine { max-width: 100%; padding-left: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pg-tr-engine:empty { display: none; }
+    .pg-tr-acts { display: flex; align-items: center; gap: 4px; margin-top: 3px; }
+    .pg-tr-details-toggle[aria-expanded="true"] > .bi { transform: rotate(180deg); }
+    .pg-tr-row.pg-tr-dirty .pg-tr-save { color: var(--pg-accent); background: color-mix(in srgb, var(--pg-accent) 9%, transparent); box-shadow: inset 0 0 0 1px var(--pg-accent); }
+    /* "Details" grows the row downward under the source and the translation. */
+    .pg-tr-details { grid-column: 2 / 5; display: grid; grid-template-columns: 124px minmax(0, 1fr); gap: 9px 12px; margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: var(--pg-quiet); box-shadow: inset 0 0 0 1px var(--pg-border-color); font-size: var(--pg-text-2); }
+    .pg-tr-details[hidden] { display: none; }
+    .pg-tr-details-key { color: var(--pg-fg-2); }
+    .pg-tr-details-value { display: flex; flex-wrap: wrap; gap: 4px 16px; min-width: 0; }
+    .pg-tr-details-value .bi { margin-right: 6px; }
+    .pg-tr-details-arrow { margin: 0 6px; color: var(--pg-fg-3); }
+    .pg-tr-details-reason { grid-column: 1 / -1; display: flex; gap: 7px; align-items: baseline; color: var(--pg-tone-rose-text); }
+    .pg-tr-details-actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; padding-top: 3px; }
+    /* At the width of a phone a row stacks: the tick and the source, then the
+       box, then the state on one line with the actions at its end. */
+    @media (max-width: 767.98px) {
+        .pg-tr-row { grid-template-columns: 28px minmax(0, 1fr); row-gap: 10px; }
+        .pg-tr-src { padding-top: 0; }
+        .pg-tr-tick { padding-top: 2px; }
+        .pg-tr-text, .pg-tr-state, .pg-tr-details { grid-column: 1 / -1; }
+        .pg-tr-state { flex-direction: row; flex-wrap: wrap; align-items: center; padding-top: 0; gap: 8px; }
+        .pg-tr-acts { margin: 0 0 0 auto; gap: 6px; }
+        .pg-tr-details { grid-template-columns: minmax(0, 1fr); margin-top: 0; }
+    }
     .pg-tr-progress { display: none; }
     .pg-tr-progress.show { display: block; }
     /* The head: the language menu lists each language with its share. */

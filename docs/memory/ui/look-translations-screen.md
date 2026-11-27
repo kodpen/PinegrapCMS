@@ -10,7 +10,7 @@ description: The Translations screen (translations.php) in look A (S6c): card ti
 ## What changed in the columns?
 - Card titles Recent updates (tab "Activity"), Glossary (tab "Glossary") and the texts (page name, group or All texts): `h2.pg-title-section` in a `card-header bg-reset border-0`; a title alone is `h2.card-header.bg-reset.border-0.pg-title-section`. Their side notes (reviewed count, text count with Open the page) `pg-text-2`.
 - Add a term in the Glossary head: `pg-button pg-button-quiet pg-button-sm`. A term's Edit and Remove: `pg-icon-button pg-icon-button-sm` (Remove keeps `fg-danger`).
-- A row's Save: `pg-button pg-button-quiet pg-button-sm`; its review (eye) button `pg-icon-button pg-icon-button-sm`; no button group. Keep as in the source and approve, and the progress bar's Stop: quiet small.
+- A row's Save: `pg-button pg-button-quiet pg-button-sm`; its review (eye) button and "Details" caret `pg-icon-button pg-icon-button-sm`; no button group. The row's grid and "Suspicious" as a rose pill on its own line: `translations-screen-row.md`. Keep as in the source and approve, and the progress bar's Stop: quiet small.
 
 ## Which pills?
 - A row's state: Reviewed teal, Machine amber, Pending gray (`pg-pill`); `translations.js` `rowState()` writes the same classes. Its engine name `pg-text-meta`.
@@ -26,7 +26,7 @@ description: The Translations screen (translations.php) in look A (S6c): card ti
 
 ## What stayed?
 - A row's picture chip (`bi-image`, `badge` button) and Draw the waiting pictures (`bi-brush`). Edit in the Artifact Canvas shows the canvas's own icon since #10646 (`design-canvas-icon.md`).
-- The suspicious mark (`badge theme-danger`, an icon with a hidden text): an icon mark, not a status; the alerts (engine notes, progress, index note); the gray `small fg-secondary` notes; the language menu's code chip; the page list's 3 px and the progress bar's 4 px bar height and the reviewed row's 1em spacer: no token names them.
+- The alerts (engine notes, progress, index note); the gray `small fg-secondary` notes; the language menu's code chip; the page list's 3 px and the progress bar's 4 px bar height: no token names them.
 - The page and group lists stay Bootstrap `list-group` rows; the dialogs' fields are full width in their dialog.
 
 Related: docs/memory/ui/look-settings-categories.md, docs/memory/ui/translations-screen-editor-rows.md

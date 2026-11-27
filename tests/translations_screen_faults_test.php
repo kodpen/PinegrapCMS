@@ -84,7 +84,7 @@ function test_translations_review_on_an_edited_row_saves_the_typed_text()
 
 	pg_assert_contains("classList.contains('pg-tr-dirty')", $branch, 'the review click looks for unsaved text first');
 	pg_assert_contains('saveRow(reviewRow, review, next)', $branch, 'and saves it with the new status');
-	pg_assert_true((bool) preg_match("/function saveRow\\(row, button, status\\) \\{[\\s\\S]*?action: 'save'[\\s\\S]*?status: status/", $js), 'the save sends the status it is given');
+	pg_assert_true((bool) preg_match("/function saveRow\\(row, button, status, next\\) \\{[\\s\\S]*?action: 'save'[\\s\\S]*?status: status/", $js), 'the save sends the status it is given');
 }
 
 // A CSV row whose translation is the one already stored is left as it is.
