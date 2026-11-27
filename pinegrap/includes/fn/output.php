@@ -4704,6 +4704,7 @@ function output_menu($properties = false)
             $menu_items[15]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
             $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_referral_sources.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-signpost-2 bi-me-2\'>' . lang('All Referral Sources') . '</a>';
             $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_currencies.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-coin bi-me-2\'>' . lang('All Currencies') . '</a>';
+            $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_markets.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-globe-americas bi-me-2\'>' . lang('Markets') . '</a>';
         } elseif (USER_MANAGE_ECOMMERCE_REPORTS) {
             // A role 3 user with the reports right only: view_shipping_methods.php
             // refuses them, and no other row of theirs holds the order reports
@@ -5502,6 +5503,9 @@ function output_menu($properties = false)
             // System tools › Store Lists; a role 3 user, who has no System
             // tools row, finds them in the shipping row.
             $active_menu = ($user['role'] <= 2) ? 25 : 15;
+            break;
+        case 'view_markets.php':
+            $active_menu = 15;
             break;
     }
 

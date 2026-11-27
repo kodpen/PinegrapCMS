@@ -361,6 +361,7 @@ function get_help_url($properties = array())
         'view_currencies'                  => 'commerce-cont#currencies',
         'add_currency'                     => 'commerce-cont#create-edit-currency',
         'edit_currency'                    => 'commerce-cont#create-edit-currency',
+        'view_markets'                     => 'commerce-cont#markets',
         'view_countries'                   => 'commerce-cont#countries',
         'add_country'                      => 'commerce-cont#create-edit-country',
         'edit_country'                     => 'commerce-cont#create-edit-country',

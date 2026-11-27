@@ -86,6 +86,7 @@ function pg_panel_search_screens()
         array('ecommerce', 'Store', 'Gift Cards', 'bi-gift', 'view_gift_cards.php', array('hediye', 'gift', 'kart', 'giftcard', 'hed')),
         array('ecommerce', 'Store', 'Shipping Methods', 'bi-truck', 'view_shipping_methods.php', array('nakliye', 'kargo', 'shipping', 'gonder', 'gönderim', 'kar')),
         array('ecommerce', 'Store', 'Currencies', 'bi-currency-exchange', 'view_currencies.php', array('para', 'doviz', 'döviz', 'currency', 'cur', 'par', 'döv')),
+        array('ecommerce', 'Store', 'Markets', 'bi-globe-americas', 'view_markets.php', array('pazar', 'pazarlar', 'market', 'markets', 'ulke fiyat', 'yurt disi', 'yurt dışı', 'mar')),
         array('ecommerce', 'Store', 'Countries', 'bi-globe2', 'view_countries.php', array('ulke', 'ülke', 'country', 'countries', 'ulk')),
         array('ecommerce', 'Store', 'Tax Zones', 'bi-receipt-cutoff', 'view_tax_zones.php', array('vergi', 'kdv', 'tax', 'ver')),
         array('ecommerce', 'Store', 'Shipping Zones', 'bi-map', 'view_zones.php', array('nakliye bolge', 'nakliye bölge', 'kargo bolge', 'bolge', 'bölge', 'shipping zone', 'zone', 'zon', 'böl')),
