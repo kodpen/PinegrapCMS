@@ -127,6 +127,7 @@
 - import-site-builders-census-wix.md: What Wix lets an owner export (read 2026-11-27): products CSV in two layouts, contacts CSV, collection CSV, the reader and writers each needs; no file for pages or blog posts
 - import-site-builders-census.md: What Squarespace, Webflow and Wix let an owner export for the importers (2026-11-27): kinds with a file, readers and writers each needs, what no file carries
 - import-squarespace.md: Squarespace import (2026.11.0, kind squarespace, 11.0.282): site XML through the WordPress reader, products and customers CSV, both old product addresses, weight unit asked, no subscribed customers [decision: decisions-made-schema-53.md]
+- import-webflow.md: Webflow import (2026.11.0, kind webflow): which of its three CSV files is which, products as product items, the old /product/<handle> address, 301 redirects and the skipped (.*) lines
 - import-woocommerce.md: WooCommerce products CSV import (2026.11.0, #6206): reader, item shape, variable products as variant sets, categories as groups, the product writer and its undo
 - import-wordpress.md: WordPress WXR reader of the import framework: streaming walk, what each item becomes, skipped internals, comment threads, dates, shortcodes, cursor, mapping rows [decision: decisions-made-schema-9.md]
 - indexnow-ping-result.md: The IndexNow ping in update_sitemap_and_ping() logs success only for HTTP 200/202; a refusal (400, 403, 422, 429) logs 'IndexNow ping failed: HTTP <code>'
