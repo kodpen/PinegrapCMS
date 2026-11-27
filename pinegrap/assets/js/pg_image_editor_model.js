@@ -5614,14 +5614,15 @@
     }
 
     // Pictures from this computer (a PNG or JPEG data: address, no file
-    // yet) in every scene: a save into Files sends them along to be kept
-    // as files, so the document its version keeps holds no pixels.
+    // yet) of picture layers and frames in every scene: a save into Files
+    // sends them along to be kept as files, so the document its version
+    // keeps holds no pixels.
     function animPictures(doc) {
         var list = [];
 
         docLayerLists(doc).forEach(function (layers) {
             layers.forEach(function (l) {
-                if (l && (l.type === 'image') && !l.fileId && /^data:image\/(png|jpeg);base64,/.test(l.src || '')) {
+                if (l && ((l.type === 'image') || (l.type === 'frame')) && !l.fileId && /^data:image\/(png|jpeg);base64,/.test(l.src || '')) {
                     list.push({ id: l.id, data: l.src, name: l.fileName || '' });
                 }
             });
@@ -14337,6 +14338,118 @@
     var RESIZE = { RESIZE_SPAN: RESIZE_SPAN, RESIZE_FLOOR: RESIZE_FLOOR, RESIZE_MAX: RESIZE_MAX, RESIZE_STRETCH: RESIZE_STRETCH, resizeSizes: resizeSizes,
         resizeName: resizeName, resizeUnits: resizeUnits, resizeAxis: resizeAxis, resizePlace: resizePlace, resizeLayer: resizeLayer, resizeLayers: resizeLayers, resizeDoc: resizeDoc };
 
+    // ---- photo frames (pg_image_editor_frames.js) ----
+    //
+    // A frame is the one layer type of its own: a shape (a path in its own
+    // box, kept in the layer) that cuts a photo. The photo covers the frame
+    // at zoom 1 and is moved inside it by fx, fy: -1 to 1 of the room the
+    // photo has past the frame's edges on each axis, 0 centred. The place is
+    // a share of the frame, so a resized or turned frame keeps it.
+
+    var FRAME_ZOOM = [1, 4];
+    var FRAME_SHARE = 0.45;
+    var FRAME_PHOTO = ['src', 'pw', 'ph', 'zoom', 'fx', 'fy', 'fileId', 'fileName'];
+    var FRAME_OWN = [
+        { id: 'circle', label: 'frameCircle', w: 100, h: 100, d: 'M50 0 C77.6 0 100 22.4 100 50 C100 77.6 77.6 100 50 100 C22.4 100 0 77.6 0 50 C0 22.4 22.4 0 50 0 Z' },
+        { id: 'rounded', label: 'frameRounded', w: 100, h: 100, d: 'M16 0 H84 C92.8 0 100 7.2 100 16 V84 C100 92.8 92.8 100 84 100 H16 C7.2 100 0 92.8 0 84 V16 C0 7.2 7.2 0 16 0 Z' },
+        { id: 'arch', label: 'frameArch', w: 80, h: 100, d: 'M0 100 V40 C0 17.9 17.9 0 40 0 C62.1 0 80 17.9 80 40 V100 Z' },
+        { id: 'blob', label: 'frameBlob', w: 100, h: 100, d: 'M52 3 C72 1 91 13 96 34 C100 55 92 78 73 90 C54 100 28 97 14 82 C2 68 1 43 10 26 C19 10 34 4 52 3 Z' }
+    ];
+
+    // The frame shapes: the own four, then the element set's filled badges
+    // (checked by elementSets()) but its circle, which the first one is.
+    function frameShapes(elements) {
+        var out = FRAME_OWN.map(clone);
+
+        (Array.isArray(elements) ? elements : []).forEach(function (e) {
+            if (e && (e.set === 'badges') && (e.stroke === 0) && (e.id !== 'badge-circle')) {
+                out.push({ id: e.id, label: e.label, w: e.w, h: e.h, d: e.d });
+            }
+        });
+
+        return out;
+    }
+
+    // An empty frame of the shape, its proportions fitted into FRAME_SHARE
+    // of the visible board, its middle on the point given.
+    function frameLayer(shape, vr, centre) {
+        var box = svgFit(shape.w, shape.h, vr, FRAME_SHARE, true);
+
+        return { type: 'frame', shape: shape.id, d: shape.d, vw: shape.w, vh: shape.h,
+            x: centre[0] - box.w / 2, y: centre[1] - box.h / 2, w: box.w, h: box.h, rot: 0, opacity: 1 };
+    }
+
+    // The frame without its photo.
+    function frameClear(l) {
+        var n = clone(l);
+
+        FRAME_PHOTO.forEach(function (k) {
+            delete n[k];
+        });
+
+        return n;
+    }
+
+    // The frame holding a picture ({ src, w, h } and its fileId, or the
+    // fileName of one from this computer), covering it, centred.
+    function frameFill(l, pic) {
+        var n = frameClear(l);
+
+        n.src = pic.src;
+        n.pw = Math.max(1, Number(pic.w) || 1);
+        n.ph = Math.max(1, Number(pic.h) || 1);
+        n.zoom = 1;
+        n.fx = 0;
+        n.fy = 0;
+
+        if (pic.fileId) {
+            n.fileId = pic.fileId;
+        } else if (pic.fileName) {
+            n.fileName = pic.fileName;
+        }
+
+        return n;
+    }
+
+    // The photo's size in the frame's units: covering it, times the zoom.
+    function frameScaled(l) {
+        var s = Math.max(l.w / l.pw, l.h / l.ph) * clamp(Number(l.zoom) || 1, FRAME_ZOOM[0], FRAME_ZOOM[1]);
+
+        return { w: l.pw * s, h: l.ph * s };
+    }
+
+    // The photo's box, unturned, in the layers' units; null for an empty
+    // frame.
+    function frameFit(l) {
+        if (!l || !l.src || !(l.pw > 0) || !(l.ph > 0)) {
+            return null;
+        }
+
+        var p = frameScaled(l), fx = clamp(Number(l.fx) || 0, -1, 1), fy = clamp(Number(l.fy) || 0, -1, 1);
+
+        return { x: l.x + (l.w - p.w) / 2 + fx * (p.w - l.w) / 2, y: l.y + (l.h - p.h) / 2 + fy * (p.h - l.h) / 2, w: p.w, h: p.h };
+    }
+
+    // The photo's place after a move by dx, dy (layers' units, on screen),
+    // taken along the frame's own axes; it never shows the frame's ground.
+    function frameMove(l, dx, dy) {
+        var p = frameScaled(l), a = -(l.rot || 0) * Math.PI / 180;
+        var lx = dx * Math.cos(a) - dy * Math.sin(a), ly = dx * Math.sin(a) + dy * Math.cos(a);
+        var share = function (now, d, room) {
+            return (room > 1e-9) ? Math.round(clamp((Number(now) || 0) + 2 * d / room, -1, 1) * 1e6) / 1e6 : 0;
+        };
+
+        return { fx: share(l.fx, lx, p.w - l.w), fy: share(l.fy, ly, p.h - l.h) };
+    }
+
+    // A zoom held to FRAME_ZOOM; the place stays the same share.
+    function frameZoom(l, zoom) {
+        return { zoom: clamp(Number(zoom) || 1, FRAME_ZOOM[0], FRAME_ZOOM[1]) };
+    }
+
+    var FRAMES = { FRAME_ZOOM: FRAME_ZOOM, frameShapes: frameShapes, frameLayer: frameLayer, frameClear: frameClear, frameFill: frameFill,
+        frameFit: frameFit, frameMove: frameMove, frameZoom: frameZoom };
+
     var api = {
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,
         flipRot: flipRot, coverScale: coverScale, fitZoom: fitZoom, centred: centred, fitView: fitView, zoomAt: zoomAt,
@@ -14354,7 +14467,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, FOLLOW, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU, VIDEO, SOUND, CLIP, MIX, UPLOAD, PHONE, GROUP, ATTACH, DATA, SEND, SITECOLORS, TEXTSTYLES, ELEMENTS, STARTS, RESIZE].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, FOLLOW, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU, VIDEO, SOUND, CLIP, MIX, UPLOAD, PHONE, GROUP, ATTACH, DATA, SEND, SITECOLORS, TEXTSTYLES, ELEMENTS, STARTS, RESIZE, FRAMES].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');
