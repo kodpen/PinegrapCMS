@@ -688,6 +688,7 @@
 - workspace-tag-card.md: A Workspace message that is one record tag and nothing else drawn as a card per reader (ws_tag_card_html(), PR #2150): which bodies, what the card shows, rights, where it is drawn, what stays text
 - workspace-task-command.md: The /task (/görev) command in the composer: Enter on its preview card creates the task (same text, card on screen, no leave clash), the / picker finds every Turkish and English name, /help is listed
 - workspace-task-filters.md: My Tasks, planning board and Work Calendar filters (workspace.js): named department selects, My Tasks' views that follow a department pick, pressed week buttons, the announced task count
+- workspace-task-read-drawing.md: The drawing of a task opened to read in My Tasks (step TM3 of plan workspace-tasks-modern): one sheet of eight boards, the read drawer, its states, New task, phone width, sizes and keys
 - workspace-task-reminders.md: Task reminders, overdue and meeting notices (reminders.php): who is told, the per-recipient mail and its channel line, claims against double sending, time zone and DST
 - workspace-task-timer-guards.md: The task timer's guards (PR #11413): a drawer's Stop stops only its task's timer, one running timer per person, the drawer total over every entry, one repeat series per task
 - workspace-task-zero-dates.md: A task's start or due date of 0000-00-00 is no date when the board or /postpone moves it and when the start-after-due check runs (ws_task_move_dates(), ws_task_starts_after_due())
