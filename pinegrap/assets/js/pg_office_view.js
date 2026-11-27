@@ -529,6 +529,10 @@
     // carries a size only when it is not the default's.
     var BASE_SIZE = 11;
 
+    // The width a wrapped cell wraps at: the grid draws no column widths,
+    // and a column is as wide as its widest text.
+    var WRAP_WIDTH = '12rem';
+
     // The borders the Borders menu offers, in its order.
     var BORDERS = [['none', 'bi-border'], ['all', 'bi-border-all'], ['outline', 'bi-border-outer'], ['bottom', 'bi-border-bottom']];
 
@@ -657,6 +661,11 @@
         style.textDecorationLine = [look.u ? 'underline' : '', look.st ? 'line-through' : ''].join(' ').trim();
         style.fontSize = look.sz ? (Math.round(look.sz / BASE_SIZE * 1000) / 1000) + 'em' : '';
         style.whiteSpace = look.w ? 'pre-wrap' : '';
+
+        // The grid's columns take their widest text, so a wrapped cell sets
+        // a width of its own to wrap at (WRAP_WIDTH).
+        style.width = look.w ? WRAP_WIDTH : '';
+        style.minWidth = look.w ? WRAP_WIDTH : '';
         style.textAlign = look.a || '';
         style.color = paper ? (look.c ? '#' + look.c : 'black') : '';
         style.backgroundColor = paper ? (look.bg ? '#' + look.bg : 'white') : '';
