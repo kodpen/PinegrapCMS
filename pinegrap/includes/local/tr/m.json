@@ -203,6 +203,7 @@
     "Make a purchase invoice draft for what has not come yet, at the order's prices and dated today?": "Henüz gelmeyenler için siparişin fiyatlarıyla ve bugünün tarihiyle bir alış faturası taslağı oluşturulsun mu?",
     "Make a request": "İstekte bulunun",
     "Make a scheduled run of the agent. Each run reads the request list, takes what waits, answers and ends.": "Ajan için zamanlanmış bir çalıştırma oluşturun. Her çalıştırma istek listesini okur, bekleyenleri alır, yanıtlar ve biter.",
+    "Make a support request": "Destek talebi oluştur",
     "Make a task": "Göreve dönüştür",
     "Make a task of it": "Göreve dönüştür",
     "Make a task repeat": "Bir görevi tekrarlayın",

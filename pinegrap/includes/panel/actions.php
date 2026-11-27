@@ -298,6 +298,7 @@ function pg_panel_actions()
         'chat_bootstrap', 'chat_online_users', 'chat_open', 'chat_send',
         'chat_poll', 'chat_unread_check', 'chat_mark_read',
         'chat_conversations', 'chat_close', 'chat_delete', 'chat_attach',
+        'chat_request_boxes', 'chat_request',
     ) as $chat_action) {
         $actions[$chat_action] = array('file' => 'chat.php', 'handler' => 'pg_panel_chat', 'exempt' => true, 'token' => true, 'write' => true);
     }

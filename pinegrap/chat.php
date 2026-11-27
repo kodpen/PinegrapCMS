@@ -1634,6 +1634,14 @@ function pg_chat_handle_backend_action($action, $request)
         case 'chat_delete':
             return pg_chat_delete($conversation_id);
 
+        case 'chat_request_boxes':
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/chat_requests.php');
+            return pg_chat_request_boxes($conversation_id);
+
+        case 'chat_request':
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/chat_requests.php');
+            return pg_chat_request_make($conversation_id, isset($request['box_id']) ? (int) $request['box_id'] : 0);
+
         case 'chat_attach':
             $name = isset($request['name']) ? $request['name'] : '';
             $data = isset($request['data']) ? $request['data'] : '';
@@ -1765,6 +1773,12 @@ function pg_chat_panel_strings()
         'edit_contact' => lang('Edit Contact'),
         'edit_user' => lang('Edit User'),
         'page' => lang('Page'),
+        // "Make a request": a site chat into a support box's request.
+        'make_request' => lang('Make a support request'),
+        'support_box' => lang('Support box'),
+        'request_loading' => lang('Loading support boxes…'),
+        'no_support_box' => lang('No support box takes requests by e-mail yet.'),
+        'request_help' => lang('The customer gets the box\'s automatic answer with a link to follow the request.'),
         // Composer toolbar (2026.4.4).
         'emoji' => lang('Emoji'),
         'recent' => lang('Recently used'),
@@ -1957,6 +1971,10 @@ function pg_chat_render_backend_launcher()
             #pg-chat-backend-file { position: fixed !important; left: -9999px !important; top: 0 !important; width: 1px !important; height: 1px !important; opacity: 0 !important; z-index: -1 !important; pointer-events: none !important; }
             #pg-chat-root .pg-chat-compose .btn { border-radius: 10px; }
             #pg-chat-root .pg-chat-row-unread { font-weight: 600; }
+            /* The support request strip under the header: placement only,
+               its field and buttons are the look recipes. */
+            #pg-chat-root .pg-chat-request { display: flex; flex-direction: column; gap: 8px; padding: 10px 16px 12px; border-bottom: 1px solid var(--pg-border-color); }
+            #pg-chat-root .pg-chat-request-foot { display: flex; justify-content: flex-end; gap: 8px; }
             #pg-chat-root .pg-chat-link { color: inherit; text-decoration: none; }
             #pg-chat-root .pg-chat-link:hover { text-decoration: underline; }
             /* Header icon buttons are at least 24x24 px targets (32 px on a
