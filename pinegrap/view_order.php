@@ -207,16 +207,20 @@ if (!$_POST) {
     // The order row as read, for the head's pills: $row is reused below.
     $head_order = $row;
 
-    // A PayPal Checkout payment PayPal left pending (under review, an eCheck)
-    // waits the same way, but on PayPal rather than on a bank statement.
+    // A PayPal Checkout payment PayPal left pending (under review, an eCheck),
+    // or a Stripe payment still processing (a bank debit), waits the same
+    // way, but on the service rather than on a bank statement.
     $order_payment_pending = $order_awaiting_payment && pg_order_payment_pending($row);
+    $order_payment_pending_on_stripe = $order_payment_pending && (pg_order_payment_pending_service($row) === 'stripe');
 
     $output_payment_pending_banner = $order_payment_pending
         ? '<div class="alert theme-warning d-flex align-items-center gap-3 pg-print-none" role="alert">
                 <i class="bi bi-hourglass-split"></i>
                 <div class="flex-grow-1">
-                    <strong>' . lang('Payment pending on PayPal') . '</strong>
-                    <div class="small">' . lang('PayPal has not settled this payment yet and may still deny it. Check it on PayPal before shipping, and record it with Payment Received once PayPal completes it.') . '</div>
+                    <strong>' . pg_order_payment_pending_label($row) . '</strong>
+                    <div class="small">' . ($order_payment_pending_on_stripe
+                        ? lang('Stripe has not settled this payment yet (a bank debit can take several days) and may still report it failed. Wait for it before shipping: the order is marked paid when Stripe reports that it succeeded.')
+                        : lang('PayPal has not settled this payment yet and may still deny it. Check it on PayPal before shipping, and record it with Payment Received once PayPal completes it.')) . '</div>
                 </div>
             </div>'
         : '';
@@ -2008,7 +2012,7 @@ if (!$_POST) {
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . h($_GET['id']) . '">
                 <input type="hidden" name="send_to" value="' . h($_GET['send_to'] ?? '') . '">
-                <button type="submit" name="submit_mark_paid" value="paid" class="pg-button pg-button-fill" data-confirm-content="' . ($order_payment_pending ? lang('Record that PayPal completed the payment for this order?') : lang('Record that the bank transfer for this order has arrived?')) . '"><i class="bi bi-cash-coin"></i>' . lang('Payment Received') . '</button>
+                <button type="submit" name="submit_mark_paid" value="paid" class="pg-button pg-button-fill" data-confirm-content="' . ($order_payment_pending_on_stripe ? lang('Record that Stripe completed the payment for this order?') : ($order_payment_pending ? lang('Record that PayPal completed the payment for this order?') : lang('Record that the bank transfer for this order has arrived?'))) . '"><i class="bi bi-cash-coin"></i>' . lang('Payment Received') . '</button>
             </form>';
     }
 
@@ -2136,7 +2140,7 @@ if (!$_POST) {
         // bank transfer or pending payment arrived at all (paid_at). The
         // window speaks of a refund only when the cancellation flags one.
         $cancel_driver = pg_payment_cancel_driver($payment_method);
-        $cancel_payment_plan = pg_order_cancel_payment_plan($total_cents, $refunded_amount_cents, $payment_method, (bool) $transaction_id, $cancel_driver, true, $order_paid_at);
+        $cancel_payment_plan = pg_order_cancel_payment_plan($total_cents, $refunded_amount_cents, $payment_method, (string) $transaction_id, $cancel_driver, true, $order_paid_at);
         $cancel_by_transfer = ($payment_method === 'Offline Payment');
 
         if ($cancel_payment_plan['action'] === 'void') {

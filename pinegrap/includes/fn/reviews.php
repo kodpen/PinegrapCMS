@@ -111,7 +111,8 @@ function pg_review_gate_applies($item_type, $item_id)
  * The SQL condition an orders row meets when its goods were bought: a finished
  * order (complete, or complete and exported) that is not still waiting for its
  * money - a bank transfer, or a payment its service left pending (PayPal
- * Checkout), with paid_at still 0, as pg_order_awaiting_payment() reads it.
+ * Checkout, a Stripe payment still processing), with paid_at still 0, as
+ * pg_order_awaiting_payment() reads it.
  * An order put on the customer's account is a sale on credit and counts. A
  * cancelled order, a checkout that never finished and a cart do not.
  *
@@ -119,14 +120,8 @@ function pg_review_gate_applies($item_type, $item_id)
  */
 function pg_review_bought_sql()
 {
-    $methods = array("'Offline Payment'");
-
-    foreach (pg_order_pending_payment_methods() as $method) {
-        $methods[] = "'" . e((string) $method) . "'";
-    }
-
     return "(orders.status IN ('complete', 'exported'))
-        AND ((orders.payment_method NOT IN (" . implode(', ', $methods) . ")) OR (orders.paid_at > 0) OR (orders.erp_on_account = 1))";
+        AND (((orders.payment_method <> 'Offline Payment') AND NOT " . pg_order_payment_may_pend_sql('orders') . ") OR (orders.paid_at > 0) OR (orders.erp_on_account = 1))";
 }
 
 /**

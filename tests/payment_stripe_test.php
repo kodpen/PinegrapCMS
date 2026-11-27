@@ -132,7 +132,7 @@ function test_payment_stripe_driver_is_shipped()
 		return $field['name'] . ':' . $field['type'] . ($field['required'] ? '!' : '');
 	}, pg_payment_fields('stripe'));
 	pg_assert_same(array('publishable_key:text!', 'secret_key:secret!', 'webhook_secret:secret', 'link:switch',
-		'method_ideal:switch', 'method_bancontact:switch', 'method_eps:switch', 'method_p24:switch', 'method_klarna:switch', 'method_afterpay_clearpay:switch'), $names);
+		'method_ideal:switch', 'method_bancontact:switch', 'method_eps:switch', 'method_p24:switch', 'method_klarna:switch', 'method_afterpay_clearpay:switch', 'method_sepa_debit:switch'), $names);
 
 	pg_assert_contains('<option value="Stripe PaymentIntents">Stripe</option>', pg_payment_settings_gateway_options('Iyzipay'));
 	pg_assert_contains('selected="selected"', pg_payment_settings_gateway_options('Stripe PaymentIntents'));

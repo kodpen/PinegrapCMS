@@ -6373,6 +6373,7 @@
     "The path is cleared.": "Yol temizlendi.",
     "The path to the current page with an icon before each step.": "Her adımın önünde simge olan, bulunulan sayfaya giden yol.",
     "The pattern matches empty text.": "Desen boş metinle eşleşiyor.",
+    "The payment arrives days later: the order waits for it and is marked paid when Stripe reports it.": "Ödeme birkaç gün sonra ulaşır: sipariş ödemeyi bekler ve Stripe bildirdiğinde ödendi olarak işaretlenir.",
     "The payment cannot be dated after today.": "Ödeme bugünden sonraki bir tarihle girilemez.",
     "The payment cannot be dated before the expense.": "Ödeme, giderin tarihinden önceye tarihlenemez.",
     "The payment could not be found.": "Ödeme bulunamadı.",

@@ -145,7 +145,9 @@ function pg_payment_notify_matches_order($answer, $order, $store_currency)
  *   unknown_order  no order of this store, or another payment than the
  *                  order's own: 200, nothing done
  *   nothing        a payment for an order already placed and paid, or
- *                  cancelled after its payment was recorded: 200
+ *                  cancelled after its payment was recorded, or a failed
+ *                  payment for an order still incomplete (a declined attempt
+ *                  at the checkout): 200
  *   recorded       a payment for an order placed with its payment pending,
  *                  for the order's total: 200, a log line, and the caller
  *                  marks the order paid (mark_paid)
@@ -156,7 +158,8 @@ function pg_payment_notify_matches_order($answer, $order, $store_currency)
  *   alerted        a payment for an order still incomplete that does not
  *                  match it, a payment for an order cancelled before its
  *                  payment was recorded, a pending payment for another amount, a refund,
- *                  a cancellation or a dispute: 200, a log line and an alert
+ *                  a failed payment of a placed order, a cancellation or a
+ *                  dispute: 200, a log line and an alert
  *
  * @param string     $key            driver key
  * @param array      $answer         pg_payment_answer() of notify(); the
@@ -240,6 +243,13 @@ function pg_payment_notify_outcome($key, $answer, $order, $store_currency = '')
         }
 
         $line = pg_payment_notify_line($key, $source, $order_id, 'not_matching');
+    } elseif (($answer['status'] === 'cancelled') && ((string) $order['status'] === 'incomplete')) {
+        // A declined attempt while the visitor is still at the checkout
+        // (Stripe reports each one): the order was never placed, and the
+        // visitor may pay again.
+        $outcome['status'] = 'nothing';
+
+        return $outcome;
     } else {
         $line = pg_payment_notify_line($key, $source, $order_id, 'unchanged');
     }

@@ -5,7 +5,6 @@ description: payment_callback.php?driver=<key> (PR #2143): what reaches notify()
 
 ## What is it?
 - Root endpoint for a payment service's servers; logic in `includes/payments/callback.php`. No session; the driver's signature check is the only credential. POST only (405), a valid key whose driver defines `notify` (404), body up to 1 MB (413).
-- Headers from `$_SERVER` by lowercase dashed name (`pg_payment_request_headers()`).
 - The answer is JSON `{status}`; a driver's `reply` (PayTR's `OK`) goes out as `text/plain` instead on a 200 (`pg_payment_callback_reply()`, #3036).
 - Address: `pg_payment_callback_url($key)`, shown read-only as "Webhook Address" on a `notify()` driver's settings.
 
@@ -15,10 +14,10 @@ description: payment_callback.php?driver=<key> (PR #2143): what reaches notify()
 ## What does each answer do?
 - `pg_payment_notify_outcome()` (pure) → http, status, log, alert:
   - not signed, unreadable, no secret: 400 `refused`; driver threw: 500 `error` (retried); `raw.ignored`: 200 `ignored`; no matching order: 200 `unknown_order`.
-  - `paid` for an order placed with its payment pending (`pg_order_payment_pending()`, PayPal Checkout) at `orders.total`: 200 `recorded`, `mark_paid`, the receiver runs `pg_order_mark_paid()`; another amount alerts (`payment-driver-paypal-webhook.md`).
+  - `paid` for an order placed with its payment pending (`pg_order_payment_pending()`: PayPal, Stripe `processing`) at `orders.total`: 200 `recorded`, `mark_paid`, the receiver runs `pg_order_mark_paid()`; another amount alerts (`payment-driver-paypal-webhook.md`).
   - `paid`/`authorized` for a `cancelled` order with `paid_at` 0 (a pending PayPal capture cancelled as unpaid): `alerted`, "refund … or restore the order" (was silent, #7199). `paid_at` set: the cancellation handled it, `nothing`.
   - Otherwise `paid`/`authorized` for an order not `incomplete`: 200 `nothing`. For an `incomplete` one whose own payment it is, for its total, in the store's currency (`pg_payment_notify_matches_order()`): `complete`, the receiver completes it (`order-completion-from-payment.md`) and answers `completed` (log line with the order number), `nothing` (another request was first: no line) or `alerted` (refused). Any mismatch: the line + "… not for its own payment, its total or the store's currency. The order was not completed …".
-  - `refunded`, `cancelled`, `pending` (Stripe's dispute): the line + "The order was not changed."
+  - `refunded`, `cancelled` (not for an `incomplete` order: a declined try, `nothing`), `pending` (Stripe's dispute): the line + "The order was not changed."
 - An `alerted` line goes to `log_activity(…, 'SYSTEM')` and `pg_ops_alert('payment_notice', …)` (alert once a day, log line every time).
 
 ## Why complete here? (A3, #3021)

@@ -902,6 +902,9 @@ if (!defined('PG_INIT_LOADED')) {
 	<dd><?=h($card_number)?></dd>
 	<?php endif ?>
 </dl>
+<?php if ($payment_confirming_note !== ''): ?>
+<p class="payment_confirming_note"><?=h($payment_confirming_note)?></p>
+<?php endif ?>
 <?php endif ?>
 <?php if ($auto_registration): ?>
 <h2><?=h(lang('New Account'))?></h2>

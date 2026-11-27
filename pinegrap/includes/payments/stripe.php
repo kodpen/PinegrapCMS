@@ -19,8 +19,12 @@
  *
  * Beside the card, the methods of pg_payment_stripe_methods() (iDEAL,
  * Klarna, ...) are offered once the store switched them on and only in a
- * currency they take. Each is paid on the bank's or the service's own page,
- * the same redirect a 3-D Secure card takes.
+ * currency they take. Most are paid on the bank's or the service's own page,
+ * the same redirect a 3-D Secure card takes. SEPA Direct Debit stays on the
+ * checkout: the visitor gives the IBAN and accepts the mandate in the
+ * Payment Element, and the debit settles days later, so the order is placed
+ * awaiting its payment (the intent is processing) and notify() reads the
+ * result.
  *
  * The API is called over HTTPS with the secret key (no SDK), with the API
  * version pinned, so a Stripe account whose default version is older or newer
@@ -187,10 +191,13 @@ function pg_payment_stripe_settings()
  *
  * @return array type => label (the method's own name), currencies (uppercase
  *               ISO codes it takes), immediate (Stripe knows the result when
- *               the visitor is back), hold (the payment can be held and taken
- *               later: capture_method manual), step ('redirect': the visitor
- *               pays on the bank's or the service's page and comes back to the
- *               checkout's return address)
+ *               the visitor is back; when not, the intent is processing and
+ *               the order waits for payment_intent.succeeded), hold (the
+ *               payment can be held and taken later: capture_method manual),
+ *               step ('redirect': the visitor pays on the bank's or the
+ *               service's page and comes back to the checkout's return
+ *               address; 'element': the visitor gives the details and accepts
+ *               the mandate in the Payment Element and is not sent away)
  */
 function pg_payment_stripe_methods()
 {
@@ -201,6 +208,7 @@ function pg_payment_stripe_methods()
         'p24'               => array('label' => 'Przelewy24', 'currencies' => array('EUR', 'PLN'), 'immediate' => true, 'hold' => false, 'step' => 'redirect'),
         'klarna'            => array('label' => 'Klarna', 'currencies' => array('AUD', 'CAD', 'CHF', 'CZK', 'DKK', 'EUR', 'GBP', 'NOK', 'NZD', 'PLN', 'RON', 'SEK', 'USD'), 'immediate' => true, 'hold' => true, 'step' => 'redirect'),
         'afterpay_clearpay' => array('label' => 'Afterpay / Clearpay', 'currencies' => array('AUD', 'CAD', 'EUR', 'GBP', 'NZD', 'USD'), 'immediate' => true, 'hold' => true, 'step' => 'redirect'),
+        'sepa_debit'        => array('label' => 'SEPA Direct Debit', 'currencies' => array('EUR'), 'immediate' => false, 'hold' => false, 'step' => 'element'),
     );
 }
 
@@ -262,6 +270,10 @@ function pg_payment_stripe_method_fields($currency)
 
         if (!$method['hold']) {
             $help .= ' ' . lang('Not offered while Transaction type is Authorize.');
+        }
+
+        if (!$method['immediate']) {
+            $help .= ' ' . lang('The payment arrives days later: the order waits for it and is marked paid when Stripe reports it.');
         }
 
         $field = array(
@@ -1621,17 +1633,22 @@ function pg_payment_stripe_log_amount($amount, $currency)
 /**
  * A message Stripe sent to payment_callback.php?driver=stripe. Only a
  * message signed with the endpoint's secret is read. Four events are
- * answered; the callback decides what the store does with each (it never
- * changes the order):
+ * answered; the callback decides what the store does with each
+ * (pg_payment_notify_outcome()):
  *
  *   payment_intent.succeeded  paid: the payment of an order (metadata
  *                             order_id) went through, perhaps after the
- *                             visitor left the 3-D Secure page; or a
+ *                             visitor left the 3-D Secure page, or days
+ *                             after the order was placed while it was
+ *                             processing (a bank debit); or a
  *                             subscription's renewal (metadata
  *                             subscription_id, order_reference
  *                             'subscription-<id>', raw.subscription_id)
  *   payment_intent.payment_failed
- *                             a subscription's renewal failed (metadata
+ *                             cancelled: the payment of an order failed and
+ *                             nothing was taken (a declined attempt at the
+ *                             checkout, or a processing debit that bounced);
+ *                             or a subscription's renewal failed (metadata
  *                             subscription_id, not authentication_required):
  *                             a failure with raw.renewal_failed, acknowledged
  *                             as not used once the renewal writer took it
@@ -1729,9 +1746,27 @@ function pg_payment_stripe_notify_with($headers, $body, $settings, $now)
             $code = (isset($error['code']) && is_string($error['code'])) ? $error['code'] : '';
             $message = (isset($error['message']) && is_string($error['message'])) ? trim($error['message']) : '';
 
-            // Only a renewal's failure is read. authentication_required is the
-            // off-session refusal that started the confirmation the row now
-            // waits for, never its outcome.
+            // An order's payment failed: nothing was taken. The callback
+            // leaves an order still at the checkout alone (the visitor may
+            // pay again) and raises an alert for one placed while its
+            // payment was processing, the way PayPal's DENIED is told.
+            if (($order_id !== '') && (preg_match('/^[1-9][0-9]{0,18}$/', $order_id) === 1) && (preg_match('/^pi_[A-Za-z0-9]{1,250}$/', $text('id')) === 1)) {
+                $amount = isset($object['amount']) ? $object['amount'] : null;
+
+                return array(
+                    'success'         => true,
+                    'status'          => 'cancelled',
+                    'transaction_id'  => $text('id'),
+                    'order_reference' => $order_id,
+                    'amount'          => pg_payment_stripe_hundredths($amount, $currency),
+                    'log'             => array(pg_log_lang(array('string' => 'Stripe reports that payment {var:1} of {var:2} failed ({var:3}): nothing was taken. Do not ship it', 'vars' => array($text('id'), pg_payment_stripe_log_amount($amount, $currency), ($code !== '') ? $code : pg_log_lang(array('string' => 'none given')))))),
+                    'raw'             => $raw + array('code' => $code),
+                );
+            }
+
+            // Otherwise only a renewal's failure is read.
+            // authentication_required is the off-session refusal that started
+            // the confirmation the row now waits for, never its outcome.
             if (($order_id !== '') || (preg_match('/^[1-9][0-9]{0,9}$/', $subscription_id) !== 1)
                 || (preg_match('/^pi_[A-Za-z0-9]{1,250}$/', $text('id')) !== 1) || ($code === 'authentication_required')) {
                 return $ignored;

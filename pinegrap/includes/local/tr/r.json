@@ -650,6 +650,7 @@
     "Record rows": "Kayıt satırları",
     "Record seal": "Kayıt mührü",
     "Record that PayPal completed the payment for this order?": "PayPal'ın bu siparişin ödemesini tamamladığı kaydedilsin mi?",
+    "Record that Stripe completed the payment for this order?": "Stripe'ın bu siparişin ödemesini tamamladığı kaydedilsin mi?",
     "Record that the bank transfer for this order has arrived?": "Bu siparişin havalesinin geldiği kaydedilsin mi?",
     "Record that the payment for this order has arrived?": "Bu siparişin ödemesinin ulaştığı kaydedilsin mi?",
     "Record the Return Request": "İade Talebini Kaydet",

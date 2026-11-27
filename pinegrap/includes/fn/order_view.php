@@ -978,7 +978,7 @@ function pg_order_view_states(array $order, array $addresses, $today)
             if (!empty($order['erp_on_account'])) {
                 $payment = array(lang('On account'), 'amber');
             } elseif (pg_order_payment_pending($order)) {
-                $payment = array(lang('Payment pending on PayPal'), 'amber');
+                $payment = array(pg_order_payment_pending_label($order), 'amber');
             } else {
                 $payment = array(lang('Awaiting bank transfer'), 'amber');
             }

@@ -2564,6 +2564,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                 orders.billing_company,
                 orders.status,
                 orders.payment_method,
+                orders.transaction_id,
                 " . ($paid_at_column_exists ? "orders.paid_at" : "0 AS paid_at") . ",
                 " . ($refunded_amount_exists ? "orders.refunded_amount" : "0 AS refunded_amount") . ",
                 " . ($on_account_exists ? "orders.erp_on_account" : "0 AS erp_on_account") . ",

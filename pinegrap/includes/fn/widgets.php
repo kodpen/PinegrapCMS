@@ -8217,7 +8217,8 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // itself stays what it is.
     $status_text  = (string)$order['status'];
     $status_stage = _pg_order_status_stage($status_text);
-    if ($_order_view_has_paid_at_col && pg_order_awaiting_payment($order)) {
+    $order_awaiting_payment = $_order_view_has_paid_at_col && pg_order_awaiting_payment($order);
+    if ($order_awaiting_payment) {
         $status_text  = lang('Awaiting Payment');
         $status_stage = 'pending';
     }
@@ -8515,14 +8516,16 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // paid_at = 0, so a transaction reference still stands in for it there,
     // proxied to order_date because a gateway-completed order sets both at
     // the same instant (submit_order.php). An unpaid bank transfer has
-    // neither and gets no event.
+    // neither and gets no event, nor does a payment the service has not
+    // settled yet (a PayPal review, a Stripe debit still processing), whose
+    // order carries its reference already.
     if ($paid_at_ts > 0) {
         $timeline_events[] = array(
             'label' => lang('Payment Received'),
             'ts'    => $_fmt_ts($paid_at_ts, true),
             'kind'  => 'paid',
         );
-    } elseif (trim((string)$order['transaction_id']) !== '' && $order_date_ts > 0) {
+    } elseif (!$order_awaiting_payment && trim((string)$order['transaction_id']) !== '' && $order_date_ts > 0) {
         $timeline_events[] = array(
             'label' => lang('Payment Received'),
             'ts'    => $_fmt_ts($order_date_ts, true),

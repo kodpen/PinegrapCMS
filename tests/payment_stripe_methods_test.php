@@ -59,7 +59,7 @@ function payment_stripe_methods_test_params($path)
 
 function payment_stripe_methods_test_all_on()
 {
-	return array('ideal' => true, 'bancontact' => true, 'eps' => true, 'p24' => true, 'klarna' => true, 'afterpay_clearpay' => true);
+	return array('ideal' => true, 'bancontact' => true, 'eps' => true, 'p24' => true, 'klarna' => true, 'afterpay_clearpay' => true, 'sepa_debit' => true);
 }
 
 function payment_stripe_methods_test_settings($changes = array())
@@ -104,7 +104,7 @@ function test_payment_stripe_methods_list()
 {
 	$methods = pg_payment_stripe_methods();
 
-	pg_assert_same(array('ideal', 'bancontact', 'eps', 'p24', 'klarna', 'afterpay_clearpay'), array_keys($methods));
+	pg_assert_same(array('ideal', 'bancontact', 'eps', 'p24', 'klarna', 'afterpay_clearpay', 'sepa_debit'), array_keys($methods));
 
 	foreach ($methods as $type => $method) {
 		pg_assert_same(array('label', 'currencies', 'immediate', 'hold', 'step'), array_keys($method), $type);
@@ -115,8 +115,10 @@ function test_payment_stripe_methods_list()
 			pg_assert_same(1, preg_match('/^[A-Z]{3}$/', $currency), $type . ' ' . $currency);
 		}
 
-		pg_assert_true($method['immediate'], $type . ': Stripe answers the result when the visitor is back');
-		pg_assert_same('redirect', $method['step'], $type);
+		// A bank debit settles days later and is given in the Payment
+		// Element; every other method is paid on its own page.
+		pg_assert_same($type !== 'sepa_debit', $method['immediate'], $type . ': Stripe answers the result when the visitor is back');
+		pg_assert_same(($type === 'sepa_debit') ? 'element' : 'redirect', $method['step'], $type);
 		pg_assert_same(in_array($type, array('klarna', 'afterpay_clearpay'), true), $method['hold'], $type . ': only these can be held');
 	}
 
@@ -125,6 +127,8 @@ function test_payment_stripe_methods_list()
 	pg_assert_same(array('EUR'), $methods['eps']['currencies']);
 	pg_assert_same(array('EUR', 'PLN'), $methods['p24']['currencies']);
 	pg_assert_same(array('AUD', 'CAD', 'EUR', 'GBP', 'NZD', 'USD'), $methods['afterpay_clearpay']['currencies']);
+	pg_assert_same(array('EUR'), $methods['sepa_debit']['currencies']);
+	pg_assert_same('SEPA Direct Debit', $methods['sepa_debit']['label']);
 	pg_assert_true(in_array('SEK', $methods['klarna']['currencies'], true));
 	pg_assert_false(in_array('TRY', $methods['klarna']['currencies'], true));
 }
@@ -145,8 +149,8 @@ function test_payment_stripe_method_types_by_currency_and_switches()
 	pg_assert_same(array('card'), pg_payment_stripe_method_types('eur', $settings), 'settings without switches: none');
 
 	$on = payment_stripe_methods_test_settings(array('methods' => $all));
-	pg_assert_same(array('card', 'ideal', 'bancontact', 'eps', 'p24', 'klarna', 'afterpay_clearpay'), pg_payment_stripe_method_types('eur', $on));
-	pg_assert_same(array('card', 'ideal', 'bancontact', 'eps', 'p24', 'klarna', 'afterpay_clearpay'), pg_payment_stripe_method_types('EUR', $on), 'any case');
+	pg_assert_same(array('card', 'ideal', 'bancontact', 'eps', 'p24', 'klarna', 'afterpay_clearpay', 'sepa_debit'), pg_payment_stripe_method_types('eur', $on));
+	pg_assert_same(array('card', 'ideal', 'bancontact', 'eps', 'p24', 'klarna', 'afterpay_clearpay', 'sepa_debit'), pg_payment_stripe_method_types('EUR', $on), 'any case');
 	pg_assert_same(array('card', 'p24', 'klarna'), pg_payment_stripe_method_types('pln', $on));
 	pg_assert_same(array('card', 'klarna', 'afterpay_clearpay'), pg_payment_stripe_method_types('usd', $on));
 	pg_assert_same(array('card', 'klarna'), pg_payment_stripe_method_types('sek', $on));
@@ -154,6 +158,8 @@ function test_payment_stripe_method_types_by_currency_and_switches()
 	pg_assert_same(array('card'), pg_payment_stripe_method_types('', $on));
 
 	pg_assert_same(array('card', 'ideal'), pg_payment_stripe_method_types('eur', payment_stripe_methods_test_settings(array('methods' => array('ideal' => true, 'eps' => false)))));
+	pg_assert_same(array('card', 'sepa_debit'), pg_payment_stripe_method_types('eur', payment_stripe_methods_test_settings(array('methods' => array('sepa_debit' => true)))));
+	pg_assert_same(array('card'), pg_payment_stripe_method_types('usd', payment_stripe_methods_test_settings(array('methods' => array('sepa_debit' => true)))), 'a SEPA debit is in euros only');
 	pg_assert_same(array('card', 'link', 'ideal'), pg_payment_stripe_method_types('eur', payment_stripe_methods_test_settings(array('link' => true, 'methods' => array('ideal' => true)))));
 	pg_assert_same(array('card'), pg_payment_stripe_method_types('eur', payment_stripe_methods_test_settings(array('methods' => array('sofort' => true, 'card' => true)))), 'a type outside the list is never sent');
 	pg_assert_same(array('card'), pg_payment_stripe_method_types('eur', payment_stripe_methods_test_settings(array('methods' => 'ideal'))));
@@ -165,7 +171,7 @@ function test_payment_stripe_method_types_when_the_payment_is_held()
 {
 	$held = payment_stripe_methods_test_settings(array('capture' => 'manual', 'methods' => payment_stripe_methods_test_all_on()));
 
-	pg_assert_same(array('card', 'klarna', 'afterpay_clearpay'), pg_payment_stripe_method_types('eur', $held));
+	pg_assert_same(array('card', 'klarna', 'afterpay_clearpay'), pg_payment_stripe_method_types('eur', $held), 'a SEPA debit cannot be held');
 	pg_assert_same(array('card', 'klarna'), pg_payment_stripe_method_types('pln', $held));
 }
 
@@ -174,7 +180,7 @@ function test_payment_stripe_method_types_for_a_repeating_order()
 {
 	$on = payment_stripe_methods_test_settings(array('methods' => payment_stripe_methods_test_all_on()));
 
-	pg_assert_same(array('card'), pg_payment_stripe_method_types('eur', $on, true));
+	pg_assert_same(array('card'), pg_payment_stripe_method_types('eur', $on, true), 'no SEPA debit either');
 	pg_assert_same(array('card', 'link'), pg_payment_stripe_method_types('eur', array_merge($on, array('link' => true)), true));
 }
 
@@ -250,6 +256,46 @@ function test_payment_stripe_methods_authorize_request()
 	), payment_stripe_methods_test_params('/v1/payment_intents'));
 }
 
+// A SEPA debit: the page's ConfirmationToken carries the IBAN and the
+// accepted mandate, so the intent's request is the same one; Stripe answers
+// it processing, and the order is placed awaiting its payment, the visitor
+// never sent away.
+function test_payment_stripe_methods_sepa_debit_is_placed_pending()
+{
+	$settings = payment_stripe_methods_test_settings(array('methods' => array('sepa_debit' => true)));
+	$client = pg_payment_answer('prepare', pg_payment_stripe_prepare_with(payment_stripe_methods_test_order(), 4714, $settings))['client'];
+	pg_assert_same(array('card', 'sepa_debit'), $client['payment_method_types']);
+
+	$answer = pg_payment_answer('authorize', pg_payment_stripe_authorize_with(payment_stripe_methods_test_order(), 4714, array(
+		'token'      => 'ctoken_1Xyz',
+		'return_url' => 'https://shop.example/pinegrap/express_order.php?mode=stripe_return&page_id=1023',
+	), $settings, payment_stripe_methods_test_http(array(
+		'POST /v1/payment_intents' => array(200, payment_stripe_methods_test_intent(array(
+			'status'         => 'processing',
+			'payment_method' => array('id' => 'pm_1Sepa', 'object' => 'payment_method', 'type' => 'sepa_debit', 'sepa_debit' => array('last4' => '3000', 'country' => 'DE')),
+		))),
+	))));
+
+	pg_assert_same(array(
+		'amount'               => 4714,
+		'currency'             => 'eur',
+		'confirm'              => true,
+		'confirmation_token'   => 'ctoken_1Xyz',
+		'payment_method_types' => array('card', 'sepa_debit'),
+		'capture_method'       => 'automatic',
+		'metadata'             => array('order_id' => '438', 'reference_code' => 'AB12CD34EF'),
+		'expand'               => array('payment_method', 'latest_charge.balance_transaction'),
+		'description'          => 'anna@example.com',
+		'return_url'           => 'https://shop.example/pinegrap/express_order.php?mode=stripe_return&page_id=1023',
+	), payment_stripe_methods_test_params('/v1/payment_intents'), 'no mandate_data: the ConfirmationToken has it');
+
+	pg_assert_true($answer['success']);
+	pg_assert_same('pending', $answer['status']);
+	pg_assert_same('pi_3Abc', $answer['transaction_id']);
+	pg_assert_same('', $answer['card_last4'], 'no card');
+	pg_assert_same(0, pg_order_checkout_paid_at('Credit/Debit Card', $answer['transaction_id'], $answer['status'], 1761600000), 'placed unpaid');
+}
+
 // The bank's page sends the visitor back to the return address; the intent
 // that waits for it is answered as a redirect, as a 3-D Secure page is.
 function test_payment_stripe_methods_bank_page_is_a_redirect()
@@ -312,7 +358,7 @@ function test_payment_stripe_method_fields()
 {
 	$fields = pg_payment_fields_normalize(pg_payment_stripe_method_fields('EUR'));
 
-	pg_assert_same(array('method_ideal', 'method_bancontact', 'method_eps', 'method_p24', 'method_klarna', 'method_afterpay_clearpay'), array_column($fields, 'name'));
+	pg_assert_same(array('method_ideal', 'method_bancontact', 'method_eps', 'method_p24', 'method_klarna', 'method_afterpay_clearpay', 'method_sepa_debit'), array_column($fields, 'name'));
 
 	foreach ($fields as $index => $field) {
 		pg_assert_same('switch', $field['type'], $field['name']);
@@ -326,12 +372,17 @@ function test_payment_stripe_method_fields()
 	pg_assert_contains('EUR, PLN', $fields[3]['help']);
 	pg_assert_contains(lang('Not offered while Transaction type is Authorize.'), $fields[0]['help'], 'a bank payment cannot be held');
 	pg_assert_false(strpos($fields[4]['help'], lang('Not offered while Transaction type is Authorize.')) !== false, 'Klarna can be held');
+	$later = lang('The payment arrives days later: the order waits for it and is marked paid when Stripe reports it.');
+	pg_assert_contains($later, $fields[6]['help'], 'a SEPA debit settles later');
+	pg_assert_contains(lang('Not offered while Transaction type is Authorize.'), $fields[6]['help']);
+	pg_assert_false(strpos($fields[0]['help'], $later) !== false, 'iDEAL answers at once');
 
 	$usd = pg_payment_fields_normalize(pg_payment_stripe_method_fields('usd'));
 	pg_assert_contains('USD', $usd[0]['unavailable'], 'iDEAL takes no USD: the reason names the base currency');
 	pg_assert_contains('EUR', $usd[0]['unavailable']);
 	pg_assert_same('', $usd[4]['unavailable'], 'Klarna takes USD');
 	pg_assert_same('', $usd[5]['unavailable'], 'Afterpay takes USD');
+	pg_assert_contains('USD', $usd[6]['unavailable'], 'a SEPA debit takes no USD');
 
 	foreach (pg_payment_fields_normalize(pg_payment_stripe_method_fields('')) as $field) {
 		pg_assert_same('', $field['unavailable'], 'no reason without a known currency');

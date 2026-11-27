@@ -69,6 +69,8 @@ function get_order_receipt($properties) {
             orders.payment_installment,
             orders.installment_charges,
             orders.payment_method,
+            orders.transaction_id,
+            " . (pg_schema_has('orders', 'paid_at') ? 'orders.paid_at,' : '') . "
             orders.card_type,
             orders.card_number,
             orders.cardholder,
@@ -122,6 +124,10 @@ function get_order_receipt($properties) {
     $card_type = $row['card_type'];
     $card_number = $row['card_number'];
     $cardholder = $row['cardholder'];
+
+    // A payment the service has not settled yet (a bank debit still
+    // processing, a PayPal payment under review).
+    $payment_confirming_note = pg_order_payment_confirming_note($row);
 
     // The discount, tax and total the order was charged, not the ones of the
     // cart the visitor may have filled since (pg_order_page_figures()).
@@ -1481,7 +1487,9 @@ function get_order_receipt($properties) {
                 '<div class="payment heading">' . h(lang('Payment Information')) . '</div>
                 <div class="payment data">
                 ' . h(lang('Payment Method')) . ': ' . $output_payment_method . '<br />' 
-                . $output_credit_debit_card_information . '</div>';
+                . $output_credit_debit_card_information
+                . (($payment_confirming_note !== '') ? '<span class="payment_confirming_note">' . h($payment_confirming_note) . '</span><br />' : '')
+                . '</div>';
         }
 
         // If a user account was created via the auto-registration feature,
@@ -2509,6 +2517,7 @@ function get_order_receipt($properties) {
             'fields' => $fields,
             'payment_method' => $payment_method,
             'payment_method_label' => $payment_method_label,
+            'payment_confirming_note' => $payment_confirming_note,
             'card_type' => $card_type,
             'card_number' => $card_number,
             'cardholder' => $cardholder,

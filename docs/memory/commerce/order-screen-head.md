@@ -12,7 +12,7 @@ module: order_view
 ## How are the pills worked out?
 - `pg_order_view_states($order, $addresses, $today)` is pure: the screen hands it the orders row (taken as `$head_order` before `$row` is reused), and per ship-to its dates, lines and parcel statuses, gathered in the loops that already read them (`$head_addresses`).
 - Order: Incomplete grey, Complete and Exported teal, Cancelled rose.
-- Payment (none on an incomplete order or a zero total): awaiting payment with the Order Information badge's words (On account, Payment pending on PayPal, Awaiting bank transfer) amber; Refunded teal when the refund reaches the total; Partially refunded amber; Put on account blue; else Paid teal.
+- Payment (none on an incomplete order or a zero total): awaiting payment with the Order Information badge's words (On account, Payment pending on PayPal or on Stripe, Awaiting bank transfer) amber; Refunded teal when the refund reaches the total; Partially refunded amber; Put on account blue; else Paid teal.
 - Shipping, only with an address (`pg_order_view_address_shipping()`): Delivered when the delivery date is today or before or all parcels are delivered; Shipped when the ship date is today or before, a parcel exists, or every line with a shipped quantity is full; Partially shipped when one is above zero; else Not shipped.
 - The order: all delivered, all shipped, any begun (Partially shipped), else Not shipped. A cancelled order shows it only when something left. `addresses` keeps each ship-to's pill for its shipment card (a later step).
 
