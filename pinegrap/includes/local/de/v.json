@@ -3,6 +3,7 @@
     "VAT": "MwSt.",
     "VAT %": "MwSt. %",
     "VAT (currency)": "MwSt. (Währung)",
+    "VAT ({var:1})": "MwSt. ({var:1})",
     "VAT (₺)": "MwSt. (₺)",
     "VAT = Subtotal * 20%": "MwSt. = Zwischensumme * 20%",
     "VAT Amount": "MwSt.-Betrag",
