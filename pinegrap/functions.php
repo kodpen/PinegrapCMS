@@ -45,6 +45,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/core.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/request_scheme.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/lang.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/software_languages.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/lang_pack.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/auth.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/mfa.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/encryption_key.php');
