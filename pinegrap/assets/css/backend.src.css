@@ -25664,47 +25664,104 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
     flex-direction: column;
     gap: .2rem;
 }
-.ws-nb-section-title {
+/* A section's head: its group label (.pg-group-label with its count, a
+   button that folds the section; workspace_note_list.js), then the
+   section's own buttons. A folder's head in a section folds the same way. */
+.ws-nb-section-head {
     display: flex;
     align-items: center;
-    gap: .4rem;
-    padding: 0 .35rem .2rem;
-    font-size: .75rem;
-    font-weight: 600;
-    letter-spacing: .04em;
-    color: var(--pg-fg-2);
-    text-transform: uppercase;
+    gap: 6px;
 }
-.ws-nb-count {
-    padding: 0 .4rem;
-    border-radius: var(--ws-radius);
-    background: var(--pg-bg-1);
-    font-size: .7rem;
+.ws-nb-section-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    font: inherit;
+}
+.ws-nb-section-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.ws-nb-section-body[hidden] {
+    display: none;
+}
+.ws-nb-fold {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 100%;
+    padding: 4px 8px;
+    border: 0;
+    border-radius: 8px;
+    background: none;
+    text-align: start;
+    cursor: pointer;
+}
+.ws-nb-fold:hover {
+    color: var(--pg-fg-2);
+}
+.ws-nb-fold:focus-visible {
+    outline: var(--pg-focus-ring-width) solid var(--pg-focus-ring-color);
+    outline-offset: calc(var(--pg-focus-ring-width) * -1);
+}
+/* The fold's gap spaces the count. */
+.ws-nb-fold > .pg-group-label-count {
+    margin-left: 0;
+}
+.ws-nb-fold-chevron {
+    flex: none;
+    font-size: 11px;
+    transition: transform .15s ease;
+}
+.ws-nb-fold[aria-expanded="false"] .ws-nb-fold-chevron {
+    transform: rotate(-90deg);
+}
+[dir="rtl"] .ws-nb-fold[aria-expanded="false"] .ws-nb-fold-chevron {
+    transform: rotate(90deg);
+}
+@media (prefers-reduced-motion: reduce) {
+    .ws-nb-fold-chevron {
+        transition: none;
+    }
 }
 .ws-nb-section-empty {
     padding: .25rem .35rem;
     font-size: .8125rem;
     color: var(--pg-fg-2);
 }
+/* A note's row is a .pg-list-row (workspace.js, drawItem()): the open note
+   is the chosen row, a faint accent tint with an accent edge at its start;
+   its ⋯ stays shown. */
 .ws-nb-item {
-    padding: .5rem .6rem;
-    border: 1px solid transparent;
-    border-radius: var(--ws-radius-sm);
     cursor: pointer;
 }
-.ws-nb-item:hover,
 .ws-nb-item:focus-visible {
-    background: var(--pg-bg-1);
-    outline: 0;
+    outline: var(--pg-focus-ring-width) solid var(--pg-focus-ring-color);
+    outline-offset: calc(var(--pg-focus-ring-width) * -1);
 }
-.ws-nb-item.active {
-    border-color: var(--pg-primary-border-subtle);
-    background: var(--pg-primary-bg-subtle);
+.ws-nb-list .ws-nb-item.is-chosen {
+    background: color-mix(in srgb, var(--pg-accent) var(--pg-tint-select), transparent);
+    box-shadow: inset 2px 0 0 var(--pg-accent);
 }
-.ws-nb-item-head {
+[dir="rtl"] .ws-nb-list .ws-nb-item.is-chosen {
+    box-shadow: inset -2px 0 0 var(--pg-accent);
+}
+/* A note dragged beside the chosen row: the drop line takes the edge's
+   place. */
+.ws-nb-list .ws-nb-item.is-chosen.ws-nb-drop-before {
+    box-shadow: inset 0 2px 0 var(--ws-accent);
+}
+.ws-nb-list .ws-nb-item.is-chosen.ws-nb-drop-after {
+    box-shadow: inset 0 -2px 0 var(--ws-accent);
+}
+.ws-nb-item.is-chosen .pg-list-row-quick {
     display: flex;
+}
+/* The head holds marks beside the title (the unread dot, the pin, the
+   lock): centred rather than on the text's baseline. */
+.ws-nb-item .ws-nb-item-head {
     align-items: center;
-    gap: .4rem;
 }
 .ws-nb-item-head > .bi {
     flex: none;
@@ -25713,33 +25770,13 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
 .ws-nb-item-head > .ws-nb-item-pin {
     color: var(--pg-primary-ink);
 }
-.ws-nb-item-name {
-    flex: 1 1 auto;
-    min-width: 0;
-    overflow: hidden;
-    font-weight: 600;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-.ws-nb-item-time {
-    flex: none;
-    font-size: .75rem;
-    color: var(--pg-fg-2);
-}
 /* Changed by somebody else, or answered by Claude, since it was last open. */
 .ws-nb-item-unread .ws-nb-item-name {
     color: var(--pg-fg-emphasis);
 }
 .ws-nb-item-unread .ws-nb-item-time {
     color: var(--ws-accent);
-    font-weight: 600;
-}
-.ws-nb-item-dot {
-    flex: none;
-    width: .5rem;
-    height: .5rem;
-    border-radius: 50%;
-    background: var(--ws-accent);
+    font-weight: var(--pg-weight-strong);
 }
 .ws-nb-item-claude {
     flex: none;
@@ -25759,56 +25796,27 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
     color: var(--pg-fg-2);
     opacity: 0;
 }
-.ws-nb-item:hover .ws-nb-item-more,
-.ws-nb-item.active .ws-nb-item-more,
 .ws-nb-item-more:focus-visible {
     opacity: 1;
 }
-/* Note groups as folders in My notes (workspace_note_groups.js). */
-.ws-nb-group-add {
-    padding: 0 .4rem;
-    font-size: .75rem;
-    letter-spacing: normal;
-    text-transform: none;
-}
+/* Note groups as folders in My notes (workspace_note_groups.js): the
+   folder's head is its group label (.ws-nb-fold) and its ⋯. */
 .ws-nb-group-head {
     display: flex;
     align-items: center;
-    gap: .2rem;
-    border-radius: var(--ws-radius-sm);
+    gap: 2px;
+    border-radius: 8px;
 }
 .ws-nb-group-head:hover {
-    background: var(--pg-bg-1);
+    background: var(--pg-hover);
 }
 .ws-nb-group-head:hover .ws-nb-item-more,
 .ws-nb-group-head .ws-nb-item-more:focus-visible {
     opacity: 1;
 }
 .ws-nb-group-toggle {
-    display: flex;
     flex: 1 1 auto;
-    align-items: center;
-    gap: .45rem;
     min-width: 0;
-    padding: .4rem .5rem;
-    border: 0;
-    background: transparent;
-    color: inherit;
-    font-weight: 600;
-    text-align: start;
-}
-.ws-nb-group-toggle:focus-visible {
-    outline: 2px solid var(--pg-primary-border-subtle);
-    outline-offset: -2px;
-}
-.ws-nb-group-chevron {
-    flex: none;
-    font-size: .7rem;
-    color: var(--pg-fg-2);
-    transition: transform .15s ease;
-}
-.ws-nb-group.open .ws-nb-group-chevron {
-    transform: rotate(90deg);
 }
 .ws-nb-group-dot {
     flex: none;
@@ -25820,7 +25828,7 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
     border: 1px solid var(--pg-fg-2);
 }
 .ws-nb-group-name {
-    flex: 1 1 auto;
+    flex: 0 1 auto;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -25857,11 +25865,6 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
 }
 .ws-nb-group.open .ws-nb-group-body {
     display: flex;
-}
-@media (prefers-reduced-motion: reduce) {
-    .ws-nb-group-chevron {
-        transition: none;
-    }
 }
 /* Drag and drop in My notes: where a note or a folder would land. */
 .ws-nb-dragging {
@@ -26023,15 +26026,6 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
     .ws-nb-group-head .ws-nb-item-more {
         opacity: 1;
     }
-}
-.ws-nb-item-excerpt {
-    display: -webkit-box;
-    margin-top: .15rem;
-    overflow: hidden;
-    font-size: .8125rem;
-    color: var(--pg-fg-2);
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
 }
 .ws-nb-item-meta {
     display: flex;
