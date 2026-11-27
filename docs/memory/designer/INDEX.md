@@ -456,6 +456,7 @@
 - designer-first-tour-help-drawing.md: The first tour's drawing (DD14), boards T4 to T6 for step FT3: the Help window's "How do I…" with its ten tasks and three pointers, the "Tips" switch, a first-use tip, an empty page's three starts
 - designer-first-tour-help.md: The designer's Help window ("How do I…", the keyboard shortcuts, "Tips"), a task's three pointers, the first-use tip line any feature asks for, and an empty page's starts (FT3)
 - designer-first-tour-model.md: The first tour's pure model (window.PGDesignerTour, FT1): stops and their controls per access, Next and Back skipping a missing control, what was seen kept per person in the browser
+- designer-focus-shape-layers-fixes.md: Image focus, Clip shape, curve and background layer rules since the #12015 hunt: canvas width, shape outline, curve keys, Position and Repeat rows, stale focus
 - designer-fonts-part.md: The Google Fonts browser of the designer as the part 'fonts' (D5 part 6): what moved, what the core keeps, the host it works through
 - designer-form-palette-and-fields.md: Designer form controls: label[for] protection, fieldset radio/checkbox groups, CF_PALETTE rules, overview-tree option folding.
 - designer-form-uploads-for-readers.md: Designed-form uploads open for visitors when a public designed record view or list shows the record and prints the field (get_file.php, includes/record_files.php); what keeps them closed
@@ -472,6 +473,7 @@
 - designer-home-narrow.md: The New design window below 768 px (a list, then the pane with "All starts") and the Page Design Studio home on a phone (one column, the other designs as a list) [decision: here]
 - designer-home-pictures.md: The Page Design Studio home's and Choose a Template's pictures: a design's real page, templates' home pages, the theme picker that redraws them, the drawings as the fallback [decision: decisions-made-product-35.md]
 - designer-home-screen.md: Page Design Studio home (view_system_styles.php): the head row, the first visit's three starts, the site's design shown large, tiles, the grouped menu, rename (designer/design_rename) [decision: here]
+- designer-home-script-rules.md: The Page Design Studio home script's pure rules (window.PgDesignerHome): chips after Put on the site, a refused rename, the focus after a delete under a search, ?start= read once
 - designer-home-tidy-drawing.md: Drawing of the New design window and the Page Design Studio home (2026-11-26): which board belongs to which step of designer-home-tidy, and what the sheets fix [decision: here]
 - designer-image-focus-drawing-frames.md: Board F5 of the image focus drawing (2026-11-25): the Focus control's phone, tablet and desktop frames stand under the whole picture, large, with their names; one frame when all three are the same [decision: here]
 - designer-image-focus-drawing.md: The drawing of the image focus (the Focus control and "Set focus"): the sheet, its five boards, what each step builds from it and what the sheet settles
@@ -502,6 +504,7 @@
 - designer-my-library-save-and-group.md: "Save to my library" (element menu, command palette) and its window, the "My library" group atop the Blocks list with search and hover card, adding a copy, the amber mark of a cleared binding (ML2)
 - designer-narrow-screen-bars.md: Designer toolbars hide labels, never controls: the page bar below 1024px window, the canvas bar (.sd-bp-bar) by its own width in fold levels (DP22), and how to measure off-screen controls.
 - designer-new-version-server.md: A live page's new version on the server (NV1, page_versions.php): the bundle shape, Start and its refusals, one per page, Discard's order, the editor's versions block [decision: here]
+- designer-new-version-tab.md: A live page's new version in the Page Design Studio (NV2): the door "Save as a new version" / "Open the new version", the draft's tab and its pill, "Discard this version", the part versions
 - designer-node-attributes.md: The attributes every designer content, semantic and grid node writes on the page and in the editor HTML: one style order, font quoting, title and tooltip, Attributes panel rules, sizing on content
 - designer-node-ids.md: The designer's node ids (sd_N): each saved tree numbers its own, the counter kept above every loaded tree, a filled-in id never repeats one of its tree, issue badges on the issue's own node (#9958)
 - designer-note-author-stamping.md: Node notes get their author stamped in pg_designer_save_page via pg_stamp_note_authors, not in save_system_style; unchanged notes keep their stamp.

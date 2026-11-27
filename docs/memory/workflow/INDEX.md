@@ -70,6 +70,7 @@
 - bug-hunt-areas-delivery-tower.md: The delivery tower bug hunt (2026-11-26, #11800): rules, passes, desk, scorecard, chooser, API; two faults fixed, the hand-closed rule built, read clean, left [decision: here]
 - bug-hunt-areas-design-variables.md: The bug hunt in a design's variables (2026-11-26, PR #11770): the Variables tab, the start questions, "Ask me again", Export and Import; what was read, fixed, seen and left
 - bug-hunt-areas-designer-activity.md: Bug hunt of the designer's History "Activity" tab and its audit lines (2026-11-26, PR #11762): three faults fixed, what was read clean [decision: here]
+- bug-hunt-areas-designer-home.md: Bug hunt of the Page Design Studio home and the New design window (2026-11-27): the four faults fixed, the one written as an issue, what was read clean
 - bug-hunt-areas-designer-import.md: The bug hunt of the designer's HTML, ZIP and paste importers on the server (hunt 55, 2026-11-24, #11501): the seven faults fixed, what was read clean, what was not run
 - bug-hunt-areas-designer-shared-components.md: Bug hunt of the designer's shared components, server side (area 54, 2026-11-24): four faults fixed in the hunt's PR #11498, two issues, what was read clean [decision: decisions-made-product-109.md]
 - bug-hunt-areas-document-to-page.md: Bug hunt "Page from a document" (2026-11-26, PR #11769): seven faults fixed (file pick, pictures, words, how much was read), what read clean, the two faults left built in PR #11792
