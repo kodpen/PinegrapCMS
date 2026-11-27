@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_image_editor_parts()
 {
-    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'langview', 'export', 'vector', 'svg', 'motion', 'tracks', 'sound', 'keyframes', 'render', 'scenes', 'present', 'access', 'record', 'follow', 'fonts', 'textstyles', 'glyph', 'elements', 'starts', 'resize', 'frames', 'unsplash', 'data', 'warp', 'puppet', 'outline', 'builder', 'video', 'clip', 'mix', 'upload', 'phone', 'colors', 'actions', 'menu');
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'langview', 'export', 'vector', 'svg', 'motion', 'tracks', 'sound', 'keyframes', 'render', 'scenes', 'present', 'access', 'record', 'follow', 'fonts', 'textstyles', 'glyph', 'elements', 'tabler', 'starts', 'resize', 'frames', 'unsplash', 'data', 'warp', 'puppet', 'outline', 'builder', 'video', 'clip', 'mix', 'upload', 'phone', 'colors', 'actions', 'menu');
 }
 
 /**
@@ -207,6 +207,8 @@ function pg_image_editor_config()
         'fontPairs' => pg_image_editor_font_pairs_url(),
         // The Sticker tool's element sets, read when the panel first opens.
         'elements' => pg_image_editor_elements_url(),
+        // The Sticker tool's Tabler Icons, read when that set is first picked.
+        'tabler' => pg_image_editor_tabler_url(),
         // The New image dialog's designs, read when its row first opens.
         'starts' => pg_image_editor_starts_urls(),
         // The animation encoder's script, started as a worker.
@@ -7447,6 +7449,35 @@ function pg_image_editor_strings_elements()
 function pg_image_editor_elements_url()
 {
     return OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/canvas/elements.json?v=' . (int) @filemtime(PG_FUNCTIONS_DIR . '/assets/canvas/elements.json');
+}
+
+// -- Tabler Icons (pg_image_editor_tabler.js) --
+
+/**
+ * The Sticker tool's second icon set: the set switch and the stroke width
+ * of a placed icon.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_tabler()
+{
+    return array(
+        'tablerSet'       => lang('Icon set'),
+        'tablerSetBi'     => lang('Bootstrap'),
+        'tablerSetTabler' => lang('Tabler'),
+        'tablerWidth'     => lang('Stroke width'),
+    );
+}
+
+/**
+ * The Tabler Icons file of the Sticker tool (name => path); the address
+ * carries the file's time so a new release is fetched again.
+ *
+ * @return string address
+ */
+function pg_image_editor_tabler_url()
+{
+    return OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/canvas/tabler-icons/icons.json?v=' . (int) @filemtime(PG_FUNCTIONS_DIR . '/assets/canvas/tabler-icons/icons.json');
 }
 
 // -- Start from a design (pg_image_editor_starts.js) --
