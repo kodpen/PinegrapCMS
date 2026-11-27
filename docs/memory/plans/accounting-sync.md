@@ -1,6 +1,6 @@
 ---
 name: accounting-sync
-description: Plan (owner 2026-11-27, poll 246): sales, customers and payments sent to Xero, then QuickBooks; the census is done, AS2 (Xero connected) needs no table, the sends wait for poll 250
+description: Plan (owner 2026-11-27, poll 246): sales, customers and payments sent to Xero, then QuickBooks; the census is done, AS2 (Xero connected) is built, the sends use one new table (poll 250)
 priority: 5
 ---
 
@@ -17,12 +17,12 @@ priority: 5
 - Only sales after the connection. A sale goes in its own currency; when the books lack it the send fails with that reason, and the site never turns multicurrency on there.
 - The site's tax is sent as it is, each local rate matched once to the service's tax code; a sale with an unmatched rate waits. US QuickBooks: TAX or NON and the site's total.
 - Refunds are found by reading `order_refunds`, as GA4's are; no new event.
-- Asked of the owner: one table for the queue and the pairing, or columns (poll 250).
+- Owner (2026-11-27, poll 250, `workflow/decisions-made-schema-54.md`): one new table, `accounting_sync`, is the queue and the pairing.
 
 ## Which steps? (S under 400 lines, M under 1,000; each waits for the one before it)
 - AS1 Census: done, `plans/accounting-sync-census.md`.
-- AS2 (M) Xero connected: provider `includes/connect/providers/xero.php` and its purpose owned by the site; after connecting the organisation is read from `/connections` and kept in a sealed service entry; the income, clearing and bank accounts chosen on its Connections page, kept there too. The worker first reads Xero's OpenAPI file whole and corrects the census.
-- AS3 (M, owner's: poll 250) The queue and the pairing by a migration step, module `includes/fn/accounting_sync.php`: a row written when an order is paid, a refund row is found or an ERP event fires; `job.php` sends through a driver, paced, retried on `api_webhook_backoff()`, the key that stops a second sale made from the row; tax rates matched on the Connections page. Tested with a driver that sends nothing.
+- AS2 Xero connected: done (#12069). Provider `includes/connect/providers/xero.php`; the organisation and the income, clearing and bank accounts sit in one sealed service entry, chosen on Xero's Connections page.
+- AS3 (M) The queue and the pairing, the table `accounting_sync` by a migration step, module `includes/fn/accounting_sync.php`: a row written when an order is paid, a refund row is found or an ERP event fires; `job.php` sends through a driver, paced, retried on `api_webhook_backoff()`, the key that stops a second sale made from the row; tax rates matched on the Connections page. Tested with a driver that sends nothing.
 - AS4 (M) Xero's driver: contact, item, invoice and payment, credit note, void, from the order and from the ERP, `Idempotency-Key`, its limits read from the answer's headers.
 - AS5 (S) A failed send: the "Events" card on the service's Connections page with Try again, one line on View Order and on the ERP invoice, the daily operations alert; a connection marked `reauth` holds the queue.
 - AS6 (M) QuickBooks connected: a provider may name return parameters that `pg_connect_finish()` keeps (`realmId`); addresses from the discovery document; the company read; accounts and tax codes chosen; its setup lines tell of the questionnaire.
