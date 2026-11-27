@@ -370,7 +370,9 @@
 - decisions-made-schema-50.md: Decisions list, schema part 50 (2026-11-24 on): one column answer_kind on launch_summary_lines for a line that asks for files; no new table
 - decisions-made-schema-51.md: Decisions list, schema part 51 (2026-11-24 on): the table security_finding of the Security Scan; the owner left the schema to the architect
 - decisions-made-schema-52.md: Decisions list, schema part 52 (2026-11-24 on): the table form_old_address keeps a record's earlier address names, so a renamed post or category answers its old address with a 301
-- decisions-made-schema-53.md: Decisions made, schema part 53 (2026-11-26 on): an agent's context window size is typed on its form and kept in ws_agents.context_size; the agent reports only the tokens it uses
+- decisions-made-schema-53.md: Decisions made, schema part 53 (2026-11-26 on): an agent's context size typed on its form, kept in ws_agents.context_size; imports.kind takes squarespace, webflow, wix
+- decisions-made-schema-54.md: Decisions made, schema part 54 (2026-11-27 on): the help centre's priority, source and kb_votes; the markets' tables and an order's charged currency; one table for the accounting sync
+- decisions-made-schema-55.md: Decisions made, schema part 55 (2026-11-27 on): automatic tax gets a rate class on the product and the country a line was taxed in on the order line
 - decisions-made-schema-6.md: Decisions list, schema part 6 (2026-10-30 midday on): district and plate_code, iys_sms_status, form_fields.rules, the marketplace auto-invoice switch, erp_quote_links, erp_quote_templates
 - decisions-made-schema-7.md: Decisions list, schema part 7 (2026-10-31 on): SMS campaign tables; image versions table in principle; ws_file_edits.redacted for a redacted Workspace replace
 - decisions-made-schema-8.md: Decisions list, schema part 8 (2026-11-02 on): tables and columns of the 2026-11 feature plans (#5032-#5042) and the Assistant card summary columns (#5014, #5227)
