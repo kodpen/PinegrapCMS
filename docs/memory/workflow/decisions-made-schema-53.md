@@ -22,3 +22,4 @@ description: Decisions made, schema part 53 (2026-11-26 on): an agent's context 
 - So: one step of the open version widens the `ENUM` with `squarespace`, `webflow` and `wix`, the way `decisions-made-schema-48.md` describes (the MODIFY runs only while a value is missing, a new install's CREATE TABLE carries the same list); never a `VARCHAR`. It is written with IB2 of `plans/import-site-builders.md`; the Webflow and Wix readers find their value there and add none.
 - Architect's reading, not his words: a collection's CSV has no kind of its own; it is recorded as webflow or wix, whichever its file is told to be.
 - Running sites: an import made before keeps its kind; nothing is rewritten.
+- Built by PR #12075: step 11.0.282 (`platform/import-squarespace.md`).

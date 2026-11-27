@@ -95,6 +95,7 @@ function pg_import_write_product($item, $import)
         require_once(PG_FUNCTIONS_DIR . '/product_builder.php');
     }
 
+    $data['weight'] = pg_import_product_weight($data, (array) ($import['mapping'] ?? array()));
     $notes = array_values((array) ($data['notes'] ?? array()));
     $user_id = (int) ($import['user_id'] ?? 0);
     $variants = array();
@@ -207,9 +208,37 @@ function pg_import_write_product($item, $import)
 }
 
 /**
+ * The weight of a product item in pounds, the unit products.weight holds:
+ * the reader's own when it knew the file's unit, else the figure the file
+ * wrote (weight_figure) in the unit the import's plan step asked, pounds
+ * when none was asked. Pure.
+ *
+ * @param array $data    the item's data
+ * @param array $mapping the import's mapping
+ * @return string
+ */
+function pg_import_product_weight($data, $mapping)
+{
+    if ((string) ($data['weight'] ?? '') !== '') {
+        return (string) $data['weight'];
+    }
+
+    $figure = (string) ($data['weight_figure'] ?? '');
+
+    if (($figure === '') || !is_numeric($figure)) {
+        return '';
+    }
+
+    $unit = (string) ($mapping['weight_unit'] ?? '');
+
+    return pg_import_weight_pounds($figure, ($unit !== '') ? $unit : 'lb');
+}
+
+/**
  * The product columns of a simple product item, the starting row the
- * Workspace and the external API write, then the item's own. Pure but for
- * the decimal cell reader of the product import.
+ * Workspace and the external API write, then the item's own; an item with
+ * shippable false (a service) is not shipped. Pure but for the decimal cell
+ * reader of the product import.
  *
  * @param array $data
  * @param int   $user_id
@@ -223,7 +252,7 @@ function pg_import_product_row($data, $user_id)
     return array(
         'name' => (string) $data['sku'], 'short_description' => mb_substr((string) $data['name'], 0, 100),
         'enabled' => !empty($data['enabled']) ? '1' : '0', 'price' => (int) $data['price'],
-        'taxable' => '1', 'shippable' => '1', 'free_shipping' => '0',
+        'taxable' => '1', 'shippable' => (array_key_exists('shippable', $data) && !$data['shippable']) ? '0' : '1', 'free_shipping' => '0',
         'title' => '', 'meta_description' => '', 'brand' => '', 'gtin' => '', 'mpn' => '', 'keywords' => (string) $data['keywords'],
         'weight' => ($weight !== null) ? $weight : 0, 'length' => 0, 'width' => 0, 'height' => 0,
         'inventory' => $tracked ? '1' : '0', 'inventory_quantity' => $tracked ? (int) $data['stock'] : 0,

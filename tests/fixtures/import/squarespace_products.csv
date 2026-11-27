@@ -1,0 +1,9 @@
+Product ID [Non Editable],Variant ID [Non Editable],Product Type [Non Editable],Product Page,Product URL,Title,Description,SKU,Option Name 1,Option Value 1,Option Name 2,Option Value 2,Option Name 3,Option Value 3,Price,Sale Price,On Sale,Stock,Categories,Tags,Weight,Length,Width,Height,Visible,Hosted Image URLs
+5f1a0001,9a01,Physical,shop,linen-shirt,Linen Shirt,"A soft shirt.
+
+Made of linen & cotton.",SQ-SHIRT-S,Size,S,,,,,49.90,39.90,Yes,5,"/clothing, /clothing/summer-shirts","summer, linen",0.25,,,,Yes,"https://images.example.com/shirt-front.jpg https://images.example.com/shirt-back.jpg"
+5f1a0001,9a02,,,,,,SQ-SHIRT-M,,M,,,,,49.90,39.90,Yes,unlimited,,,0.25,,,,,
+,9a03,,,,,,SQ-SHIRT-L,,L,,,,,52.00,,No,0,,,0.3,,,,,
+5f1a0002,9a04,Physical,shop,ceramic-mug,Ceramic Mug,<p>Holds <strong>tea</strong>.</p>,SQ-MUG,,,,,,,12.00,,No,unlimited,/kitchen,,"1,5",,,,No,https://images.example.com/mug.jpg
+5f1a0003,9a05,Service,services,consultation,One Hour Consultation,Talk to us.,,,,,,,,80,,,unlimited,,,,,,,Yes,
+5f1a0004,9a06,Physical,shop,old-poster,Old Poster,,SQ-POSTER,,,,,,,abc,,,3,,,,,,,Yes,

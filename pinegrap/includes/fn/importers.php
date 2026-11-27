@@ -16,8 +16,8 @@
  * pg_import_<kind>_open($file) (the first cursor, an array that survives
  * json_encode()), pg_import_<kind>_next(&$cursor) (the next item or null at
  * the end) and pg_import_<kind>_plan($item) (the dry run's line for it).
- * Optional: pg_import_<kind>_mapping() lists the mapping rows the screen
- * asks for. An item is array('kind' => writer kind, 'source_key' => unique
+ * Optional: pg_import_<kind>_mapping($file) lists the mapping rows the
+ * screen asks for the uploaded file. An item is array('kind' => writer kind, 'source_key' => unique
  * within the export, 'title' => label, 'data' => what the writer needs).
  *
  * A writer lives in includes/import/write_<kind>.php and defines
@@ -61,7 +61,9 @@ function pg_import_ready()
 }
 
 /**
- * The export kinds, as the imports.kind ENUM lists them.
+ * The export kinds this site reads, each a value of the imports.kind ENUM.
+ * The ENUM also holds 'webflow' and 'wix' (11.0.282), which have no reader
+ * yet and so are not listed: pg_import_reader_file() takes only these.
  *
  * @return array<string,string> kind => label
  */
@@ -71,6 +73,7 @@ function pg_import_kinds()
         'wordpress'   => lang('WordPress export (WXR)'),
         'woocommerce' => lang('WooCommerce products (CSV)'),
         'shopify'     => lang('Shopify products or customers (CSV)'),
+        'squarespace' => lang('Squarespace site (XML), products or customers (CSV)'),
     );
 }
 
@@ -98,6 +101,11 @@ function pg_import_writer_kinds()
  * is RSS carrying the WordPress export namespace; a CSV is told apart by its
  * header line, read case-insensitively. Pure.
  *
+ * Squarespace writes its site content in WordPress's format with nothing in
+ * the channel head that names it, but its pages carry picture and form
+ * addresses on squarespace.com: a WXR whose first bytes name Squarespace is
+ * that kind, any other runs as WordPress.
+ *
  * @param string $head the file's first few kilobytes
  * @return string
  */
@@ -111,7 +119,7 @@ function pg_import_detect_kind($head)
     }
 
     if ((stripos($head, '<rss') !== false) && (stripos($head, 'wordpress.org/export/') !== false)) {
-        return 'wordpress';
+        return (stripos($head, 'squarespace') !== false) ? 'squarespace' : 'wordpress';
     }
 
     $line = strtok(str_replace("\r", "\n", ltrim($head)), "\n");
@@ -148,6 +156,12 @@ function pg_import_detect_kind($head)
     // WooCommerce's product exporter: ID, Type, SKU and Regular price.
     if ($has(array('id', 'type', 'sku', 'regular price'))) {
         return 'woocommerce';
+    }
+
+    // Squarespace products: Product Page with Product URL; customers: the
+    // name columns with Customer Since (the file has no consent column).
+    if ($has(array('product page', 'product url')) || $has(array('first name', 'last name', 'email', 'customer since'))) {
+        return 'squarespace';
     }
 
     return '';
@@ -786,9 +800,7 @@ function pg_import_run($import_id, $budget)
         // What the old site showed at an address of its own gets a 301 from
         // that path (includes/import/write_redirect.php).
         if (($result['result'] === 'made') && pg_import_writer_load('redirect')) {
-            $redirect = pg_import_redirect_after($import, (array) $item, (int) $result['id']);
-
-            if ($redirect !== null) {
+            foreach (pg_import_redirect_after($import, (array) $item, (int) $result['id']) as $redirect) {
                 $state['counts'] = pg_import_tally($state['counts'], 'redirect', $redirect['result']);
                 $state['report'] = pg_import_report_add($state['report'], $redirect['result'], array('kind' => 'redirect') + (array) $item, $redirect['reason']);
             }

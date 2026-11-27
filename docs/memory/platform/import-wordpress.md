@@ -5,11 +5,11 @@ description: WordPress WXR reader of the import framework: streaming walk, what 
 
 ## How is a WXR file read?
 - `includes/import/wordpress.php`, the reader contract of `import-framework.md`. `XMLReader` walks `<item>` elements one at a time; each item's outer XML is read inside a wrapper that declares the namespaces again and parsed with SimpleXML. The whole file is never in memory.
-- The head before the first item gives the old site's host (`base_site_url`, `www.` dropped) as the source key prefix, the export namespace (WXR 1.0, 1.1 and 1.2 are in use) and the authors by login (`pg_import_wp_site()`).
-- `pg_import_wp_reader()` opens the file with `LIBXML_NONET`, never `LIBXML_NOENT`. It no longer switches libxml's entity loader on: only PHPExcel switched it off, and the library is gone (#10528).
+- The head before the first item gives the old site's host (`base_site_url`, else the channel `<link>` as Squarespace has no other, `www.` dropped) as the source key prefix, the export namespace (WXR 1.0, 1.1 and 1.2 are in use) and the authors by login (`pg_import_wp_site()`).
+- `pg_import_wp_reader()` opens the file with `LIBXML_NONET`, never `LIBXML_NOENT`; it leaves libxml's entity loader alone (#10528).
 
 ## What does each item become?
-- post and every custom post type: `record`; page: `page`; attachment: `file` (`url`, caption, parent post). Source key `<host>:post:<id>`, comments `<host>:comment:<id>`.
+- post and every custom post type: `record`; page: `page`; attachment: `file` (`url`, caption, parent post). Source key `<host>:post:<id>` (Squarespace starts at id 0), comments `<host>:comment:<id>`.
 - Left out: `nav_menu_item`, `revision`, block editor and customizer internals (`pg_import_wp_skipped_types()`), status trash and auto-draft. publish and inherit are published; draft, pending, future and private are drafts.
 - A record's data: post type, status, old status `wp_status`, password flag `protected` (`import-records.md`), body, excerpt, time, slug, old link (for redirects), parent, author (login, display name, e-mail), categories, tags, and the featured image as the attachment's source key (`_thumbnail_id`): the file item may come later in the file, so the writer looks it up then.
 
