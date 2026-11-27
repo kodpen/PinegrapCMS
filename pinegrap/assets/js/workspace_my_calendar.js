@@ -41,6 +41,23 @@
         }
     }
 
+    // A phone: the month's chosen day listed under the grid, the week one
+    // day at a time.
+    var PHONE = '(max-width: 575.98px)';
+
+    function onPhone() {
+        return !!(window.matchMedia && window.matchMedia(PHONE).matches);
+    }
+
+    // A Y-m-d moved by a number of days.
+    function addDays(date, count) {
+        var at = new Date(date + 'T12:00:00Z');
+
+        at.setUTCDate(at.getUTCDate() + count);
+
+        return at.toISOString().slice(0, 10);
+    }
+
     function screen(root, h) {
         var S = (h.cfg.my_calendar && h.cfg.my_calendar.strings) || {};
         var el = h.el;
@@ -57,7 +74,10 @@
             // ... filled from one of the person's own plans (from=N).
             from: parseInt(query.get('from') || 0, 10) || 0,
             // ... or from one of the team's roadmap templates (template=N).
-            template: parseInt(query.get('template') || 0, 10) || 0
+            template: parseInt(query.get('template') || 0, 10) || 0,
+            // On a phone: the month's chosen day and the week's one day.
+            picked: '',
+            day: ''
         };
         var data = null;
         var plans = planKit(h, S, function () { load(); });
@@ -78,11 +98,21 @@
         // New plan: only once the plan tables are there (data.plans).
         var newPlan = h.bar.button('pg-button pg-button-fill d-none', s('new_plan'), 'bi-plus-lg');
         newPlan.setAttribute('data-ws-new-plan', '');
-        newPlan.addEventListener('click', function () { plans.drawer(null, { start: (data && data.today) || h.cfg.today }); });
+        newPlan.addEventListener('click', newPlanToday);
         bar.appendChild(newPlan);
+
+        // On a phone New plan floats at the bottom right (.ws-mycal-fab), so
+        // the bar's one line holds the days and the views.
+        var newPlanFloat = h.bar.button('pg-button pg-button-fill ws-mycal-fab d-none', s('new_plan'), 'bi-plus-lg');
+        newPlanFloat.addEventListener('click', newPlanToday);
+
+        function newPlanToday() {
+            plans.drawer(null, { start: (data && data.today) || h.cfg.today });
+        }
 
         var work = el('a', 'pg-button pg-button-quiet');
         work.href = h.cfg.urls.calendar;
+        work.setAttribute('data-ws-work-calendar', '');
         work.appendChild(h.icon('bi-calendar3'));
         work.appendChild(document.createTextNode(s('work_calendar')));
         bar.appendChild(h.bar.label(work));
@@ -90,7 +120,11 @@
         bar.appendChild(h.bar.steps(s('previous'), h.t('today'), s('next'), function (step) {
             if (!step) {
                 state.date = '';
+                state.picked = '';
+                state.day = '';
                 load();
+            } else if (data && data.view === 'week' && onPhone()) {
+                stepDay(step);
             } else if (data) {
                 state.date = (step < 0) ? data.prev : data.next;
                 load();
@@ -117,6 +151,21 @@
             load();
         });
 
+        // The views as icons (look A's .pg-seg-icons): on a phone the chosen
+        // one keeps its word, the others their icon.
+        var viewIcons = { month: 'bi-calendar3', week: 'bi-calendar-week', list: 'bi-list-ul' };
+        var viewSeg = views.node.querySelector('.pg-seg');
+
+        viewSeg.classList.add('pg-seg-icons');
+        viewSeg.querySelectorAll('.pg-seg-item').forEach(function (item, index) {
+            var word = item.textContent;
+
+            item.textContent = '';
+            item.title = word;
+            item.appendChild(h.icon(viewIcons[['month', 'week', 'list'][index]]));
+            item.appendChild(el('span', 'pg-seg-label', word));
+        });
+
         bar.appendChild(views.node);
         bar.appendChild(el('div', 'pg-toolbar-grow'));
         frame.appendChild(bar);
@@ -125,6 +174,85 @@
 
         root.appendChild(frame);
         root.appendChild(card);
+        root.appendChild(newPlanFloat);
+
+        // Turning a phone or widening the window redraws for its width.
+        if (window.matchMedia) {
+            var phoneQuery = window.matchMedia(PHONE);
+            var redraw = function () {
+                if (data && root.isConnected) {
+                    draw();
+                }
+            };
+
+            if (phoneQuery.addEventListener) {
+                phoneQuery.addEventListener('change', redraw);
+            } else if (phoneQuery.addListener) {
+                phoneQuery.addListener(redraw);
+            }
+        }
+
+        // The week's one day on a phone follows a sideways swipe.
+        var touch = null;
+
+        card.addEventListener('touchstart', function (event) {
+            touch = (event.touches.length === 1) ? { x: event.touches[0].clientX, y: event.touches[0].clientY } : null;
+        }, { passive: true });
+
+        card.addEventListener('touchend', function (event) {
+            if (!touch || !data || data.view !== 'week' || !onPhone() || !event.changedTouches.length) {
+                touch = null;
+                return;
+            }
+
+            var dx = event.changedTouches[0].clientX - touch.x;
+            var dy = event.changedTouches[0].clientY - touch.y;
+
+            touch = null;
+
+            if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+                stepDay(dx < 0 ? 1 : -1);
+            }
+        }, { passive: true });
+
+        // One day on: within the week it is drawn again, past it the next
+        // (or the previous) week is read.
+        function stepDay(step) {
+            var index = shownDay();
+            var next = index + step;
+
+            if (next >= 0 && next < data.days.length) {
+                state.day = data.days[next].date;
+                draw();
+                return;
+            }
+
+            state.day = addDays(data.days[index].date, step);
+            state.date = state.day;
+            load();
+        }
+
+        // The week's day shown on a phone: the one stepped to, else today,
+        // else the week's first.
+        function shownDay() {
+            var index = -1;
+
+            data.days.forEach(function (day, at) {
+                if (day.date === state.day) {
+                    index = at;
+                }
+            });
+
+            if (index < 0) {
+                data.days.forEach(function (day, at) {
+                    if (day.today) {
+                        index = at;
+                    }
+                });
+            }
+
+            return index < 0 ? 0 : index;
+        }
 
         // ── loading ──
 
@@ -140,6 +268,7 @@
 
                 draw();
                 newPlan.classList.toggle('d-none', !result.plans);
+                newPlanFloat.classList.toggle('d-none', !result.plans);
 
                 if (state.plan) {
                     plans.open(state.plan, state.planDay);
@@ -261,6 +390,7 @@
 
         function openDay(day) {
             state.view = 'list';
+            state.picked = '';
             state.date = day.date;
             load();
         }
@@ -279,6 +409,10 @@
             var grid = el('div', 'ws-cal-grid');
             var limit = 4;
             var weeks = [];
+            var phone = onPhone();
+            var cells = {};
+            var picked = phone ? pickedDay() : null;
+            var dayBox = el('div', 'ws-mycal-picked');
 
             for (var i = 0; i < data.days.length; i += 7) {
                 weeks.push(data.days.slice(i, i + 7));
@@ -352,16 +486,69 @@
                         cell.appendChild(more);
                     }
 
-                    // A day opens as the list from that day: on a phone the
-                    // cells show only bars.
-                    cell.addEventListener('click', function () { openDay(day); });
-                    h.pressKeys(cell, function () { openDay(day); });
+                    // A day opens as the list from that day; on a phone, where
+                    // the cells show only bars, a tap chooses it and its list
+                    // stands under the grid.
+                    var press = phone ? function () { choose(day); } : function () { openDay(day); };
+
+                    cell.addEventListener('click', press);
+                    h.pressKeys(cell, press);
+                    cells[day.date] = cell;
                     h.onContext(cell, function () { return dayMenu(day); });
                     grid.appendChild(cell);
                 });
             });
 
             box.appendChild(grid);
+
+            if (picked) {
+                box.appendChild(dayBox);
+                choose(picked);
+            }
+
+            function choose(day) {
+                state.picked = day.date;
+
+                Object.keys(cells).forEach(function (date) {
+                    cells[date].classList.toggle('ws-cal-chosen', date === day.date);
+                    cells[date].setAttribute('aria-pressed', date === day.date ? 'true' : 'false');
+                });
+
+                var section = daySection(day, (data.spans || []).filter(function (task) {
+                    return task.span_start <= day.date && task.span_end >= day.date;
+                }));
+
+                h.clear(dayBox);
+
+                // A free day: its heading and one quiet line.
+                if (!section) {
+                    section = el('section', 'ws-mycal-day');
+                    section.appendChild(dayHeading(day));
+                    section.appendChild(el('p', 'ws-mycal-picked-empty pg-text-meta', s('nothing_day')));
+                }
+
+                dayBox.appendChild(section);
+            }
+        }
+
+        // The month's day chosen on a phone: the one tapped, else today,
+        // else the month's first.
+        function pickedDay() {
+            var found = null;
+            var first = null;
+            var today = null;
+
+            data.days.forEach(function (day) {
+                if (!day.in_range) {
+                    return;
+                }
+
+                first = first || day;
+                found = (day.date === state.picked) ? day : found;
+                today = day.today ? day : today;
+            });
+
+            return found || today || first;
         }
 
         // ── list: the days that hold something, one section each ──
@@ -395,6 +582,47 @@
             return row;
         }
 
+        // A day's heading: its name, and a "Today" pill on today.
+        function dayHeading(day) {
+            var label = el('h3', 'pg-group-label ws-mycal-day-label', day.label);
+
+            if (day.today) {
+                label.appendChild(el('span', 'pg-pill pg-tone-blue', h.t('today')));
+                label.setAttribute('aria-current', 'date');
+            }
+
+            return label;
+        }
+
+        // One day's rows under its heading; null when it holds nothing.
+        // spans: the tasks over several days listed on it.
+        function daySection(day, spans) {
+            if (!day.events.length && !day.tasks.length && !spans.length) {
+                return null;
+            }
+
+            var section = el('section', 'ws-mycal-day' + (day.today ? ' is-today' : ''));
+
+            section.appendChild(dayHeading(day));
+
+            day.events.forEach(function (event) {
+                section.appendChild(listRow(el('span', 'ws-cal-event-dot ws-kind-' + event.kind), event.title,
+                    event.plan_id ? (event.owner ? s('plan_of').replace('{1}', event.owner) : s('my_plan')) + (event.repeat && S.repeat_options ? ' · ' + S.repeat_options[event.repeat] : '') + (event.steps_total && window.PGWsRoadmap ? ' · ' + window.PGWsRoadmap.label(event, s) : '') : (event.layer || (event.readonly ? s('own_calendar') : (h.cfg.event_kinds && h.cfg.event_kinds[event.kind]) || '')),
+                    event.time || h.t('all_day'),
+                    (event.url || event.plan_id || !event.readonly) ? function () { openEvent(event); } : null));
+            });
+
+            spans.concat(day.tasks).forEach(function (task) {
+                section.appendChild(listRow(task.upcoming ? h.icon('bi-arrow-repeat') : el('span', 'ws-status-dot ws-s-' + task.status),
+                    (task.upcoming ? '' : task.number + ' · ') + task.title,
+                    task.upcoming ? task.repeat : h.statusName(task.status) + (task.span_start ? ' · ' + h.dmy(task.span_start) + ' – ' + h.dmy(task.span_end) : ''),
+                    task.time || '', function () { openTask(task); },
+                    (task.open ? '' : ' is-read') + (task.overdue ? ' ws-mycal-late' : '')));
+            });
+
+            return section;
+        }
+
         function drawList(box) {
             var any = false;
             var body = el('div', 'ws-mycal-list');
@@ -402,42 +630,14 @@
             data.days.forEach(function (day) {
                 // A task over several days is listed once, on its first day
                 // in the range; its row names the whole span.
-                var spans = (data.spans || []).filter(function (task) {
+                var section = daySection(day, (data.spans || []).filter(function (task) {
                     return (task.span_start < data.from ? data.from : task.span_start) === day.date;
-                });
+                }));
 
-                if (!day.events.length && !day.tasks.length && !spans.length) {
-                    return;
+                if (section) {
+                    any = true;
+                    body.appendChild(section);
                 }
-
-                any = true;
-
-                var section = el('section', 'ws-mycal-day' + (day.today ? ' is-today' : ''));
-                var label = el('h3', 'pg-group-label ws-mycal-day-label', day.label);
-
-                if (day.today) {
-                    label.appendChild(el('span', 'pg-pill pg-tone-blue', h.t('today')));
-                    label.setAttribute('aria-current', 'date');
-                }
-
-                section.appendChild(label);
-
-                day.events.forEach(function (event) {
-                    section.appendChild(listRow(el('span', 'ws-cal-event-dot ws-kind-' + event.kind), event.title,
-                        event.plan_id ? (event.owner ? s('plan_of').replace('{1}', event.owner) : s('my_plan')) + (event.repeat && S.repeat_options ? ' · ' + S.repeat_options[event.repeat] : '') + (event.steps_total && window.PGWsRoadmap ? ' · ' + window.PGWsRoadmap.label(event, s) : '') : (event.layer || (event.readonly ? s('own_calendar') : (h.cfg.event_kinds && h.cfg.event_kinds[event.kind]) || '')),
-                        event.time || h.t('all_day'),
-                        (event.url || event.plan_id || !event.readonly) ? function () { openEvent(event); } : null));
-                });
-
-                spans.concat(day.tasks).forEach(function (task) {
-                    section.appendChild(listRow(task.upcoming ? h.icon('bi-arrow-repeat') : el('span', 'ws-status-dot ws-s-' + task.status),
-                        (task.upcoming ? '' : task.number + ' · ') + task.title,
-                        task.upcoming ? task.repeat : h.statusName(task.status) + (task.span_start ? ' · ' + h.dmy(task.span_start) + ' – ' + h.dmy(task.span_end) : ''),
-                        task.time || '', function () { openTask(task); },
-                        (task.open ? '' : ' is-read') + (task.overdue ? ' ws-mycal-late' : '')));
-                });
-
-                body.appendChild(section);
             });
 
             if (!any) {
@@ -448,7 +648,13 @@
         }
 
         function draw() {
-            title.textContent = data.label;
+            var phone = onPhone();
+            var weekDay = (data.view === 'week' && phone) ? data.days[shownDay()] : null;
+
+            // On a phone the short name ("Nov 2026") in place of a cut one;
+            // the week's one day by its own name.
+            title.textContent = weekDay ? weekDay.label : ((phone && data.label_short) ? data.label_short : data.label);
+            title.title = data.label;
             views.set(data.view);
 
             var box = h.clear(card);
@@ -459,9 +665,17 @@
             if (data.view === 'list') {
                 drawList(box);
             } else if (data.view === 'week' && window.PGWsMyCalendarWeek) {
+                // A phone: one day of the week with its hours.
+                var weekData = weekDay ? Object.assign({}, data, {
+                    days: [weekDay],
+                    weekdays: [data.weekdays[shownDay()]],
+                    from: weekDay.date,
+                    to: weekDay.date
+                }) : data;
+
                 window.PGWsMyCalendarWeek.draw(box, {
                     h: h,
-                    data: data,
+                    data: weekData,
                     eventChip: eventChip,
                     taskChip: taskChip,
                     dayMenu: dayMenu,

@@ -9,7 +9,7 @@ description: The one-line bar and empty screens of Work Calendar, My calendar, P
 - On a phone the segments and the agents toggle move into the "Filter" box.
 
 ## What does My calendar's bar hold?
-- `workspace_my_calendar.js` builds it from `h.bar` (`featureHelpers()`: `steps`, `views`, `label`, `button`): New plan (filled, shown once `data.plans`), Work Calendar (quiet, its word in `.ws-bar-label`), previous / Today / next, the range's name, the views Month, Week, List (`barViews()`, a select when narrow). The saved view (`pg.ws.myCalendar.view`) and `?view=`, `?date=` are kept.
+- `workspace_my_calendar.js` builds it from `h.bar` (`featureHelpers()`: `steps`, `views`, `label`, `button`): New plan (filled, shown once `data.plans`), Work Calendar (quiet, its word in `.ws-bar-label`), previous / Today / next, the range's name, the views Month, Week, List (`barViews()` as icon segments, `.pg-seg-icons`, never a select; on a phone the range's short name, `workspace/workspace-my-calendar-phone.md`). The saved view (`pg.ws.myCalendar.view`) and `?view=`, `?date=` are kept.
 
 ## What does the Planning Board's bar hold?
 - `startBoard()`: Add to the plan (filled), New task (quiet), the week's arrows round "Today", the range, 1 week or 2 weeks (`pg-seg`, `aria-pressed`); the grow slot; "Only me" (a switch), the agents toggle, Clashes with its count, "Filter" (department, priority).

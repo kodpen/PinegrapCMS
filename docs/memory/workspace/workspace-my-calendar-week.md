@@ -8,7 +8,7 @@ description: My calendar's Week with hours (CM1): the strip of what has no hour,
 - In the strip: whole-day events (leave, all-day plans), tasks without a due time, coming copies of a repeating task, tasks over several days (the month's lanes), and an event filling the whole day (the middle of a long one).
 - On the grid: an event from its time to its end on that day; a task with a due time on its due day is a 30-minute mark ending there (`WS_MY_CALENDAR_HOUR_SHORTEST`, also the shortest an item is drawn). Items that overlap share the day's width.
 - A red line marks now on today's column, moved each minute.
-- On a phone the seven columns stay, chips are the month's coloured bars, and an item with a time still opens on a tap; one day at a time is CM2 (`plans/workspace-calendars-modern.md`).
+- On a phone the week is one day at a time with whole chips (`workspace-my-calendar-phone.md`).
 
 ## Who places what?
 - The server: each week day carries `hours` (type, index in its events or tasks, start, end, column, columns) from `ws_my_calendar_day_hours()`, laid by `ws_my_calendar_hours_place()` (pure, `tests/workspace_my_calendar_hours_test.php`); the answer's `now` is the minute of the day.

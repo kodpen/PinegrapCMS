@@ -323,6 +323,8 @@ function ws_my_calendar($viewer, $view, $anchor = '')
     return array(
         'view'     => $range['view'],
         'label'    => ws_my_calendar_label($range),
+        // The same range in short words, for the bar on a phone.
+        'label_short' => ws_my_calendar_label_short($range),
         'anchor'   => $range['anchor'],
         'from'     => $from,
         'to'       => $to,
@@ -518,6 +520,45 @@ function ws_my_calendar_label($range)
 }
 
 /**
+ * The range's title short enough for a phone's bar: "Nov 2026" for a month,
+ * "9 – 15 Nov" or "30 Nov – 6 Dec" for a week (no year), "14 Nov" for the
+ * list, the day it runs on from. Pure.
+ *
+ * @param array $range ws_my_calendar_range()
+ * @return string
+ */
+function ws_my_calendar_label_short($range)
+{
+    $names = array(
+        1 => lang('Jan'), 2 => lang('Feb'), 3 => lang('Mar'), 4 => lang('Apr'),
+        5 => lang('May'), 6 => lang('Jun'), 7 => lang('Jul'), 8 => lang('Aug'),
+        9 => lang('Sep'), 10 => lang('Oct'), 11 => lang('Nov'), 12 => lang('Dec'),
+    );
+
+    if ($range['view'] === 'month') {
+        $time = strtotime($range['month'] . '-01 12:00:00');
+
+        return $names[(int) date('n', $time)] . ' ' . date('Y', $time);
+    }
+
+    $from = strtotime($range['from'] . ' 12:00:00');
+
+    // The list runs on from its day: that day alone names it.
+    if ($range['view'] === 'list') {
+        return date('j', $from) . ' ' . $names[(int) date('n', $from)];
+    }
+
+    $to = strtotime($range['to'] . ' 12:00:00');
+    $to_label = date('j', $to) . ' ' . $names[(int) date('n', $to)];
+
+    if (date('Y-m', $from) === date('Y-m', $to)) {
+        return date('j', $from) . ' – ' . $to_label;
+    }
+
+    return date('j', $from) . ' ' . $names[(int) date('n', $from)] . ' – ' . $to_label;
+}
+
+/**
  * The texts the screen's script reads (assets/js/workspace_my_calendar.js)
  * beside the Workspace's own (all_day, tasks, plan_items, more_count, today).
  *
@@ -534,6 +575,7 @@ function ws_my_calendar_js_strings()
         'next'          => lang('Next'),
         'work_calendar' => lang('Work Calendar'),
         'nothing'       => lang('Nothing on your calendar in these days.'),
+        'nothing_day'   => lang('Nothing on your calendar this day.'),
         'own_calendar'  => lang('Your own calendar'),
     );
 }
