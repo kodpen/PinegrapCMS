@@ -5,8 +5,8 @@ description: Compare's "What changed" column joined to the pictures (CL3, #11707
 
 ## What opens "Compare with the live page"?
 - The page's tab menu, after "Preview as prototype", for a page saved here (`page_id > 0`, not picked from another design); the command palette's row after "Preview" for the open page. No bar button, no key.
-- The Publish sheet: an icon button after "Changed" on a row with `compare` (`_pgPublishRows()`: on the site, changed, saved); `bridge.compare(key)` opens the window. A draft's row has none.
-- All open `_sdCompareOpen({ pageId })`: the live page against the draft. Nothing is written, so view mode has it.
+- The Publish sheet: an icon button after "Changed" on a row with `compare` (`_pgPublishRows()`: on the site, changed, saved; or a new version's row, compared with the page it replaces); `bridge.compare(key)` opens the window. A plain draft's row has none.
+- All go through `_sdCompareLive(p)` and `_pgCompareTarget()`: `_sdCompareOpen({ pageId })`, the live page against the draft; a new version's tab adds `livePageId` (`designer-new-version-phone-compare.md`). Nothing is written, so view mode has it.
 
 ## How does it open over the Publish sheet?
 - A modal dialog makes the rest of the page inert, so the window is placed inside the open modal dialog (`modalHost()`), which gets `sd-cmp-host` (no transform, so the fixed overlay covers the screen). Escape is caught in the capture phase and the dialog's `cancel` is prevented: it closes the window only. Focus goes back to the button that opened it; the sheet keeps its checks.
