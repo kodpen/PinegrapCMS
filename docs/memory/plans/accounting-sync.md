@@ -22,7 +22,8 @@ priority: 5
 ## Which steps? (S under 400 lines, M under 1,000; each waits for the one before it)
 - AS1 Census: done, `plans/accounting-sync-census.md`.
 - AS2 Xero connected: done (#12069). Provider `includes/connect/providers/xero.php`; the organisation and the income, clearing and bank accounts sit in one sealed service entry, chosen on Xero's Connections page.
-- AS3 (M) The queue and the pairing, the table `accounting_sync` by a migration step, module `includes/fn/accounting_sync.php`: a row written when an order is paid, a refund row is found or an ERP event fires; `job.php` sends through a driver, paced, retried on `api_webhook_backoff()`, the key that stops a second sale made from the row; tax rates matched on the Connections page. Tested with a driver that sends nothing.
+- AS3 (M) The queue and the pairing, the table `accounting_sync` by a migration step, module `includes/fn/accounting_sync.php`: a row written when an order is paid, a refund row is found or an ERP event fires; `job.php` sends through a driver, paced and retried, with the key that stops a second sale. No driver yet, so rows wait.
+- AS3b (S) Tax rates matched under Connection details on Xero's Connections page, after Ledger accounts: Xero's TaxRates read, each rate of the site given one, kept by `pg_accounting_sync_pair_save()`.
 - AS4 (M) Xero's driver: contact, item, invoice and payment, credit note, void, from the order and from the ERP, `Idempotency-Key`, its limits read from the answer's headers.
 - AS5 (S) A failed send: the "Events" card on the service's Connections page with Try again, one line on View Order and on the ERP invoice, the daily operations alert; a connection marked `reauth` holds the queue.
 - AS6 (M) QuickBooks connected: a provider may name return parameters that `pg_connect_finish()` keeps (`realmId`); addresses from the discovery document; the company read; accounts and tax codes chosen; its setup lines tell of the questionnaire.
