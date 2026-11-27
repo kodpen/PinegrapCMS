@@ -302,7 +302,7 @@ function designer_paste_target_test_run($cases, $history = false)
 		'_sdSharedOwnerOf', 'collectSharedIds', '_sdDragSharedIds', '_sdSharedChildIds', '_sdSharedReaches', '_subtreeContainsLoopArea',
 		'_sdListIsSourced', '_sdDragIsList', '_sdListsAbove',
 		'_sdHandlePaste', '_sdNodeFromEventTarget', '_sdFindNodeForEl', 'findNodeById', '_sdIsTextSink', '_sdPasteAsText', '_sdLooksLikeMarkup',
-		'_sdNodeObjects', '_sdTreeObjects');
+		'_sdNodeObjects', '_sdTreeObjects', '_sdCoEntries', '_sdCoNewFieldId', '_sdCoCopyFields');
 
 	if ($history) {
 		$names = array_merge($names, array('saveState', 'undo', 'redo', 'reindex', '_sdIdFloor', '_snapshotShared', '_restoreShared', '_pgBaselineTreeKey', '_sdSharedTreeJSON', 'onDuplicate',
