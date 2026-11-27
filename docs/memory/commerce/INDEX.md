@@ -240,6 +240,7 @@
 - order-completion-shipping-less.md: The recipient that gives up the shipping's minor units is lowered by a compare-and-set in the checkout and on a payment callback, so a return and a message lower it once
 - order-completion-stock-and-spots.md: What a completed order or local sale does to stock and event spots: fresh stock read, the hold released with the take, the out_of_stock flag, what is announced
 - order-completion.md: pg_order_complete() (#2638, every stage since #2972): the session-free completion of an incomplete order, the once-only lock, its context, what it writes in order
+- order-currency-screens.md: How an order's screens, e-mails, list, report and API print the currency the order is kept in, and which sums stay in base
 - order-delete.md: What deleting an order removes (delete_order.php, the only DELETE FROM orders), the kept legal document copies among them, and who calls it
 - order-discount-charged-today.md: Order discount vs recurring lines not charged today: the cap at today's subtotal (pg_order_charged_discount), which lines are charged, why the cap sits in apply_offers_to_cart()
 - order-documents-address.md: How the site's order documents (Order Summary widget, its e-mail, the recipients list, the legal documents) print the district and the country, and the starter's payment and arrival date labels

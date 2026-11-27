@@ -325,7 +325,7 @@ description: Generated from the module field of the memory files: each includes/
 - `office_size`: [[office-sheet-sizes]]
 - `ops_alerts`: [[bug-hunt-areas-ops-alerts-once]], [[ops-alerts-bell]]
 - `order_completion`: [[gift-card-line-quantity-limit]], [[gift-card-order-expiry]], [[order-cancel-folder-access]], [[order-completion]], [[order-completion-account]], [[order-completion-after-lines]], [[order-completion-before-lock]], [[order-completion-context]], [[order-completion-from-payment]], [[order-completion-line-comments]], [[order-completion-lines]], [[order-completion-shipping-less]], [[order-legal-documents-writers]], [[redeem-partly-spent-card]]
-- `order_currency`: [[order-charged-currency]]
+- `order_currency`: [[order-charged-currency]], [[order-currency-screens]]
 - `order_list`: [[erp-parasut-legacy-export-discount]], [[orders-list-amount-column]], [[orders-list-bulk-actions]], [[orders-list-columns]], [[orders-list-figure-strip]], [[orders-list-quick-filters]], [[orders-list-state-filter]]
 - `order_report`: [[order-report-filters]], [[order-report-screen]], [[order-report-totals]]
 - `order_status`: [[shipworks-order-feed]]
