@@ -27,7 +27,7 @@ description: Hand-over of the architect session of 2026-11-24 to 26, the work in
 - Poll 242: Options is too narrow; his console line under it picks the issue.
 - Paraşüt: the six issues are fixed; what is left is in `plans/erp-parasut-open-work.md`.
 - The Workspace's own screens (message 14812): `plans/workspace-areas-modern.md` and its four plans; a step marked "drawing" is asked of the architect before its worker starts. TM3 is drawn: `workspace/workspace-task-read-drawing.md`.
-- Nine features (polls 246, 247): `plans/global-features.md`. Every census is read and every plan has its build steps; polls 248 to 253 are answered (`decisions-made-schema-53.md` to `-55.md`, `decisions-made-product-119.md`). German's eight steps are `free` (PL2 landed); left: DE9 marked when they have landed, Etsy's steps of `plans/sales-channels-global.md` after SC7.
+- Nine features (polls 246, 247): `plans/global-features.md`. Every census is read and every plan has its build steps; polls 248 to 253 are answered (`decisions-made-schema-53.md` to `-55.md`, `decisions-made-product-119.md`). German's eight steps are `free`; left: DE9 after them, Etsy's steps of `plans/sales-channels-global.md` after SC7.
 
 ## What is watched?
 - k3's own tasks: the context size on the agent form.
