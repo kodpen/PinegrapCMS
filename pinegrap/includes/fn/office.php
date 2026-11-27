@@ -1787,6 +1787,13 @@ function pg_office_docx_run(&$state, $run)
         $html = '<' . $vertical . '>' . $html . '</' . $vertical . '>';
     }
 
+    // The run's own colour, highlight and size (includes/fn/office_docx_format.php).
+    $style = function_exists('pg_office_docx_look_style') ? pg_office_docx_look_style(pg_office_docx_run_look($run)) : '';
+
+    if ($style !== '') {
+        $html = '<span style="' . h($style) . '">' . $html . '</span>';
+    }
+
     return $html;
 }
 
@@ -3640,6 +3647,27 @@ function pg_office_view_strings()
         'doc'               => lang('Document preview'),
         'doc_format_bar'    => lang('Format of the selected text'),
         'doc_underline'     => lang('Underline'),
+        'doc_color'         => lang('Text color'),
+        'doc_highlight'     => lang('Highlight color'),
+        'doc_align_start'   => lang('Align left'),
+        'doc_align_center'  => lang('Align center'),
+        'doc_align_end'     => lang('Align right'),
+        'doc_align_justify' => lang('Justify'),
+        'highlight_yellow'  => lang('Yellow'),
+        'highlight_green'   => lang('Bright green'),
+        'highlight_cyan'    => lang('Turquoise'),
+        'highlight_magenta' => lang('Pink'),
+        'highlight_blue'    => lang('Blue'),
+        'highlight_red'     => lang('Red'),
+        'highlight_darkBlue'=> lang('Dark blue'),
+        'highlight_darkCyan'=> lang('Teal'),
+        'highlight_darkGreen'=> lang('Green'),
+        'highlight_darkMagenta'=> lang('Violet'),
+        'highlight_darkRed' => lang('Dark red'),
+        'highlight_darkYellow'=> lang('Dark yellow'),
+        'highlight_darkGray'=> lang('Dark grey'),
+        'highlight_lightGray'=> lang('Light grey'),
+        'highlight_black'   => lang('Black'),
         'doc_format_select' => lang('Select text in a paragraph to format it.'),
         'doc_kind'          => lang('Paragraph style'),
         'kind_normal'       => lang('Normal text'),

@@ -3426,8 +3426,8 @@
     }
 
     // A paragraph's own text drawn plain, or with bold, italic and underline
-    // (bits, one a character: 1, 2 and 4) as the server draws them; an
-    // empty one keeps its line.
+    // (bits, one a character: 1, 2 and 4), colour, highlight and size as
+    // the server draws them; an empty one keeps its line.
     function drawText(node, text, bits) {
         node.textContent = '';
 
@@ -3450,6 +3450,12 @@
 
             var look = bits[start] || 0;
             var outer = node;
+            var style = lookStyle(lookParts(look));
+
+            if (style) {
+                outer = outer.appendChild(document.createElement('span'));
+                outer.setAttribute('style', style);
+            }
 
             [[4, 'u'], [2, 'em'], [1, 'strong']].forEach(function (pair) {
                 if (look & pair[0]) {
@@ -3468,18 +3474,124 @@
     // The kinds a paragraph can be given, in the order the choice shows them.
     var DOC_KINDS = ['normal', 'heading1', 'heading2', 'heading3', 'bullet', 'number'];
 
+    // The parts of a character's look beside the bits: what a save calls
+    // each and the key the server's marks give it.
+    var DOC_LOOK_FORMATS = [['color', 'c'], ['highlight', 'h'], ['size', 's']];
+
+    // Word's highlight colours, each with the colour it is drawn in
+    // (pg_office_docx_highlight_names()); the bar offers them in the order
+    // of Word's own menu, white left out as Word does.
+    var DOC_HIGHLIGHTS = [['yellow', 'FFFF00'], ['green', '00FF00'], ['cyan', '00FFFF'], ['magenta', 'FF00FF'], ['blue', '0000FF'],
+        ['red', 'FF0000'], ['darkBlue', '000080'], ['darkCyan', '008080'], ['darkGreen', '008000'], ['darkMagenta', '800080'],
+        ['darkRed', '800000'], ['darkYellow', '808000'], ['darkGray', '808080'], ['lightGray', 'C0C0C0'], ['black', '000000']];
+    var DOC_HIGHLIGHT_DRAWN = { white: 'FFFFFF' };
+
+    DOC_HIGHLIGHTS.forEach(function (item) {
+        DOC_HIGHLIGHT_DRAWN[item[0]] = item[1];
+    });
+
+    // A paragraph's alignments as a save names them, with the bar's icon.
+    var DOC_ALIGNS = [['start', 'bi-text-left'], ['center', 'bi-text-center'], ['end', 'bi-text-right'], ['justify', 'bi-justify']];
+
+    // Each set of colour, highlight and size a character has, kept once: a
+    // character's look is its bits (DOC_FORMATS) plus eight times the
+    // number of its set, so looks stay numbers compared with ===. Set 0
+    // has none of them; set 1 is unknown, unlike every other (exactBase()).
+    var DOC_LOOK_SETS = [{}, null];
+    var DOC_LOOK_KEYS = { '': 0 };
+
+    function lookSet(look) {
+        var parts = {};
+        var key = '';
+
+        DOC_LOOK_FORMATS.forEach(function (format) {
+            var value = look ? look[format[1]] : null;
+
+            if (value !== undefined && value !== null && value !== '' && value !== false) {
+                parts[format[1]] = value;
+                key += format[1] + value;
+            }
+        });
+
+        if (!own(DOC_LOOK_KEYS, key)) {
+            DOC_LOOK_KEYS[key] = DOC_LOOK_SETS.length;
+            DOC_LOOK_SETS.push(parts);
+        }
+
+        return DOC_LOOK_KEYS[key];
+    }
+
+    // The colour, highlight and size of a character's look ({c, h, s},
+    // each only when it has it); null when unknown.
+    function lookParts(value) {
+        var set = DOC_LOOK_SETS[Math.floor((value || 0) / 8)];
+
+        return set ? JSON.parse(JSON.stringify(set)) : null;
+    }
+
+    // A look with one part (c, h or s) set, or taken off with ''; the bits
+    // and the other parts kept.
+    function withLook(value, key, part) {
+        var look = lookParts(value) || {};
+
+        look[key] = part;
+
+        return ((value || 0) & 7) + lookSet(look) * 8;
+    }
+
+    // The inline style a colour, highlight and size are drawn with, the
+    // twin of pg_office_docx_look_style().
+    function lookStyle(look) {
+        var style = [];
+
+        if (look && /^[0-9A-F]{6}$/.test(look.c || '')) {
+            style.push('color:#' + look.c);
+        }
+
+        if (look && own(DOC_HIGHLIGHT_DRAWN, look.h || '')) {
+            style.push('background-color:#' + DOC_HIGHLIGHT_DRAWN[look.h]);
+        }
+
+        if (look && typeof look.s === 'number' && look.s > 0) {
+            style.push('font-size:' + look.s + 'pt');
+        }
+
+        return style.join(';');
+    }
+
+    // A paragraph's alignment in the file, from the ones the server sent
+    // (center, end, justify); every other paragraph is at its start.
+    function alignOf(aligns, position) {
+        var align = own(aligns, position) ? aligns[position] : '';
+
+        return (align === 'center' || align === 'end' || align === 'justify') ? align : 'start';
+    }
+
+    // The CSS text-align an alignment is drawn with.
+    function alignCss(align) {
+        return align;
+    }
+
+    // The alignment a save sends for a paragraph: the one asked for when it
+    // differs from the file's, else null.
+    function alignSent(file, want) {
+        return (want && want !== file) ? want : null;
+    }
+
     // A paragraph's look, a number for each UTF-16 unit of its text, from
-    // the stretches the server sent ([[characters, bits], ...]), which count
-    // characters: one outside the basic plane takes two units.
+    // the stretches the server sent ([[characters, bits, {c, h, s}?], ...]),
+    // which count characters: one outside the basic plane takes two units.
     function expandMarks(marks, text) {
         var bits = [];
         var points = Array.from(text);
         var at = 0;
 
         (marks || []).forEach(function (mark) {
+            var look = mark[2] ? (mark[1] & 7) + lookSet(mark[2]) * 8 : mark[1];
+
             for (var count = 0; count < mark[0] && at < points.length; count++, at++) {
                 for (var unit = 0; unit < points[at].length; unit++) {
-                    bits.push(mark[1]);
+                    bits.push(look);
                 }
             }
         });
@@ -3518,8 +3630,9 @@
         return out.concat(bits.slice(before.length - tail));
     }
 
-    // The stretches whose bold, italic or underline differ between the
-    // file's look and the one asked for, as a save sends them.
+    // The stretches whose bold, italic, underline, colour, highlight or
+    // size differ between the file's look and the one asked for, as a save
+    // sends them: a part taken off is sent as false.
     function formatRanges(base, want) {
         var list = [];
 
@@ -3534,6 +3647,33 @@
                     var set = {};
 
                     set[format[0]] = !!(want[start] & bit);
+                    list.push({ start: start, end: index, set: set });
+                    start = -1;
+                }
+
+                if (differs && start < 0) {
+                    start = index;
+                }
+            }
+        });
+
+        DOC_LOOK_FORMATS.forEach(function (format) {
+            var start = -1;
+
+            // A part of an unknown look is undefined, so it always differs.
+            function partAt(looks, index) {
+                var look = lookParts(looks[index]);
+
+                return look ? (own(look, format[1]) ? look[format[1]] : false) : undefined;
+            }
+
+            for (var index = 0; index <= want.length; index++) {
+                var differs = index < want.length && partAt(want, index) !== partAt(base, index);
+
+                if (start >= 0 && (!differs || partAt(want, index) !== partAt(want, start))) {
+                    var set = {};
+
+                    set[format[0]] = partAt(want, start);
                     list.push({ start: start, end: index, set: set });
                     start = -1;
                 }
@@ -3559,13 +3699,13 @@
         };
     }
 
-    // A base look that differs from the one asked for in every bit, so the
-    // save sends bold, italic and underline on or off for each character:
-    // text moved into a new run whose own look is the paragraph mark's,
-    // which the view does not know.
+    // A base look that differs from the one asked for in every bit and has
+    // an unknown colour, highlight and size, so the save sends each of them
+    // for each character: text moved into a new run whose own look is the
+    // paragraph mark's, which the view does not know.
     function exactBase(want) {
         return want.map(function (bits) {
-            return (bits || 0) ^ 7;
+            return (((bits || 0) & 7) ^ 7) + 8;
         });
     }
 
@@ -3699,6 +3839,14 @@
         var wantKinds = {};
         var kindChoice = null;
 
+        // By position, the alignment of a paragraph not at its start in the
+        // file (center, end, justify), and the one asked for when it is to
+        // change (DOC_ALIGNS); the file's inline alignment of a paragraph
+        // drawn, to put back.
+        var aligns = (edit && edit.ok && edit.aligns) ? edit.aligns : {};
+        var wantAligns = {};
+        var fileAligns = {};
+
         // By position, why a paragraph may not be deleted (picture, section,
         // cell, last, bookmark, locked) and those no paragraph may be added
         // after; the paragraphs to delete; how many were added. An added
@@ -3722,6 +3870,7 @@
         var looks = {};
         var bar = null;
         var controls = {};
+        var barMenuOpen = null;
 
         // The paragraphs marked, the one picked, the one being typed in
         // (editor: its node, position, whether anything was typed, the
@@ -3871,7 +4020,7 @@
                 }
             });
 
-            Object.keys(wantKinds).forEach(function (position) {
+            Object.keys(wantKinds).concat(Object.keys(wantAligns)).forEach(function (position) {
                 if (list.indexOf(position) < 0) {
                     list.push(position);
                 }
@@ -4153,6 +4302,14 @@
                 looks[key] = { text: text, base: exactBase(bits), want: bits.slice() };
             }
 
+            // It is written with the alignment of the file's paragraph it
+            // follows; one asked for on the paragraph it was cut from goes on.
+            var align = alignSent(alignOf(aligns, after), alignNow(position));
+
+            if (align) {
+                wantAligns[key] = align;
+            }
+
             node.parentNode.insertBefore(fresh, node.nextSibling);
             nodes.splice(nodes.indexOf(node) + 1, 0, fresh);
             redraw(fresh);
@@ -4245,7 +4402,7 @@
             if (isNew(position)) {
                 nodes.splice(nodes.indexOf(node), 1);
                 node.parentNode.removeChild(node);
-                [changes, looks, wantKinds, texts, marks, kinds, drawn].forEach(function (map) {
+                [changes, looks, wantKinds, wantAligns, texts, marks, kinds, drawn].forEach(function (map) {
                     delete map[position];
                 });
                 return;
@@ -4420,7 +4577,7 @@
 
                 nodes.splice(nodes.indexOf(node), 1);
                 node.parentNode.removeChild(node);
-                [changes, looks, wantKinds, texts, marks, kinds, drawn].forEach(function (map) {
+                [changes, looks, wantKinds, wantAligns, texts, marks, kinds, drawn].forEach(function (map) {
                     delete map[position];
                 });
                 shown.node = null;
@@ -4492,6 +4649,242 @@
             notify();
         }
 
+        // A paragraph's alignment in the file; an added paragraph is written
+        // with the one of the file's paragraph it follows.
+        function fileAlign(position) {
+            var node = isNew(position) ? doc.querySelector('[data-p="' + position + '"]') : null;
+
+            return alignOf(aligns, node ? node.getAttribute('data-after') : position);
+        }
+
+        function alignNow(position) {
+            return own(wantAligns, position) ? wantAligns[position] : fileAlign(position);
+        }
+
+        // An alignment asked for is drawn on the paragraph; without one the
+        // server's drawing of it comes back.
+        function drawAlign(node) {
+            var position = node.getAttribute('data-p');
+
+            if (!own(fileAligns, position)) {
+                fileAligns[position] = node.style.textAlign || '';
+            }
+
+            node.style.textAlign = own(wantAligns, position) ? alignCss(wantAligns[position]) : fileAligns[position];
+        }
+
+        // The paragraphs an alignment acts on: those the selection reaches,
+        // else the one open or picked; locked and deleted ones left out.
+        function alignPositions() {
+            var range = sheetRange();
+            var parts = (range && !range.collapsed) ? partsOf(range) : (selectedParts() || []);
+            var list = parts.map(function (part) {
+                return part.position;
+            });
+
+            if (!list.length && kindPosition() !== null) {
+                list.push(kindPosition());
+            }
+
+            return list.filter(function (position) {
+                var node = doc.querySelector('[data-p="' + position + '"]');
+
+                return node && !own(deletes, position) && !node.classList.contains('office-locked');
+            });
+        }
+
+        function applyAlign(align) {
+            var positions = alignPositions();
+
+            if (!positions.length) {
+                refuse(strings.doc_pick || '');
+                return;
+            }
+
+            positions.forEach(function (position) {
+                if (align === fileAlign(position)) {
+                    delete wantAligns[position];
+                } else {
+                    wantAligns[position] = align;
+                }
+
+                var node = doc.querySelector('[data-p="' + position + '"]');
+
+                drawAlign(node);
+                node.classList.toggle('office-edited', own(changes, position) || formatted(position) || own(wantKinds, position) || own(wantAligns, position) || isNew(position));
+            });
+
+            shown.note = '';
+            drawBar();
+            notify();
+        }
+
+        // Gives the selected text a colour (c), a highlight (h) or a size
+        // (s), or takes it off with ''; the text stays selected.
+        function applyLook(key, value, parts) {
+            parts = parts || selectedParts();
+
+            if (!parts) {
+                shown.note = strings.doc_format_select || '';
+                drawStatus();
+                drawBar();
+                return;
+            }
+
+            parts.forEach(function (part) {
+                var look = lookOf(part.position, true);
+
+                for (var index = part.start; index < Math.min(part.end, look.want.length); index++) {
+                    look.want[index] = withLook(look.want[index], key, value);
+                }
+
+                redraw(part.node);
+            });
+
+            shown.note = '';
+
+            if (document.activeElement === paper) {
+                placeSelection(parts[0].node, parts[0].start, parts[parts.length - 1].end, parts[parts.length - 1].node);
+            } else {
+                shown.last = parts;
+            }
+
+            drawBar();
+            notify();
+        }
+
+        // The colour, highlight or size all the selected text has; '' when
+        // it has none, null when it differs or nothing is selected.
+        function selectionLook(key) {
+            var parts = selectedParts() || [];
+            var found;
+
+            parts.forEach(function (part) {
+                var look = lookOf(part.position, true);
+
+                for (var index = part.start; index < Math.min(part.end, look.want.length); index++) {
+                    var set = lookParts(look.want[index]) || {};
+                    var value = own(set, key) ? set[key] : '';
+
+                    found = (found === undefined || found === value) ? value : null;
+                }
+            });
+
+            return found === undefined ? null : found;
+        }
+
+        // The bar's menu of colours: "None" first, then the swatches
+        // ([[RRGGBB, word], ...], the chosen one ringed). A pick acts on the
+        // text selected when the menu opened and puts the caret back on it.
+        function closeBarMenu(focus) {
+            if (!barMenuOpen) {
+                return;
+            }
+
+            var opener = barMenuOpen.opener;
+
+            document.removeEventListener('mousedown', barMenuOpen.outside, true);
+            barMenuOpen.node.remove();
+            barMenuOpen = null;
+
+            if (focus) {
+                opener.focus({ preventScroll: true });
+            }
+        }
+
+        function barMenu(anchor, label, colours, chosen, pick) {
+            closeBarMenu(false);
+
+            var parts = selectedParts();
+            var node = el('div', 'menu show office-head-menu');
+            var buttons = [];
+            var none = el('button', 'menu-item pg-link-body-emphasis');
+
+            node.setAttribute('role', 'menu');
+            node.setAttribute('aria-label', label || '');
+
+            function choose(value) {
+                closeBarMenu(false);
+                oneChange(function () {
+                    if (parts) {
+                        paper.focus({ preventScroll: true });
+                    }
+
+                    pick(value, parts);
+                });
+            }
+
+            none.type = 'button';
+            none.tabIndex = -1;
+            none.setAttribute('role', 'menuitem');
+            none.appendChild(el('span', '', strings.format_none || ''));
+            none.addEventListener('click', function () {
+                choose('');
+            });
+            buttons.push(none);
+            node.appendChild(none);
+
+            var grid = el('div', 'office-swatches');
+
+            colours.forEach(function (colour) {
+                var swatch = el('button', 'office-swatch');
+                var name = colour[2] || colour[1];
+
+                swatch.type = 'button';
+                swatch.tabIndex = -1;
+                swatch.setAttribute('role', 'menuitemradio');
+                swatch.setAttribute('aria-checked', (chosen === colour[1]) ? 'true' : 'false');
+                swatch.setAttribute('aria-label', name);
+                swatch.title = name;
+                swatch.style.backgroundColor = '#' + colour[0];
+                swatch.classList.toggle('is-chosen', chosen === colour[1]);
+                swatch.addEventListener('click', function () {
+                    choose(colour[1]);
+                });
+                buttons.push(swatch);
+                grid.appendChild(swatch);
+            });
+
+            node.appendChild(grid);
+
+            node.addEventListener('keydown', function (event) {
+                event.stopPropagation();
+
+                var at = buttons.indexOf(document.activeElement);
+
+                if (event.key === 'Escape' || event.key === 'Tab') {
+                    event.preventDefault();
+                    closeBarMenu(true);
+                } else if (/^Arrow(Down|Up|Right|Left)$/.test(event.key)) {
+                    event.preventDefault();
+                    buttons[(at + ((event.key === 'ArrowDown' || event.key === 'ArrowRight') ? 1 : -1) + buttons.length) % buttons.length].focus();
+                }
+            });
+
+            bar.appendChild(node);
+            node.style.left = Math.max(0, anchor.offsetLeft) + 'px';
+            node.style.top = (anchor.offsetTop + anchor.offsetHeight) + 'px';
+
+            // A menu opened near the right edge (a narrow screen) stays in
+            // the view.
+            if (node.offsetLeft + node.offsetWidth > bar.clientWidth) {
+                node.style.left = Math.max(0, bar.clientWidth - node.offsetWidth) + 'px';
+            }
+
+            barMenuOpen = {
+                node: node,
+                opener: anchor,
+                outside: function (event) {
+                    if (barMenuOpen && !barMenuOpen.node.contains(event.target) && event.target !== anchor && !anchor.contains(event.target)) {
+                        closeBarMenu(false);
+                    }
+                }
+            };
+
+            document.addEventListener('mousedown', barMenuOpen.outside, true);
+            (buttons[0] || node).focus({ preventScroll: true });
+        }
+
         // A copy of the document's changes as they stand, with what is being
         // typed, the paragraphs added (where each stands) and those hidden,
         // and the caret or the paragraph picked: what Undo puts back.
@@ -4500,6 +4893,7 @@
                 changes: changesNow(),
                 looks: {},
                 wantKinds: copyOf(wantKinds),
+                wantAligns: copyOf(wantAligns),
                 deletes: copyOf(deletes),
                 added: [],
                 hidden: [],
@@ -4570,7 +4964,7 @@
                 }
             });
 
-            return JSON.stringify([state.changes, shaped, state.wantKinds, state.deletes, state.added.map(function (item) {
+            return JSON.stringify([state.changes, shaped, state.wantKinds, state.wantAligns, state.deletes, state.added.map(function (item) {
                 return item.key;
             }), state.hidden.map(function (node) {
                 return node.getAttribute('data-p');
@@ -4621,7 +5015,7 @@
             shown.note = '';
             run = null;
 
-            [changes, looks, wantKinds, deletes].forEach(function (map) {
+            [changes, looks, wantKinds, wantAligns, deletes].forEach(function (map) {
                 Object.keys(map).forEach(function (key) {
                     touched[key] = true;
                 });
@@ -4652,6 +5046,7 @@
 
             changes = copyOf(state.changes);
             wantKinds = copyOf(state.wantKinds);
+            wantAligns = copyOf(state.wantAligns);
             deletes = copyOf(state.deletes);
             looks = {};
 
@@ -4659,7 +5054,7 @@
                 looks[position] = lookCopy(state.looks[position]);
             });
 
-            [changes, looks, wantKinds, deletes].forEach(function (map) {
+            [changes, looks, wantKinds, wantAligns, deletes].forEach(function (map) {
                 Object.keys(map).forEach(function (key) {
                     touched[key] = true;
                 });
@@ -4764,6 +5159,41 @@
                 controls[format[0]].setAttribute('aria-pressed', on ? 'true' : 'false');
                 controls[format[0]].classList.toggle('is-active', on);
             });
+
+            // The colours as a bar under their glyph, the size as chosen; a
+            // selection of mixed sizes shows none.
+            if (controls.color) {
+                var colour = selectionLook('c');
+                var highlight = selectionLook('h');
+                var size = selectionLook('s');
+
+                controls.color.stripe.style.backgroundColor = colour ? '#' + colour : '';
+                controls.highlight.stripe.style.backgroundColor = (highlight && own(DOC_HIGHLIGHT_DRAWN, highlight)) ? '#' + DOC_HIGHLIGHT_DRAWN[highlight] : '';
+
+                if (size && FONT_SIZES.indexOf(Number(size)) < 0) {
+                    controls.size.other.textContent = String(size);
+                    controls.size.other.hidden = false;
+                    controls.size.choice.value = 'other';
+                } else {
+                    controls.size.other.hidden = true;
+                    controls.size.choice.value = (size === null) ? 'mixed' : String(size);
+                }
+            }
+
+            if (controls.align) {
+                var positions = alignPositions();
+                var shownAlign = positions.length ? alignNow(positions[0]) : null;
+
+                positions.forEach(function (position) {
+                    shownAlign = (alignNow(position) === shownAlign) ? shownAlign : null;
+                });
+
+                Object.keys(controls.align).forEach(function (align) {
+                    controls.align[align].disabled = !positions.length;
+                    controls.align[align].setAttribute('aria-pressed', (align === shownAlign) ? 'true' : 'false');
+                    controls.align[align].classList.toggle('is-active', align === shownAlign);
+                });
+            }
         }
 
         function paragraphOf(target) {
@@ -4888,7 +5318,8 @@
                 node.removeAttribute('data-kind');
             }
 
-            node.classList.toggle('office-edited', own(changes, position) || shaped || own(wantKinds, position) || isNew(position));
+            drawAlign(node);
+            node.classList.toggle('office-edited', own(changes, position) || shaped || own(wantKinds, position) || own(wantAligns, position) || isNew(position));
             node.classList.toggle('office-deleted', own(deletes, position));
             node.setAttribute('aria-disabled', own(deletes, position) ? 'true' : 'false');
         }
@@ -5482,7 +5913,7 @@
 
         // The bar over a document with a paragraph that may change.
         if (edit.ok && nodes.some(function (node) { return !node.classList.contains('office-locked'); })) {
-            bar = el('div', 'office-format');
+            bar = el('div', 'office-format office-doc-format');
             bar.setAttribute('role', 'toolbar');
             bar.setAttribute('aria-label', strings.doc_format_bar || '');
 
@@ -5537,6 +5968,122 @@
                 controls[DOC_FORMATS[index][0]] = button;
                 bar.appendChild(button);
             });
+
+            // The size in points, as the workbook bar's: "Default" takes the
+            // text's own size off, so its style's holds; a size outside the
+            // list shows its own number, a mixed selection none.
+            var sizeField = el('span', 'pg-input pg-input-sm office-size');
+            var sizeChoice = el('select');
+            var sizeOther = el('option', '', '');
+            var sizeMixed = el('option', '', '');
+
+            sizeChoice.setAttribute('aria-label', strings.format_size || '');
+            sizeChoice.title = strings.format_size || '';
+
+            [''].concat(FONT_SIZES).forEach(function (size) {
+                var option = el('option', '', size === '' ? (strings.format_size_default || '') : String(size));
+
+                option.value = String(size);
+                sizeChoice.appendChild(option);
+            });
+
+            [[sizeOther, 'other'], [sizeMixed, 'mixed']].forEach(function (item) {
+                item[0].value = item[1];
+                item[0].disabled = true;
+                item[0].hidden = true;
+                sizeChoice.appendChild(item[0]);
+            });
+
+            sizeChoice.addEventListener('change', function () {
+                var size = sizeChoice.value;
+
+                if (size === '' || Number(size) > 0) {
+                    oneChange(function () {
+                        applyLook('s', size === '' ? '' : Number(size));
+                    });
+                }
+            });
+
+            sizeField.appendChild(sizeChoice);
+            bar.appendChild(sizeField);
+            controls.size = { choice: sizeChoice, other: sizeOther };
+
+            // Text colour and highlight: the glyph over a bar in the
+            // selection's colour, opening the colours on offer ("None"
+            // first). The text colours are the workbook bar's, the
+            // highlights Word's own.
+            [
+                ['color', 'bi-fonts', strings.doc_color, 'c', TEXT_COLOURS.map(function (colour) {
+                    return [colour[0], colour[0], strings['colour_' + colour[1]] || colour[1]];
+                })],
+                ['highlight', 'bi-highlighter', strings.doc_highlight, 'h', DOC_HIGHLIGHTS.map(function (colour) {
+                    return [colour[1], colour[0], strings['highlight_' + colour[0]] || colour[0]];
+                })]
+            ].forEach(function (item) {
+                var button = el('button', 'pg-icon-button pg-icon-button-sm office-colour-button');
+                var glyph = el('span', 'bi ' + item[1]);
+                var stripe = el('span', 'office-colour-bar');
+
+                button.type = 'button';
+                button.setAttribute('aria-label', item[2] || '');
+                button.setAttribute('aria-haspopup', 'menu');
+                button.title = item[2] || '';
+                glyph.setAttribute('aria-hidden', 'true');
+                stripe.setAttribute('aria-hidden', 'true');
+                button.appendChild(glyph);
+                button.appendChild(stripe);
+
+                // A press keeps the selection on the sheet for the menu.
+                button.addEventListener('mousedown', function (event) {
+                    event.preventDefault();
+                });
+                button.addEventListener('click', function () {
+                    if (barMenuOpen && barMenuOpen.opener === button) {
+                        closeBarMenu(false);
+                        return;
+                    }
+
+                    barMenu(button, item[2], item[4], selectionLook(item[3]), function (value, parts) {
+                        applyLook(item[3], value, parts);
+                    });
+                });
+
+                controls[item[0]] = { button: button, stripe: stripe };
+                bar.appendChild(button);
+            });
+
+            // The alignment of the paragraphs selected, or of the one open.
+            var alignGroup = el('span', 'pg-seg');
+
+            alignGroup.setAttribute('role', 'group');
+            alignGroup.setAttribute('aria-label', strings.format_align || '');
+            controls.align = {};
+
+            DOC_ALIGNS.forEach(function (item) {
+                var label = strings['doc_align_' + item[0]] || item[0];
+                var button = el('button', 'pg-seg-item');
+                var glyph = el('span', 'bi ' + item[1]);
+
+                button.type = 'button';
+                button.setAttribute('aria-pressed', 'false');
+                button.setAttribute('aria-label', label);
+                button.title = label;
+                glyph.setAttribute('aria-hidden', 'true');
+                button.appendChild(glyph);
+                button.addEventListener('mousedown', function (event) {
+                    event.preventDefault();
+                });
+                button.addEventListener('click', function () {
+                    oneChange(function () {
+                        applyAlign(item[0]);
+                    });
+                });
+
+                controls.align[item[0]] = button;
+                alignGroup.appendChild(button);
+            });
+
+            bar.appendChild(alignGroup);
 
             // The picked paragraph's kind, when the server sent the kinds.
             if (Object.keys(kinds).length) {
@@ -5649,6 +6196,12 @@
                         item.kind = wantKinds[key];
                     }
 
+                    var align = alignSent(fileAlign(key), own(wantAligns, key) ? wantAligns[key] : null);
+
+                    if (align) {
+                        item.align = align;
+                    }
+
                     if (formatted(key)) {
                         var look = lookOf(key, false);
 
@@ -5683,13 +6236,14 @@
                     }
                 });
 
-                var positions = Object.keys(changes).concat(Object.keys(looks), Object.keys(wantKinds), Object.keys(deletes)).filter(function (position) {
+                var positions = Object.keys(changes).concat(Object.keys(looks), Object.keys(wantKinds), Object.keys(wantAligns), Object.keys(deletes)).filter(function (position) {
                     return !isNew(position);
                 });
 
                 changes = {};
                 looks = {};
                 wantKinds = {};
+                wantAligns = {};
                 deletes = {};
                 shown.last = null;
                 steps.clear();
@@ -5970,7 +6524,16 @@
             carryMarks: carryMarks,
             formatRanges: formatRanges,
             cutLook: cutLook,
-            exactBase: exactBase
+            exactBase: exactBase,
+            lookOf: lookParts,
+            withLook: withLook
+        },
+        // A paragraph's alignment: the file's, how it is drawn, what a save
+        // sends.
+        docAlign: {
+            alignOf: alignOf,
+            alignCss: alignCss,
+            alignSent: alignSent
         },
         // The document's list of changes for Undo and Redo, and the keys
         // that ask for them.

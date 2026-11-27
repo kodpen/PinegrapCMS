@@ -194,6 +194,47 @@ function pg_office_docx_run_look($run)
 }
 
 /**
+ * The colour each of Word's highlight names is drawn in.
+ *
+ * @return array name => RRGGBB
+ */
+function pg_office_docx_highlight_colors()
+{
+    return array('yellow' => 'FFFF00', 'green' => '00FF00', 'cyan' => '00FFFF', 'magenta' => 'FF00FF', 'blue' => '0000FF',
+        'red' => 'FF0000', 'darkBlue' => '000080', 'darkCyan' => '008080', 'darkGreen' => '008000', 'darkMagenta' => '800080',
+        'darkRed' => '800000', 'darkYellow' => '808000', 'darkGray' => '808080', 'lightGray' => 'C0C0C0', 'black' => '000000',
+        'white' => 'FFFFFF');
+}
+
+/**
+ * The inline style the preview draws a run's own colour, highlight and
+ * size with (pg_office_docx_run_look()); the twin of lookStyle() in
+ * pg_office_view.js. Anything else in the look is left out.
+ *
+ * @param array $look {c, h, s}
+ * @return string
+ */
+function pg_office_docx_look_style($look)
+{
+    $style = array();
+    $highlights = pg_office_docx_highlight_colors();
+
+    if (isset($look['c']) && is_string($look['c']) && preg_match('/^[0-9A-F]{6}$/', $look['c'])) {
+        $style[] = 'color:#' . $look['c'];
+    }
+
+    if (isset($look['h']) && is_string($look['h']) && isset($highlights[$look['h']])) {
+        $style[] = 'background-color:#' . $highlights[$look['h']];
+    }
+
+    if (isset($look['s']) && (is_int($look['s']) || is_float($look['s'])) && ($look['s'] > 0)) {
+        $style[] = 'font-size:' . $look['s'] . 'pt';
+    }
+
+    return implode(';', $style);
+}
+
+/**
  * The look of an editable paragraph's text, stretch by stretch: what the
  * editor starts from when it shows and changes the format.
  *

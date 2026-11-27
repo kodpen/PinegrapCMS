@@ -21885,6 +21885,11 @@ button.ws-file-name {
   border-bottom: 1px solid var(--pg-border-color-translucent);
   background: var(--pg-bg-1);
 }
+/* A document's format bar holds its colour menus, placed under their
+   button. */
+.office-doc-format {
+  position: relative;
+}
 /* The paragraph style choice in a document's format bar. */
 .office-format .office-kind {
   width: auto;
