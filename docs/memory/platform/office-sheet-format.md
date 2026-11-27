@@ -6,12 +6,13 @@ module: office_format
 
 ## How is the format of selected cells changed?
 - An entry `{op: format, sheet, name, range: "B2:D5", set: {...}}` in a save's `cells` list, sent to the endpoints cell edits use (`explorer_file_save`, `ws_file_office_save`). `pg_office_xlsx_save()` applies it in its place in the list with `pg_office_xlsx_format_parts()` (`office-save-list.md`). No new endpoint, permission or schema.
-- `set` holds one or more of: `bold`, `italic` (true/false), `color`, `fill` (`RRGGBB` or `#RRGGBB`; `""` takes it off), `align` (`""` general, `left`, `center`, `right`), `number` (`general`, `number`, `money`, `percent`, `date`) with an optional `symbol` for money. Anything else: `none`.
+- `set` holds one or more of: `bold`, `italic`, `underline`, `strike`, `wrap` (true/false), `size` (whole points 8 to 72, an integer), `border` (`none`, `all`, `outline`, `bottom`), `color`, `fill` (`RRGGBB` or `#RRGGBB`; `""` takes it off), `align` (`""` general, `left`, `center`, `right`), `number` (`general`, `number`, `money`, `percent`, `date`) with an optional `symbol` for money. Anything else: `none`. Borders: `office-sheet-format-borders.md`.
 - At most 5000 cells a range (`PG_OFFICE_EDIT_MAX_CHANGES`, `many`), columns inside the grid's 200.
 
 ## How are the styles written?
-- A style is never changed in place (other cells share it). For each style the range uses, `pg_office_format_styles()` copies its `cellXfs` entry, applies the set and adds the copy after the others; its border, protection, cell style and other alignment (wrap, vertical) are kept. The font or fill it needs is a copy of its own with the change, added after the others.
+- A style is never changed in place (other cells share it). For each style the range uses, `pg_office_format_styles()` copies its `cellXfs` entry, applies the set and adds the copy after the others; its border, protection, cell style and other alignment (vertical) are kept. The font or fill it needs is a copy of its own with the change, added after the others.
 - An existing font, fill or cell format equal to the one needed is used instead of a new one (compared by name, attributes and children, not by prefix or spacing). So taking off what is not there gives back the cell's own style.
+- Font parts go in Excel's order (b, i, strike, u, sz, color, name); what a font has already stays as written (a double underline, `11.0`). Wrap sets or takes off `wrapText`.
 - `apply…="1"` is set only on what changed. Counts are updated; nothing else in the styles part changes.
 - Number formats: general 0, number 4 (`#,##0.00`), percent 10 (`0.00%`), date 14 (the reader's built-in date), money a custom `#,##0.00\ "₺"` from 164 up (symbol from the entry, else the site's base currency; quotes and backslashes taken out), reused when the part has it already.
 - The styles part is the one the relationships name (`pg_sheet_xlsx_part()`, as the reader since #10765).
@@ -25,7 +26,7 @@ module: office_format
 - A protected sheet unless its `sheetProtection` has `formatCells="0"` (`format_protected`); no or unreadable styles part (`format_styles`); a styles part over 8 MB (`format_large`). Messages: `pg_office_format_message()`.
 
 ## What was checked?
-- `tests/office_format_test.php`: the request, the money code, the style writer (reuse, new fonts/fills/formats, existing entries untouched), the sheet splice with new cells and rows, a save read back by `pg_office_read()` (a number shown as a date) with untouched parts compared byte for byte, every refusal. Not opened in Excel or LibreOffice.
+- `tests/office_format_test.php`: the request (SA1's parts too), the money code, the style writer (reuse, new fonts/fills/formats, existing entries untouched), the sheet splice with new cells and rows, a save read back by `pg_office_read()` (a number shown as a date) with untouched parts compared byte for byte, every refusal; underline, strikethrough, size, borders and wrap read back as looks. Not opened in Excel or LibreOffice.
 
 ## Where are the editor's controls?
 - `office-sheet-format-controls.md` (OE3b): the format bar and the preview drawing each cell's look.

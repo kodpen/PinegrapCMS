@@ -174,7 +174,8 @@ function test_ltdr_page_parts_wiring()
 	pg_assert_same(true, strpos($walk, 'pg_ltd_component_reaches(') !== false, 'no loop is stored');
 	pg_assert_same(true, strpos($walk, 'PG_LTD_PART_LEVELS') !== false);
 	$row = substr($run, strpos($run, 'function pg_ltd_widget_row('));
-	pg_assert_same(true, strpos(substr($row, 0, 900), 'created_at >=') !== false, 'a resumed step takes the widget made before');
+	pg_assert_same(true, strpos(substr($row, 0, 900), 'pg_ltd_widget_row_where(') !== false, 'a resumed step takes the widget made before');
+	pg_assert_same(true, strpos(pg_ltd_widget_row_where('{}', 'a-menu-widget', 7), "created_at >= '7'") !== false, 'one this run made');
 }
 
 function test_ltdr_state_next_skips()

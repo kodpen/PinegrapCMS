@@ -7,6 +7,7 @@ module: editor, picker
 ## What do the editor's dialogs open now?
 - CKEditor's Link dialog: Browse Server is labelled Page… and opens `pgPicker.open({kind: 'page'})`, with the short links as the dialog's own entries under "Short links" (extra, `picker-pages.md`); a File… button beside it opens kind `file`. The pick goes into the URL field as an address (`PATH` + the name encoded as `encode_url_path()`), the link type set to URL.
 - The Image dialog: Browse Server is labelled Picture… and opens kind `image`, on the picture already in the field; an Unsplash… button beside it opens the Unsplash dialog when the site has an Unsplash key.
+- The Artifact Canvas's Import opens the same dialog with `photo: true`, answered with `pgUnsplash.pure.photo()` (`image-editor-unsplash.md`).
 - The Upload tabs stay CKEditor's own (`editor_add_file.php`, `rich-text-editor-files.md`).
 - The previous editor (TinyMCE 3) keeps its own lists (#8835).
 

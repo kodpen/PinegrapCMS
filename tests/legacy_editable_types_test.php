@@ -134,3 +134,43 @@ function test_let_wiring()
 	pg_assert_same(true, strpos($run, "@unlink(pg_ltd_starters_path());\n") !== false, 'the starters go when the run ends');
 	pg_assert_same(true, strpos(pg_ltd_convert_script(), 'StyleDesigner.starterTree(') !== false);
 }
+
+// A page given the frame's tree holds its own System region only when the
+// frame is split and the region sits in the page content: in an unsplit
+// frame, or in a part around the content, it is a shared component's and
+// the types step leaves it.
+function test_let_page_system_only_in_the_page_content()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/classic_style_design.php');
+	$frame = function ($body) {
+		return pg_classic_style_frame('<!DOCTYPE html><html><head><title>Site</title></head><body>' . $body . '</body></html>', function ($name) {
+			return array('regionType' => 'common');
+		})['frame'];
+	};
+	pg_assert_same(true, pg_ltd_frame_page_system($frame('<header>Top</header><main><pregion></pregion><system></system><pregion></pregion></main><footer>End</footer>')),
+		'between the page regions');
+	pg_assert_same(false, pg_ltd_frame_page_system($frame('<header>Top</header><main><pregion></pregion><system></system></main><footer>End</footer>')),
+		'after the last page region: in the part after the content');
+	pg_assert_same(false, pg_ltd_frame_page_system($frame('<header>Top</header><main><system></system></main><footer>End</footer>')),
+		'no page region: the frame is one shared component');
+	pg_assert_same(false, pg_ltd_frame_page_system($frame('<header><system></system></header><main><pregion></pregion></main><footer>End</footer>')),
+		'in the part before the page content');
+	pg_assert_same(false, pg_ltd_frame_page_system($frame('<main><pregion></pregion></main>')), 'no System region');
+}
+
+// Two pages whose names give the same slug (or none, a name in another
+// script) and the same settings: a page type widget is found again by its
+// layout too, so the second page never takes the first one's layout.
+function test_let_type_widget_found_again_by_its_layout()
+{
+	if (!class_exists('db')) {
+		eval('class db { public static $con; }');
+	}
+	$cfg = json_encode(array('regionType' => 'catalog_detail'));
+	$where = pg_ltd_widget_row_where($cfg, 'design-catalog-detail-widget', 100, '{"type":"root","children":[]}');
+	pg_assert_same(true, strpos($where, "MD5(tree_json) = '" . md5('{"type":"root","children":[]}') . "'") !== false, 'the layout is compared');
+	pg_assert_same(true, strpos($where, "created_at >= '100'") !== false, 'made by this run');
+	pg_assert_same(true, strpos($where, "name = 'design-catalog-detail-widget'") !== false, 'by its name');
+	$region = pg_ltd_widget_row_where($cfg, 'home-menu-widget', 100, null);
+	pg_assert_same(false, strpos($region, 'tree_json'), 'a region widget is found by name and settings, its starter is the same for every region');
+}

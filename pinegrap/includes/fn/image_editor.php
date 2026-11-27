@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_image_editor_parts()
 {
-    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'langview', 'export', 'vector', 'svg', 'motion', 'tracks', 'sound', 'keyframes', 'render', 'scenes', 'present', 'access', 'record', 'follow', 'fonts', 'textstyles', 'glyph', 'elements', 'starts', 'resize', 'frames', 'data', 'warp', 'puppet', 'outline', 'builder', 'video', 'clip', 'mix', 'upload', 'phone', 'colors', 'actions', 'menu');
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'langview', 'export', 'vector', 'svg', 'motion', 'tracks', 'sound', 'keyframes', 'render', 'scenes', 'present', 'access', 'record', 'follow', 'fonts', 'textstyles', 'glyph', 'elements', 'starts', 'resize', 'frames', 'unsplash', 'data', 'warp', 'puppet', 'outline', 'builder', 'video', 'clip', 'mix', 'upload', 'phone', 'colors', 'actions', 'menu');
 }
 
 /**
@@ -242,6 +242,10 @@ function pg_image_editor_config()
             'config'  => pg_picker_config(),
             'scripts' => pg_js_bundle_urls('assets/js/pg_picker.min.js'),
         ) : null,
+        // Import's From Unsplash: the site's key and the rich text editor's
+        // Unsplash dialog, loaded the first time it is used; null without a
+        // key (pg_image_editor_unsplash.js).
+        'unsplash'       => pg_image_editor_unsplash_config(defined('UNSPLASH_ACCESS_KEY') ? (string) UNSPLASH_ACCESS_KEY : ''),
     );
 }
 
@@ -7693,5 +7697,48 @@ function pg_image_editor_strings_frames()
         'frameRemove'       => lang('Remove picture'),
         'frameError'        => lang('The picture could not be put in the frame.'),
         'frameFor'          => lang('Pick a picture to fill the frame.'),
+    );
+}
+
+// -- From Unsplash (pg_image_editor_unsplash.js) --
+
+/**
+ * Import's From Unsplash: the item, the credit line of a picture layer's
+ * panel and the refusal.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_unsplash()
+{
+    return array(
+        'unsplashImport' => lang('From Unsplash'),
+        'unsplashCredit' => lang('Photo by {var:1} on Unsplash'),
+        'unsplashError'  => lang('The photo could not be placed.'),
+    );
+}
+
+/**
+ * What the canvas needs to open the Unsplash dialog the rich text editor
+ * has (pgUnsplash in pg_editor_bridge.min.js): the site's access key, the
+ * bundle's addresses and the dialog's words. The access key is the public
+ * client id Unsplash's API takes from a browser, as the editor's bridge
+ * hands it out (pg_editor_bridge_script()). Pure but for lang() and the
+ * bundle's addresses.
+ *
+ * @param string $key the site's Unsplash access key
+ * @return array|null null without a key
+ */
+function pg_image_editor_unsplash_config($key)
+{
+    $key = trim((string) $key);
+
+    if ($key === '') {
+        return null;
+    }
+
+    return array(
+        'key'     => $key,
+        'scripts' => pg_js_bundle_urls('assets/js/pg_editor_bridge.min.js'),
+        'texts'   => pg_editor_bridge_texts(),
     );
 }

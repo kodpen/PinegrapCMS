@@ -93,6 +93,7 @@
 - bug-hunt-areas-launch-journey.md: The bug hunt of the site set-up journey (SJ1a to SJ5, 2026.11.0): the facts reader, the set-up card, "Go live", First week and Start here, the agency summary [decision: here]
 - bug-hunt-areas-lead-journey-store.md: Bug hunt of the visitor journey's store, ties and first touch (LJ1a, LJ1b, LJ5): what was read, the eight faults fixed (#11806), what was found clean, what was left for the owner [decision: here]
 - bug-hunt-areas-lead-scoring.md: Bug hunt of lead scoring (LJ1 to LJ4c), named by the architect in the agent channel: what was read, the three faults fixed, what was found clean
+- bug-hunt-areas-legacy-to-designer.md: The bug hunt in the move to the visual designer and Back to classic (2026-11-27): what was fixed, what was read clean, what is left
 - bug-hunt-areas-mail-api-reading.md: Bug hunt of Workspace e-mail read and drafted over the API and MCP (MT1-MT6, #11367): the three faults fixed, what was read clean, what was left as it is
 - bug-hunt-areas-mail-campaigns.md: Bug hunt of bulk e-mail campaigns and their lists (area 25) (#11402): the three faults fixed, what was read clean, what was left as a decision question
 - bug-hunt-areas-main-menu-redraw.md: The bug hunt of the main menu after its redraw (MI1-MI3, MZ1), 2026-11-24: the rail's row names for a screen reader, the phone drawer's focus, what read clean
