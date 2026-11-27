@@ -5,7 +5,7 @@ description: Drawing of the Page Design Studio editor's frame (2026-11-26): the 
 
 ## Where is it?
 - `docs/memory/designer/designer-frame-tidy-drawing/`: `frame.html`, `drawing.css`, `frame-dark.jpg`, `frame-light.jpg`. The editor's chrome is always dark: both pictures show the same editor, only the sheet around it follows the theme.
-- Drawn by the architect for `plans/designer-frame-tidy.md`. Owner (2026-11-26, agent channel poll 233): "Evet, sırada o", the editor's frame after the New design window and the home.
+- Drawn by the architect for the frame tidy, built in #11956 (FR1), #11973 (FR2), #12007 (FR3), #12031 (FR4), #12054 (FR5). Owner (2026-11-26, message 14316): the visual designer is the heart of the software; its clutter must go. Poll 233: "Evet, sırada o", the editor's frame after the New design window and the home.
 - The four areas of plan designer-panels (Options panel, Overview tree, page strip, canvas bar) are on it only so the frame can be read; their own files stay their rule (`designer-panels-overview.md`).
 
 ## Which board belongs to which step?
@@ -29,6 +29,6 @@ description: Drawing of the Page Design Studio editor's frame (2026-11-26): the 
 - Status bar, 24 px: the path; "Saved 19 hours ago by admin", the line with its verb; Help with its word; Validate showing its result in its place.
 
 ## What stays?
-- K1 to K12 of `designer-panels-keep.md`; every id a script, a test or the first tour reads; the widths 250 and 336 px; docking below 992 px; the bottom panel's three parts and its docked strips.
+- K1 to K12 of `designer-panels-keep.md`; every id a script, a test or the first tour reads, and every shortcut; no part loaded at opening that was not before; colours only as `--sd-*` tokens; the widths 250 and 336 px; docking below 992 px; the bottom panel's three parts and its docked strips.
 
-Related: docs/memory/plans/designer-frame-tidy.md, docs/memory/designer/designer-panels-overview.md, docs/memory/designer/designer-sticky-panel-layout.md, docs/memory/ui/main-menu-drawer-only.md
+Related: docs/memory/designer/designer-left-column-heads.md, docs/memory/designer/designer-bottom-panel-heads.md, docs/memory/designer/designer-panels-overview.md, docs/memory/designer/designer-sticky-panel-layout.md, docs/memory/ui/main-menu-drawer-only.md
