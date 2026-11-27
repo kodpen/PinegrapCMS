@@ -1,0 +1,9 @@
+handle,fieldType,name,visible,plainDescription,categorySlugs,primaryCategorySlug,media,mediaAltText,ribbon,brand,price,strikethroughPrice,cost,inventory,sku,barcode,weight,productOptionName[1],productOptionType[1],productOptionChoices[1],productOptionName[2],productOptionType[2],productOptionChoices[2]
+linen-tee,PRODUCT,Linen Tee,TRUE,"A light tee.
+
+Washed linen.",Summer;Shirts,Shirts,https://static.wixstatic.com/media/abc123_tee~mv2.jpg,Front,New,Northwind,25.00,30.00,9.50,,,,,Size,TEXT_CHOICES,S;M,Color,SWATCH_CHOICES,#FFFFFF:White;#000000:Black
+linen-tee,VARIANT,,TRUE,,,,,,,,25.00,30.00,9.50,5,TEE-S-W,4006381333931,0.2,,,S,,,#FFFFFF:White
+linen-tee,VARIANT,,FALSE,,,,,,,,27.50,,10.00,OUT_OF_STOCK,TEE-M-B,,0.25,,,M,,,#000000:Black
+linen-tee,MEDIA,,,,,,def456_back~mv2.jpg,Back,,,,,,,,,,,,,,,
+stone-mug,PRODUCT,Stone Mug,TRUE,Holds tea.,Kitchen,,https://static.wixstatic.com/media/mug~mv2.jpg,,,Clayworks,12.995,,4.20,IN_STOCK,MUG-1,5901234123457,0.4,,,,,,
+poster,PRODUCT,Poster,TRUE,,,,,,,,,,,3,POSTER-1,,,,,,,,

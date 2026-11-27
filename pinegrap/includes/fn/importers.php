@@ -74,7 +74,7 @@ function pg_import_kinds()
         'shopify'     => lang('Shopify products or customers (CSV)'),
         'squarespace' => lang('Squarespace site (XML), products or customers (CSV)'),
         'webflow'     => lang('Webflow collection, products or 301 redirects (CSV)'),
-        'wix'         => lang('Wix collection (CSV)'),
+        'wix'         => lang('Wix collection, products or contacts (CSV)'),
     );
 }
 
@@ -185,6 +185,17 @@ function pg_import_detect_kind($head)
     }
 
     if ($has(array('id', 'owner')) || $has(array('id', 'created date', 'updated date'))) {
+        return 'wix';
+    }
+
+    // Wix products: handle (handleId in the previous layout) with fieldType;
+    // contacts: a name column with the labels or the e-mail subscription
+    // status, as no help page lists its headings.
+    if (($has(array('handle', 'fieldtype')) || $has(array('handleid', 'fieldtype')))) {
+        return 'wix';
+    }
+
+    if (($has(array('first name')) || $has(array('last name'))) && ($has(array('labels')) || (bool) preg_grep('/subscri(ber|ption) status/', $cells))) {
         return 'wix';
     }
 

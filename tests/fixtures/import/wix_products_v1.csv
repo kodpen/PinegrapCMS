@@ -1,0 +1,5 @@
+handleId,fieldType,name,description,productImageUrl,collection,sku,ribbon,price,surcharge,visible,discountMode,discountValue,inventory,weight,cost,productOptionName1,productOptionType1,productOptionDescription1,productOptionName2,productOptionType2,productOptionDescription2
+product_1,Product,Wool Scarf,<p>Warm wool.</p>,a1b2c3_scarf~mv2.jpg;https://static.wixstatic.com/media/scarf2.jpg,Winter;Accessories,,,40,,TRUE,PERCENT,10,InStock,,15,Colour,DROP_DOWN,Red;Blue,,,
+product_1,Variant,,,,,SC-R,,,,TRUE,,,3,0.3,,,,Red,,,
+product_1,Variant,,,,,SC-B,,,5,TRUE,,,OutOfStock,0.3,,,,Blue,,,
+product_2,Product,Gift Box,Boxed.,,Gifts,GB-1,,19.99,,FALSE,AMOUNT,4.99,7,1.2,8,,,,,,
