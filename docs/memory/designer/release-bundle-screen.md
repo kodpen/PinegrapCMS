@@ -8,7 +8,7 @@ module: page_bundles_screen
 - `page_bundles.php` at the root, built as `page_experiments.php` is: `validate_area_access($user, 'designer')` (roles 0 and 1), a liveform for notices, posts back to itself with `validate_token_field()`.
 - Without `id`: the list (name, status badge, pages, publish time, changed) and New bundle (a dialog with the name). With `id`: one bundle, a pages card and a sticky Summary card.
 - At phone width nothing scrolls sideways: the list puts the status badge, "Pages: n" and the publish time under the name, a bundle's rows put "New page"/"Replaces …", the status and Remove under the draft's name; the wide columns are `d-none md:d-table-cell` (architect, agent channel message 6918).
-- No menu row and no link from Pages yet; the screen is reached from the bell line and the preview's Close. Architect (2026-11-16, agent channel message 6918): the one-line menu follow-up comes after RB3 and RB4; both landed and the screen publishes since #10557.
+- Main menu: Page Design Studio row (21) › Bundles, after Experiments, drawn for role < 2 as the screen's gate; the screen marks row 21 (NV5). Also reached from the bell line and the preview's Close; no link from Pages.
 
 ## What does one bundle show?
 - Each page: the draft's name with its Edit link (`pg_page_edit_url_by_id()`), "New page" or "Replaces <live page>", and its status: "Changed since" (a warning badge whose title explains Replace anyway / Leave out), "Waiting" or "Written to the site".

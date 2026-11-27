@@ -14,6 +14,6 @@ description: Decisions made, product part 116 (2026-11-26 on): a live page's new
 - So the decision of 2026-10-06 stands in its other half: a live page's own Publish goes live at once and a live page keeps no working copy.
 
 ## What is the architect's reading, not his words?
-- Built on the release bundle as it is, with no table and no column: a new version is an open bundle of one replacement (`plans/designer-new-version.md`).
+- Built on the release bundle as it is, with no table and no column: a new version is an open bundle of one replacement (`designer/designer-new-version.md`).
 - The phone preview's rule of poll 243 (`decisions-made-product-115.md`) is untouched: a design with a draft shows the draft, so a new version is what the phone shows once it is started.
 - The Bundles screen gets its menu row in the same plan, as the versions are listed there and taken back from there.
