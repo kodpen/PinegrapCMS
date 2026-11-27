@@ -5,7 +5,7 @@ module: site_plan
 ---
 
 ## Where is it?
-- `designer/site_plan` (`includes/panel/designer.php`, designers only, in the page cache's read-only list) calls `pg_site_plan_request()` (`includes/fn/site_plan.php`). One `pg_ai_chat()` call; nothing is written on the server. Plan: `plans/site-from-brief.md`; the brief: `describe-start.md`.
+- `designer/site_plan` (`includes/panel/designer.php`, designers only, in the page cache's read-only list) calls `pg_site_plan_request()` (`includes/fn/site_plan.php`). One `pg_ai_chat()` call; nothing is written on the server. Rules: `site-from-brief.md`; the brief: `describe-start.md`.
 
 ## What does it take and send?
 - `brief` as an array or JSON, checked by `pg_site_plan_input()` with `pg_site_brief_check()`: a brief with a mistake is refused with its first field's words.
