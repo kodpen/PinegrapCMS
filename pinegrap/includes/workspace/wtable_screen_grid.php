@@ -354,7 +354,8 @@ function ws_wtable_grid_row_menu_items($row, $row_count, $order_free, $confirm)
 
 /**
  * A menu of the grid: its toggle and the entries under it, placed fixed on
- * the page so that the grid's scrolling box does not cut it. '' when no
+ * the page and opened in the body, so that neither the grid's scrolling box
+ * cuts it nor its sticky head and totals rows draw over it. '' when no
  * entry is left.
  *
  * @param string $class the toggle's classes
@@ -371,7 +372,7 @@ function ws_wtable_grid_menu($class, $label, $inner, $items)
         return '';
     }
 
-    return '<span class="pg-menu-wrap"><button type="button" class="' . h($class) . '" data-bs-toggle="menu" data-bs-strategy="fixed" aria-expanded="false" title="' . h($label) . '" aria-label="' . h($label) . '">'
+    return '<span class="pg-menu-wrap"><button type="button" class="' . h($class) . '" data-bs-toggle="menu" data-bs-strategy="fixed" data-bs-container="body" aria-expanded="false" title="' . h($label) . '" aria-label="' . h($label) . '">'
         . $inner . '</button><ul class="menu ws-wt-menu">' . $entries . '</ul></span>';
 }
 
