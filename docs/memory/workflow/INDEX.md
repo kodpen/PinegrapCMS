@@ -509,7 +509,7 @@
 - user-docs-coverage-content.md: pinegrap.com documentation pages for the panel, settings, files, pages and people (/introduction to /chat): what each page covers and the memory folders and clusters it is written from
 - user-docs-coverage-modules.md: pinegrap.com documentation pages for visitors, SEO, design, languages, commerce, ERP, Workspace, API and security: what each page covers and the memory folders and clusters it is written from
 - user-docs-developers.md: Outside developers of the API (owner 2026-11-26): their pages sit in the documentation on pinegrap.com, no developers subdomain, no staging run by us, no central client registry [decision: here]
-- user-docs-help-anchors.md: Help anchors of get_help_url.php on pinegrap.com: none missing since 2026-11-23, the Artifact Canvas anchors waiting for a help button (#11185), two rows corrected, how to recheck
+- user-docs-help-anchors.md: Help anchors of get_help_url.php on pinegrap.com: commerce-cont#markets to write, the Artifact Canvas anchors waiting for a help button (#11185), two rows corrected, how to recheck
 - user-docs-pages.md: User documentation on pinegrap.com: the 31 pages by address, the PR each is written up to (#500 plus the 2026.11.0 round), how a mark moves, the site pages, where coverage is listed
 - user-docs-writing.md: How a pinegrap.com documentation page is written and published: English only, the page's structure (sections, anchors, tables, notes), the editor route, Publish is live, release notes on /changelog [decision: here]
 - workflow-lint-and-dependabot.md: The actionlint job (pinned, SHA-256, shellcheck, what its data lacks) and Dependabot for github-actions (read from main, PRs to development, one per major bump)
