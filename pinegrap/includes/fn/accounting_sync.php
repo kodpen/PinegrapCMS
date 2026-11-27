@@ -91,6 +91,25 @@ function pg_accounting_sync_xero_target(array $state, $connected)
 }
 
 /**
+ * The service and company rows are written for, from QuickBooks' stored
+ * state: connected, with a company named. Pure.
+ *
+ * @param array $state     quickbooks_state_parse()
+ * @param bool  $connected a QuickBooks connection is stored
+ * @return array|null service, company (the realmId)
+ */
+function pg_accounting_sync_quickbooks_target(array $state, $connected)
+{
+    $realm = (string) ($state['realm_id'] ?? '');
+
+    if (!$connected || ($realm === '')) {
+        return null;
+    }
+
+    return array('service' => 'quickbooks', 'company' => $realm);
+}
+
+/**
  * The row an ERP event writes. A sales invoice issued is a sale and a return
  * invoice a refund; a proforma, a purchase invoice or a draft writes
  * nothing. A receipt is a payment when it was named for an invoice. Whether
@@ -433,8 +452,10 @@ function pg_accounting_sync_erp_on()
 }
 
 /**
- * The service and company the site books into now, null for none. Reads
- * the stored state only; no service is called.
+ * The service and company the site books into now, null for none: Xero
+ * with an organisation chosen, else QuickBooks with a company connected.
+ * One service at a time; neither keeps a company while the other holds the
+ * books. Reads the stored state only; no service is called.
  *
  * @return array|null service, company
  */
@@ -445,6 +466,7 @@ function pg_accounting_sync_target()
     }
 
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/xero.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/quickbooks.php');
 
     if (!xero_ready()) {
         return null;
@@ -452,11 +474,17 @@ function pg_accounting_sync_target()
 
     $state = xero_state();
 
-    if ($state['tenant_id'] === '') {
+    if ($state['tenant_id'] !== '') {
+        return pg_accounting_sync_xero_target($state, is_array(xero_connection($state)));
+    }
+
+    $books = quickbooks_state();
+
+    if ($books['realm_id'] === '') {
         return null;
     }
 
-    return pg_accounting_sync_xero_target($state, is_array(xero_connection($state)));
+    return pg_accounting_sync_quickbooks_target($books, is_array(quickbooks_connection($books)));
 }
 
 /**
@@ -478,9 +506,13 @@ function pg_accounting_sync_connection_held($connection)
  */
 function pg_accounting_sync_held()
 {
-    require_once(PG_FUNCTIONS_DIR . '/includes/fn/xero.php');
+    $target = pg_accounting_sync_target();
 
-    return xero_ready() && pg_accounting_sync_connection_held(xero_connection());
+    if (!is_array($target)) {
+        return false;
+    }
+
+    return pg_accounting_sync_connection_held(($target['service'] === 'quickbooks') ? quickbooks_connection() : xero_connection());
 }
 
 /**

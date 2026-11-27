@@ -1085,6 +1085,7 @@
     "Only a value that matches one of the options is used (upper and lower case alike).": "Yalnızca seçeneklerden biriyle eşleşen bir değer kullanılır (büyük ve küçük harf fark etmez).",
     "Only a verification hash is stored. If it is lost, issue a new one.": "Sistemde yalnız doğrulama özeti saklanır. Kaybederseniz yenisini üretin.",
     "Only a waiting request of a push door can be knocked, by the person who asked or an administrator.": "Yalnızca gönderim kapılı bir ajanın bekleyen isteği için kapı çalınabilir; bunu isteyen kişi ya da bir yönetici yapabilir.",
+    "Only active accounts of the company's chart of accounts that fit each role are offered.": "Yalnızca şirketin hesap planındaki, her role uyan etkin hesaplar sunulur.",
     "Only active accounts of the organisation's chart of accounts that fit each role are offered.": "Yalnızca kuruluşun hesap planında her role uyan etkin hesaplar sunulur.",
     "Only add Comment if Submitted Form was updated": "Yalnızca Gönderi Formu güncellendiyse Yorum ekleyin",
     "Only addresses on the same host as the website URL are read, at most {var:1} items.": "Yalnızca web sitesi URL'si ile aynı sunucudaki adresler okunur, en çok {var:1} öğe.",

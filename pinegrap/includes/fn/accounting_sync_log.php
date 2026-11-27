@@ -415,14 +415,17 @@ function pg_accounting_sync_check_failed($now)
  * connection holds the queue, the daily counts of the last week and the last
  * 50 sends, Try again on a failed one.
  *
- * @param bool $may_manage whether Try again is offered
- * @return string HTML, '' while the site books into no service
+ * @param bool   $may_manage whether Try again is offered
+ * @param string $service    the page's service; '' for whichever the site
+ *                           books into
+ * @return string HTML, '' while the site books into no service, or into
+ *                another one than the page's
  */
-function pg_accounting_sync_log_card($may_manage)
+function pg_accounting_sync_log_card($may_manage, $service = '')
 {
     $target = pg_accounting_sync_target();
 
-    if ($target === null) {
+    if (($target === null) || (($service !== '') && ($target['service'] !== $service))) {
         return '';
     }
 

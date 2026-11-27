@@ -442,6 +442,7 @@ function pg_connections_transfer_fields()
         'isbasi' => array('TR', $order),
         'vies' => array('BE', array('identity')),
         'xero' => array('NZ', $order),
+        'quickbooks' => array('US', $order),
 
         'postmark' => array('US', $mail),
         'mailgun' => array('US', $mail),
@@ -639,6 +640,12 @@ function pg_connections_registry()
         'xero' => array('name' => 'Xero', 'group' => 'edocuments', 'place' => 'connections.php', 'uses' => 'Sales, customers and payments sent to the books',
             'state' => array('kind' => 'account', 'provider' => 'xero', 'purpose' => 'xero', 'attention' => true),
             'covers' => array('connect' => array('xero'), 'purpose' => array('xero'))),
+        // QuickBooks Online's books: the site's own Intuit application,
+        // company, accounts and tax codes are set on its page. One of the two
+        // keeps the books at a time.
+        'quickbooks' => array('name' => 'QuickBooks', 'group' => 'edocuments', 'place' => 'connections.php', 'uses' => 'Sales, customers and payments sent to the books',
+            'state' => array('kind' => 'account', 'provider' => 'quickbooks', 'purpose' => 'quickbooks', 'attention' => true),
+            'covers' => array('connect' => array('quickbooks'), 'purpose' => array('quickbooks'))),
 
         // E-mail.
         'postmark' => array('name' => 'Postmark', 'group' => 'email', 'place' => '#settings/email/pgset-mail-system', 'uses' => 'Sending the site\'s mail',

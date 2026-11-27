@@ -187,11 +187,11 @@ function test_workspace_mail_add_wiring()
 	pg_assert_contains("\$liveform->mark_error('ws_mail[0][' . \$ws_tested['field'] . ']', h(\$ws_tested['error']));", $save, 'a failed test marks its field on Sign in');
 	pg_assert_contains('ws_mail_add_finish_input($ws_input)', $save, 'Finish takes the tested password');
 	pg_assert_contains("ws_mail_settings_post(\$ws_viewer, 'mail_test', \$liveform, array('box_id' => \$ws_new), null, \$ws_warn);", $save, 'and tests the stored box, for its pill');
-	pg_assert_contains("\$result['label'])), \$result['connection_id']);", $connect, 'connect.php says which account it connected');
+	pg_assert_contains("\$result['label'])), \$result['connection_id'], \$result['params']);", $connect, 'connect.php says which account it connected');
 
 	$_SESSION['software']['connect_flash'] = null;
 	pg_connect_flash('notice', 'Done.', 12);
-	pg_assert_same(array('kind' => 'notice', 'text' => 'Done.', 'connection_id' => 12), pg_connect_flash_take());
+	pg_assert_same(array('kind' => 'notice', 'text' => 'Done.', 'connection_id' => 12, 'params' => array()), pg_connect_flash_take());
 	pg_assert_same(12, pg_connect_last_take()['connection_id'], 'the account waits for Mailboxes after the Sending tab showed the message');
 	pg_assert_same(null, pg_connect_last_take(), 'once');
 

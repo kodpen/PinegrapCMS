@@ -268,6 +268,7 @@ function connections_page_can($page_id, $user, $is_manager, $app_provider, $ws_v
 		'commerce'     => in_array($page_id, pg_connections_screen_commerce_pages(), true) && connections_commerce_may_manage($user),
 		'accounting'   => in_array($page_id, pg_connections_screen_accounting_pages(), true) && connections_accounting_may_manage($user),
 		'xero'         => ($page_id === 'xero') && connections_accounting_may_manage($user),
+		'quickbooks'   => ($page_id === 'quickbooks') && connections_accounting_may_manage($user),
 		'integrations' => ($page_id === 'google_reviews') && connections_integrations_may_manage($user),
 		'maintenance'  => (pg_backup_cloud_type_of_service($page_id) !== '') && connections_maintenance_may_manage($user),
 		'chat_notify'  => in_array($page_id, array('slack', 'teams', 'telegram'), true) && connections_chat_notify_may_manage($user),
@@ -1183,6 +1184,29 @@ if ($_POST) {
 
 	}
 
+	// QuickBooks' environment, accounts and tax codes, saved on its page
+	// under the gate of Site Settings › Accounting.
+	if (in_array($action, array('quickbooks_environment', 'quickbooks_accounts', 'quickbooks_tax_codes'), true) && connections_accounting_may_manage($user)) {
+
+		require_once(PG_FUNCTIONS_DIR . '/includes/fn/quickbooks_page.php');
+
+		$quickbooks_answer = pg_quickbooks_page_save($action, $_POST);
+
+		// The messages carry QuickBooks' own words, so they are escaped.
+		foreach ($quickbooks_answer['messages'] as $quickbooks_line) {
+			if ($quickbooks_line[0] === 'notice') {
+				$liveform->add_notice(h($quickbooks_line[1]));
+			} else {
+				$liveform->add_error(h($quickbooks_line[1]));
+			}
+		}
+
+		if ($quickbooks_answer['log'] !== '') {
+			log_activity($quickbooks_answer['log'], $_SESSION['sessionusername']);
+		}
+
+	}
+
 	// Try again on a failed accounting sync send, from the service's Events
 	// card, under the gate of Site Settings › Accounting.
 	if (($action === 'accounting_sync_again') && connections_accounting_may_manage($user)) {
@@ -1788,6 +1812,9 @@ if ($_POST) {
 			if ($account['provider'] === 'xero') {
 				require_once(PG_FUNCTIONS_DIR . '/includes/fn/xero.php');
 				xero_forget();
+			} elseif ($account['provider'] === 'quickbooks') {
+				require_once(PG_FUNCTIONS_DIR . '/includes/fn/quickbooks.php');
+				quickbooks_forget();
 			}
 
 			$liveform->add_notice(lang(array('string' => '{var:1} was disconnected.', 'vars' => h($account['label']))));
@@ -1871,25 +1898,31 @@ if (is_array($flash)) {
 
 	}
 
-	// Back from Xero's sign-in: the organisations it allowed are read once,
-	// now, and the one the site uses is picked.
-	if (is_array($flash_account) && ($flash_account['provider'] === 'xero') && ((int) $flash_account['user_id'] === 0) && connections_accounting_may_manage($user)) {
+	// Back from Xero's or QuickBooks' sign-in: the organisations Xero
+	// allowed are read once, now, and the one the site uses is picked;
+	// QuickBooks' company is the one the return address named (realmId).
+	if (is_array($flash_account) && in_array($flash_account['provider'], array('xero', 'quickbooks'), true) && ((int) $flash_account['user_id'] === 0) && connections_accounting_may_manage($user)) {
 
-		require_once(PG_FUNCTIONS_DIR . '/includes/fn/xero.php');
-
-		$xero_connected = xero_after_connect((int) $flash_account['id']);
-
-		// The messages carry Xero's own words, so they are escaped.
-		foreach ($xero_connected['notices'] as $xero_line) {
-			$liveform->add_notice(h($xero_line));
+		if ($flash_account['provider'] === 'xero') {
+			require_once(PG_FUNCTIONS_DIR . '/includes/fn/xero.php');
+			$books_connected = xero_after_connect((int) $flash_account['id']);
+		} else {
+			require_once(PG_FUNCTIONS_DIR . '/includes/fn/quickbooks.php');
+			$books_connected = quickbooks_after_connect((int) $flash_account['id'],
+				(isset($flash['params']['realmId']) && is_string($flash['params']['realmId'])) ? $flash['params']['realmId'] : '');
 		}
 
-		foreach ($xero_connected['warnings'] as $xero_line) {
-			$liveform->add_warning(h($xero_line));
+		// The messages carry the service's own words, so they are escaped.
+		foreach ($books_connected['notices'] as $books_line) {
+			$liveform->add_notice(h($books_line));
 		}
 
-		if ($xero_connected['log'] !== '') {
-			log_activity($xero_connected['log'], $_SESSION['sessionusername']);
+		foreach ($books_connected['warnings'] as $books_line) {
+			$liveform->add_warning(h($books_line));
+		}
+
+		if ($books_connected['log'] !== '') {
+			log_activity($books_connected['log'], $_SESSION['sessionusername']);
 		}
 
 	}
@@ -5176,7 +5209,7 @@ if (is_array($back) && !$liveform->check_form_errors()) {
 		$back_done = 'saved';
 	}
 
-	if ((is_array($flash) && ($flash['kind'] === 'notice') && empty($parasut_answer['warnings']) && empty($xero_connected['warnings'])) || isset($_GET['mcp_connected'])) {
+	if ((is_array($flash) && ($flash['kind'] === 'notice') && empty($parasut_answer['warnings']) && empty($books_connected['warnings'])) || isset($_GET['mcp_connected'])) {
 		$back_done = 'connected';
 	}
 
@@ -5393,6 +5426,18 @@ if ($provider_page !== '') {
 				(is_array($draft) && ($draft['provider'] === 'xero')) ? $draft : null, $can_seal, $redirect_uri, 'xero'));
 	}
 
+	// QuickBooks' page: its application, environment, company, accounts and
+	// tax codes; as Xero's, its application is set up here.
+	if (($page_id === 'quickbooks') && isset($providers['quickbooks'])) {
+		require_once(PG_FUNCTIONS_DIR . '/includes/fn/quickbooks_page.php');
+		$provider_apps['quickbooks'] = pg_connect_app('quickbooks');
+		$quickbooks_hint = connections_app_hint($provider_apps['quickbooks']);
+		$page = pg_quickbooks_page($page, connections_accounting_may_manage($user),
+			(($quickbooks_hint === '') ? '' : '<p class="pg-field-help mt-0">' . h($quickbooks_hint) . '</p>')
+			. connections_app_form('quickbooks', $providers['quickbooks'], $provider_apps['quickbooks'],
+				(is_array($draft) && ($draft['provider'] === 'quickbooks')) ? $draft : null, $can_seal, $redirect_uri, 'quickbooks'));
+	}
+
 	// Google reviews' page: its key and Place ID, and what reads them.
 	if ($page_id === 'google_reviews') {
 		$page = connections_grev_page($page, connections_integrations_may_manage($user), $can_seal);
@@ -5486,11 +5531,11 @@ if ($provider_page !== '') {
 		$page['details'] .= pg_ad_conversion_log_card($page_id);
 	}
 
-	// Xero's sends: the daily counts, the last 50 and Try again, below its
-	// details, under the gate of Site Settings › Accounting.
-	if (($page_id === 'xero') && isset($providers['xero']) && connections_accounting_may_manage($user)) {
+	// Xero's or QuickBooks' sends: the daily counts, the last 50 and Try
+	// again, below its details, under the gate of Site Settings › Accounting.
+	if (in_array($page_id, array('xero', 'quickbooks'), true) && isset($providers[$page_id]) && connections_accounting_may_manage($user)) {
 		require_once(PG_FUNCTIONS_DIR . '/includes/fn/accounting_sync_log.php');
-		$page['details'] .= pg_accounting_sync_log_card(true);
+		$page['details'] .= pg_accounting_sync_log_card(true, $page_id);
 	}
 
 	// Google Drive's, OneDrive's and Dropbox's pages: connect an account for

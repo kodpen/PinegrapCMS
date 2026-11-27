@@ -37,7 +37,7 @@ function test_ai_connections_one_per_model_provider_of_the_registry()
 	pg_assert_same(7, count(pg_ai_connection_services()), 'seven providers take a key; a custom address is no service');
 	pg_assert_same('ai_openai', pg_ai_connection_store_key('openai'), 'kept among the service entries under ai_<provider>');
 	pg_assert_true(!pg_ai_connection_known('custom'), 'a custom address has no connection');
-	pg_assert_same(87, pg_connections_count(), 'the registry counts 87 services');
+	pg_assert_same(88, pg_connections_count(), 'the registry counts 88 services');
 }
 
 function test_ai_connections_move_first_key_becomes_the_connection()

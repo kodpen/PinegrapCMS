@@ -13,7 +13,7 @@ module: accounting_sync
 ## What writes a row?
 - ERP module off: `pg_order_mark_paid()` and `pg_order_complete()` when it stamps `paid_at` write a sale and a payment for (`orders`, id). The general job's refund scan reads `order_refunds` after a cursor kept in `data/temp/accounting_sync_refunds.txt`, 200 at a time, and writes a refund for (`order_refunds`, id) when the order has a sale row and the amount is above 0.
 - ERP module on: `erp_event()` calls `pg_accounting_sync_erp_event()`. A sales invoice issued writes a sale, a return invoice a refund (`erp_invoices`); a receipt with an `invoice_id` writes a payment (`erp_cash_transactions`). A payment, and a return naming a `parent_invoice_id`, is written only when that invoice has a sale or refund row. A cancellation puts the existing row back to waiting with attempts 0 (its driver voids); it never writes a row. Proforma, purchase and draft write nothing.
-- Rows are written only while the site books into a service (Xero connected with an organisation chosen). Another organisation starts with rows of its own.
+- Rows are written only while the site books into a service (`pg_accounting_sync_target()`, `quickbooks-connection.md`). Another organisation starts with rows of its own.
 
 ## How is a row sent?
 - `job.php`, after the ad services: `pg_accounting_sync_queue_refunds()` then `pg_accounting_sync_dispatch(10)` (10 seconds). Due rows of the current company, oldest first, at the service's pace (`pg_accounting_sync_pace()`: Xero 10 rows a pass, QuickBooks 40). A row is claimed (next_try_at moved 600 s ahead, matched on its old value) before its call.
