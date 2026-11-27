@@ -325,6 +325,7 @@
 - payment-stripe-blik-deferred.md: BLIK on the Stripe checkout: not in the deferred Payment Element, so the checkout draws its own code field, authorize() confirms with the code and a waiting page follows (PR #12123) [decision: here]
 - payment-stripe-later-result.md: A Stripe PaymentIntent still processing places the order awaiting payment (card + pi_ id + paid_at 0); payment_intent.succeeded records it, payment_failed alerts; SEPA Direct Debit uses it (PR #12087)
 - payment-stripe-method-list.md: Stripe methods beside the card: list pg_payment_stripe_methods(), pure pg_payment_stripe_method_types() for page and intent, method_<type> switches in connect_apps
+- payment-stripe-method-named.md: The Stripe method that paid (iDEAL, Klarna, SEPA, BLIK, Link) kept in orders.card_type; View Order, the order mail and API payment.paid_with show it
 - payment-unclear-answers.md: The 'unclear' flag of a payment driver's answer, how the iyzico refund sets it, why a return's refund stays refunded on it and who honours it (#970, PR #1260)
 - paypal-express-return-query.md: How the classic PayPal Express Checkout return in submit_order.php reads token and PayerID: one string each, an array or a missing one empty (#5270)
 - pick-pack-label-gate.md: The site switch "Create a label only after the pack is checked" (PP4b): its config_text row, the one check every outbound label path reads, the not_packed refusal and API 409 pack_not_checked
