@@ -296,7 +296,7 @@ function ws_wtable_home_note($home, $access)
 }
 
 /**
- * The "Belongs to" card of a table's screen: where the table belongs, and
+ * The "Belongs to" drawer of a table's screen ("⋯" opens it): where the table belongs, and
  * for whoever manages it the form that moves it. Empty for a person's table
  * seen by somebody it is shared with, and before the step has run.
  *
@@ -305,7 +305,7 @@ function ws_wtable_home_note($home, $access)
  * @param string $self_url the screen's address
  * @return string HTML
  */
-function ws_wtable_home_card($viewer, $table, $self_url)
+function ws_wtable_home_drawer($viewer, $table, $self_url)
 {
     $home = ws_wtable_home($table);
     $manage = ws_wtable_may((string) $table['access'], 'manage');
@@ -348,12 +348,5 @@ function ws_wtable_home_card($viewer, $table, $self_url)
             . '<p class="small fg-secondary mb-0">' . h(lang('Whoever reads the channel reads this table, whoever may write there changes it, and the channel\'s managers delete, share and move it.')) . '</p>'
         : '<p class="small fg-secondary mb-0">' . h(lang('Your own table: others reach it only through a share.')) . '</p>';
 
-    return '
-            <div class="card mb-5" id="ws-wt-home">
-                <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-house me-1" aria-hidden="true"></i>' . h(lang('Belongs to')) . '</h2></div>
-                <div class="card-body">
-                    ' . $line . '
-                    ' . $form . '
-                </div>
-            </div>';
+    return ws_wtable_screen_drawer('ws-wt-home', 'bi-house', 'amber', lang('Belongs to'), $line . $form);
 }

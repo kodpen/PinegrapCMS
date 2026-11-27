@@ -1215,6 +1215,11 @@ if (!$table) {
         </table></div>' . ((($pager !== '') || ($totals_switch !== '')) ? '<div class="d-flex flex-wrap align-items-center gap-3 mt-3">' . $totals_switch . $pager . '</div>' : '');
     }
 
+    // "Filter" in the bar holds the query bar; what it sets is a tag under
+    // the bar.
+    $filter_form = '';
+    $filter_tags = array();
+
     if (!empty($columns)) {
         $row_choices = array();
 
@@ -1224,7 +1229,8 @@ if (!$table) {
             }
         }
 
-        $rows_body = ws_wtable_screen_query_bar($self_url, $id, $columns, $screen_query, $team, $query_refusal, $totals_all, $row_choices) . $rows_body;
+        $filter_form = ws_wtable_screen_query_bar($self_url, $id, $columns, $screen_query, $team, $totals_all, $row_choices);
+        $filter_tags = ws_wtable_screen_query_tags($columns, $screen_query, $team, $table_url, $totals_all, $row_choices);
     }
 
     // The row form: a new row, or the one ?row= names.
@@ -1654,31 +1660,18 @@ if (!$table) {
                     </form>';
     }
 
-    $columns_card = '
-            <div class="card mb-5" id="ws-wt-columns">
-                <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-layout-three-columns me-1" aria-hidden="true"></i>' . h(lang('Columns')) . '</h2></div>
-                <div class="card-body">
-                    ' . (($column_list !== '') ? $column_list : '<p class="small fg-secondary mb-0">' . h(lang('No column yet')) . '</p>') . '
-                    ' . $new_column . '
-                </div>
-            </div>';
+    $columns_card = ws_wtable_screen_drawer('ws-wt-columns', 'bi-layout-three-columns', 'blue', lang('Columns'),
+        (($column_list !== '') ? $column_list : '<p class="small fg-secondary mb-0">' . h(lang('No column yet')) . '</p>') . $new_column);
 
     // Rows from a file.
-    $import_rows_card = ($can_write && !empty($columns) && !$kept) ? '
-            <div class="card mb-5" id="ws-wt-import-rows">
-                <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-file-earmark-arrow-up me-1" aria-hidden="true"></i>' . h(lang('Rows from a file')) . '</h2></div>
-                <div class="card-body">' . $import_upload($id, lang('A CSV, Excel or OpenDocument file whose first row names the columns: each fills the column of its name.')) . '</div>
-            </div>
-            <div class="card mb-5" id="ws-wt-import-note-rows">
-                <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-journal-text me-1" aria-hidden="true"></i>' . h(lang('Rows from a note')) . '</h2></div>
-                <div class="card-body">' . $import_note($id, lang('A table in one of your notes whose first row names the columns: each fills the column of its name. The note stays as it is.')) . '</div>
-            </div>' : '';
+    $import_rows_card = ($can_write && !empty($columns) && !$kept) ? ws_wtable_screen_drawer('ws-wt-import-rows', 'bi-file-earmark-arrow-up', 'teal', lang('Import'),
+        '<h6 class="pg-group-label mt-0">' . h(lang('Rows from a file')) . '</h6>'
+        . $import_upload($id, lang('A CSV, Excel or OpenDocument file whose first row names the columns: each fills the column of its name.'))
+        . '<h6 class="pg-group-label mt-5" id="ws-wt-import-note-rows">' . h(lang('Rows from a note')) . '</h6>'
+        . $import_note($id, lang('A table in one of your notes whose first row names the columns: each fills the column of its name. The note stays as it is.'))) : '';
 
     // The name and description.
-    $details_card = $can_write ? '
-            <div class="card mb-5" id="ws-wt-details">
-                <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-card-text me-1" aria-hidden="true"></i>' . h(lang('Name and description')) . '</h2></div>
-                <div class="card-body">
+    $details_card = $can_write ? ws_wtable_screen_drawer('ws-wt-details', 'bi-card-text', 'gray', lang('Name and description'), '
                     <form method="post" action="' . h($self_url) . '" class="disable_shortcut">
                         ' . get_token_field() . '
                         <input type="hidden" name="wt_action" value="table_update">
@@ -1687,10 +1680,8 @@ if (!$table) {
                             <input type="text" class="pg-input pg-input-sm" name="name" id="ws_wt_name" value="' . h($table['name']) . '" maxlength="' . (int) ws_wtable_limits()['name'] . '" required></div>
                         <div class="mb-3"><label class="pg-field-label" for="ws_wt_description">' . h(lang('Description')) . '</label>
                             <textarea class="pg-input pg-input-sm" name="description" id="ws_wt_description" rows="2" maxlength="' . (int) ws_wtable_limits()['description'] . '">' . h($table['description']) . '</textarea></div>
-                        <button type="submit" class="pg-button pg-button-quiet pg-button-sm">' . h(lang('Save')) . '</button>
-                    </form>
-                </div>
-            </div>' : '';
+                        <button type="submit" class="pg-button pg-button-fill pg-button-sm">' . h(lang('Save')) . '</button>
+                    </form>') : '';
 
     // The shares.
     $share_lines = '';
@@ -1749,14 +1740,8 @@ if (!$table) {
                     </form>';
     }
 
-    $shares_card = '
-            <div class="card mb-5" id="ws-wt-shares">
-                <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-share me-1" aria-hidden="true"></i>' . h(lang('Shared with')) . '</h2></div>
-                <div class="card-body">
-                    ' . (($share_lines !== '') ? $share_lines : '<p class="small fg-secondary mb-0">' . h(($home !== null) ? lang('Nobody outside the channel reaches this table.') : lang('Nobody else reaches this table.')) . '</p>') . '
-                    ' . $share_form . '
-                </div>
-            </div>';
+    $shares_card = ws_wtable_screen_drawer('ws-wt-shares', 'bi-share', 'violet', lang('Shared with'),
+        (($share_lines !== '') ? $share_lines : '<p class="small fg-secondary mb-0">' . h(($home !== null) ? lang('Nobody outside the channel reaches this table.') : lang('Nobody else reaches this table.')) . '</p>') . $share_form);
 
     // The table's deleted rows: restored at the end of the table, or deleted
     // for good, until the bin lets them go.
@@ -1779,17 +1764,12 @@ if (!$table) {
                     </li>';
         }
 
-        $bin_card = '
-            <div class="card mb-5" id="ws-wt-deleted-rows">
-                <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-trash me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Deleted rows ({var:1})', 'vars' => count($bin_rows)))) . '</h2></div>
-                <div class="card-body">
-                    <p class="small fg-secondary">' . h(lang(array('string' => 'A deleted row stays here for {var:1} days. Restored, it comes back at the end of the table.', 'vars' => $bin_days))) . '</p>
-                    <ul class="list-unstyled mb-0">' . $bin_lines . '</ul>
-                </div>
-            </div>';
+        $bin_card = ws_wtable_screen_drawer('ws-wt-deleted-rows', 'bi-trash', 'gray', lang(array('string' => 'Deleted rows ({var:1})', 'vars' => count($bin_rows))),
+            '<p class="small fg-secondary">' . h(lang(array('string' => 'A deleted row stays here for {var:1} days. Restored, it comes back at the end of the table.', 'vars' => $bin_days))) . '</p>
+                    <ul class="list-unstyled mb-0">' . $bin_lines . '</ul>');
     }
 
-    $home_card = ws_wtable_home_card($viewer, $table, $self_url);
+    $home_card = ws_wtable_home_drawer($viewer, $table, $self_url);
     $owner_note = '';
 
     if ($home !== null) {
@@ -1810,18 +1790,15 @@ if (!$table) {
     $status_columns = ws_wtable_board_status_columns($columns);
     $board_id = ws_wtable_board_column_id($columns, $_GET['by'] ?? 0);
     $on_board = ($board_id > 0) && (($_GET['view'] ?? '') === 'board');
-    $views = '';
+    // The Table and Board views, in the bar, while a status column groups
+    // the board.
+    $views = array();
 
     if ($board_id > 0) {
-        $views = '<div class="pg-seg" role="group" aria-label="' . h(lang('View')) . '">';
-
         foreach (array('table' => array(lang('Table'), 'bi-table'), 'board' => array(lang('Board'), 'bi-kanban')) as $key => $view) {
-            $here = (($key === 'board') === $on_board);
-            $views .= '<a class="pg-seg-item' . ($here ? ' is-active' : '') . '" href="' . h($table_url . (($key === 'board') ? '&view=board&by=' . $board_id : '')) . '"'
-                . ($here ? ' aria-current="page"' : '') . '><i class="bi ' . $view[1] . '" aria-hidden="true"></i>' . h($view[0]) . '</a>';
+            $views[] = array('label' => $view[0], 'icon' => $view[1], 'here' => (($key === 'board') === $on_board),
+                'url' => $table_url . (($key === 'board') ? '&view=board&by=' . $board_id : ''));
         }
-
-        $views .= '</div>';
     }
 
     if ($on_board) {
@@ -1856,7 +1833,7 @@ if (!$table) {
     ' . $owner_note . '
     <div class="card mb-5" id="ws-wt-board">
         <div class="card-header d-flex flex-wrap align-items-center gap-3"><h2 class="h6 mb-0 flex-grow-1"><i class="bi bi-kanban me-1" aria-hidden="true"></i>'
-            . h(lang(array('string' => '{var:1} rows', 'vars' => (int) $table['row_count']))) . '</h2>' . $by . $views . '</div>
+            . h(lang(array('string' => '{var:1} rows', 'vars' => (int) $table['row_count']))) . '</h2>' . $by . '</div>
         <div class="card-body ws-wt-board"><div class="small fg-secondary">' . h(lang('Loading…')) . '</div></div>
     </div>';
 
@@ -1910,28 +1887,25 @@ if (!$table) {
 
         $body = $import_card . '
         ' . $owner_note . $canvas_note . (((string) $table['description'] !== '') ? '<p class="fg-secondary mb-5" style="white-space: pre-line;">' . h($table['description']) . '</p>' : '') . '
-        <div class="row g-5">
-            <div class="col-12 xl:col-8">
-                <div class="card mb-5" id="ws-wt-rows">
-                    <div class="card-header d-flex align-items-center gap-3"><h2 class="h6 mb-0 flex-grow-1"><i class="bi bi-table me-1" aria-hidden="true"></i>'
-                        . h($query_on && !empty($query['where'])
-                            ? lang(array('string' => '{var:1} of {var:2} rows', 'vars' => array(count((array) $query_rows), (int) $table['row_count'])))
-                            : lang(array('string' => '{var:1} rows', 'vars' => (int) $table['row_count']))) . '</h2>' . $views . '</div>
-                    <div class="card-body">' . $rows_body . '</div>
-                </div>
-                ' . $row_form . '
-            </div>
-            <div class="col-12 xl:col-4">
-                ' . $columns_card . $import_rows_card . $details_card . $shares_card . $home_card . $bin_card . '
-            </div>
-        </div>';
+        <div class="card mb-5" id="ws-wt-rows">
+            <div class="card-header d-flex align-items-center gap-3"><h2 class="h6 mb-0 flex-grow-1"><i class="bi bi-table me-1" aria-hidden="true"></i>'
+                . h($query_on && !empty($query['where'])
+                    ? lang(array('string' => '{var:1} of {var:2} rows', 'vars' => array(count((array) $query_rows), (int) $table['row_count'])))
+                    : lang(array('string' => '{var:1} rows', 'vars' => (int) $table['row_count']))) . '</h2></div>
+            <div class="card-body">' . $rows_body . '</div>
+        </div>
+        ' . $row_form;
 
     }
+
+    // The drawers "⋯" opens, on both views: the board's menu reaches the
+    // columns and the shares as the table's does.
+    $body .= $columns_card . $import_rows_card . $details_card . $shares_card . $home_card . $bin_card;
 
     // Run from table: the window that names the columns a draft flow is
     // made of, pre-filled by type; nothing of it is kept on the table.
     $flow_window = '';
-    $flow_button = '';
+    $flow_item = null;
 
     if (ws_flows_ready() && ws_can_schedule($viewer) && !empty($columns)) {
         $prefill = ws_wtable_flow_prefill($columns);
@@ -1961,7 +1935,7 @@ if (!$table) {
                         </div>';
         }
 
-        $flow_button = '<button type="button" class="pg-button pg-button-ghost pg-button-sm" data-bs-toggle="dialog" data-bs-target="#ws_wt_flow"><i class="bi bi-diagram-3" aria-hidden="true"></i>' . h(lang('Run from table')) . '</button>';
+        $flow_item = array('label' => lang('Run from table'), 'icon' => 'bi-diagram-3', 'attrs' => 'data-bs-toggle="dialog" data-bs-target="#ws_wt_flow"');
         $flow_window = '
     <dialog class="dialog pg-dialog-centered" id="ws_wt_flow" aria-labelledby="ws_wt_flow_title">
         <form method="post" action="' . h($self_url) . '" class="d-contents disable_shortcut">
@@ -1988,7 +1962,7 @@ if (!$table) {
     // the table's channel for whoever reads it and may post there; a table
     // of no channel asks for the channel when the canvas is sent.
     $show = pg_image_editor_data_show_check($viewer, (int) $table['id']);
-    $show_menu = ($show['code'] === '') ? pg_image_editor_data_show_menu() : '';
+    $show_items = ($show['code'] === '') ? pg_image_editor_data_show_items() : array();
     $show_assets = '';
 
     if ($show['code'] === '') {
@@ -1997,15 +1971,59 @@ if (!$table) {
         $show_assets = pg_image_editor_data_show_assets(pg_image_editor_data_show_config($show['table'], $show['channel'], $show['channel'] ? array() : ws_library_channels($viewer)));
     }
 
-    $toolbar = '
-    <nav id="button_bar" class="pg-toolbar navigation mb-5" aria-label="' . lang('Button Bar') . '">
-        ' . $show_menu . '
-        ' . $flow_button . '
-        ' . (($row_form !== '') ? '<a class="pg-button pg-button-ghost pg-button-sm" href="' . h($table_url) . '#ws-wt-row-form"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('New row')) . '</a>' : '') . '
-        <a class="pg-button pg-button-ghost pg-button-sm" href="' . h($table_url . '&download=xlsx') . '" download><i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i>' . h(lang('Download as Excel')) . '</a>
-        ' . ($can_manage ? '<button type="button" class="pg-button pg-button-danger pg-button-sm ws-wt-action ms-auto" data-action="table_delete" data-confirm="'
-            . h(ws_wtable_screen_delete_confirm('table', (string) $table['name'], $bin_days)) . '"><i class="bi bi-trash" aria-hidden="true"></i>' . h(lang('Delete table')) . '</button>' : '') . '
-    </nav>' . $flow_window . $show_assets;
+    // The bar: New row, the views, "Filter" on the table view, and "⋯" with
+    // the rest; the cards that stood beside the rows open as drawers from it.
+    $menu = $show_items;
+
+    if (!empty($menu)) {
+        $menu[] = array('divider' => true);
+    }
+
+    if ($flow_item !== null) {
+        $menu[] = $flow_item;
+    }
+
+    $menu[] = array('label' => lang('Download as Excel'), 'icon' => 'bi-file-earmark-spreadsheet', 'href' => $table_url . '&download=xlsx', 'download' => true);
+
+    if ($import_rows_card !== '') {
+        $menu[] = array('label' => lang('Import'), 'icon' => 'bi-file-earmark-arrow-up', 'drawer' => 'ws-wt-import-rows');
+    }
+
+    $menu[] = array('divider' => true);
+    $menu[] = array('label' => lang('Columns'), 'icon' => 'bi-layout-three-columns', 'drawer' => 'ws-wt-columns');
+    $menu[] = array('label' => lang('Shares'), 'icon' => 'bi-share', 'drawer' => 'ws-wt-shares');
+
+    if ($home_card !== '') {
+        $menu[] = array('label' => lang('Belongs to'), 'icon' => 'bi-house', 'drawer' => 'ws-wt-home');
+    }
+
+    if ($details_card !== '') {
+        $menu[] = array('label' => lang('Name and description'), 'icon' => 'bi-card-text', 'drawer' => 'ws-wt-details');
+    }
+
+    if ($bin_card !== '') {
+        $menu[] = array('label' => lang(array('string' => 'Deleted rows ({var:1})', 'vars' => count($bin_rows))), 'icon' => 'bi-trash', 'drawer' => 'ws-wt-deleted-rows');
+    }
+
+    if ($can_manage) {
+        $menu[] = array('divider' => true);
+        $menu[] = array('label' => lang('Delete table'), 'icon' => 'bi-trash', 'danger' => true, 'action' => 'table_delete',
+            'confirm' => ws_wtable_screen_delete_confirm('table', (string) $table['name'], $bin_days));
+    }
+
+    $filter_on = !$on_board && ($filter_form !== '');
+    $toolbar = ws_wtable_screen_bar(array(
+        'new_row' => ($row_form !== '') ? $table_url . '#ws-wt-row-form' : '',
+        'views'   => $views,
+        'filter'  => $filter_on ? $filter_form : '',
+        'count'   => ws_wtable_screen_query_count($screen_query),
+        'menu'    => ws_wtable_screen_menu($menu),
+        'tags'    => $filter_on ? ws_wtable_screen_tags_html($filter_tags, $table_url . ($totals_all ? '&totals=all' : '') . '#ws-wt-rows') : '',
+    ))
+        // A query that does not fit the table is told under the bar; the
+        // rows show unfiltered.
+        . ((!$on_board && ($query_refusal !== '')) ? '<div class="alert theme-warning small py-3 mb-5" role="alert">' . h($query_refusal) . ' ' . h(lang('The rows show unfiltered.')) . '</div>' : '')
+        . $flow_window . $show_assets;
 
     $title = (string) $table['name'];
     $cancel = array('enable' => 'true', 'url' => $self_url, 'title' => lang('All tables'));
@@ -2098,6 +2116,52 @@ $shell . '
         var go = e.target.closest("select[data-ws-bar-go]");
         if (go && go.value) { window.location.href = go.value; }
     });
+
+    // "Filter" opens its box under the bar: the first field takes the focus;
+    // Escape, Close or a click elsewhere closes it and gives the focus back.
+    var filterButton = document.getElementById("ws-wt-filter-button");
+    var filterBox = document.getElementById("ws-wt-filter-box");
+    function filterShow(on, refocus) {
+        filterBox.hidden = !on;
+        filterButton.setAttribute("aria-expanded", on ? "true" : "false");
+        if (on) {
+            var first = filterBox.querySelector("select, input, button");
+            if (first) { first.focus(); }
+        } else if (refocus) {
+            filterButton.focus();
+        }
+    }
+    if (filterButton && filterBox) {
+        filterButton.addEventListener("click", function () { filterShow(filterBox.hidden, true); });
+        filterBox.addEventListener("click", function (e) {
+            if (e.target.closest("[data-ws-wt-filter-close]")) { filterShow(false, true); }
+        });
+        document.addEventListener("keydown", function (e) {
+            if (e.key === "Escape" && !filterBox.hidden) { e.preventDefault(); filterShow(false, true); }
+        });
+        document.addEventListener("click", function (e) {
+            if (!filterBox.hidden && !e.target.closest(".ws-wt-filter") && !e.target.closest(".select2-container, .ui-datepicker, .pg-date-pop")) {
+                filterShow(false, false);
+            }
+        });
+    }
+
+    // An address whose hash names a drawer, or something inside one (a
+    // column with a refused type change), opens it: a save posted from a
+    // drawer comes back to it.
+    function openFromHash() {
+        var id = window.location.hash.slice(1);
+        var target = id ? document.getElementById(id) : null;
+        var drawer = target ? target.closest("dialog.drawer") : null;
+        if (!drawer || !window.pgUI) { return; }
+        window.pgUI.ready(function () {
+            window.pgUI.drawer.show(drawer).then(function () {
+                if (target !== drawer) { target.scrollIntoView({ block: "nearest" }); }
+            });
+        });
+    }
+    openFromHash();
+    window.addEventListener("hashchange", openFromHash);
 
     // A type change of a column asks first.
     document.addEventListener("submit", function (e) {
