@@ -1,6 +1,6 @@
 ---
 name: workspace-channel-panes
-description: The channel's Tasks, Decisions and Files tabs as cards (CL2, CL4, TD1): tasks in columns, decisions one list of wide cards, each kind of file a card; My tasks keeps its rows
+description: The channel's Tasks, Decisions and Files tabs as cards (CL2, CL4, TD1): tasks in columns, decisions one list of wide cards, each kind of file a card; a record's window keeps the task rows
 ---
 
 ## How does the Tasks tab draw the channel's tasks?
@@ -9,7 +9,8 @@ description: The channel's Tasks, Decisions and Files tabs as cards (CL2, CL4, T
 - The card holds the whole row unchanged: status dot, number, repeat icon and title, the due line with its tags, progress, notes, priority, people, Mark done. A click or Enter opens the task (`pressKeys()`); hover tints the border in the accent.
 
 ## Which task lists keep their rows?
-- My tasks (`startTasks()`) and a record's window (`openRecord()`) call the same `taskRows()` into their own boxes, so they keep the `.ws-list-row` list with its rules. Only the channel's tab is in the channel-look plan; the card look is scoped to `.ws-task-grid`, not drawn by an option of `taskRows()`.
+- A record's window (`openRecord()`) calls the same `taskRows()` into its own box, so it keeps the `.ws-list-row` list with its rules. Only the channel's tab is in the channel-look plan; the card look is scoped to `.ws-task-grid`, not drawn by an option of `taskRows()`.
+- My Tasks draws its own one-line rows under date groups (`workspace-my-tasks-screen.md`).
 
 ## How does the Decisions tab look?
 - `.ws-pane-decisions` is one list down the pane (flex column, gap 1rem, `overflow-x: hidden`): each card as wide as the pane up to `--ws-decision-max` (72rem), centred; one column on a phone too (TD1). The pane only scrolls down.

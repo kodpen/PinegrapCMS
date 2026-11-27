@@ -8191,6 +8191,7 @@ function pg_js_bundles()
             'assets/js/workspace_task_time.js',
             'assets/js/workspace_task_links.js',
             'assets/js/workspace_task_delegate.js',
+            'assets/js/workspace_my_tasks.js',
             'assets/js/workspace_task_approval.js',
             'assets/js/workspace_approvals.js',
             'assets/js/workspace_acks.js',

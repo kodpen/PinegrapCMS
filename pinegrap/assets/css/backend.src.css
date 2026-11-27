@@ -20290,10 +20290,128 @@ a.ws-chip-message:hover,
   text-decoration: line-through;
   color: var(--pg-fg-2);
 }
+/* My Tasks (workspace_my_tasks.js): the open tasks under date labels that
+   fold, each task a .pg-list-row of one line (the Mark done circle, the
+   number, the title; the due text, the priority pill and the initials at
+   the right), a second line only for the agent channel, the application
+   that made it and the progress. On a phone the title takes its own line. */
+.ws-mt-list {
+  padding: 6px;
+}
+.ws-mt-group + .ws-mt-group {
+  margin-top: 4px;
+}
+.ws-mt-group-head {
+  margin: 0;
+  font: inherit;
+}
+.ws-mt-group-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px 4px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  cursor: pointer;
+}
+.ws-mt-group-toggle:hover {
+  color: var(--pg-fg-body);
+}
+.ws-mt-group-toggle:focus-visible {
+  outline: 2px solid var(--pg-accent);
+  outline-offset: 0;
+}
+.ws-mt-row {
+  align-items: flex-start;
+  cursor: pointer;
+}
+.ws-mt-row:focus-visible {
+  outline: 2px solid var(--pg-accent);
+  outline-offset: -2px;
+}
+.ws-mt-done {
+  flex: none;
+  margin: -4px -2px -4px -4px;
+  color: var(--pg-fg-3);
+}
+.ws-mt-done.is-still {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+}
+.ws-mt-done > .ws-mt-done-tick,
+button.ws-mt-done:hover > .bi-circle,
+button.ws-mt-done:focus-visible > .bi-circle {
+  display: none;
+}
+button.ws-mt-done:hover > .ws-mt-done-tick,
+button.ws-mt-done:focus-visible > .ws-mt-done-tick {
+  display: inline-block;
+}
+button.ws-mt-done:hover,
+button.ws-mt-done:focus-visible,
+.ws-mt-done > .bi-check-circle-fill {
+  color: var(--pg-tone-teal);
+}
+.ws-mt-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 20px;
+}
+.ws-mt-number {
+  margin-right: 6px;
+  color: var(--pg-fg-3);
+  font-weight: var(--pg-weight-regular);
+  font-variant-numeric: tabular-nums;
+}
+.ws-mt-meta {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+}
+.ws-mt-due {
+  color: var(--pg-fg-3);
+  font-size: var(--pg-text-meta);
+  white-space: nowrap;
+}
+.ws-mt-due.is-late {
+  color: var(--pg-tone-rose-text);
+}
+.ws-mt-people.ws-avatars .avatar {
+  --bs-avatar-size: 22px;
+}
+.ws-mt-sub {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  margin-top: 2px;
+  color: var(--pg-fg-2);
+  font-size: var(--pg-text-meta);
+}
+.ws-mt-sub-part {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+@media (max-width: 575.98px) {
+  .ws-mt-head {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+  .ws-mt-head > .ws-mt-name {
+    flex-basis: 100%;
+  }
+}
 /* The channel's Tasks tab (drawTasks()): a quiet toolbar row, then each
    task a card; the cards flow in columns as the decisions do, one on a
-   phone. My tasks and a record's window draw the same .ws-list-row as a
-   list and keep it. */
+   phone. A record's window draws the same .ws-list-row as a list and keeps
+   it. */
 .ws-pane-toolbar {
   padding: 0;
   border-bottom: 0;
