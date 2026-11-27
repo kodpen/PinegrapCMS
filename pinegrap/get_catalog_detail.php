@@ -729,15 +729,15 @@ function get_catalog_detail($properties) {
                             '<script>
                                 software.init_product_attributes({
                                     attributes: ' . encode_json($attributes) . ',
-                                    products: ' . encode_json(array_values($products_for_js)) . ',
+                                    products: ' . encode_json(array_values(pg_market_js_prices($products_for_js, 'price'))) . ',
                                     default_image_name: \'' . escape_javascript($item['image_name']) . '\',
                                     default_short_description: \'' . escape_javascript($item['short_description']) . '\',
                                     default_full_description: \'' . escape_javascript($item['full_description']) . '\',
                                     default_details: \'' . escape_javascript($item['details']) . '\',
                                     default_code: \'' . escape_javascript($item['code']) . '\',
-                                    discounted_product_prices: ' . encode_json($discounted_product_prices) . ',
+                                    discounted_product_prices: ' . encode_json(pg_market_js_prices((array) $discounted_product_prices)) . ',
                                     visitor_currency_symbol: \'' . escape_javascript(VISITOR_CURRENCY_SYMBOL) . '\',
-                                    visitor_currency_exchange_rate: \'' . escape_javascript(VISITOR_CURRENCY_EXCHANGE_RATE) . '\',
+                                    visitor_currency_exchange_rate: \'' . escape_javascript(pg_market_js_rate()) . '\',
                                     visitor_currency_code_for_output: \'' . escape_javascript(VISITOR_CURRENCY_CODE_FOR_OUTPUT) . '\'
                                 });
                             </script>';
@@ -1285,15 +1285,15 @@ function get_catalog_detail($properties) {
                             '<script>
                                 software.init_product_attributes({
                                     attributes: ' . encode_json($attributes) . ',
-                                    products: ' . encode_json(array_values($products_for_js)) . ',
+                                    products: ' . encode_json(array_values(pg_market_js_prices($products_for_js, 'price'))) . ',
                                     default_image_name: \'' . escape_javascript($item['image_name']) . '\',
                                     default_short_description: \'' . escape_javascript($item['short_description']) . '\',
                                     default_full_description: \'' . escape_javascript($item['full_description']) . '\',
                                     default_details: \'' . escape_javascript($item['details']) . '\',
                                     default_code: \'' . escape_javascript($item['code']) . '\',
-                                    discounted_product_prices: ' . encode_json($discounted_product_prices) . ',
+                                    discounted_product_prices: ' . encode_json(pg_market_js_prices((array) $discounted_product_prices)) . ',
                                     visitor_currency_symbol: \'' . escape_javascript(VISITOR_CURRENCY_SYMBOL) . '\',
-                                    visitor_currency_exchange_rate: \'' . escape_javascript(VISITOR_CURRENCY_EXCHANGE_RATE) . '\',
+                                    visitor_currency_exchange_rate: \'' . escape_javascript(pg_market_js_rate()) . '\',
                                     visitor_currency_code_for_output: \'' . escape_javascript(VISITOR_CURRENCY_CODE_FOR_OUTPUT) . '\'
                                 });
                             </script>';
@@ -1471,7 +1471,7 @@ function get_catalog_detail($properties) {
         $currencies = array();
         $currency_system = '';
 
-        if (ECOMMERCE_MULTICURRENCY) {
+        if (pg_currency_choice_shown()) {
             // Get all currencies where the exchange rate is not 0, with base currency first.
             $currencies = db_items(
                 "SELECT

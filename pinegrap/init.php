@@ -1139,13 +1139,36 @@ if (ECOMMERCE == true) {
     }
 
     $visitor_currency = array();
+    $visitor_market = array();
+
+    // On a site with markets the visitor's country decides the currency
+    // (pg_market_visitor()): the market's, and the picked currency is not
+    // read. A market whose currency has no rate above zero prices in base.
+    if (pg_markets_on()) {
+        $visitor_market_info = pg_market_visitor();
+
+        if ($visitor_market_info['market'] !== null) {
+            $visitor_currency = pg_visitor_currency_row(db_item(
+                "SELECT id, code, symbol, exchange_rate FROM currencies WHERE code = '" . e($visitor_market_info['market']['currency_code']) . "'"
+            ));
+
+            if (isset($visitor_currency['id']) && $visitor_currency['id'] != '') {
+                $visitor_market = $visitor_market_info['market'];
+
+                // A market in the base currency rounds base prices; the
+                // constants stay the base's (no code after the figure).
+                if ($visitor_currency['id'] == BASE_CURRENCY_ID) {
+                    $visitor_currency = array();
+                }
+            }
+        }
 
     // If multi-currency is enabled in the site settings,
     // and the visitor has updated the currency,
     // and the updated currency is different from the base currency,
     // then get info about the visitor's currency. A currency without a rate
     // above zero falls back to the base (pg_visitor_currency_row()).
-    if (
+    } elseif (
         (ECOMMERCE_MULTICURRENCY == true)
         && (isset($_SESSION['ecommerce']['currency_id']) == true)
         && ($_SESSION['ecommerce']['currency_id'] != BASE_CURRENCY_ID)
@@ -1177,6 +1200,10 @@ if (ECOMMERCE == true) {
         define('VISITOR_CURRENCY_SYMBOL', BASE_CURRENCY_SYMBOL);
         define('VISITOR_CURRENCY_EXCHANGE_RATE', BASE_CURRENCY_EXCHANGE_RATE);
     }
+
+    // The market the visitor's prices are converted and rounded by; 0 none.
+    define('VISITOR_MARKET_ID', isset($visitor_market['id']) ? (int) $visitor_market['id'] : 0);
+    define('VISITOR_MARKET_ROUNDING', isset($visitor_market['rounding']) ? $visitor_market['rounding'] : 'none');
 }
 
 

@@ -1201,7 +1201,7 @@ function bs6_scope_kind($path)
 	$site_fn = array(
 		'consent.php', 'language_redirect.php', 'layout_convert.php', 'maintenance_mode.php', 'meta_tags.php',
 		'reviews.php', 'visitor_texts.php', 'site_datetime.php', 'subscriptions_account.php', 'booking_manage.php',
-		'store_credit_account.php',
+		'store_credit_account.php', 'markets_site.php',
 	);
 	if (strpos($path, 'includes/fn/') === 0 && (in_array($base, $site_fn, true) || preg_match('/^widgets(_[a-z0-9_]+)?\.php$/', $base))) {
 		return 'site';

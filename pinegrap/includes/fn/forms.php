@@ -4567,6 +4567,11 @@ function validate_order_item_for_arrival_date($order_item_id)
 }
 function get_update_currency_form()
 {
+    // On a site with markets the visitor changes their country instead: the
+    // market holding it decides the currency.
+    if (pg_markets_on()) {
+        return pg_market_country_form(get_request_uri(), 'classic');
+    }
     // if multi-currency is disabled in the settings, then do not return form and return empty string
     if (ECOMMERCE_MULTICURRENCY == false) {
         return '';
