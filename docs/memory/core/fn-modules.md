@@ -146,7 +146,7 @@ description: Generated from the module field of the memory files: each includes/
 - `design_cleanup_remove`: [[designer-cleanup-removal]]
 - `design_file_list_edit`: [[list-table-quick-edit-design-files]]
 - `design_previews`: [[design-live-pictures]], [[design-preview-address]], [[designer-home-pictures]]
-- `design_style_guide`: [[design-style-guide-model]], [[designer-style-guide-rules]], [[designer-style-guide-sheet]]
+- `design_style_guide`: [[bug-hunt-style-guide-theme]], [[design-style-guide-model]], [[designer-style-guide-rules]], [[designer-style-guide-sheet]]
 - `design_themes`: [[design-theme-dark-lines]], [[design-theme-look-drawing]], [[design-theme-pale-colours]], [[design-theme-product-looks]], [[design-variables-tab]], [[designer-options-page-transition]]
 - `design_variables`: [[design-variables-files]], [[design-variables-model]], [[design-variables-overview]], [[design-variables-questions]]
 - `designer`: [[bound-media-src]], [[common-region-component-usage]], [[design-asset-path-placeholders]], [[preview-as-bar]], [[preview-as-check]], [[record-edit-in-place-preview]], [[sketch-build]], [[sketch-build-again]], [[sketch-build-starters]], [[sketch-feel]], [[sketch-page-details]]

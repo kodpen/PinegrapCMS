@@ -25,6 +25,7 @@
 - bound-href-scheme.md: A form field bound to a link's, form's, picture's or player's address never prints a javascript:, vbscript: or data: address
 - bound-media-src.md: audio, video and source take src (video also poster) from a record field binding under the bound address rule; an empty value prints none (#7654, PR #8211) [decision: here]
 - bug-hunt-sketch.md: The Sketch tool's bug hunt (2026-11-26): the eight faults fixed in "Build again", "Write the texts", "Describe the page", the picture proposal and "Page details", and what was read clean
+- bug-hunt-style-guide-theme.md: The bug hunt of the Style guide and the Themes panel (2026-11-26, PR #12009): the four faults fixed, what was read clean (renamed or deleted names, dark, print)
 - calendar-widgets-open-slots.md: Calendar widgets' closed sections opened (CB9): the month grid converts to the grid lists, the picker and the Reserve button drawn true from twins of pure builders (settings only)
 - campaign-email-body-mail-pass.md: The mail pass for designed campaign bodies and the outgoing mode of mail_html.php for pasted HTML (MA5a #9413): what each keeps, takes out and reports
 - campaign-email-body-mail-programs.md: MA4 (2026-11-13): what an HTML e-mail body must be for Gmail, Outlook and Apple Mail: width, tables, inline styles, head style, pictures, the 102 KB clip, the parts it keeps

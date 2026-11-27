@@ -126,6 +126,7 @@
 - erp-parasut-legacy-buyer-number.md: The buyer's VKN/TCKN the order screen's Paraşüt buttons send: a Turkish buyer's digits, and Create Invoice refuses a number that fails the check digits instead of issuing an e-Archive (#7674, #8371)
 - erp-parasut-legacy-export-discount.md: Orders > Export for Paraşüt Selected: the order discount in İNDİRİM TUTARI (column Q) of the product lines, spread by line value, so the invoice is what was paid (#9139)
 - erp-parasut-legacy-export-text-cells.md: Orders > Export for Paraşüt writes typed text (names, e-mail, address, identity number, product name) as text cells, never a formula, through the shared xlsx writer.
+- erp-parasut-legacy-inbox-badges.md: Legacy Paraşüt inbox badges: every v4 payment status and item type code has a lang() label, "Export invoice" and "Sales quote" instead of the bare keys, the fallback for an unknown code (#12017)
 - erp-parasut-legacy-inbox.md: Legacy Paraşüt inbox (view_parasut_inbox.php): what its tabs read, the list query (gteq/lteq, #1505), the totals it shows and the VKN/TCKN it refuses (#1600), flaky purchase_bills
 - erp-parasut-legacy-invoice-shipment.md: The order screen's Paraşüt Create Invoice and E-Shipment on one order: shipment_included, the link between the two records, which press is refused, and the stock counted out twice before #1506
 - erp-parasut-legacy-invoice.md: What the order screen's legacy Paraşüt "Create Invoice" sends: its lines and refusals (#1268), an unanswered create (#1416), the buyer card (#1408), its e-document (#1278), after E-Shipment (#1506)
@@ -187,6 +188,7 @@
 - erp-till-inactive-payments.md: No expense, receipt, payment or transfer uses a missing till or one taken off (is_active = 0): the gates, who meets them, the cheque exception, what a repeat does then
 - erp-translation-traps.md: Short translation keys that read wrong as ERP labels (Quote, By, From, To, Count, Record, Due, Net, Method) and the longer keys ERP screens use instead.
 - erp-typed-line-numbers.md: How the document editors refuse a signed or lettered quantity or rate and a line amount past the cap
+- erp-vat-exemption-send-check.md: The e-document send refuses a 0% VAT line with no exemption code before any request, for every driver (#11983): where the check sits, how the code is resolved and written, why issuing refuses nothing.
 - erp-vat-per-rate-group.md: How the ERP takes a document's VAT, withholding and second tax per rate group, as Paraşüt does (owner decision 2026-10-21), where the rule applies, and where the checkout and charge decisions are kept [decision: here]
 - erp-vat-report.md: ERP VAT report: the one place tax totals are added up (vat_report.php), calculated, deductible and difference, what never counts, the figures and chart on top, the menu name.
 - erp-vat-withholding.md: VAT withholding (tevkifat, migration 4.68) on ERP documents: what tax_total, withholding_total and grand_total hold, the line columns, the code list rule, returns, document type.

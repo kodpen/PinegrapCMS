@@ -86,6 +86,7 @@
 - bug-hunt-areas-flows-outside-doors.md: The bug hunt in Workspace flows reached from outside and by another hand (web address start, shares, a role-3 member's flows; architect 2026-11-26, request 3045): fixed, read clean, left [decision: here]
 - bug-hunt-areas-form-submissions.md: The bug hunt of site form submissions (area 18, 2026-11-24): the three faults fixed, what was read clean, what was not run
 - bug-hunt-areas-gift-cards-store-credit.md: The bug hunt of gift cards and store credit (area 52, 2026-11-24): partial redemption, the cancelled credit refund's gift card part, the cancel refund line; what was read clean
+- bug-hunt-areas-grid-move-mirror.md: The bug hunt of the designer's grid, move and mirror parts (#12021): the seven faults it fixed, the one it opened as an issue, what it read clean
 - bug-hunt-areas-image-pipeline.md: The bug hunt of the image pipeline (2026-11-24, #11449): the two faults fixed, the finding left for a decision, what was read clean
 - bug-hunt-areas-invoices-pdf-documents.md: The bug hunt of order documents made as PDF or print pages (area 38, #11434, 2026-11-24): four faults fixed, what was read clean, what was left
 - bug-hunt-areas-launch-journey.md: The bug hunt of the site set-up journey (SJ1a to SJ5, 2026.11.0): the facts reader, the set-up card, "Go live", First week and Start here, the agency summary [decision: here]
