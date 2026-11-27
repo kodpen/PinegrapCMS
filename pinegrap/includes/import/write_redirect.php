@@ -37,7 +37,8 @@ if (!function_exists('pg_short_link_name_from_address')) {
  * a redirect: a WordPress or Squarespace post or page by its <link> (a ?p=
  * address is the home page's path), a Shopify product at /products/<handle>,
  * a Squarespace product at both of its addresses (data.addresses: the file
- * does not say whether the site ran 7.0 or 7.1), a Webflow collection item
+ * does not say whether the site ran 7.0 or 7.1), a Webflow product at
+ * /product/<handle> (data.addresses), a Webflow collection item
  * at the collection's address the mapping gives, then its slug. The
  * WooCommerce products export and Wix's collection file carry no address.
  * Two addresses with one name are one. Pure.
@@ -57,7 +58,7 @@ function pg_import_redirect_old_addresses($import_kind, $item, $mapping = array(
     } elseif (($import_kind === 'shopify') && ($kind === 'product')) {
         $key = (string) ($item['source_key'] ?? '');
         $addresses[] = (strpos($key, 'shopify:product:') === 0) ? '/products/' . substr($key, strlen('shopify:product:')) : '';
-    } elseif (($import_kind === 'squarespace') && ($kind === 'product')) {
+    } elseif (in_array($import_kind, array('squarespace', 'webflow'), true) && ($kind === 'product')) {
         $addresses = (array) ($item['data']['addresses'] ?? array());
     } elseif (($import_kind === 'webflow') && ($kind === 'record')) {
         $addresses[] = pg_import_redirect_collection_address((string) ($mapping['address_base'] ?? ''), (string) ($item['data']['slug'] ?? ''));
@@ -357,8 +358,22 @@ function pg_import_redirect_add($import, $name, $destination)
 }
 
 /**
+ * Why a reader's own redirect item is skipped, '' when it is written: the
+ * reason the reader gave (data.error), such as a wildcard line. The dry run
+ * asks it. Pure.
+ *
+ * @param array $item
+ * @return string
+ */
+function pg_import_precheck_redirect($item)
+{
+    return trim((string) ($item['data']['error'] ?? ''));
+}
+
+/**
  * A redirect item a reader hands over itself: data from (the old address)
- * and to (an address on this site).
+ * and to (an address on this site); one the reader gave a reason against
+ * (data.error) is skipped with it.
  *
  * @param array $item
  * @param array $import
@@ -366,6 +381,12 @@ function pg_import_redirect_add($import, $name, $destination)
  */
 function pg_import_write_redirect($item, $import)
 {
+    $refusal = pg_import_precheck_redirect($item);
+
+    if ($refusal !== '') {
+        return array('result' => 'skipped', 'id' => 0, 'reason' => $refusal);
+    }
+
     if (!function_exists('pg_short_link_redirects_ready') || !pg_short_link_redirects_ready()) {
         return array('result' => 'failed', 'id' => 0, 'reason' => lang('The database is not up to date.'));
     }

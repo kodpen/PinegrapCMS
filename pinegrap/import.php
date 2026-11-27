@@ -252,7 +252,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $kind = pg_import_detect_kind($head);
 
         if ($kind === '') {
-            $liveform->mark_error('file', h(lang('The file is not an export this screen knows: a WordPress or Squarespace site export (XML), a WooCommerce, Shopify or Squarespace products CSV, a Shopify or Squarespace customers CSV, or a Webflow or Wix collection CSV.')));
+            $liveform->mark_error('file', h(lang('The file is not an export this screen knows: a WordPress or Squarespace site export (XML), a WooCommerce, Shopify, Squarespace or Webflow products CSV, a Shopify or Squarespace customers CSV, a Webflow or Wix collection CSV, or a Webflow 301 redirects CSV.')));
             go($screen_url);
         }
 
@@ -422,7 +422,7 @@ if ($import === null) {
                 <div class="col-12 pg-field-span-6">
                     <label for="file" class="form-label">' . h(lang('File')) . '</label>
                     <input type="file" id="file" name="file" class="' . $liveform->create_error_class('file', 'form-control') . '" accept=".xml,.csv,.txt,text/xml,application/xml,text/csv" aria-describedby="file_kinds" required>
-                    <div id="file_kinds" class="form-text">' . h(lang('A WordPress or Squarespace site export (XML), a WooCommerce, Shopify or Squarespace products CSV, a Shopify or Squarespace customers CSV, or a Webflow or Wix collection CSV.')) . '</div>
+                    <div id="file_kinds" class="form-text">' . h(lang('A WordPress or Squarespace site export (XML), a WooCommerce, Shopify, Squarespace or Webflow products CSV, a Shopify or Squarespace customers CSV, a Webflow or Wix collection CSV, or a Webflow 301 redirects CSV.')) . '</div>
                     ' . pg_upload_limit_hint() . '
                 </div>
             </div>');
