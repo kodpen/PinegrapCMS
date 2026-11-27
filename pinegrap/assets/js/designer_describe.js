@@ -211,6 +211,11 @@
             if (event.target.id === 'sd-sb-kind' && !s.touched) {
                 pressFor(s, event.target.value);
             }
+            // A colour typed without its # or in capitals is written back
+            // as the brief keeps it.
+            if (event.target.id === 'sd-sb-colour' && colour(event.target.value)) {
+                event.target.value = colour(event.target.value);
+            }
             if (event.target.type === 'color') {
                 form.querySelector('#sd-sb-colour').value = event.target.value;
                 paintColour(s);
@@ -444,9 +449,13 @@
     function drawFoot(s) {
         var foot = s.win.querySelector('.sd-ns-part-foot');
 
-        if (!foot || foot.getAttribute('data-part') !== 'describe') {
+        // The window calls show() again on a field's change, which comes
+        // between the press and the click on the button: a button already
+        // there is kept, or the click lands on nothing.
+        if (!foot || foot.getAttribute('data-part') !== 'describe' || foot.querySelector('[data-sb-act="plan"]')) {
             return;
         }
+        say(s, '');
         foot.innerHTML = '<button type="button" class="pg-button pg-button-fill" data-sb-act="plan"><i class="bi bi-stars" aria-hidden="true"></i>' + esc(s.T.plan) + '</button>';
         foot.onclick = function (event) {
             if (event.target.closest('[data-sb-act="plan"]')) {
@@ -461,7 +470,6 @@
                 state = setup(pane, win);
             }
             if (state) {
-                say(state, '');
                 drawFoot(state);
             }
         },
