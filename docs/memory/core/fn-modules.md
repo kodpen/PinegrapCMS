@@ -320,6 +320,7 @@ description: Generated from the module field of the memory files: each includes/
 - `office_docx_paragraphs`: [[office-docx-add-delete]]
 - `office_edit`: [[office-save-list]]
 - `office_format`: [[office-sheet-bar-text-borders]], [[office-sheet-format]], [[office-sheet-format-borders]]
+- `office_formula`: [[office-formula-engine]]
 - `office_new`: [[office-new-files]]
 - `office_pptx_canvas`: [[office-pptx-canvas-mapper]]
 - `office_pptx_design`: [[office-pptx-design-reader]]
