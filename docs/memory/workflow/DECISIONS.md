@@ -805,6 +805,13 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-52.md: What does an old name answer? (architect, 2026-11-24)
 - decisions-made-schema-53.md: Where are the rules and the earlier parts?
 - decisions-made-schema-53.md: Where does an agent's context window size come from? (owner, 2026-11-26, agent channel polls 227 and 228, messages 14104 and 14109)
+- decisions-made-schema-53.md: Which kinds does an import record take? (owner, 2026-11-27, agent channel poll 253, message 14972)
+- decisions-made-schema-54.md: Where are the rules and the earlier parts?
+- decisions-made-schema-54.md: What does the help centre add to the database? (owner, 2026-11-27, agent channel poll 252, message 14929)
+- decisions-made-schema-54.md: What do markets add to the database? (owner, 2026-11-27, agent channel poll 251, message 14926)
+- decisions-made-schema-54.md: Where are the accounting sync's queue and pairing kept? (owner, 2026-11-27, agent channel poll 250, message 14911)
+- decisions-made-schema-55.md: Where are the rules and the earlier parts?
+- decisions-made-schema-55.md: Which columns does automatic tax add? (owner, 2026-11-27, agent channel poll 248, message 14894)
 - decisions-made-schema-6.md: Where are the rules and the earlier steps?
 - decisions-made-schema-6.md: Which schema was approved on 2026-10-30 (midday)?
 - decisions-made-schema-6.md: Which schema was approved on 2026-10-30 (afternoon)?

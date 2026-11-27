@@ -1,6 +1,6 @@
 ---
 name: markets-price-lists
-description: Plan (owner 2026-11-27, poll 246): markets, a country's currency and prices, the charge in the buyer's currency; the census is done, every step after MK1 waits for poll 251
+description: Plan (owner 2026-11-27, poll 246): markets, a country's currency and prices, the charge in the buyer's currency; the census is done, its columns and tables are approved (poll 251)
 priority: 5
 ---
 
@@ -17,18 +17,18 @@ priority: 5
 - Gift cards, store credit and account prices stay in base and are spent at the order's rate.
 - Drivers in this order: Stripe, PayPal, PayTR, iyzico (its protected currency moves onto the order's columns). A legacy gateway is not offered to a market's order.
 - A site with no market row is exactly today's.
-- Asked of the owner: the columns and tables (poll 251).
+- Owner (2026-11-27, poll 251, `workflow/decisions-made-schema-54.md`): all of them are added.
 
 ## Which steps? (S under 400 lines, M under 1,000; each waits for the one before it)
 - MK1 Census: done, `plans/markets-price-lists-census.md`.
-- MK2 (M, owner's: poll 251) The order's currency: `orders.charged_currency` and `charged_rate` by a migration step; marketplace orders filled from `currency_code` and the rate of their day (`currency_rates`, else today's); module `includes/fn/order_currency.php` with the money function and the SQL helper; the sums the census names read base.
+- MK2 (M) The order's currency: `orders.charged_currency` and `charged_rate` by a migration step; marketplace orders filled from `currency_code` and the rate of their day (`currency_rates`, else today's); module `includes/fn/order_currency.php` with the money function and the SQL helper; the sums the census names read base.
 - MK3 (M) An order's screens print its currency: receipt, preview, View Order, its e-mails and printed forms, the member's orders, the orders list and report; the refund form and the driver's refund take the order's currency; the API's order gains `currency`.
-- MK4 (M, owner's: poll 251) Markets: `markets`, `market_countries` (as `zones_countries_xref`) and `orders.market_id`; a "Markets" screen under Commerce in the look: name, countries, currency, rounding, on or off.
+- MK4 (M) Markets: `markets`, `market_countries` (as `zones_countries_xref`) and `orders.market_id`; a "Markets" screen under Commerce in the look: name, countries, currency, rounding, on or off.
 - MK5 (M) The visitor's market and its prices on the site: chosen by country, changed in a country list, the kept page copy keyed by market; prices converted and rounded.
 - MK6 (M) The cart in the market's currency: lines, shipping, offers, tax and total; the order made with its currency, rate and market.
 - MK7 (M) Stripe charges and refunds in the order's currency; the payment methods of a market's order.
 - MK8 (M) PayPal, PayTR and iyzico the same way, each by its own list.
-- MK9 (M, owner's: poll 251) Fixed prices: `market_prices`, a "Prices by market" card on the product form, the product import and export.
+- MK9 (M) Fixed prices: `market_prices`, a "Prices by market" card on the product form, the product import and export.
 - MK10 (S) The ERP invoice of such an order in its currency at its rate; the product feed a market.
 - MK11 (S) Close-out: the lasting rules to `commerce/`, the plan and the census deleted.
 

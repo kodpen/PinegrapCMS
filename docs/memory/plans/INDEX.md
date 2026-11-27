@@ -10,7 +10,7 @@
 - accounting-sync-census-xero-sale.md: QuickBooks and Xero sync census: what Xero takes for a sale (invoice, payment, credit note, contact, item), tax types, currency, Idempotency-Key, pages not read
 - accounting-sync-census-xero.md: QuickBooks and Xero sync census: Xero's OAuth sign-in and tenant, tokens, granular scopes, Custom Connections closing, pricing tiers, limits, registering an app
 - accounting-sync-census.md: QuickBooks and Xero sync AS1 census: the answer in short, what a failed send shows, the owner's questions; parts on Paraşüt, QuickBooks, Xero, the source and the proposal
-- accounting-sync.md: Plan (owner 2026-11-27, poll 246): sales, customers and payments sent to Xero, then QuickBooks; the census is done, AS2 (Xero connected) needs no table, the sends wait for poll 250
+- accounting-sync.md: Plan (owner 2026-11-27, poll 246): sales, customers and payments sent to Xero, then QuickBooks; the census is done, AS2 (Xero connected) is built, the sends use one new table (poll 250)
 - addon-hook-system-census-drivers.md: Add-on hook system AH1 census, commerce drivers: how payment drivers, carrier label drivers and marketplace connectors are found and loaded today, and what an outside driver would need
 - addon-hook-system-census-events.md: Add-on hook system AH1 census, events part: pg_announce(), direct api_webhook_enqueue() and erp_event() doors, the event catalogue, where order, stock and other moments fire
 - addon-hook-system-census-files.md: Add-on hook system AH1 census, files part: what file integrity, backup, System Status, the migration runner and the updater read today, and what each would do with includes/addons/<slug>/
@@ -60,8 +60,8 @@
 - help-centre-census-privacy.md: Help centre census: who reads a support request, and how it leaves with a customer's data (export, erasure, keep period) today and as proposed
 - help-centre-census-proposal.md: Help centre census proposal: a support request is a support-box mail conversation with a priority and a source, every door ends there; the columns and tables to ask one by one, the screens in words
 - help-centre-census.md: Help centre HC1 census from the code: what collections lack for a knowledge base, what a Workspace mail conversation stores, where requests come in, the proposal, the owner's questions
-- help-centre.md: Plan (owner 2026-11-27, poll 246): a knowledge base and support requests; the census is done, HC2 to HC6 need no table and no column, HC7 and HC8 wait for poll 252
-- import-site-builders.md: Plan (owner 2026-11-27, poll 246): importers from Squarespace, Webflow and Wix as new readers of the import framework, each from the files its owner can export; steps IB1 to IB5
+- help-centre.md: Plan (owner 2026-11-27, poll 246): a knowledge base and support requests; the census is done, HC2 to HC6 need no table and no column, HC7 and HC8 add the columns and the table he approved (poll 252)
+- import-site-builders.md: Plan (owner 2026-11-27, poll 246): importers from Squarespace, Webflow and Wix as new readers of the import framework, each from the files its owner can export; steps IB1 to IB6
 - integrations-census-aggregators.md: Census (2026-11-17) of services where one integration brings many: marketplace integrators, channel and feed tools, cargo and payment aggregators, what each states and whether its API is open
 - integrations-census-connectors.md: Census (2026-11-17) of AI assistants' connector directories for a site's own MCP server: Claude's URL pattern and install link, the MCP Registry, the ecosystem's size, what may be claimed
 - integrations-census-machinery.md: Census (2026-11-17) of what an outside program can do with a site: API size, webhooks as REST hooks, the OAuth and MCP servers, no address shared by all sites, what an automation app would miss
@@ -86,7 +86,7 @@
 - markets-price-lists-census-questions.md: Markets and price lists MK1 census, the owner's questions: each table and column of the proposal asked on its own, and the product choices the build waits on, one a line
 - markets-price-lists-census-wholesale.md: Markets and price lists MK1 census, wholesale: how an account's prices are stored and chosen at the store, and whether a market's price list could be laid the same way
 - markets-price-lists-census.md: Markets and price lists MK1 census from the code: where prices are converted, what an order keeps, which currency each driver charges, wholesale's prices, a proposal, the owner's questions
-- markets-price-lists.md: Plan (owner 2026-11-27, poll 246): markets, a country's currency and prices, the charge in the buyer's currency; the census is done, every step after MK1 waits for poll 251
+- markets-price-lists.md: Plan (owner 2026-11-27, poll 246): markets, a country's currency and prices, the charge in the buyer's currency; the census is done, its columns and tables are approved (poll 251)
 - mobile-api-shelved-m8.md: Plan mobile-api-shelved, steps M8a to M8d (owner 2026-11-22, beside the other plans): sort=newest on the remaining lists, several reads in one request, a list of deleted records, a CORS allow-list
 - mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what exists (M1–M7), M8 given out beside the other plans, decisions, how its needs arrive
 - office-document-abilities.md: Plan (owner 2026-11-26, poll 235): the document editor's new abilities once it is typed on a page: alignment, text and highlight colour, font size, links, tables, pictures from Files; steps DA1 to DA8
@@ -131,7 +131,7 @@
 - tax-automatic-census-proposal.md: Automatic tax census proposal: what is stored where, what a shop with hand-set rates keeps, who is told of a rate change and what the shop confirms
 - tax-automatic-census-us.md: Automatic tax census: US sales tax services a checkout driver could call (TaxJar, Avalara AvaTax, Stripe Tax, Quaderno), what each asks, and the free SST rate files
 - tax-automatic-census.md: Automatic tax census (TX1) start file: a line's tax rate at every door, the OSS report, EU rate sources, US sales tax services, the proposal, the owner's questions
-- tax-automatic.md: Plan (owner 2026-11-27, poll 246): automatic tax, the EU's VAT rate by the buyer's country, an OSS report, US sales tax; TX2 and TX3 need no column, the rest wait for polls 248 and 249
+- tax-automatic.md: Plan (owner 2026-11-27, poll 246): automatic tax, the EU's VAT rate by the buyer's country, an OSS report, US sales tax; the two columns are approved (poll 248), the US service waits for poll 249
 - user-docs-2026-11-modules.md: Plan user-docs-2026-11: which 2026.11.0 feature goes on which module page of pinegrap.com (designer, SEO, commerce, ERP, Workspace, API, security), with the memory to write it from
 - user-docs-2026-11-new-pages.md: Plan user-docs-2026-11: the new pinegrap.com documentation pages (/templates, /visual-page-editor-cont, /artifact-canvas), what each holds, and where the other planned pages went instead
 - user-docs-2026-11-pages.md: Plan user-docs-2026-11: which 2026.11.0 feature goes on which existing pinegrap.com page, with the memory to write it from

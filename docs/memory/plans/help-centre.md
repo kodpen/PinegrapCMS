@@ -1,6 +1,6 @@
 ---
 name: help-centre
-description: Plan (owner 2026-11-27, poll 246): a knowledge base and support requests; the census is done, HC2 to HC6 need no table and no column, HC7 and HC8 wait for poll 252
+description: Plan (owner 2026-11-27, poll 246): a knowledge base and support requests; the census is done, HC2 to HC6 need no table and no column, HC7 and HC8 add the columns and the table he approved (poll 252)
 priority: 5
 ---
 
@@ -15,7 +15,7 @@ priority: 5
 - The customer sees their requests on My Account, the mails in and out only, never the channel's notes, and answers there; a guest gets a signed link in the automatic answer, as event tickets have one (`commerce/event-tickets-key.md`).
 - Articles stay a collection: no article table.
 - Privacy: a person's requests join the personal data export; on erasure a request stays as mail does (`workflow/decisions-made-workspace-28.md`), also when a form or a chat opened it; no keep period of its own.
-- Asked of the owner: the priority column, the source columns and the votes table (poll 252).
+- Owner (2026-11-27, poll 252, `workflow/decisions-made-schema-54.md`): the priority column, the source columns and the votes table are added.
 
 ## Which steps? (S under 400 lines, M under 1,000; each waits for the one before it)
 - HC1 Census: done, `plans/help-centre-census.md`.
@@ -24,8 +24,8 @@ priority: 5
 - HC4 (M) My Account "My requests": number, subject, state, last answer; one opens to its mails with a Reply box; the guest's signed link to the same page.
 - HC5 (S) The panel's chat window: "Make a request" opens a conversation with the chat's text in a chosen box.
 - HC6 (S) Requests in the personal data export; the resolve-by time shown on the Incoming e-mail screen from the box's hours.
-- HC7 (M, owner's: poll 252) Priority and source by a migration step: the Priority column, filter and select on the Incoming e-mail screen, answer hours per priority on the box form beside "First answer within (hours)", the source label and its link back.
-- HC8 (M, owner's: poll 252) "Was this helpful?": `kb_votes` by a migration step, Yes and No on an article's page, a cookie against a second vote, the two counts on the collection's record list.
+- HC7 (M) Priority and source by a migration step: the Priority column, filter and select on the Incoming e-mail screen, answer hours per priority on the box form beside "First answer within (hours)", the source label and its link back.
+- HC8 (M) "Was this helpful?": `kb_votes` by a migration step, Yes and No on an article's page, a cookie against a second vote, the two counts on the collection's record list.
 - HC9 (S) A category tree in one widget, with breadcrumbs from the parent chain.
 - HC10 (S) Close-out: the lasting rules to `workspace/` and `designer/`, a ready "Help centre" set of collections named for the templates, the plan and the census deleted.
 
