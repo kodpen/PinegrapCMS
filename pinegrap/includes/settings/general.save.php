@@ -32,6 +32,14 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         $liveform->mark_error($email_field, $email_error);
     }
 
+    // The Software Language is one of the offered languages
+    // (pg_software_languages()); a code outside that list refuses the save.
+    $posted_software_language = (string) ($_POST['software_language'] ?? '');
+
+    if (($posted_software_language !== '') && !pg_software_language_offered($posted_software_language)) {
+        $liveform->mark_error('software_language', lang('Choose a software language from the list.'));
+    }
+
     if ($liveform->check_form_errors()) {
         return;
     }
@@ -54,8 +62,8 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $row = mysqli_fetch_assoc($result);
 
     $software_language = $row['software_language'];
-    if($software_language != NULL){
-        $sql_software_language ="software_language = '" . escape($_POST['software_language'] ?? '') . "',";
+    if (($software_language != NULL) && pg_software_language_offered($posted_software_language)) {
+        $sql_software_language ="software_language = '" . escape($posted_software_language) . "',";
     }
    
     // The licence key in its one form (dashes and blanks out, upper case);

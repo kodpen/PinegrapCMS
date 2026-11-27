@@ -143,20 +143,17 @@ $output_enforcement ='';
 
 
 
-// dedect user language from list, default is en
+// The panel's languages, read before functions.php loads.
+require_once(dirname(__FILE__) . '/../includes/fn/software_languages.php');
+
+// The browser's first offered language (pg_software_languages()), else English.
 function dedect_user_language(){
-	$supportedLanguages=['en','tr'];
-	$lang = substr(($_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? ''), 0, 2);
-	if(!in_array($lang,$supportedLanguages)){
-		$lang='en';
-	}
-	return $lang;
+	return pg_software_language_from_header($_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? '', dirname(__FILE__) . '/../includes/local');
 }
 
 if(
 	(isset($_GET['local']))
-	&& ($_GET['local'] ==='en'
-	|| $_GET['local'] ==='tr')
+	&& pg_software_language_offered($_GET['local'], dirname(__FILE__) . '/../includes/local')
 ){
 	// A language in the URL always wins, also over one that config.php defines for a site that
 	// is already installed; defining the constant a second time would only warn and keep that one.
@@ -275,8 +272,9 @@ if (!defined('SOFTWARE_LANGUAGE')) {
 function get_software_language_options() {
     $software_language_options          = array();
     $software_language_options['-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('language')) )) . '-']		= '';
-    $software_language_options['English']	= 'en';
-    $software_language_options['Türkçe']	= 'tr';
+    foreach (pg_software_languages() as $code => $language) {
+        $software_language_options[$language['name']] = $code;
+    }
     return $software_language_options;
 }
 
@@ -314,9 +312,9 @@ if ((isset($_GET['install_action'])) && ($_GET['install_action'] === 'designer_i
 
 	header('Cache-Control: no-store');
 
-	$designer_i18n_language = ((isset($_GET['language'])) && (in_array($_GET['language'], array('en', 'tr'), true))) ? $_GET['language'] : 'en';
+	$designer_i18n_language = ((isset($_GET['language'])) && (pg_software_language_offered($_GET['language']))) ? $_GET['language'] : 'en';
 
-	if ((defined('ENFORCEMENT_SOFTWARE_LANGUAGE')) && (in_array(ENFORCEMENT_SOFTWARE_LANGUAGE, array('en', 'tr'), true))) {
+	if ((defined('ENFORCEMENT_SOFTWARE_LANGUAGE')) && (pg_software_language_offered(ENFORCEMENT_SOFTWARE_LANGUAGE))) {
 
 		$designer_i18n_language = ENFORCEMENT_SOFTWARE_LANGUAGE;
 
@@ -5928,7 +5926,7 @@ else {
 			$result = db_q("UPDATE config SET software_language = ?", array((string) $liveform->get_field_value('default_software_language'))) or exit(mysqli_error(db::$con));
 		}else{
 			//else software_language not exist, we add column to config
-			db("ALTER TABLE config ADD software_language ENUM('en','tr') NOT NULL DEFAULT 'en'");
+			db("ALTER TABLE config ADD software_language ENUM('" . implode("','", pg_software_language_codes()) . "') NOT NULL DEFAULT 'en'");
 			// Update config settings.
 			$result = db_q("UPDATE config SET software_language = ?", array((string) $liveform->get_field_value('default_software_language'))) or exit(mysqli_error(db::$con));
 		}
