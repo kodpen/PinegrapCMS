@@ -447,12 +447,14 @@ StyleDesigner.definePart('grid', function (K) {
     }
 
     // Columns or Rows changed on a grid box with areas of its own at the
-    // size: the areas are cut to the new count in the same step.
+    // size: the areas are cut to the new count in the same step. Only
+    // while both axes have a count: areas on a grid without one are not
+    // drawn, and a count of zero would cut every one away.
     function _writeTracks(host, axis, value) {
         var node = host.nodes.length === 1 ? host.nodes[0] : null;
         var st = node && A ? _gridState(host, node, host.text()) : null;
         var n = A ? A.count(G.parse(value, axis)) : 0;
-        if (!st || !st.own || !st.areas.length || !n || n === (axis === 'columns' ? st.cols : st.rows)) {
+        if (!st || !st.own || !st.areas.length || !n || !st.cols || !st.rows || n === (axis === 'columns' ? st.cols : st.rows)) {
             _write(host, axis, value);
             return;
         }

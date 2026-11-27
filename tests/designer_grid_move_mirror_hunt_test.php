@@ -170,3 +170,54 @@ JS
 	$part = designer_gmm_hunt_js('style_designer_grid.js');
 	pg_assert_true(strpos($part, "cs.direction === 'rtl'") !== false, 'the canvas tint reads the grid\'s direction');
 }
+
+// The grid part's writers and a one-element size host over User Styles
+// text, for the cases below.
+function designer_gmm_hunt_grid_fns()
+{
+	return array('_cls', '_readsCss', '_reads', '_write', '_writeCss', '_writeMany', '_gridState', '_held', '_childWalk',
+		'_areasValue', '_setNote', '_commitAreas', '_writeTracks');
+}
+
+function designer_gmm_hunt_grid_host()
+{
+	return <<<'JS'
+var _ui = { id: '', sel: '', edit: '', fresh: false, note: '', err: '', key: null };
+var child = { id: 'c1', props: { cssClass: 'pgs-bbbbbb' } };
+var box = { id: 'g1', props: { cssClass: 'pgs-aaaaaa' }, children: [child] };
+var text = '';
+var host = { nodes: [box], size: 'xs', text: function () { return text; }, newClass: function () { return ''; },
+	commit: function (t) { text = t; }, el: { querySelector: function () { return null; } } };
+var at = function (cls, css) { return Z.at(Z.read(text, cls, css), 'xs').value; };
+JS;
+}
+
+// Rows left on Default (no count) while the grid has areas: a change of
+// Columns does not cut the areas by zero rows and take every one away.
+function test_designer_gmm_hunt_tracks_without_other_count()
+{
+	$r = designer_gmm_hunt_run('style_designer_grid.js', designer_gmm_hunt_grid_fns(), designer_gmm_hunt_grid_host() . <<<'JS'
+text = Z.write(text, 'pgs-aaaaaa', G.CSS.columns, 'xs', 'repeat(3, minmax(0, 1fr))');
+text = Z.write(text, 'pgs-aaaaaa', A.CSS, 'xs', '"head head head" "side main main"');
+text = Z.write(text, 'pgs-bbbbbb', A.ITEM, 'xs', 'main');
+_writeTracks(host, 'columns', 'repeat(2, minmax(0, 1fr))');
+out = { cols: at('pgs-aaaaaa', G.CSS.columns), areas: at('pgs-aaaaaa', A.CSS), child: at('pgs-bbbbbb', A.ITEM) };
+// With a count of rows too, the areas are cut to the new columns.
+text = Z.write(text, 'pgs-aaaaaa', G.CSS.columns, 'xs', 'repeat(3, minmax(0, 1fr))');
+text = Z.write(text, 'pgs-aaaaaa', G.CSS.rows, 'xs', 'repeat(2, minmax(0, 1fr))');
+_writeTracks(host, 'columns', 'repeat(2, minmax(0, 1fr))');
+out.cut = at('pgs-aaaaaa', A.CSS);
+out.note = _ui.note;
+JS
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_same('repeat(2, minmax(0, 1fr))', $r['cols'], 'the columns are written');
+	pg_assert_same('"head head head" "side main main"', $r['areas'], 'the areas are kept');
+	pg_assert_same('main', $r['child'], 'the child stays in its area');
+	pg_assert_same('"head head" "side main"', $r['cut'], 'with rows set, a column taken away cuts the areas');
+	pg_assert_contains('Columns went from 3 to 2.', $r['note'], 'the line says what changed');
+}
