@@ -15,12 +15,14 @@ module: output
 ## When is the card shown?
 - `_sdTourInit()` runs at the end of `init()`. It reads the browser key `pg.designer.<user id>.tour` itself; when the card was offered, or this access's tour seen, or the browser keeps no storage, nothing loads. Else the part is called 1.2 s later (`offer`).
 - The part shows the card when `PGDesignerTour.offer()` allows it (no dialog, no typed text, no held pointer or drag); else it looks again every 1.5 s of the visit. While it waits it listens to the pointer (to know a drag); nothing else is held.
-- The state is written as offered the moment the card shows, whatever the answer. "Not now" and Escape close it; "Start" begins the tour.
+- The state is written as offered the moment the card shows, whatever the answer; a browser that refuses the write gets no card, as it would come back at every visit. "Not now" and Escape close it; "Start" begins the tour.
 
 ## How does the tour run?
 - A ring (`.sd-tour-ring`, fixed, no pointer events) round the stop's control and a bubble (`.sd-tour-bubble`, `role=dialog`, not modal) beside it on the side with most room; a control as large as the window (the canvas) gets the bubble inside it at its foot. Nothing is dimmed or locked.
-- Every 0.4 s while it runs, and on resize, it looks whether the control moved (redrawn only when its box changed), went away (the next stop) or a dialog opened (ring and bubble hidden till it closes).
-- Next, Back, Skip, Done; the right and left arrows inside the bubble; Escape anywhere but in a dialog. Skip, Done and Escape write the access's tour as seen. Focus goes to Next (or Done) at each stop and back to where it was at the end; a hidden live line reads "Tour, 3 of 5." and the sentence.
+- Every 0.4 s while it runs, and on resize, it looks whether the control moved (redrawn only when its box changed), went away (the next stop) or a dialog opened (ring and bubble hidden till it closes). When another stop's control comes or goes (a narrower window, a panel closed) the count, dots, Back and Done are drawn again.
+- Only the part of a control in sight is ringed; one below the fold of its list is scrolled into view once at its stop (`visible()`, `designer-first-tour-model.md`).
+- A "How do I…" pointer whose pressed control goes away (the press opened something over it) waits for the next pointer's control, up to 1.35 s, instead of skipping it or closing the task.
+- Next, Back, Skip, Done; the right and left arrows inside the bubble; Escape unless a dialog, an open menu (the Preview menu at "see") or a typed field takes it (`escapes()`). Skip, Done and Escape write the access's tour as seen. Focus goes to Next (or Done) at each stop and back to where it was at the end; a hidden live line reads "Tour, 3 of 5." and the sentence.
 
 ## What changes under 576 px?
 - The card and the bubble are a sheet across the foot; the bubble stands under the page bar when the ringed control's middle is in the window's lower half. The palette and Options are not on screen, so the model skips "add" and "shape" falls back to the canvas: the count follows.

@@ -16,6 +16,9 @@
  * - key(userId), read(raw), write(state): what was seen, kept per person in
  *   the browser under pg.designer.<user id>.tour.
  * - offer(state, access, busy): whether the card "New here?" may be shown.
+ * - visible(box, clips, W, H): the part of a control in sight, and whether
+ *   a scroll of its list brings it in.
+ * - escapes(busy): whether Escape is the tour's or an open menu's.
  * - tasks(access): the Help window's "How do I…" tasks, each { id, pointers }
  *   with three pointers walked as the stops are (shown, move).
  * - starts(access, have): the starts an empty page's canvas offers.
@@ -122,6 +125,56 @@
             if (here) return { i: at, id: list[at].id, anchor: here };
         }
         return null;
+    }
+
+    // The part of a control a person can see: its box `box` cut by the
+    // window (W x H) and by `clips`, the boxes of its ancestors that cut
+    // what overflows them, inner first, each { left, top, right, bottom,
+    // scroll } (scroll: the ancestor scrolls). Returns { box, scroll }: box
+    // the part in sight (null when none); scroll true when a scrolling
+    // ancestor cuts the control and is itself in sight, so a scroll brings
+    // the control in (a row below the fold of its panel's list).
+    function visible(box, clips, W, H) {
+        var out = { box: null, scroll: false };
+        if (!box) return out;
+        clips = clips || [];
+        var win = { left: 0, top: 0, right: W, bottom: H };
+        var v = cut(box, win);
+        for (var i = 0; i < clips.length; i++) {
+            var c = clips[i];
+            if (c.scroll && !inside(box, c) && !out.scroll) {
+                // The list scrolled to must be in sight itself.
+                var own = cut(c, win);
+                for (var j = i + 1; j < clips.length && own; j++) own = cut(own, clips[j]);
+                out.scroll = !!own;
+            }
+            v = v && cut(v, c);
+        }
+        if (!v && !out.scroll) return out;
+        out.box = v ? { left: v.left, top: v.top, right: v.right, bottom: v.bottom } : null;
+        return out;
+    }
+
+    // The overlap of two boxes, null when they do not meet.
+    function cut(a, b) {
+        var o = {
+            left: Math.max(a.left, b.left), top: Math.max(a.top, b.top),
+            right: Math.min(a.right, b.right), bottom: Math.min(a.bottom, b.bottom)
+        };
+        return o.right > o.left && o.bottom > o.top ? o : null;
+    }
+
+    function inside(a, b) {
+        return a.left >= b.left && a.top >= b.top && a.right <= b.right && a.bottom <= b.bottom;
+    }
+
+    // Whether Escape ends the tour or puts the card away: not while a
+    // dialog, a menu or a typed field is open, as the key is theirs (the
+    // Preview menu at the "see" stop closes with it). `busy` as offer()'s,
+    // with `menu`.
+    function escapes(busy) {
+        busy = busy || {};
+        return !(busy.dialog || busy.menu || busy.typing);
     }
 
     // The tour's first stop: the one after "before the first".
@@ -248,6 +301,8 @@
         shown: shown,
         move: move,
         first: first,
+        visible: visible,
+        escapes: escapes,
         key: key,
         read: read,
         write: write,
