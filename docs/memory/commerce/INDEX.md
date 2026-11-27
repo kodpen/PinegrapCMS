@@ -314,6 +314,7 @@
 - payment-refunds.md: Money back through payment drivers (PRs #873, #903): the order's driver for the order screen's refund and the cancellation's void, log_name, the outcome lines [decision: here]
 - payment-return-after-message.md: A payment return that comes after the service's message completed the order leads to its receipt (pg_payment_return_receipt()), not to a new empty order's checkout
 - payment-return-language.md: The address a payment service sends the visitor back to carries the language of the page they paid from (pg_tr_script_url()), so completion, receipt mail and receipt page are in it (#11423)
+- payment-stripe-method-list.md: Stripe methods beside the card: list pg_payment_stripe_methods(), pure pg_payment_stripe_method_types() for page and intent, method_<type> switches in connect_apps
 - payment-unclear-answers.md: The 'unclear' flag of a payment driver's answer, how the iyzico refund sets it, why a return's refund stays refunded on it and who honours it (#970, PR #1260)
 - paypal-express-return-query.md: How the classic PayPal Express Checkout return in submit_order.php reads token and PayerID: one string each, an array or a missing one empty (#5270)
 - pick-pack-label-gate.md: The site switch "Create a label only after the pack is checked" (PP4b): its config_text row, the one check every outbound label path reads, the not_packed refusal and API 409 pack_not_checked

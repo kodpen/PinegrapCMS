@@ -232,6 +232,7 @@
 - social-sign-in-connect.md: Connecting Google, Microsoft or Apple to an account that is already signed in ("Connect with ..." buttons), whatever its e-mail address, and the rules that refuse it
 - social-sign-in-providers.md: Adding a sign-in provider: the 'signin' block of its provider file (order, scopes, pkce, return, claims, Apple's JWT secret), its switch, what is stored (no token), the old user_google_id column.
 - social-sign-in.md: Sign in with Google, Microsoft and Apple: the flow, how an account is matched, where the buttons come from, and the failure screen (no more "404" on a refused sign-in)
+- software-languages.md: The panel's languages: pg_software_languages() (shipped list cut to wording on disk), the 17 codes config.software_language's ENUM holds, its readers, the 'tr' tests kept.
 - software-text-in-site-languages.md: Which language the software's own texts take on a site page in a language with no language file: English, except the cookie window (owner decision 2026-10-09), and how that exception is fed. [decision: decisions-made-product-118.md]
 - sortablejs-library.md: The vendored SortableJS (assets/lib/sortablejs/, 1.15.7, unmodified): why it replaced jQuery UI .sortable(), which screens load it, how to update it [decision: decisions-made-panel-2.md]
 - stripe-classic-embedding.md: The classic Stripe library (1.17.2, includes/stripe) behind the 'Stripe' gateway, and the local patch that keeps it quiet on PHP 8.1 to 8.5
