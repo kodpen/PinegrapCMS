@@ -5,7 +5,7 @@ module: output
 ---
 
 ## What does the menu button do?
-- `#sd-left-toggle` (`bi-layout-sidebar` shut, `bi-layout-sidebar-inset` open) is the first item of the designer toolbar (`.sd-toolbar-tabs`), outside `.sd-toolbar-pages`, so the component editor and read-only mode keep it.
+- `#sd-left-toggle` (`bi-list` shut, `bi-x-lg` open, since plan designer-frame-tidy FR1: the sidebar picture said "a side panel") is the first item of the designer toolbar (`.sd-toolbar-tabs`), outside `.sd-toolbar-pages`, so the component editor and read-only mode keep it.
 - It opens and shuts the panel's main menu, the drawer the phone shows, at every width: the menu slides in over the screen with the scrim and the designer keeps its whole width. Labels "Show menu" / "Hide menu", `aria-controls="menu"`, `aria-expanded` follows the drawer; `no-popover` like the bar button, since the title popover swallowed the Escape that shuts the drawer.
 - How the screen gets the drawer: `ui/main-menu-drawer-only.md`.
 

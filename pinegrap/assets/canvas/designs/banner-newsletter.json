@@ -1,0 +1,14 @@
+{
+ "id": "banner-newsletter",
+ "width": 1920,
+ "height": 600,
+ "background": "#edf2ff",
+ "layers": [
+  {"type": "ellipse", "x": -120, "y": -200, "w": 600, "h": 600, "color": "#dbe4ff"},
+  {"type": "ellipse", "x": 1650, "y": 350, "w": 400, "h": 400, "color": "#bac8ff", "fill": "soft"},
+  {"type": "text", "text": "startBannerNewsHead", "font": "g:DM Serif Display", "size": 100, "weight": 400, "color": "#364fc7", "align": "center", "x": 960, "y": 110, "maxW": 1500},
+  {"type": "text", "text": "startBannerNewsLine", "font": "g:DM Sans", "size": 44, "weight": 400, "color": "#495057", "align": "center", "x": 960, "y": 260, "maxW": 1500},
+  {"type": "rect", "x": 760, "y": 380, "w": 400, "h": 100, "color": "#364fc7", "radius": 50},
+  {"type": "text", "text": "startSignUp", "font": "g:DM Sans", "size": 40, "weight": 700, "color": "#ffffff", "align": "center", "x": 960, "y": 406, "maxW": 360}
+ ]
+}

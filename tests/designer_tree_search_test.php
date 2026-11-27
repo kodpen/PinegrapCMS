@@ -109,7 +109,7 @@ function test_designer_tree_search_folds_turkish_letters_in_place()
 // then an id, a class and a text.
 function test_designer_tree_search_finds_name_text_class_and_id()
 {
-	$res = designer_tree_search_run('style_designer_treesearch.js', array('_tsFold', '_tsPathCut', '_tsIndex', '_tsMatch'),
+	$res = designer_tree_search_run('style_designer_treesearch.js', array('_tsFold', '_tsPlain', '_tsPathCut', '_tsIndex', '_tsMatch'),
 		designer_tree_search_page_script()
 		. 'console.log(JSON.stringify({ link: find("link"), ikon: find("ikon"), isik: find("ISIK"), cls: find("hero-cta"), id: find("HERO-MAIN"), text: find("my orders"), none: find("zzz"), blank: find("   ") }));');
 
@@ -157,7 +157,7 @@ function test_designer_tree_search_hints_names_shown_twice()
 // search never draws over a newer one.
 function test_designer_tree_search_drops_a_late_answer()
 {
-	$res = designer_tree_search_run('style_designer_treesearch.js', array('_tsFold', '_tsPathCut', '_tsIndex', '_tsMatch', '_tsSearch'),
+	$res = designer_tree_search_run('style_designer_treesearch.js', array('_tsFold', '_tsPlain', '_tsPathCut', '_tsIndex', '_tsMatch', '_tsSearch'),
 		designer_tree_search_page_script()
 		. 'var MAX_SHOWN = 100, state = { entries: [], hits: [], active: 0, shown: {} }, drawn = [];' . "\n"
 		. 'function _tsDraw(host, total) { drawn.push(host.q + ":" + total); }' . "\n"
@@ -185,7 +185,7 @@ function test_designer_tree_search_drops_a_late_answer()
 // the section, a gap and the last two.
 function test_designer_tree_search_gives_each_result_its_path()
 {
-	$res = designer_tree_search_run('style_designer_treesearch.js', array('_tsFold', '_tsPathCut', '_tsIndex', '_tsMatch'),
+	$res = designer_tree_search_run('style_designer_treesearch.js', array('_tsFold', '_tsPlain', '_tsPathCut', '_tsIndex', '_tsMatch'),
 		designer_tree_search_page_script()
 		. 'console.log(JSON.stringify({ orders: find("my orders").hits[0][4], hero: find("hero-main").hits[0][4], section: find("main content").hits[0][4], cut: _tsPathCut(["a", "b", "c", "d"]), long: _tsPathCut(["a", "b", "c", "d", "e"]) }));');
 
@@ -260,4 +260,27 @@ function test_designer_tree_search_is_a_part()
 	pg_assert_true(strpos($core, "_sdPartCall('treesearch', 'search'") !== false, 'the core runs the part to search');
 	pg_assert_true(strpos($core, "_sdPartCall('treesearch', 'key'") !== false, 'and to move through the results');
 	pg_assert_same('always', pg_designer_part_files()['treesearch']['when'], 'the screen hands the part over');
+}
+
+// A text shows its words as the page does: the host takes the tags out but
+// leaves the entities, so the part decodes them. "&" finds "Tom &amp;
+// Jerry" and the result shows "Tom & Jerry"; "amp" finds nothing.
+function test_designer_tree_search_reads_a_text_as_the_page_shows_it()
+{
+	$res = designer_tree_search_run('style_designer_treesearch.js', array('_tsFold', '_tsPlain', '_tsPathCut', '_tsIndex', '_tsMatch'),
+		'function N(name, kids, f) { return { name: name, children: kids || [], f: f || {} }; }' . "\n"
+		. 'var page = N("body", [N("Heading", [], { text: "Tom &amp; Jerry &lt;3" }), N("Text", [], { text: "&#252;r&#xFC;n &copy; &unknown;" })]);' . "\n"
+		. 'var entries = _tsIndex(page, function (n) { return n.children; }, function (n) { return { name: n.name, text: n.f.text }; });' . "\n"
+		. 'function find(q) { var r = _tsMatch(entries, q, 100); return r.hits.map(function (h) { return [entries[h.i].name, h.field, h.at]; }); }' . "\n"
+		. 'console.log(JSON.stringify({ texts: entries.map(function (e) { return e.text; }), amp: find("&"), word: find("amp"), lt: find("<3"), urun: find("ürün") }));');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array('Tom & Jerry <3', 'ürün © &unknown;'), $res['texts'], 'the entities decoded, an unknown one kept as written');
+	pg_assert_same(array(array('Heading', 'text', 4), array('Text', 'text', 7)), $res['amp'], '"&" finds the decoded sign at its place, and the unknown entity kept as written');
+	pg_assert_same(array(), $res['word'], 'the entity\'s name is no word');
+	pg_assert_same(array(array('Heading', 'text', 12)), $res['lt'], '"<3" finds &lt;3');
+	pg_assert_same(array(array('Text', 'text', 0)), $res['urun'], 'a numeric entity is its letter');
 }

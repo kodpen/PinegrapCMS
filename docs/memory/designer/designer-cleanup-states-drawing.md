@@ -4,7 +4,7 @@ description: The drawing of the designer's "Clean up" window, boards U3 and U4: 
 ---
 
 ## Where is the drawing?
-- Boards U3 and U4 of `designer/designer-cleanup-drawing/cleanup.html`; U1 and U2, and which step builds which board, are in `designer-cleanup-drawing.md`.
+- Boards U3 and U4 of `designer/designer-cleanup-drawing/cleanup.html`; U1 and U2, and which PR built which board, are in `designer-cleanup-drawing.md`.
 
 ## What do "Show" and the ticks do? (U3)
 - "Show" opens what the row is, in place under it, and turns into "Hide": a rule's text, a picture (another kind of file opens in a new tab), a shared component drawn as it looks. A variable has its value in its row and no "Show".

@@ -950,16 +950,19 @@ function ws_mcp_connection_card_html($key, $server, $kept, $self_url)
 
 /**
  * Where a ready-made connector is set up on Connections: its own page
- * (registry row mcp_<key>), or the list's MCP connectors for ''. Pure.
+ * (registry row mcp_<key>), returning to the MCP servers card, or the
+ * list's MCP connectors for ''. Pure.
  *
  * @param string $key a catalogue key, '' for the list
  * @return string a panel path
  */
 function ws_mcp_connections_url($key)
 {
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/connections_screen.php');
+
     $key = (string) $key;
 
-    return ($key !== '') ? 'connections.php?service=mcp_' . rawurlencode($key) : 'connections.php#connections-group-mcp';
+    return ($key !== '') ? pg_connections_lead_url('mcp_' . $key, 'workspace_assistants', 'pgset-ws-mcp') : 'connections.php#connections-group-mcp';
 }
 
 /**
@@ -976,6 +979,6 @@ function ws_mcp_connections_line_html($key, $sentence)
     return '
         <p class="pg-text-meta d-flex flex-wrap align-items-center gap-2 mb-4" data-ws-mcp-connections>
             <span>' . h($sentence) . '</span>
-            <a class="pg-button pg-button-ghost pg-button-sm" href="' . h(ws_mcp_connections_url($key)) . '" target="_blank" rel="noopener">' . h(($key !== '') ? lang('Manage in Connections') : lang('Open in Connections')) . ' <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>
+            <a class="pg-button pg-button-ghost pg-button-sm" href="' . h(ws_mcp_connections_url($key)) . '">' . h(($key !== '') ? lang('Manage in Connections') : lang('Open in Connections')) . ' <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
         </p>';
 }

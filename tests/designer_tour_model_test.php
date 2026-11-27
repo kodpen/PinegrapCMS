@@ -366,3 +366,57 @@ JS
 	pg_assert_same(array(), $res['truthy'], 'only true says a feature is there');
 	pg_assert_same(array(), $res['content'], 'a content editor sees no starts');
 }
+
+function test_designer_tour_visible_part_of_a_control()
+{
+	$res = designer_tour_test_node(<<<'JS'
+function b(l, t, r, bo, scroll) { return { left: l, top: t, right: r, bottom: bo, scroll: !!scroll }; }
+var list = b(0, 100, 300, 700, true);
+out = {
+    open: T.visible(b(10, 200, 200, 230), [], 1000, 800),
+    window: T.visible(b(10, 790, 200, 820), [], 1000, 800),
+    // A row cut by the foot of its scrolling list: the part shown, scrollable.
+    cut: T.visible(b(10, 690, 200, 720), [list], 1000, 800),
+    // A row below the fold of its list: nothing shown, but scrolled into view.
+    below: T.visible(b(10, 900, 200, 930), [list], 1000, 800),
+    // A row under the fold of a box that hides what overflows: gone.
+    hidden: T.visible(b(10, 900, 200, 930), [b(0, 100, 300, 700)], 1000, 800),
+    // The list's own panel closed, moved out of the window: gone.
+    closed: T.visible(b(-300, 900, -100, 930), [b(-310, 100, -10, 700, true)], 1000, 800),
+    // A list inside a panel that hides what overflows it, the list cut away.
+    outer: T.visible(b(10, 900, 200, 930), [b(0, 750, 300, 1200, true), b(0, 0, 300, 700)], 1000, 800),
+    none: T.visible(null, [], 1000, 800)
+};
+JS
+	);
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array('box' => array('left' => 10, 'top' => 200, 'right' => 200, 'bottom' => 230), 'scroll' => false), $res['open'], 'a control in the open is shown whole');
+	pg_assert_same(array('box' => array('left' => 10, 'top' => 790, 'right' => 200, 'bottom' => 800), 'scroll' => false), $res['window'], 'the window cuts a control at its edge');
+	pg_assert_same(array('box' => array('left' => 10, 'top' => 690, 'right' => 200, 'bottom' => 700), 'scroll' => true), $res['cut'], 'a row cut by its scrolling list is shown in part and asks for a scroll');
+	pg_assert_same(array('box' => null, 'scroll' => true), $res['below'], 'a row below the fold of its list can be scrolled into view');
+	pg_assert_same(array('box' => null, 'scroll' => false), $res['hidden'], 'a row cut away by a box that hides its overflow is not on the screen');
+	pg_assert_same(array('box' => null, 'scroll' => false), $res['closed'], 'a row of a panel moved out of the window is not on the screen');
+	pg_assert_same(array('box' => null, 'scroll' => false), $res['outer'], 'a list whose own box is cut away cannot be scrolled to');
+	pg_assert_same(array('box' => null, 'scroll' => false), $res['none'], 'no box, nothing shown');
+}
+
+function test_designer_tour_escape_belongs_to_what_is_open()
+{
+	$res = designer_tour_test_node(<<<'JS'
+out = [
+    T.escapes({}), T.escapes(), T.escapes({ dialog: true }), T.escapes({ menu: true }),
+    T.escapes({ typing: true }), T.escapes({ dragging: true })
+];
+JS
+	);
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array(true, true, false, false, false, true), $res, 'Escape ends the tour unless a dialog, a menu or a typed field takes it');
+}

@@ -450,6 +450,7 @@ function ws_personal_ical_place($days, $events, $layer = '')
                 'kind'        => 'other',
                 'title'       => (string) $event['title'],
                 'time'        => !empty($event['all_day']) ? '' : date('H:i', max((int) $event['starts_at'], $day_start)),
+                'until'       => ws_calendar_until($event, $day_end),
                 'scope'       => 'people',
                 'people'      => array(),
                 'meeting_url' => '',

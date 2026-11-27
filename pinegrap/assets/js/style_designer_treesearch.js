@@ -47,6 +47,21 @@ StyleDesigner.definePart('treesearch', function (K) {
         return out;
     }
 
+    // A text's entities decoded, as the page shows them: the host hands the
+    // text with its tags taken out but its entities as written, so "&amp;"
+    // would be found by "amp" and shown as "&amp;". A named entity not in
+    // the table stays as written.
+    function _tsPlain(text) {
+        var named = { amp: '&', lt: '<', gt: '>', quot: '"', apos: '\'', nbsp: '\u00a0', copy: '\u00a9', reg: '\u00ae',
+            trade: '\u2122', hellip: '\u2026', mdash: '\u2014', ndash: '\u2013', laquo: '\u00ab', raquo: '\u00bb',
+            lsquo: '\u2018', rsquo: '\u2019', ldquo: '\u201c', rdquo: '\u201d', euro: '\u20ac' };
+        return String(text == null ? '' : text).replace(/&(?:#(\d{1,7})|#[xX]([0-9a-fA-F]{1,6})|([A-Za-z][A-Za-z0-9]{0,31}));/g, function (all, dec, hex, name) {
+            if (name) return Object.prototype.hasOwnProperty.call(named, name) ? named[name] : all;
+            var cp = dec ? parseInt(dec, 10) : parseInt(hex, 16);
+            return (cp > 0 && cp <= 0x10FFFF) ? String.fromCodePoint(cp) : all;
+        });
+    }
+
     // A path longer than four steps: its section, a gap and the last two.
     function _tsPathCut(path) {
         return (path.length > 4) ? [path[0], '…'].concat(path.slice(path.length - 2)) : path.slice();
@@ -66,6 +81,7 @@ StyleDesigner.definePart('treesearch', function (K) {
                 var e = { node: c, path: _tsPathCut(path), fold: {} };
                 ['name', 'label', 'text', 'cls', 'id'].forEach(function (k) {
                     e[k] = String(f[k] || '');
+                    if (k === 'text') e[k] = _tsPlain(e[k]);
                     e.fold[k] = _tsFold(e[k]);
                 });
                 out.push(e);

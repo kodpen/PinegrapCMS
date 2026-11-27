@@ -18,7 +18,7 @@ module: design_style_guide
 
 ## How is the stylesheet read?
 - Top-level rules only: comments and every at-rule block (`@media`, `@supports`, `@font-face`) are left out, a later rule wins.
-- A lone selector `h1`-`h6`, `.h1`-`.h6`, `.display-1`-`6`, `.lead`, `body`/`p`, `small`/`.small` changes that built-in style; a lone class with a `font-size` is an own style named `.class`, at most `PG_STYLE_GUIDE_OWN_STYLES_MAX` (12). Compound selectors are not styles.
+- A lone selector `h1`-`h6`, `.h1`-`.h6`, `.display-1`-`6`, `.lead`, `body`/`p`, `small`/`.small` changes that built-in style; a lone class with a `font-size` is an own style named `.class` with its case as written (`.BigTitle`, class names are case-sensitive), at most `PG_STYLE_GUIDE_OWN_STYLES_MAX` (12). Compound selectors are not styles.
 - Only plain values are taken: font-size `n`rem/em/px (a `calc()` keeps the default), font-family through the variables' font check, weight 100-900 or bold/normal, a bare line-height number.
 
 ## Which contrast pairs are measured?

@@ -700,6 +700,46 @@ function pg_connections_screen_page_providers()
 }
 
 /**
+ * The account provider whose application a service's page asks for itself
+ * (Google, Microsoft), else '': a service whose state is read from that
+ * provider's accounts, on a page that is not the provider's own, while the
+ * application is not ready, for a manager. Its fields are the provider
+ * page's, saved to the same place, so the service's page finishes the
+ * set-up: the application, then the sign-in, then the account. Pure.
+ *
+ * @param string $id      the service's registry key
+ * @param mixed  $service its registry entry
+ * @param array  $ready   provider key => bool (pg_connect_app_ready()); a
+ *                        provider missing counts as not ready
+ * @param bool   $manager may connect the site's accounts
+ * @return string the provider key
+ */
+function pg_connections_screen_app_here($id, $service, $ready, $manager)
+{
+    $page_providers = pg_connections_screen_page_providers();
+
+    if (!$manager || isset($page_providers[$id]) || !is_array($service) || !isset($service['state']) || !is_array($service['state'])) {
+        return '';
+    }
+
+    $state = $service['state'];
+
+    if (!isset($state['kind'], $state['provider']) || ($state['kind'] !== 'account')) {
+        return '';
+    }
+
+    $provider = (string) $state['provider'];
+
+    // Only a provider whose own page holds its application (Google,
+    // Microsoft); GitHub's is a service's page, Dropbox has none.
+    if (!isset($page_providers[$provider]) || ($page_providers[$provider] !== $provider) || ($provider === 'github')) {
+        return '';
+    }
+
+    return (is_array($ready) && !empty($ready[$provider])) ? '' : $provider;
+}
+
+/**
  * The card gateways whose keys are typed on their own page (the keys of
  * pg_payment_gateway_connections()). Pure.
  *
@@ -788,7 +828,10 @@ function pg_connections_screen_carrier_pages()
  * a manager who may open the Mailboxes settings, drawn inside Status), on
  * Google's page "signin" (the Sign in with Google application, for who may open the
  * Accounts and sign-in settings, drawn inside Connection details above the
- * connected accounts' application that falls back to it), "details" (its
+ * connected accounts' application that falls back to it; on Microsoft's,
+ * Sign in with Microsoft's part over the one application both use), "app"
+ * (an account service's provider application while it is missing, for a
+ * manager: pg_connections_screen_app_here()), "details" (its
  * provider's application, for a manager; an AI provider's key, for who may
  * change the assistants; IndexNow's key, for who may open Site Settings ›
  * SEO; Google Analytics' tag and figures, for who may open Visitors and
@@ -836,7 +879,9 @@ function pg_connections_screen_carrier_pages()
  *                    Assistants and agents as the Workspace's
  *                    administrator, Claude's routine address and token),
  *                    'mcp' (bool: the same, a ready-made MCP connector's
- *                    server: its address and sign-in)
+ *                    server: its address and sign-in), 'app' (bool: the
+ *                    provider's application is asked on this page,
+ *                    pg_connections_screen_app_here())
  * @return array list of card keys
  */
 function pg_connections_screen_page_cards($id, $can)
@@ -848,7 +893,7 @@ function pg_connections_screen_page_cards($id, $can)
         $cards[] = 'mailboxes';
     }
 
-    if (($id === 'google') && !empty($can['signin'])) {
+    if (in_array($id, array('google', 'microsoft'), true) && !empty($can['signin'])) {
         $cards[] = 'signin';
     }
 
@@ -856,6 +901,13 @@ function pg_connections_screen_page_cards($id, $can)
     // account a destination uses stays on the Backups card.
     if ((pg_backup_cloud_type_of_service($id) !== '') && !empty($can['manager']) && !empty($can['maintenance'])) {
         $cards[] = 'backups';
+    }
+
+    // The provider's application asked on an account service's page while
+    // it is missing (pg_connections_screen_app_here()); a page holding an
+    // application of its own never shows a second one.
+    if (!empty($can['manager']) && !empty($can['app']) && !isset(pg_connections_screen_page_providers()[$id])) {
+        $cards[] = 'app';
     }
 
     if (!empty($can['manager']) && isset(pg_connections_screen_page_providers()[$id])) {
@@ -902,26 +954,239 @@ function pg_connections_screen_page_cards($id, $can)
 }
 
 /**
- * Where connecting an account for mailboxes returns to when it was started
- * from Site Settings (the Mailboxes card or a box's form): a settings page
- * of the panel, in the shape connect.php keeps (pg_connect_return_path())
- * and a path pg_safe_redirect_path() lets through unchanged. Anything else
- * is refused with '', and the provider's page is returned to. Pure.
+ * Whether a service's page holds settings of its own, typed on it (keys,
+ * accounts, targets), whether or not the viewer may change them: then its
+ * page never says "here only its state is shown". Pure.
  *
- * @param mixed $asked the page's mail_return parameter
- * @return string the address, or ''
+ * @param string $id    the service's registry key
+ * @param array  $extra more such pages the caller knows (the AI providers
+ *                      of pg_ai_connection_services(), the ad services of
+ *                      pg_ad_conversion_services())
+ * @return bool
  */
-function pg_connections_screen_mail_return($asked)
+function pg_connections_screen_page_here($id, $extra)
 {
-    if (!is_string($asked) || !preg_match('/^settings_[a-z_]{1,40}\.php(#[A-Za-z0-9_\-]{1,60})?$/', $asked)) {
+    $id = (string) $id;
+
+    return in_array($id, (array) $extra, true)
+        || in_array($id, array('indexnow', 'google_analytics', 'google_translate', 'whatsapp', 'iys', 'mailchimp', 'netgsm', 'iletimerkezi', 'twilio',
+            'signin_apple', 'turnstile', 'hcaptcha', 'google_reviews', 'slack', 'teams', 'telegram', 'claude', 'figma'), true)
+        || in_array($id, pg_connections_screen_commerce_pages(), true)
+        || in_array($id, pg_connections_screen_accounting_pages(), true)
+        || (pg_connections_screen_mcp_connector($id) !== '');
+}
+
+/**
+ * Whether a row of the Connections list opens the service's card (or its
+ * screen) straight away instead of its page: the page would only show its
+ * state and "Open its settings", one hop for nothing. Its cards are Status
+ * and Where it is used alone, it holds no settings of its own, it is no
+ * provider's page, and its place is a screen of the panel other than the
+ * Connections list. The page's own address still answers. Pure.
+ *
+ * @param string $id    the service's registry key
+ * @param array  $cards its page's cards for the viewer (pg_connections_screen_page_cards())
+ * @param bool   $here  pg_connections_screen_page_here()
+ * @param string $url   the place of its settings (a panel screen's address)
+ * @return bool
+ */
+function pg_connections_screen_opens_card($id, $cards, $here, $url)
+{
+    if ($here || isset(pg_connections_screen_page_providers()[(string) $id])) {
+        return false;
+    }
+
+    if (array_diff((array) $cards, array('status', 'uses')) !== array()) {
+        return false;
+    }
+
+    $url = (string) $url;
+
+    // A panel screen's relative address only, never the list itself.
+    return ($url !== '') && (bool) preg_match('~^[a-z0-9_]+\.php(?:[?#]|$)~D', $url) && (strpos($url, 'connections.php') !== 0);
+}
+
+/**
+ * The Site Settings card a lead to a service's page came from (from=), by
+ * the settings registry's keys: category, card and, where there is one, a
+ * drawer's key. Never an address: the page builds the way back from these
+ * keys with pg_settings_link(). A category the reader may not open, or a
+ * card it does not hold, is dropped. Pure.
+ *
+ * @param mixed $asked      <category>/<card>[/<drawer>]
+ * @param array $categories the categories the reader may open
+ *                          (pg_settings_categories_for()): key => label, sections
+ * @return array|null category, card, drawer, label (the card's title), value
+ */
+function pg_connections_back($asked, $categories)
+{
+    if (!is_string($asked) || !preg_match('~^([a-z_]{1,40})/(pgset-[a-z0-9\-]{1,60})(?:/([a-z0-9_\-]{1,60}))?$~D', $asked, $match)) {
+        return null;
+    }
+
+    if (!is_array($categories) || !isset($categories[$match[1]]['sections'][$match[2]])) {
+        return null;
+    }
+
+    return array(
+        'category' => $match[1],
+        'card'     => $match[2],
+        'drawer'   => isset($match[3]) ? $match[3] : '',
+        'label'    => (string) $categories[$match[1]]['sections'][$match[2]],
+        'value'    => $asked,
+    );
+}
+
+/**
+ * The address of a lead from a Site Settings card to a service's page of
+ * Connections, carrying the card it came from, in the shape connect.php
+ * keeps (pg_connect_return_path()). Every lead from a card uses it, in the
+ * same tab. Pure.
+ *
+ * @param string $service  the service's registry key
+ * @param string $category the card's category, '' for no return
+ * @param string $card     the card's anchor (pgset-…)
+ * @param string $anchor   a part of the page to open at, without '#'
+ * @param string $drawer   a drawer of the card the lead sits in
+ * @return string
+ */
+function pg_connections_lead_url($service, $category, $card, $anchor = '', $drawer = '')
+{
+    $from = ($category !== '' && $card !== '') ? $category . '/' . $card . (($drawer !== '') ? '/' . $drawer : '') : '';
+
+    return pg_connections_screen_page_url($service)
+        . (($from !== '') ? '&from=' . rawurlencode($from) : '')
+        . (($anchor !== '') ? '#' . $anchor : '');
+}
+
+/**
+ * A service's page, keeping the way back it was reached with. Pure.
+ *
+ * @param string     $service
+ * @param array|null $back what pg_connections_back() read
+ * @return string
+ */
+function pg_connections_back_page_url($service, $back)
+{
+    return pg_connections_screen_page_url($service)
+        . (is_array($back) ? '&from=' . rawurlencode($back['value']) : '');
+}
+
+/**
+ * Whether a write on a service's page takes something away (Disconnect,
+ * Remove, Delete): it stays on the page whatever led there. Pure.
+ *
+ * @param string $action the posted action
+ * @return bool
+ */
+function pg_connections_back_removes($action)
+{
+    return is_string($action) && (bool) preg_match('/(^|_)(remove|disconnect|delete)(_|$)/', $action);
+}
+
+/**
+ * The address a write on a service's page goes to: its page, keeping the
+ * card that led there, marked saved= when it went through and took nothing
+ * away, so the page can return to the card once the service is ready. The
+ * list and a page reached from it are left as they are. Pure.
+ *
+ * @param string $location the address the write would go to
+ * @param mixed  $from     the posted connections_from
+ * @param string $action   the posted action
+ * @param bool   $refused  whether the write was refused (the form's errors)
+ * @return string
+ */
+function pg_connections_back_after_write($location, $from, $action, $refused)
+{
+    $location = (string) $location;
+
+    if (!is_string($from) || !preg_match('~^[a-z_]{1,40}/pgset-[a-z0-9\-]{1,60}(/[a-z0-9_\-]{1,60})?$~D', $from)
+        || !preg_match('/\?service=[a-z0-9_]{1,60}(?=$|#)/', $location)) {
+        return $location;
+    }
+
+    $hash = strpos($location, '#');
+    $anchor = ($hash === false) ? '' : substr($location, $hash);
+    $address = ($hash === false) ? $location : substr($location, 0, $hash);
+
+    return $address . '&from=' . rawurlencode($from)
+        . ((!$refused && !pg_connections_back_removes($action)) ? '&saved=1' : '')
+        . $anchor;
+}
+
+/**
+ * Whether a service's page returns to the card that led there by itself:
+ * a Connect that went through, or a Save that leaves the service ready.
+ * A refused Save, a Save that leaves something missing and a plain visit
+ * stay. Pure.
+ *
+ * @param array|null $back  what pg_connections_back() read
+ * @param string     $done  saved, connected, or ''
+ * @param string     $state the service's state now (pg_connections_screen_state())
+ * @return bool
+ */
+function pg_connections_back_due($back, $done, $state)
+{
+    if (!is_array($back)) {
+        return false;
+    }
+
+    return ($done === 'connected') || (($done === 'saved') && ($state === 'connected'));
+}
+
+/**
+ * The card a page was led to from, read from the address: from=, or one of
+ * the two parameters it replaced, for the links written before it: a
+ * drive's backup_return=1 (the Backups card) and mail_return= (a settings
+ * page with its card's anchor; a category that became a tab names the
+ * category holding it, pg_settings_moved_categories()). Checked again by
+ * pg_connections_back(). Pure.
+ *
+ * @param array  $get     the page's query
+ * @param string $service the page's service
+ * @return string <category>/<card>[/<drawer>], or ''
+ */
+function pg_connections_back_legacy($get, $service)
+{
+    if (isset($get['from']) && is_string($get['from']) && ($get['from'] !== '')) {
+        return $get['from'];
+    }
+
+    if (!empty($get['backup_return']) && is_string($get['backup_return'])
+        && function_exists('pg_backup_cloud_type_of_service') && (pg_backup_cloud_type_of_service($service) !== '')) {
+        return 'maintenance/pgset-backup';
+    }
+
+    if (isset($get['mail_return']) && is_string($get['mail_return'])
+        && preg_match('/^settings_([a-z_]{1,40})\.php#(pgset-[a-z0-9\-]{1,60})$/D', $get['mail_return'], $match)) {
+        $moved = function_exists('pg_settings_moved_categories') ? pg_settings_moved_categories() : array();
+
+        return (isset($moved[$match[1]]) ? $moved[$match[1]][0] : $match[1]) . '/' . $match[2];
+    }
+
+    return '';
+}
+
+/**
+ * Where a return to a card lands when the card's own address is not
+ * enough: the Backups card is opened with the destination of the drive
+ * just connected shown chosen (?backup_connect=). '' for every other card,
+ * whose address is pg_settings_link(). Pure.
+ *
+ * @param array|null $back
+ * @param string     $service
+ * @return string
+ */
+function pg_connections_back_destination($back, $service)
+{
+    if (!is_array($back) || ($back['category'] !== 'maintenance') || ($back['card'] !== 'pgset-backup')
+        || !function_exists('pg_backup_cloud_type_of_service')) {
         return '';
     }
 
-    if (pg_connect_return_path($asked) !== $asked || pg_safe_redirect_path('/' . $asked, '/') !== '/' . $asked) {
-        return '';
-    }
+    $type = pg_backup_cloud_type_of_service($service);
 
-    return $asked;
+    return ($type !== '') ? pg_backup_cloud_connect_return($type) : '';
 }
 
 /**

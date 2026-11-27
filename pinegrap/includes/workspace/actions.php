@@ -4773,7 +4773,8 @@ function ws_handle_action($action, $request)
         // A channel's memory (channel_memory.php): every entry with its
         // text, the expired ones too; written by whoever may post here.
         // general=1 addresses the general memory (channel_id 0) instead,
-        // kept by whoever may post in an agent channel.
+        // kept by whoever may post in an agent channel. search=<words>
+        // keeps the entries holding every word, as the API's search.
         case 'ws_memory_list':
             $channel = ws_memory_action_channel($viewer, $request);
 
@@ -4784,15 +4785,16 @@ function ws_handle_action($action, $request)
             // In an agent channel, for whoever keeps it, the general memory
             // comes first as its own part; a channel's records move there.
             $parts = array();
+            $terms = ws_memory_search_terms($request['search'] ?? '');
             $general = !ws_memory_is_general($channel, 'id') && ws_memory_brief_general($viewer, $channel);
 
             if ($general) {
-                $parts[] = ws_memory_panel_part('general', 0, true);
+                $parts[] = ws_memory_panel_part('general', 0, true, false, $terms);
             }
 
-            $parts[] = ws_memory_panel_part(ws_memory_is_general($channel, 'id') ? 'general' : 'channel', $channel['id'], ws_memory_can_write($viewer, $channel), $general);
+            $parts[] = ws_memory_panel_part(ws_memory_is_general($channel, 'id') ? 'general' : 'channel', $channel['id'], ws_memory_can_write($viewer, $channel), $general, $terms);
 
-            return ws_action_ok(array('parts' => $parts));
+            return ws_action_ok(array('parts' => $parts, 'search' => (bool) $terms));
 
         case 'ws_memory_save':
             $channel = ws_memory_action_channel($viewer, $request);

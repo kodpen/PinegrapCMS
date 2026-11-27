@@ -64,7 +64,7 @@ function test_designer_guides_switch_in_the_view_menu()
 	pg_assert_true((bool) preg_match('/id="sd-vb-guides" role="menuitemcheckbox"[^\n]*_sdT\(\'Canvas guides\'\)/', $core), 'a switch row named Canvas guides');
 	pg_assert_true(strpos($core, "_sdT('Measure: point at another element')) + '</span><kbd class=\"sd-vb-kbd\">Alt</kbd>") !== false, 'the Measure key under it');
 	pg_assert_true(strpos($core, "_sdT('Layout lines')) + '</span><kbd class=\"sd-vb-kbd\">Shift+G</kbd>") !== false, 'the layout lines key under it');
-	pg_assert_true(strpos($core, "'sd-vb-guides', 'sd-vb-side'].map(") !== false, 'the badge counts it');
+	pg_assert_true(strpos($core, "'sd-vb-a11y', 'sd-vb-guides', ") !== false, 'the badge counts it');
 
 	$from = strpos($core, '    // ── Canvas guides: the switch and the layout lines');
 	pg_assert_true($from !== false, 'the core has the switch section');
@@ -87,4 +87,21 @@ function test_designer_guides_lines_drawn_by_the_part_outside_the_page()
 	pg_assert_true(strpos($js, 'G.layout(') !== false, 'from the pure layout');
 	pg_assert_true(strpos($js, "L.layer.className = 'sd-gl-layer';") !== false, 'a layer of its own in the editor');
 	pg_assert_true(strpos($js, "w[fn]('keydown', linesEsc, true);") !== false && strpos($js, 'linesListen(false);') !== false, 'Escape listened to only while the lines show');
+}
+
+// While a spacing or column handle is changed (the bands' layer is-live),
+// Alt is the handle's "all four sides": Measure neither starts nor draws.
+// Escape is the handle's: the layout lines leave it alone. Before, Escape
+// on a stepped handle turned the lines off and left the value on the
+// canvas, and Alt during a drag drew Measure's lines over the bands.
+function test_designer_guides_leave_a_held_handle_alone()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_guides.js');
+	$bands = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_bands.js');
+
+	pg_assert_true(strpos($js, "return !!document.querySelector('.sd-cgb-layer.is-live');") !== false, 'a held handle is read from the bands\' layer');
+	pg_assert_true(strpos($bands, "S.layer.classList.add('is-live');") !== false, 'which the bands mark while a change is under way');
+	pg_assert_true(strpos($js, "if (!G || !host || !host.doc || !host.doc.defaultView || bandHeld()) return;") !== false, 'Measure does not start');
+	pg_assert_true(strpos($js, '!sel.isConnected || bandHeld()) return clear();') !== false, 'nor draws');
+	pg_assert_true(strpos($js, "if (e.key !== 'Escape' || !L || bandHeld()) return;") !== false, 'the lines leave the handle\'s Escape');
 }

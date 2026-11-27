@@ -10,12 +10,12 @@ module: connections_screen, backup_cloud
 - Gate: card `backups` of `pg_connections_screen_page_cards()`: a manager (connect.php's right for the site's accounts) who may open Updates and maintenance (`connections_maintenance_may_manage()`, `pg_settings_may_open('maintenance')`). Nobody gains or loses a right.
 
 ## Where does the connection return to?
-- The card links `pg_backup_cloud_connections_url($type)`: the page with `backup_return=1`. The page then returns to `pg_backup_cloud_connect_return($type)`, `settings_maintenance.php?backup_connect=<type>#pgset-backup`, which `pg_connect_return_path()` keeps; without it, to the page.
+- The card links `pg_backup_cloud_connections_url($type)`: the page with `from=maintenance/pgset-backup` (`connections-return-to-card.md`, #11862; `backup_return=1` is still read from an old link). A Connect comes back to the page, which goes on to `pg_backup_cloud_connect_return($type)`, `settings_maintenance.php?backup_connect=<type>#pgset-backup`; reached from the list, it stays on the page.
 - The card reads `?backup_connect=` as before: connect.php's message, and the destination shown chosen with the new account, not yet saved.
 - `pg_backup_cloud_types()` names each destination's `service` (gdrive google_drive, onedrive onedrive, dropbox dropbox); `pg_backup_cloud_type_of_service()` reads it back. All pure, in `includes/fn/backup_cloud.php`.
 
 ## What does the Backups card keep?
-- Per destination: the "Account" select, "Folder", the "application is not set up yet" line, and "Manage in Connections" (an account is connected) or "Connect in Connections" to the page. No Connect button and no hidden connect.php form.
+- Per destination: the "Account" select, "Folder", the "application is not set up yet" line with "Set up the {var:1} application" (`pg_backup_cloud_app_url()`: Google's or Microsoft's page, returning to the card; Dropbox's drawer on the list), and "Manage in Connections" (an account is connected) or "Connect in Connections" to the page. No Connect button and no hidden connect.php form.
 - FTP, S3-compatible storage and the object storage card stay: they are no registry service.
 
 ## What did not change?

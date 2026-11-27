@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_image_editor_parts()
 {
-    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'sound', 'keyframes', 'render', 'scenes', 'present', 'access', 'record', 'follow', 'fonts', 'glyph', 'data', 'warp', 'puppet', 'outline', 'builder', 'video', 'clip', 'mix', 'upload', 'phone', 'actions', 'menu');
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'langview', 'export', 'vector', 'svg', 'motion', 'tracks', 'sound', 'keyframes', 'render', 'scenes', 'present', 'access', 'record', 'follow', 'fonts', 'textstyles', 'glyph', 'elements', 'starts', 'resize', 'frames', 'unsplash', 'data', 'warp', 'puppet', 'outline', 'builder', 'video', 'clip', 'mix', 'upload', 'phone', 'colors', 'actions', 'menu');
 }
 
 /**
@@ -203,12 +203,21 @@ function pg_image_editor_config()
         'serverColor' => class_exists('Imagick'),
         // The Sticker tool's icons: the font and its name => code point map.
         'icons'   => pg_image_editor_icon_urls(),
+        // The Text panel's font pairs, read when the panel first opens.
+        'fontPairs' => pg_image_editor_font_pairs_url(),
+        // The Sticker tool's element sets, read when the panel first opens.
+        'elements' => pg_image_editor_elements_url(),
+        // The New image dialog's designs, read when its row first opens.
+        'starts' => pg_image_editor_starts_urls(),
         // The animation encoder's script, started as a worker.
         'encoder' => pg_js_bundle_urls('assets/js/pg_image_editor_encode.min.js'),
         // Select subject's cut, started as a worker.
         'subject' => pg_js_bundle_urls('assets/js/pg_image_editor_subject.min.js'),
         // Follow's tracker, started as a worker.
         'track'   => pg_js_bundle_urls('assets/js/pg_image_editor_track.min.js'),
+        // The design file's script, loaded the first time Import's design
+        // item is used (designScript(), pg_image_editor_artboard.js).
+        'design'  => pg_js_bundle_urls('assets/js/pg_image_editor_design.min.js'),
         // The largest file Save to Files and an upload take (0: no limit
         // known); a file larger than one part is sent in parts.
         'animationLimit' => pg_image_editor_upload_limits()['max'],
@@ -233,6 +242,10 @@ function pg_image_editor_config()
             'config'  => pg_picker_config(),
             'scripts' => pg_js_bundle_urls('assets/js/pg_picker.min.js'),
         ) : null,
+        // Import's From Unsplash: the site's key and the rich text editor's
+        // Unsplash dialog, loaded the first time it is used; null without a
+        // key (pg_image_editor_unsplash.js).
+        'unsplash'       => pg_image_editor_unsplash_config(defined('UNSPLASH_ACCESS_KEY') ? (string) UNSPLASH_ACCESS_KEY : ''),
     );
 }
 
@@ -329,7 +342,8 @@ function pg_image_editor_includes()
     };
     window.imageEditorAvailable = function () { return true; };
     // A button or link with data-pg-image-edit (the name of a file) opens the
-    // file. A copy saved from a picture of a page is put in that content
+    // file; with data-pg-image-language (a code) on the view of that language. A
+    // copy saved from a picture of a page is put in that content
     // (data-pg-image-object, -object-id, -column: action content); then the
     // page is drawn again, past the week the browser may keep a picture.
     document.addEventListener("click", function (e) {
@@ -337,7 +351,7 @@ function pg_image_editor_includes()
         if (!b) { return; }
         e.preventDefault();
         var cfg = window.pgImageEditorConfig, name = b.getAttribute("data-pg-image-edit");
-        window.pgImageEditor.open({ fileName: name, save: { mode: "replace" }, onSave: function (r) {
+        window.pgImageEditor.open({ fileName: name, language: b.getAttribute("data-pg-image-language") || "", save: { mode: "replace" }, onSave: function (r) {
             var f = r.file || {}, object = b.getAttribute("data-pg-image-object"), steps = [];
             if (f.url) {
                 var bare = String(f.url).split("?")[0];
@@ -384,6 +398,73 @@ function pg_image_edit_number($value, $min, $max)
     }
 
     return $value;
+}
+
+/**
+ * A text layer's correction by hand for one language as it is kept: the
+ * box's place (x, y), its width and the letters' size, each a JSON number
+ * in range in the layer's own space. Twin of the editor's
+ * languageCorrectionBox() (assets/js/pg_image_editor_model.js).
+ *
+ * @param mixed $box
+ * @return array|null x, y, w, size as floats; null when malformed
+ */
+function pg_image_edit_correction($box)
+{
+    $ranges = array('x' => array(-100000, 100000), 'y' => array(-100000, 100000), 'w' => array(1, 100000), 'size' => array(0.5, 10000));
+    $out = array();
+
+    if (!is_array($box)) {
+        return null;
+    }
+
+    foreach ($ranges as $key => $range) {
+        $value = isset($box[$key]) ? pg_image_edit_number($box[$key], $range[0], $range[1]) : null;
+
+        if ($value === null) {
+            return null;
+        }
+
+        $out[$key] = $value;
+    }
+
+    return $out;
+}
+
+/**
+ * Whether a language code may key a correction: letters, then parts of
+ * letters and digits after a hyphen or an underscore (the editor's
+ * languageCode()).
+ *
+ * @param mixed $code
+ * @return bool
+ */
+function pg_image_edit_correction_code($code)
+{
+    return is_string($code) && (strlen($code) <= 20) && (bool) preg_match('/^[A-Za-z]{2,3}([-_][A-Za-z0-9]{1,8})*$/', $code);
+}
+
+/**
+ * Whether a text layer's corrections are well formed: a JSON object (an
+ * empty one decodes as an empty array) of at most 100 language codes, each
+ * a pg_image_edit_correction() box.
+ *
+ * @param mixed $corrections
+ * @return bool
+ */
+function pg_image_edit_corrections_valid($corrections)
+{
+    if (!is_array($corrections) || (count($corrections) > 100)) {
+        return false;
+    }
+
+    foreach ($corrections as $code => $box) {
+        if (!pg_image_edit_correction_code($code) || (pg_image_edit_correction($box) === null)) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 // The adjustments and their ranges; 0 changes nothing (ADJUST of
@@ -524,6 +605,23 @@ function pg_image_edit_validate($doc)
         foreach ($doc['scenes'] as $scene) {
             if (!is_array($scene) || (isset($scene['layers']) && (!is_array($scene['layers']) || (count($scene['layers']) > 500)))) {
                 $result['error'] = 'scenes';
+                return $result;
+            }
+        }
+    }
+
+    // A text layer's corrections by hand, one per language: the server's
+    // draw of a language reads them, so a malformed one is refused here.
+    $lists = array(isset($doc['layers']) ? $doc['layers'] : array());
+
+    foreach (isset($doc['scenes']) ? $doc['scenes'] : array() as $scene) {
+        $lists[] = isset($scene['layers']) ? $scene['layers'] : array();
+    }
+
+    foreach ($lists as $layers) {
+        foreach ($layers as $layer) {
+            if (is_array($layer) && array_key_exists('corrections', $layer) && !pg_image_edit_corrections_valid($layer['corrections'])) {
+                $result['error'] = 'corrections';
                 return $result;
             }
         }
@@ -1321,7 +1419,7 @@ function pg_image_editor_single_keys()
         'token', 'action', 'mode', 'file_id', 'file_name', 'folder_id', 'version_id', 'base', 'name',
         'kind', 'object_type', 'object_id', 'column', 'from', 'to', 'target', 'upload', 'family',
         'weight', 'italic', 'search', 'svg', 'png', 'on', 'picture', 'overlay', 'colour', 'size',
-        'offset', 'table', 'language', 'stamp', 'fit',
+        'offset', 'table', 'language', 'stamp', 'fit', 'copy_name',
     );
 }
 
@@ -2887,6 +2985,48 @@ function pg_image_editor_strings_artboard()
         'importComputer'    => lang('From this computer'),
         'importSite'        => lang('From the site'),
         'importError'       => lang('This file cannot be imported.'),
+        // Import's design file (pg_image_editor_design.js, loaded on use).
+        'designImport'      => lang('A design file (.pptx)'),
+        'designReading'     => lang('Reading the design file...'),
+        'designOpening'     => lang('Bringing in the page and its pictures...'),
+        'designAdded'       => lang('Page {n} added: {texts} texts, {pictures} pictures.'),
+        'designError'       => lang('The design file could not be opened.'),
+        // The page chooser, the New image dialog's door and the report line.
+        'designDoor'        => lang('Open a design file'),
+        'designDoorHint'    => lang('A .pptx file: in Canva, Share, Download, then PPTX. A Canva design of the Website kind has no download.'),
+        'designTitle'       => lang('Open a design file'),
+        'designPickOne'     => lang('Pick the page to add to this canvas.'),
+        'designPage'        => lang('Page {n}'),
+        'designPartial'     => lang('Not everything on this page could be brought in.'),
+        'designTruncated'   => lang('Only the first {n} pages of this file can be opened.'),
+        'designCanvases'    => lang('Open {n} pages as {n} canvases'),
+        'designCanvasesOne' => lang('Open 1 page as 1 canvas'),
+        'designAsScenes'    => lang('As scenes of one canvas'),
+        'designAsScenesFoot' => lang('Open {n} pages as scenes of one canvas'),
+        'designScenesMax'   => lang('One canvas holds at most {n} scenes.'),
+        'designNone'        => lang('Tick a page to open.'),
+        'designOpen'        => lang('Open'),
+        'designAddPage'     => lang('Add the page'),
+        'designSaving'      => lang('Making the canvases: {done} of {n}...'),
+        'designSaveStopped' => lang('{done} of {n} canvases were made.'),
+        'designReportLine'  => lang('{texts} texts and {pictures} pictures brought in.'),
+        'designReportFonts' => lang('Fonts replaced: {list}.'),
+        'designReportLeft'  => lang('{n} elements left out.'),
+        'designDetails'     => lang('Details'),
+        'designFontSwap'    => lang('{from} replaced by {to}'),
+        'designLeftKind'    => lang('{kind} left out: {n}'),
+        'designSimplified'  => lang('Text boxes simplified: {n}'),
+        'designLeft_chart'    => lang('Charts'),
+        'designLeft_table'    => lang('Tables'),
+        'designLeft_diagram'  => lang('Diagrams (SmartArt)'),
+        'designLeft_object'   => lang('Embedded objects'),
+        'designLeft_media'    => lang('Video and sound'),
+        'designLeft_ink'      => lang('Ink drawings'),
+        'designLeft_gradient' => lang('Gradient fills'),
+        'designLeft_pattern'  => lang('Pattern fills'),
+        'designLeft_picture'  => lang('Pictures that could not be read'),
+        'designLeft_mask'     => lang('Picture masks'),
+        'designLeft_other'    => lang('Other elements'),
         'languages'         => lang('Languages'),
         'langNote'          => lang('Each language\'s picture is drawn by itself from the last saved version once all its texts are translated, and shown on the pages in that language; "Draw" does it now.'),
         'langUnsaved'       => lang('Changes not saved yet are not in these pictures.'),
@@ -2899,7 +3039,7 @@ function pg_image_editor_strings_artboard()
         'langDrawn'         => lang('Picture drawn'),
         'langOutOfDate'     => lang('Out of date'),
         'langLook'          => lang('Look by hand'),
-        'langLookNote'      => lang('A text did not fit even at the smallest size: check this picture.'),
+        'langLookNote'      => lang('A text does not fit even wrapped at its smallest size: place it with "Correct by hand".'),
         'langRtl'           => lang('Right to left: the source picture is shown.'),
         'langOutOfDateNote' => lang('Visitors see the source picture until this one is drawn again.'),
         'langOpen'          => lang('Open the picture: {name}'),
@@ -2910,6 +3050,29 @@ function pg_image_editor_strings_artboard()
         'langDrawAll'       => lang('Draw all'),
         'langDrawing'       => lang('Drawing…'),
         'langDrawError'     => lang('The picture could not be drawn.'),
+        'langCorrect'       => lang('Correct by hand'),
+        'langCorrectedOne'  => lang('Corrected by hand: 1 text'),
+        'langCorrected'     => lang('Corrected by hand: {n} texts'),
+        'langFixNote'       => lang('A longer translation takes the free room around its text, then wraps and gets smaller; one that still does not fit is moved and sized for that language alone with "Correct by hand", and the source picture stays as it is.'),
+    );
+}
+
+/**
+ * The language view (pg_image_editor_langview.js): labels.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_langview()
+{
+    return array(
+        'langSaveFirst'     => lang('Save your changes first: a language is corrected on the saved picture.'),
+        'langViewLine'      => lang('Only this language\'s texts move here. The source picture does not change.'),
+        'langAuto'          => lang('Back to automatic'),
+        'langAutoAll'       => lang('Take every correction of {name} off? Its texts go back to where they fit by themselves.'),
+        'langDone'          => lang('Done'),
+        'langViewMenu'      => lang('More'),
+        'langEditWords'     => lang('Edit the words in Translations'),
+        'langViewError'     => lang('This language\'s picture could not be shown.'),
     );
 }
 
@@ -3157,8 +3320,12 @@ function pg_image_editor_save_canvas($request, $board, $mode, $user)
 
         $row = $file['row'];
         $folder = (int) $row['folder'];
+        // A copy may be named (copy_name, Resize to other sizes names each
+        // size); else it takes the canvas's own name.
+        $copy = preg_replace('/\.[a-z0-9]{2,5}$/i', '', trim(isset($request['copy_name']) ? (string) $request['copy_name'] : ''));
+        $copy = ($copy !== '') ? $copy : preg_replace('/\.[a-z0-9]{2,5}$/i', '', (string) $row['name']);
         $name = ($mode === 'replace') ? (string) $row['name']
-            : get_unique_name(array('name' => prepare_file_name(preg_replace('/\.[a-z0-9]{2,5}$/i', '', (string) $row['name']) . '.png'), 'type' => 'file'));
+            : get_unique_name(array('name' => prepare_file_name($copy . '.png'), 'type' => 'file'));
 
     } else {
         return pg_image_editor_refusal(lang('Invalid request.'));
@@ -6241,7 +6408,7 @@ function pg_image_editor_strings_phone()
  */
 function pg_image_editor_upload_kinds()
 {
-    return array('video' => 'video_upload', 'sound' => 'sound_upload', 'animation' => 'animation');
+    return array('video' => 'video_upload', 'sound' => 'sound_upload', 'animation' => 'animation', 'design' => 'design_file');
 }
 
 /**
@@ -6473,6 +6640,10 @@ function pg_image_editor_upload_format($kind, $head)
         return pg_image_editor_sound_format($head);
     }
 
+    if ($kind === 'design') {
+        return pg_image_editor_design_format($head);
+    }
+
     return ($kind === 'animation') ? pg_image_editor_animation_type($head) : '';
 }
 
@@ -6547,7 +6718,7 @@ function pg_image_editor_upload_sweep()
  * the largest file (pg_image_editor_upload_limits()) and the disk's room;
  * where it lands is checked by the action that takes it.
  *
- *   { kind: video|sound|animation, size } -> { status, upload, part, received: 0, size }
+ *   { kind: video|sound|animation|design, size } -> { status, upload, part, received: 0, size }
  *
  * @return array array(payload, HTTP status)
  */
@@ -6671,7 +6842,13 @@ function pg_image_editor_action_upload_part($request, $user)
     if ($check === 'format') {
         pg_image_editor_upload_drop($id);
 
-        return pg_image_editor_refusal(($meta['kind'] === 'sound') ? lang('Only MP3, AAC, M4A, WAV and Ogg sounds can be added.') : (($meta['kind'] === 'video') ? lang('Only MP4 and WebM videos can be added.') : lang('Invalid request.')));
+        $refusals = array(
+            'sound'  => lang('Only MP3, AAC, M4A, WAV and Ogg sounds can be added.'),
+            'video'  => lang('Only MP4 and WebM videos can be added.'),
+            'design' => pg_image_editor_design_not_pptx(),
+        );
+
+        return pg_image_editor_refusal(isset($refusals[$meta['kind']]) ? $refusals[$meta['kind']] : lang('Invalid request.'));
     }
 
     if ($check !== '') {
@@ -6951,4 +7128,617 @@ function pg_image_editor_action_folders($request, $user, $grants = null)
     return array(array('status' => 'success', 'folders' => pg_image_editor_folder_choices($folders, function ($id) {
         return check_edit_access($id) && !pg_folder_binned($id);
     }, $closed)), 200);
+}
+
+// -- Site colours (pg_image_editor_colors.js) --
+
+/**
+ * The site colours row of the shared swatches: labels.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_colors()
+{
+    return array(
+        'siteColors' => lang('Site colours'),
+    );
+}
+
+/**
+ * The site's colours for the row before the shared swatches: the palette
+ * colours of its visual designs, then their colour variables, newest edited
+ * design first. Empty on a site whose designs set neither.
+ *
+ *   { token, action: 'site_colors' } -> { status, colors: [{ color, name }, ...] }
+ *
+ * @return array array(payload, HTTP status)
+ */
+function pg_image_editor_action_site_colors($request, $user)
+{
+    $designs = array();
+
+    if (pg_design_look_ready()) {
+        $framework = function_exists('pg_style_framework_ready') && pg_style_framework_ready();
+        $rows = db_items("SELECT style_id, style_look, style_palette" . ($framework ? ', style_framework' : '')
+            . " FROM style WHERE style_type = 'system' ORDER BY style_timestamp DESC, style_id DESC LIMIT 50");
+
+        foreach (is_array($rows) ? $rows : array() as $row) {
+            // Only a Bootstrap design wears a palette and variables.
+            if ($framework) {
+                $fw = pg_design_framework(isset($row['style_framework']) ? $row['style_framework'] : '');
+
+                if (empty($fw['bootstrap'])) {
+                    continue;
+                }
+            }
+
+            $design = array('palette' => array(), 'variables' => array());
+            $palette = pg_design_palette_key($row['style_palette']);
+
+            // No palette is plain Bootstrap: not a colour the site chose.
+            if ($palette !== '') {
+                $design['palette'] = pg_image_editor_site_palette_colors(pg_image_editor_site_palette_name($palette), pg_design_palette_colors($palette));
+            }
+
+            $stored = pg_design_variables_stored((int) $row['style_id']);
+
+            if ($stored !== null) {
+                $design['variables'] = pg_image_editor_site_variable_colors($stored, pg_design_variables_defaults($row['style_look'], $palette));
+            }
+
+            $designs[] = $design;
+        }
+    }
+
+    return array(array('status' => 'success', 'colors' => pg_image_editor_site_colors_list($designs)), 200);
+}
+
+/**
+ * A palette choice's name: a built-in palette's, a palette file's, or ''
+ * when its file has gone.
+ *
+ * @return string
+ */
+function pg_image_editor_site_palette_name($palette)
+{
+    $fid = pg_design_theme_file_id($palette);
+
+    if ($fid > 0) {
+        $files = pg_design_theme_files('palette');
+
+        return isset($files[$fid]) ? (string) $files[$fid]['name'] : '';
+    }
+
+    $all = pg_design_palettes();
+
+    return isset($all[$palette]) ? (string) $all[$palette]['name'] : '';
+}
+
+/**
+ * A palette's two colours as swatches, each named after the palette.
+ *
+ * @param string $name   the palette's name
+ * @param array  $colors array('primary' => hex, 'secondary' => hex)
+ * @return array of array(color, name)
+ */
+function pg_image_editor_site_palette_colors($name, $colors)
+{
+    $out = array();
+
+    foreach (array('primary' => '{var:1}: primary colour', 'secondary' => '{var:1}: secondary colour') as $role => $label) {
+        if (isset($colors[$role])) {
+            $out[] = array('color' => strtolower((string) $colors[$role]), 'name' => lang(array('string' => $label, 'vars' => array((string) $name))));
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * A design's colour variables in their light form: the built-in ones named
+ * by their label, own when they differ from the design's default, then the
+ * designer's own colours, always own.
+ *
+ * @param array $model    a stored variables model (pg_design_variables_stored())
+ * @param array $defaults the design's defaults (pg_design_variables_defaults())
+ * @return array of array(color, name, own)
+ */
+function pg_image_editor_site_variable_colors($model, $defaults)
+{
+    $model = pg_design_variables_normalize($model, $defaults);
+    $out = array();
+
+    foreach (pg_design_variable_list() as $key => $def) {
+        if ($def['kind'] !== 'color') {
+            continue;
+        }
+
+        $light = $model['values'][$key]['light'];
+        $base = isset($defaults['values'][$key]['light']) ? strtolower((string) $defaults['values'][$key]['light']) : '';
+        $out[] = array('color' => strtolower($light), 'name' => (string) $def['label'], 'own' => (strtolower($light) !== $base));
+    }
+
+    foreach ($model['custom'] as $custom) {
+        if ($custom['kind'] === 'color') {
+            $out[] = array('color' => strtolower($custom['light']), 'name' => (string) $custom['name'], 'own' => true);
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * The row's swatches from every design: the palettes' colours first, then
+ * the variables a designer set, then the untouched ones; each colour once
+ * (#rgb written out), anything but a hex colour dropped, twelve at most.
+ *
+ * @param array $designs list of array('palette' => rows, 'variables' => rows)
+ * @param int   $max
+ * @return array of array(color, name)
+ */
+function pg_image_editor_site_colors_list($designs, $max = 12)
+{
+    $groups = array(array(), array(), array());
+
+    foreach (is_array($designs) ? $designs : array() as $design) {
+        foreach (isset($design['palette']) ? (array) $design['palette'] : array() as $row) {
+            $groups[0][] = $row;
+        }
+
+        foreach (isset($design['variables']) ? (array) $design['variables'] : array() as $row) {
+            $groups[empty($row['own']) ? 2 : 1][] = $row;
+        }
+    }
+
+    $out = array();
+    $seen = array();
+
+    foreach ($groups as $rows) {
+        foreach ($rows as $row) {
+            $hex = strtolower(trim(isset($row['color']) ? (string) $row['color'] : ''));
+
+            if (preg_match('/^#([0-9a-f])([0-9a-f])([0-9a-f])$/', $hex, $m)) {
+                $hex = '#' . $m[1] . $m[1] . $m[2] . $m[2] . $m[3] . $m[3];
+            }
+
+            if (!preg_match('/^#[0-9a-f]{6}$/', $hex) || isset($seen[$hex])) {
+                continue;
+            }
+
+            if (count($out) >= $max) {
+                return $out;
+            }
+
+            $seen[$hex] = true;
+            $name = isset($row['name']) ? trim((string) $row['name']) : '';
+            $out[] = array('color' => $hex, 'name' => ($name !== '') ? mb_substr($name, 0, 60) : $hex);
+        }
+    }
+
+    return $out;
+}
+
+// -- Text styles and font pairs (pg_image_editor_textstyles.js) --
+
+/**
+ * The Text panel's three styles and its font pairs: labels, and the words a
+ * pair writes on the board (keys named in assets/canvas/font-pairs.json).
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_textstyles()
+{
+    return array(
+        'textAddHeading'    => lang('Add a heading'),
+        'textAddSubheading' => lang('Add a subheading'),
+        'textAddBody'       => lang('Add body text'),
+        'fontPairs'         => lang('Font pairs'),
+        'fontPairsError'    => lang('The font pairs could not be loaded.'),
+        'fontPairClassicHead' => lang('Grand opening'),
+        'fontPairClassicLine' => lang('Join us this Saturday at ten'),
+        'fontPairModernHead' => lang('New collection'),
+        'fontPairModernLine' => lang('Designed for every day'),
+        'fontPairBoldHead' => lang('Big summer sale'),
+        'fontPairBoldLine' => lang('Up to half off, this week only'),
+        'fontPairElegantHead' => lang('Save the date'),
+        'fontPairElegantLine' => lang('We are getting married'),
+        'fontPairFriendlyHead' => lang('Hello there'),
+        'fontPairFriendlyLine' => lang('Fresh coffee every morning'),
+        'fontPairEditorialHead' => lang('The weekly letter'),
+        'fontPairEditorialLine' => lang('Stories worth your time'),
+        'fontPairStrongHead' => lang('Workshop'),
+        'fontPairStrongLine' => lang('Learn, make and share in one day'),
+        'fontPairStoryHead' => lang('Our story'),
+        'fontPairStoryLine' => lang('Made by hand since 1998'),
+        'fontPairLaunchHead' => lang('Launch day'),
+        'fontPairLaunchLine' => lang('Version two is here'),
+        'fontPairMenuHead' => lang('Weekend menu'),
+        'fontPairMenuLine' => lang('Seasonal dishes, made fresh'),
+        'fontPairPosterHead' => lang('Live music'),
+        'fontPairPosterLine' => lang('Friday night, doors open at eight'),
+        'fontPairThanksHead' => lang('Thank you'),
+        'fontPairThanksLine' => lang('For being part of our day'),
+    );
+}
+
+/**
+ * The font pairs file of the Text panel; the address carries the file's time
+ * so a changed file is fetched again.
+ *
+ * @return string address
+ */
+function pg_image_editor_font_pairs_url()
+{
+    return OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/canvas/font-pairs.json?v=' . (int) @filemtime(PG_FUNCTIONS_DIR . '/assets/canvas/font-pairs.json');
+}
+
+// -- Element sets (pg_image_editor_elements.js) --
+
+/**
+ * The Sticker tool's element sets: the section, its chips, the colour and
+ * width of a placed element, and each element's name (keys named in
+ * assets/canvas/elements.json).
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_elements()
+{
+    return array(
+        'elements'               => lang('Elements'),
+        'elementsError'          => lang('The elements could not be loaded.'),
+        'elementColor'           => lang('Color'),
+        'elementWidth'           => lang('Width'),
+        'elementSet_lines'       => lang('Lines'),
+        'elementSet_badges'      => lang('Badges'),
+        'elementSet_ribbons'     => lang('Ribbons'),
+        'elementSet_blobs'       => lang('Blobs'),
+        'elementSet_arrows'      => lang('Arrows'),
+        'elementSet_speech'      => lang('Speech'),
+        'elementSet_ornaments'   => lang('Ornaments'),
+        'elementLineStraight' => lang('Straight line'),
+        'elementLineDashed' => lang('Dashed line'),
+        'elementLineDotted' => lang('Dotted line'),
+        'elementLineWave' => lang('Wavy line'),
+        'elementLineZigzag' => lang('Zigzag line'),
+        'elementLineDouble' => lang('Double line'),
+        'elementBadgeCircle' => lang('Circle badge'),
+        'elementBadgeSeal' => lang('Seal'),
+        'elementBadgeBurst' => lang('Starburst'),
+        'elementBadgeShield' => lang('Shield'),
+        'elementBadgeHexagon' => lang('Hexagon badge'),
+        'elementBadgeRosette' => lang('Rosette'),
+        'elementRibbonBanner' => lang('Banner'),
+        'elementRibbonFolded' => lang('Folded ribbon'),
+        'elementRibbonCorner' => lang('Corner ribbon'),
+        'elementRibbonTag' => lang('Tag ribbon'),
+        'elementRibbonBookmark' => lang('Bookmark'),
+        'elementBlob1' => lang('Blob 1'),
+        'elementBlob2' => lang('Blob 2'),
+        'elementBlob3' => lang('Blob 3'),
+        'elementBlob4' => lang('Blob 4'),
+        'elementBlob5' => lang('Blob 5'),
+        'elementBlob6' => lang('Blob 6'),
+        'elementArrowStraight' => lang('Straight arrow'),
+        'elementArrowDouble' => lang('Double arrow'),
+        'elementArrowCurved' => lang('Curved arrow'),
+        'elementArrowBent' => lang('Bent arrow'),
+        'elementArrowLoop' => lang('Looped arrow'),
+        'elementArrowSquiggle' => lang('Squiggly arrow'),
+        'elementSpeechRound' => lang('Rounded speech bubble'),
+        'elementSpeechOval' => lang('Oval speech bubble'),
+        'elementSpeechThought' => lang('Thought bubble'),
+        'elementSpeechShout' => lang('Shout bubble'),
+        'elementSpeechSquare' => lang('Square speech bubble'),
+        'elementOrnamentCorner' => lang('Corner ornament'),
+        'elementOrnamentDivider' => lang('Diamond divider'),
+        'elementOrnamentFlourish' => lang('Flourish'),
+        'elementOrnamentBracket' => lang('Curly bracket'),
+        'elementOrnamentSparkle' => lang('Sparkle'),
+        'elementOrnamentAsterisk' => lang('Eight-pointed star'),
+    );
+}
+
+/**
+ * The element sets file of the Sticker tool; the address carries the file's
+ * time so a changed file is fetched again.
+ *
+ * @return string address
+ */
+function pg_image_editor_elements_url()
+{
+    return OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/canvas/elements.json?v=' . (int) @filemtime(PG_FUNCTIONS_DIR . '/assets/canvas/elements.json');
+}
+
+// -- Start from a design (pg_image_editor_starts.js) --
+
+/**
+ * The New image dialog's "Start from a design": the row, its purpose chips,
+ * the "Your picture" box, each design's name and the words its texts write
+ * on the board (keys named in assets/canvas/designs.json and the files of
+ * assets/canvas/designs/).
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_starts()
+{
+    return array(
+        'startRow'                => lang('Start from a design'),
+        'startBlank'              => lang('Blank'),
+        'startLoading'            => lang('Loading designs…'),
+        'startError'              => lang('The designs could not be loaded.'),
+        'startNone'               => lang('No design for this purpose yet.'),
+        'startPurpose_all'        => lang('All'),
+        'startPurpose_post'       => lang('Post'),
+        'startPurpose_story'      => lang('Story'),
+        'startPurpose_banner'     => lang('Banner'),
+        'startPurpose_announcement' => lang('Announcement'),
+        'startPurpose_sale'       => lang('Sale'),
+        'startPurpose_event'      => lang('Event'),
+        'startPurpose_quote'      => lang('Quote'),
+        'startPurpose_invitation' => lang('Invitation'),
+        'startPicture'            => lang('Your picture'),
+        'startPictureChoose'      => lang('Choose a picture'),
+        'startPictureNote'        => lang('A picture from Files fills the box, cut to its shape.'),
+        'startPictureHint'        => lang('Pick a picture for the box "Your picture".'),
+        'startPictureError'       => lang('The picture could not be placed in the box.'),
+        'startDesignSale'         => lang('Weekend sale'),
+        'startDesignEvent'        => lang('Music night'),
+        'startDesignQuote'        => lang('Quote card'),
+        'startDesignStory'        => lang('New arrivals story'),
+        'startDesignBanner'       => lang('Shop banner'),
+        'startDesignInvite'       => lang('Garden party invitation'),
+        'startDesignPostCoffee'   => lang('Coffee of the week'),
+        'startDesignPostTips'     => lang('Three tips'),
+        'startDesignPostTeam'     => lang('Meet the team'),
+        'startDesignStoryDay'     => lang('Behind the scenes'),
+        'startDesignStoryOffer'   => lang('Today\'s offer'),
+        'startDesignStoryTips'    => lang('Quick tips story'),
+        'startDesignBannerSale'   => lang('Season sale banner'),
+        'startDesignBannerNews'   => lang('Newsletter banner'),
+        'startDesignBannerSpring' => lang('New collection banner'),
+        'startDesignAnnounceOpen' => lang('We are open'),
+        'startDesignAnnounceHours' => lang('New opening hours'),
+        'startDesignAnnounceNews' => lang('Big news'),
+        'startDesignSaleFlash'    => lang('Flash sale story'),
+        'startDesignSaleDrop'     => lang('Price drop'),
+        'startDesignSaleCoupon'   => lang('Coupon card'),
+        'startDesignEventWorkshop' => lang('Workshop'),
+        'startDesignEventWebinar' => lang('Webinar banner'),
+        'startDesignEventOpenDay' => lang('Open day'),
+        'startDesignQuoteSquare'  => lang('Quote square'),
+        'startDesignQuotePicture' => lang('Quote with a picture'),
+        'startDesignQuoteStory'   => lang('Quote story'),
+        'startDesignInviteBirthday' => lang('Birthday invitation'),
+        'startDesignInviteDate'   => lang('Save the date'),
+        'startDesignInviteOpening' => lang('Opening invitation'),
+        'startSaleHead'           => lang('Big sale'),
+        'startSaleOff'            => lang('Up to half off'),
+        'startSaleWhen'           => lang('This weekend only'),
+        'startSaleShop'           => lang('Shop now'),
+        'startEventHead'          => lang('Live music night'),
+        'startEventWhen'          => lang('Friday at eight'),
+        'startEventNote'          => lang('Doors open at seven, free entry'),
+        'startEventBook'          => lang('Book your seat'),
+        'startQuoteLine1'         => lang('Small steps every day'),
+        'startQuoteLine2'         => lang('lead to big changes.'),
+        'startQuoteAuthor'        => lang('Your name'),
+        'startStoryHead'          => lang('New arrivals'),
+        'startStoryLine'          => lang('Fresh picks for the season'),
+        'startStorySwipe'         => lang('Swipe up'),
+        'startBannerHead'         => lang('Welcome to our shop'),
+        'startBannerLine'         => lang('Quality products, friendly service'),
+        'startBannerVisit'        => lang('Visit us'),
+        'startInviteHead'         => lang('You are invited'),
+        'startInviteWhat'         => lang('To our garden party'),
+        'startInviteWhen'         => lang('Saturday afternoon at four'),
+        'startInviteReply'        => lang('Please reply by the end of May'),
+        'startPostCoffeeHead'     => lang('Fresh from the roaster'),
+        'startPostCoffeeLine'     => lang('Smooth, nutty and ready for your morning'),
+        'startPostCoffeeTry'      => lang('Try it today'),
+        'startPostTipsHead'       => lang('Three quick tips'),
+        'startPostTipsOne'        => lang('Plan your week on Sunday'),
+        'startPostTipsTwo'        => lang('Drink water before coffee'),
+        'startPostTipsThree'      => lang('Take a short walk after lunch'),
+        'startPostTeamSmall'      => lang('Meet the team'),
+        'startPostTeamHead'       => lang('Our new colleague'),
+        'startPostTeamLine'       => lang('Glad to have you with us'),
+        'startPostTeamName'       => lang('Name and role'),
+        'startStoryDaySmall'      => lang('Behind the scenes'),
+        'startStoryDayHead'       => lang('A day at our studio'),
+        'startStoryDayLine'       => lang('See how your order is made'),
+        'startStoryOfferSmall'    => lang('Today only'),
+        'startStoryOfferHead'     => lang('Buy one, get one free'),
+        'startStoryOfferLine'     => lang('Show this story at the till'),
+        'startStoryOfferOrder'    => lang('Order now'),
+        'startStoryTipsHead'      => lang('Did you know?'),
+        'startStoryTipsLine'      => lang('Three things our customers love'),
+        'startStoryTipsOne'       => lang('Free delivery on every order'),
+        'startStoryTipsTwo'       => lang('Returns within 30 days'),
+        'startStoryTipsThree'     => lang('Friendly help every day'),
+        'startStoryTipsMore'      => lang('Swipe up to learn more'),
+        'startBannerSaleSmall'    => lang('End of season'),
+        'startBannerSaleHead'     => lang('Final reductions'),
+        'startBannerSaleLine'     => lang('On every item in store and online'),
+        'startShopSale'           => lang('Shop the sale'),
+        'startBannerNewsHead'     => lang('Join our newsletter'),
+        'startBannerNewsLine'     => lang('News, offers and ideas once a month'),
+        'startSignUp'             => lang('Sign up'),
+        'startBannerSpringSmall'  => lang('New collection'),
+        'startBannerSpringHead'   => lang('Made for spring'),
+        'startBannerSpringLine'   => lang('Light colours, soft fabrics'),
+        'startAnnounceSmall'      => lang('Announcement'),
+        'startAnnounceOpenHead'   => lang('We are open'),
+        'startAnnounceOpenLine'   => lang('Come and say hello from Monday'),
+        'startAnnounceOpenWhere'  => lang('Your address here'),
+        'startAnnounceHoursHead'  => lang('New opening hours'),
+        'startAnnounceHoursLine'  => lang('From the first of the month'),
+        'startHoursWeek'          => lang('Monday to Friday'),
+        'startHoursWeekTime'      => lang('9:00 – 19:00'),
+        'startHoursSat'           => lang('Saturday'),
+        'startHoursSatTime'       => lang('10:00 – 16:00'),
+        'startHoursSun'           => lang('Sunday'),
+        'startHoursSunTime'       => lang('Closed'),
+        'startHoursBye'           => lang('See you soon'),
+        'startAnnounceNewsHead'   => lang('Big news'),
+        'startAnnounceNewsLine'   => lang('We are moving to a bigger place'),
+        'startAnnounceNewsSoon'   => lang('More details coming soon'),
+        'startSaleFlashHead'      => lang('Flash sale'),
+        'startSaleFlashWhen'      => lang('48 hours only'),
+        'startSaleFlashBig'       => lang('Big savings'),
+        'startSaleDropHead'       => lang('Price drop'),
+        'startSaleDropLine'       => lang('New prices on our best sellers'),
+        'startSaleDropWhen'       => lang('Until the end of the month'),
+        'startSaleDropNow'        => lang('Now'),
+        'startSaleCouponSmall'    => lang('Your coupon'),
+        'startSaleCouponHead'     => lang('A gift for your next order'),
+        'startSaleCouponLine'     => lang('Use the code at checkout'),
+        'startSaleCouponCode'     => lang('Your code'),
+        'startEventShopSmall'     => lang('Free workshop'),
+        'startEventShopHead'      => lang('Learn to bake bread'),
+        'startEventShopWhen'      => lang('Saturday, ten in the morning'),
+        'startEventShopNote'      => lang('Places are limited'),
+        'startEventWebSmall'      => lang('Online webinar'),
+        'startEventWebHead'       => lang('Grow your small business'),
+        'startEventWebWhen'       => lang('Thursday at six, online and free'),
+        'startEventWebBook'       => lang('Save your place'),
+        'startEventDayHead'       => lang('Open day'),
+        'startEventDayLine'       => lang('Come and visit us'),
+        'startEventDayWhen'       => lang('Sunday from noon'),
+        'startEventDayNote'       => lang('Snacks and music for all'),
+        'startQuoteSqLine1'       => lang('Do what you love,'),
+        'startQuoteSqLine2'       => lang('love what you do.'),
+        'startQuotePicLine1'      => lang('The best things in life'),
+        'startQuotePicLine2'      => lang('are the simple ones.'),
+        'startQuoteStorySmall'    => lang('Thought of the day'),
+        'startQuoteStoryLine1'    => lang('Every day is'),
+        'startQuoteStoryLine2'    => lang('a fresh start.'),
+        'startInviteBdSmall'      => lang('Join us for'),
+        'startInviteBdHead'       => lang('A birthday party'),
+        'startInviteBdWhen'       => lang('Saturday at three in the afternoon'),
+        'startInviteBdWhere'      => lang('At our home'),
+        'startInviteBdReply'      => lang('Please reply'),
+        'startInviteDateHead'     => lang('Save the date'),
+        'startInviteDateWhat'     => lang('Our wedding'),
+        'startInviteDateWhen'     => lang('The twelfth of June'),
+        'startInviteDateNote'     => lang('Invitation to follow'),
+        'startInviteOpenSmall'    => lang('You are invited to'),
+        'startInviteOpenHead'     => lang('Our grand opening'),
+        'startInviteOpenWhen'     => lang('Friday evening at seven'),
+        'startInviteOpenNote'     => lang('Drinks and music'),
+    );
+}
+
+/**
+ * Where "Start from a design" reads its designs: the index, and the folder
+ * of the design files (each <id>.json); the addresses carry the index's time
+ * so changed files are fetched again.
+ *
+ * @return array index, base and v
+ */
+function pg_image_editor_starts_urls()
+{
+    $dir = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/canvas/';
+    $v = (int) @filemtime(PG_FUNCTIONS_DIR . '/assets/canvas/designs.json');
+
+    return array('index' => $dir . 'designs.json?v=' . $v, 'base' => $dir . 'designs/', 'v' => $v);
+}
+
+// -- Resize to other sizes (pg_image_editor_resize.js) --
+
+/**
+ * The Canvas tool's "Resize to other sizes": the button, its list of sizes,
+ * the line saying what was made and the texts that came out too small.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_resize()
+{
+    return array(
+        'resizeOpen'     => lang('Resize to other sizes'),
+        'resizeCustom'   => lang('Custom size'),
+        'resizeNote'     => lang('Each size is saved as a new canvas in Files, its layers placed and scaled to fit it.'),
+        'resizeMake'     => lang('Make {n} sizes'),
+        'resizeMakeOne'  => lang('Make 1 size'),
+        'resizeEmpty'    => lang('Tick at least one size.'),
+        'resizeMaking'   => lang('Making {done} of {n} sizes…'),
+        'resizeMade'     => lang('{n} sizes made in Files.'),
+        'resizeMadeOne'  => lang('1 size made in Files.'),
+        'resizeStopped'  => lang('{done} of {n} sizes were made.'),
+        'resizeSmall'    => lang('Text smaller than {floor} px: {list}'),
+        'resizeShow'     => lang('Show'),
+        'resizeNoFiles'  => lang('Save this canvas in Files to make other sizes.'),
+    );
+}
+
+// -- Photo frames (pg_image_editor_frames.js) --
+
+/**
+ * The photo frames: the Frames chip among the elements, the shapes' names,
+ * an empty frame's words, a frame's panel and the photo's moving inside it.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_frames()
+{
+    return array(
+        'elementSet_frames' => lang('Frames'),
+        'frameCircle'       => lang('Circle'),
+        'frameRounded'      => lang('Rounded square'),
+        'frameArch'         => lang('Arch'),
+        'frameBlob'         => lang('Blob'),
+        'framePicture'      => lang('Your picture'),
+        'frameNote'         => lang('Drop a picture on the frame, or choose one from Files.'),
+        'frameChoose'       => lang('Choose a picture'),
+        'frameReplace'      => lang('Replace picture'),
+        'frameMove'         => lang('Move the photo'),
+        'frameMoving'       => lang('Drag to move the photo inside its frame. Press Escape or outside the frame to finish.'),
+        'frameDone'         => lang('Done'),
+        'frameZoom'         => lang('Zoom'),
+        'frameRemove'       => lang('Remove picture'),
+        'frameError'        => lang('The picture could not be put in the frame.'),
+        'frameFor'          => lang('Pick a picture to fill the frame.'),
+    );
+}
+
+// -- From Unsplash (pg_image_editor_unsplash.js) --
+
+/**
+ * Import's From Unsplash: the item, the credit line of a picture layer's
+ * panel and the refusal.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_unsplash()
+{
+    return array(
+        'unsplashImport' => lang('From Unsplash'),
+        'unsplashCredit' => lang('Photo by {var:1} on Unsplash'),
+        'unsplashError'  => lang('The photo could not be placed.'),
+    );
+}
+
+/**
+ * What the canvas needs to open the Unsplash dialog the rich text editor
+ * has (pgUnsplash in pg_editor_bridge.min.js): the site's access key, the
+ * bundle's addresses and the dialog's words. The access key is the public
+ * client id Unsplash's API takes from a browser, as the editor's bridge
+ * hands it out (pg_editor_bridge_script()). Pure but for lang() and the
+ * bundle's addresses.
+ *
+ * @param string $key the site's Unsplash access key
+ * @return array|null null without a key
+ */
+function pg_image_editor_unsplash_config($key)
+{
+    $key = trim((string) $key);
+
+    if ($key === '') {
+        return null;
+    }
+
+    return array(
+        'key'     => $key,
+        'scripts' => pg_js_bundle_urls('assets/js/pg_editor_bridge.min.js'),
+        'texts'   => pg_editor_bridge_texts(),
+    );
 }

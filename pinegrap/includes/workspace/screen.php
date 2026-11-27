@@ -1119,7 +1119,7 @@ function ws_screen_config($viewer, $mode, $extra = array())
         // on first use (includes/fn/office.php).
         'office'       => function_exists('pg_office_view_includes') ? array(
             'script'  => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_office_view.js?v=' . (int) @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_office_view.js'),
-            'strings' => pg_office_view_strings(),
+            'strings' => pg_office_view_strings() + pg_office_format_view_strings(),
         ) : null,
         'strings'      => $strings,
         'recurrence'   => function_exists('ws_recurrence_js_config') ? ws_recurrence_js_config() : array('ready' => false),

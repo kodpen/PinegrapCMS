@@ -17,6 +17,11 @@ description: The first tour's pure model (window.PGDesignerTour, FT1): stops and
 - The caller passes `has(selector)` (is it on the screen now). A stop uses its first selector found; with none it is skipped.
 - `first(list, has)`, then `move(list, at, dir, has)` at each Next (1) and Back (-1), asked again at every step so a control gone since the tour began is skipped too. Next past the last: `null`, the tour is over. Back before the first stays on the current stop.
 
+## What else does it answer?
+- `visible(box, clips, W, H)`: the part of a control in sight, cut by the window and by its ancestors that cut their overflow (inner first, `scroll` when the ancestor scrolls), and whether a scroll brings it in: true only when a scrolling ancestor cuts it and is itself in sight. A closed docked panel, moved out of the window, is not in sight.
+- `escapes(busy)`: Escape is the tour's unless `busy` has `dialog`, `menu` or `typing`. A listbox is no menu: many stay drawn in the panels.
+- The part's own behaviour is tested in Node on a stand-in page by `tests/designer_tour_part_test.php`.
+
 ## Where is what was seen kept?
 - In the browser, per person, as the panel keeps its lists' choices (`commerce/orders-list-figure-strip.md`): localStorage `key(userId)` = `pg.designer.<user id>.tour` (`sdDesign.userId`). No table or column (the plan says so).
 - `read(raw)` / `write(state)`: `{ v: 1, offered, seen: { full, content }, tips: { <name>: true }, tipsOff }`; anything unreadable is a first visit; only `true` values and tip names of `[a-z0-9_-]{1,40}` are read.

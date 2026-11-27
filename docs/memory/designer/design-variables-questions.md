@@ -12,10 +12,13 @@ module: design_variables
 ## How does the New design window ask them?
 - `designer_home.js`: the filled button of a start whose checked framework radio is `bootstrap5` (Blank, ZIP file, Pasted markup) loads the file and the data, hides the pane's form, Cancel and the button, and draws the questions with Back, Skip, Next ("Create design" on the fifth) in the foot. Back on question 1, choosing another start or closing the window restores the form. A Custom design or a template is not asked.
 - The answers ride on the address as `&answers=<JSON>`, only when one was answered. `add_system_style.php` calls `pg_design_variables_start()`: the feel becomes the look; any other answer gives a model and its stylesheet, put in the hidden `style_variables` input (the first save writes the file) and tried on the canvas at once (`sdDesign.themes.variablesTry`, taken once by `_sdThemeAssets()`).
+- `designer_screen.php` reads `start_variables` through `pg_design_variables_start_editor()`; until #11835 nothing read it and the answers (and a Figma import's variables) were lost.
 
 ## How does "Ask me again" work?
 - The Variables tab row has a quiet "More" (`<details>`), its one row "Ask me again" (`_sdVarsAskAgain()` in the core). The part draws in the tab's pane with Cancel, Skip and Next ("Use these answers"); no filled button.
 - The answers go to `variables_state` with `answers` and the look the feel chose; the model is set before the look changes (`_sdThemeChoose()`), so the tab's own follow-up reads the new model. Cancel redraws the folds unchanged.
+- The part registers with the bare global `StyleDesigner` (the core's top-level `const`, never a `window` property); until #11835 it looked for `window.StyleDesigner`, never registered, and the row said "could not be loaded".
+- Keyboard: a radio group is one tab stop, arrows choose, a choice keeps the focus (#11835).
 
 ## What do the answers change?
 - `pg_design_variables_from_answers($model, $answers, $defaults)`: the four groups go back to the defaults, then brand (light = dark), second colour (picked, or `pg_design_variables_companion()`: hue +40 degrees, saturation 35-85 %, lightness 30-55 %), the type feel's fonts, heading weight and base size, the room's base unit and section rhythm. Own variables stay. Shape follows the look.

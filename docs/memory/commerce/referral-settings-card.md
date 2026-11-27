@@ -6,7 +6,7 @@ module: referral
 
 ## Where is the card?
 - Settings › Ecommerce, card `pgset-referral` "Referral programme" after Affiliate Program (`registry.php` section and keywords; no legacy anchor, it is a new card). Markup in `includes/settings/commerce.php`, values in `prep.php` (`pg_referral_settings_for_input()`, `pg_referral_ready()`), the save in `commerce.save.php`.
-- Rows: the switch "Turn on the referral programme" with its note, "Offer for the friend" (`select_offer()`, none allowed), "Reward" and "Smallest order that counts" (amounts in the base currency), "Reward lasts" (days, blank never expires), "Rewards a month per customer" (blank no limit). Every row is always drawn; a note says when Ecommerce is off or the 11.0.245 step has not run.
+- Rows: the switch "Turn on the referral programme" with its note, "Offer for the friend" (`select_offer()`, none allowed), "Reward" and "Smallest order that counts" (amounts in the base currency), "Reward lasts" (days, blank never expires), "Rewards a month per customer" (blank no limit). Every row is always drawn, the friend's and the customer's in their own groups (`ui/settings-ecommerce-programmes-feeds.md`); a note says when Ecommerce is off or the 11.0.245 step has not run.
 
 ## What does the save write?
 - The six `config_text` rows RF1's `pg_referral_settings()` reads (`referral-rules.md`): `referral_on` ('1' or ''), `referral_offer_id`, `referral_reward` and `referral_smallest` in minor units (`round()`), `referral_reward_days`, `referral_month_cap`; 0 is stored as ''. Off keeps the other values, so turning it on again finds them (E3: off changes nothing).

@@ -1866,6 +1866,25 @@
         return (l.italic ? 'italic ' : '') + w + ' ' + textRound(Math.max(0.5, Number(l.size) || 1)) + 'px ' + textFamily(l.font);
     }
 
+    // The letters of a text a face was not asked for yet, each once, in
+    // the text's order: document.fonts.load() loads only the parts of a
+    // font (Latin, digits, Cyrillic) the letters it is given need.
+    function textFontLetters(asked, text) {
+        var seen = {}, out = '';
+
+        Array.from(String(asked || '')).forEach(function (c) {
+            seen[c] = true;
+        });
+        Array.from(String(text || '')).forEach(function (c) {
+            if (!seen[c]) {
+                seen[c] = true;
+                out += c;
+            }
+        });
+
+        return out;
+    }
+
     function textRound(n) {
         return Math.round(n * 100) / 100;
     }
@@ -1973,7 +1992,7 @@
 
     var TEXT = {
         TEXT_FONTS: TEXT_FONTS, TEXT_WEIGHTS: TEXT_WEIGHTS, textDefaults: textDefaults, textFamilyName: textFamilyName,
-        textFamily: textFamily, textFont: textFont, textLayout: textLayout, textFit: textFit, textResize: textResize,
+        textFamily: textFamily, textFont: textFont, textFontLetters: textFontLetters, textLayout: textLayout, textFit: textFit, textResize: textResize,
         textEffects: textEffects
     };
 
@@ -2686,8 +2705,14 @@
     // fit the source's box (w0 x h0): never grown, never under the floor of
     // the source's size on the picture's shorter side (languageFloor());
     // mark when it still does not fit there.
-    function languageFit(w0, h0, w1, h1, size, side) {
+    // With a room (roomW x roomH, languageRoom() less what the layout and
+    // the box differ by) the text first grows into it: it shrinks only past
+    // the room, never under the old rule's size, as the room holds the box.
+    function languageFit(w0, h0, w1, h1, size, side, roomW, roomH) {
         var scale = 1, floor = languageFloor(size, side);
+
+        w0 = Math.max(Number(w0) || 0, Number(roomW) || 0);
+        h0 = Math.max(Number(h0) || 0, Number(roomH) || 0);
 
         if ((w0 > 0) && (w1 > w0)) {
             scale = Math.min(scale, w0 / w1);
@@ -2704,17 +2729,771 @@
         return { scale: Math.round(scale * 10000) / 10000, mark: false };
     }
 
+    // A line of more words than this is not broken (the balanced break
+    // measures every run of its words).
+    var LANGUAGE_WRAP_WORDS = 40;
+
+    // The balanced breaks of a line's words (measure: a string's width):
+    // best[k][j] the narrowest widest line of the first j words in k lines,
+    // from[k][j] where its last line starts. Of two breaks as narrow the
+    // later is kept, so the last line is the shorter.
+    function wrapTable(words, measure) {
+        var n = words.length, seen = {}, best = [null, []], from = [null, []];
+        var seg = function (i, j) {
+            var key = i + ':' + j;
+
+            if (!seen.hasOwnProperty(key)) {
+                seen[key] = Number(measure(words.slice(i, j).join(' '))) || 0;
+            }
+
+            return seen[key];
+        };
+
+        for (var j = 1; j <= n; j++) {
+            best[1][j] = seg(0, j);
+            from[1][j] = 0;
+        }
+
+        for (var k = 2; k <= n; k++) {
+            best[k] = [];
+            from[k] = [];
+
+            for (j = k; j <= n; j++) {
+                for (var i = k - 1; i < j; i++) {
+                    var v = Math.max(best[k - 1][i], seg(i, j));
+
+                    if ((best[k][j] === undefined) || (v <= best[k][j])) {
+                        best[k][j] = v;
+                        from[k][j] = i;
+                    }
+                }
+            }
+        }
+
+        return { n: n, best: best, from: from, words: words };
+    }
+
+    // The words of a line in k lines, as the table broke them.
+    function wrapLines(t, k) {
+        var out = [], j = t.n;
+
+        for (; k >= 1; k--) {
+            out.unshift(t.words.slice(t.from[k][j], j).join(' '));
+            j = t.from[k][j];
+        }
+
+        return out.join('\n');
+    }
+
+    // A line's words, null when it is not broken (one word, or too many).
+    function wrapWords(line) {
+        var words = line.split(' ').filter(function (w) { return w !== ''; });
+
+        return ((words.length < 2) || (words.length > LANGUAGE_WRAP_WORDS)) ? null : words;
+    }
+
+    // A translated text wrapped to max (measure: a string's width): each
+    // of its own lines wider than max is broken between words into the
+    // fewest lines that fit, balanced (the narrowest widest line); a word
+    // is never broken, so a word wider than max sets the width instead.
+    // tables: a cache of wrapTable() by line. Twin of
+    // pg_picture_tr_language_wrap().
+    function languageWrap(text, max, measure, tables) {
+        tables = tables || {};
+
+        return String(text).split('\n').map(function (line) {
+            var words = wrapWords(line);
+
+            if (!words || ((Number(measure(line)) || 0) <= max + 1e-9)) {
+                return line;
+            }
+
+            var t = tables.hasOwnProperty('=' + line) ? tables['=' + line] : (tables['=' + line] = wrapTable(words, measure));
+            // Every word on a line of its own: the widest word.
+            var limit = Math.max(max, t.best[t.n][t.n]);
+
+            for (var k = 1; k < t.n; k++) {
+                if (t.best[k][t.n] <= limit + 1e-9) {
+                    return wrapLines(t, k);
+                }
+            }
+
+            return wrapLines(t, t.n);
+        }).join('\n');
+    }
+
+    // The wraps a translated text may be drawn in, the text as it is
+    // first: its widest own line balanced in 2, 3 ... lines, each width
+    // the whole text wrapped to by languageWrap(); each wrap once. Twin of
+    // pg_picture_tr_language_wraps().
+    function languageWraps(text, measure) {
+        var out = [String(text)], tables = {}, widest = null, width = -1;
+
+        String(text).split('\n').forEach(function (line) {
+            var w = Number(measure(line)) || 0;
+
+            if (w > width) {
+                width = w;
+                widest = line;
+            }
+        });
+
+        var words = (widest === null) ? null : wrapWords(widest);
+
+        if (!words) {
+            return out;
+        }
+
+        var t = tables['=' + widest] = wrapTable(words, measure);
+
+        for (var k = 2; k <= t.n; k++) {
+            var next = languageWrap(text, t.best[k][t.n], measure, tables);
+
+            if (out.indexOf(next) < 0) {
+                out.push(next);
+            }
+        }
+
+        return out;
+    }
+
+    // A layer's box as numbers (x, y, w, h, rot), null without one.
+    function roomBox(l) {
+        var keys = ['x', 'y', 'w', 'h'], b = { rot: Number(l && l.rot) || 0 };
+
+        for (var i = 0; i < keys.length; i++) {
+            var v = l ? l[keys[i]] : null;
+
+            if ((typeof v !== 'number') && ((typeof v !== 'string') || (v.trim() === ''))) {
+                return null;
+            }
+
+            b[keys[i]] = Number(v);
+
+            if (!isFinite(b[keys[i]])) {
+                return null;
+            }
+        }
+
+        return ((b.w < 0) || (b.h < 0)) ? null : b;
+    }
+
+    // A box's corners turned by its angle around its middle, clockwise on
+    // the screen from the top left.
+    function roomCorners(b) {
+        var a = b.rot * Math.PI / 180, cos = Math.cos(a), sin = Math.sin(a), cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+
+        return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(function (k) {
+            var ox = k[0] * b.w / 2, oy = k[1] * b.h / 2;
+
+            return [cx + ox * cos - oy * sin, cy + ox * sin + oy * cos];
+        });
+    }
+
+    // Whether point p is inside the four corners q (on an edge counts).
+    function roomInside(q, p) {
+        for (var k = 0; k < 4; k++) {
+            var a = q[k], b = q[(k + 1) % 4], dx = b[0] - a[0], dy = b[1] - a[1], len = Math.sqrt(dx * dx + dy * dy);
+
+            if ((len > 0) && ((dx * (p[1] - a[1]) - dy * (p[0] - a[0])) / len < -1e-6)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    // The edges of the four corners q as limits of the room in the text's
+    // frame (turn: a point to that frame, cos and sin of its angle): each
+    // edge less a margin, the text's own distance to it when it leans on it
+    // (nearer than a tenth of the shorter side), else 4% of that side.
+    function roomPlanes(q, shorter, mine, turn, cos, sin, out) {
+        for (var k = 0; k < 4; k++) {
+            var a = q[k], b = q[(k + 1) % 4], dx = b[0] - a[0], dy = b[1] - a[1], len = Math.sqrt(dx * dx + dy * dy);
+
+            if (len <= 0) {
+                continue;
+            }
+
+            var nx = -dy / len, ny = dx / len, d = Infinity, p = turn(a);
+
+            mine.forEach(function (m) {
+                d = Math.min(d, (m[0] - a[0]) * nx + (m[1] - a[1]) * ny);
+            });
+
+            out.push({ px: p[0], py: p[1], nx: nx * cos + ny * sin, ny: -nx * sin + ny * cos, m: (d < shorter / 10) ? d : 0.04 * shorter });
+        }
+    }
+
+    // How far a side of the room may go (axis 0 across, 1 upright; up: the
+    // right or the bottom side) inside the limits, its two corners at ends
+    // on the other axis.
+    function roomLimit(planes, axis, up, ends) {
+        var v = up ? Infinity : -Infinity;
+
+        planes.forEach(function (p) {
+            var k = axis ? p.ny : p.nx;
+
+            if (up ? (k >= -1e-9) : (k <= 1e-9)) {
+                return;
+            }
+
+            ends.forEach(function (o) {
+                var lim = (axis ? p.py : p.px) + (p.m - (axis ? (o - p.px) * p.nx : (o - p.py) * p.ny)) / k;
+
+                v = up ? Math.min(v, lim) : Math.max(v, lim);
+            });
+        });
+
+        return v;
+    }
+
+    // A side's limit from the layers beside the text on one axis (blocks in
+    // the text's frame): a layer in the way less a gap, the smaller of the
+    // text's distance to it and half its size; toward another text the
+    // middle between the two, less half that gap.
+    function roomBlocks(blocks, axis, lo, hi, from, to, gap, room) {
+        var a0 = axis ? 'y0' : 'x0', a1 = axis ? 'y1' : 'x1', o0 = axis ? 'x0' : 'y0', o1 = axis ? 'x1' : 'y1';
+
+        blocks.forEach(function (b) {
+            if ((b[o0] >= hi - 1e-6) || (b[o1] <= lo + 1e-6)) {
+                return;
+            }
+
+            var g;
+
+            if (b[a0] >= to - 1e-6) {
+                g = Math.max(0, Math.min(b[a0] - to, gap));
+                room[1] = Math.min(room[1], b.text ? (to + b[a0]) / 2 - g / 2 : b[a0] - g);
+            } else if (b[a1] <= from + 1e-6) {
+                g = Math.max(0, Math.min(from - b[a1], gap));
+                room[0] = Math.max(room[0], b.text ? (from + b[a1]) / 2 + g / 2 : b[a1] + g);
+            }
+        });
+    }
+
+    // A translated text's room: the rectangle it may use, in its own frame
+    // (x, y, w, h as the layer's box before its angle). It starts as the
+    // text's box and goes out, first across then upright, to the first
+    // thing in its way: the picture's edge (board: w, h) less a margin, a
+    // card under the text that holds it (smaller than the picture) less the
+    // same margin, a layer beside it less a gap, the middle toward another
+    // text. A hidden layer, one that covers the whole picture under the text
+    // and one above that covers the text are not read. Null where it cannot
+    // be read (no picture size, no box): the old rule's box stays.
+    function languageRoom(doc, id, board) {
+        var W = Number(board && board.w) || 0, H = Number(board && board.h) || 0;
+        var layers = (doc && Array.isArray(doc.layers)) ? doc.layers : [], at = -1;
+
+        layers.forEach(function (l, i) {
+            if ((at < 0) && l && (l.type === 'text') && (String(l.id) === String(id))) {
+                at = i;
+            }
+        });
+
+        var s = (at >= 0) ? roomBox(layers[at]) : null;
+
+        if ((W <= 0) || (H <= 0) || !s || (s.w <= 0) || (s.h <= 0)) {
+            return null;
+        }
+
+        var a = s.rot * Math.PI / 180, cos = Math.cos(a), sin = Math.sin(a), cx = s.x + s.w / 2, cy = s.y + s.h / 2;
+        var gap = Math.max(0, Number(layers[at].size) || 0) / 2, mine = roomCorners(s), picture = [[0, 0], [W, 0], [W, H], [0, H]];
+        var planes = [], blocks = [];
+        var turn = function (p) {
+            var dx = p[0] - cx, dy = p[1] - cy;
+
+            return [cx + dx * cos + dy * sin, cy - dx * sin + dy * cos];
+        };
+
+        roomPlanes(picture, Math.min(W, H), mine, turn, cos, sin, planes);
+
+        layers.forEach(function (l, i) {
+            var b = (i === at) ? null : roomBox(l);
+
+            if (!b || l.hidden || ((l.opacity !== undefined) && (l.opacity !== null) && (Number(l.opacity) <= 0))) {
+                return;
+            }
+
+            var q = roomCorners(b), xs = [], ys = [];
+
+            if (mine.every(function (p) { return roomInside(q, p); })) {
+                if ((i < at) && !picture.every(function (p) { return roomInside(q, p); })) {
+                    roomPlanes(q, Math.min(b.w, b.h), mine, turn, cos, sin, planes);
+                }
+
+                return;
+            }
+
+            q.forEach(function (p) {
+                p = turn(p);
+                xs.push(p[0]);
+                ys.push(p[1]);
+            });
+
+            blocks.push({
+                x0: Math.min.apply(null, xs), x1: Math.max.apply(null, xs), y0: Math.min.apply(null, ys), y1: Math.max.apply(null, ys),
+                text: l.type === 'text'
+            });
+        });
+
+        var x0 = s.x, x1 = s.x + s.w, y0 = s.y, y1 = s.y + s.h;
+        var across = [roomLimit(planes, 0, false, [y0, y1]), roomLimit(planes, 0, true, [y0, y1])];
+
+        roomBlocks(blocks, 0, y0, y1, x0, x1, gap, across);
+        across = [Math.min(across[0], x0), Math.max(across[1], x1)];
+
+        var upright = [roomLimit(planes, 1, false, across), roomLimit(planes, 1, true, across)];
+
+        roomBlocks(blocks, 1, across[0], across[1], y0, y1, gap, upright);
+        upright = [Math.min(upright[0], y0), Math.max(upright[1], y1)];
+
+        var r2 = function (n) { return Math.round(n * 100) / 100; };
+
+        return { x: r2(across[0]), y: r2(upright[0]), w: r2(across[1] - across[0]), h: r2(upright[1] - upright[0]) };
+    }
+
+    // Where a fitted text (laid out as after; its source laid out as
+    // before) is put: as the old rule put it while it stays inside its
+    // source's box (the aligned side kept across, textFit(), the middle
+    // upright); past it, the same place slid inside its room toward the
+    // free side, the room's middle when it is wider than the room, turned
+    // around the source's middle. Answers x, y.
+    function languagePlace(src, room, before, after) {
+        var w0 = Number(src.w) || 0, h0 = Number(src.h) || 0, w = after.w, h = after.h;
+
+        if (!room || ((w <= w0 + 1e-9) && (h <= before.h + 1e-9))) {
+            return { x: textFit(src, after).x, y: Math.round(((Number(src.y) || 0) + (before.h - h) / 2) * 100) / 100 };
+        }
+
+        var x = Number(src.x) || 0, y = (Number(src.y) || 0) + (h0 - h) / 2, cx = (Number(src.x) || 0) + w0 / 2, cy = (Number(src.y) || 0) + h0 / 2;
+        var a = (Number(src.rot) || 0) * Math.PI / 180, cos = Math.cos(a), sin = Math.sin(a);
+
+        x += (src.align === 'center') ? (w0 - w) / 2 : ((src.align === 'right') ? w0 - w : 0);
+        x = (w <= room.w) ? Math.min(Math.max(x, room.x), room.x + room.w - w) : room.x + (room.w - w) / 2;
+        y = (h <= room.h) ? Math.min(Math.max(y, room.y), room.y + room.h - h) : room.y + (room.h - h) / 2;
+
+        var px = x + w / 2 - cx, py = y + h / 2 - cy;
+
+        return {
+            x: Math.round((cx + px * cos - py * sin - w / 2) * 100) / 100,
+            y: Math.round((cy + px * sin + py * cos - h / 2) * 100) / 100
+        };
+    }
+
+    // A translated text layer l (laid out as wide at the source's size)
+    // wider than its room (w x h): of its wraps (languageWraps(), measured
+    // by layout) the one that needs the least shrink, the fewer lines of
+    // two alike; it fits whole at the source's size when one can. Sets
+    // l.text and answers its layout.
+    function languageWrapped(l, wide, layout, w, h) {
+        var copy = function (text) {
+            var c = {};
+
+            Object.keys(l).forEach(function (key) {
+                c[key] = l[key];
+            });
+            c.text = text;
+
+            return c;
+        };
+        var share = function (b) {
+            return Math.min(1, w / b.w, h / b.h);
+        };
+        var text = l.text, best = share(wide);
+
+        languageWraps(l.text, function (s) {
+            var b = layout(copy(s));
+
+            return b ? b.w : Infinity;
+        }).slice(1).forEach(function (t) {
+            var b = layout(copy(t));
+
+            if (b && (share(b) > best + 1e-9)) {
+                best = share(b);
+                wide = b;
+                text = t;
+            }
+        });
+
+        l.text = text;
+
+        return wide;
+    }
+
+    // A language's document (languageDoc()) with each changed text fitted:
+    // it grows into its room (languageRoom(), read before any text moves),
+    // wider than it is wrapped between words (languageWrapped(), its lines
+    // written into the layer's text, so every draw paints them), then
+    // shrinks only past it, never under its floor (then the draw is marked,
+    // fit 1), and is put by languagePlace(). A text corrected by hand for
+    // the language (put.corrected) is put by languageCorrectedPut() instead
+    // and marks the draw only past the picture's edge. layout: a text layer => its
+    // laid out w, h (null: it cannot be; the answer is null); board: the
+    // picture's w, h. Changes put.doc. Twin of
+    // pg_picture_tr_language_fitted().
+    function languageFitted(put, layout, board) {
+        var doc = put.doc, mark = false, rooms = {}, failed = false, corrected = put.corrected || {};
+        var side = Math.min(Number(board && board.w) || 0, Number(board && board.h) || 0);
+
+        doc.layers.forEach(function (l) {
+            if (put.source[l.id] && !corrected[l.id]) {
+                rooms[l.id] = languageRoom(doc, l.id, board);
+            }
+        });
+
+        doc.layers.forEach(function (l) {
+            var src = put.source[l.id];
+
+            if (failed) {
+                return;
+            }
+
+            if (corrected[l.id]) {
+                var off = languageCorrectedPut(l, corrected[l.id], layout, board);
+
+                failed = (off === null);
+                mark = mark || !!off;
+
+                return;
+            }
+
+            if (!src) {
+                return;
+            }
+
+            var before = layout(src), wide = layout(l), room = rooms[l.id];
+
+            if (!before || !wide) {
+                failed = true;
+
+                return;
+            }
+
+            var roomW = room ? before.w + room.w - (Number(src.w) || 0) : 0, roomH = room ? before.h + room.h - (Number(src.h) || 0) : 0;
+
+            if (room && (wide.w > roomW + 1e-9)) {
+                wide = languageWrapped(l, wide, layout, roomW, roomH);
+            }
+
+            var fit = languageFit(before.w, before.h, wide.w, wide.h, src.size, side, roomW, roomH);
+
+            l.size = Math.round((Number(src.size) || 1) * fit.scale * 100) / 100;
+
+            var after = layout(l);
+
+            if (!after) {
+                failed = true;
+
+                return;
+            }
+
+            var at = languagePlace(src, room, before, after);
+
+            l.x = at.x;
+            l.y = at.y;
+            l.w = after.w;
+            l.h = after.h;
+            mark = mark || fit.mark;
+        });
+
+        return failed ? null : { doc: doc, fit: mark ? 1 : 0 };
+    }
+
+    // A text layer corrected by hand (fix: languageCorrection()) put in
+    // place of the fit: its translation at the correction's size, wrapped
+    // between words to its width (languageWrap(), measured by layout), from
+    // its place; narrower than the width it keeps its alignment inside it,
+    // moved along its own turned line. Answers whether the box runs past
+    // the picture (board: w, h; half a px of slack, none without a size),
+    // null when it cannot be laid out. Twin of
+    // pg_picture_tr_language_corrected_put().
+    function languageCorrectedPut(l, fix, layout, board) {
+        var copy = function (text) {
+            var c = {};
+
+            Object.keys(l).forEach(function (key) {
+                c[key] = l[key];
+            });
+            c.text = text;
+
+            return c;
+        };
+
+        l.size = fix.size;
+        l.text = languageWrap(String(l.text || ''), fix.w, function (s) {
+            var b = layout(copy(s));
+
+            return b ? b.w : Infinity;
+        });
+
+        var after = layout(l);
+
+        if (!after) {
+            return null;
+        }
+
+        var w = after.w, h = after.h, free = fix.w - w;
+        var d = (l.align === 'center') ? free / 2 : ((l.align === 'right') ? free : 0);
+        var a = (Number(l.rot) || 0) * Math.PI / 180, cos = Math.cos(a), sin = Math.sin(a);
+        var o = d + w / 2 - fix.w / 2, cx = fix.x + fix.w / 2 + o * cos, cy = fix.y + h / 2 + o * sin;
+        l.x = Math.round((cx - w / 2) * 100) / 100;
+        l.y = Math.round((cy - h / 2) * 100) / 100;
+        l.w = w;
+        l.h = h;
+
+        return languagePast({ x: cx - w / 2, y: cy - h / 2, w: w, h: h, rot: l.rot }, board);
+    }
+
+    // Whether a layer's turned box runs past the picture (board: w, h) by
+    // more than half a px; never without a picture size.
+    function languagePast(l, board) {
+        var w = Number(l.w) || 0, h = Number(l.h) || 0, cx = (Number(l.x) || 0) + w / 2, cy = (Number(l.y) || 0) + h / 2;
+        var a = (Number(l.rot) || 0) * Math.PI / 180, cos = Math.cos(a), sin = Math.sin(a);
+        var bw = Number(board && board.w) || 0, bh = Number(board && board.h) || 0;
+        var ex = (Math.abs(w * cos) + Math.abs(h * sin)) / 2, ey = (Math.abs(w * sin) + Math.abs(h * cos)) / 2;
+
+        return (bw > 0) && (bh > 0) && ((cx - ex < -0.5) || (cy - ey < -0.5) || (cx + ex > bw + 0.5) || (cy + ey > bh + 0.5));
+    }
+
+    // The correction (x, y, w, size) that puts text layer l, laid out w
+    // wide at its size, with its box's corner at x, y when its lines wrap
+    // to width fw: the inverse of languageCorrectedPut().
+    function languageCorrectionAt(l, fw, x, y, w) {
+        var free = fw - w, d = (l.align === 'center') ? free / 2 : ((l.align === 'right') ? free : 0);
+        var a = (Number(l.rot) || 0) * Math.PI / 180, o = d + w / 2 - fw / 2;
+
+        return { x: x + w / 2 - fw / 2 - o * Math.cos(a), y: y - o * Math.sin(a), w: fw, size: Number(l.size) || 0 };
+    }
+
+    // The language view: the document as a language's picture is drawn
+    // (languageDoc(), languageFitted()), every layer but a text locked;
+    // beside it each text's words before the fit (words) and where the fit
+    // alone puts it (auto: x, y, w, h, size, text). Null when it cannot be
+    // laid out.
+    function languageView(doc, texts, code, layout, board) {
+        var put = languageDoc(doc, texts, code), plain = doc ? clone(doc) : null;
+
+        if (!put) {
+            return null;
+        }
+
+        plain.layers.forEach(function (l) {
+            languageCorrect(l, code, null);
+        });
+
+        var auto = languageDoc(plain, texts), words = {}, boxes = {};
+
+        put.doc.layers.forEach(function (l) {
+            if (l.type === 'text') {
+                words[l.id] = String(l.text || '');
+            }
+        });
+
+        if (!languageFitted(auto, layout, board) || !languageFitted(put, layout, board)) {
+            return null;
+        }
+
+        auto.doc.layers.forEach(function (l) {
+            if (l.type === 'text') {
+                boxes[l.id] = { x: l.x, y: l.y, w: l.w, h: l.h, size: l.size, text: l.text };
+            }
+        });
+
+        put.doc.layers.forEach(function (l) {
+            if (l.type !== 'text') {
+                l.locked = true;
+            }
+        });
+
+        return { doc: put.doc, code: code, words: words, auto: boxes };
+    }
+
+    // A change in the language view (doc, after; before, as it was) kept
+    // to what the view may change: each text's place, size and its
+    // correction; any other change is taken back. A text moved or sized
+    // gets the correction that keeps it there (its width scaled with the
+    // letters), one given a box by a side handle (lvFix) that box; then
+    // each text is put again: corrected by languageCorrectedPut(), else
+    // where the fit puts it (view.auto). Changes doc.
+    function languageViewSettle(before, doc, view, layout, board) {
+        var code = view.code, now = {}, moved = function (a, b) {
+            return ['x', 'y', 'size'].some(function (key) {
+                return Math.abs((Number(a[key]) || 0) - (Number(b[key]) || 0)) > 1e-6;
+            });
+        };
+
+        doc.layers.forEach(function (l) {
+            now[l.id] = l;
+        });
+
+        doc.layers = before.layers.map(function (b) {
+            var n = now[b.id], l = clone(b);
+
+            if ((b.type !== 'text') || !n || (n.type !== 'text') || !view.words.hasOwnProperty(b.id)) {
+                return l;
+            }
+
+            var fix = languageCorrection(b, code);
+
+            if (n.lvFix) {
+                languageCorrect(l, code, n.lvFix);
+            } else if (languageCorrection(n, code) && !moved(n, b)) {
+                languageCorrect(l, code, languageCorrection(n, code));
+            } else if (!languageCorrection(n, code) && fix && !moved(n, b)) {
+                languageCorrect(l, code, null);
+            } else if (moved(n, b) && (Number(b.size) > 0)) {
+                var fw = (fix ? fix.w : (Number(b.w) || 0)) * (Number(n.size) || 0) / Number(b.size);
+
+                languageCorrect(l, code, languageCorrectionAt(n, fw, Number(n.x) || 0, Number(n.y) || 0, Number(n.w) || 0));
+            }
+
+            fix = languageCorrection(l, code);
+            l.text = view.words[b.id];
+
+            if (!fix || (languageCorrectedPut(l, fix, layout, board) === null)) {
+                var auto = view.auto[b.id] || {};
+
+                ['x', 'y', 'w', 'h', 'size', 'text'].forEach(function (key) {
+                    if (auto[key] !== undefined) {
+                        l[key] = auto[key];
+                    }
+                });
+            }
+
+            return l;
+        });
+
+        return doc;
+    }
+
+    // Done in the language view: each text's correction for the language
+    // as the view (viewDoc) holds it written into the canvas document doc,
+    // or taken off; nothing else of it changes. Answers whether it changed.
+    function languageViewCorrections(doc, viewDoc, code) {
+        var changed = false, byId = {};
+
+        ((viewDoc && viewDoc.layers) || []).forEach(function (l) {
+            byId[l.id] = l;
+        });
+
+        ((doc && doc.layers) || []).forEach(function (l) {
+            var v = byId[l.id], want = v ? languageCorrection(v, code) : null, have = languageCorrection(l, code);
+
+            if ((l.type !== 'text') || !v || (JSON.stringify(want) === JSON.stringify(have))) {
+                return;
+            }
+
+            changed = languageCorrect(l, code, want) || changed;
+        });
+
+        return changed;
+    }
+
+    // A language code as a correction is kept under: letters, then parts
+    // of letters and digits after a hyphen or an underscore.
+    function languageCode(code) {
+        return (typeof code === 'string') && (code.length <= 20) && /^[A-Za-z]{2,3}([-_][A-Za-z0-9]{1,8})*$/.test(code);
+    }
+
+    // A correction's numbers and their ranges, in the layer's own space;
+    // a layer keeps at most LANGUAGE_CORRECTIONS_MAX languages.
+    var LANGUAGE_CORRECTION = { x: [-100000, 100000], y: [-100000, 100000], w: [1, 100000], size: [0.5, 10000] };
+    var LANGUAGE_CORRECTIONS_MAX = 100;
+
+    // A box as a correction keeps it ({ x, y, w, size }, each a number in
+    // range), else null. Twin of pg_image_edit_correction().
+    function languageCorrectionBox(c) {
+        if (!c || (typeof c !== 'object') || Array.isArray(c)) {
+            return null;
+        }
+
+        var out = {}, ok = Object.keys(LANGUAGE_CORRECTION).every(function (key) {
+            var v = c[key], r = LANGUAGE_CORRECTION[key];
+
+            out[key] = v;
+
+            return (typeof v === 'number') && isFinite(v) && (v >= r[0]) && (v <= r[1]);
+        });
+
+        return ok ? out : null;
+    }
+
+    // A text layer's correction by hand for a language (its corrections,
+    // by language code: the box's place, its width and the letters' size),
+    // null without a well formed one.
+    function languageCorrection(l, code) {
+        var all = l && (l.type === 'text') ? l.corrections : null;
+
+        if (!all || (typeof all !== 'object') || Array.isArray(all) || !languageCode(code) || !Object.prototype.hasOwnProperty.call(all, code)) {
+            return null;
+        }
+
+        return languageCorrectionBox(all[code]);
+    }
+
+    // Sets a text layer's correction for a language (box: x, y, w, size,
+    // rounded to two places), or takes it off (box null); the last one
+    // off takes the field. Answers whether the layer changed.
+    function languageCorrect(l, code, box) {
+        if (!l || (l.type !== 'text') || !languageCode(code)) {
+            return false;
+        }
+
+        var all = (l.corrections && (typeof l.corrections === 'object') && !Array.isArray(l.corrections)) ? l.corrections : {};
+
+        if (box === null) {
+            if (!Object.prototype.hasOwnProperty.call(all, code)) {
+                return false;
+            }
+
+            delete all[code];
+
+            if (Object.keys(all).length) {
+                l.corrections = all;
+            } else {
+                delete l.corrections;
+            }
+
+            return true;
+        }
+
+        var fix = languageCorrectionBox(box);
+
+        if (!fix || (!Object.prototype.hasOwnProperty.call(all, code) && (Object.keys(all).length >= LANGUAGE_CORRECTIONS_MAX))) {
+            return false;
+        }
+
+        Object.keys(fix).forEach(function (key) {
+            fix[key] = Math.round(fix[key] * 100) / 100;
+        });
+        all[code] = fix;
+        l.corrections = all;
+
+        return true;
+    }
+
+    // How many text layers of a document are corrected for a language.
+    // Twin of pg_picture_tr_corrected().
+    function languageCorrected(doc, code) {
+        return (doc && Array.isArray(doc.layers)) ? doc.layers.filter(function (l) {
+            return !!languageCorrection(l, code);
+        }).length : 0;
+    }
+
     // A canvas document with a language's words in its layers (texts:
     // [{ id, field, text }], text null where none is translated, which
-    // keeps the source's words). Answers the new document and, by layer id,
-    // a copy of each text layer as it was, to fit the new words to; null
-    // without a document.
-    function languageDoc(doc, texts) {
+    // keeps the source's words). Answers the new document, by layer id a
+    // copy of each text layer as it was, to fit the new words to, and with
+    // the language's code, by layer id each text's correction by hand
+    // (languageCorrection()), drawn in place of the fit; null without a
+    // document.
+    function languageDoc(doc, texts, code) {
         if (!doc || !Array.isArray(doc.layers)) {
             return null;
         }
 
-        var next = clone(doc), byId = {}, source = {};
+        var next = clone(doc), byId = {}, source = {}, corrected = {};
 
         (texts || []).forEach(function (t) {
             if (t && (typeof t.text === 'string') && (t.text !== '')) {
@@ -2724,6 +3503,11 @@
 
         next.layers.forEach(function (l) {
             var field = (l.type === 'text') ? 'text' : ((l.type === 'sticker') ? 'label' : ''), key = l.id + '\n' + field;
+            var fix = (code === undefined) ? null : languageCorrection(l, code);
+
+            if (fix) {
+                corrected[l.id] = fix;
+            }
 
             if (!field || !byId.hasOwnProperty(key) || (byId[key] === l[field])) {
                 return;
@@ -2736,7 +3520,7 @@
             l[field] = byId[key];
         });
 
-        return { doc: next, source: source };
+        return { doc: next, source: source, corrected: corrected };
     }
 
     // Whether a language may be drawn: every text translated into it, not
@@ -2792,7 +3576,11 @@
     }
 
     var ARTBOARD = {
-        LANGUAGE_FLOOR: LANGUAGE_FLOOR, languageFloor: languageFloor, languageFit: languageFit, languageDoc: languageDoc, languageDrawable: languageDrawable, languagesToDraw: languagesToDraw,
+        LANGUAGE_FLOOR: LANGUAGE_FLOOR, languageFloor: languageFloor, languageFit: languageFit, languageRoom: languageRoom, languagePlace: languagePlace,
+        languageWrap: languageWrap, languageWraps: languageWraps, languageFitted: languageFitted, languageDoc: languageDoc,
+        languageCorrection: languageCorrection, languageCorrect: languageCorrect, languageCorrected: languageCorrected, languageDrawable: languageDrawable, languagesToDraw: languagesToDraw,
+        languageCorrectedPut: languageCorrectedPut, languagePast: languagePast, languageCorrectionAt: languageCorrectionAt, languageView: languageView,
+        languageViewSettle: languageViewSettle, languageViewCorrections: languageViewCorrections,
         languageRowPlan: languageRowPlan, languageRowStatus: languageRowStatus, languagesWaiting: languagesWaiting,
         BOARD_PRESETS: BOARD_PRESETS, BOARD_BACKGROUNDS: BOARD_BACKGROUNDS, boardSide: boardSide, boardPreset: boardPreset,
         boardDrag: boardDrag, boardAnchored: boardAnchored, boardAround: boardAround, applyBoard: applyBoard,
@@ -4826,14 +5614,15 @@
     }
 
     // Pictures from this computer (a PNG or JPEG data: address, no file
-    // yet) in every scene: a save into Files sends them along to be kept
-    // as files, so the document its version keeps holds no pixels.
+    // yet) of picture layers and frames in every scene: a save into Files
+    // sends them along to be kept as files, so the document its version
+    // keeps holds no pixels.
     function animPictures(doc) {
         var list = [];
 
         docLayerLists(doc).forEach(function (layers) {
             layers.forEach(function (l) {
-                if (l && (l.type === 'image') && !l.fileId && /^data:image\/(png|jpeg);base64,/.test(l.src || '')) {
+                if (l && ((l.type === 'image') || (l.type === 'frame')) && !l.fileId && /^data:image\/(png|jpeg);base64,/.test(l.src || '')) {
                     list.push({ id: l.id, data: l.src, name: l.fileName || '' });
                 }
             });
@@ -12866,6 +13655,848 @@
         filesRemember: filesRemember, filesRemembered: filesRemembered, filesIndent: filesIndent
     };
 
+    // ---- Site colours (pg_image_editor_colors.js) ----
+
+    var SITE_COLORS_MAX = 12;
+
+    // The site_colors answer made safe for the swatch row: well-formed
+    // #rrggbb colours, each once, lower case, named (the colour itself when
+    // the answer names none), twelve at most; [] for a refusal or no answer.
+    function siteColors(res) {
+        var out = [], seen = {};
+
+        if (!res || (res.status !== 'success') || !Array.isArray(res.colors)) {
+            return out;
+        }
+
+        res.colors.forEach(function (c) {
+            var hex = (c && (typeof c.color === 'string')) ? c.color.trim().toLowerCase() : '';
+
+            if ((out.length >= SITE_COLORS_MAX) || !/^#[0-9a-f]{6}$/.test(hex) || seen[hex]) {
+                return;
+            }
+
+            seen[hex] = true;
+            out.push({ color: hex, name: ((typeof c.name === 'string') && c.name.trim()) ? c.name.trim().slice(0, 60) : hex });
+        });
+
+        return out;
+    }
+
+    var SITECOLORS = { siteColors: siteColors };
+
+    // ---- text styles and font pairs (pg_image_editor_textstyles.js) ----
+
+    // The three styles at the top of the Text panel: a size as a part of the
+    // board's shorter side, a weight and a line height.
+    var TEXT_PRESETS = {
+        heading: { size: 0.1, weight: 700, lineHeight: 1.1 },
+        subheading: { size: 0.06, weight: 600, lineHeight: 1.2 },
+        body: { size: 0.035, weight: 400, lineHeight: 1.4 }
+    };
+
+    // A font pair's two parts: the heading and the line under it.
+    var FONT_PAIR_PARTS = { head: { size: 0.09, lineHeight: 1.1 }, line: { size: 0.04, lineHeight: 1.3 } };
+
+    var FONT_PAIR_MAX = 12;
+
+    // A size from a part of the board's shorter side, never under 12 px.
+    function presetSize(part, board) {
+        var side = Math.min(Number(board && board.w) || 0, Number(board && board.h) || 0);
+
+        return Math.max(12, Math.round(side * part));
+    }
+
+    // A plain centred text style from `base` (the style last chosen, for its
+    // font and colour): no background, outline or shadow.
+    function presetBase(base) {
+        var s = clone(base || textDefaults());
+
+        s.align = 'center';
+        s.italic = false;
+        s.spacing = 0;
+        s.bg = '';
+        s.outline = null;
+        s.shadow = null;
+
+        return s;
+    }
+
+    // The style of "Add a heading", "Add a subheading" or "Add body text" on
+    // a board; null for another kind.
+    function textPreset(kind, board, base) {
+        var p = TEXT_PRESETS.hasOwnProperty(kind) ? TEXT_PRESETS[kind] : null, s;
+
+        if (!p) {
+            return null;
+        }
+
+        s = presetBase(base);
+        s.size = presetSize(p.size, board);
+        s.weight = p.weight;
+        s.lineHeight = p.lineHeight;
+
+        return s;
+    }
+
+    // The font pairs file (assets/canvas/font-pairs.json) checked: each pair
+    // an id, and a head and a line with a family `known` accepts (the Google
+    // Fonts catalogue), a weight of TEXT_WEIGHTS and a label key; ids once,
+    // at most twelve.
+    function fontPairs(data, known) {
+        var out = [], seen = {};
+        var part = function (p) {
+            var family = p ? textFamilyName(p.family) : '';
+
+            if (!family || (family !== p.family) || (known && !known(family)) || (typeof p.text !== 'string') || !/^fontPair[A-Za-z0-9]+$/.test(p.text)) {
+                return null;
+            }
+
+            return { family: family, weight: (TEXT_WEIGHTS.indexOf(p.weight) >= 0) ? p.weight : 400, text: p.text };
+        };
+
+        ((data && Array.isArray(data.pairs)) ? data.pairs : []).forEach(function (p) {
+            var head, line;
+
+            if (!p || (typeof p.id !== 'string') || !/^[a-z0-9-]{1,40}$/.test(p.id) || seen[p.id] || (out.length >= FONT_PAIR_MAX)) {
+                return;
+            }
+
+            head = part(p.head);
+            line = part(p.line);
+
+            if (head && line) {
+                seen[p.id] = true;
+                out.push({ id: p.id, head: head, line: line });
+            }
+        });
+
+        return out;
+    }
+
+    // The two text styles of a pair on a board, heading first.
+    function fontPairStyles(pair, board, base) {
+        return ['head', 'line'].map(function (k) {
+            var s = presetBase(base);
+
+            s.font = 'g:' + pair[k].family;
+            s.weight = pair[k].weight;
+            s.size = presetSize(FONT_PAIR_PARTS[k].size, board);
+            s.lineHeight = FONT_PAIR_PARTS[k].lineHeight;
+
+            return s;
+        });
+    }
+
+    // Boxes ({ w, h }) stacked in the board's middle, `gap` apart, each
+    // centred across: their { x, y }.
+    function textStack(board, boxes, gap) {
+        var total = 0, y;
+
+        boxes.forEach(function (b, i) {
+            total += b.h + (i ? gap : 0);
+        });
+
+        y = board.y + (board.h - total) / 2;
+
+        return boxes.map(function (b) {
+            var at = { x: textRound(board.x + (board.w - b.w) / 2), y: textRound(y) };
+
+            y += b.h + gap;
+
+            return at;
+        });
+    }
+
+    var TEXTSTYLES = { TEXT_PRESETS: TEXT_PRESETS, FONT_PAIR_MAX: FONT_PAIR_MAX, textPreset: textPreset, fontPairs: fontPairs, fontPairStyles: fontPairStyles, textStack: textStack };
+
+    // -- Element sets (pg_image_editor_elements.js) --
+
+    // The Sticker tool's element chips, in order; the file's limit; the
+    // range of a stroked element's width, in its own box's units.
+    var ELEMENT_SETS = ['lines', 'badges', 'ribbons', 'blobs', 'arrows', 'speech', 'ornaments'];
+    var ELEMENT_MAX = 60;
+    var ELEMENT_WIDTH = [1, 12];
+    // The share of the visible board a placed element fits into.
+    var ELEMENT_SHARE = 0.35;
+
+    // The checked elements of the elements file: an id [a-z0-9-] once, a set
+    // of ELEMENT_SETS, a label key element…, a box 1 to 1000 a side, a path
+    // of numbers and path commands only, starting with a move, a stroke
+    // width (0 filled) in the range; ELEMENT_MAX at most.
+    function elementSets(data) {
+        var out = [], seen = {}, list = (data && Array.isArray(data.elements)) ? data.elements : [];
+        var size = function (n) { return (typeof n === 'number') && isFinite(n) && (n >= 1) && (n <= 1000); };
+
+        list.forEach(function (e) {
+            if (!e || (out.length >= ELEMENT_MAX) || (typeof e.id !== 'string') || !/^[a-z0-9-]{1,40}$/.test(e.id) || seen[e.id]
+                || (ELEMENT_SETS.indexOf(e.set) < 0) || (typeof e.label !== 'string') || !/^element[A-Z][A-Za-z0-9]*$/.test(e.label)
+                || !size(e.w) || !size(e.h) || (typeof e.d !== 'string') || (e.d.length > 4000) || !/^M[MLHVCQZ0-9.,\s-]*$/.test(e.d)
+                || (typeof e.stroke !== 'number') || ((e.stroke !== 0) && ((e.stroke < ELEMENT_WIDTH[0]) || (e.stroke > ELEMENT_WIDTH[1])))) {
+                return;
+            }
+
+            seen[e.id] = true;
+            out.push({ id: e.id, set: e.set, label: e.label, w: e.w, h: e.h, d: e.d, stroke: e.stroke });
+        });
+
+        return out;
+    }
+
+    function elementWidth(n) {
+        return clamp(Math.round(Number(n) || 0), ELEMENT_WIDTH[0], ELEMENT_WIDTH[1]);
+    }
+
+    // An element's one path: a filled one takes the colour as its fill, a
+    // stroked one as its stroke, with its width and round ends.
+    function elementMarkup(e, color, width) {
+        var c = svgEscape(color);
+
+        return '<path d="' + svgEscape(e.d) + '"' + (e.stroke
+            ? ' fill="none" stroke="' + c + '" stroke-width="' + elementWidth((width === undefined) ? e.stroke : width) + '" stroke-linecap="round" stroke-linejoin="round"/>'
+            : ' fill="' + c + '" stroke="none"/>');
+    }
+
+    // The colour and width (null for a filled one) of an element's markup;
+    // null for markup elementMarkup() did not write.
+    function elementPaint(markup) {
+        var m = /^<path d="[^"]*" fill="([^"]*)" stroke="([^"]*)"(?: stroke-width="([0-9]+)")?/.exec(String(markup || ''));
+
+        if (!m) {
+            return null;
+        }
+
+        return (m[1] === 'none') ? { color: m[2], width: m[3] ? Number(m[3]) : null } : { color: m[1], width: null };
+    }
+
+    // The markup with a new colour (null keeps it) and, on a stroked one, a
+    // new width (undefined keeps it).
+    function elementRepaint(markup, color, width) {
+        var now = elementPaint(markup), c;
+
+        if (!now) {
+            return markup;
+        }
+
+        c = svgEscape((color === null) || (color === undefined) ? now.color : color);
+
+        if (now.width === null) {
+            return markup.replace(/ fill="[^"]*"/, ' fill="' + c + '"');
+        }
+
+        return markup.replace(/ stroke="[^"]*"/, ' stroke="' + c + '"')
+            .replace(/ stroke-width="[0-9]+"/, ' stroke-width="' + elementWidth((width === undefined) ? now.width : width) + '"');
+    }
+
+    // A placed element: one svg path layer, its box the element's
+    // proportions fitted into ELEMENT_SHARE of the visible board, its middle
+    // on the point given.
+    function elementLayer(e, vr, centre, color) {
+        var box = svgFit(e.w, e.h, vr, ELEMENT_SHARE, true);
+
+        return { type: 'svg', kind: 'path', element: e.id, markup: elementMarkup(e, color), vb: { x: 0, y: 0, w: e.w, h: e.h },
+            x: centre[0] - box.w / 2, y: centre[1] - box.h / 2, w: box.w, h: box.h, rot: 0, opacity: 1 };
+    }
+
+    var ELEMENTS = { ELEMENT_SETS: ELEMENT_SETS, ELEMENT_MAX: ELEMENT_MAX, ELEMENT_WIDTH: ELEMENT_WIDTH, elementSets: elementSets, elementMarkup: elementMarkup,
+        elementPaint: elementPaint, elementRepaint: elementRepaint, elementLayer: elementLayer };
+
+    // -- Start from a design (pg_image_editor_starts.js) --
+
+    // The purpose chips in order ('all' shows every design); the index's
+    // and a design's limits; the longest side a picture filling a "Your
+    // picture" box is cut at.
+    var START_PURPOSES = ['all', 'post', 'story', 'banner', 'announcement', 'sale', 'event', 'quote', 'invitation'];
+    var START_MAX = 60;
+    var START_LAYER_MAX = 40;
+    var START_PICTURE_SIDE = 2000;
+    var START_SHAPES = ['rect', 'ellipse', 'triangle', 'polygon', 'star'];
+    var START_KEY = /^start[A-Z][A-Za-z0-9]*$/;
+    var START_HEX = /^#[0-9a-f]{6}$/;
+
+    function startNumber(n, lo, hi) {
+        return (typeof n === 'number') && isFinite(n) && (n >= lo) && (n <= hi);
+    }
+
+    function startColor(c) {
+        return (typeof c === 'string') && START_HEX.test(c.toLowerCase());
+    }
+
+    // The designs index (assets/canvas/designs.json) checked: each an id
+    // [a-z0-9-] once, a purpose of START_PURPOSES but 'all', a label key
+    // start…; START_MAX at most, in the file's order.
+    function startIndex(data) {
+        var out = [], seen = {};
+
+        ((data && Array.isArray(data.designs)) ? data.designs : []).forEach(function (d) {
+            if (!d || (out.length >= START_MAX) || (typeof d.id !== 'string') || !/^[a-z0-9-]{1,40}$/.test(d.id) || seen[d.id]
+                || (START_PURPOSES.indexOf(d.purpose) < 1) || (typeof d.label !== 'string') || !START_KEY.test(d.label)) {
+                return;
+            }
+
+            seen[d.id] = true;
+            out.push({ id: d.id, purpose: d.purpose, label: d.label });
+        });
+
+        return out;
+    }
+
+    // A box inside the board, or null: whole numbers are not asked, a side
+    // at least 1 and the box within one board of the edges.
+    function startBox(d, W, H) {
+        if (!d || !startNumber(d.x, -W, 2 * W) || !startNumber(d.y, -H, 2 * H) || !startNumber(d.w, 1, 2 * W) || !startNumber(d.h, 1, 2 * H)) {
+            return null;
+        }
+
+        return { x: d.x, y: d.y, w: d.w, h: d.h, rot: startNumber(d.rot, -360, 360) ? d.rot : 0, opacity: startNumber(d.opacity, 0, 1) ? d.opacity : 1 };
+    }
+
+    // The widest a text anchored at x may be on a board W wide, by its
+    // align, when its design names none.
+    function startRoom(align, x, W) {
+        var room = (align === 'center') ? 2 * Math.min(x, W - x) : ((align === 'right') ? x : W - x);
+
+        return Math.max(1, room);
+    }
+
+    // One layer of a design checked, or null. A text keeps a label key as
+    // its words, a font (sans, serif or a family `known` accepts), its
+    // anchor (x by its align, y its top) and the widest it may be (maxW); a
+    // shape of START_SHAPES its box and paint; a slot ("Your picture") its
+    // box and corner radius.
+    function startLayer(d, W, H, known) {
+        var l, box;
+
+        if (!d || (typeof d !== 'object')) {
+            return null;
+        }
+
+        if (d.type === 'text') {
+            var font = String(d.font || 'sans'), family = (font.slice(0, 2) === 'g:') ? textFamilyName(font.slice(2)) : '';
+
+            if ((typeof d.text !== 'string') || !START_KEY.test(d.text) || !startNumber(d.x, 0, W) || !startNumber(d.y, 0, H) || !startNumber(d.size, 8, 1000)
+                || !startColor(d.color) || (family ? ((family !== font.slice(2)) || (known && !known(family))) : !TEXT_FONTS.hasOwnProperty(font))) {
+                return null;
+            }
+
+            return { type: 'text', text: d.text, font: font, size: d.size, weight: (TEXT_WEIGHTS.indexOf(d.weight) >= 0) ? d.weight : 400,
+                italic: d.italic === true, align: (['left', 'center', 'right'].indexOf(d.align) >= 0) ? d.align : 'left', color: d.color.toLowerCase(),
+                lineHeight: startNumber(d.lineHeight, 0.8, 3) ? d.lineHeight : 1.2, spacing: startNumber(d.spacing, -0.2, 1) ? d.spacing : 0,
+                x: d.x, y: d.y, maxW: startNumber(d.maxW, 1, W) ? d.maxW : startRoom(d.align, d.x, W), opacity: startNumber(d.opacity, 0, 1) ? d.opacity : 1 };
+        }
+
+        box = startBox(d, W, H);
+
+        if (!box) {
+            return null;
+        }
+
+        if (d.type === 'slot') {
+            box.type = 'slot';
+            box.radius = startNumber(d.radius, 0, Math.min(d.w, d.h) / 2) ? d.radius : 0;
+
+            return box;
+        }
+
+        if ((START_SHAPES.indexOf(d.type) < 0) || !startColor(d.color)) {
+            return null;
+        }
+
+        l = box;
+        l.type = d.type;
+        l.color = d.color.toLowerCase();
+        l.fill = (['solid', 'soft', 'none'].indexOf(d.fill) >= 0) ? d.fill : 'solid';
+        l.stroke = startNumber(d.stroke, 0, 200) ? d.stroke : 0;
+        l.dash = (['solid', 'dashed', 'dotted'].indexOf(d.dash) >= 0) ? d.dash : 'solid';
+
+        if (l.fill === 'none' && !l.stroke) {
+            return null;
+        }
+
+        if (d.type === 'rect') {
+            l.radius = startNumber(d.radius, 0, Math.min(d.w, d.h) / 2) ? d.radius : 0;
+        } else if (d.type === 'polygon') {
+            l.sides = startNumber(d.sides, 3, 12) ? Math.round(d.sides) : 6;
+        } else if (d.type === 'star') {
+            l.points = startNumber(d.points, 3, 12) ? Math.round(d.points) : 5;
+            l.inner = startNumber(d.inner, 0.1, 0.9) ? d.inner : 0.48;
+        }
+
+        return l;
+    }
+
+    // A design file checked against its index entry: the same id, the
+    // entry's purpose and label, a size of 16-8000 a side, a background
+    // colour or transparent, its layers (bottom first) each well formed;
+    // null when the file is not the design or keeps no layer.
+    function startDesign(data, entry, known) {
+        var W, H, layers = [];
+
+        if (!data || !entry || (data.id !== entry.id) || !startNumber(data.width, 16, 8000) || !startNumber(data.height, 16, 8000)
+            || !Array.isArray(data.layers) || (data.layers.length > START_LAYER_MAX)) {
+            return null;
+        }
+
+        W = Math.round(data.width);
+        H = Math.round(data.height);
+
+        for (var i = 0; i < data.layers.length; i++) {
+            var l = startLayer(data.layers[i], W, H, known);
+
+            if (!l) {
+                return null;
+            }
+
+            layers.push(l);
+        }
+
+        return layers.length ? { id: entry.id, purpose: entry.purpose, label: entry.label, width: W, height: H,
+            background: (data.background === 'transparent') ? 'transparent' : (startColor(data.background) ? data.background.toLowerCase() : '#ffffff'), layers: layers } : null;
+    }
+
+    // The designs a purpose chip shows, in their order.
+    function startPurposeList(designs, purpose) {
+        return (designs || []).filter(function (d) {
+            return !purpose || (purpose === 'all') || (d.purpose === purpose);
+        });
+    }
+
+    // A design's text as a text layer with its words, without its box.
+    function startText(d, words) {
+        var l = textDefaults();
+
+        ['font', 'size', 'weight', 'italic', 'align', 'color', 'lineHeight', 'spacing', 'opacity'].forEach(function (k) {
+            l[k] = d[k];
+        });
+        l.type = 'text';
+        l.text = String(words || '');
+        l.rot = 0;
+
+        return l;
+    }
+
+    // The size a text of width w at `size` takes so it is no wider than
+    // maxW (a longer translation); never under 8 px.
+    function startTextFit(size, w, maxW) {
+        if (!(w > maxW) || !(maxW > 0)) {
+            return size;
+        }
+
+        return Math.max(8, Math.floor(size * maxW / w));
+    }
+
+    // Where a text of width w sits: x is its left edge, middle or right
+    // edge by its align; y its top.
+    function startTextPlace(d, w) {
+        var x = (d.align === 'center') ? d.x - w / 2 : ((d.align === 'right') ? d.x - w : d.x);
+
+        return { x: textRound(x), y: textRound(d.y) };
+    }
+
+    // A "Your picture" box as an svg layer: a light, dashed rectangle with
+    // the words in its middle, marked slot so a picture can fill it.
+    function startSlotLayer(d, label) {
+        var w = d.w, h = d.h, sw = Math.max(2, Math.round(Math.min(w, h) / 120)), fs = Math.max(12, Math.round(Math.min(w, h) / 10));
+        var r = Math.max(0, d.radius || 0), dash = sw * 4;
+
+        return { type: 'svg', kind: 'g', slot: true, name: String(label || ''), vb: { x: 0, y: 0, w: w, h: h },
+            markup: '<g><rect x="' + sw / 2 + '" y="' + sw / 2 + '" width="' + (w - sw) + '" height="' + (h - sw) + '" rx="' + r + '" fill="#e9ecef" stroke="#868e96" stroke-width="' + sw
+                + '" stroke-dasharray="' + dash + ' ' + dash + '"/><text x="' + (w / 2) + '" y="' + (h / 2) + '" text-anchor="middle" dominant-baseline="middle" font-family="system-ui, sans-serif" font-size="' + fs
+                + '" fill="#495057">' + svgEscape(label) + '</text></g>',
+            x: d.x, y: d.y, w: w, h: h, rot: d.rot || 0, opacity: (d.opacity === undefined) ? 1 : d.opacity };
+    }
+
+    // The part of a picture (iw × ih) a box (bw × bh) shows when the picture
+    // covers it, centred: sx, sy, sw, sh in the picture's pixels, and the
+    // size it is kept at (w × h, the box's ratio, the longer side at most
+    // `max`, never more pixels than the part has).
+    function startCover(iw, ih, bw, bh, max) {
+        var ratio = bw / bh, sw = iw, sh = iw / ratio, k;
+
+        if (sh > ih) {
+            sh = ih;
+            sw = ih * ratio;
+        }
+
+        k = Math.min(1, (max || START_PICTURE_SIDE) / Math.max(sw, sh));
+
+        return { sx: textRound((iw - sw) / 2), sy: textRound((ih - sh) / 2), sw: textRound(sw), sh: textRound(sh),
+            w: Math.max(1, Math.round(sw * k)), h: Math.max(1, Math.round(sh * k)) };
+    }
+
+    var STARTS = { START_PURPOSES: START_PURPOSES, START_MAX: START_MAX, START_PICTURE_SIDE: START_PICTURE_SIDE, startIndex: startIndex, startDesign: startDesign,
+        startPurposeList: startPurposeList, startText: startText, startTextFit: startTextFit, startTextPlace: startTextPlace, startSlotLayer: startSlotLayer, startCover: startCover };
+
+    // -- resize to other sizes (pg_image_editor_resize.js) --
+
+    // A unit (a layer, or an outermost group as one) spans a side of the
+    // board when its box covers RESIZE_SPAN of it. A text drawn under
+    // RESIZE_FLOOR px after a resize, when it was not before, is named. At
+    // most RESIZE_MAX sizes at a time: the five presets and a custom one.
+    var RESIZE_SPAN = 0.9, RESIZE_FLOOR = 12, RESIZE_MAX = 6;
+
+    // Layer types whose drawing follows their box, so a bar or a
+    // background of them may stretch; a picture, a text or an icon never
+    // does.
+    var RESIZE_STRETCH = ['rect', 'ellipse', 'svg'];
+
+    // The sizes to make: the ticked presets in their order, then the
+    // custom size when it is ticked and both sides are whole numbers of
+    // SIZE_MIN to SIZE_MAX; a size twice once. [[key, w, h]], 'custom' as
+    // the custom one's key.
+    function resizeSizes(ticks, custom) {
+        var out = [], seen = {}, side = function (v) {
+            var n = Number(v);
+
+            return ((String(v).trim() !== '') && (n === Math.round(n)) && (n >= SIZE_MIN) && (n <= SIZE_MAX)) ? n : 0;
+        };
+        var put = function (key, w, h) {
+            if (w && h && !seen[w + 'x' + h] && (out.length < RESIZE_MAX)) {
+                seen[w + 'x' + h] = true;
+                out.push([key, w, h]);
+            }
+        };
+
+        BOARD_PRESETS.forEach(function (p) {
+            if ((ticks || []).indexOf(p[0]) >= 0) {
+                put(p[0], p[1], p[2]);
+            }
+        });
+
+        if (custom && custom.on) {
+            put('custom', side(custom.w), side(custom.h));
+        }
+
+        return out;
+    }
+
+    // A made canvas's name: the canvas's name without its extension, then
+    // the size ("Poster 1080x1920"); the size alone for an unnamed one.
+    function resizeName(name, w, h) {
+        var stem = String(name || '').split(/[\\/]/).pop().replace(/\.[a-z0-9]{2,5}$/i, '').trim();
+
+        return (stem ? stem + ' ' : '') + w + 'x' + h;
+    }
+
+    // The units of a layer list: each outermost group as one, every other
+    // layer alone, in the order their first layer comes. { list, box }.
+    function resizeUnits(layers) {
+        var units = [], byGroup = {};
+
+        (layers || []).forEach(function (l) {
+            var g = groupPath(l)[0];
+
+            if (g && byGroup.hasOwnProperty(g)) {
+                byGroup[g].list.push(l);
+                return;
+            }
+
+            var u = { list: [l] };
+
+            if (g) {
+                byGroup[g] = u;
+            }
+
+            units.push(u);
+        });
+
+        units.forEach(function (u) {
+            u.box = bounds(u.list);
+        });
+
+        return units;
+    }
+
+    // One side of a unit on the new board: a unit whose middle lies in the
+    // first third keeps its distance from that edge times k, one in the
+    // last third its distance from the far edge, one between keeps its
+    // middle at the same share of the side. a and len on the old side
+    // `from`, len1 its new length on the side `to`; answers the new start.
+    function resizeAxis(a, len, from, to, k, len1) {
+        var mid = a + len / 2;
+
+        if (mid < from / 3) {
+            return a * k;
+        }
+
+        if (mid > from * 2 / 3) {
+            return to - (from - a - len) * k - len1;
+        }
+
+        return mid / from * to - len1 / 2;
+    }
+
+    // Where a unit's box (on a W x H board) goes on a w x h board, and its
+    // scale on each axis: { x, y, sx, sy }. Every unit scales by k, the
+    // scale that fits the old board in the new one. A unit spanning both
+    // sides is a background: it stretches when it may (stretch), else it
+    // covers the new board (the larger scale), centred. A unit spanning
+    // one side that may stretch is a bar: that side stretches with the
+    // board, the other scales by k. The rest is placed by resizeAxis().
+    function resizePlace(box, W, H, w, h, stretch) {
+        var k = Math.min(w / W, h / H), spanX = box.w >= RESIZE_SPAN * W, spanY = box.h >= RESIZE_SPAN * H;
+        var sx = k, sy = k, x, y;
+
+        if (spanX && spanY && !stretch) {
+            sx = sy = Math.max(w / W, h / H);
+        } else {
+            sx = (stretch && spanX) ? w / W : k;
+            sy = (stretch && spanY) ? h / H : k;
+        }
+
+        x = (stretch && spanX) ? box.x * sx : resizeAxis(box.x, box.w, W, w, k, box.w * sx);
+        y = (stretch && spanY) ? box.y * sy : resizeAxis(box.y, box.h, H, h, k, box.h * sy);
+
+        return { x: x, y: y, sx: sx, sy: sy };
+    }
+
+    // Layer l of a unit whose box goes to place: its middle carried, its
+    // box scaled on each axis; a text's letters, a stroke, a rectangle's
+    // corners by the smaller scale; motion keys' moves by the axes' scales.
+    function resizeLayer(l, box, place) {
+        var c = clone(l), s = Math.min(place.sx, place.sy);
+        var mx = place.x + (l.x + l.w / 2 - box.x) * place.sx, my = place.y + (l.y + l.h / 2 - box.y) * place.sy;
+
+        c.w = textRound(l.w * place.sx);
+        c.h = textRound(l.h * place.sy);
+        c.x = textRound(mx - c.w / 2);
+        c.y = textRound(my - c.h / 2);
+
+        if (l.type === 'text') {
+            c.size = textRound(clamp((Number(l.size) || 1) * s, 2, 4000));
+        }
+
+        if (Number(l.stroke) > 0) {
+            c.stroke = textRound(Number(l.stroke) * s);
+        }
+
+        if ((l.type === 'rect') && (Number(l.radius) > 0)) {
+            c.radius = textRound(Number(l.radius) * s);
+        }
+
+        if (c.anim && Array.isArray(c.anim.keys)) {
+            c.anim.keys = c.anim.keys.map(function (key) {
+                return (key && (typeof key === 'object')) ? Object.assign({}, key, { x: keyNumber(key.x, 0) * place.sx, y: keyNumber(key.y, 0) * place.sy }) : key;
+            });
+        }
+
+        return c;
+    }
+
+    // layers from a W x H board placed on a w x h one (resizePlace() per
+    // unit). Texts that fall under RESIZE_FLOOR there are added to small.
+    function resizeLayers(layers, W, H, w, h, small) {
+        var out = [];
+
+        resizeUnits(layers).forEach(function (u) {
+            var one = u.list[0], stretch = (u.list.length === 1) && !groupPath(one).length && (RESIZE_STRETCH.indexOf(one.type) >= 0) && !Number(one.rot);
+            var place = u.box ? resizePlace(u.box, W, H, w, h, stretch) : null;
+
+            u.list.forEach(function (l) {
+                var c = place ? resizeLayer(l, u.box, place) : clone(l);
+
+                if ((l.type === 'text') && (Number(l.size) >= RESIZE_FLOOR) && (c.size < RESIZE_FLOOR)) {
+                    small.push(l.id);
+                }
+
+                out.push(c);
+            });
+        });
+
+        // The units are walked in order, so a group's layers, which lie
+        // next to each other (groupTidy()), keep the document's order.
+        return out;
+    }
+
+    // A copy of a canvas (doc with an artboard) at w x h: every scene's
+    // layers placed by resizeLayers(), the background kept. small lists
+    // the texts under the floor: { id, scene } ('' the open scene's).
+    function resizeDoc(doc, w, h) {
+        var d = clone(doc), W = Number(doc.artboard.width) || 1, H = Number(doc.artboard.height) || 1, small = [], list;
+
+        w = boardSide(w);
+        h = boardSide(h);
+        list = [];
+        d.layers = resizeLayers(d.layers || [], W, H, w, h, list);
+        list.forEach(function (id) { small.push({ id: id, scene: '' }); });
+
+        (d.scenes || []).forEach(function (s) {
+            if ((s.id !== d.scene) && Array.isArray(s.layers)) {
+                list = [];
+                s.layers = resizeLayers(s.layers, W, H, w, h, list);
+                list.forEach(function (id) { small.push({ id: id, scene: s.id }); });
+            }
+        });
+
+        d.artboard.width = w;
+        d.artboard.height = h;
+        delete d.selection;
+
+        return { doc: d, small: small };
+    }
+
+    var RESIZE = { RESIZE_SPAN: RESIZE_SPAN, RESIZE_FLOOR: RESIZE_FLOOR, RESIZE_MAX: RESIZE_MAX, RESIZE_STRETCH: RESIZE_STRETCH, resizeSizes: resizeSizes,
+        resizeName: resizeName, resizeUnits: resizeUnits, resizeAxis: resizeAxis, resizePlace: resizePlace, resizeLayer: resizeLayer, resizeLayers: resizeLayers, resizeDoc: resizeDoc };
+
+    // ---- photo frames (pg_image_editor_frames.js) ----
+    //
+    // A frame is the one layer type of its own: a shape (a path in its own
+    // box, kept in the layer) that cuts a photo. The photo covers the frame
+    // at zoom 1 and is moved inside it by fx, fy: -1 to 1 of the room the
+    // photo has past the frame's edges on each axis, 0 centred. The place is
+    // a share of the frame, so a resized or turned frame keeps it.
+
+    var FRAME_ZOOM = [1, 4];
+    var FRAME_SHARE = 0.45;
+    var FRAME_PHOTO = ['src', 'pw', 'ph', 'zoom', 'fx', 'fy', 'fileId', 'fileName'];
+    var FRAME_OWN = [
+        { id: 'circle', label: 'frameCircle', w: 100, h: 100, d: 'M50 0 C77.6 0 100 22.4 100 50 C100 77.6 77.6 100 50 100 C22.4 100 0 77.6 0 50 C0 22.4 22.4 0 50 0 Z' },
+        { id: 'rounded', label: 'frameRounded', w: 100, h: 100, d: 'M16 0 H84 C92.8 0 100 7.2 100 16 V84 C100 92.8 92.8 100 84 100 H16 C7.2 100 0 92.8 0 84 V16 C0 7.2 7.2 0 16 0 Z' },
+        { id: 'arch', label: 'frameArch', w: 80, h: 100, d: 'M0 100 V40 C0 17.9 17.9 0 40 0 C62.1 0 80 17.9 80 40 V100 Z' },
+        { id: 'blob', label: 'frameBlob', w: 100, h: 100, d: 'M52 3 C72 1 91 13 96 34 C100 55 92 78 73 90 C54 100 28 97 14 82 C2 68 1 43 10 26 C19 10 34 4 52 3 Z' }
+    ];
+
+    // The frame shapes: the own four, then the element set's filled badges
+    // (checked by elementSets()) but its circle, which the first one is.
+    function frameShapes(elements) {
+        var out = FRAME_OWN.map(clone);
+
+        (Array.isArray(elements) ? elements : []).forEach(function (e) {
+            if (e && (e.set === 'badges') && (e.stroke === 0) && (e.id !== 'badge-circle')) {
+                out.push({ id: e.id, label: e.label, w: e.w, h: e.h, d: e.d });
+            }
+        });
+
+        return out;
+    }
+
+    // An empty frame of the shape, its proportions fitted into FRAME_SHARE
+    // of the visible board, its middle on the point given.
+    function frameLayer(shape, vr, centre) {
+        var box = svgFit(shape.w, shape.h, vr, FRAME_SHARE, true);
+
+        return { type: 'frame', shape: shape.id, d: shape.d, vw: shape.w, vh: shape.h,
+            x: centre[0] - box.w / 2, y: centre[1] - box.h / 2, w: box.w, h: box.h, rot: 0, opacity: 1 };
+    }
+
+    // The frame without its photo.
+    function frameClear(l) {
+        var n = clone(l);
+
+        FRAME_PHOTO.forEach(function (k) {
+            delete n[k];
+        });
+
+        return n;
+    }
+
+    // The frame holding a picture ({ src, w, h } and its fileId, or the
+    // fileName of one from this computer), covering it, centred.
+    function frameFill(l, pic) {
+        var n = frameClear(l);
+
+        n.src = pic.src;
+        n.pw = Math.max(1, Number(pic.w) || 1);
+        n.ph = Math.max(1, Number(pic.h) || 1);
+        n.zoom = 1;
+        n.fx = 0;
+        n.fy = 0;
+
+        if (pic.fileId) {
+            n.fileId = pic.fileId;
+        } else if (pic.fileName) {
+            n.fileName = pic.fileName;
+        }
+
+        return n;
+    }
+
+    // The photo's size in the frame's units: covering it, times the zoom.
+    function frameScaled(l) {
+        var s = Math.max(l.w / l.pw, l.h / l.ph) * clamp(Number(l.zoom) || 1, FRAME_ZOOM[0], FRAME_ZOOM[1]);
+
+        return { w: l.pw * s, h: l.ph * s };
+    }
+
+    // The photo's box, unturned, in the layers' units; null for an empty
+    // frame.
+    function frameFit(l) {
+        if (!l || !l.src || !(l.pw > 0) || !(l.ph > 0)) {
+            return null;
+        }
+
+        var p = frameScaled(l), fx = clamp(Number(l.fx) || 0, -1, 1), fy = clamp(Number(l.fy) || 0, -1, 1);
+
+        return { x: l.x + (l.w - p.w) / 2 + fx * (p.w - l.w) / 2, y: l.y + (l.h - p.h) / 2 + fy * (p.h - l.h) / 2, w: p.w, h: p.h };
+    }
+
+    // The photo's place after a move by dx, dy (layers' units, on screen),
+    // taken along the frame's own axes; it never shows the frame's ground.
+    function frameMove(l, dx, dy) {
+        var p = frameScaled(l), a = -(l.rot || 0) * Math.PI / 180;
+        var lx = dx * Math.cos(a) - dy * Math.sin(a), ly = dx * Math.sin(a) + dy * Math.cos(a);
+        var share = function (now, d, room) {
+            return (room > 1e-9) ? Math.round(clamp((Number(now) || 0) + 2 * d / room, -1, 1) * 1e6) / 1e6 : 0;
+        };
+
+        return { fx: share(l.fx, lx, p.w - l.w), fy: share(l.fy, ly, p.h - l.h) };
+    }
+
+    // A zoom held to FRAME_ZOOM; the place stays the same share.
+    function frameZoom(l, zoom) {
+        return { zoom: clamp(Number(zoom) || 1, FRAME_ZOOM[0], FRAME_ZOOM[1]) };
+    }
+
+    var FRAMES = { FRAME_ZOOM: FRAME_ZOOM, frameShapes: frameShapes, frameLayer: frameLayer, frameClear: frameClear, frameFill: frameFill,
+        frameFit: frameFit, frameMove: frameMove, frameZoom: frameZoom };
+
+    // ---- From Unsplash (pg_image_editor_unsplash.js) ----
+
+    // A picked photo (pgUnsplash.pure.photo()) as a picture layer in the
+    // middle of the view, at most 60 % of it, w x h its loaded size. The layer
+    // keeps the returned address, not a files row, and the photographer's
+    // credit, as the Unsplash API guidelines ask; null without a photo.
+    function unsplashLayer(info, w, h, vr) {
+        if (!info || (typeof info.src !== 'string') || !(w > 0) || !(h > 0)) {
+            return null;
+        }
+
+        var fit = Math.min(1, 0.6 * vr.w / w, 0.6 * vr.h / h), lw = w * fit, lh = h * fit;
+        var layer = {
+            type: 'image', src: info.src, x: vr.x + (vr.w - lw) / 2, y: vr.y + (vr.h - lh) / 2, w: lw, h: lh, rot: 0, opacity: 1,
+            credit: { source: 'unsplash', name: String(info.name || ''), profile: String(info.profile || ''), page: String(info.page || '') }
+        };
+
+        if (info.alt) {
+            layer.alt = String(info.alt);
+        }
+
+        return layer;
+    }
+
+    // A picture layer's credit as its panel may show it: an Unsplash one
+    // with a name and both links on unsplash.com, else null.
+    function pictureCredit(l) {
+        var c = l && l.credit, on = function (href) {
+            return (typeof href === 'string') && /^https:\/\/unsplash\.com(\/|\?|$)/.test(href);
+        };
+
+        if (!c || (c.source !== 'unsplash') || (typeof c.name !== 'string') || (c.name.trim() === '') || !on(c.profile) || !on(c.page)) {
+            return null;
+        }
+
+        return { source: 'unsplash', name: c.name, profile: c.profile, page: c.page };
+    }
+
+    // Whether a picture is loaded asking for CORS: Unsplash's host answers
+    // it, so a save's canvas can read the pixels; anything else is loaded as
+    // before (a host without CORS would not load at all).
+    function corsPicture(src) {
+        return (typeof src === 'string') && (src.indexOf('https://images.unsplash.com/') === 0);
+    }
+
+    var UNSPLASH = { unsplashLayer: unsplashLayer, pictureCredit: pictureCredit, corsPicture: corsPicture };
+
     var api = {
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,
         flipRot: flipRot, coverScale: coverScale, fitZoom: fitZoom, centred: centred, fitView: fitView, zoomAt: zoomAt,
@@ -12883,7 +14514,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, FOLLOW, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU, VIDEO, SOUND, CLIP, MIX, UPLOAD, PHONE, GROUP, ATTACH, DATA, SEND].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, FOLLOW, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU, VIDEO, SOUND, CLIP, MIX, UPLOAD, PHONE, GROUP, ATTACH, DATA, SEND, SITECOLORS, TEXTSTYLES, ELEMENTS, STARTS, RESIZE, FRAMES, UNSPLASH].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');

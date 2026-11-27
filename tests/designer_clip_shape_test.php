@@ -173,3 +173,85 @@ function test_designer_clip_shape_write_in_user_styles()
 	pg_assert_same(array(true, false, false), $r['maybe']);
 	pg_assert_same(".other { color: red; }\n", $r['badCls'], 'not a custom style class: nothing written');
 }
+
+// Whether the element's own rules hold a shape or a mask (the dashed
+// outline on the canvas): another element's clip-path in the same User
+// Styles is not this element's, nor is a rule inside a media query.
+function test_designer_clip_shape_has_own_rule_only()
+{
+	$r = designer_clip_shape_run(
+		'var text = ".pgs-aaa111 { color: red; }\n.pgs-bbb222 { clip-path: circle(50% at 50% 50%); }\n.pgs-ccc333:hover { -webkit-mask-image: none; mask-image: none; }\n'
+		. '.pgs-ddd444 { padding: 0; }\n.pgs-ddd444:focus-visible { clip-path: inset(5% round 16px); }\n";'
+		. 'console.log(JSON.stringify([C.has(text, "pgs-aaa111"), C.has(text, "pgs-bbb222"), C.has(text, "pgs-ccc333"), C.has(text, "pgs-ddd444"),'
+		. ' C.has(text, "pgs-eee555"), C.has(text, ""), C.has(".pgs-aaa111 { mask-image: linear-gradient(to bottom, #000 70%, transparent); }", "pgs-aaa111")]));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_same(false, $r[0], 'an element without a shape, beside one with a clip-path');
+	pg_assert_same(true, $r[1]);
+	pg_assert_same(false, $r[2], 'a state\'s None with no mask on Normal cuts nothing');
+	pg_assert_same(true, $r[3], 'a state\'s own shape');
+	pg_assert_same(false, $r[4]);
+	pg_assert_same(false, $r[5]);
+	pg_assert_same(true, $r[6], 'a mask alone');
+
+	$part = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_shape.js');
+	pg_assert_contains('C.has(host.text(), host.cls()', $part, 'the canvas outline asks the element\'s own rules');
+}
+
+// The editor's own test before the part is loaded (_sdShapeHeldIn(), in the
+// block of the Options states' pure helpers), which opens Shadow and
+// effect's "More" by itself and loads the part: the model's has() answer,
+// so an element without a shape beside one with a clip-path stays closed.
+function test_designer_clip_shape_core_test_as_the_model()
+{
+	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$from = strpos($src, '// ── Options states: pure helpers ──');
+	$to = strpos($src, '// ── end of the Options states pure helpers');
+	pg_assert_true($from !== false && $to !== false && $to > $from, 'the editor has the block of the Options states');
+
+	if ($from === false || $to === false || $to < $from) {
+		return;
+	}
+
+	$cases = array(
+		".pgs-aaa111 { color: red; }\n.pgs-bbb222 { clip-path: circle(50% at 50% 50%); }\n",
+		".pgs-aaa111 { clip-path: circle(50% at 50% 50%); }\n",
+		"@media (max-width: 600px) { .pgs-aaa111 { clip-path: inset(5%); } }\n.pgs-aaa111 { color: red; }\n",
+		".pgs-aaa111:hover { -webkit-mask-image: none; mask-image: none; }\n",
+		".pgs-aaa111 { padding: 0; }\n.pgs-aaa111:focus-visible { clip-path: inset(5% round 16px); }\n",
+		".pgs-aaa111 { -webkit-mask: url(a.svg) center / contain no-repeat; }\n",
+		".pgs-aaa111 { clip-path: none !important; }\n",
+		".pgs-aaa111 { mask-image: linear-gradient(to bottom, #000 70%, transparent); }\n",
+		".pgs-aaa111 .inner { clip-path: circle(50% at 50% 50%); }\n",
+		"/* .pgs-aaa111 { clip-path: circle(50% at 50% 50%); } */\n.pgs-aaa111 { color: red; }\n",
+		".pgs-aaa111:active { CLIP-PATH: polygon(0 0, 100% 0, 50% 100%); }\n",
+		".pgs-aaa111 { mask-image: none; -webkit-mask-image: url(x.png); }\n",
+		".pgs-aaa111 { -webkit-mask-image: url(x.png) !important; }\n",
+	);
+	$r = designer_clip_shape_run(substr($src, $from, $to - $from)
+		. 'var cases = ' . json_encode($cases) . ";\n"
+		. 'console.log(JSON.stringify(cases.map(function (t) { return [_sdShapeHeldIn(t, "pgs-aaa111"), C.has(t, "pgs-aaa111")]; })'
+		. '.concat([[_sdShapeHeldIn(cases[1], ""), false]])));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	$expect = array(false, true, false, false, true, true, false, true, false, false, true, false, true, false);
+	$why = array('an element without a shape, beside one with a clip-path', 'its own clip-path', 'a clip-path only inside a media query',
+		'a state\'s None', 'a state\'s own shape', 'a -webkit-mask shorthand', 'None marked !important', 'a fade mask',
+		'a descendant\'s clip-path', 'a rule in a comment', 'a property name in capitals', 'mask-image None before the -webkit- twin',
+		'a -webkit- mask picture marked !important', 'no class');
+
+	foreach ($expect as $i => $want) {
+		pg_assert_same($want, $r[$i][0], $why[$i]);
+		pg_assert_same($r[$i][1], $r[$i][0], $why[$i] . ': as the model answers');
+	}
+
+	pg_assert_contains('return !!cls && _sdShapeHeldIn(_userStylesGet(), cls);', $src, '"More" and the outline ask the element\'s own rules');
+}

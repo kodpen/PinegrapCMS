@@ -1,11 +1,11 @@
 ---
 name: office-paragraph-edits
-description: Word paragraphs changed in the file window and the Workspace (includes/fn/office_edit.php, PR #702): which paragraphs, how new text goes into the runs (#1149, #1158), refused documents
+description: Word paragraph text saved from the file window and the Workspace (office_edit.php, PR #702): which paragraphs, the save entry, new text in the runs (#1149, #1158), refusals
 ---
 
 ## How is a paragraph of a document changed?
 - The same read with `edit` as a workbook (docs/memory/platform/office-cell-edits.md): `pg_office_docx_read()` marks each drawn paragraph with its position among all `w:p` of word/document.xml in document order (`data-p`, `pg_office_docx_paragraphs()`, the same count the save uses) and, when it cannot change, why (`data-lock`); `edit.paragraphs` holds the plain text of those that can, by position, and `version` the sha1 of the bytes.
-- `pg_office_view.js`: a click picks a paragraph, a second click (a double click too, with its word selected), Enter or F2 opens it in a box at the click; Enter keeps and goes to the next, Shift+Enter is a line break, Tab/Shift+Tab move, Esc undoes, Ctrl+S saves. The text typed so far already counts, so Save takes it before Enter (the grid does the same now). A changed paragraph shows plain until saved; links follow only with Ctrl/Cmd.
+- `pg_office_view.js`: a paragraph is typed where it stands on a white sheet, the caret where the click fell, no box (`office-docx-page.md`; keys, paste and links `office-docx-page-keys.md`; Undo and Redo `office-docx-undo.md`). The text typed so far already counts, so Save takes it before the paragraph is left. A changed paragraph shows its bold, italic and underline, the rest after the save.
 - Saves: `explorer_file_save` with `paragraphs` ([{p, text}], an entry may also or only hold `format`: `office-docx-format.md`, and `kind`: `office-docx-paragraph-kind.md`) and `office_version`; in a channel `ws_file_office_save` with `paragraphs`, into a copy (docs/memory/workspace/workspace-office-edits.md). `pg_office_docx_save()`: same lock, version check, copy-build-verify-rename as cells (`pg_office_save_package()`); only word/document.xml is rewritten (DOM, no blank dropping).
 
 ## How does new text go into the runs?

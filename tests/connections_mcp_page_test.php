@@ -118,11 +118,11 @@ function test_connections_mcp_page_return_keeps_the_query()
 
 function test_connections_mcp_page_settings_lines_lead_there()
 {
-	pg_assert_same('connections.php?service=mcp_sentry', ws_mcp_connections_url('sentry'), 'a connector\'s page');
+	pg_assert_same('connections.php?service=mcp_sentry&from=workspace_assistants%2Fpgset-ws-mcp', ws_mcp_connections_url('sentry'), 'a connector\'s page, back to MCP servers');
 	pg_assert_same('connections.php#connections-group-mcp', ws_mcp_connections_url(''), 'the list\'s MCP connectors');
 
 	$line = ws_mcp_connections_line_html('sentry', 'x');
-	pg_assert_contains('href="connections.php?service=mcp_sentry" target="_blank" rel="noopener">' . h(lang('Manage in Connections')), $line, 'Manage in Connections');
+	pg_assert_contains('href="connections.php?service=mcp_sentry&amp;from=workspace_assistants%2Fpgset-ws-mcp">' . h(lang('Manage in Connections')), $line, 'Manage in Connections, in the same tab');
 	pg_assert_contains(h(lang('Open in Connections')), ws_mcp_connections_line_html('', 'x'), 'Open in Connections for the list');
 
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/mcp.php');

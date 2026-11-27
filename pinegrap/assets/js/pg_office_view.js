@@ -33,15 +33,17 @@
  *
  * The view returned (for a workbook, and for a document read for editing)
  * tells the caller what was changed: view.kind ('xlsx' or 'docx'),
- * view.count(), view.edits() for the save request ([{sheet, name, cell,
- * value}] for a workbook, or the one row or column to insert or delete,
- * [{sheet, name, op, row}] / [{sheet, name, op, column}], chosen from a
- * row's or column's head menu; or the one sheet to add, rename, delete or
- * move, [{op: sheet_add, to}] / [{op: sheet_rename, sheet, name, to}] /
- * [{op: sheet_delete, sheet, name}] / [{op: sheet_move, sheet, name, to}],
- * chosen from the sheet tabs; or the one format change of the selected
- * cells, [{op: format, sheet, name, range, set}], chosen from the bar above
- * the grid; [{p, text}] for a document), view.version, and
+ * view.count(), view.edits() for the save request (for a workbook one
+ * list in the order the changes were made: the typed cells, {sheet, name,
+ * cell, value}, the format ranges chosen from the bar above the grid, {op:
+ * format, sheet, name, range, set}, the rows and columns inserted or
+ * deleted from a head menu, {sheet, name, op, row} / {sheet, name, op,
+ * column}, and the sheets added, renamed, deleted or moved from the tabs,
+ * {op: sheet_add, to} / {op: sheet_rename, sheet, name, to} / {op:
+ * sheet_delete, sheet, name} / {op: sheet_move, sheet, name, to}, each
+ * position and name the workbook's at that point of the list; [{p, text}]
+ * for a document),
+ * view.version, and
  * view.reset() to drop every change. What is being typed counts already, so
  * a Save pressed before Enter sends it too. Nothing is saved from here; the
  * window that drew the view sends the edits.
@@ -73,6 +75,11 @@
     // PG_OFFICE_SHIFT_ROWS and PG_OFFICE_SHIFT_COLUMNS).
     var SHEET_ROWS = 1048576;
     var SHEET_COLUMNS = 16384;
+
+    // The empty grid an added sheet is drawn as, the size of a new
+    // spreadsheet's (PG_OFFICE_NEW_ROWS, PG_OFFICE_NEW_COLUMNS).
+    var NEW_ROWS = 30;
+    var NEW_COLUMNS = 10;
 
     // The most cells one format change takes (PG_OFFICE_EDIT_MAX_CHANGES).
     var FORMAT_CELLS = 5000;
@@ -513,11 +520,88 @@
         return edit.protected ? (strings.sheet_protected || '') : '';
     }
 
-    // A cell format as the controls change it (bold, italic, color, fill,
-    // align, number), laid over a look of the file (pg_office_xlsx_style_looks()).
+    // The font sizes the Size choice offers, in points (the format entry
+    // takes whole points from 8 to 72).
+    var FONT_SIZES = [8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 36, 48, 72];
+
+    // The size the grid's own text stands for: a workbook's default font is
+    // 11 points in Excel and in the product's new spreadsheets, and a look
+    // carries a size only when it is not the default's.
+    var BASE_SIZE = 11;
+
+    // The width a wrapped cell wraps at: the grid draws no column widths,
+    // and a column is as wide as its widest text.
+    var WRAP_WIDTH = '12rem';
+
+    // The borders the Borders menu offers, in its order.
+    var BORDERS = [['none', 'bi-border'], ['all', 'bi-border-all'], ['outline', 'bi-border-outer'], ['bottom', 'bi-border-bottom']];
+
+    // The sides of one cell a border chosen for a range sets, as the server
+    // writes them (pg_office_format_border_sides()): side => true for a
+    // line, false for none; a side left out keeps what the cell has. "all"
+    // lines every side of every cell, "none" takes every side off,
+    // "outline" lines the range's outer edges, "bottom" the bottom edge of
+    // its last row. `range` is [first row, first column, last row, last
+    // column].
+    function borderSides(border, range, row, column) {
+        var sides = {};
+
+        if (border === 'all' || border === 'none') {
+            ['left', 'right', 'top', 'bottom'].forEach(function (side) {
+                sides[side] = (border === 'all');
+            });
+
+            return sides;
+        }
+
+        if (border === 'outline') {
+            if (column === range[1]) {
+                sides.left = true;
+            }
+
+            if (column === range[3]) {
+                sides.right = true;
+            }
+
+            if (row === range[0]) {
+                sides.top = true;
+            }
+        }
+
+        if ((border === 'outline' || border === 'bottom') && row === range[2]) {
+            sides.bottom = true;
+        }
+
+        return sides;
+    }
+
+    // A range's format as one of its cells takes it: a border becomes the
+    // sides it sets on that cell (`sides`), the rest stays.
+    function cellSet(set, range, row, column) {
+        if (!own(set, 'border')) {
+            return set;
+        }
+
+        var out = {};
+
+        Object.keys(set).forEach(function (key) {
+            if (key !== 'border') {
+                out[key] = set[key];
+            }
+        });
+
+        out.sides = borderSides(set.border, range, row, column);
+
+        return out;
+    }
+
+    // A cell format as the controls change it (bold, italic, underline,
+    // strike, size, wrap, color, fill, align, number, and a cell's border
+    // `sides`), laid over a look of the file (pg_office_xlsx_style_looks()):
+    // `bd` holds the sides drawn as l, r, t and b in that order.
     function lookWith(look, set) {
         var out = {};
-        var keys = { bold: 'b', italic: 'i', color: 'c', fill: 'bg', align: 'a', number: 'n' };
+        var keys = { bold: 'b', italic: 'i', underline: 'u', strike: 'st', size: 'sz', wrap: 'w', color: 'c', fill: 'bg', align: 'a', number: 'n' };
 
         Object.keys(look || {}).forEach(function (key) {
             out[key] = look[key];
@@ -526,12 +610,32 @@
         Object.keys(set || {}).forEach(function (key) {
             var value = set[key];
 
+            if (key === 'sides') {
+                var drawn = '';
+
+                [['l', 'left'], ['r', 'right'], ['t', 'top'], ['b', 'bottom']].forEach(function (side) {
+                    var on = own(value, side[1]) ? !!value[side[1]] : String(out.bd || '').indexOf(side[0]) !== -1;
+
+                    drawn += on ? side[0] : '';
+                });
+
+                if (drawn) {
+                    out.bd = drawn;
+                } else {
+                    delete out.bd;
+                }
+
+                return;
+            }
+
             if (!own(keys, key)) {
                 return;
             }
 
             if (value === false || value === '' || (key === 'number' && value === 'general')) {
                 delete out[keys[key]];
+            } else if (key === 'size') {
+                out.sz = Number(value);
             } else {
                 out[keys[key]] = (value === true) ? 1 : String(value).replace(/^#/, '');
             }
@@ -543,17 +647,41 @@
     // Draws a cell's look. A colour of the file is drawn on paper, as a
     // spreadsheet draws it: a text colour with no fill on white, a fill with
     // no text colour under black, so that neither is lost in the dark theme.
-    // A changed cell keeps the colours that mark it.
+    // A changed cell keeps the colours that mark it. A size is drawn against
+    // the grid's text as the default's; the border's sides are drawn by the
+    // stylesheet from the cell's office-bd-* classes, black on paper.
     function paint(td, look) {
         var style = td.style;
         var paper = !!(look && (look.c || look.bg)) && !td.classList.contains('office-edited');
+        var lines = [];
 
         look = look || {};
         style.fontWeight = look.b ? 'bold' : '';
         style.fontStyle = look.i ? 'italic' : '';
+        style.textDecorationLine = [look.u ? 'underline' : '', look.st ? 'line-through' : ''].join(' ').trim();
+        style.fontSize = look.sz ? (Math.round(look.sz / BASE_SIZE * 1000) / 1000) + 'em' : '';
+        style.whiteSpace = look.w ? 'pre-wrap' : '';
+
+        // The grid's columns take their widest text, so a wrapped cell sets
+        // a width of its own to wrap at (WRAP_WIDTH).
+        style.width = look.w ? WRAP_WIDTH : '';
+        style.minWidth = look.w ? WRAP_WIDTH : '';
         style.textAlign = look.a || '';
         style.color = paper ? (look.c ? '#' + look.c : 'black') : '';
         style.backgroundColor = paper ? (look.bg ? '#' + look.bg : 'white') : '';
+
+        ['l', 'r', 't', 'b'].forEach(function (side) {
+            var on = String(look.bd || '').indexOf(side) !== -1;
+
+            td.classList.toggle('office-bd-' + side, on);
+
+            if (on) {
+                lines.push(side);
+            }
+        });
+
+        td.classList.toggle('office-bd', lines.length > 0);
+        td.classList.toggle('office-bd-paper', lines.length > 0 && paper);
     }
 
     // Whether a cell lies in a range [first row, first column, last row,
@@ -562,21 +690,358 @@
         return !!range && row >= range[0] && row <= range[2] && column >= range[1] && column <= range[3];
     }
 
-    // The class a cell or head takes from the row or column waiting to be
-    // inserted (a line drawn before or after the one chosen) or deleted
-    // (struck through).
-    function shiftMark(state, row, column) {
-        var pending = state ? state.pending : null;
+    // A workbook's waiting changes are one list in the order they were
+    // made, as the save sends them: a typed cell ({sheet, cell, value}), a
+    // format range ({sheet, range, set}), a row or column inserted or
+    // deleted ({op: insert|delete, sheet, axis, at}; `at` a row number or a
+    // 0-based column, the line inserted before) or a sheet change ({op:
+    // sheet_add|sheet_rename|sheet_delete|sheet_move, sheet, to}). Every
+    // position and sheet place is the workbook's at that point of the list,
+    // as the server applies each on the workbook the one before left; the
+    // grid and the tabs are drawn from the list (listBook()).
 
-        if (!pending || ((pending.axis === 'row') ? row : column) !== pending.at) {
-            return '';
+    // Whether a change moves cells or sheets, so that an address before it
+    // names another cell than after it.
+    function listMoves(step) {
+        return !step.cell && !step.range;
+    }
+
+    // Takes a typed cell out of the changes made since the last row, column
+    // or sheet change, then, unless `value` is null, puts it at the end with
+    // its value. A cell typed again moves to the end, so it is written over
+    // every format laid on it before; the caller leaves `value` null when
+    // the cell holds its value without the change.
+    function listCell(list, sheet, address, value) {
+        for (var index = list.length - 1; index >= 0 && !listMoves(list[index]); index--) {
+            if (list[index].cell && list[index].sheet === sheet && list[index].cell === address) {
+                list.splice(index, 1);
+                break;
+            }
         }
 
-        if (pending.place === 'delete') {
-            return 'office-shift-delete';
+        if (value !== null && value !== undefined) {
+            list.push({ sheet: sheet, cell: address, value: String(value) });
         }
 
-        return 'office-shift-insert-' + pending.axis + ((pending.place === 'after') ? '-after' : '');
+        return list;
+    }
+
+    // Sets one part of a range's format. The parts chosen one after the
+    // other for the same range are one change; any other range, or the same
+    // range after something else, is a change of its own.
+    function listFormat(list, sheet, range, key, value) {
+        var last = list.length ? list[list.length - 1] : null;
+
+        if (!last || !last.range || last.sheet !== sheet || last.range.join(',') !== range.join(',')) {
+            last = { sheet: sheet, range: range.slice(), set: {} };
+            list.push(last);
+        }
+
+        last.set[key] = value;
+
+        return list;
+    }
+
+    function listCount(list) {
+        return list.length;
+    }
+
+    // A cell's look with the format parts laid on it (listBook()'s `sets`
+    // of the cell), in order.
+    function listLook(look, sets) {
+        (sets || []).forEach(function (set) {
+            look = lookWith(look, set);
+        });
+
+        return look || {};
+    }
+
+    // Where a row number or a column lands after a line is inserted before
+    // `at` or deleted at it; null for the line deleted.
+    function shiftAt(number, op, at) {
+        if (number < at) {
+            return number;
+        }
+
+        if (op === 'insert') {
+            return number + 1;
+        }
+
+        return (number === at) ? null : number - 1;
+    }
+
+    // An address-keyed map with its addresses moved by a row or column
+    // change; the cells of a deleted line leave it.
+    function shiftKeys(map, axis, op, at) {
+        var out = {};
+
+        Object.keys(map || {}).forEach(function (address) {
+            var parts = /^([A-Z]+)(\d+)$/.exec(address);
+
+            if (!parts) {
+                return;
+            }
+
+            var column = columnIndex(parts[1]);
+            var row = parseInt(parts[2], 10);
+            var moved = shiftAt((axis === 'row') ? row : column, op, at);
+
+            if (moved !== null) {
+                out[(axis === 'row') ? columnName(column) + moved : columnName(moved) + row] = map[address];
+            }
+        });
+
+        return out;
+    }
+
+    // A column-keyed map of a row (its styles, its shown texts) moved by a
+    // column change.
+    function shiftColumns(map, op, at) {
+        var out = {};
+
+        Object.keys(map || {}).forEach(function (key) {
+            var moved = shiftAt(parseInt(key, 10), op, at);
+
+            if (moved !== null) {
+                out[moved] = map[key];
+            }
+        });
+
+        return out;
+    }
+
+    // An area [first row, first column, last row, last column, …] moved as
+    // the server moves it: an insert inside widens it, a delete inside
+    // narrows it; null when nothing of it is left.
+    function shiftRange(range, axis, op, at) {
+        var out = range.slice();
+        var low = (axis === 'row') ? 0 : 1;
+        var high = low + 2;
+
+        if (op === 'insert') {
+            out[low] += (out[low] >= at) ? 1 : 0;
+            out[high] += (out[high] >= at) ? 1 : 0;
+        } else {
+            out[low] -= (out[low] > at) ? 1 : 0;
+            out[high] -= (out[high] >= at) ? 1 : 0;
+        }
+
+        return (out[high] < out[low]) ? null : out;
+    }
+
+    function copyOf(object, skip) {
+        var out = {};
+
+        Object.keys(object || {}).forEach(function (key) {
+            if (key !== skip) {
+                out[key] = object[key];
+            }
+        });
+
+        return out;
+    }
+
+    // A sheet with a row or a column inserted or deleted: its rows, cell
+    // values, styles, shown texts, formula marks, locked cells and areas
+    // moved, an inserted row drawn empty, an inserted line marked added.
+    function shiftSheet(sheet, axis, op, at) {
+        var out = copyOf(sheet, 'byRow');
+        var width = Math.max(sheet.wide || 0, sheetWidth(sheet));
+        var edit = sheet.edit ? copyOf(sheet.edit) : null;
+        var added = sheet.added || { row: {}, column: {} };
+
+        if (axis === 'row') {
+            var rows = [];
+            var placed = (op !== 'insert');
+
+            sheet.rows.forEach(function (row) {
+                var number = shiftAt(row.n, op, at);
+
+                if (!placed && row.n >= at) {
+                    rows.push({ n: at, cells: [] });
+                    placed = true;
+                }
+
+                if (number === row.n) {
+                    rows.push(row);
+                } else if (number !== null) {
+                    var moved = copyOf(row);
+
+                    moved.n = number;
+                    rows.push(moved);
+                }
+            });
+
+            if (!placed) {
+                rows.push({ n: at, cells: [] });
+            }
+
+            out.rows = rows;
+        } else {
+            out.rows = sheet.rows.map(function (row) {
+                var copy = copyOf(row);
+
+                copy.cells = row.cells.slice();
+
+                if (at < copy.cells.length) {
+                    if (op === 'insert') {
+                        copy.cells.splice(at, 0, '');
+                    } else {
+                        copy.cells.splice(at, 1);
+                    }
+                }
+
+                copy.s = row.s ? shiftColumns(row.s, op, at) : row.s;
+                copy.show = row.show ? shiftColumns(row.show, op, at) : row.show;
+                copy.calc = row.calc ? row.calc.map(function (column) { return shiftAt(column, op, at); }).filter(function (column) { return column !== null; }) : row.calc;
+
+                return copy;
+            });
+
+            out.wide = (op === 'insert') ? Math.min(Math.max(width, at) + 1, SHEET_COLUMNS) : Math.max(0, width - ((at < width) ? 1 : 0));
+        }
+
+        if (edit) {
+            edit.locked = shiftKeys(edit.locked, axis, op, at);
+            edit.formulas = shiftKeys(edit.formulas, axis, op, at);
+            edit.ranges = (edit.ranges || []).map(function (range) { return shiftRange(range, axis, op, at); }).filter(Boolean);
+            out.edit = edit;
+        }
+
+        out.added = { row: added.row, column: added.column };
+        out.added[axis] = shiftColumns(added[axis], op, at);
+
+        if (op === 'insert') {
+            out.added[axis][at] = true;
+        }
+
+        return out;
+    }
+
+    // An added sheet as the grid draws it: an empty grid of the rows and
+    // columns of a new spreadsheet (PG_OFFICE_NEW_ROWS, PG_OFFICE_NEW_COLUMNS),
+    // every cell open; the server makes the rows a cell is typed into.
+    function newSheet(name, id) {
+        var rows = [];
+
+        for (var number = 1; number <= NEW_ROWS; number++) {
+            rows.push({ n: number, cells: [] });
+        }
+
+        return { id: id, name: name, rows: rows, wide: NEW_COLUMNS, edit: { ok: true }, changed: true };
+    }
+
+    function moveItem(list, from, to) {
+        list.splice(to, 0, list.splice(from, 1)[0]);
+    }
+
+    // The workbook as the list leaves it, from the sheets the server sent:
+    // {sheets, values, sets}. Each sheet is a copy with `id` (its place as
+    // opened, or "new" and a number), its rows, name and edit as the list
+    // leaves them, `changed` when a change of the list touches it, `added`
+    // rows and columns; `values` holds per sheet the cells typed (address
+    // => value), `sets` the format parts laid on each cell (address =>
+    // [set]). Nothing the server sent is changed.
+    function listBook(sheets, list) {
+        var book = {
+            sheets: sheets.map(function (sheet, index) {
+                var copy = copyOf(sheet, 'byRow');
+
+                copy.id = index;
+
+                return copy;
+            }),
+            values: sheets.map(function () { return {}; }),
+            sets: sheets.map(function () { return {}; })
+        };
+        var added = 0;
+
+        list.forEach(function (step) {
+            var at = step.sheet;
+
+            if (step.cell) {
+                if (book.sheets[at]) {
+                    book.values[at][step.cell] = step.value;
+                    book.sheets[at].changed = true;
+                }
+            } else if (step.range) {
+                if (book.sheets[at]) {
+                    for (var row = step.range[0]; row <= step.range[2]; row++) {
+                        for (var column = step.range[1]; column <= step.range[3]; column++) {
+                            var address = columnName(column) + row;
+
+                            (book.sets[at][address] = book.sets[at][address] || []).push(cellSet(step.set, step.range, row, column));
+                        }
+                    }
+
+                    book.sheets[at].changed = true;
+                }
+            } else if (step.op === 'insert' || step.op === 'delete') {
+                if (book.sheets[at]) {
+                    book.sheets[at] = shiftSheet(book.sheets[at], step.axis, step.op, step.at);
+                    book.sheets[at].changed = true;
+                    book.values[at] = shiftKeys(book.values[at], step.axis, step.op, step.at);
+                    book.sets[at] = shiftKeys(book.sets[at], step.axis, step.op, step.at);
+                }
+            } else if (step.op === 'sheet_add') {
+                book.sheets.push(newSheet(step.to, 'new' + (++added)));
+                book.values.push({});
+                book.sets.push({});
+            } else if (book.sheets[at] && step.op === 'sheet_rename') {
+                book.sheets[at] = copyOf(book.sheets[at]);
+                book.sheets[at].name = step.to;
+                book.sheets[at].changed = true;
+            } else if (book.sheets[at] && step.op === 'sheet_delete') {
+                book.sheets.splice(at, 1);
+                book.values.splice(at, 1);
+                book.sets.splice(at, 1);
+            } else if (book.sheets[at] && step.op === 'sheet_move' && book.sheets[step.to]) {
+                book.sheets[at].changed = true;
+                moveItem(book.sheets, at, step.to);
+                moveItem(book.values, at, step.to);
+                moveItem(book.sets, at, step.to);
+            }
+        });
+
+        return book;
+    }
+
+    // The save list: each change in its order, named by its sheet's name
+    // at that point of the list (`names` the names as opened); `rangeName`
+    // writes a range. The server inserts before the line it is sent.
+    function listEdits(list, names, rangeName) {
+        var out = [];
+
+        names = names.slice();
+
+        list.forEach(function (step) {
+            var name = names[step.sheet];
+
+            if (step.cell) {
+                out.push({ sheet: step.sheet, name: name, cell: step.cell, value: step.value });
+            } else if (step.range) {
+                out.push({ op: 'format', sheet: step.sheet, name: name, range: rangeName(step.range), set: copyOf(step.set) });
+            } else if (step.op === 'insert' || step.op === 'delete') {
+                var change = { sheet: step.sheet, name: name, op: step.op };
+
+                change[step.axis] = (step.axis === 'row') ? step.at : columnName(step.at);
+                out.push(change);
+            } else if (step.op === 'sheet_add') {
+                out.push({ op: 'sheet_add', to: step.to });
+                names.push(step.to);
+            } else if (step.op === 'sheet_rename') {
+                out.push({ op: 'sheet_rename', sheet: step.sheet, name: name, to: step.to });
+                names[step.sheet] = step.to;
+            } else if (step.op === 'sheet_delete') {
+                out.push({ op: 'sheet_delete', sheet: step.sheet, name: name });
+                names.splice(step.sheet, 1);
+            } else if (step.op === 'sheet_move') {
+                out.push({ op: 'sheet_move', sheet: step.sheet, name: name, to: step.to });
+                moveItem(names, step.sheet, step.to);
+            }
+        });
+
+        return out;
     }
 
     // A row's or a column's head. A column's, with `tools`, is a button
@@ -587,10 +1052,10 @@
         var shifts = !!(state && state.heads);
         var menu = (axis === 'column') ? (!!tools || shifts) : shifts;
         var th = el('th', '', menu ? '' : label);
-        var marked = state ? shiftMark(state, (axis === 'row') ? at : -1, (axis === 'column') ? at : -1) : '';
 
-        if (marked) {
-            th.classList.add(marked);
+        // A row or column inserted by a change waiting is marked on its head.
+        if (state && state.added && state.added[axis] && own(state.added[axis], at)) {
+            th.classList.add('office-head-added');
         }
 
         if (menu) {
@@ -632,11 +1097,11 @@
     // cells carry what the keyboard and the mouse need: the row number on
     // each row, and the column by the cell's place in it. Each cell is drawn
     // in its look (`looks`, by style number) and a number in its number
-    // format's text (row.show), with the format change waiting laid over
-    // its range (state.format). `tools` ({order, sort, filters}) gives the
+    // format's text (row.show), with the format ranges waiting laid over
+    // it (state.look). `tools` ({order, sort, filters}) gives the
     // rows' order as sorted and filtered, marked on the column heads.
     function sheetTable(sheet, strings, state, looks, tools) {
-        var width = 0;
+        var width = sheet.wide || 0;
 
         sheet.rows.forEach(function (row) {
             width = Math.max(width, row.cells.length);
@@ -690,12 +1155,6 @@
                         td.classList.add('office-edited');
                     }
 
-                    var marked = shiftMark(state, row.n, column);
-
-                    if (marked) {
-                        td.classList.add(marked);
-                    }
-
                     if (lock) {
                         td.classList.add('office-locked');
                         td.setAttribute('aria-readonly', 'true');
@@ -711,8 +1170,8 @@
 
                 var look = (looks && row.s && own(row.s, column)) ? looks[row.s[column]] : null;
 
-                if (state && state.format && inRange(state.format.range, row.n, column)) {
-                    look = lookWith(look, state.format.set);
+                if (state && state.look) {
+                    look = state.look(row.n, column, look);
                 }
 
                 if (look) {
@@ -762,44 +1221,40 @@
         var current = null;
         var editable = !!(options && options.editable);
 
-        // Per sheet, by position: address -> the value typed.
-        var changes = office.sheets.map(function () { return {}; });
-
         // The sheet on show, and in it the selected cell and the open editor.
         var shown = { index: -1, table: null, cell: null, editor: null, note: '' };
-
-        // The one row or column waiting to be inserted or deleted: a save of
-        // its own, so cells are not changed beside it ({sheet, axis, at,
-        // place}; `at` is the row number or 0-based column chosen, `place`
-        // is before, after or delete).
-        var pending = null;
         var menu = null;
 
-        // The one sheet change waiting, a save of its own as well ({action:
-        // add|rename|delete|move, sheet, to}; `to` is the new name, or the
-        // place a moved sheet takes). The tabs offer it when the server
-        // allows the workbook's sheets to change.
-        var sheetPending = null;
+        // The tabs offer sheet changes when the server allows the
+        // workbook's sheets to change.
         var sheetsEditable = editable && !!office.sheets_edit && !!office.sheets_edit.ok;
         var strip = sheetsEditable ? el('div', 'office-tabs') : null;
         var addButton = null;
 
-        // The one format change waiting, a save of its own too ({sheet,
-        // range, set}; `range` is [first row, first column, last row, last
-        // column], `set` what the bar above the grid chose). The bar changes
-        // the cells selected: one, or the rectangle from shown.anchor to
-        // shown.cell picked with Shift.
-        var format = null;
+        // Every change waiting, in the order it was made (listCell(),
+        // listFormat(), and the rows, columns and sheets the menus change).
+        // A range is [first row, first column, last row, last column], its
+        // `set` what the bar above the grid chose for the cells selected:
+        // one, or the rectangle from shown.anchor to shown.cell picked with
+        // Shift. `workbook` is the workbook as the list leaves it (listBook()):
+        // the grid and the tabs are drawn from it, so a row or a sheet put
+        // in is typed into before the save.
+        var steps = [];
+        var workbook = listBook(office.sheets, steps);
         var looks = office.looks || {};
         var bar = editable ? el('div', 'office-format') : null;
         var controls = {};
 
-        // Per sheet, by position, how its rows are shown ({sort: {column,
-        // down}, filters: {column: {text: true}}}); nothing of it is written
-        // to the file. A sheet sorted or filtered is only looked at, so that
-        // a selection, a range and a row's place on the grid stay the
-        // file's. `finder` is the search through the workbook.
-        var views = office.sheets.map(function () { return { sort: null, filters: {} }; });
+        // Undo and Redo of the list: each change made through change()
+        // below is one press (listHistory()).
+        var stepHistory = listHistory(100);
+
+        // Per sheet, by its id in the book, how its rows are shown ({sort:
+        // {column, down}, filters: {column: {text: true}}}); nothing of it
+        // is written to the file. A sheet sorted or filtered is only looked
+        // at, so that a selection, a range and a row's place on the grid
+        // stay the file's. `finder` is the search through the workbook.
+        var views = {};
         var tools = el('div', 'office-tools');
         var toolParts = {};
         var finder = { query: '', list: [], at: -1 };
@@ -818,48 +1273,77 @@
             // A language tag the browser does not know: the plain order.
         }
 
-        // The changes as they stand, with the value of the cell being typed
-        // in: Save is offered, and sends it, before Enter.
-        function changesNow() {
-            var list = changes.map(function (sheetChanges) {
-                var copy = {};
+        function viewOf(index) {
+            var id = workbook.sheets[index].id;
 
-                Object.keys(sheetChanges).forEach(function (address) {
-                    copy[address] = sheetChanges[address];
-                });
+            return views[id] || (views[id] = { sort: null, filters: {} });
+        }
 
-                return copy;
-            });
+        // The workbook drawn again from the list.
+        function rebuild() {
+            workbook = listBook(office.sheets, steps);
+        }
 
-            var editor = shown.editor;
+        // Puts a value typed into a cell of the open sheet into the list:
+        // the change made since the last row, column or sheet change is
+        // taken out, and the new one put at the end unless the cell holds
+        // that value without it.
+        function listValue(list, position, value) {
+            var address = columnName(position.column) + position.row;
 
-            if (editor) {
-                var position = cellPosition(editor.td);
-                var address = columnName(position.column) + position.row;
-                var value = String(editor.input.value).replace(/\r\n?/g, '\n');
+            listCell(list, shown.index, address, null);
 
-                if (value === original(office.sheets[shown.index], position.row, position.column)) {
-                    delete list[shown.index][address];
-                } else {
-                    list[shown.index][address] = value;
-                }
+            var under = listBook(office.sheets, list);
+            var values = under.values[shown.index];
+            var was = own(values, address) ? values[address] : original(under.sheets[shown.index], position.row, position.column);
+
+            if (value !== was) {
+                listCell(list, shown.index, address, value);
             }
 
             return list;
         }
 
-        function cellCount() {
-            return changesNow().reduce(function (total, sheetChanges) {
-                return total + Object.keys(sheetChanges).length;
-            }, 0);
+        // The list as it stands, with the value of the cell being typed in:
+        // Save is offered, and sends it, before Enter.
+        function listNow() {
+            var editor = shown.editor;
+
+            if (!editor) {
+                return steps;
+            }
+
+            var value = String(editor.input.value).replace(/\r\n?/g, '\n');
+
+            if (value === shownValue(editor.td)) {
+                return steps;
+            }
+
+            return listValue(steps.slice(), cellPosition(editor.td), value);
+        }
+
+        // The typed values of a sheet as they stand, the cell being typed in
+        // with them.
+        function valuesNow(index) {
+            var values = copyOf(workbook.values[index]);
+            var editor = shown.editor;
+
+            if (editor && index === shown.index) {
+                var position = cellPosition(editor.td);
+
+                values[columnName(position.column) + position.row] = String(editor.input.value).replace(/\r\n?/g, '\n');
+            }
+
+            return values;
         }
 
         function count() {
-            return cellCount() + (pending ? 1 : 0) + (sheetPending ? 1 : 0) + (format ? 1 : 0);
+            return listCount(listNow());
         }
 
         function notify() {
             drawStatus();
+            drawSteps();
 
             if (options && typeof options.onChange === 'function') {
                 options.onChange(count());
@@ -867,15 +1351,15 @@
         }
 
         function sheetEditable(index) {
-            var edit = office.sheets[index].edit;
+            var edit = (index >= 0) ? workbook.sheets[index].edit : null;
 
-            return editable && !!edit && !!edit.ok && !pending && !sheetPending && !format && !arranged(index);
+            return editable && !!edit && !!edit.ok && !arranged(index);
         }
 
         // The format bar serves a sheet whose cells may change, unless it is
         // protected (the server refuses a sheet that does not allow it).
         function sheetFormattable(index) {
-            var edit = (index >= 0) ? office.sheets[index].edit : null;
+            var edit = (index >= 0) ? workbook.sheets[index].edit : null;
 
             return editable && !!edit && !!edit.ok && !edit.protected && !arranged(index);
         }
@@ -883,19 +1367,21 @@
         // Rows and columns move on a sheet whose cells may change, unless it
         // is protected (the server says why for whatever else it refuses).
         function sheetShiftable(index) {
-            var edit = office.sheets[index].edit;
+            var edit = (index >= 0) ? workbook.sheets[index].edit : null;
 
             return editable && !!edit && !!edit.ok && !edit.protected && !arranged(index);
         }
 
         // Whether a sheet is shown sorted or filtered.
         function arranged(index) {
-            return index >= 0 && (!!views[index].sort || Object.keys(views[index].filters).length > 0);
+            var view = (index >= 0) ? viewOf(index) : null;
+
+            return !!view && (!!view.sort || Object.keys(view.filters).length > 0);
         }
 
         // The places of a sheet's rows in the order they are shown.
         function orderOf(index) {
-            return arrange(office.sheets[index].rows, views[index], changes[index], compare);
+            return arrange(workbook.sheets[index].rows, viewOf(index), workbook.values[index], compare);
         }
 
         // The value the file holds for a cell, as the server showed it.
@@ -921,7 +1407,7 @@
             }
 
             var parts = [];
-            var sheetEdit = (shown.index >= 0) ? office.sheets[shown.index].edit : null;
+            var sheetEdit = (shown.index >= 0) ? workbook.sheets[shown.index].edit : null;
             var note = sheetNote(sheetEdit, strings);
 
             if (note) {
@@ -940,19 +1426,11 @@
                 }
             }
 
-            if (format) {
-                parts.push(fill(strings.format_pending, rangeName(format.range))
-                    + ' ' + (strings.shift_sheet ? fill(strings.shift_sheet, office.sheets[format.sheet].name) : ''));
-            } else if (pending) {
-                var line = (pending.axis === 'row') ? pending.at : columnName(pending.at);
+            var list = listNow();
 
-                parts.push(fill(strings['shift_' + pending.axis + '_' + pending.place], line)
-                    + ' ' + (strings.shift_sheet ? fill(strings.shift_sheet, office.sheets[pending.sheet].name) : '')
-                    + (strings.recalc ? ' ' + strings.recalc : ''));
-            } else if (cellCount() > 0) {
-                parts.push(fill(strings.changed, cellCount()) + (strings.recalc ? ' ' + strings.recalc : ''));
-            } else if (sheetPending) {
-                parts.push(sheetPendingText());
+            // Formulas are worked out again after a cell or a line changes.
+            if (list.length > 0) {
+                parts.push(fill(strings.unsaved, list.length) + ((strings.recalc && list.some(function (step) { return !step.range && !/^sheet_/.test(step.op || ''); })) ? ' ' + strings.recalc : ''));
             } else if (sheetsEditable) {
                 parts.push(strings.sheet_hint || '');
             }
@@ -964,10 +1442,8 @@
             status.textContent = parts.filter(Boolean).join(' · ');
             status.classList.toggle('d-none', status.textContent === '');
 
-            var list = changesNow();
-
             Array.prototype.forEach.call(tabs.querySelectorAll('.office-tab'), function (tab, index) {
-                var edited = (Object.keys(list[index]).length > 0) || (!!pending && pending.sheet === index) || (!!sheetPending && sheetPending.sheet === index) || (!!format && format.sheet === index);
+                var edited = !!workbook.sheets[index] && (!!workbook.sheets[index].changed || (index === shown.index && list !== steps));
                 var mark = tab.querySelector('.office-tab-changed');
 
                 tab.classList.toggle('office-tab-edited', edited);
@@ -1091,16 +1567,11 @@
             return own(sheet.byRow, number) ? sheet.byRow[number] : null;
         }
 
-        // A cell's look as it stands: the file's, under the waiting change.
+        // A cell's look as it stands: the file's, under the waiting ranges.
         function lookAt(index, row, column) {
-            var entry = rowOf(office.sheets[index], row);
-            var look = (entry && entry.s && own(entry.s, column)) ? looks[entry.s[column]] : null;
+            var entry = rowOf(workbook.sheets[index], row);
 
-            if (format && format.sheet === index && inRange(format.range, row, column)) {
-                look = lookWith(look, format.set);
-            }
-
-            return look || {};
+            return listLook((entry && entry.s && own(entry.s, column)) ? looks[entry.s[column]] : null, workbook.sets[index][columnName(column) + row]);
         }
 
         function repaint(range) {
@@ -1109,12 +1580,8 @@
             });
         }
 
-        function sameRange(one, two) {
-            return one.join(',') === two.join(',');
-        }
-
         // Sets one part of the selected cells' format, as a change waiting
-        // for the save; one range a save, nothing beside other changes.
+        // for the save beside the cells typed and the other ranges.
         function setFormat(key, value) {
             var range = selectionRange();
 
@@ -1124,15 +1591,11 @@
 
             closeEditor(true);
 
-            if (cellCount() > 0 || pending || sheetPending) {
-                shown.note = strings.format_first || '';
-            } else if (format && (format.sheet !== shown.index || !sameRange(format.range, range))) {
-                shown.note = strings.format_one || '';
-            } else if ((range[2] - range[0] + 1) * (range[3] - range[1] + 1) > FORMAT_CELLS) {
+            if ((range[2] - range[0] + 1) * (range[3] - range[1] + 1) > FORMAT_CELLS) {
                 shown.note = strings.format_many || '';
             } else {
-                format = format || { sheet: shown.index, range: range, set: {} };
-                format.set[key] = value;
+                change(function () { listFormat(steps, shown.index, range, key, value); });
+                rebuild();
                 shown.note = '';
                 repaint(range);
                 drawBar();
@@ -1145,24 +1608,6 @@
             }
 
             drawStatus();
-        }
-
-        function cancelFormat() {
-            if (!format) {
-                return;
-            }
-
-            var range = format.range;
-            var index = format.sheet;
-
-            format = null;
-
-            if (index === shown.index) {
-                repaint(range);
-            }
-
-            drawBar();
-            notify();
         }
 
         // A button of the bar: look A's icon button, or an item of its
@@ -1189,6 +1634,26 @@
             bar.setAttribute('role', 'toolbar');
             bar.setAttribute('aria-label', strings.format_bar || '');
 
+            // Undo and Redo at the bar's start, on the whole list; shown on
+            // every sheet, the format controls only where cells take one.
+            [['undo', 'bi-arrow-counterclockwise', strings.doc_undo], ['redo', 'bi-arrow-clockwise', strings.doc_redo]].forEach(function (item) {
+                var button = barButton('pg-icon-button pg-icon-button-sm', item[1], item[2] || '');
+
+                button.removeAttribute('aria-pressed');
+                button.disabled = true;
+
+                // A press leaves the focus where it is: in the cell being
+                // typed in, whose value is kept first and undone with it.
+                button.addEventListener('mousedown', function (event) {
+                    event.preventDefault();
+                });
+                button.addEventListener('click', function () {
+                    undoStep(item[0] === 'undo');
+                });
+                controls[item[0]] = button;
+                bar.appendChild(button);
+            });
+
             controls.bold = barButton('pg-icon-button pg-icon-button-sm', 'bi-type-bold', strings.format_bold || '');
             controls.bold.addEventListener('click', function () {
                 setFormat('bold', !currentLook().b);
@@ -1199,8 +1664,57 @@
                 setFormat('italic', !currentLook().i);
             });
 
+            // Underline and Strikethrough beside them, as toggles of the
+            // first selected cell's state.
+            [['underline', 'bi-type-underline', 'u'], ['strike', 'bi-type-strikethrough', 'st']].forEach(function (item) {
+                controls[item[0]] = barButton('pg-icon-button pg-icon-button-sm', item[1], strings['format_' + item[0]] || '');
+                controls[item[0]].addEventListener('click', function () {
+                    setFormat(item[0], !currentLook()[item[2]]);
+                });
+            });
+
             bar.appendChild(controls.bold);
             bar.appendChild(controls.italic);
+            bar.appendChild(controls.underline);
+            bar.appendChild(controls.strike);
+
+            // The size in points. A cell with no size of its own shows
+            // "Default"; one outside the list shows its own number. Neither
+            // is offered as a choice.
+            var sizeField = el('span', 'pg-input pg-input-sm office-size');
+            var sizeChoice = el('select');
+            var sizeDefault = el('option', '', strings.format_size_default || '');
+            var sizeOther = el('option', '', '');
+
+            sizeChoice.setAttribute('aria-label', strings.format_size || '');
+            sizeChoice.title = strings.format_size || '';
+            sizeDefault.value = '';
+            sizeDefault.disabled = true;
+            sizeChoice.appendChild(sizeDefault);
+
+            FONT_SIZES.forEach(function (size) {
+                var option = el('option', '', String(size));
+
+                option.value = String(size);
+                sizeChoice.appendChild(option);
+            });
+
+            sizeOther.value = 'other';
+            sizeOther.disabled = true;
+            sizeOther.hidden = true;
+            sizeChoice.appendChild(sizeOther);
+
+            sizeChoice.addEventListener('change', function () {
+                var size = parseInt(sizeChoice.value, 10);
+
+                if (size) {
+                    setFormat('size', size);
+                }
+            });
+
+            sizeField.appendChild(sizeChoice);
+            controls.size = { field: sizeField, choice: sizeChoice, other: sizeOther };
+            bar.appendChild(sizeField);
 
             // Text colour and fill: the glyph over a bar in the cell's
             // colour, opening the colours on offer ("None" first).
@@ -1225,6 +1739,22 @@
                 bar.appendChild(button);
             });
 
+            // Borders: the four choices of the format entry in the editor's
+            // menu; the button is pressed while the first selected cell has
+            // a line on any side.
+            controls.border = barButton('pg-icon-button pg-icon-button-sm', 'bi-border-all', strings.format_borders || '');
+            controls.border.setAttribute('aria-haspopup', 'menu');
+            controls.border.addEventListener('click', function () {
+                openMenu(controls.border, BORDERS.map(function (item) {
+                    return {
+                        label: strings['border_' + item[0]] || item[0],
+                        icon: item[1],
+                        run: function () { setFormat('border', item[0]); }
+                    };
+                }), strings.format_borders || '');
+            });
+            bar.appendChild(controls.border);
+
             // Choosing the alignment already chosen gives the cell back its
             // general alignment.
             var align = el('span', 'pg-seg');
@@ -1245,6 +1775,12 @@
 
             bar.appendChild(align);
 
+            controls.wrap = barButton('pg-icon-button pg-icon-button-sm', 'bi-text-wrap', strings.format_wrap || '');
+            controls.wrap.addEventListener('click', function () {
+                setFormat('wrap', !currentLook().w);
+            });
+            bar.appendChild(controls.wrap);
+
             var number = el('span', 'pg-seg');
 
             number.setAttribute('role', 'group');
@@ -1262,17 +1798,6 @@
             });
 
             bar.appendChild(number);
-
-            controls.undo = el('button', 'pg-button pg-button-quiet pg-button-sm', strings.format_undo || '');
-            controls.undo.type = 'button';
-            controls.undo.addEventListener('click', function () {
-                cancelFormat();
-
-                if (shown.cell) {
-                    shown.cell.focus({ preventScroll: true });
-                }
-            });
-            bar.appendChild(controls.undo);
         }
 
         // The look of the first selected cell, as the bar shows it.
@@ -1294,7 +1819,13 @@
 
             var offered = !!shown.table && sheetFormattable(shown.index);
 
-            bar.classList.toggle('d-none', !offered);
+            drawSteps();
+
+            Array.prototype.forEach.call(bar.children, function (part) {
+                if (part !== controls.undo && part !== controls.redo) {
+                    part.classList.toggle('d-none', !offered);
+                }
+            });
 
             if (!offered) {
                 return;
@@ -1304,6 +1835,21 @@
 
             press(controls.bold, !!look.b);
             press(controls.italic, !!look.i);
+            press(controls.underline, !!look.u);
+            press(controls.strike, !!look.st);
+            press(controls.border, !!look.bd);
+            press(controls.wrap, !!look.w);
+
+            // The size: one of the list, "Default", or the cell's own
+            // number outside the list.
+            var size = look.sz ? String(look.sz) : '';
+
+            if (size && FONT_SIZES.indexOf(Number(size)) === -1) {
+                controls.size.other.textContent = size;
+                size = 'other';
+            }
+
+            controls.size.choice.value = size;
 
             // A colour from outside the list shows on the bar as it is.
             controls.color.stripe.style.backgroundColor = look.c ? '#' + look.c : '';
@@ -1316,8 +1862,14 @@
             Object.keys(controls.number).forEach(function (kind) {
                 press(controls.number[kind], (look.n || 'general') === kind);
             });
+        }
 
-            controls.undo.classList.toggle('d-none', !format);
+        // The pair greyed while there is nothing to undo or redo.
+        function drawSteps() {
+            if (controls.undo) {
+                controls.undo.disabled = !stepHistory.canUndo();
+                controls.redo.disabled = !stepHistory.canRedo();
+            }
         }
 
         // The cell beside a cell: one row or one column over, if there is one.
@@ -1345,31 +1897,30 @@
         function shownValue(td) {
             var position = cellPosition(td);
             var address = columnName(position.column) + position.row;
-            var sheetChanges = changes[shown.index];
+            var values = workbook.values[shown.index];
 
-            return own(sheetChanges, address) ? sheetChanges[address] : original(office.sheets[shown.index], position.row, position.column);
+            return own(values, address) ? values[address] : original(workbook.sheets[shown.index], position.row, position.column);
         }
 
-        // Puts a value in a cell, remembers it as a change unless it is the
-        // file's own value again, and redraws the cell.
+        // Puts a value in a cell, remembers it as a change unless the cell
+        // holds it already, and redraws the cell.
         function keep(td, value) {
-            var sheet = office.sheets[shown.index];
             var position = cellPosition(td);
             var address = columnName(position.column) + position.row;
-            var was = original(sheet, position.row, position.column);
 
             value = String(value).replace(/\r\n?/g, '\n');
 
-            if (value === was) {
-                delete changes[shown.index][address];
-            } else {
-                changes[shown.index][address] = value;
+            if (value !== shownValue(td)) {
+                change(function () { listValue(steps, position, value); });
+                rebuild();
             }
 
+            var sheet = workbook.sheets[shown.index];
+            var typed = own(workbook.values[shown.index], address);
             var entry = rowOf(sheet, position.row);
 
-            td.textContent = (value === was && entry && entry.show && own(entry.show, position.column)) ? entry.show[position.column] : value;
-            td.classList.toggle('office-edited', own(changes[shown.index], address));
+            td.textContent = (!typed && entry && entry.show && own(entry.show, position.column)) ? entry.show[position.column] : value;
+            td.classList.toggle('office-edited', typed);
             td.classList.toggle('office-num', isNumber(value));
             td.classList.remove('office-calc');
             paint(td, lookAt(shown.index, position.row, position.column));
@@ -1445,6 +1996,14 @@
 
                 var key = event.key;
 
+                // Ctrl+Z and Ctrl+Y undo and redo the typing in the cell
+                // first; with the value as it was, they go to the list.
+                if (historyKey(event) && input.value === before) {
+                    event.preventDefault();
+                    undoStep(historyKey(event) === 'undo');
+                    return;
+                }
+
                 if ((event.ctrlKey || event.metaKey) && (key === 's' || key === 'S')) {
                     event.preventDefault();
                     closeEditor(true);
@@ -1507,49 +2066,82 @@
             }
         }
 
+        // Puts a row's or a column's insert or delete at the end of the
+        // list and draws the sheet as it leaves it. A line below or right of
+        // the one chosen goes before the next one: the server inserts
+        // before the line it is sent.
         function choose(axis, at, place) {
             closeEditor(true);
-            pending = { sheet: shown.index, axis: axis, at: at, place: place };
+            change(function () { steps.push({ op: (place === 'delete') ? 'delete' : 'insert', sheet: shown.index, axis: axis, at: at + ((place === 'after') ? 1 : 0) }); });
+            rebuild();
+            refind(false);
             show(shown.index);
             notify();
         }
 
-        function cancelPending() {
-            if (!pending) {
+        // Changes the list as apply() does, kept as one step for Undo.
+        function change(apply) {
+            stepHistory.change(steps, apply);
+        }
+
+        // Undo (back) or Redo: one change of the list a press. A value
+        // being typed is kept first, so it is the change undone. The sheet
+        // on show stays open, scrolled and selected where it was.
+        function undoStep(back) {
+            closeEditor(true);
+
+            var state = back ? stepHistory.undo(steps) : stepHistory.redo(steps);
+
+            if (!state) {
                 return;
             }
 
-            var index = pending.sheet;
+            var id = (shown.index >= 0) ? workbook.sheets[shown.index].id : null;
+            var at = shown.cell ? cellPosition(shown.cell) : null;
+            var scroll = [pane.scrollTop, pane.scrollLeft];
+            var focused = book.contains(document.activeElement);
 
-            pending = null;
+            steps = state;
+            rebuild();
+            refind(false);
+            drawTabs();
+            openTab(sheetPlace(id, shown.index));
+            pane.scrollTop = scroll[0];
+            pane.scrollLeft = scroll[1];
 
-            if (index === shown.index) {
-                show(index);
+            var row = (at && shown.table) ? shown.table.querySelector('tr[data-row="' + at.row + '"]') : null;
+
+            if (row && row.cells[at.column + 1]) {
+                select(row.cells[at.column + 1]);
+            }
+
+            // The tabs are drawn again and a greyed button lets go of the
+            // focus: it stays in the workbook, so the next key reaches it.
+            if (focused && !book.contains(document.activeElement)) {
+                var target = shown.cell || tabs.querySelector('.office-tab.active');
+
+                if (target) {
+                    target.focus({ preventScroll: true });
+                }
             }
 
             notify();
         }
 
-        // What the menu offers for a row, a column or both (from a cell):
-        // nothing beside cell changes, and only an undo while a row or
-        // column waits.
+        // Where a sheet of the book stands now, by its id; failing that
+        // (a sheet deleted), the place it had, or the last.
+        function sheetPlace(id, place) {
+            for (var index = 0; index < workbook.sheets.length; index++) {
+                if (workbook.sheets[index].id === id) {
+                    return index;
+                }
+            }
+
+            return Math.max(0, Math.min(place, workbook.sheets.length - 1));
+        }
+
+        // What the menu offers for a row, a column or both (from a cell).
         function menuItems(lines) {
-            if (sheetPending) {
-                return [{ label: strings.sheet_undo, run: cancelSheet }];
-            }
-
-            if (pending) {
-                return [{ label: strings.shift_undo, run: cancelPending }];
-            }
-
-            if (format) {
-                return [{ label: strings.format_undo, run: cancelFormat }];
-            }
-
-            if (cellCount() > 0) {
-                return [{ label: strings.shift_first }];
-            }
-
             var items = [];
 
             lines.forEach(function (line) {
@@ -1707,70 +2299,32 @@
             (buttons[0] || node).focus({ preventScroll: true });
         }
 
-        // The waiting sheet change in words, for the status line.
-        function sheetPendingText() {
-            var change = sheetPending;
-            var name = (change.action === 'add') ? change.to : office.sheets[change.sheet].name;
-            var text = fill(strings['sheet_pending_' + change.action], name);
-
-            if (change.action === 'rename') {
-                text = text.replace('{2}', change.to);
-            } else if (change.action === 'move') {
-                text = text.replace('{2}', change.to + 1);
-            }
-
-            return text;
-        }
-
-        // The tabs as the waiting change leaves them: a new name, a sheet
-        // struck through or marked as moving, a sheet being added.
-        function drawTabs() {
-            tabList().forEach(function (tab, index) {
-                var mine = !!sheetPending && sheetPending.sheet === index;
-
-                tab.querySelector('.office-tab-name').textContent = (mine && sheetPending.action === 'rename') ? sheetPending.to : (office.sheets[index].name || ('#' + (index + 1)));
-                tab.classList.toggle('office-tab-delete', mine && sheetPending.action === 'delete');
-                tab.classList.toggle('office-tab-moved', mine && sheetPending.action === 'move');
-            });
-
-            var added = strip ? strip.querySelector('.office-tab-new') : null;
-
-            if (added) {
-                added.remove();
-            }
-
-            if (strip && sheetPending && sheetPending.action === 'add') {
-                added = el('button', 'office-tab-new');
-                added.type = 'button';
-                added.appendChild(el('span', 'office-tab-name', sheetPending.to));
-                added.appendChild(el('span', 'visually-hidden', ', ' + (strings.changed_mark || '')));
-                added.addEventListener('click', function () {
-                    openMenu(added, sheetMenuItems(-1), strings.sheet_menu);
-                });
-                strip.insertBefore(added, addButton);
-            }
-        }
-
-        function setSheetPending(change) {
-            sheetPending = change;
+        // Puts a sheet change at the end of the list and draws the tabs
+        // and the sheet on show as it leaves them; the sheet at `open` (its
+        // place after the change) opens.
+        function changeSheets(sheetChange, open) {
+            closeEditor(true);
+            change(function () { steps.push(sheetChange); });
+            rebuild();
+            refind(false);
             shown.note = '';
             drawTabs();
-
-            if (shown.index >= 0) {
-                show(shown.index);
-            }
-
+            openTab(open);
             notify();
         }
 
-        function cancelSheet() {
-            if (sheetPending) {
-                setSheetPending(null);
-            }
+        // The tabs drawn from the book: one a sheet, in its order, with its
+        // name as the list leaves it.
+        function drawTabs() {
+            tabs.innerHTML = '';
+
+            workbook.sheets.forEach(function (sheet, index) {
+                tabs.appendChild(makeTab(sheet, index));
+            });
         }
 
         function focusTab(index) {
-            var tab = (index >= 0) ? tabList()[index] : (strip ? strip.querySelector('.office-tab-new') : null);
+            var tab = (index >= 0) ? tabList()[index] : null;
 
             (tab || addButton || tabs).focus({ preventScroll: true });
 
@@ -1788,9 +2342,9 @@
                 return strings.sheet_bad || '';
             }
 
-            for (var at = 0; at < office.sheets.length; at++) {
-                if (at !== index && String(office.sheets[at].name).toLowerCase() === name.toLowerCase()) {
-                    return fill(strings.sheet_taken, office.sheets[at].name);
+            for (var at = 0; at < workbook.sheets.length; at++) {
+                if (at !== index && String(workbook.sheets[at].name).toLowerCase() === name.toLowerCase()) {
+                    return fill(strings.sheet_taken, workbook.sheets[at].name);
                 }
             }
 
@@ -1798,7 +2352,7 @@
         }
 
         function newName() {
-            var number = office.sheets.length + 1;
+            var number = workbook.sheets.length + 1;
 
             while (nameError(fill(strings.sheet_new || 'Sheet{1}', number), -1)) {
                 number++;
@@ -1818,7 +2372,7 @@
             var done = false;
 
             input.type = 'text';
-            input.value = (index >= 0) ? office.sheets[index].name : newName();
+            input.value = (index >= 0) ? workbook.sheets[index].name : newName();
             input.setAttribute('aria-label', strings.sheet_name || '');
             anchor.parentNode.insertBefore(input, anchor);
 
@@ -1850,14 +2404,17 @@
 
                 shown.note = '';
 
-                if (keep && !error && (index < 0 || name !== office.sheets[index].name)) {
-                    setSheetPending((index < 0) ? { action: 'add', sheet: -1, to: name } : { action: 'rename', sheet: index, to: name });
+                var place = (index < 0) ? workbook.sheets.length : index;
+
+                if (keep && !error && (index < 0 || name !== workbook.sheets[index].name)) {
+                    changeSheets((index < 0) ? { op: 'sheet_add', to: name } : { op: 'sheet_rename', sheet: index, to: name }, place);
                 } else {
                     drawStatus();
+                    place = index;
                 }
 
                 if (!leaving) {
-                    focusTab(index);
+                    focusTab(place);
                 }
             }
 
@@ -1881,28 +2438,30 @@
             input.select();
         }
 
-        // What a sheet tab's menu offers: one sheet change a save, nothing
-        // beside other changes, and only an undo while one waits.
+        // What a sheet tab's menu offers; each change goes into the list
+        // and the tabs are drawn as it leaves them.
         function sheetMenuItems(index) {
-            if (sheetPending) {
-                return [{ label: strings.sheet_undo, run: function () { var at = sheetPending.sheet; cancelSheet(); return focusTab(at); } }];
-            }
-
-            if (pending || format || cellCount() > 0) {
-                return [{ label: strings.sheet_first }];
-            }
-
             var items = [{ label: strings.sheet_rename, icon: 'bi-pencil', run: function () { askName(index); return true; } }];
 
             if (index > 0) {
-                items.push({ label: strings.sheet_left, icon: 'bi-arrow-left', run: function () { setSheetPending({ action: 'move', sheet: index, to: index - 1 }); return focusTab(index); } });
+                items.push({ label: strings.sheet_left, icon: 'bi-arrow-left', run: function () { changeSheets({ op: 'sheet_move', sheet: index, to: index - 1 }, index - 1); return focusTab(index - 1); } });
             }
 
-            if (index < office.sheets.length - 1) {
-                items.push({ label: strings.sheet_right, icon: 'bi-arrow-right', run: function () { setSheetPending({ action: 'move', sheet: index, to: index + 1 }); return focusTab(index); } });
+            if (index < workbook.sheets.length - 1) {
+                items.push({ label: strings.sheet_right, icon: 'bi-arrow-right', run: function () { changeSheets({ op: 'sheet_move', sheet: index, to: index + 1 }, index + 1); return focusTab(index + 1); } });
             }
 
-            items.push({ label: fill(strings.sheet_delete, office.sheets[index].name), icon: 'bi-trash', run: function () { setSheetPending({ action: 'delete', sheet: index }); return focusTab(index); } });
+            // The last sheet shown stays (the server refuses to delete it).
+            var others = workbook.sheets.some(function (sheet, at) { return at !== index && !sheet.hidden; });
+
+            if (others) {
+                items.push({ label: fill(strings.sheet_delete, workbook.sheets[index].name), icon: 'bi-trash', run: function () {
+                    var open = (index < workbook.sheets.length - 1) ? index : index - 1;
+
+                    changeSheets({ op: 'sheet_delete', sheet: index }, open);
+                    return focusTab(open);
+                } });
+            }
 
             return items;
         }
@@ -1920,19 +2479,19 @@
         }
 
         function setSort(column, down) {
-            views[shown.index].sort = (column === null) ? null : { column: column, down: down };
+            viewOf(shown.index).sort = (column === null) ? null : { column: column, down: down };
             rearrange(false);
         }
 
         function clearView() {
-            views[shown.index] = { sort: null, filters: {} };
+            views[workbook.sheets[shown.index].id] = { sort: null, filters: {} };
             rearrange(false);
         }
 
         // What a column's menu offers for the view: sort either way, the
         // filter by its values, and the removal of either when set.
         function viewItems(column) {
-            var view = views[shown.index];
+            var view = viewOf(shown.index);
             var name = columnName(column);
             var items = [
                 { label: strings.sort_up, icon: 'bi-sort-alpha-down', run: function () { setSort(column, false); } },
@@ -1946,7 +2505,7 @@
 
             if (own(view.filters, column)) {
                 items.push({ label: fill(strings.filter_off, name), icon: 'bi-x-lg', run: function () {
-                    delete views[shown.index].filters[column];
+                    delete viewOf(shown.index).filters[column];
                     rearrange(false);
                 } });
             }
@@ -1958,16 +2517,16 @@
         // showing it, at once; the menu stays open.
         function openFilter(column) {
             var anchor = headButton(column);
-            var values = columnValues(office.sheets[shown.index].rows, column, changes[shown.index], compare);
-            var hidden = views[shown.index].filters[column] || {};
+            var values = columnValues(workbook.sheets[shown.index].rows, column, workbook.values[shown.index], compare);
+            var hidden = viewOf(shown.index).filters[column] || {};
             var items = [{ label: strings.filter_all, icon: 'bi-eye', run: function () {
-                delete views[shown.index].filters[column];
+                delete viewOf(shown.index).filters[column];
                 rearrange(false);
             } }, { divider: true }];
 
             values.texts.forEach(function (text) {
                 items.push({ label: (text === '') ? strings.filter_empty : text, checked: !own(hidden, text), run: function (on) {
-                    var filters = views[shown.index].filters;
+                    var filters = viewOf(shown.index).filters;
 
                     filters[column] = filters[column] || {};
 
@@ -2074,9 +2633,9 @@
         // Searches the workbook again; `move` goes to the first match from
         // the open sheet on, else the one at the same place is kept.
         function refind(move) {
-            var orders = office.sheets.map(function (sheet, index) { return orderOf(index); });
+            var orders = workbook.sheets.map(function (sheet, index) { return orderOf(index); });
 
-            finder.list = findCells(office.sheets, finder.query, orders, changes, lower);
+            finder.list = findCells(workbook.sheets, finder.query, orders, workbook.values, lower);
 
             if (!finder.list.length) {
                 finder.at = -1;
@@ -2157,8 +2716,8 @@
                 return;
             }
 
-            var sheet = office.sheets[index];
-            var text = csvText(sheet.rows, orderOf(index), changesNow()[index]);
+            var sheet = workbook.sheets[index];
+            var text = csvText(sheet.rows, orderOf(index), valuesNow(index));
             var link = el('a');
 
             link.href = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }));
@@ -2279,9 +2838,9 @@
             var index = shown.index;
 
             if (arranged(index)) {
-                var view = views[index];
-                var rows = office.sheets[index].rows;
-                var header = headerRow(rows, changes[index]) ? 1 : 0;
+                var view = viewOf(index);
+                var rows = workbook.sheets[index].rows;
+                var header = headerRow(rows, workbook.values[index]) ? 1 : 0;
 
                 if (view.sort) {
                     parts.push(fill(strings[view.sort.down ? 'view_sorted_down' : 'view_sorted_up'], columnName(view.sort.column)));
@@ -2378,14 +2937,14 @@
                     return;
                 }
 
-                // Ctrl+B and Ctrl+I, as a spreadsheet takes them.
-                if ((event.ctrlKey || event.metaKey) && !event.altKey && (key === 'b' || key === 'B' || key === 'i' || key === 'I') && sheetFormattable(shown.index)) {
+                // Ctrl+B, Ctrl+I and Ctrl+U, as a spreadsheet takes them.
+                var shortcuts = { b: ['bold', 'b'], i: ['italic', 'i'], u: ['underline', 'u'] };
+                var shortcut = own(shortcuts, String(key).toLowerCase()) ? shortcuts[String(key).toLowerCase()] : null;
+
+                if ((event.ctrlKey || event.metaKey) && !event.altKey && shortcut && sheetFormattable(shown.index)) {
                     event.preventDefault();
                     event.stopPropagation();
-
-                    var bold = (key === 'b' || key === 'B');
-
-                    setFormat(bold ? 'bold' : 'italic', !currentLook()[bold ? 'b' : 'i']);
+                    setFormat(shortcut[0], !currentLook()[shortcut[1]]);
                     return;
                 }
 
@@ -2394,20 +2953,6 @@
                 if (key === 'ContextMenu' || (key === 'F10' && event.shiftKey)) {
                     event.preventDefault();
                     cellMenu(td);
-                    return;
-                }
-
-                if (key === 'Escape' && (pending || sheetPending || format)) {
-                    event.preventDefault();
-                    event.stopPropagation();
-
-                    if (pending) {
-                        cancelPending();
-                    } else if (format) {
-                        cancelFormat();
-                    } else {
-                        cancelSheet();
-                    }
                     return;
                 }
 
@@ -2451,7 +2996,7 @@
                 closeMenu(false);
             }
 
-            var sheet = office.sheets[index];
+            var sheet = workbook.sheets[index];
             var offered = editable && !!sheet.edit;
 
             shown.index = index;
@@ -2466,11 +3011,11 @@
                 shown.table = null;
             } else {
                 shown.table = sheetTable(sheet, strings, offered ? {
-                    changes: changes[index],
+                    changes: workbook.values[index],
                     heads: sheetShiftable(index),
-                    pending: (pending && pending.sheet === index) ? pending : null,
-                    format: (format && format.sheet === index) ? format : null
-                } : null, looks, { order: orderOf(index), sort: views[index].sort, filters: views[index].filters });
+                    added: sheet.added,
+                    look: function (row, column, look) { return listLook(look, workbook.sets[index][columnName(column) + row]); }
+                } : null, looks, { order: orderOf(index), sort: viewOf(index).sort, filters: viewOf(index).filters });
                 pane.appendChild(shown.table);
                 wireHeads(shown.table, !offered);
 
@@ -2531,7 +3076,8 @@
             show(index);
         }
 
-        office.sheets.forEach(function (sheet, index) {
+        // A sheet's tab, as the book has it at `index`.
+        function makeTab(sheet, index) {
             var tab = el('button', 'office-tab' + (sheet.hidden ? ' office-tab-hidden' : ''));
             tab.type = 'button';
             tab.id = paneId + '_tab_' + index;
@@ -2575,9 +3121,13 @@
                 openMenu(tab, sheetMenuItems(index), strings.sheet_menu);
             });
 
-            tabs.appendChild(tab);
+            return tab;
+        }
 
-            // The first sheet that is not hidden opens; failing that, the first.
+        drawTabs();
+
+        // The first sheet that is not hidden opens; failing that, the first.
+        workbook.sheets.forEach(function (sheet, index) {
             if (current === null && !sheet.hidden) {
                 current = index;
             }
@@ -2601,7 +3151,7 @@
                 return;
             }
 
-            if (sheetsEditable && event.key === 'F2' && !sheetPending && !pending && !format && !cellCount()) {
+            if (sheetsEditable && event.key === 'F2') {
                 event.preventDefault();
                 askName(at);
                 return;
@@ -2641,12 +3191,6 @@
             addButton.appendChild(plus);
 
             addButton.addEventListener('click', function () {
-                if (sheetPending || pending || format || cellCount() > 0) {
-                    shown.note = sheetPending ? (strings.sheet_one || '') : (strings.sheet_first || '');
-                    drawStatus();
-                    return;
-                }
-
                 askName(-1);
             });
 
@@ -2662,6 +3206,20 @@
         if (bar) {
             buildBar();
             book.appendChild(bar);
+
+            // Ctrl+Z, Ctrl+Y and Ctrl+Shift+Z on the grid, the tabs and the
+            // bar; a field keeps its own (the cell's editor decides above).
+            book.addEventListener('keydown', function (event) {
+                var asked = historyKey(event);
+
+                if (!asked || event.isComposing || /^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName) || event.target.isContentEditable) {
+                    return;
+                }
+
+                event.preventDefault();
+                event.stopPropagation();
+                undoStep(asked === 'undo');
+            });
         }
 
         book.appendChild(pane);
@@ -2672,7 +3230,7 @@
 
         container.appendChild(book);
 
-        if (current === null && office.sheets.length) {
+        if (current === null && workbook.sheets.length) {
             current = 0;
         }
 
@@ -2685,64 +3243,15 @@
             version: office.version || '',
             count: count,
             edits: function () {
-                var list = [];
-
-                if (format) {
-                    var set = {};
-
-                    Object.keys(format.set).forEach(function (key) {
-                        set[key] = format.set[key];
-                    });
-
-                    return [{ op: 'format', sheet: format.sheet, name: office.sheets[format.sheet].name, range: rangeName(format.range), set: set }];
-                }
-
-                if (sheetPending) {
-                    var sheetChange = { op: 'sheet_' + sheetPending.action };
-
-                    if (sheetPending.action !== 'add') {
-                        sheetChange.sheet = sheetPending.sheet;
-                        sheetChange.name = office.sheets[sheetPending.sheet].name;
-                    }
-
-                    if (sheetPending.action !== 'delete') {
-                        sheetChange.to = sheetPending.to;
-                    }
-
-                    return [sheetChange];
-                }
-
-                if (pending) {
-                    // The server inserts before the line it is sent, so a
-                    // line after the one chosen goes before the next one.
-                    var at = pending.at + ((pending.place === 'after') ? 1 : 0);
-                    var change = { sheet: pending.sheet, name: office.sheets[pending.sheet].name, op: (pending.place === 'delete') ? 'delete' : 'insert' };
-
-                    change[pending.axis] = (pending.axis === 'row') ? at : columnName(at);
-
-                    return [change];
-                }
-
-                changesNow().forEach(function (sheetChanges, index) {
-                    Object.keys(sheetChanges).forEach(function (address) {
-                        list.push({ sheet: index, name: office.sheets[index].name, cell: address, value: sheetChanges[address] });
-                    });
-                });
-
-                return list;
+                return listEdits(listNow(), office.sheets.map(function (sheet) { return sheet.name; }), rangeName);
             },
             reset: function () {
                 shown.editor = null;
-                pending = null;
-                sheetPending = null;
-                format = null;
-                changes = office.sheets.map(function () { return {}; });
+                steps = [];
+                stepHistory.clear();
+                rebuild();
                 drawTabs();
-
-                if (shown.index >= 0) {
-                    show(shown.index);
-                }
-
+                openTab(Math.min(Math.max(shown.index, 0), workbook.sheets.length - 1));
                 notify();
             }
         };
@@ -2812,40 +3321,85 @@
         return walk(root) ? count : -1;
     }
 
-    // Where in a paragraph's text a click landed, as [start, end]: the words
-    // the browser selected (the second click of a double click selects one),
-    // or the point clicked. null when it cannot be told.
-    function pointedText(node, event) {
-        var selection = window.getSelection ? window.getSelection() : null;
-        var start = -1;
-        var end = -1;
+    // Whether an element is a tab as the server and drawText() draw it.
+    function isTabChar(node) {
+        return (' ' + (node.className || '') + ' ').indexOf(' office-tabchar ') !== -1;
+    }
 
-        if (selection && selection.rangeCount) {
-            var range = selection.getRangeAt(0);
+    // A paragraph's text read from its drawing as it is typed in: text as it
+    // stands, a drawn tab a tab, a br a line break. The br a browser keeps in
+    // an emptied paragraph, or after a line break typed at its end, only
+    // holds the line open and is no text.
+    function paragraphText(root) {
+        var text = '';
+        var lastBreak = false;
 
-            if (node.contains(range.startContainer) && node.contains(range.endContainer)) {
-                start = textOffset(node, range.startContainer, range.startOffset);
-                end = textOffset(node, range.endContainer, range.endOffset);
+        (function walk(current) {
+            for (var child = current.firstChild; child; child = child.nextSibling) {
+                if (child.nodeType === 3) {
+                    if (child.nodeValue !== '') {
+                        text += child.nodeValue;
+                        lastBreak = false;
+                    }
+                } else if (child.nodeType !== 1) {
+                    continue;
+                } else if (child.nodeName === 'BR') {
+                    text += '\n';
+                    lastBreak = true;
+                } else if (isTabChar(child)) {
+                    text += '\t';
+                    lastBreak = false;
+                } else {
+                    walk(child);
+                }
             }
+        })(root);
+
+        if (lastBreak && (text.length === 1 || text.charAt(text.length - 2) === '\n')) {
+            text = text.slice(0, -1);
         }
 
-        if ((start < 0 || end < 0) && event) {
-            var caret = null;
+        return text;
+    }
 
-            if (document.caretPositionFromPoint) {
-                var position = document.caretPositionFromPoint(event.clientX, event.clientY);
-                caret = position ? { node: position.offsetNode, offset: position.offset } : null;
-            } else if (document.caretRangeFromPoint) {
-                var point = document.caretRangeFromPoint(event.clientX, event.clientY);
-                caret = point ? { node: point.startContainer, offset: point.startOffset } : null;
-            }
+    // The node and offset in a paragraph's drawing where a point of its text
+    // stands, counted as textOffset() counts it: inside a text when it can
+    // be, else beside a tab or a line break. A point past the text is its
+    // end; an empty paragraph holds its own start.
+    function textPoint(root, offset) {
+        var left = Math.max(0, offset);
+        var found = null;
+        var last = null;
 
-            if (caret && node.contains(caret.node)) {
-                start = end = textOffset(node, caret.node, caret.offset);
-            }
+        function indexIn(parent, child) {
+            return Array.prototype.indexOf.call(parent.childNodes, child);
         }
 
-        return (start < 0 || end < 0) ? null : [Math.min(start, end), Math.max(start, end)];
+        (function walk(current) {
+            for (var child = current.firstChild; child && !found; child = child.nextSibling) {
+                if (child.nodeType === 3) {
+                    if (left <= child.nodeValue.length) {
+                        found = { node: child, offset: left };
+                        return;
+                    }
+
+                    left -= child.nodeValue.length;
+                    last = { node: child, offset: child.nodeValue.length };
+                } else if (child.nodeType === 1 && (child.nodeName === 'BR' || isTabChar(child))) {
+                    if (left === 0) {
+                        found = { node: current, offset: indexIn(current, child) };
+                        return;
+                    }
+
+                    left -= 1;
+                    last = { node: current, offset: indexIn(current, child) + 1 };
+                } else if (child.nodeType === 1) {
+                    walk(child);
+                }
+            }
+        })(root);
+
+        return found || last || { node: root, offset: 0 };
     }
 
     // Text into a node, tabs and line breaks the way the server draws them.
@@ -2857,7 +3411,11 @@
 
             line.split('\t').forEach(function (piece, position) {
                 if (position > 0) {
-                    node.appendChild(el('span', 'office-tabchar', ' '));
+                    var tab = el('span', 'office-tabchar', ' ');
+
+                    // One character of the text: the caret passes it whole.
+                    tab.setAttribute('contenteditable', 'false');
+                    node.appendChild(tab);
                 }
 
                 if (piece !== '') {
@@ -2989,15 +3547,145 @@
         return list;
     }
 
-    // A document as the safe HTML the server made. Read for editing, the
-    // paragraphs it marked (data-p) may be given a new text, except those it
-    // marked as holding more than text (data-lock); the server checks the
-    // same again when the edit is saved. A paragraph is picked with a click
-    // and opened with another (or Enter, or F2); what it is given shows plain
-    // until the file is saved, when the server keeps the formatting of the
-    // words that did not change.
+    // A paragraph cut where Enter is pressed: the text selected (start to
+    // end, UTF-16 units) is taken out, the text before stays, the text
+    // after goes on into a new paragraph; each character keeps its look.
+    function cutLook(text, bits, start, end) {
+        return {
+            head: text.slice(0, start),
+            tail: text.slice(end),
+            headBits: bits.slice(0, start),
+            tailBits: bits.slice(end, text.length)
+        };
+    }
+
+    // A base look that differs from the one asked for in every bit, so the
+    // save sends bold, italic and underline on or off for each character:
+    // text moved into a new run whose own look is the paragraph mark's,
+    // which the view does not know.
+    function exactBase(want) {
+        return want.map(function (bits) {
+            return (bits || 0) ^ 7;
+        });
+    }
+
+    // A list of states to go back and forward through, for Undo and Redo:
+    // record() keeps the state before a change, undo(now) gives the last
+    // one kept and keeps now to redo, redo(now) the other way round. A new
+    // change drops what could be redone; only the last limit states stay.
+    function changeList(limit) {
+        var past = [];
+        var future = [];
+
+        return {
+            record: function (state) {
+                past.push(state);
+                future = [];
+
+                if (past.length > limit) {
+                    past.shift();
+                }
+            },
+            undo: function (now) {
+                if (!past.length) {
+                    return null;
+                }
+
+                future.push(now);
+
+                return past.pop();
+            },
+            redo: function (now) {
+                if (!future.length) {
+                    return null;
+                }
+
+                past.push(now);
+
+                return future.pop();
+            },
+            canUndo: function () {
+                return past.length > 0;
+            },
+            canRedo: function () {
+                return future.length > 0;
+            },
+            clear: function () {
+                past = [];
+                future = [];
+            }
+        };
+    }
+
+    // Undo and Redo of a workbook's list of changes (renderBook()): a state
+    // is a copy of the whole list. change(list, apply) runs apply(), which
+    // changes the list in place, and keeps the list as it was when apply()
+    // altered it (true), so a press puts back one change even where the
+    // list merged it into an entry already there. undo(list) and
+    // redo(list) give a copy of the list to put in its place, or null.
+    function listHistory(limit) {
+        var states = changeList(limit);
+        var copy = function (list) { return JSON.parse(JSON.stringify(list)); };
+
+        return {
+            change: function (list, apply) {
+                var before = JSON.stringify(list);
+
+                apply();
+
+                if (JSON.stringify(list) === before) {
+                    return false;
+                }
+
+                states.record(JSON.parse(before));
+
+                return true;
+            },
+            undo: function (list) {
+                var state = states.undo(copy(list));
+
+                return state ? copy(state) : null;
+            },
+            redo: function (list) {
+                var state = states.redo(copy(list));
+
+                return state ? copy(state) : null;
+            },
+            canUndo: states.canUndo,
+            canRedo: states.canRedo,
+            clear: states.clear
+        };
+    }
+
+    // What a key asks of the list of changes: Ctrl+Z (Cmd on a Mac) undo,
+    // Ctrl+Y and Ctrl+Shift+Z redo; '' for any other key.
+    function historyKey(event) {
+        if (!(event.ctrlKey || event.metaKey) || event.altKey) {
+            return '';
+        }
+
+        var key = String(event.key).toLowerCase();
+
+        if (key === 'z') {
+            return event.shiftKey ? 'redo' : 'undo';
+        }
+
+        return key === 'y' ? 'redo' : '';
+    }
+
+    // A document as the safe HTML the server made, drawn on a white sheet.
+    // Read for editing, the paragraphs it marked (data-p) may be given a new
+    // text, except those it marked as holding more than text (data-lock);
+    // the server checks the same again when the edit is saved. A paragraph
+    // that may change is typed where it stands, the caret where the click
+    // fell; what it is given shows plain until the file is saved, when the
+    // server keeps the formatting of the words that did not change.
     function renderDocument(container, office, strings, options) {
-        var doc = el('div', 'office-doc');
+        var doc = el('div', 'office-doc office-doc-paged');
+
+        // The sheet is file content: white with dark text in both themes,
+        // so the panel's light tokens are used inside it.
+        var paper = el('div', 'office-paper');
         var status = el('div', 'office-note office-status');
         var edit = office.edit || null;
         var editable = !!(options && options.editable) && !!edit;
@@ -3035,21 +3723,32 @@
         var bar = null;
         var controls = {};
 
-        // The paragraphs marked, the one picked, the one pressed on while it
-        // was already picked, the open editor, what was selected in it when
-        // it closed, and what the status line adds.
+        // The paragraphs marked, the one picked, the one being typed in
+        // (editor: its node, position, whether anything was typed, the
+        // last selection in it), what was selected in it when it was left,
+        // whether one was ever typed in, and what the status line adds.
         var nodes = [];
-        var shown = { node: null, pressed: null, editor: null, last: null, note: '' };
+        var shown = { node: null, editor: null, last: null, opened: false, note: '' };
+
+        // The document's own list of changes for Undo and Redo: the state
+        // before each change, the last 100. Typing is one change while the
+        // caret goes on where the last letter went (run: its paragraph,
+        // whether it types or deletes, the caret's point after it).
+        var steps = changeList(100);
+        var run = null;
+        var stepControls = null;
 
         doc.setAttribute('aria-label', strings.doc || '');
+        paper.setAttribute('data-bs-theme', 'light');
+        doc.appendChild(paper);
 
         // The server made this markup itself from the file's text, escaped,
         // with its own small set of tags; nothing the file wrote reaches here
         // as markup.
-        doc.innerHTML = office.html || '';
+        paper.innerHTML = office.html || '';
 
         if (!office.html) {
-            doc.appendChild(el('div', 'office-note', strings.empty || ''));
+            paper.appendChild(el('div', 'office-note', strings.empty || ''));
         }
 
         container.appendChild(doc);
@@ -3072,6 +3771,26 @@
             return String(value).replace(/\r\n?/g, '\n');
         }
 
+        // How a paragraph is made typable: plain text only where the
+        // browser can, so it never takes markup of its own.
+        var typeMode = (function () {
+            var probe = document.createElement('div');
+
+            try {
+                probe.contentEditable = 'plaintext-only';
+            } catch (error) {
+                return 'true';
+            }
+
+            return probe.contentEditable === 'plaintext-only' ? 'plaintext-only' : 'true';
+        })();
+
+        // Whether something was typed into a paragraph that is still being
+        // typed in: its text is then read from its drawing.
+        function typedIn(position) {
+            return !!shown.editor && shown.editor.typed && shown.editor.position === position;
+        }
+
         // The changes as they stand, with the text of the paragraph being
         // typed in: Save is offered, and sends it, before Enter.
         function changesNow() {
@@ -3081,9 +3800,9 @@
                 list[position] = changes[position];
             });
 
-            if (shown.editor) {
+            if (shown.editor && shown.editor.typed) {
                 var position = shown.editor.position;
-                var value = normal(shown.editor.input.value);
+                var value = paragraphText(shown.editor.node);
 
                 if (value === texts[position]) {
                     delete list[position];
@@ -3095,11 +3814,11 @@
             return list;
         }
 
-        // The text a paragraph has now: typed in its open box, changed, or
+        // The text a paragraph has now: as it is being typed, changed, or
         // the file's.
         function textNow(position) {
-            if (shown.editor && shown.editor.position === position) {
-                return normal(shown.editor.input.value);
+            if (typedIn(position)) {
+                return paragraphText(shown.editor.node);
             }
 
             return own(changes, position) ? changes[position] : texts[position];
@@ -3205,57 +3924,150 @@
             }
         }
 
-        // The text selected for the bar, counted in the paragraph's text as
-        // it is now: in the open box, or in the box of the paragraph still
-        // picked when it closed. null when none.
-        function selectedText() {
-            var range = null;
+        // The selection inside a paragraph as [start, end] of its text, or
+        // null when the selection is not all in it.
+        function selectionIn(node) {
+            var selection = window.getSelection ? window.getSelection() : null;
 
-            if (shown.editor) {
-                var input = shown.editor.input;
-
-                range = {
-                    node: shown.editor.node,
-                    position: shown.editor.position,
-                    start: Math.min(input.selectionStart, input.selectionEnd),
-                    end: Math.max(input.selectionStart, input.selectionEnd)
-                };
-            } else if (shown.last && shown.last.node === shown.node) {
-                range = shown.last;
+            if (!selection || !selection.rangeCount) {
+                return null;
             }
 
-            return (range && range.start < range.end) ? range : null;
+            var range = selection.getRangeAt(0);
+
+            if (!node.contains(range.startContainer) || !node.contains(range.endContainer)) {
+                return null;
+            }
+
+            var start = textOffset(node, range.startContainer, range.startOffset);
+            var end = textOffset(node, range.endContainer, range.endOffset);
+
+            return (start < 0 || end < 0) ? null : [Math.min(start, end), Math.max(start, end)];
+        }
+
+        // Selects the text from a point of one paragraph to a point of the
+        // same or a later one, in their drawings.
+        function placeSelection(node, start, end, last) {
+            var selection = window.getSelection ? window.getSelection() : null;
+
+            if (!selection || !document.createRange) {
+                return;
+            }
+
+            var from = textPoint(node, start);
+            var to = textPoint(last || node, end);
+            var range = document.createRange();
+
+            range.setStart(from.node, from.offset);
+            range.setEnd(to.node, to.offset);
+            selection.removeAllRanges();
+            selection.addRange(range);
+        }
+
+        // The sheet's selection as it stands, or null when it is not on the
+        // sheet.
+        function sheetRange() {
+            var selection = window.getSelection ? window.getSelection() : null;
+
+            if (!selection || !selection.rangeCount) {
+                return null;
+            }
+
+            var range = selection.getRangeAt(0);
+
+            return paper.contains(range.startContainer) && paper.contains(range.endContainer) ? range : null;
+        }
+
+        // The paragraphs a selection on the sheet reaches, in reading order,
+        // each with the stretch of its text selected: [{node, position,
+        // start, end}]. Paragraphs not typed in are left out.
+        function partsOf(range) {
+            var parts = [];
+
+            nodes.forEach(function (node) {
+                if (node.hidden || !node.classList.contains('office-typing') || !range.intersectsNode(node)) {
+                    return;
+                }
+
+                var position = node.getAttribute('data-p');
+                var length = textNow(position).length;
+                var start = node.contains(range.startContainer) ? textOffset(node, range.startContainer, range.startOffset) : 0;
+                var end = node.contains(range.endContainer) ? textOffset(node, range.endContainer, range.endOffset) : length;
+
+                // A selection ending at a paragraph's very start does not
+                // reach into it.
+                if (start >= 0 && end >= 0 && !(parts.length && end === 0 && !range.collapsed)) {
+                    parts.push({ node: node, position: position, start: Math.min(start, end), end: Math.max(start, end) });
+                }
+            });
+
+            return parts;
+        }
+
+        // The text selected for the bar, counted in each paragraph's text as
+        // it is now: on the sheet, or what was selected when the focus left
+        // it while a paragraph of it stays picked. null when none.
+        function selectedParts() {
+            var range = sheetRange();
+            var parts = null;
+
+            if (range && !range.collapsed) {
+                parts = partsOf(range);
+            } else if (!range && shown.last && shown.last.some(function (part) { return part.node === shown.node; })) {
+                parts = shown.last;
+            } else if (!range && shown.editor && shown.editor.range) {
+                parts = [{ node: shown.editor.node, position: shown.editor.position, start: shown.editor.range[0], end: shown.editor.range[1] }];
+            }
+
+            parts = (parts || []).filter(function (part) {
+                return part.start < part.end;
+            });
+
+            return parts.length ? parts : null;
         }
 
         // Sets bold, italic or underline on the selected text, or takes it
         // off when all of it has it already, as a word processor does.
         function applyFormat(format) {
-            var range = selectedText();
+            var parts = selectedParts();
+            var bit = format[1];
+            var all = true;
 
-            if (!range) {
+            if (!parts) {
                 shown.note = strings.doc_format_select || '';
                 drawStatus();
                 return;
             }
 
-            var look = lookOf(range.position, true);
-            var bit = format[1];
-            var end = Math.min(range.end, look.want.length);
-            var all = true;
-            var index;
+            var focused = document.activeElement === paper;
+            var first = parts[0];
+            var last = parts[parts.length - 1];
 
-            for (index = range.start; index < end; index++) {
-                all = all && !!(look.want[index] & bit);
-            }
+            parts.forEach(function (part) {
+                var look = lookOf(part.position, true);
 
-            for (index = range.start; index < end; index++) {
-                look.want[index] = all ? (look.want[index] & ~bit) : (look.want[index] | bit);
-            }
+                for (var index = part.start; index < Math.min(part.end, look.want.length); index++) {
+                    all = all && !!(look.want[index] & bit);
+                }
+            });
+
+            parts.forEach(function (part) {
+                var look = lookOf(part.position, true);
+
+                for (var index = part.start; index < Math.min(part.end, look.want.length); index++) {
+                    look.want[index] = all ? (look.want[index] & ~bit) : (look.want[index] | bit);
+                }
+
+                redraw(part.node);
+            });
 
             shown.note = '';
 
-            if (!shown.editor) {
-                redraw(range.node);
+            // The text stays selected, to format it again.
+            if (focused) {
+                placeSelection(first.node, first.start, last.end, last.node);
+            } else if (shown.last) {
+                shown.last = parts;
             }
 
             drawBar();
@@ -3275,7 +4087,9 @@
             }
 
             event.preventDefault();
-            applyFormat(DOC_FORMATS[index]);
+            oneChange(function () {
+                applyFormat(DOC_FORMATS[index]);
+            });
 
             return true;
         }
@@ -3294,54 +4108,281 @@
             return shown.editor ? shown.editor.node : shown.node;
         }
 
-        // A new, empty paragraph after the picked one, of the same kind (a
-        // list item continues its list), opened to type in. The server
-        // writes it with the paragraph properties of the file's paragraph
-        // it follows.
-        function addParagraph() {
-            var node = blockNode();
+        // The table cell a paragraph stands in, or null outside a table:
+        // paragraphs are joined only inside one.
+        function cellOf(node) {
+            var cell = node.parentNode ? node.parentNode.closest('td, th') : null;
 
-            if (!node) {
-                shown.note = strings.doc_pick || '';
-                drawStatus();
-                return;
-            }
+            return (cell && paper.contains(cell)) ? cell : null;
+        }
 
+        // Says why a key did nothing.
+        function refuse(note) {
+            shown.note = note || '';
+            drawStatus();
+        }
+
+        // A new paragraph after one, holding text with its look (bits, a
+        // number a character), of the same kind (a list item continues its
+        // list) or the one asked for. The server writes it with the
+        // paragraph properties of the file's paragraph it follows; its text
+        // goes into a new run, so each format is sent for it.
+        function addAfter(node, text, bits, kind) {
             var position = node.getAttribute('data-p');
-
-            if (own(shut, position)) {
-                shown.note = strings.doc_shut || '';
-                drawStatus();
-                return;
-            }
-
-            closeEditor(true);
-
             var after = isNew(position) ? node.getAttribute('data-after') : position;
             var tag = /^(P|H[1-6]|LI)$/.test(node.tagName) ? node.tagName.toLowerCase() : 'p';
             var key = 'n' + (++added);
             var fresh = el(tag, (tag === 'li' ? node.className.replace(/\boffice-\S+/g, function (name) {
                 return /^office-lvl-/.test(name) ? name : '';
             }) + ' ' : '') + 'office-para office-added');
-            var want = own(wantKinds, position) ? wantKinds[position] : kinds[position];
+            var want = kind || (own(wantKinds, position) ? wantKinds[position] : kinds[position]);
 
             fresh.setAttribute('data-p', key);
             fresh.setAttribute('data-after', after);
-            fresh.tabIndex = -1;
             texts[key] = '';
             marks[key] = [];
             drawn[key] = '';
             kinds[key] = own(kinds, after) ? kinds[after] : 'other';
 
-            if (want && want !== kinds[key]) {
+            if (want && want !== kinds[key] && own(kinds, after)) {
                 wantKinds[key] = want;
+            }
+
+            if (text !== '') {
+                changes[key] = text;
+                looks[key] = { text: text, base: exactBase(bits), want: bits.slice() };
             }
 
             node.parentNode.insertBefore(fresh, node.nextSibling);
             nodes.splice(nodes.indexOf(node) + 1, 0, fresh);
             redraw(fresh);
+
+            return fresh;
+        }
+
+        // Enter: the paragraph is cut at the caret, the selection taken out
+        // first; the text after it goes on, with its look, into a new
+        // paragraph after it, where the caret goes. At the end of a heading
+        // the new paragraph is normal text, as in a word processor.
+        function splitParagraph() {
+            var range = sheetRange();
+            var parts = (range && !range.collapsed) ? partsOf(range) : [];
+
+            if (parts.length > 1) {
+                if (!removeAcross(parts)) {
+                    return;
+                }
+
+                parts = [];
+            }
+
+            // A whole paragraph selected (three clicks) is typed in too.
+            if (parts.length === 1 && (!shown.editor || shown.editor.node !== parts[0].node)) {
+                select(parts[0].node, false);
+                openEditor(parts[0].node);
+            }
+
+            var editor = shown.editor;
+
+            if (!editor) {
+                return;
+            }
+
+            var node = editor.node;
+            var position = editor.position;
+            var anchor = isNew(position) ? node.getAttribute('data-after') : position;
+
+            if (own(shut, anchor)) {
+                refuse(strings.doc_shut);
+                return;
+            }
+
+            var text = textNow(position);
+            var at = parts.length === 1 ? [parts[0].start, parts[0].end] : (selectionIn(node) || [text.length, text.length]);
+            var look = lookOf(position, true);
+            var cut = cutLook(text, look.want, at[0], at[1]);
+            var base = cutLook(text, look.base, at[0], at[1]);
+            var kind = own(wantKinds, position) ? wantKinds[position] : kinds[position];
+
+            shown.editor = null;
+            setText(position, cut.head);
+            looks[position] = { text: cut.head, base: base.headBits, want: cut.headBits };
+            redraw(node);
+
+            var fresh = addAfter(node, cut.tail, cut.tailBits, (cut.tail === '' && /^heading/.test(kind || '')) ? 'normal' : '');
+
+            shown.note = '';
             notify();
-            openEditor(fresh, null);
+            enter(fresh, 0);
+        }
+
+        // A paragraph's text as a change, unless it is the file's again.
+        function setText(position, value) {
+            if (value === texts[position]) {
+                delete changes[position];
+            } else {
+                changes[position] = value;
+            }
+        }
+
+        // Why a paragraph may not go in a join, '' when it may.
+        function goneReason(node) {
+            var reason = isNew(node.getAttribute('data-p')) ? '' : keepReason(node);
+
+            return reason ? (strings['keep_' + reason] || strings.keep_locked || '') : '';
+        }
+
+        // Takes a paragraph out of the document: an added one simply goes,
+        // one of the file is deleted on save and hidden till then (its
+        // text went into another).
+        function takeOut(node) {
+            var position = node.getAttribute('data-p');
+
+            if (shown.node === node) {
+                shown.node = null;
+            }
+
+            if (isNew(position)) {
+                nodes.splice(nodes.indexOf(node), 1);
+                node.parentNode.removeChild(node);
+                [changes, looks, wantKinds, texts, marks, kinds, drawn].forEach(function (map) {
+                    delete map[position];
+                });
+                return;
+            }
+
+            deletes[position] = true;
+            node.classList.remove('office-selected');
+            node.hidden = true;
+            redraw(node);
+        }
+
+        // Backspace at a paragraph's start (back) or Delete at its end:
+        // the later paragraph's text and look go to the end of the earlier
+        // one and the later one is deleted; refused where that delete is,
+        // with its reason. A cell's or the document's last paragraph is
+        // kept, the earlier one going into it instead, when that one may go.
+        function joinParagraphs(node, back) {
+            var other = beside(node, back ? -1 : 1);
+
+            if (!other) {
+                return;
+            }
+
+            var first = back ? other : node;
+            var second = back ? node : other;
+
+            if (!first.classList.contains('office-typing') || !second.classList.contains('office-typing')) {
+                var stuck = first.classList.contains('office-typing') ? second : first;
+
+                refuse(own(deletes, stuck.getAttribute('data-p')) ? strings.doc_deleted : stuck.title);
+                return;
+            }
+
+            if (cellOf(first) !== cellOf(second)) {
+                refuse(strings.doc_cells);
+                return;
+            }
+
+            var why = goneReason(second);
+            var keepSecond = false;
+
+            if (why) {
+                if (goneReason(first) || !/^(cell|last)$/.test(keepReason(second))) {
+                    refuse(why);
+                    return;
+                }
+
+                keepSecond = true;
+            }
+
+            closeEditor(true);
+
+            var one = first.getAttribute('data-p');
+            var two = second.getAttribute('data-p');
+            var head = textNow(one);
+            var tail = textNow(two);
+            var lookOne = lookOf(one, true);
+            var lookTwo = lookOf(two, true);
+            var into = keepSecond ? second : first;
+            var position = keepSecond ? two : one;
+
+            // The text moved goes into a run of the paragraph it joins:
+            // each of its formats is sent.
+            setText(position, head + tail);
+            looks[position] = {
+                text: head + tail,
+                base: keepSecond ? exactBase(lookOne.want).concat(lookTwo.base) : lookOne.base.concat(exactBase(lookTwo.want)),
+                want: lookOne.want.concat(lookTwo.want)
+            };
+            takeOut(keepSecond ? first : second);
+            redraw(into);
+            shown.note = '';
+            notify();
+            enter(into, head.length);
+        }
+
+        // A selection over several paragraphs taken out, as typing over it,
+        // Enter, Backspace or Delete does: the first keeps its text before
+        // the selection, the last's text after it joins it, the others go.
+        // Refused, with the reason, when a paragraph between may not change
+        // or go, or the selection reaches over table cells.
+        function removeAcross(parts) {
+            var first = parts[0];
+            var last = parts[parts.length - 1];
+            var from = nodes.indexOf(first.node);
+            var to = nodes.indexOf(last.node);
+            var index;
+
+            for (index = from; index <= to; index++) {
+                var node = nodes[index];
+
+                if (node.hidden) {
+                    continue;
+                }
+
+                if (!node.classList.contains('office-typing')) {
+                    refuse(own(deletes, node.getAttribute('data-p')) ? strings.doc_deleted : node.title);
+                    return false;
+                }
+
+                if (cellOf(node) !== cellOf(first.node)) {
+                    refuse(strings.doc_cells);
+                    return false;
+                }
+
+                if (index > from && goneReason(node)) {
+                    refuse(goneReason(node));
+                    return false;
+                }
+            }
+
+            closeEditor(true);
+
+            var head = textNow(first.position).slice(0, first.start);
+            var tail = textNow(last.position).slice(last.end);
+            var lookFirst = lookOf(first.position, true);
+            var lookLast = lookOf(last.position, true);
+
+            setText(first.position, head + tail);
+            looks[first.position] = {
+                text: head + tail,
+                base: lookFirst.base.slice(0, first.start).concat(exactBase(lookLast.want.slice(last.end))),
+                want: lookFirst.want.slice(0, first.start).concat(lookLast.want.slice(last.end))
+            };
+
+            nodes.slice(from + 1, to + 1).forEach(function (node) {
+                if (!node.hidden) {
+                    takeOut(node);
+                }
+            });
+
+            redraw(first.node);
+            shown.note = '';
+            notify();
+            enter(first.node, head.length);
+
+            return true;
         }
 
         // Why the picked paragraph of the file may not be deleted, '' when
@@ -3387,7 +4428,7 @@
                 notify();
 
                 if (next) {
-                    select(next);
+                    enter(next, 0);
                 } else {
                     drawBar();
                 }
@@ -3412,6 +4453,15 @@
             }
 
             redraw(node);
+
+            // A paragraph to be deleted is picked; one kept again is typed
+            // in, the caret at its end.
+            if (own(deletes, position)) {
+                select(node);
+            } else {
+                enter(node, 'end');
+            }
+
             drawBar();
             notify();
         }
@@ -3442,11 +4492,238 @@
             notify();
         }
 
+        // A copy of the document's changes as they stand, with what is being
+        // typed, the paragraphs added (where each stands) and those hidden,
+        // and the caret or the paragraph picked: what Undo puts back.
+        function capture() {
+            var state = {
+                changes: changesNow(),
+                looks: {},
+                wantKinds: copyOf(wantKinds),
+                deletes: copyOf(deletes),
+                added: [],
+                hidden: [],
+                caret: null
+            };
+            var range = sheetRange();
+            var parts = range ? partsOf(range) : [];
+
+            Object.keys(looks).forEach(function (position) {
+                state.looks[position] = lookCopy(looks[position]);
+            });
+
+            Array.prototype.forEach.call(doc.querySelectorAll('.office-added'), function (node) {
+                var key = node.getAttribute('data-p');
+
+                state.added.push({
+                    node: node,
+                    key: key,
+                    parent: node.parentNode,
+                    prev: node.previousElementSibling,
+                    text: texts[key],
+                    marks: marks[key],
+                    kind: kinds[key],
+                    drawn: drawn[key]
+                });
+            });
+
+            nodes.forEach(function (node) {
+                if (node.hidden) {
+                    state.hidden.push(node);
+                }
+            });
+
+            if (parts.length) {
+                state.caret = { node: parts[0].node, start: parts[0].start, last: parts[parts.length - 1].node, end: parts[parts.length - 1].end };
+            } else if (shown.node) {
+                state.caret = { node: shown.node };
+            }
+
+            return state;
+        }
+
+        function copyOf(map) {
+            var copy = {};
+
+            Object.keys(map).forEach(function (key) {
+                copy[key] = map[key];
+            });
+
+            return copy;
+        }
+
+        function lookCopy(look) {
+            return { text: look.text, base: look.base.slice(), want: look.want.slice() };
+        }
+
+        // What a state means for the file: two states that read the same
+        // save the same. A look counts only where it changes a format.
+        function meaning(state) {
+            var shaped = {};
+
+            Object.keys(state.looks).forEach(function (position) {
+                var look = state.looks[position];
+                var ranges = formatRanges(look.base, look.want);
+
+                if (ranges.length) {
+                    shaped[position] = [look.text, ranges];
+                }
+            });
+
+            return JSON.stringify([state.changes, shaped, state.wantKinds, state.deletes, state.added.map(function (item) {
+                return item.key;
+            }), state.hidden.map(function (node) {
+                return node.getAttribute('data-p');
+            })]);
+        }
+
+        // Runs one change of the document: the state before it goes on the
+        // list when it changed anything.
+        function oneChange(change) {
+            var before = capture();
+
+            change();
+            run = null;
+
+            if (meaning(capture()) !== meaning(before)) {
+                steps.record(before);
+            }
+
+            drawBar();
+        }
+
+        // Typing the browser does inside one paragraph: a new change unless
+        // it goes on where the last letter went, the same way.
+        function typedRun(node, type) {
+            var kind = /^insert/.test(type) ? 'insert' : 'delete';
+            var at = selectionIn(node);
+
+            if (!run || run.node !== node || run.kind !== kind || !at || at[0] !== at[1] || run.at !== at[0]) {
+                steps.record(capture());
+                run = { node: node, kind: kind, at: -1 };
+            }
+        }
+
+        // Puts the document back as a state of the list left it: the
+        // paragraphs added then stand again where they stood, the others
+        // go; each paragraph touched is drawn again; the caret goes back.
+        function restore(state) {
+            var touched = {};
+            var caret = state.caret;
+
+            if (shown.editor) {
+                touched[shown.editor.position] = true;
+            }
+
+            shown.editor = null;
+            shown.node = null;
+            shown.last = null;
+            shown.note = '';
+            run = null;
+
+            [changes, looks, wantKinds, deletes].forEach(function (map) {
+                Object.keys(map).forEach(function (key) {
+                    touched[key] = true;
+                });
+            });
+
+            Array.prototype.forEach.call(doc.querySelectorAll('.office-added'), function (node) {
+                var key = node.getAttribute('data-p');
+
+                node.parentNode.removeChild(node);
+                [texts, marks, kinds, drawn].forEach(function (map) {
+                    delete map[key];
+                });
+            });
+
+            // In reading order, so the paragraph each follows stands already.
+            state.added.forEach(function (item) {
+                if (item.prev && item.prev.parentNode === item.parent) {
+                    item.parent.insertBefore(item.node, item.prev.nextSibling);
+                } else {
+                    item.parent.insertBefore(item.node, item.parent.firstChild);
+                }
+
+                texts[item.key] = item.text;
+                marks[item.key] = item.marks;
+                kinds[item.key] = item.kind;
+                drawn[item.key] = item.drawn;
+            });
+
+            changes = copyOf(state.changes);
+            wantKinds = copyOf(state.wantKinds);
+            deletes = copyOf(state.deletes);
+            looks = {};
+
+            Object.keys(state.looks).forEach(function (position) {
+                looks[position] = lookCopy(state.looks[position]);
+            });
+
+            [changes, looks, wantKinds, deletes].forEach(function (map) {
+                Object.keys(map).forEach(function (key) {
+                    touched[key] = true;
+                });
+            });
+
+            nodes = Array.prototype.slice.call(doc.querySelectorAll('[data-p]'));
+
+            nodes.forEach(function (node) {
+                var key = node.getAttribute('data-p');
+                var hide = state.hidden.indexOf(node) >= 0;
+
+                node.classList.remove('office-selected');
+
+                if (node.hidden !== hide) {
+                    node.hidden = hide;
+                    touched[key] = true;
+                }
+
+                if (own(touched, key) || isNew(key)) {
+                    redraw(node);
+                }
+            });
+
+            if (caret && nodes.indexOf(caret.node) >= 0 && !caret.node.hidden) {
+                if (own(caret, 'start') && caret.node.classList.contains('office-typing')) {
+                    enter(caret.node, caret.start);
+
+                    if (caret.last !== caret.node || caret.end !== caret.start) {
+                        if (nodes.indexOf(caret.last) >= 0 && !caret.last.hidden) {
+                            placeSelection(caret.node, caret.start, caret.end, caret.last);
+                            follow();
+                        }
+                    }
+                } else {
+                    enter(caret.node, 'end');
+                }
+            }
+
+            drawBar();
+            notify();
+        }
+
+        // Undo (back) or Redo: one change of the list a press.
+        function undoStep(back) {
+            var now = capture();
+            var state = back ? steps.undo(now) : steps.redo(now);
+
+            if (state) {
+                restore(state);
+            }
+
+            drawBar();
+        }
+
         // The bar's buttons pressed when all of the selected text has theirs;
         // the kind choice on the picked paragraph's kind.
         function drawBar() {
             if (!bar) {
                 return;
+            }
+
+            if (stepControls) {
+                stepControls.undo.disabled = !steps.canUndo();
+                stepControls.redo.disabled = !steps.canRedo();
             }
 
             if (kindChoice) {
@@ -3464,7 +4741,6 @@
                 var gone = at !== null && own(deletes, at);
                 var label = gone ? strings.doc_restore : strings.doc_delete;
 
-                blockControls.add.disabled = !block || own(shut, at);
                 blockControls.remove.disabled = !block;
                 blockControls.remove.setAttribute('aria-pressed', gone ? 'true' : 'false');
                 blockControls.remove.classList.toggle('is-active', gone);
@@ -3472,15 +4748,18 @@
                 blockControls.remove.title = label || '';
             }
 
-            var range = selectedText();
-            var look = range ? lookOf(range.position, true) : null;
+            var parts = selectedParts() || [];
 
             DOC_FORMATS.forEach(function (format) {
-                var on = !!look;
+                var on = parts.length > 0;
 
-                for (var index = range ? range.start : 0; on && index < Math.min(range.end, look.want.length); index++) {
-                    on = !!(look.want[index] & format[1]);
-                }
+                parts.forEach(function (part) {
+                    var look = lookOf(part.position, true);
+
+                    for (var index = part.start; on && index < Math.min(part.end, look.want.length); index++) {
+                        on = !!(look.want[index] & format[1]);
+                    }
+                });
 
                 controls[format[0]].setAttribute('aria-pressed', on ? 'true' : 'false');
                 controls[format[0]].classList.toggle('is-active', on);
@@ -3488,7 +4767,8 @@
         }
 
         function paragraphOf(target) {
-            var node = (target && target.closest) ? target.closest('[data-p]') : null;
+            var element = (target && target.nodeType === 3) ? target.parentNode : target;
+            var node = (element && element.closest) ? element.closest('[data-p]') : null;
 
             return (node && doc.contains(node)) ? node : null;
         }
@@ -3498,19 +4778,32 @@
                 return;
             }
 
+            var typing = node.classList.contains('office-typing');
+
             if (shown.node && shown.node !== node) {
                 shown.node.classList.remove('office-selected');
-                shown.node.tabIndex = -1;
+
+                if (!shown.node.classList.contains('office-typing')) {
+                    shown.node.tabIndex = -1;
+                }
             }
 
-            if (shown.last && shown.last.node !== node) {
+            if (shown.last && !shown.last.some(function (part) { return part.node === node; })) {
                 shown.last = null;
             }
 
             shown.node = node;
             node.classList.add('office-selected');
-            node.tabIndex = 0;
-            node.focus({ preventScroll: true });
+
+            // A paragraph typed in holds the caret of the sheet; one only
+            // picked takes the focus itself.
+            if (!typing) {
+                node.tabIndex = 0;
+
+                if (document.activeElement !== node) {
+                    node.focus({ preventScroll: true });
+                }
+            }
 
             if (scroll !== false && node.scrollIntoView) {
                 node.scrollIntoView({ block: 'nearest' });
@@ -3523,25 +4816,69 @@
             drawBar();
         }
 
-        // The marked paragraph before or after one, in the order they read.
+        // The marked paragraph before or after one, in the order they read;
+        // one joined into another and hidden till the save is passed.
         function beside(node, step) {
             var index = nodes.indexOf(node);
 
-            return (index < 0) ? null : (nodes[index + step] || null);
+            if (index < 0) {
+                return null;
+            }
+
+            index += step;
+
+            while (nodes[index] && nodes[index].hidden) {
+                index += step;
+            }
+
+            return nodes[index] || null;
+        }
+
+        // Whether a paragraph is typed in where it stands: one that may
+        // change and is not to be deleted. The sheet is the one place typed
+        // in, so a selection and the arrows cross paragraphs; a paragraph
+        // that is not typed in is shut inside it and picked as a whole. A
+        // drawn tab is one character the caret passes whole.
+        function setTyping(node) {
+            var on = node.classList.contains('office-para') && !own(deletes, node.getAttribute('data-p'));
+
+            if (on) {
+                node.removeAttribute('contenteditable');
+                node.removeAttribute('tabindex');
+            } else {
+                node.contentEditable = 'false';
+                node.tabIndex = (node === shown.node) ? 0 : -1;
+            }
+
+            node.classList.toggle('office-typing', on);
+
+            Array.prototype.forEach.call(node.querySelectorAll('.office-tabchar'), function (tab) {
+                tab.setAttribute('contenteditable', 'false');
+            });
         }
 
         // Draws a paragraph as it stands: its new text, or the server's
         // drawing when it has none.
         function redraw(node) {
             var position = node.getAttribute('data-p');
-            var look = lookOf(position, false);
+
+            // The server's drawing, to put back when a change is undone.
+            if (!own(drawn, position) && !typedIn(position)) {
+                drawn[position] = node.innerHTML;
+            }
+
+            // A changed text keeps the bold, italic and underline it was
+            // typed with, carried over as the server will write them.
+            var look = lookOf(position, own(changes, position) || typedIn(position));
             var shaped = formatted(position);
 
-            if (own(changes, position) || shaped) {
+            if (own(changes, position) || shaped || typedIn(position)) {
                 drawText(node, textNow(position), look ? look.want : null);
             } else if (own(drawn, position)) {
                 node.innerHTML = drawn[position];
             }
+
+            setTyping(node);
 
             // A kind asked for shows as a look of the paragraph until the
             // save draws it again as what it has become.
@@ -3573,6 +4910,8 @@
             notify();
         }
 
+        // Leaves the paragraph being typed in: what was typed is kept, or
+        // undone when save is false, and the paragraph drawn as it stands.
         function closeEditor(save) {
             var editor = shown.editor;
 
@@ -3580,208 +4919,472 @@
                 return;
             }
 
-            var input = editor.input;
-
-            // What was selected stays the bar's to change, unless the text
-            // typed was undone (or holds a line end the text counts apart).
-            shown.last = (save && normal(input.value) === input.value) ? {
-                node: editor.node,
-                position: editor.position,
-                start: Math.min(input.selectionStart, input.selectionEnd),
-                end: Math.max(input.selectionStart, input.selectionEnd)
-            } : null;
-
             shown.editor = null;
-            editor.node.classList.remove('office-editing');
 
-            if (save) {
-                keep(editor.node, editor.input.value);
-            } else {
-                redraw(editor.node);
-                notify();
+            if (save && editor.typed) {
+                keep(editor.node, paragraphText(editor.node));
+                return;
             }
+
+            redraw(editor.node);
+            notify();
         }
 
-        // The box grows with its text, so the paragraph keeps its place.
-        function fit(input) {
-            input.style.height = 'auto';
-            input.style.height = input.scrollHeight + 'px';
-        }
+        // Starts typing in a paragraph that may change, where the caret
+        // stands. An empty one is drawn holding a space to keep its line;
+        // it is typed into holding only the line's end.
+        function openEditor(node) {
+            var position = node ? node.getAttribute('data-p') : null;
 
-        function openEditor(node, span) {
-            if (!node || node.classList.contains('office-locked') || own(deletes, node.getAttribute('data-p')) || (shown.editor && shown.editor.node === node)) {
+            if (!node || !node.classList.contains('office-typing') || (shown.editor && shown.editor.node === node)) {
                 return;
             }
 
             closeEditor(true);
-            select(node, false);
-
-            var position = node.getAttribute('data-p');
-            var input = el('textarea', 'office-editor office-para-editor');
 
             if (!own(drawn, position)) {
                 drawn[position] = node.innerHTML;
             }
 
-            input.value = own(changes, position) ? changes[position] : texts[position];
-            input.rows = 1;
-            input.setAttribute('aria-label', strings.doc_editor || '');
+            shown.editor = { node: node, position: position, typed: false, range: selectionIn(node) };
+            shown.opened = true;
 
-            shown.editor = { node: node, position: position, input: input };
-            node.classList.add('office-editing');
-            node.textContent = '';
-            node.appendChild(input);
-            fit(input);
-            input.focus({ preventScroll: true });
+            if (textNow(position) === '' && !(node.childNodes.length === 1 && node.firstChild.nodeName === 'BR')) {
+                node.textContent = '';
+                node.appendChild(document.createElement('br'));
 
-            var length = input.value.length;
+                if (document.activeElement === paper) {
+                    placeSelection(node, 0, 0);
+                }
+            }
 
-            input.setSelectionRange(span ? Math.min(span[0], length) : length, span ? Math.min(span[1], length) : length);
+            drawBar();
+        }
 
-            input.addEventListener('input', function () {
-                fit(input);
-                notify();
+        // Which way the caret was last sent by an arrow key, so that a caret
+        // the browser left between paragraphs goes on that way.
+        var travel = 0;
+
+        // Follows the caret of the sheet: the paragraph it stands in is the
+        // one typed in. A caret left outside every paragraph typed in (on a
+        // table's edge, a picture, a locked paragraph) goes on to the next
+        // one that is, the way it was going. A selection over several
+        // paragraphs leaves the one typed in as it is.
+        var following = false;
+
+        function follow() {
+            var range = sheetRange();
+
+            if (!range || document.activeElement !== paper || following) {
+                return;
+            }
+
+            var from = paragraphOf(range.startContainer);
+            var to = paragraphOf(range.endContainer);
+
+            if (from && from === to && from.classList.contains('office-typing')) {
+                if (!shown.editor || shown.editor.node !== from) {
+                    select(from, false);
+                    openEditor(from);
+                }
+
+                shown.editor.range = selectionIn(from);
+                drawBar();
+                return;
+            }
+
+            if (!range.collapsed) {
+                drawBar();
+                return;
+            }
+
+            var typable = nodes.filter(function (node) {
+                return !node.hidden && node.classList.contains('office-typing');
             });
+            var target = null;
+            var index;
 
-            ['select', 'keyup', 'mouseup'].forEach(function (type) {
-                input.addEventListener(type, drawBar);
-            });
-
-            input.addEventListener('blur', function () {
-                if (shown.editor && shown.editor.input === input) {
-                    closeEditor(true);
+            if (travel < 0) {
+                for (index = typable.length - 1; index >= 0 && !target; index--) {
+                    target = range.comparePoint(typable[index], 0) < 0 ? typable[index] : null;
                 }
-            });
-
-            input.addEventListener('keydown', function (event) {
-                // The keys end here: the paragraphs and the panel's own
-                // shortcuts must not see them while a paragraph is typed in.
-                event.stopPropagation();
-
-                // A key that finishes a word in an input method belongs to it.
-                if (event.isComposing || event.keyCode === 229) {
-                    return;
+            } else {
+                for (index = 0; index < typable.length && !target; index++) {
+                    target = range.comparePoint(typable[index], typable[index].childNodes.length) > 0 ? typable[index] : null;
                 }
+            }
 
-                var key = event.key;
+            target = target || (travel < 0 ? typable[0] : typable[typable.length - 1]);
 
-                if (formatKey(event)) {
-                    return;
-                }
+            if (target) {
+                following = true;
+                enter(target, range.comparePoint(target, 0) < 0 ? 'end' : 0);
+                following = false;
+            }
+        }
 
-                if ((event.ctrlKey || event.metaKey) && (key === 's' || key === 'S')) {
-                    event.preventDefault();
-                    closeEditor(true);
-                    select(node, false);
-                    save();
-                    return;
-                }
+        // Puts the caret into a paragraph at a point of its text ('end' for
+        // its end); one that may not be typed in is only picked.
+        function enter(node, at) {
+            if (!node) {
+                return;
+            }
 
-                // Shift+Enter is a line break inside the paragraph, as a
-                // word processor takes it: the box types it itself.
-                if (key === 'Enter' && event.shiftKey) {
-                    return;
-                }
+            if (!node.classList.contains('office-typing')) {
+                closeEditor(true);
+                select(node);
+                return;
+            }
 
-                if (key === 'Enter' || key === 'Tab') {
-                    event.preventDefault();
-                    closeEditor(true);
-                    select(beside(node, (key === 'Tab' && event.shiftKey) ? -1 : 1) || node);
-                    return;
-                }
+            if (document.activeElement !== paper) {
+                paper.focus({ preventScroll: true });
+            }
 
-                if (key === 'Escape') {
-                    event.preventDefault();
-                    closeEditor(false);
-                    select(node, false);
-                }
-            });
+            select(node, false);
+            openEditor(node);
+
+            var length = textNow(node.getAttribute('data-p')).length;
+            var offset = (at === 'end') ? length : Math.min(at, length);
+
+            placeSelection(node, offset, offset);
+            travel = 0;
+            follow();
+
+            if (node.scrollIntoView) {
+                node.scrollIntoView({ block: 'nearest' });
+            }
+        }
+
+        // Esc: what was typed into the paragraph since the caret came into
+        // it is undone; the caret stays, at its end.
+        function undoTyping(node) {
+            closeEditor(false);
+            enter(node, 'end');
+        }
+
+        // Text typed where the caret stands, as the browser types it.
+        function typeText(text) {
+            if (text === '' || (document.execCommand && document.execCommand('insertText', false, text))) {
+                return;
+            }
+
+            var range = sheetRange();
+
+            if (!range || !shown.editor) {
+                return;
+            }
+
+            var piece = document.createTextNode(text);
+            var selection = window.getSelection();
+
+            range.deleteContents();
+            range.insertNode(piece);
+            range.setStartAfter(piece);
+            range.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(range);
+            shown.editor.typed = true;
+            notify();
         }
 
         Array.prototype.forEach.call(doc.querySelectorAll('[data-p]'), function (node) {
             var position = node.getAttribute('data-p');
             var lock = node.getAttribute('data-lock') || (own(texts, position) ? '' : 'other');
 
-            node.tabIndex = -1;
             nodes.push(node);
 
             if (lock) {
                 node.classList.add('office-locked');
                 node.setAttribute('aria-readonly', 'true');
                 node.title = paragraphTitle(lock, strings);
+                setTyping(node);
                 return;
             }
 
             node.classList.add('office-para');
+            setTyping(node);
 
             Array.prototype.forEach.call(node.querySelectorAll('a[href]'), function (link) {
                 link.title = strings.doc_link || '';
             });
         });
 
-        // One stop for the Tab key; the arrows go on from there.
-        if (nodes.length) {
+        // The sheet is typed in when a paragraph of it may change; what is
+        // not a paragraph (a picture, a note) is shut. It is the Tab key's
+        // one stop; the arrows and Tab go on from there.
+        if (nodes.some(function (node) { return node.classList.contains('office-typing'); })) {
+            paper.contentEditable = typeMode;
+            paper.classList.add('office-sheet-typing');
+            paper.setAttribute('role', 'textbox');
+            paper.setAttribute('aria-multiline', 'true');
+            paper.setAttribute('aria-label', strings.doc || '');
+            doc.classList.add('office-doc-edit');
+
+            Array.prototype.forEach.call(paper.children, function (child) {
+                if (!child.hasAttribute('data-p') && !child.querySelector('[data-p]')) {
+                    child.contentEditable = 'false';
+                }
+            });
+        } else if (nodes.length) {
             nodes[0].tabIndex = 0;
             doc.classList.add('office-doc-edit');
         } else {
             doc.tabIndex = 0;
         }
 
-        // A paragraph reached with Tab is picked as a click would pick it, so
-        // the arrows, Enter and F2 work on it at once. A link inside one keeps
-        // its own focus.
+        // The sheet reached with Tab or a click follows its caret; a
+        // paragraph that is only picked is picked.
         doc.addEventListener('focusin', function (event) {
             var node = event.target;
 
-            if (node.hasAttribute && node.hasAttribute('data-p') && nodes.indexOf(node) !== -1 && node !== shown.node && !shown.editor) {
-                select(node);
-            }
-        });
-
-        doc.addEventListener('mousedown', function (event) {
-            if (shown.editor && shown.editor.node.contains(event.target)) {
+            if (node === paper) {
+                follow();
                 return;
             }
 
-            var node = paragraphOf(event.target);
+            if (!node.hasAttribute || !node.hasAttribute('data-p') || nodes.indexOf(node) === -1) {
+                return;
+            }
 
-            shown.pressed = (node && node === shown.node) ? node : null;
+            closeEditor(true);
 
-            if (node) {
+            if (node !== shown.node) {
                 select(node, false);
             }
         });
 
-        doc.addEventListener('click', function (event) {
-            if (shown.editor && shown.editor.node.contains(event.target)) {
+        // Leaving the sheet keeps what was typed, and what was selected for
+        // the bar; the window losing the focus does not leave it.
+        doc.addEventListener('focusout', function (event) {
+            if (event.target !== paper || (event.relatedTarget && paper.contains(event.relatedTarget))) {
                 return;
             }
 
-            var node = paragraphOf(event.target);
-            var link = event.target.closest ? event.target.closest('a[href]') : null;
-            var follow = !!link && (event.ctrlKey || event.metaKey);
-
-            // A link in a paragraph that can be changed is followed with Ctrl
-            // or Cmd held, as in a word processor; a plain click edits.
-            if (link && node && !follow && !node.classList.contains('office-locked')) {
-                event.preventDefault();
+            if (!event.relatedTarget && document.hasFocus && !document.hasFocus()) {
+                return;
             }
 
-            // A click on the paragraph already picked opens it, where the
-            // click landed (with the word a double click selected).
-            if (node && node === shown.pressed && !follow) {
-                openEditor(node, pointedText(node, event));
-            }
+            var range = sheetRange();
 
-            shown.pressed = null;
+            shown.last = (range && !range.collapsed) ? partsOf(range) : null;
+            closeEditor(true);
         });
 
+        // A click on the sheet below the last paragraph puts the caret at
+        // the end of the last one that may change, as on a page.
+        doc.addEventListener('mousedown', function (event) {
+            if (event.target !== paper || event.button !== 0) {
+                return;
+            }
+
+            var typable = nodes.filter(function (node) {
+                return !node.hidden && node.classList.contains('office-typing');
+            });
+            var last = typable[typable.length - 1];
+
+            if (last && event.clientY > last.getBoundingClientRect().bottom) {
+                event.preventDefault();
+                enter(last, 'end');
+            }
+        });
+
+        // A link in a paragraph that can be changed is followed with Ctrl or
+        // Cmd held, as in a word processor; a plain click places the caret.
+        doc.addEventListener('click', function (event) {
+            var node = paragraphOf(event.target);
+            var link = event.target.closest ? event.target.closest('a[href]') : null;
+
+            if (!link || !node || node.classList.contains('office-locked')) {
+                return;
+            }
+
+            event.preventDefault();
+
+            if (event.ctrlKey || event.metaKey) {
+                window.open(link.href, '_blank', 'noopener,noreferrer');
+            }
+        });
+
+        // Typed text is read as it changes.
+        doc.addEventListener('input', function () {
+            follow();
+
+            if (run && shown.editor && run.node === shown.editor.node) {
+                var at = selectionIn(run.node);
+
+                run.at = (at && at[0] === at[1]) ? at[0] : -1;
+            }
+
+            if (shown.editor) {
+                shown.editor.typed = true;
+                notify();
+                drawBar();
+            }
+        });
+
+        // What the sheet takes: plain text typed inside one paragraph.
+        // Formatting goes through the bar; a drop is not taken. Enter cuts
+        // the paragraph, Backspace at its start and Delete at its end join
+        // it to the one beside, and what is typed over a selection of
+        // several paragraphs takes them out first: the editor does each, so
+        // the browser never joins or splits a paragraph itself.
+        doc.addEventListener('beforeinput', function (event) {
+            var type = event.inputType || '';
+            var range = sheetRange();
+
+            // The browser's own undo and redo (its menu) work on the
+            // document's list instead.
+            if (/^history(Undo|Redo)$/.test(type) && stepControls && paper.contains(event.target)) {
+                event.preventDefault();
+                undoStep(type === 'historyUndo');
+                return;
+            }
+
+            if (!range || /^history/.test(type)) {
+                return;
+            }
+
+            if (/^format/.test(type) || type === 'insertFromDrop' || type === 'deleteByDrag') {
+                event.preventDefault();
+                return;
+            }
+
+            var parts = partsOf(range);
+            var from = paragraphOf(range.startContainer);
+            var to = paragraphOf(range.endContainer);
+            var inside = !!from && from === to && from.classList.contains('office-typing');
+
+            if (type === 'insertParagraph') {
+                event.preventDefault();
+
+                if (inside || parts.length > 1) {
+                    oneChange(splitParagraph);
+                }
+                return;
+            }
+
+            if (!inside) {
+                // Composed text cannot be stopped; anything else outside one
+                // paragraph is done here or not at all.
+                if (event.cancelable) {
+                    event.preventDefault();
+                }
+
+                oneChange(function () {
+                    across(parts, type, normal(event.data || (event.dataTransfer ? event.dataTransfer.getData('text/plain') : '') || ''));
+                });
+                return;
+            }
+
+            if (!shown.editor || shown.editor.node !== from) {
+                follow();
+            }
+
+            var at = range.collapsed ? textOffset(from, range.startContainer, range.startOffset) : -1;
+
+            if (/^delete.*Backward$/.test(type) && at === 0) {
+                event.preventDefault();
+                oneChange(function () {
+                    joinParagraphs(from, true);
+                });
+            } else if (/^delete.*Forward$/.test(type) && at === textNow(from.getAttribute('data-p')).length) {
+                event.preventDefault();
+                oneChange(function () {
+                    joinParagraphs(from, false);
+                });
+            } else {
+                typedRun(from, type);
+            }
+        });
+
+        // Typing over a selection that is not all inside one paragraph.
+        function across(parts, type, typed) {
+            if (parts.length === 1 && parts[0].start < parts[0].end) {
+                // A whole paragraph selected (three clicks): the
+                // selection is put inside it and typed over there.
+                placeSelection(parts[0].node, parts[0].start, parts[0].end);
+                follow();
+
+                if (/^insert/.test(type) && typed !== '') {
+                    typeText(typed);
+                } else if (/^delete/.test(type) && document.execCommand) {
+                    document.execCommand('delete');
+                }
+            } else if (parts.length > 1 && removeAcross(parts) && /^insert/.test(type)) {
+                typeText(typed);
+            }
+        }
+
+        // Paste is plain text, typed where the caret stands; over a
+        // selection of several paragraphs it takes them out first.
+        doc.addEventListener('paste', function (event) {
+            var range = sheetRange();
+
+            if (!range) {
+                return;
+            }
+
+            var data = event.clipboardData || null;
+            var text = data ? normal(data.getData('text/plain') || '') : '';
+            var parts = partsOf(range);
+
+            event.preventDefault();
+
+            oneChange(function () {
+                if (parts.length > 1 && !removeAcross(parts)) {
+                    return;
+                }
+
+                if (shown.editor) {
+                    typeText(text);
+                }
+            });
+        });
+
+        // The bar follows the selection on the sheet. Once the view has left
+        // the page the listener goes.
+        function followSelection() {
+            if (!doc.isConnected) {
+                if (shown.opened) {
+                    document.removeEventListener('selectionchange', followSelection);
+                }
+                return;
+            }
+
+            follow();
+        }
+
+        document.addEventListener('selectionchange', followSelection);
+
         doc.addEventListener('keydown', function (event) {
-            if (shown.editor || !shown.node) {
+            var onSheet = event.target === paper;
+
+            // The caret may have moved since the last selection change was
+            // seen.
+            if (onSheet) {
+                follow();
+            }
+
+            var editor = shown.editor;
+            var node = onSheet ? (editor ? editor.node : null) : shown.node;
+
+            if (!node || !(onSheet || node.contains(event.target))) {
                 return;
             }
 
             var key = event.key;
+            var plain = !(event.ctrlKey || event.metaKey || event.altKey);
+
+            // The keys of the sheet end here: the panel's own shortcuts must
+            // not see them. Esc with nothing typed is the window's.
+            if (onSheet && !(key === 'Escape' && !editor.typed)) {
+                event.stopPropagation();
+            }
+
+            // A key that finishes a word in an input method belongs to it.
+            if (event.isComposing || event.keyCode === 229) {
+                return;
+            }
 
             if ((event.ctrlKey || event.metaKey) && (key === 's' || key === 'S')) {
                 event.preventDefault();
@@ -3790,26 +5393,90 @@
                 return;
             }
 
-            if (event.target === shown.node && formatKey(event)) {
-                event.stopPropagation();
-                return;
-            }
+            // Ctrl+Z undoes a change of the document; Ctrl+Y and
+            // Ctrl+Shift+Z do it again. The browser's own undo is not used.
+            var asked = stepControls ? historyKey(event) : '';
 
-            if (event.target !== shown.node) {
-                return;
-            }
-
-            if (key === 'ArrowDown' || key === 'ArrowUp') {
+            if (asked) {
                 event.preventDefault();
                 event.stopPropagation();
-                select(beside(shown.node, (key === 'ArrowDown') ? 1 : -1) || shown.node);
+                undoStep(asked === 'undo');
                 return;
             }
 
-            if (key === 'Enter' || key === 'F2') {
+            if ((onSheet || event.target === node) && formatKey(event)) {
+                event.stopPropagation();
+                return;
+            }
+
+            if (!onSheet && event.target !== node) {
+                return;
+            }
+
+            if (onSheet) {
+                var range = sheetRange();
+                var length = textNow(editor.position).length;
+                var at = (range && range.collapsed) ? selectionIn(node) : null;
+
+                // Enter cuts the paragraph; Shift+Enter is a line break
+                // inside it, typed by the browser.
+                if (key === 'Enter' && plain && !event.shiftKey) {
+                    event.preventDefault();
+                    oneChange(splitParagraph);
+                    return;
+                }
+
+                if (key === 'Escape' && editor.typed) {
+                    event.preventDefault();
+                    oneChange(function () {
+                        undoTyping(node);
+                    });
+                    return;
+                }
+
+                // The arrows cross paragraphs: left at a paragraph's start
+                // and right at its end go to the one beside; up and down are
+                // the browser's, a caret it leaves between paragraphs going
+                // on the same way.
+                if (plain && !event.shiftKey && at && ((key === 'ArrowLeft' && at[0] === 0) || (key === 'ArrowRight' && at[0] === length))) {
+                    var next = beside(node, key === 'ArrowLeft' ? -1 : 1);
+
+                    while (next && !next.classList.contains('office-typing')) {
+                        next = beside(next, key === 'ArrowLeft' ? -1 : 1);
+                    }
+
+                    event.preventDefault();
+
+                    if (next) {
+                        enter(next, key === 'ArrowLeft' ? 'end' : 0);
+                    }
+                    return;
+                }
+
+                if (/^Arrow(Up|Down|Left|Right)$/.test(key) || key === 'PageUp' || key === 'PageDown') {
+                    travel = /Up|Left/.test(key) ? -1 : 1;
+                }
+            }
+
+            // Tab and Shift+Tab go to the next paragraph and the one before;
+            // at either end the focus leaves the document.
+            if (key === 'Tab' && plain) {
+                var step = beside(node, event.shiftKey ? -1 : 1);
+
+                if (step) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    enter(step, event.shiftKey ? 'end' : 0);
+                }
+                return;
+            }
+
+            // A paragraph only picked (locked or to be deleted): the arrows
+            // go on to the next and the one before.
+            if (!onSheet && (key === 'ArrowDown' || key === 'ArrowUp')) {
                 event.preventDefault();
                 event.stopPropagation();
-                openEditor(shown.node, null);
+                enter(beside(node, (key === 'ArrowDown') ? 1 : -1) || node, 0);
             }
         });
 
@@ -3818,6 +5485,32 @@
             bar = el('div', 'office-format');
             bar.setAttribute('role', 'toolbar');
             bar.setAttribute('aria-label', strings.doc_format_bar || '');
+
+            // Undo and Redo at the bar's start, on the document's own list.
+            stepControls = {};
+
+            [['undo', 'bi-arrow-counterclockwise', strings.doc_undo], ['redo', 'bi-arrow-clockwise', strings.doc_redo]].forEach(function (item) {
+                var button = el('button', 'pg-icon-button pg-icon-button-sm');
+                var glyph = el('span', 'bi ' + item[1]);
+
+                button.type = 'button';
+                button.disabled = true;
+                button.setAttribute('aria-label', item[2] || '');
+                button.title = item[2] || '';
+                glyph.setAttribute('aria-hidden', 'true');
+                button.appendChild(glyph);
+
+                // A press keeps the focus, and so the caret, on the sheet.
+                button.addEventListener('mousedown', function (event) {
+                    event.preventDefault();
+                });
+                button.addEventListener('click', function () {
+                    undoStep(item[0] === 'undo');
+                });
+
+                stepControls[item[0]] = button;
+                bar.appendChild(button);
+            });
 
             [['bi-type-bold', strings.format_bold], ['bi-type-italic', strings.format_italic], ['bi-type-underline', strings.doc_underline]].forEach(function (item, index) {
                 var button = el('button', 'pg-icon-button pg-icon-button-sm');
@@ -3830,12 +5523,15 @@
                 glyph.setAttribute('aria-hidden', 'true');
                 button.appendChild(glyph);
 
-                // A press keeps the focus, and so the selection, in the box.
+                // A press keeps the focus, and so the selection, in the
+                // paragraph typed in.
                 button.addEventListener('mousedown', function (event) {
                     event.preventDefault();
                 });
                 button.addEventListener('click', function () {
-                    applyFormat(DOC_FORMATS[index]);
+                    oneChange(function () {
+                        applyFormat(DOC_FORMATS[index]);
+                    });
                 });
 
                 controls[DOC_FORMATS[index][0]] = button;
@@ -3864,7 +5560,9 @@
                 choice.appendChild(other);
 
                 choice.addEventListener('change', function () {
-                    applyKind(choice.value);
+                    oneChange(function () {
+                        applyKind(choice.value);
+                    });
                 });
 
                 field.appendChild(choice);
@@ -3872,11 +5570,11 @@
                 kindChoice = { select: choice, other: other };
             }
 
-            // Add a paragraph after the picked one; delete it (pressed again,
-            // keep it).
+            // Delete the picked paragraph (pressed again, keep it); Enter
+            // adds one.
             blockControls = {};
 
-            [['add', 'bi-plus-lg', strings.doc_add, addParagraph], ['remove', 'bi-trash3', strings.doc_delete, deleteParagraph]].forEach(function (item) {
+            [['remove', 'bi-trash3', strings.doc_delete, deleteParagraph]].forEach(function (item) {
                 var button = el('button', 'pg-icon-button pg-icon-button-sm');
                 var glyph = el('span', 'bi ' + item[1]);
 
@@ -3886,11 +5584,13 @@
                 glyph.setAttribute('aria-hidden', 'true');
                 button.appendChild(glyph);
 
-                // A press keeps the focus in the paragraph's box.
+                // A press keeps the focus in the paragraph typed in.
                 button.addEventListener('mousedown', function (event) {
                     event.preventDefault();
                 });
-                button.addEventListener('click', item[3]);
+                button.addEventListener('click', function () {
+                    oneChange(item[3]);
+                });
 
                 blockControls[item[0]] = button;
                 bar.appendChild(button);
@@ -3992,6 +5692,8 @@
                 wantKinds = {};
                 deletes = {};
                 shown.last = null;
+                steps.clear();
+                run = null;
 
                 positions.forEach(function (position) {
                     var node = doc.querySelector('[data-p="' + position + '"]');
@@ -4000,6 +5702,13 @@
                         redraw(node);
                     }
                 });
+
+                // Paragraphs joined into others come back; the caret's
+                // paragraph is typed in again.
+                nodes.forEach(function (node) {
+                    node.hidden = false;
+                });
+                follow();
 
                 drawBar();
                 notify();
@@ -4241,13 +5950,40 @@
             csvText: csvText,
             csvName: csvName
         },
+        // A workbook's waiting changes as one ordered list, and the workbook
+        // it leaves.
+        sheetList: {
+            cell: listCell,
+            format: listFormat,
+            count: listCount,
+            look: listLook,
+            sides: borderSides,
+            book: listBook,
+            edits: listEdits,
+            history: listHistory
+        },
         // A document's bold, italic and underline, which read no page: the
         // look the server sent, carried over a changed text, and the
         // stretches a save sends.
         docMarks: {
             expandMarks: expandMarks,
             carryMarks: carryMarks,
-            formatRanges: formatRanges
+            formatRanges: formatRanges,
+            cutLook: cutLook,
+            exactBase: exactBase
+        },
+        // The document's list of changes for Undo and Redo, and the keys
+        // that ask for them.
+        docHistory: {
+            changeList: changeList,
+            historyKey: historyKey
+        },
+        // A paragraph's text read from its drawing while it is typed in,
+        // and a point of that text found in the drawing again.
+        docText: {
+            paragraphText: paragraphText,
+            textOffset: textOffset,
+            textPoint: textPoint
         },
         render: function (container, office, strings, options) {
             strings = strings || {};

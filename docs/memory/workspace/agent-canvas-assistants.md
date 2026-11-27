@@ -15,6 +15,7 @@ description: Pinegrap AI and model assistants draw, read and edit Workspace canv
 - `by` in the document (`ws_canvas_ai_by()`): a model assistant as `{id, kind: model, handle}` from `ws_model_running()`, Pinegrap AI as `{id: 0, kind: ai, handle: ai}`.
 - Arguments stay flat: `operations` is a JSON list in a string (`ws_canvas_ai_operations()`; one object alone is a list of one).
 - A drawn or edited canvas sets `$state['canvas_done']`, so the answer "I drew it" is not sent back as a claim of a change nobody proposed (`ws_ai_finish_answer()`).
+- A canvas tool that answers with an error holds back the answer of the same turn, and an answer written before `draw_canvas` is made after it (`workspace-ai-turn-calls.md`).
 
 ## What does the model read?
 - `ws_canvas_ai_present()` over `ws_canvas_read()`: message id, artboard, picture, version, layers and versions without empty fields, an svg layer's markup cut at 3000 characters (the tool answer is cut at 12000 as a whole), times as UTC dates.

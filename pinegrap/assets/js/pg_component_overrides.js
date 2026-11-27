@@ -25,7 +25,8 @@
  *   placeVariant(refNode), applyVariant(tree, name) (the same object when
  *   nothing applies), variantNodes(default, edited), cleanVariantName(),
  *   variantPropOk(key): named sets of classes and options (root
- *   props._variants), a place keeping only the name (props._variant).
+ *   props._variants), a place keeping only the name (props._variant); a
+ *   renamed variant keeps its former names (`was`) and answers to them.
  *
  * Nothing runs at load but the definition. tests/component_overrides_test.php
  * runs it in Node beside the PHP functions.
@@ -179,6 +180,16 @@
         });
         if (!any) return tree;
 
+        // A node left out takes its own ids and those of its subtree with
+        // it, as openFields() gives them to it: a later node with the same id
+        // (a duplicated element) never takes their values.
+        function claim(node) {
+            if (!isObject(node)) return;
+            nodeOpen(node).forEach(function (entry) { seen[entry.id] = true; });
+            if (node.type === 'shared_ref') return;
+            if (Array.isArray(node.children)) node.children.forEach(claim);
+        }
+
         // Answers the node with its values, or null when it is not shown.
         // The root itself is never left out.
         function walk(node, root) {
@@ -192,7 +203,10 @@
                 value = usable[entry.id];
                 switch (entry.kind) {
                     case 'shown':
-                        if (value === false && !root) return null;
+                        if (value === false && !root) {
+                            claim(node);
+                            return null;
+                        }
                         break;
                     case 'text':
                         node.props.text = value;
@@ -291,8 +305,11 @@
         return out;
     }
 
+    // Cleaned as pg_co_variants(): a renamed variant keeps `was`, its
+    // former names (at most 20), never a name a variant has now or one an
+    // earlier variant keeps; none leaves no `was`.
     function variants(tree) {
-        var list = tree && tree.props && tree.props._variants, out = [], names = {};
+        var list = tree && tree.props && tree.props._variants, out = [], names = {}, formers = [];
         if (!Array.isArray(list)) return out;
         for (var i = 0; i < list.length && out.length < 50; i++) {
             var entry = list[i];
@@ -308,15 +325,30 @@
                 });
             }
             out.push({name: name, nodes: nodes});
+            formers.push(Array.isArray(entry.was) ? entry.was : []);
         }
+        var claimed = {};
+        Object.keys(names).forEach(function (k) { claimed[k] = true; });
+        out.forEach(function (v, n) {
+            var was = [];
+            for (var j = 0; j < formers[n].length && was.length < 20; j++) {
+                var former = cleanVariantName(formers[n][j]), fk = former.toLowerCase();
+                if (former === '' || has(claimed, fk)) continue;
+                claimed[fk] = true;
+                was.push(former);
+            }
+            if (was.length) v.was = was;
+        });
         return out;
     }
 
+    // A variant's name now first, then a former name of a renamed one.
     function variant(tree, name) {
         name = cleanVariantName(name);
         if (name === '') return null;
-        var list = variants(tree);
-        for (var i = 0; i < list.length; i++) { if (list[i].name === name) return list[i]; }
+        var list = variants(tree), i;
+        for (i = 0; i < list.length; i++) { if (list[i].name === name) return list[i]; }
+        for (i = 0; i < list.length; i++) { if (list[i].was && list[i].was.indexOf(name) !== -1) return list[i]; }
         return null;
     }
 

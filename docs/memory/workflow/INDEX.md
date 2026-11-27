@@ -16,9 +16,9 @@
 - api-answer-check-run.md: Working rule: who runs tools/check_api_answers.php, when and how: a running site with a database, settings from the environment only, never in CI, findings filed as bug issues
 - architect-asking.md: How a session asks a decision question: search first, one message in the agent channel naming the architect, the PR back to draft, the session ends; screenshot approvals ended 2026-11-20 [decision: here]
 - architect-decision-record.md: An owner's answer stands in the agent channel, quoted by the architect, before the decisions list names it; a decisions entry that names no channel message is held by the merging session [decision: decisions-made-panel-4.md]
-- architect-draws-new-part.md: Working rule (2026-11-21): a part with no model on the Design examples screen is drawn by the architect before its job is given; words alone gave the timeline strip the owner sent back [decision: here]
-- architect-hand-over-work.md: Hand-over of the architect session of 2026-11-24 and 25, the work in flight: its open PRs, who holds the plans, the sheets the architect draws, what is open with other agents [decision: here]
-- architect-hand-over.md: Hand-over note of the architect session of 2026-11-24 and 25, written as the owner moves the architect to another account: what is owed to the owner and what he was asked [decision: here]
+- architect-draws-new-part.md: Working rule (2026-11-21): a part with no model on the Design examples screen is drawn by the architect before its job is given; words alone gave the timeline strip the owner sent back [decision: decisions-made-product-118.md]
+- architect-hand-over-work.md: Hand-over of the architect session of 2026-11-24 to 26, the work in flight: who works now, what is left of the sheets, how sheets are made, what is watched [decision: here]
+- architect-hand-over.md: Hand-over note of the architect session of 2026-11-24 to 26, written as the owner moves the architect to another account: what is owed to the owner, what he decided last, what he was asked [decision: here]
 - architect-looks-at-landed-screen.md: The architect opens each landed step of a screen the owner asked for on a sandbox, in the states nobody drew, and writes what differs into the plan; no step waits for the look [decision: here]
 - architect-no-hand-over.md: The architect session does not hand over to a fresh session at a token count (2026-11-10): auto-compact at 300k (2026-11-23) summarises its context in place; what it reads again after a compaction
 - architect-open-prs.md: The architect's docs-only PRs are not held to one open PR at a time: a plan or a record does not wait for an earlier one to land (2026-11-19) [decision: here]
@@ -27,11 +27,13 @@
 - architect.md: Decision questions: asked in the agent channel, no architect issue (2026-11-13); the architect decides technical ones, asks the owner schema and product-behaviour ones, records the answer [decision: decisions-made-schema.md, decisions-made.md]
 - auto-memory-off.md: Claude Code's auto memory (MEMORY.md) is off for this repository (2026-11-23, #11186): memory lives in docs/memory; what it cost
 - branch-guards.md: tools/check_pr.php (#1878): CI and pre-push fail a commit trailer, an author or committer other than Erdal Güral, a changelog.txt or data/config.php change; warn above 1,000 product lines
+- bug-hunt-accessibility-view.md: Bug hunt of the designer's Accessibility view (style_designer_accessview.js, PGA11yReader, includes/fn/a11y.php), 2026-11-26: the seven faults fixed in #12005, no issue opened, what read clean
 - bug-hunt-application-access.md: Bug hunt of Application Access (api_settings.php and its includes/api files), architect 2026-11-26 after #11805: the six faults fixed in #11826, no issue opened, what read clean [decision: here]
 - bug-hunt-areas-2.md: The areas given to a bug hunt from 2026-11-17 on (wholesale prices, publish approval, visitor push, gift cards and store credit), the issues each ended with and what it read clean [decision: here]
 - bug-hunt-areas-3.md: The areas given to a bug hunt from 2026-11-20 on (the own sheet reader and its importers; Incoming e-mail and Mailboxes at phone width), what each fixed, the issues it opened and what it read clean
 - bug-hunt-areas-4.md: Bug hunt areas beside bug-hunt-areas-3: the fifteen panel screens hunted on 2026-11-19 and the two areas given on 2026-11-20 (prototype comments' guest side, picture text translation's server side)
 - bug-hunt-areas-5.md: Bug hunt areas given on the evening of 2026-11-20: order profit and shipping labels (K3), the bookings' visitor side and stock per location (K2); files, what to look at, what is left alone [decision: here]
+- bug-hunt-areas-6.md: The one round of bug hunts of the night of 2026-11-27 (owner): up to 15 workers a coordinator, work first, the ten designer parts given to k3 and the eight areas given to k2, how the night ends [decision: decisions-made-product-118.md]
 - bug-hunt-areas-ad-conversions.md: The bug hunt in the ad conversions (agent channel request 3045, 2026-11-26): what was fixed, what was read clean against the consent rule, what is left
 - bug-hunt-areas-agent-guide.md: The bug hunt in the AI agent guide and the refused calls (built in #10709 to #11236), PR #11805: the faults fixed, what was read clean and what was seen and left [decision: here]
 - bug-hunt-areas-agent-requests.md: The bug hunt in the agents' request queue and wakes (architect, 2026-11-26, request 3016): what was fixed, what was read clean, what is asked and left [decision: here]
@@ -50,10 +52,13 @@
 - bug-hunt-areas-booking-visitor.md: The bug hunt of bookings on the visitor's side (2026-11-20): the widget's endpoint, the slot engine, hold and confirm, the manage page, the deposit payment; what it fixed and what read clean
 - bug-hunt-areas-calendar-events.md: Bug hunt 29 of calendar events, repeats and the calendar feeds (.ics, Workspace subscription): four faults fixed, what was read clean, what was left
 - bug-hunt-areas-canvas-data-views.md: The bug hunt of the Artifact Canvas data views (DV1-DV6, #11353, 2026-11-24): the four faults fixed, what was read clean, what was not run [decision: here]
+- bug-hunt-areas-canvas-guides.md: Bug hunt of the designer's spacing handles, bands and canvas guides (2026-11-26, PR #12003): six faults fixed, one bug issue, what was read clean
 - bug-hunt-areas-channel-board.md: Bug hunt of a channel's Board tab (2026-11-26, PR #11743): who sees and moves a card, the four figures against the lists, moves, the board's rules, the kept view and ?view=board/list
 - bug-hunt-areas-channel-memory.md: Bug hunt of the channel memory (2026-11-26, PR #11790): who reads and writes, Claude's application and the general memory, a Turkish tag, the brief's size bound; what read clean and what is asked [decision: decisions-made-workspace-9.md]
 - bug-hunt-areas-channel-notes-share.md: Bug hunt of channel notes (CN1-CN3) and the share door (SL1-SL6): six faults fixed, what was read clean, what was left
+- bug-hunt-areas-cleanup.md: Bug hunt of the designer's Clean up (finder, lists, Remove, window; 2026-11-27): the six faults fixed, what was read clean, what was left
 - bug-hunt-areas-click-scroll-map.md: The bug hunt of the click and scroll map (architect 2026-11-20, channel message 10776): the three faults fixed, what was read clean, what is no fault [decision: here]
+- bug-hunt-areas-code-view.md: The bug hunt of the visual designer's Code view (style_designer_code.js, 2026-11-26, #12006): the five faults fixed, what was read clean, what was not run
 - bug-hunt-areas-comments-reviews.md: Bug hunt 23, page comments and product reviews (2026-11-24): links in a comment's text, a deleted page's comment notifications, the deleted product finding, what read clean
 - bug-hunt-areas-connections-merges.md: The bug hunt in Connections after the CX11 merges (area connections-merges): Claude's, the chat services' and the MCP connectors' pages; the faults fixed and what was read clean
 - bug-hunt-areas-cookie-consent.md: The bug hunt of the cookie notice (area 46, 2026-11-24): the four faults fixed, what was read clean, what is no fault, the embedded-video question left for the architect
@@ -65,20 +70,30 @@
 - bug-hunt-areas-delivery-tower.md: The delivery tower bug hunt (2026-11-26, #11800): rules, passes, desk, scorecard, chooser, API; two faults fixed, the hand-closed rule built, read clean, left [decision: here]
 - bug-hunt-areas-design-variables.md: The bug hunt in a design's variables (2026-11-26, PR #11770): the Variables tab, the start questions, "Ask me again", Export and Import; what was read, fixed, seen and left
 - bug-hunt-areas-designer-activity.md: Bug hunt of the designer's History "Activity" tab and its audit lines (2026-11-26, PR #11762): three faults fixed, what was read clean [decision: here]
+- bug-hunt-areas-designer-home.md: Bug hunt of the Page Design Studio home and the New design window (2026-11-27): the four faults fixed, the one written as an issue, what was read clean
 - bug-hunt-areas-designer-import.md: The bug hunt of the designer's HTML, ZIP and paste importers on the server (hunt 55, 2026-11-24, #11501): the seven faults fixed, what was read clean, what was not run
 - bug-hunt-areas-designer-shared-components.md: Bug hunt of the designer's shared components, server side (area 54, 2026-11-24): four faults fixed in the hunt's PR #11498, two issues, what was read clean [decision: decisions-made-product-109.md]
 - bug-hunt-areas-document-to-page.md: Bug hunt "Page from a document" (2026-11-26, PR #11769): seven faults fixed (file pick, pictures, words, how much was read), what read clean, the two faults left built in PR #11792
+- bug-hunt-areas-erp-bank-statement-lines.md: The bug hunt in ERP bank statement lines, matching and suggestions (agent channel request 3141, 2026-11-26): what was fixed, what was read clean, what is left
+- bug-hunt-areas-erp-cheques.md: The bug hunt of ERP cheques and promissory notes (2026-11-26, PR #11844): the five faults fixed, the product question asked, what was read clean and what was left [decision: here]
+- bug-hunt-areas-erp-credit-limit.md: The bug hunt of the ERP credit limit and "Put it on my account" (architect, 2026-11-26, request 3141): two orders and two invoices passing one limit at once; what was read clean, what was asked [decision: here]
+- bug-hunt-areas-erp-edoc-incoming.md: The bug hunt in ERP incoming e-invoices and account sync (k2, 2026-11-26): hostile UBL, a document taken in twice, reads and decisions, automatic links; one fault fixed, what is clean and left
+- bug-hunt-areas-erp-expenses.md: The bug hunt of ERP expenses and repeating expenses (2026-11-26, PR #11843): three races fixed, what was read clean and what was left [decision: here]
+- bug-hunt-areas-erp-period-lock.md: The bug hunt of the ERP period lock and the accountant pack (architect, 2026-11-26, request 3141): what it fixed, what was read clean, what was left [decision: here]
+- bug-hunt-areas-erp-quotes-purchase-orders.md: The bug hunt in ERP sales quotes and purchase orders (k2, 2026-11-26): the guest link, a quote invoiced twice, an order received twice, rights; two faults fixed, what was read clean, what is left [decision: here]
 - bug-hunt-areas-figma-canva-starts.md: The bug hunt of the Figma and Canva starts of the New design window (hunt 57, 2026-11-25): what was given, what was found and fixed, what read clean, issues opened
 - bug-hunt-areas-file-manager-permissions.md: Bug hunt 53, File Manager permissions (2026-11-24, PR #11492): who sees, moves, renames and deletes a file or folder, the Recycle Bin, design files, path checks; three faults fixed
 - bug-hunt-areas-flow-waits.md: The bug hunt in Workspace flows that wait, the run side (architect 2026-11-26, request 3068): one fault fixed (the claim time a waiting box counts from), what was read clean, what was left [decision: here]
 - bug-hunt-areas-flows-outside-doors.md: The bug hunt in Workspace flows reached from outside and by another hand (web address start, shares, a role-3 member's flows; architect 2026-11-26, request 3045): fixed, read clean, left [decision: here]
 - bug-hunt-areas-form-submissions.md: The bug hunt of site form submissions (area 18, 2026-11-24): the three faults fixed, what was read clean, what was not run
 - bug-hunt-areas-gift-cards-store-credit.md: The bug hunt of gift cards and store credit (area 52, 2026-11-24): partial redemption, the cancelled credit refund's gift card part, the cancel refund line; what was read clean
+- bug-hunt-areas-grid-move-mirror.md: The bug hunt of the designer's grid, move and mirror parts (#12021): the seven faults it fixed, the one it opened as an issue, what it read clean
 - bug-hunt-areas-image-pipeline.md: The bug hunt of the image pipeline (2026-11-24, #11449): the two faults fixed, the finding left for a decision, what was read clean
 - bug-hunt-areas-invoices-pdf-documents.md: The bug hunt of order documents made as PDF or print pages (area 38, #11434, 2026-11-24): four faults fixed, what was read clean, what was left
 - bug-hunt-areas-launch-journey.md: The bug hunt of the site set-up journey (SJ1a to SJ5, 2026.11.0): the facts reader, the set-up card, "Go live", First week and Start here, the agency summary [decision: here]
 - bug-hunt-areas-lead-journey-store.md: Bug hunt of the visitor journey's store, ties and first touch (LJ1a, LJ1b, LJ5): what was read, the eight faults fixed (#11806), what was found clean, what was left for the owner [decision: here]
 - bug-hunt-areas-lead-scoring.md: Bug hunt of lead scoring (LJ1 to LJ4c), named by the architect in the agent channel: what was read, the three faults fixed, what was found clean
+- bug-hunt-areas-legacy-to-designer.md: The bug hunt in the move to the visual designer and Back to classic (2026-11-27): what was fixed, what was read clean, what is left
 - bug-hunt-areas-mail-api-reading.md: Bug hunt of Workspace e-mail read and drafted over the API and MCP (MT1-MT6, #11367): the three faults fixed, what was read clean, what was left as it is
 - bug-hunt-areas-mail-campaigns.md: Bug hunt of bulk e-mail campaigns and their lists (area 25) (#11402): the three faults fixed, what was read clean, what was left as a decision question
 - bug-hunt-areas-main-menu-redraw.md: The bug hunt of the main menu after its redraw (MI1-MI3, MZ1), 2026-11-24: the rail's row names for a screen reader, the phone drawer's focus, what read clean
@@ -99,6 +114,7 @@
 - bug-hunt-areas-phone-preview.md: Bug hunt in "Preview on a phone" (2026-11-26): failing asks that never stopped and a found link opening on the lock note, fixed; what was read clean and left [decision: here]
 - bug-hunt-areas-pick-pack.md: The bug hunt of pick and pack (PP1-PP7, 2026-11-24, #11341): six faults fixed, two issues opened for a decision, what was read clean
 - bug-hunt-areas-picture-translation.md: The bug hunt of picture text translation, the server's side (#10569, 2026-11-20): the seven faults fixed, what was read clean [decision: here]
+- bug-hunt-areas-preview-as.md: Bug hunt in "Preview as" (2026-11-26): cart and checkout writes, the comments thread record, "Sold out" and Record, a late draw in "Check all cases"; read clean and left
 - bug-hunt-areas-price-rounding.md: The bug hunt of price rounding (area 17, 2026-11-24): money in checkout, cart, offers, tax, shipping, refunds, the payment request and the ERP; four faults fixed, what was read clean
 - bug-hunt-areas-privacy-new-tables.md: Bug hunt of erasure, export, inventory, merge and keep periods over the 2026.11.0 tables (area 11, #11381): three faults fixed, what was read clean
 - bug-hunt-areas-privacy-requests.md: Bug hunt of the Privacy centre's request side (#11779: proof link, public form, 30 days, Send, download link, API): four faults fixed, two asked, what was read clean
@@ -107,6 +123,7 @@
 - bug-hunt-areas-product-variants-stock.md: The bug hunt of product variants and stock (area 30, 2026-11-24): three faults fixed, what was left for a decision, what was read clean
 - bug-hunt-areas-prototype-approval.md: The bug hunt of prototype approval (2026-11-25, hunt 56, PA1 to PA6): the four faults fixed in #11701, the issue opened, what was read clean
 - bug-hunt-areas-prototype-comments.md: The bug hunt of prototype comments, the guest's side (architect 2026-11-20, channel message 10096): the five faults fixed, the issues opened, what was read clean [decision: here]
+- bug-hunt-areas-publish-check-server.md: Bug hunt of the designer's Publish check, server side (2026-11-26): three faults fixed in seo_check and the weight measure, what was read clean
 - bug-hunt-areas-record-edit-in-place.md: Bug hunt of record edit in place ("Edit content here", "Edit this record's content", 2026-11-26): what was fixed, what read clean, what was left [decision: here]
 - bug-hunt-areas-redirects-urls.md: The bug hunt of redirects and URL handling (2026-11-24, hunt 22): the three faults fixed, the findings left for a decision, what was read clean
 - bug-hunt-areas-release-bundle.md: Bug hunt of publishing and taking back a release bundle (agent channel message 10241, area a, #10614): five faults fixed, what was read clean [decision: here]
@@ -115,6 +132,7 @@
 - bug-hunt-areas-scheduled-tasks.md: The bug hunt in the scheduled tasks (area 19, #11394): the cron entry and its jobs, what was fixed, what was read clean, what is left
 - bug-hunt-areas-security-scan.md: The bug hunt in the Security Scan (built in #11425 to #11672, SC1 to SC9), PR #11777: the faults fixed, what was read clean and what was seen and left [decision: here]
 - bug-hunt-areas-seo-meta-output.md: Bug hunt of what a page puts in its head (area 47, 2026-11-24): six faults fixed in the hunt's PR (#11459), what was read clean, what is left as it is
+- bug-hunt-areas-settings-ecommerce-accounting.md: Bug hunt of Site Settings › Ecommerce and › Accounting after their tidy rounds (2026-11-27, PR #12037): what was read, the two faults fixed, what read clean
 - bug-hunt-areas-settings-save.md: The owner's backend sweep of 2026-11-22: every Site Settings pane saved unchanged on the sandbox; what an unchanged save rewrites and why that is no fault; the one fault it found
 - bug-hunt-areas-shipping-rates.md: The bug hunt of shipping rates (area 34, 2026-11-24): zones, base rate bands, free shipping offers, a method for an address it does not serve; three faults fixed, what was read clean
 - bug-hunt-areas-site-forms-builder.md: The bug hunt of building a form in the panel (area 44, 2026-11-24, #11453): the five faults fixed, what was read clean, what was not run
@@ -150,14 +168,15 @@
 - bug-hunt-wishlist.md: Bug hunt of the wishlist (Favourites), visitor and member side (architect, agent channel message 10334, 2026-11-20): the two faults fixed, no issue opened, what was read clean
 - bug-hunt.md: A bug hunt (owner 2026-11-15): only in an area the architect named, at most three per coordinator, since 2026-11-24 only when no plan step is free; it fixes its finds in its own PR [decision: here]
 - ci-workflows.md: GitHub Actions workflows: what each runs and when, the PHP versions the checks run on (8.3, 7.1), action versions (major tags, node24) and how to bump them, the Node line, runner labels
-- claim-work.md: How a session claims work before starting it: the open-PR check, the claiming draft PR and its title, the race between two drafts, finishing and marking ready
+- claim-work.md: How a session claims work before starting it: the open-PR check, the claiming draft PR and its title, the race between two drafts, finishing without a mark in the plan file, marking ready
+- claude-context-reader.md: tools/claude_context.php reads a Claude Code session's used context from its newest transcript; ws_profile.php --context=auto sends it (#11871)
 - coordinator-channel-first.md: Channels, the agent channel and their API side go before panel look work (owner 2026-11-15, agent channel message 5039 and poll 48): which plans those are, when a look step is taken [decision: here]
 - coordinator-context.md: Keeping a coordinator's context small (2026-11-04): what its first turn and each check-in read, tools/free_work.php for free work, what it never reads whole
 - coordinator-limits.md: Coordinator rules: model and effort, the limit guard, a new worker for a decided draft, no hand-over at depth 7, archiving done workers and old coordinators [decision: here]
 - coordinator-no-plans.md: Design template plans are paused (2026-11-09) but for the lines the owner opened on 2026-11-11; low priority before that; bug hunts by bug-hunt.md; open bug issues are work like plan steps [decision: here]
 - coordinator-second-paused.md: Coordinators k1, k2, k3: k2 stopped 2026-11-25 for its quota and runs again on what is left; k3 takes k1's line from 2026-11-26; which plans each gives out; the design session stays stopped [decision: decisions-made-product-110.md]
 - coordinator-todo-list.md: Coordinator's to-do list (2026-10-27): one item per worker PR in the list shown in its own window, added when the draft is on GitHub, struck through once the PR is merged
-- coordinator-worker-brief.md: A coordinator's worker brief: the task, the memory folder, and as its last line that the session ends at the ready label (since 2026-11-19); workers are real sessions, never sub-agent runs [decision: here]
+- coordinator-worker-brief.md: A coordinator's worker brief (task, memory folder, the end at the ready label) and how a worker is started: a session or a background worker, as the coordinator chooses (owner 2026-11-27) [decision: here]
 - coordinator-worker-steps.md: A worker does one task and ends at the ready label (since 2026-11-19; three steps before); every step goes to a new session, never to an idle or ended worker; work in one file or screen is one task [decision: here]
 - coordinator-workers.md: How many workers a coordinator keeps (since 2026-11-07): 8 working; a ready PR or a session waiting on someone else does not count; when fewer; no count from the quota
 - coordinator.md: Coordinator session: one per account, keeps its worker sessions on free plan steps, looks at them every 30 minutes, writes no code, merges nothing; questions go to the architect [decision: decisions-made-workspace-14.md]
@@ -202,7 +221,11 @@
 - decisions-made-product-111.md: Decisions made, product part 111 (2026-11-25 on): the Sketch tool's "Read the picture" runs on the browser's built-in model; no picture path to Pinegrap AI until the owner says it is good enough
 - decisions-made-product-112.md: Decisions made, product part 112 (2026-11-26 on): a My library item says how many pictures the site lacks; a payment way in test on a live shop gets a System Status warning row
 - decisions-made-product-113.md: Decisions made, product part 113 (2026-11-26 on): a translated picture text grows, wraps, then shrinks, corrected by hand per language; a Canva .pptx opens in the Artifact Canvas by a page chooser
-- decisions-made-product-114.md: Decisions made, product part 114 (2026-11-26 on): the Artifact Canvas gets all ten kinds of ready content the census proposed, the basics first
+- decisions-made-product-114.md: Decisions made, product part 114 (2026-11-26 on): all ten kinds of ready content for the Artifact Canvas, the basics first; a settings card and its Connections page hand over in one trip
+- decisions-made-product-115.md: Decisions made, product part 115 (2026-11-26 on): the office editors get all eight abilities, simple formulas included; the phone preview shows the live page's QR code in a design with no draft
+- decisions-made-product-116.md: Decisions made, product part 116 (2026-11-26 on): a live page's new version is prepared in a draft that replaces it ("Save as a new version"); a live page still has no working copy
+- decisions-made-product-117.md: Decisions made, product part 117 (2026-11-27 on): nine features for selling and working outside Turkey enter plans; the European e-invoice does not
+- decisions-made-product-118.md: Decisions made, product part 118 (2026-11-27 on): panel languages start with the mechanism and German; a touched old screen is brought to the look; a new setting sits beside its kin
 - decisions-made-product-12.md: Decisions list, product part 12 (2026-10-31 on): ERP settings cards for role 3, Trendyol address order, old n11 rows data step, phone toolbar, Trendyol Luxe, shipment rules confirmed
 - decisions-made-product-13.md: Decisions list, product part 13 (2026-10-31 on): Site Settings group headings, no notes secret feed, no hint on forgot password, IIS preflight nudge
 - decisions-made-product-14.md: Decisions list, product part 14 (2026-10-31 on): own image editor, nothing alone under a screen's title, no PDF of ours for a purchase invoice, Site Settings regrouped
@@ -412,8 +435,17 @@
 - decisions-made.md: The decisions list: places reviewed and kept as they are on purpose; how to treat it and who adds to it, then the code and files that look dead or wrong but stay.
 - design-template-owner-line.md: Owner (2026-11-11): during the template pause his own line polishes the shipped templates, bolder and with motion, appstudio and dealership first; two workers of one more coordinator take the rest [decision: here]
 - design-work-session.md: Where a screen's look is designed: in a design session of its own while one runs (2026-11-23); since 2026-11-25 none runs and the architect draws the designer plans' sheets; keeping the cost down [decision: decisions-made-product-110.md]
+- designer-faults-first.md: Owner 2026-11-26: the Page Design Studio's faults come first; its open bug issues are given out ahead of plan steps [decision: here]
+- designer-sheet-rules.md: What a designer plan's drawing sheet holds (boards for every screen and state, English labels, button ranks), where it is kept, which steps wait for it and which do not [decision: decisions-made-product-106.md, decisions-made-product-110.md]
+- designer-use-round-component-overrides.md: Use round UR5 (PR #11853): a shared component's fields per place and its variants used in a browser; the eight faults fixed, what was left and what could not be run
+- designer-use-round-design-variables.md: Designer use round UR1 (#11835): design variables used in a browser as a first-time person; faults found, fixed and left
+- designer-use-round-library-document-guides-focus.md: Use round UR7 (PR #11856): My library, a page from a document, canvas guides and a picture's focus point used in a browser; the eight fixes, what was left and what could not be run
+- designer-use-round-new-design.md: Use round UR2 (PR #11839): the New design window used in a browser; what was found, the eight fixes, what was left and what could not be run
+- designer-use-round-options-panel-left.md: The Options panel faults use round UR4 found and did not fix (State's Turkish label, the 240 px size chooser, six-segment groups, long labels, focus after Add layer), each with why
+- designer-use-round-options-panel.md: Use round UR4 (plan designer-use-round): the Options panel's DO2 to DO26 parts used in a browser at 1440, 390 and 240 px, light and dark, by keyboard; the eight faults fixed
+- designer-use-round-prototype-sketch.md: Use round UR3 (PR #11884): the Prototype view's Sketch tool used in a browser as a drawing board; the eight fixes, what was left and what could not be run
 - dev-machine-testing.md: Testing on dev.pinegrap.com (the owner's PC): what may be written, the shared sign-in and page lock, the shared checkout, asking for a page as a visitor, logs and the job's heartbeat, browser traps
-- docs-only-pr-checks.md: A pull request whose every changed file is under docs/ runs only the memory check and the branch guards in php-checks.yml; its jobs keep their names and end green
+- docs-only-pr-checks.md: A pull request whose every changed file is under docs/ runs only the memory check and the branch guards in php-checks.yml; its jobs keep their names and end green [decision: decisions-made-workspace-49.md]
 - git-branches-and-shared-files.md: Branch policy (development vs main), who does git, commit author, the PR footer (pointer), shared files without conflicts, generated files a PR leaves out, API vs ERP files [decision: here]
 - github-rest-without-gh.md: GitHub from the owner's machine, where gh is not installed: the token from git credential fill, a REST helper, GraphQL for draft and ready, the ready label, reading CI, mergeable_state unstable
 - held-file-allowed-2.md: Held files, what the architect allowed from 2026-11-20 on: auth.php, image_editor.php and custom_form.php beside their holders; one call line in a root script's top-level code [decision: here]
@@ -428,6 +460,7 @@
 - memory-cluster-check.md: The memory index tool refuses a cluster of ten memory files or more with no start file (<prefix>-overview.md or <prefix>.md); plans left out; what to do when it fails
 - memory-index-key-rules.md: The hand-written key-rules block of each memory folder README, what tools/memory_index.php keeps and regenerates, when it stops with exit 1 and how a merge conflict in a README is settled
 - memory-long-lines.md: The memory index tool refuses a memory line over 500 characters that a branch adds or rewrites; old lines pass; the base from pre_push, CI (PR base or push before) or merge-base; no base [decision: here]
+- memory-mirror-tool.md: tools/memory_mirror.php (MS4, #11895): docs/memory mirrored one way into the general memory of the agent channels; what a record holds, the mirror-<hash> tag, the listing, dry run, --full, limits
 - memory-writing.md: How a memory file is written so the next task finds it: labels as on screen, one owner per value, old values searched, lines under 500 characters, decisions dated, cluster overviews, trials
 - merge-review.md: Rule (2026-10-25): the merging session reviews each PR once, fixes only blocking findings, digs deeper for access, payments, SQL, schema; an architect decision counts as the owner's [decision: here]
 - merge-train-forks.md: A PR from a fork never rides a merge train, never lands alone and is never merged by a session; the owner reviews it. Where tools/merge_train.php enforces it
@@ -444,6 +477,7 @@
 - plan-order-begun-first.md: Order of work after the owner's message of 2026-11-16 (agent channel message 5821): begun plans are finished first, new plans start in freed places, look modernisation waits at priority 2 [decision: here]
 - plan-priority.md: Every plan carries a priority from 1 to 10 (owner 2026-11-15, agent channel message 5159): the scale, where the number is written, how a free place picks its next step [decision: here]
 - plan-state-tool.md: tools/plan_state.php <plan> [--tasks]: step states from PRs (draft held, open ready, merged done), written as agent channel tasks "<plan> <step>"
+- plan-step-state.md: Where a plan step's state is kept: the PR titled for the plan, never a done mark a worker writes into the plan file; the plan file is the architect's alone; a coordinator writes the channel tasks [decision: decisions-made-workspace-49.md]
 - pr-footer-and-trailers.md: Where the "Generated by Claude Code" footer and commit trailers come from, the settings that turn them off, how to write without it, and why only the merging session removes it.
 - pr-text-at-words.md: An @ word in a PR text, comment, issue or commit message mentions a real GitHub account, because the repository is public: write every one as a code span; what happened on #8454 and how it is undone
 - pr-text-generated-footer.md: A cloud session's GitHub path appends a generated-by footer to a PR text on every write; the session cannot remove it, the label is not held for it, no session strips it now [decision: here]

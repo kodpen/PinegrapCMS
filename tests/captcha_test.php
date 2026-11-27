@@ -317,7 +317,7 @@ function test_captcha_settings_decide_fields_not_drawn()
 function test_captcha_settings_fields_lead_to_connections()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/captcha.php');
-	pg_assert_contains("'connections.php?service=' . \$key", $source, 'each provider leads to its page');
+	pg_assert_contains("pg_connections_lead_url(\$key, 'security', 'pgset-captcha')", $source, 'each provider leads to its page');
 	pg_assert_false(strpos($source, '<input type="password" name="') !== false, 'the card draws no secret field');
 }
 

@@ -398,6 +398,12 @@ function ws_ai_http($method, $path, $payload = null, $timeout = 15)
 
     if ($path === '/chat/completions') {
         ws_ai_usage_add($out);
+
+        // An answer, or the day's limit reached: the licence's count of the
+        // day has moved, so the figure under the licence card follows it.
+        if (in_array((int) $out['http'], array(200, 429), true)) {
+            ws_ai_quota_refresh();
+        }
     }
 
     return $out;
@@ -548,6 +554,7 @@ function ws_ai_license_check($force = false)
     }
 
     $response = ws_ai_http('GET', '/license', null, 15);
+    ws_ai_quota_keep($response, time());
     $verdict = ws_ai_license_verdict($response);
     $json = is_array($response['json']) ? $response['json'] : array();
 
@@ -592,6 +599,52 @@ function ws_ai_license_check($force = false)
     }
 
     return $config['license_state'];
+}
+
+/**
+ * Keeps the day's token count a licence answer carries (pg_ai_quota_from()).
+ * Only the gateway's own answer counts: a 200 that says whether the key is
+ * valid, or its refusal of the key. A page a network in between put up, or
+ * no answer, leaves the kept figure as it was.
+ *
+ * @param array $response ws_ai_http() of GET /license
+ * @param int   $now
+ */
+function ws_ai_quota_keep($response, $now)
+{
+    $json = is_array($response['json']) ? $response['json'] : null;
+
+    if ($json === null) {
+        return;
+    }
+
+    $licence_answer = (((int) $response['http'] === 200) && array_key_exists('valid', $json)) || (ws_ai_license_verdict($response) !== '');
+
+    if ($licence_answer) {
+        pg_ai_quota_save(pg_ai_quota_from($json, $now));
+    }
+}
+
+/**
+ * Asks the gateway for the licence's count of the day when the kept figure
+ * is older than PG_AI_QUOTA_TTL or from a day that has ended, at most once a
+ * PG_AI_QUOTA_TTL in one request (a long run reads config_text once).
+ *
+ * @param bool $force ask now
+ */
+function ws_ai_quota_refresh($force = false)
+{
+    static $asked = 0;
+
+    $now = time();
+
+    if (!$force && ((($now - $asked) < PG_AI_QUOTA_TTL) || !pg_ai_quota_due(pg_ai_quota(), $now))) {
+        return;
+    }
+
+    $asked = $now;
+
+    ws_ai_quota_keep(ws_ai_http('GET', '/license', null, 5), $now);
 }
 
 /**
@@ -1624,6 +1677,10 @@ function ws_ai_step($row)
         );
     }
 
+    // The calls that end the request are made last, and the conversation
+    // keeps them in that order, so each tool result still follows its call.
+    $kept = ws_ai_turn_order($kept);
+
     $state['messages'][] = array(
         'role'       => 'assistant',
         'content'    => $content,
@@ -1632,17 +1689,18 @@ function ws_ai_step($row)
         }, $kept),
     );
 
-    // A page tool that answered with an error or a warning in this turn holds
-    // the answer of the same turn back: the model has not seen what went
-    // wrong, and its words would describe a change that is not there.
-    $page_trouble = false;
+    // A tool that makes something and answered with an error in this turn
+    // holds the answer of the same turn back (ws_ai_holds_answer()): the
+    // model has not seen what went wrong, and its words would describe a
+    // change or a drawing that is not there.
+    $held = false;
 
     foreach ($kept as $call) {
         $name = $call['function']['name'];
 
         if (!$call['valid']) {
             $state['messages'][] = ws_ai_tool_message($call['id'], null, 'The arguments were not valid JSON. Call the tool again with valid JSON.');
-            $page_trouble = $page_trouble || (strpos($name, 'page_') === 0);
+            $held = $held || ws_ai_holds_answer($name, null);
             continue;
         }
 
@@ -1684,8 +1742,8 @@ function ws_ai_step($row)
                 continue;
             }
 
-            if ($page_trouble && ($steps < WS_AI_MAX_STEPS - 2)) {
-                $state['messages'][] = ws_ai_tool_message($call['id'], null, 'A page tool above answered with an error or a warning. Fix that first, then call answer again.');
+            if ($held && ($steps < WS_AI_MAX_STEPS - 2)) {
+                $state['messages'][] = ws_ai_tool_message($call['id'], null, 'A tool above answered with an error or a warning, so what it was to make or change is not there. Fix that first, then call answer again.');
                 continue;
             }
 
@@ -1740,10 +1798,7 @@ function ws_ai_step($row)
         }
 
         $result = ws_ai_tool_run($row, $state, $name, $call['args']);
-
-        if ((strpos($name, 'page_') === 0) && (isset($result['error']) || isset($result['warning']))) {
-            $page_trouble = true;
-        }
+        $held = $held || ws_ai_holds_answer($name, $result);
 
         $state['messages'][] = ws_ai_tool_message($call['id'], $result);
     }
@@ -1751,6 +1806,59 @@ function ws_ai_step($row)
     ws_ai_save($row, $state, $steps + 1);
 
     return 'step';
+}
+
+/**
+ * The order one model turn's tool calls are made in. answer, fail and
+ * decide end the request, and every call after the one that ends it is
+ * dropped: they come after the turn's other calls, so an answer written
+ * before draw_canvas no longer loses the drawing. Each group keeps the
+ * order the model wrote, so an answer written before a fail still wins.
+ *
+ * @param array $calls the turn's calls, each with ['function']['name']
+ * @return array
+ */
+function ws_ai_turn_order($calls)
+{
+    $work = array();
+    $closing = array();
+
+    foreach ((array) $calls as $call) {
+        if (in_array((string) ($call['function']['name'] ?? ''), array('answer', 'fail', 'decide'), true)) {
+            $closing[] = $call;
+        } else {
+            $work[] = $call;
+        }
+    }
+
+    return array_merge($work, $closing);
+}
+
+/**
+ * Does a tool's result hold back the answer of the same turn? Yes for a
+ * page, live page or canvas tool that answered with an error, or whose
+ * arguments were not valid JSON (it never ran): the answer was written
+ * before the model saw the result and would describe what is not there.
+ * A page tool's warning holds it back too.
+ *
+ * @param string     $name
+ * @param array|null $result null when the arguments were not valid JSON
+ * @return bool
+ */
+function ws_ai_holds_answer($name, $result)
+{
+    $name = (string) $name;
+    $page = (strpos($name, 'page_') === 0);
+
+    if (!$page && !in_array($name, array_merge(ws_canvas_ai_tool_names(), ws_page_ai_tool_names()), true)) {
+        return false;
+    }
+
+    if ($result === null) {
+        return true;
+    }
+
+    return isset($result['error']) || ($page && isset($result['warning']));
 }
 
 /**
@@ -3952,12 +4060,17 @@ function ws_ai_briefing($row, $asker, $agent = 'ai')
         // A recording nobody heard: the reason and where the setting is,
         // as the site's own line after the request (voice.php).
         $unheard = function_exists('ws_voice_unheard_reason') ? ws_voice_unheard_reason($channel, $message) : '';
+        // A recording written out: its transcript is how the model hears
+        // it, so it answers what was said (voice.php).
+        $heard_line = (($unheard === '') && function_exists('ws_voice_request_heard_line')) ? ws_voice_request_heard_line($message) : '';
 
         $parts[] = 'The request (message ' . (int) $message['id'] . '):';
         $parts[] = pg_ai_data_block('request', $request_text);
 
         if ($unheard !== '') {
             $parts[] = ws_voice_unheard_line($unheard);
+        } elseif ($heard_line !== '') {
+            $parts[] = $heard_line;
         }
 
         // Tagged outside a message (a shared note, a table cell, a task).
@@ -5239,6 +5352,7 @@ function ws_ai_settings_card($self_url, $viewer, $form = null)
         'notices'     => $notices,
         'license'     => array('label' => $license['label'], 'tone' => ws_ai_license_tone($license['tone'])),
         'tokens'      => ws_ai_tokens_ready() ? ws_ai_tokens_line(ws_ai_read_tokens()) : '',
+        'quota'       => pg_ai_quota_view(pg_ai_quota(), time()),
         'last'        => empty($latest)
             ? lang('Nobody has asked Pinegrap AI yet.')
             : lang(array('string' => 'Last request {var:1}', 'vars' => ws_time_label($latest[0]['created_at']))) . ' · ' . ws_ai_request_state($viewer, $latest[0])['label'],
@@ -5307,6 +5421,11 @@ function ws_ai_row_html($v)
 
     if ((string) $v['tokens'] !== '') {
         $facts .= '<span aria-hidden="true">·</span><span>' . h($v['tokens']) . '</span>';
+    }
+
+    // The licence's count of the day, every site of the licence together.
+    if (!empty($v['quota'])) {
+        $facts .= '<span aria-hidden="true">·</span><span' . (($v['quota']['tone'] !== 'success') ? ' class="fg-' . h($v['quota']['tone']) . '"' : '') . '>' . h(lang(array('string' => 'Licence today: {var:1}', 'vars' => pg_ai_quota_line($v['quota'])))) . '</span>';
     }
 
     // The fold "Application": the application, or the button that makes it,

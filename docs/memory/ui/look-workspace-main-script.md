@@ -9,7 +9,9 @@ description: WL2: the buttons of assets/js/workspace.js (channel head, panes, dr
 - `button()` gives a label's icon no `me-1` when its class holds `pg-button` or `pg-seg-item`: the recipe's gap spaces it. Icons appended by hand into those buttons lost their `me-1` too.
 
 ## How are Send and Send later drawn?
-- A `.pg-button-split.ws-send-group`: Send is the fill, Send later (`.ws-send-later`) the fill's `pg-button-split-more`. The old `rounded-start-pill` swap and the `.ws-send-group .ws-send-later` padding and border rule were removed.
+- One split button, as on the Design examples screen: `composer()` builds `<span class="pg-button-split ws-send-group">`, Send (the fill) first, Send later (`.ws-send-later`, the clock, aria-label "Send later", its menu) the fill's `pg-button-split-more`; square inner corners, a hairline between, outer corners rounded. Without scheduled messages (or in an era) Send stands alone, a plain fill.
+- The old `rounded-start-pill` swap and the `.ws-send-group .ws-send-later` padding and border rule were removed.
+- Bug #12042: the group was still `btn-group`, which joins only `.btn` children, so the two halves touched with four rounded corners and a shadow each, in a channel, a thread panel and a direct message. Test: `tests/workspace_look_regressions_test.php`.
 - The microphone (`.ws-voice-mic`) is a fill too: it takes Send's place while the box is empty (`voiceSwap()`), so one fill shows at a time.
 - On a phone `.ws-composer-tools .pg-button` and `.pg-icon-button` keep the 2.75rem touch height; `.ws-composer-tools .pg-button-fill` keeps Send's narrow pad (`tests/workspace_composer_phone_test.php`).
 

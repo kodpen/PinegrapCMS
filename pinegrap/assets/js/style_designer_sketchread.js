@@ -217,7 +217,8 @@ StyleDesigner.definePart('sketchread', function (K) {
             head.insertBefore(_srButton('btn-outline theme-secondary sd-sketch-read-stop', _sdT('Stop'), function () { _srEnd(); }), more);
             return;
         }
-        var foot = host.el('div', 'sd-sketch-foot');
+        // Marked so the AI actions' line never takes its place.
+        var foot = host.el('div', 'sd-sketch-foot sd-sketch-read-foot');
         foot.setAttribute('role', 'group');
         if (state.step === 'ask') {
             foot.appendChild(host.el('span', 'sd-sketch-foot-text', _sdT('“Read the picture” reads this picture with your browser\'s built-in AI. It is sent nowhere.')));

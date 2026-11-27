@@ -16,7 +16,7 @@ description: Paraşüt's partner application (2026-11-26): what was entered, the
 ## What did the staging answer give?
 - At once, before the review: a staging client (id and secret on "API Bilgilerim") and a Paraşüt staging company, number 35477, with its own user and a temporary password shown once. Paraşüt deletes the staging company six months after it was made (about 2027-05-26).
 - No secret, password or user name is in the repository or in memory: the owner holds them.
-- Staging signs in at `id-staging.parasut.com` (the endpoints of its `/realms/parasut/.well-known/openid-configuration`). The portal's pages name no API address of its own for staging: their examples read `api.parasut.com/v4`. Which address answers a staging token is found by the first connect on dev (`plans/parasut-devhub-staging.md`).
+- Staging signs in at `id-staging.parasut.com` (the endpoints of its `/realms/parasut/.well-known/openid-configuration`). The portal's pages name no API address for staging; the first connect on dev (2026-11-26) found `api-staging.parasut.com`, as `api.parasut.com` refuses a staging token (`erp-parasut-devhub-staging.md`).
 
 ## What do Paraşüt's plans allow?
 - A Paraşüt user's own client: one company. "Temel" is free, 10 requests in 10 s and 25,000 a month; "Plus" (50,000, with staging) and "Pro" (150,000, with webhooks too) are announced, not yet sold.

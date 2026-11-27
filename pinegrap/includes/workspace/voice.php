@@ -828,7 +828,7 @@ function ws_voice_settings_card($self_url, $viewer, $form = null)
         // OpenAI's connection on Connections, in the place of the custom
         // address while OpenAI is the provider.
         'connection'  => function_exists('pg_ai_connection_block_html')
-            ? pg_ai_connection_block_html('openai', 'OpenAI', pg_ai_connection_ready('openai'), ($admin && $openai && $config['own_key']) ? array('name' => $prefix . 'voice_key_clear', 'id' => 'ws_voice_key_use', 'attrs' => '') : null)
+            ? pg_ai_connection_block_html('openai', 'OpenAI', pg_ai_connection_ready('openai'), ($admin && $openai && $config['own_key']) ? array('name' => $prefix . 'voice_key_clear', 'id' => 'ws_voice_key_use', 'attrs' => '') : null, 'pgset-ws-voice')
             : '',
     )) . ws_voice_settings_script();
 }
@@ -3100,4 +3100,40 @@ function ws_voice_unheard_line($reason)
     }
 
     return 'The request is a voice message that was not written out: ' . $words . '. Answer that you could not hear it and why, and that ' . $place . '. Do not guess at what was said.';
+}
+
+/**
+ * The line a briefing puts after the request when the request was a
+ * recording written out: the model hears voice messages through their
+ * machine transcripts, so it answers what was said, not that it cannot hear
+ * sound (asked "can you hear me?", a model left alone answers that it only
+ * reads text). Outside the data blocks, as the site's own instruction; the
+ * transcript itself stays in the request block. '' for a message that is no
+ * recording or one without a transcript (ws_voice_unheard_line() then).
+ *
+ * @param string $name       the name its file was posted with
+ * @param string $transcript ws_voice.transcript, '' for none
+ * @return string
+ */
+function ws_voice_heard_line($name, $transcript)
+{
+    if (!ws_voice_is_recording((string) $name) || (ws_voice_transcript_clean($transcript) === '')) {
+        return '';
+    }
+
+    return 'The request is a voice message. The site wrote it out for you as a machine transcript, shown in the request as [voice message, machine transcript: ...]: this is how you hear voice messages. Answer what the transcript says as the request of the person who asked; a word may have been misheard. Never answer that you cannot hear, receive or process voice messages or audio.';
+}
+
+/**
+ * ws_voice_heard_line() for a message: its recording's transcript read once
+ * written out, '' for a message that is no recording.
+ *
+ * @param array|null $row ws_messages row
+ * @return string
+ */
+function ws_voice_request_heard_line($row)
+{
+    $name = is_array($row) ? (string) ($row['file_name'] ?? '') : '';
+
+    return ws_voice_is_recording($name) ? ws_voice_heard_line($name, ws_voice_transcript_of($row)) : '';
 }

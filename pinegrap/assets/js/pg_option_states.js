@@ -180,6 +180,25 @@
         return out;
     }
 
+    // A new rule on the class goes before the class's first rule inside an
+    // at-rule (its rules by screen size, its transition), as a new base
+    // rule does (pg_custom_style.js): after them it would win at every
+    // width over a larger size's value. `inner` is the body with its new
+    // lines; without such a rule the new rule goes at the end.
+    function addRule(text, cls, sel, inner) {
+        text = String(text || '');
+        var block = sel + ' {' + inner + '}\n';
+        var re = new RegExp('\\.' + cls + '(?![\\w-])');
+        var list = U().parse(text);
+        for (var i = 0; i < list.length; i++) {
+            if (!list[i].media || !re.test(list[i].selector)) continue;
+            var at = text.lastIndexOf('@', list[i].from);
+            if (at >= 0) return text.slice(0, at) + block + '\n' + text.slice(at);
+        }
+        var kept = text.replace(/\s+$/, '');
+        return (kept ? kept + '\n\n' : '') + block;
+    }
+
     function ruleOf(text, cls, st) {
         if (!U() || !CLASS_RE.test(cls) || !PSEUDO[st]) return null;
         var sel = selector(cls, st);
@@ -240,8 +259,7 @@
         });
         if (!keep.length) return rule ? U().removeRule(text, rule) : text;
         if (rule) return text.slice(0, rule.bodyFrom) + body(keep) + text.slice(rule.bodyTo);
-        var kept = text.replace(/\s+$/, '');
-        return (kept ? kept + '\n\n' : '') + selector(cls, st) + ' {' + body(keep) + '}\n';
+        return addRule(text, cls, selector(cls, st), body(keep));
     }
 
     function clear(text, cls, st) {
@@ -582,7 +600,7 @@
         }
         if (idx !== -1) return U().setDecl(text, rule, idx, prop, val);
         if (!rule) {
-            text = U().appendRule(text, st ? selector(cls, st) : '.' + cls);
+            text = addRule(text, cls, st ? selector(cls, st) : '.' + cls, '\n  \n');
             rule = tfRule(text, cls, st);
             if (!rule) return text;
         }

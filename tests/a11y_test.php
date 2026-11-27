@@ -220,6 +220,20 @@ function test_a11y_hidden_markup_is_left_out()
 	pg_assert_same(array(), a11y_test_codes(a11y_test_page('<div hidden><img src="a.png"><a href="/x"></a></div><div style="display: none"><button></button></div>')));
 }
 
+// A name is what a screen reader reads: text it never reads (aria-hidden,
+// hidden, display: none) names nothing, as the designer's Accessibility
+// view counts it.
+function test_a11y_names_leave_out_text_that_is_not_read()
+{
+	$findings = pg_a11y_check_html(a11y_test_page('<button class="btn-close"><span aria-hidden="true">×</span></button>'
+		. '<button><img src="s.png" alt="Gönder" aria-hidden="true"></button><a href="/x"><span hidden>Git</span></a>'
+		. '<a href="/y"><span style="display:none">Y</span></a><a href="/z"><i class="bi bi-cart" aria-hidden="true"></i> Sepet</a>'
+		. '<button aria-label="Kapat"><span aria-hidden="true">×</span></button>'));
+
+	pg_assert_same(2, isset($findings['a11y_button_name']) ? $findings['a11y_button_name']['occurrences'] : 0, 'a button whose only text is not read has no name');
+	pg_assert_same(2, isset($findings['a11y_link_name']) ? $findings['a11y_link_name']['occurrences'] : 0, 'a link whose only text is hidden has no name');
+}
+
 // What the job stores: one row per code with the first example.
 function test_a11y_finding_shape()
 {

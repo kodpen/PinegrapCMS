@@ -9,6 +9,8 @@ description: Panel top bar (#header) on a phone: below 768px the mascot alone (n
 - Below 576px the quick note button (`ul.pg-quick-note-nav`, `ws_notes_quick_markup()`) is `display: none` too: its 44px pushed the mascot off the bar on a phone (owner's report #11187). Notes stay one tap away under My Notes in the main menu.
 - From 768px up the full logo shows and nothing hides it.
 
+- Page Design Studio prints no top bar; there these rules do not reach the controls in the main menu's drawer (`main-menu-drawer-top-bar.md`).
+
 ## Why these widths?
 - 768 is where the full logo stops fitting: the old rule cropped the old lockup to a 14px sliver and the title to a few letters, which the owner saw as cut off, and asked for both to go at phone width (#4529). Since the new logo (owner, 2026-11-04, `ui/brand-logo.md`) a narrow place shows the square mascot, so the mascot came back where the bar has room. The panel's own 1024/1280 breakpoints are untouched.
 

@@ -25,12 +25,12 @@ priority: 6
 - The mirror is one way. Git stays the record; after a reset of dev one run fills the memory again. The merging session runs it after a landing, with its own key.
 
 ## Which steps?
-- MS1 (M): the search and the projects read, their tools, the measure, tests of the word match as a pure function.
-- MS2 (S): the brief's digest by projects.
-- MS3 (S): the Memory tab's search box.
-- MS4 (S): the mirror tool; the architect writes the merging session's rule after it lands. Then the close-out: the topic files `workspace/channel-memory.md` and `channel-memory-general.md` rewritten, this file deleted.
+- MS1 (M): the search and the projects read, their tools, the measure, tests of the word match as a pure function. Done (#11838): no index, under 300 ms (`workspace/channel-memory-search.md`).
+- MS2 (S): the brief's digest by projects. Done (#11866): past 40 live records the pinned ones and the projects with counts (`workspace/channel-memory-brief-projects.md`).
+- MS3 (S): the Memory tab's search box. Done (#11882): over both parts through `ws_memory_list` with `search` (`workspace/workspace-memory-tab.md`).
+- MS4 (S): the mirror tool; the architect writes the merging session's rule after it lands. Done (#11895): `tools/memory_mirror.php`, records marked by the tag `mirror-<hash>` (`workflow/memory-mirror-tool.md`). Then the close-out: the topic files `workspace/channel-memory.md` and `channel-memory-general.md` rewritten, this file deleted.
 
 ## What is not in this plan?
 - Moving the record itself out of git. The owner decides that after the mirror has run for a time; the agent channel's last home is meant to be pinegrap.com.
 
-Related: docs/memory/workspace/channel-memory.md, docs/memory/plans/plan-state-channel.md
+Related: docs/memory/workspace/channel-memory.md, docs/memory/workflow/plan-step-state.md

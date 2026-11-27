@@ -41,6 +41,9 @@ StyleDesigner.definePart('interactions', function (K) {
         for (var k in cur) if (Object.prototype.hasOwnProperty.call(cur, k)) next[k] = cur[k];
         if (field === 'effect' && value !== cur.effect) delete next.from;
         if (field === 'effect' && value !== cur.effect && (value === 'count' || cur.effect === 'count')) delete next.duration;
+        // The distance is a slide's px, Blur in's blur and Rotate in's
+        // angle, and no row of the other effects: kept only between slides.
+        if (field === 'effect' && value !== cur.effect && !(/^slide-/.test(value) && /^slide-/.test(cur.effect || ''))) delete next.distance;
         next[field] = value;
         return _sdFxNormalize(next);
     }

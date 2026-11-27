@@ -5,14 +5,15 @@ module: design_cleanup
 ---
 
 ## What is it?
-- The pure part of "Clean up" (plan `designer-cleanup`, CU1): a state of the classes in use is filled from every place that can name one, then `pg_cleanup_unused_rules($css, $state)` lists the rules of one of the design's own stylesheets that nothing uses. No database, no output; the window (CU2) gathers the inputs and draws the rows.
+- The pure part of "Clean up" (`designer-cleanup.md`, #11560): a state of the classes in use is filled from every place that can name one, then `pg_cleanup_unused_rules($css, $state)` lists the rules of one of the design's own stylesheets that nothing uses. No database, no output; the window (`designer-cleanup-window.md`) gathers the inputs and draws the rows.
 - It always errs towards "used": a row it is unsure of is never listed.
 
 ## What fills the state?
 - `pg_cleanup_state(array('known' => [...]))`: `known` are classes never counted as unused (the caller passes the framework's own, as a widget or a node setting draws them without naming them).
 - `pg_cleanup_add_tree($state, $tree, $source)`: a page's, shared component's, e-mail design's or system widget default layout's tree. `cssClass` and a `class` entry of `_attrs` are classes; other `_attrs` values, interactions (`_fx`), conditions (`_bindParams`) and component settings count by their words; markup in a prop by its class attributes; prose props (`text`, `alt`, `title`, `_label`, …, `pg_cleanup_prose_keys()`) name no class.
 - `pg_cleanup_add_markup()`: a classic page, an e-mail body, another design's page: class attributes, other attribute values as words, inline scripts as scripts; text between tags does not count.
-- `pg_cleanup_add_script()`: every word of a script; a name built at run time (`'tone-' + t`, `` `size-${n}` ``) covers every class starting with that text.
+- `pg_cleanup_add_script()`: every word of a script; a name built at run time (`'tone-' + t`, `` `size-${n}` ``) covers every class starting with that text, and one built after a value (`tone + '-card'`, `` `${size}_box` ``) every class ending with it (a suffix only when it starts with `-` or `_`, so `n + 'px'` covers nothing). Before the Clean up bug hunt such an end was missed and its rule listed.
+- An event attribute (`onclick`, `onload`, …) in markup or a node's `_attrs` is read as a script (`pg_cleanup_is_event_attr()`).
 - `pg_cleanup_add_classes()`: a setting such as the style's additional body classes.
 
 ## Which cases can it not tell?
@@ -22,7 +23,7 @@ module: design_cleanup
 - Read: rules inside `@media`, `@supports`, `@layer`, `@container` (row's `media` is the chain); `@keyframes`, `@font-face`, `@import` hold no class rule and are skipped.
 
 ## What is a row?
-- `selector`, `classes` (the ones nothing uses), `media`, `start`/`end` (byte range of the whole rule, for the removal in CU3), `bytes`; the result's `bytes` is what all rows would free. A rule is listed when every alternative of its selector needs a class nothing uses.
+- `selector`, `classes` (the ones nothing uses), `media`, `start`/`end` (byte range of the whole rule, for the removal, `designer-cleanup-removal.md`), `bytes`; the result's `bytes` is what all rows would free. A rule is listed when every alternative of its selector needs a class nothing uses.
 - What the caller must pass for a page with interactions: the `pg_fx` script among the scripts, so the classes it sets count.
 
 ## Tests?

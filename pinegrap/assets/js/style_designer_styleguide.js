@@ -333,7 +333,8 @@ StyleDesigner.definePart('styleguide', function (K) {
         W.doc.documentElement.setAttribute('data-bs-theme', dark ? 'dark' : 'light');
         var pairs = W.doc.getElementById('pgsg-pairs');
         if (pairs) pairs.innerHTML = pairsHtml(W.guide.blocks.colours);
-        var spacing = W.doc.getElementById('pgsg-spacing');
+        // The bars' own wrapper: the block around it keeps its heading.
+        var spacing = W.doc.getElementById('pgsg-spacing-bars');
         if (spacing) spacing.outerHTML = spacingHtml(W.guide.blocks.spacing);
     }
 
@@ -631,7 +632,7 @@ StyleDesigner.definePart('styleguide', function (K) {
     function spacingHtml(b) {
         var accent = colourOf(W.guide.blocks.colours.rows || [], 'accent');
         var own = accent ? cssVal(accent[W.dark ? 'dark' : 'light']) : '';
-        var h = '<div id="pgsg-spacing">';
+        var h = '<div id="pgsg-spacing-bars">';
         (b.rows || []).forEach(function (r) {
             var px = (r.px == null) ? 0 : Number(r.px);
             h += '<div class="pgsg-srow' + (r.custom ? ' is-own' : '') + '"><span class="pgsg-sn">' + varName(r.name, r.key) + '</span>' +
@@ -868,7 +869,10 @@ StyleDesigner.definePart('styleguide', function (K) {
                 } else if (r.cssRules && depth < 3) {
                     var inner = walk(r.cssRules, depth + 1);
                     if (!inner) continue;
-                    var head = r.media ? '@media ' + r.media.mediaText : (r.conditionText ? '@supports ' + r.conditionText : (r.name !== undefined && r.constructor && /Layer/.test(r.constructor.name) ? '@layer ' + r.name : ''));
+                    // The at-rule as written (@media, @supports, @container,
+                    // @layer, @scope...): its text up to the block.
+                    var css = String(r.cssText || '');
+                    var head = css.charAt(0) === '@' && css.indexOf('{') !== -1 ? css.slice(0, css.indexOf('{')).trim() : '';
                     text += head ? head + '{' + inner + '}' : inner;
                 }
             }

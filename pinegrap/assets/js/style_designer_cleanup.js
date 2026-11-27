@@ -4,8 +4,11 @@
  * Visual Page Editor - the "Clean up" window part: the saved design's style
  * rules, files, shared components and variables that nothing uses, in four
  * lists, each row with why it is thought unused and "Show". Nothing is
- * ticked at the start and nothing leaves by itself. Opened from the command
- * palette's "Clean up" and from the Publish check's list of unused rules
+ * ticked at the start and nothing leaves by itself: "Remove" first keeps
+ * the snapshot "Before clean-up" (History, Local snapshots), then files go
+ * to the Recycle Bin and shared components are deleted on the server, and
+ * the rules and variables leave the design's fields, saved as Save does.
+ * Opened from the command palette's "Clean up" and from the Publish check's list of unused rules
  * (over the Publish sheet, the rules list open). Not needed to open a page:
  * the core runs this file the first time the window is asked for
  * (_sdPartLoad(), pg_designer_parts()) and hands it the design through a
@@ -25,7 +28,10 @@ StyleDesigner.definePart('cleanup', function (K) {
     var esc = K.esc;
     var C = window.PgDesignCleanup;
 
-    var state = { host: null, from: '', el: null, answer: null, lists: [], open: {}, ticked: {}, shown: {}, busy: false };
+    // removing: "Remove" runs; done: the closing line ({ out, name } or
+    // { error }); after: what the next read keeps ({ before, failed }).
+    var state = { host: null, from: '', el: null, answer: null, lists: [], open: {}, ticked: {}, shown: {}, busy: false,
+        removing: false, done: null, after: null };
 
     var ICONS = { rules: 'bi-braces', files: 'bi-folder2', components: 'bi-boxes', variables: 'bi-sliders2' };
 
@@ -98,14 +104,17 @@ StyleDesigner.definePart('cleanup', function (K) {
     }
 
     function _cuRow(l, r) {
-        var on = !!state.ticked[r.key];
+        var on = !!state.ticked[r.key] && !r.failed;
+        var off = state.busy || state.removing || !!r.failed;
         var shown = !!state.shown[r.key];
         var name = l.kind === 'rules' ? '<code>' + esc(r.selector) + '</code>' : (l.kind === 'variables' ? '<code>' + esc(r.token) + '</code>' : esc(r.name));
         var show = l.kind === 'variables' ? '' : '<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-cu="show" data-key="' + esc(r.key) + '" aria-expanded="' + shown + '">' + esc(shown ? _sdT('Hide') : _sdT('Show')) + '</button>';
         return '<div class="sd-cu-item"><label class="sd-cu-row">' +
-            '<input type="checkbox" class="check m-0" data-cu="tick" data-key="' + esc(r.key) + '"' + (on ? ' checked' : '') + (state.busy ? ' disabled' : '') + '>' +
+            '<input type="checkbox" class="check m-0" data-cu="tick" data-key="' + esc(r.key) + '"' + (on ? ' checked' : '') + (off ? ' disabled' : '') + '>' +
             _cuLead(l.kind, r) +
-            '<span class="sd-cu-main"><span class="sd-cu-name">' + name + '</span><span class="sd-cu-why">' + esc(_cuWhy(l.kind, r)) + '</span></span>' +
+            '<span class="sd-cu-main"><span class="sd-cu-name">' + name + '</span>' +
+            (r.failed ? '<span class="sd-cu-why sd-cu-failed"><span class="bi bi-exclamation-triangle" aria-hidden="true"></span> ' + esc(r.failed) + '</span>' : '') +
+            '<span class="sd-cu-why">' + esc(_cuWhy(l.kind, r)) + '</span></span>' +
             '<span class="sd-cu-end">' + (r.bytes != null ? '<span class="sd-cu-size">' + esc(C.size(r.bytes)) + '</span>' : '') + show + '</span>' +
             '</label>' + (shown ? _cuShow(l.kind, r) : '') + '</div>';
     }
@@ -116,7 +125,7 @@ StyleDesigner.definePart('cleanup', function (K) {
         var head = '<div class="sd-cu-head">' +
             '<button type="button" class="sd-cu-fold" data-cu="fold" data-kind="' + l.kind + '" aria-expanded="' + open + '" aria-label="' + esc(_cuTitle(l.kind)) + '"><span class="bi bi-chevron-' + (open ? 'down' : 'right') + '" aria-hidden="true"></span></button>' +
             '<input type="checkbox" class="check m-0" data-cu="all" data-kind="' + l.kind + '" aria-label="' + esc(_sdT('Tick the whole list')) + '"' +
-                (tick === 'all' ? ' checked' : '') + (l.rows.length && !state.busy ? '' : ' disabled') + '>' +
+                (tick === 'all' ? ' checked' : '') + (C.tickable(l) && !state.busy && !state.removing ? '' : ' disabled') + '>' +
             '<span class="bi ' + ICONS[l.kind] + '" aria-hidden="true"></span>' +
             '<span class="sd-cu-title">' + esc(_cuTitle(l.kind)) + '</span><span class="badge theme-secondary">' + l.rows.length + '</span>' +
             (l.bytes != null && l.rows.length ? '<span class="sd-cu-size ms-auto">' + esc(C.size(l.bytes)) + '</span>' : '') +
@@ -151,24 +160,27 @@ StyleDesigner.definePart('cleanup', function (K) {
                 (state.answer && state.answer.message) || _sdT('Nothing was changed.'),
                 '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-cu="again">' + esc(_sdT('Try again')) + '</button>');
         } else if (v === 'empty') {
-            body = _cuState('<span class="bi bi-check2-circle sd-cu-state-icon" aria-hidden="true"></span>', _sdT('This design has nothing unused'),
+            body = _cuDone() + _cuState('<span class="bi bi-check2-circle sd-cu-state-icon" aria-hidden="true"></span>', _sdT('This design has nothing unused'),
                 _sdT('No style rule, file, shared component or variable is left over.'));
             foot = '<span class="me-auto"></span>' + close;
         } else {
-            body = '<p class="sd-cu-lead">' + esc(_sdT('What nothing in this design uses any more. Nothing is ticked and nothing is removed until you say so; a row the check is unsure of is not listed.')) + '</p>' +
+            body = _cuDone() + '<p class="sd-cu-lead">' + esc(_sdT('What nothing in this design uses any more. Nothing is ticked and nothing is removed until you say so; a row the check is unsure of is not listed.')) + '</p>' +
                 state.lists.map(_cuList).join('');
             var t = C.ticked(state.lists, state.ticked);
             var words = !t.count ? _sdT('Nothing is ticked.')
                 : (t.bytes ? _sdT('{var:1} ticked · {var:2} lighter.', [String(t.count), C.size(t.bytes)]) : _sdT('{var} ticked.', String(t.count)));
-            // Removing what is ticked is the next step's; until then the
-            // button stays off.
+            if (t.count) words += ' ' + _sdT('Rules and variables can be brought back from the snapshot “Before clean-up”; files and shared components leave as their own screens remove them.');
+            var label = state.removing ? '<span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>' + esc(_sdT('Removing…'))
+                : esc(t.count ? _sdT('Remove {var}', String(t.count)) : _sdT('Remove'));
             foot = '<span class="sd-cu-ticked me-auto" aria-live="polite">' + esc(words) + '</span>' + close +
-                '<button type="button" class="btn btn-sm btn-solid theme-primary" data-cu="remove" disabled>' + esc(t.count ? _sdT('Remove {var}', String(t.count)) : _sdT('Remove')) + '</button>';
+                '<button type="button" class="btn btn-sm btn-solid theme-primary" data-cu="remove"' + (t.count && !state.removing ? '' : ' disabled') + '>' + label + '</button>';
         }
         d.querySelector('.sd-cu-sub').textContent = (state.answer && state.answer.design) || '';
         d.querySelector('.sd-cu-body').innerHTML = body;
         d.querySelector('.sd-cu-foot').innerHTML = foot;
         d.querySelector('.sd-cu-foot').hidden = !foot;
+        // The window stays open while "Remove" runs (see open()).
+        d.querySelectorAll('[data-bs-dismiss="dialog"]').forEach(function (b) { b.disabled = state.removing; });
         _cuDashes();
     }
 
@@ -191,10 +203,105 @@ StyleDesigner.definePart('cleanup', function (K) {
         if (!state.el) return;
         state.answer = res;
         state.lists = res.status === 'success' ? C.lists(res) : [];
-        state.open = C.firstOpen(state.lists, state.from);
+        if (state.after && state.lists.length) {
+            state.lists = C.keep(state.lists, state.after.before, state.after.failed);
+            state.open = {};
+            state.lists.forEach(function (l) { if (l.rows.some(function (r) { return r.failed; })) state.open[l.kind] = true; });
+            if (!Object.keys(state.open).length) state.open = C.firstOpen(state.lists, state.from);
+        } else {
+            state.open = C.firstOpen(state.lists, state.from);
+        }
+        state.after = null;
         state.ticked = {};
         state.shown = {};
         _cuDraw();
+    }
+
+    // The closing line over the lists (the Design examples' Result line):
+    // what went, how much lighter, and where the design as it was is kept.
+    function _cuDone() {
+        var d = state.done;
+        if (!d) return '';
+        if (d.error) {
+            return '<div class="pg-result sd-cu-result is-failed" role="status"><span class="pg-icon-tile pg-tone-amber" aria-hidden="true"><i class="bi bi-exclamation-triangle"></i></span>' +
+                '<div><span class="pg-result-title">' + esc(_sdT('Nothing was removed')) + '</span><span class="pg-result-line">' + esc(d.error) + '</span></div></div>';
+        }
+        var o = d.out;
+        var parts = [];
+        C.KINDS.forEach(function (k) {
+            var n = o.kinds[k] || 0;
+            var v = String(n);
+            if (!n) return;
+            if (k === 'rules') parts.push(n === 1 ? _sdT('{var} style rule', v) : _sdT('{var} style rules', v));
+            else if (k === 'files') parts.push(n === 1 ? _sdT('{var} file', v) : _sdT('{var} files', v));
+            else if (k === 'components') parts.push(n === 1 ? _sdT('{var} shared component', v) : _sdT('{var} shared components', v));
+            else parts.push(n === 1 ? _sdT('{var} variable', v) : _sdT('{var} variables', v));
+        });
+        var head = o.count === o.of ? _sdT('Removed {var}', String(o.count)) : _sdT('Removed {var:1} of {var:2}', [String(o.count), String(o.of)]);
+        var title = head + (parts.length ? ': ' + parts.join(', ') + '.' : '.') + (o.bytes ? ' ' + _sdT('{var} lighter.', C.size(o.bytes)) : '');
+        var tone = o.count === o.of ? 'teal' : 'amber';
+        return '<div class="pg-result sd-cu-result" role="status"><span class="pg-icon-tile pg-tone-' + tone + '" aria-hidden="true"><i class="bi ' + (o.count === o.of ? 'bi-check-lg' : 'bi-exclamation-triangle') + '"></i></span>' +
+            '<div><span class="pg-result-title">' + esc(title) + '</span>' +
+            '<span class="pg-result-line">' + esc(_sdT('The design as it was is kept as “{var}” in History, under Local snapshots; its Load brings the rules and the variables back.', d.name)) + '</span></div></div>';
+    }
+
+    // Why a ticked row stayed, from the server's reason.
+    function _cuReason(f) {
+        if (f.message) return f.message;
+        if (f.reason === 'unsaved') return _sdT('The design could not be saved, so it was kept.');
+        return _sdT('Something uses it now, or it changed since the list was read.');
+    }
+
+    // "Remove": the snapshot first (nothing goes without it), then the
+    // server, then the design's fields saved; the lists are read again.
+    function _cuRemove() {
+        if (state.busy || state.removing || !state.answer) return;
+        var before = state.lists;
+        var marks = state.ticked;
+        if (!C.ticked(before, marks).count) return;
+        if (state.host.dirty()) { _cuDraw(); return; }
+        var name = _sdT('Before clean-up') + ' · ' + _cuDay(Date.now() / 1000);
+        state.done = null;
+        if (!state.host.snapshot(name, state.answer.model || null)) {
+            state.done = { error: _sdT('The snapshot “Before clean-up” could not be kept in this browser, so nothing was removed.') };
+            _cuDraw();
+            return;
+        }
+        state.removing = true;
+        _cuDraw();
+        var styleId = state.host.styleId;
+        K._pgApiPost('cleanup_remove', { style_id: styleId, ticked: C.removal(before, marks) }).then(function (res) {
+            if (!state.el) return;
+            if (!res || res.status !== 'success') {
+                state.removing = false;
+                state.done = { error: (res && res.message) || _sdT('Network error.') };
+                _cuDraw();
+                return;
+            }
+            var failed = {};
+            (res.failed || []).forEach(function (f) { failed[f.kind + ':' + f.id] = _cuReason(f); });
+            function finish() {
+                state.removing = false;
+                state.done = { out: C.outcome(before, marks, failed), name: name };
+                state.after = { before: before, failed: failed };
+                _cuRead();
+            }
+            if (!res.css && !res.variables) { finish(); return; }
+            var undo = state.host.apply(res.css, res.variables);
+            state.host.saveNow(function (saved) {
+                if (!saved) {
+                    if (undo) undo();
+                    ['rules', 'variables'].forEach(function (kind) {
+                        (res.removed[kind] || []).forEach(function (id) { failed[kind + ':' + id] = _cuReason({ reason: 'unsaved' }); });
+                    });
+                }
+                if (state.el) finish();
+            });
+        }, function () {
+            state.removing = false;
+            state.done = { error: _sdT('Network error.') };
+            _cuDraw();
+        });
     }
 
     function _cuFind(key) {
@@ -234,6 +341,8 @@ StyleDesigner.definePart('cleanup', function (K) {
             state.host.save(function () { _cuRead(); });
         } else if (what === 'again') {
             _cuRead();
+        } else if (what === 'remove') {
+            _cuRemove();
         }
     }
 
@@ -242,12 +351,13 @@ StyleDesigner.definePart('cleanup', function (K) {
         if (!b) return;
         var what = b.getAttribute('data-cu');
         if (what === 'tick') {
+            state.done = null;
             state.ticked[b.getAttribute('data-key')] = b.checked;
             _cuRedraw('[data-cu="tick"][data-key="' + b.getAttribute('data-key') + '"]');
         } else if (what === 'all') {
             var kind = b.getAttribute('data-kind');
             state.lists.forEach(function (l) {
-                if (l.kind === kind) l.rows.forEach(function (r) { state.ticked[r.key] = b.checked; });
+                if (l.kind === kind) l.rows.forEach(function (r) { if (!r.failed) state.ticked[r.key] = b.checked; });
             });
             _cuRedraw('[data-cu="all"][data-kind="' + kind + '"]');
         }
@@ -288,7 +398,15 @@ StyleDesigner.definePart('cleanup', function (K) {
         state.from = from || '';
         state.answer = null;
         state.lists = [];
+        state.done = null;
+        state.after = null;
+        state.removing = false;
         state.el = _cuBuild();
+        // Files and components are gone on the server before the rules and
+        // variables are put in and saved: closing then would keep those.
+        pgUI.dialog.on(state.el, 'hide', function (e) {
+            if (state.removing) e.preventDefault();
+        });
         pgUI.dialog.on(state.el, 'hidden', function () {
             if (state.el) state.el.remove();
             state.el = null;

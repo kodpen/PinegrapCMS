@@ -5,7 +5,7 @@ description: Clip shape and Mask under Shadow and effect's "More" as built (DO14
 
 ## Where are the rows?
 - Style tab, "Shadow and effect", under the section's "More" after Pointer: sub-head "Shape", "Clip shape", then "Mask", as drawn (`designer-options-layers-drawing-shape.md`). Each list has a small sign of the chosen shape beside it.
-- The core leaves an empty `[data-sd-shape-box]` at the end of `_sdTfRowsHtml()`'s "More"; part `shape` draws into it (`_sdShapeBind()`). "More" opens by itself while the User Styles hold `clip-path` or a mask for the element's class (`_sdShapeHas()`, a regex look).
+- The core leaves an empty `[data-sd-shape-box]` at the end of `_sdTfRowsHtml()`'s "More"; part `shape` draws into it (`_sdShapeBind()`). "More" opens by itself only while the element's own rules hold a shape or a mask other than None (`_sdShapeHas()` → `_sdShapeHeldIn()`, `PGClipShape.has()`'s answer before the part loads). Symptom fixed (#12016): another element's clip-path opened it.
 
 ## What does each offer?
 - Clip shape: None, Circle ("Size", "Center"), Ellipse ("Width", "Height", "Center"), Rounded inset ("Inset", "Corner"), Slant ("Edge" Top, Bottom, Both; "Amount"; "Direction" Up to the right, Up to the left), Arrow ("Points" Right, Left, Down, Up; "Point"). Center is the nine places of Origin.
@@ -26,7 +26,7 @@ description: Clip shape and Mask under Shadow and effect's "More" as built (DO14
 
 ## What does the canvas show?
 - The written rule, through User Styles. A dragged slider sets the value inline with `!important` on the canvas element and drops it when let go.
-- While the selected element's class holds a shape or a mask, a dashed outline (`#sd-shape-outline` in the canvas body) follows its whole box; `_sdShapeOutline()` places or removes it at each panel drawing.
+- While the selected element's own rules hold a shape or a mask (`PGClipShape.has()`), a dashed outline (`#sd-shape-outline` in the canvas body) follows its whole box; `_sdShapeOutline()` places or removes it at each panel drawing.
 
 ## How does it load, and what did it cost?
 - Part `shape` (`includes/designer_parts/shape.php`, `when: always`): loaded when "More" is drawn or an element with a shape is selected.

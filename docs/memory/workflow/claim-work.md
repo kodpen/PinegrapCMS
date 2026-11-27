@@ -1,6 +1,6 @@
 ---
 name: claim-work
-description: How a session claims work before starting it: the open-PR check, the claiming draft PR and its title, the race between two drafts, finishing and marking ready
+description: How a session claims work before starting it: the open-PR check, the claiming draft PR and its title, the race between two drafts, finishing without a mark in the plan file, marking ready
 ---
 
 ## How is work claimed?
@@ -24,8 +24,8 @@ description: How a session claims work before starting it: the open-PR check, th
 - Small fixes, memory-only edits and reviews skip the draft, not the check.
 
 ## 3. How is it finished?
-- Mark the steps done in the plan file with the PR number and push.
+- The plan file is not touched: the PR's title names the steps it finishes, and that title is their state ([[plan-step-state]]). What the next step must know goes into the memory file the PR writes.
 - Mark the draft ready (`gh pr ready <n>`; in a cloud session `mcp__github__update_pull_request` with `draft: false`): CI runs and the PR counts in the queue.
 - When CI is green: the `ready` label and the wait (`session-lifecycle.md`, `CLAUDE.md` Working mode 2).
 
-Related: docs/memory/workflow/working-mode.md, docs/memory/workflow/session-lifecycle.md
+Related: docs/memory/workflow/working-mode.md, docs/memory/workflow/session-lifecycle.md, docs/memory/workflow/plan-step-state.md

@@ -1040,9 +1040,42 @@ function erp_edoc_inbox_import($id, $user_id = 0)
 }
 
 /**
+ * Why a document cannot be marked as taken in by a purchase invoice, or ''.
+ *
+ * A document a standing purchase invoice (draft or issued) already carries
+ * is not linked to a second one: both would carry its ETTN and the one
+ * supplier invoice would be entered twice. Linking it again to the invoice
+ * that carries it is no refusal.
+ *
+ * @param array|null $row      An erp_edoc_inbox_row()
+ * @param array|null $invoice  The purchase invoice: id, status, gib_uuid
+ * @return string
+ */
+function erp_edoc_inbox_link_refusal($row, $invoice)
+{
+    if (!is_array($row) || !is_array($invoice) || ((string) $invoice['status'] === 'cancelled')) {
+        return lang('The purchase invoice could not be found.');
+    }
+
+    if (in_array(erp_edoc_inbox_state($row), array('drafted', 'imported'), true)
+        && ((int) $row['invoice_id'] !== (int) $invoice['id'])) {
+        return lang('This document has already been dealt with.');
+    }
+
+    if (((string) $invoice['gib_uuid'] !== '') && (strcasecmp((string) $invoice['gib_uuid'], (string) $row['gib_uuid']) !== 0)) {
+        return lang('That purchase invoice already belongs to another e-invoice.');
+    }
+
+    return '';
+}
+
+/**
  * Marks a document as taken in by a purchase invoice that already exists -
  * one typed in by hand before the document was read. The invoice gains the
  * ETTN when it has none, so the next read finds it on its own.
+ *
+ * The state is read under the inbox row's lock: a page opened before the
+ * document was drafted elsewhere still offers the link.
  *
  * @param int $id
  * @param int $invoice_id
@@ -1055,36 +1088,49 @@ function erp_edoc_inbox_link($id, $invoice_id, $user_id = 0)
         return array('success' => false, 'error' => $message, 'invoice_id' => 0, 'account_opened' => false);
     };
 
-    $row = erp_edoc_inbox_row($id);
+    if (!erp_tx_begin()) {
+        return $fail(lang('Could not start a database transaction.'));
+    }
+
+    $locked = db_item("SELECT id FROM erp_edoc_inbox WHERE id = '" . (int) $id . "' LIMIT 1 FOR UPDATE");
+    $row = is_array($locked) ? erp_edoc_inbox_row($id) : null;
     $invoice = db_item("SELECT id, account_id, status, gib_uuid FROM erp_invoices
-        WHERE id = '" . (int) $invoice_id . "' AND direction = 'purchase' LIMIT 1");
+        WHERE id = '" . (int) $invoice_id . "' AND direction = 'purchase' LIMIT 1 FOR UPDATE");
 
-    if (($row === null) || !is_array($invoice) || ((string) $invoice['status'] === 'cancelled')) {
-        return $fail(lang('The purchase invoice could not be found.'));
+    if ($row === null) {
+        erp_tx_rollback();
+        return $fail(lang('The document could not be found.'));
     }
 
-    if (((string) $invoice['gib_uuid'] !== '') && (strcasecmp((string) $invoice['gib_uuid'], (string) $row['gib_uuid']) !== 0)) {
-        return $fail(lang('That purchase invoice already belongs to another e-invoice.'));
+    $refusal = erp_edoc_inbox_link_refusal($row, is_array($invoice) ? $invoice : null);
+
+    if ($refusal !== '') {
+        erp_tx_rollback();
+        return $fail($refusal);
     }
+
+    $ok = true;
 
     if ((string) $invoice['gib_uuid'] === '') {
-        erp_query("UPDATE erp_invoices SET
+        $ok = (erp_query("UPDATE erp_invoices SET
                 gib_uuid = '" . escape((string) $row['gib_uuid']) . "',
                 gib_number = '" . escape(mb_substr((string) $row['gib_number'], 0, 20)) . "'
-            WHERE id = '" . (int) $invoice['id'] . "' AND gib_uuid = ''");
+            WHERE id = '" . (int) $invoice['id'] . "' AND gib_uuid = ''") !== false);
     }
 
-    $ok = erp_query("UPDATE erp_edoc_inbox SET
+    $ok = $ok && (erp_query("UPDATE erp_edoc_inbox SET
             status = 'imported',
             invoice_id = '" . (int) $invoice['id'] . "',
             account_id = '" . (int) $invoice['account_id'] . "',
             handled_by = '" . (int) $user_id . "',
             handled_at = '" . time() . "',
             updated_at = '" . time() . "'
-        WHERE id = '" . (int) $id . "'");
+        WHERE id = '" . (int) $id . "'") !== false);
 
-    if ($ok === false) {
-        return $fail(erp_db_error());
+    if (!$ok || !erp_tx_commit()) {
+        $error = erp_db_error();
+        erp_tx_rollback();
+        return $fail($error);
     }
 
     return array('success' => true, 'error' => '', 'invoice_id' => (int) $invoice['id'], 'account_opened' => false);

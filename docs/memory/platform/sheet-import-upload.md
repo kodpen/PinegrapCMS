@@ -5,7 +5,7 @@ module: sheet_import
 ---
 
 ## Which importers take workbooks this way?
-- Contacts, Users, Submitted Forms, Key Codes, Campaign Profiles, Import Tracking Numbers, Short Links, ERP Import Accounts from CSV and Translations' Import CSV (census `plans/office-own-code-os2-census.md`). Products > Import and the bank statement import read workbooks with their own readers and take only the sheet question (below).
+- Contacts, Users, Submitted Forms, Key Codes, Campaign Profiles, Import Tracking Numbers, Short Links, ERP Import Accounts from CSV and Translations' Import CSV. Products > Import and the bank statement import read workbooks with their own readers and take only the sheet question (below); workflow tables read workbooks already.
 
 ## How does it work?
 - The importer calls `pg_sheet_import_upload('file', <its screen title>)` after its token check and before it looks at the upload. A CSV, a missing file or a failed upload is left untouched for the importer's own checks.

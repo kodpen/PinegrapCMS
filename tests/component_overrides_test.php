@@ -277,3 +277,102 @@ function test_component_overrides_core_entry_points()
 	$parts = pg_designer_parts();
 	pg_assert_same('assets/js/style_designer_overrides.min.js', $parts['overrides'], 'the part is loaded on first use');
 }
+
+// An element duplicated inside a component carries its open fields with the
+// same ids; the first node keeps them. A place that hides the first one
+// must not hand its other values to the copy: the copy draws as the
+// component has it, in both twins.
+function test_component_overrides_hidden_element_keeps_its_fields_from_a_copy()
+{
+	$card = array('_id' => 'a', 'type' => 'content', 'props' => array('text' => 'Our menu', '_open' => array(
+		array('id' => 'of_s', 'kind' => 'shown', 'label' => 'Shown'),
+		array('id' => 'of_t', 'kind' => 'text', 'label' => 'Title'),
+	)), 'children' => array());
+	$copy = $card;
+	$copy['_id'] = 'b';
+	$inner = array('_id' => 'n', 'type' => 'container', 'props' => array('_open' => array(array('id' => 'of_box', 'kind' => 'shown', 'label' => 'Box'))), 'children' => array(
+		array('_id' => 'nt', 'type' => 'content', 'props' => array('text' => 'Open daily', '_open' => array(array('id' => 'of_note', 'kind' => 'text', 'label' => 'Note'))), 'children' => array()),
+	));
+	$innerCopy = $inner;
+	$innerCopy['_id'] = 'n2';
+	$innerCopy['children'][0]['_id'] = 'nt2';
+	$tree = array('_id' => 'r', 'type' => 'root', 'props' => array(), 'children' => array($card, $copy, $inner, $innerCopy));
+	$values = array('of_s' => false, 'of_t' => 'Lunch', 'of_box' => false, 'of_note' => 'Closed');
+
+	$out = pg_co_apply($tree, $values);
+	pg_assert_same(array('b', 'n2'), array_column($out['children'], '_id'), 'the hidden elements are left out');
+	pg_assert_same('Our menu', $out['children'][0]['props']['text'], 'the copy keeps the component\'s text');
+	pg_assert_same('Open daily', $out['children'][1]['children'][0]['props']['text'], 'a field inside a hidden element does not pass to the copy');
+	pg_assert_same(array(), pg_co_place_texts($tree, $values), 'no place text is drawn, none is extracted');
+
+	$js = component_overrides_test_node('out = C.apply(' . json_encode($tree, JSON_UNESCAPED_UNICODE) . ', ' . json_encode($values) . ');');
+	if ($js === null) {
+		return;
+	}
+	pg_assert_same($out, $js, 'the twin draws the same');
+}
+
+// A label typed in the list of an element's fields is kept when the list is
+// closed before the field is left (a click outside removes it, and a removed
+// field fires no change); Escape drops it.
+function test_component_overrides_list_keeps_a_typed_label_on_close()
+{
+	$code = "var StyleDesigner = { definePart: function (n, f) { part = f(kit); } }, part = null;\n"
+		. "var comp = {_id: 'c', type: 'root', props: {}, children: [{_id: 'b', type: 'content', props: {contentType: 'button', text: 'Shop', href: '/s',\n"
+		. " _open: [{id: 'of_t', kind: 'text', label: 'b'}]}, children: []}]};\n"
+		. "var label = { value: '', defaultValue: 'b', getAttribute: function (a) { return a === 'data-co-label' ? 'text' : null; } };\n"
+		. "var listeners = {}, pop = { setAttribute: function () {}, offsetWidth: 300, offsetHeight: 200, style: {}, set innerHTML(v) {},\n"
+		. " addEventListener: function (t, f) { listeners[t] = f; }, querySelector: function () { return null; },\n"
+		. " querySelectorAll: function (s) { return /data-co-label/.test(s) ? [label] : []; }, contains: function () { return true; }, remove: function () {} };\n"
+		. "window.innerWidth = 1200; window.innerHeight = 800;\n"
+		. "var document = { createElement: function () { return pop; }, body: { appendChild: function () {} }, activeElement: label,\n"
+		. " addEventListener: function () {}, removeEventListener: function () {}, getElementById: function () { return null; } };\n"
+		. "var kit = { _sdT: function (k) { return k; }, esc: String, getNodeLabel: function (n) { return n._id; }, sharedCache: {5: {tree: comp}},\n"
+		. " _resolveSharedSid: function () { return 5; }, _sdCoWrite: function (sid, fn) { fn(); }, _sdTipsOff: function () { return true; } };\n"
+		. file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_overrides.js') . "\n"
+		. "var entry = comp.children[0].props._open[0];\n"
+		. "part.openFor(comp.children[0], null); label.value = 'Dish name'; part.close();\n"
+		. "out = { kept: entry.label };\n"
+		. "part.openFor(comp.children[0], null); label.value = 'Other';\n"
+		. "listeners.keydown({ key: 'Escape', target: label, preventDefault: function () {}, stopPropagation: function () {} });\n"
+		. "out.escape = entry.label;\n"
+		. "part.openFor(comp.children[0], null); label.value = 'Again'; listeners.change({ target: label }); part.close();\n"
+		. "out.once = entry.label;";
+	$js = component_overrides_test_node($code);
+	if ($js === null) {
+		return;
+	}
+	pg_assert_same('Dish name', $js['kept'], 'a click outside keeps the typed label');
+	pg_assert_same('Dish name', $js['escape'], 'Escape drops what was typed');
+	pg_assert_same('Again', $js['once'], 'a label already kept by its change is kept once');
+}
+
+// Undo puts the component's tree back as a new copy. A switch flipped in the
+// list of an element's fields afterwards writes into the tree the editor has
+// now, never into the element as it was before the Undo.
+function test_component_overrides_list_writes_the_live_tree_after_undo()
+{
+	$code = "var StyleDesigner = { definePart: function (n, f) { part = f(kit); } }, part = null;\n"
+		. "var comp = {_id: 'c', type: 'root', props: {}, children: [{_id: 'b', type: 'content', props: {contentType: 'button', text: 'Shop', href: '/s'}, children: []}]};\n"
+		. "var listeners = {}, pop = { setAttribute: function () {}, offsetWidth: 300, offsetHeight: 200, style: {}, set innerHTML(v) {},\n"
+		. " addEventListener: function (t, f) { listeners[t] = f; }, querySelector: function () { return null; },\n"
+		. " querySelectorAll: function () { return []; }, contains: function () { return true; }, remove: function () {} };\n"
+		. "window.innerWidth = 1200; window.innerHeight = 800;\n"
+		. "var document = { createElement: function () { return pop; }, body: { appendChild: function () {} }, activeElement: null,\n"
+		. " addEventListener: function () {}, removeEventListener: function () {}, getElementById: function () { return null; } };\n"
+		. "var kit = { _sdT: function (k) { return k; }, esc: String, getNodeLabel: function (n) { return n._id; }, sharedCache: {5: {tree: comp}},\n"
+		. " _resolveSharedSid: function () { return 5; }, _sdCoWrite: function (sid, fn) { fn(); }, _sdTipsOff: function () { return true; } };\n"
+		. file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_overrides.js') . "\n"
+		. "var sw = function (kind, on) { return { target: { checked: on, getAttribute: function (a) { return a === 'data-co-kind' ? kind : null; } } }; };\n"
+		. "part.openFor(comp.children[0], null);\n"
+		. "listeners.change(sw('text', true));\n"
+		. "kit.sharedCache[5].tree = JSON.parse(JSON.stringify(comp));\n"
+		. "listeners.change(sw('link', true));\n"
+		. "var live = kit.sharedCache[5].tree.children[0].props._open || [];\n"
+		. "out = live.map(function (e) { return e.kind; });";
+	$js = component_overrides_test_node($code);
+	if ($js === null) {
+		return;
+	}
+	pg_assert_same(array('text', 'link'), $js, 'the field opened after the Undo is in the live tree');
+}

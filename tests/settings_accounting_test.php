@@ -46,8 +46,9 @@ function settings_accounting_test_category($key)
 // The field names a card block posts.
 function settings_accounting_test_names($source)
 {
-	preg_match_all('/\bname="([a-z0-9_]+)(?:\[\])?"/', $source, $match);
-	$names = array_values(array_unique($match[1]));
+	// A field drawn by the pane's switch or radio rows is named in the call.
+	preg_match_all('/\bname="([a-z0-9_]+)(?:\[\])?"|pg_accounting_settings_(?:switch|choice|tick)\(\'([a-z0-9_]+)\'/', $source, $match);
+	$names = array_values(array_filter(array_unique(array_merge($match[1], $match[2])), 'strlen'));
 	sort($names);
 
 	return $names;
@@ -70,7 +71,7 @@ function test_settings_accounting_category_holds_the_erp_and_invoice_cards()
 	$commerce = settings_accounting_test_category('commerce');
 
 	pg_assert_contains("'label' => lang('Accounting')", $accounting, 'named as in the main menu');
-	pg_assert_contains("'pgset-erp'       => lang('ERP')", $accounting, 'the ERP card');
+	pg_assert_contains("'pgset-erp'       => lang('Documents')", $accounting, 'the ERP card\'s first row, which keeps its id');
 	pg_assert_contains("'pgset-invoice'   => lang('E-Invoice')", $accounting, 'the E-Invoice card');
 	pg_assert_contains("'erp_fx_currencies' => 1", $accounting, 'its list field goes with the ERP card');
 	pg_assert_true(strpos($accounting, "'pgset-erp'") < strpos($accounting, "'pgset-invoice'"), 'ERP first');

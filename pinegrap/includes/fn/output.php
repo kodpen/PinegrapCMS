@@ -917,7 +917,7 @@ function pg_download_marker_watch()
 /**
  * The page shell of a panel screen: output_header() with the screen's tour
  * named in its head. It takes output_header()'s keys (title, extra classes,
- * icon, heading, heading_description, cancel, breadcrumb, head, hide_menu,
+ * icon, heading, heading_description, cancel, breadcrumb, back, head, hide_menu,
  * menu_drawer)
  * plus 'tour' and 'pre_main_html'. The screen's actions are not drawn here:
  * they go into its toolbar, pg_screen_toolbar(), inside <main>.
@@ -2762,8 +2762,17 @@ function output_header($properties = false)
     // <main> stays its own container. The <nav> wraps only the trail, so a screen
     // that has a back control but no crumbs still gets the strip without
     // announcing an empty breadcrumb landmark.
+    // Optional way back to the place that led here, beside the trail:
+    // ['back' => ['label' => 'Back to Backups', 'url' => 'settings_maintenance.php#pgset-backup']].
+    $output_back_link = '';
+    if (isset($properties['back']) && is_array($properties['back'])
+        && isset($properties['back']['label'], $properties['back']['url']) && ((string) $properties['back']['url'] !== '')) {
+        $output_back_link = '<a class="pg-button pg-button-quiet pg-button-sm ms-auto" href="' . h((string) $properties['back']['url']) . '">'
+            . '<i class="bi bi-arrow-left" aria-hidden="true"></i>' . h((string) $properties['back']['label']) . '</a>';
+    }
+
     if ($output_breadcrumb_trail !== '' || $output_cancel_button !== '') {
-        $output_breadcrumb = '<div class="pg-breadcrumb pg-print-none">' . $output_cancel_button . $output_breadcrumb_trail . '</div>';
+        $output_breadcrumb = '<div class="pg-breadcrumb pg-print-none">' . $output_cancel_button . $output_breadcrumb_trail . $output_back_link . '</div>';
     }
 
 
@@ -2956,6 +2965,16 @@ function output_header($properties = false)
         </ul>';
     }
 
+    // Go to Site at the drawer's foot, on a screen that draws no top bar
+    // (pg_menu_drawer_bar()): there the link keeps its label at every width.
+    $output_drawer_site_link = '';
+    if ($toolbar != true) {
+        $output_drawer_site_link = '
+                <a id="go_home_button" class="pg-button pg-button-quiet pg-db-site" href="' . $output_home_page_link_url . '"' . $output_parent_target . ' title="' . lang('Homepage') . ' (' . $output_home_title . ')">
+                    <span class="bi bi-box-arrow-up-right" aria-hidden="true"></span><span>' . lang('Go to Site') . '</span>
+                </a>';
+    }
+
     $output_fav_icon = '';
     if (isset($properties['icon'])) {
         $output_fav_icon = $properties['icon'];
@@ -2979,11 +2998,10 @@ function output_header($properties = false)
     // (open and mini only on a navigator screen, below).
     $output_menu_mode_button = '';
     $output_software_sidebar = '';
+    $output_menu_nav = '';
     $menu_drawer_class = '';
     $menu_parts = pg_menu_shell_parts($properties);
-    if (!$menu_parts['sidebar']) {
-        $output_software_sidebar = '';
-    } else {
+    if ($menu_parts['sidebar']) {
         // The menu first: a screen whose own navigation sits in one of its
         // panels (pg_menu_navigator()) shows it open, or narrowed to the
         // rail, from a cookie of its own; never hidden there, since the
@@ -3011,16 +3029,20 @@ function output_header($properties = false)
             $menu_hidden_class = ($menu_state === 'hidden') ? ' menu-hidden' : '';
         }
 
-        $output_software_sidebar = '
-        <div class="software-sidebar position-fixed pg-print-none bg-software-navbar backdrop">
+        $output_menu_nav = '
             <nav id="menu" class="z-1  ' . $menu_expanded_class . '" style="position:sticky;left:0;top:0;bottom:0;">
 
                 <div class="menu-body">
                     ' . $output_menu . '
                 </div>
-            </nav>
-        </div>';
+            </nav>';
+    }
 
+    // A drawer-only screen draws no top bar: its controls stand in the
+    // drawer (pg_menu_drawer_bar()). Not in the bar over a site page.
+    $bar_in_drawer = ($menu_parts['bar_in_drawer'] && ($toolbar != true) && ($output_menu_nav !== ''));
+    if ($bar_in_drawer) {
+        $menu_drawer_class .= ' pg-bar-in-drawer';
     }
 
 
@@ -3102,10 +3124,12 @@ function output_header($properties = false)
     // carries the same link. Not on a phone either, where the row has no
     // room left; the account menu is the way there.
     $output_help_button = '';
+    // In the drawer the row has room at every width.
+    $help_nav_class = $bar_in_drawer ? 'navbar-nav' : 'navbar-nav d-none sm:d-flex';
 
     if (($help_url !== '') && ($toolbar != true)) {
         $output_help_button = '
-                <ul class="navbar-nav d-none sm:d-flex">
+                <ul class="' . $help_nav_class . '">
                     <li class="nav-item no-popover" title="' . h(lang('Help for this screen')) . ' (F1)">
                         <a id="help_button" class="nav-link nav-link-sm no-popover" href="' . h($help_url) . '" target="_blank" rel="noopener" aria-label="' . h(lang('Help for this screen')) . '">
                             <span class="bi bi-question-circle" aria-hidden="true"></span>
@@ -3149,58 +3173,15 @@ function output_header($properties = false)
     // search box rather than from a row of any menu.
     $output_shortcuts_dialog = pg_shortcuts_dialog();
 
-    $output = '<!DOCTYPE html>
-    <html lang="' . lang(array('info' => '')) . '">
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width,minimum-scale=1,user-scalable=no">
-        <title>' . $software_page_title . $software_title . h($_SERVER['HTTP_HOST']) . ' </title>
-        <meta name="application-name" content="Pinegrap CMS">
-        <meta name="color-scheme" content="light dark">
-        ' . $output_software_metanames . '
-        <link rel="help" type="text/markdown" href="' . h(pg_agent_guide_url(isset($properties['agent_guide']) ? (string) $properties['agent_guide'] : '')) . '">
-        <link rel="icon" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/icons/ico/big/' . $output_fav_icon . '.ico" sizes="16x16 32x32 48x48 64x64 128x128 256x256" type="image/x-icon">
-        <link rel="icon" type="image/png" sizes="75x75" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/icons/png/075/' . $output_fav_icon . '.png">
-        <link rel="icon" type="image/png" sizes="100x100" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/icons/png/100/' . $output_fav_icon . '.png">
-        <link rel="icon" type="image/png" sizes="150x150" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/icons/png/150/' . $output_fav_icon . '.png">
-        <link rel="icon" type="image/png" sizes="200x200" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/icons/png/200/' . $output_fav_icon . '.png">
-        <meta name="theme-color" content="#111111" media="(prefers-color-scheme: light)">
-        <meta name="theme-color" content="#222222" media="(prefers-color-scheme: dark)">
-        ' . output_control_panel_header_includes(true, $help_topic) . '
-        ' . $output_tour_head . '
-        ' . (isset($properties['head']) ? $properties['head'] : '') . '
-    </head>
-    <body class="' . $output_body_class . '">
-    ' . pg_output_email_off_open() . '
-    ' . pg_preloader_markup() . '
-    <a class="pg-skip-link" href="#content">' . lang('Skip to main content') . '</a>
-    <div class="software-container ' . $menu_expanded_class . $menu_hidden_class . $menu_drawer_class . '"' . $menu_navigator_attribute . '>
-        <div class="software-navbar fixed-top pg-print-none ">
-            <nav id="header" class="z-1 position-sticky h-100 p-0 top-0 start-100 navbar navbar-expand bg-software-navbar backdrop" >
-                <ul class="navbar-nav">
-                    ' . $output_menu_mode_button . '
-
-                    <li class="nav-item pg-brand-item">
-                        <a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/welcome.php"' . $output_parent_target . ' class="nav-link rounded-pill fw-bolder">
-                            ' . $output_logo . '
-                        </a>
-                    </li>
-                </ul>
-                <ul class="navbar-nav d-none lg:d-flex"><li class="vh nav-item pe-1 me-1 border-end my-auto"></li></ul>
-                ' . $output_heading . '
-                <ul class="navbar-nav mx-auto"></ul>
-                ' . $output_header_search . '
-                
-                ' . output_toolbar($toolbar) . '
-                <div class="pg-rightcluster">
+    // The search button and the bell, in the bar or in the drawer.
+    $output_search_button = '
                 <ul class="navbar-nav d-none" id="EnableSearch">
                     <li class="nav-item  no-popover"  title="' . lang('Search') . ' (Ctrl+K | &#8984;+K)">
                         <button type="button" class="btn" data-bs-toggle="dialog" data-bs-target="#SearchBox" aria-label="' . lang('Search') . '"><span class="bi bi-search"></span></button>
                     </li>
-                </ul>
-                ' . $output_quick_note . '
-                ' . $output_help_button . '
-                ' . $output_settings_button . '
+                </ul>';
+
+    $output_bell_button = '
                 <ul class="navbar-nav">
                     <li class="nav-item no-popover" title="' . lang('Notifications') . ' (Ctrl+Q)">
                         <button type="button" id="notification_toggle" class="nav-link nav-link-sm no-popover" data-bs-toggle="drawer" data-bs-target="#notifications" aria-controls="notifications" aria-haspopup="dialog">
@@ -3237,13 +3218,90 @@ function output_header($properties = false)
                             )
                         ), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) . '</script>
                     </li>
+                </ul>';
+
+    // The top bar; on a drawer-only screen its controls stand in the drawer
+    // instead, and the sidebar holds them around the menu.
+    $output_navbar = '';
+    if ($bar_in_drawer) {
+        $output_software_sidebar = '
+        <div class="software-sidebar position-fixed pg-print-none bg-software-navbar backdrop">' . pg_menu_drawer_bar($output_menu_nav, array(
+            'logo' => $output_logo,
+            'home' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/welcome.php',
+            'parent_target' => $output_parent_target,
+            'tools' => array($output_search_button, $output_quick_note, $output_help_button, $output_settings_button, $output_bell_button),
+            'site' => $output_drawer_site_link,
+            'account' => $output_account_menu,
+        )) . '
+        </div>';
+    } else {
+        if ($output_menu_nav !== '') {
+            $output_software_sidebar = '
+        <div class="software-sidebar position-fixed pg-print-none bg-software-navbar backdrop">' . $output_menu_nav . '
+        </div>';
+        }
+
+        $output_navbar = '
+        <div class="software-navbar fixed-top pg-print-none ">
+            <nav id="header" class="z-1 position-sticky h-100 p-0 top-0 start-100 navbar navbar-expand bg-software-navbar backdrop" >
+                <ul class="navbar-nav">
+                    ' . $output_menu_mode_button . '
+
+                    <li class="nav-item pg-brand-item">
+                        <a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/welcome.php"' . $output_parent_target . ' class="nav-link rounded-pill fw-bolder">
+                            ' . $output_logo . '
+                        </a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav d-none lg:d-flex"><li class="vh nav-item pe-1 me-1 border-end my-auto"></li></ul>
+                ' . $output_heading . '
+                <ul class="navbar-nav mx-auto"></ul>
+                ' . $output_header_search . '
+                
+                ' . output_toolbar($toolbar) . '
+                <div class="pg-rightcluster">
+                ' . $output_search_button . '
+                ' . $output_quick_note . '
+                ' . $output_help_button . '
+                ' . $output_settings_button . '
+                ' . $output_bell_button . '
+                <ul class="navbar-nav">
                     ' . $output_account_menu . '
                 </ul>
                 ' . $output_home_button . '
                 ' . $output_toolbar_toggle_button . '
                 </div>
             </nav>
-        </div>
+        </div>';
+    }
+
+    $output = '<!DOCTYPE html>
+    <html lang="' . lang(array('info' => '')) . '">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,minimum-scale=1,user-scalable=no">
+        <title>' . $software_page_title . $software_title . h($_SERVER['HTTP_HOST']) . ' </title>
+        <meta name="application-name" content="Pinegrap CMS">
+        <meta name="color-scheme" content="light dark">
+        ' . $output_software_metanames . '
+        <link rel="help" type="text/markdown" href="' . h(pg_agent_guide_url(isset($properties['agent_guide']) ? (string) $properties['agent_guide'] : '')) . '">
+        <link rel="icon" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/icons/ico/big/' . $output_fav_icon . '.ico" sizes="16x16 32x32 48x48 64x64 128x128 256x256" type="image/x-icon">
+        <link rel="icon" type="image/png" sizes="75x75" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/icons/png/075/' . $output_fav_icon . '.png">
+        <link rel="icon" type="image/png" sizes="100x100" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/icons/png/100/' . $output_fav_icon . '.png">
+        <link rel="icon" type="image/png" sizes="150x150" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/icons/png/150/' . $output_fav_icon . '.png">
+        <link rel="icon" type="image/png" sizes="200x200" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/icons/png/200/' . $output_fav_icon . '.png">
+        <meta name="theme-color" content="#111111" media="(prefers-color-scheme: light)">
+        <meta name="theme-color" content="#222222" media="(prefers-color-scheme: dark)">
+        ' . output_control_panel_header_includes(true, $help_topic) . '
+        ' . $output_tour_head . '
+        ' . (isset($properties['head']) ? $properties['head'] : '') . '
+    </head>
+    <body class="' . $output_body_class . '">
+    ' . pg_output_email_off_open() . '
+    ' . pg_preloader_markup() . '
+    <a class="pg-skip-link" href="#content">' . lang('Skip to main content') . '</a>
+    <div class="software-container ' . $menu_expanded_class . $menu_hidden_class . $menu_drawer_class . '"' . $menu_navigator_attribute . '>
+        ' . $output_navbar . '
         ' . $output_bell_drawer . $output_software_sidebar . $output_settings_modal . '
         <dialog class="dialog dialog-lg dialog-scrollable pg-dialog-centered shadow" id="SearchBox" aria-label="' . h(lang('Search')) . '">
               <div class="dialog-header border-0 px-5 py-3 gap-3 ">
@@ -3679,9 +3737,11 @@ function pg_menu_navigator($set = null)
  * screen brings its own opener, marked data-pg-menu-drawer-toggle) and the
  * container carries menu-drawer-only, under which the menu takes no column
  * and no wide-screen state applies. menu_drawer wins over hide_menu.
+ * bar_in_drawer goes with it: such a screen draws no top bar, its controls
+ * stand at the head and the foot of the drawer (pg_menu_drawer_bar()).
  *
  * @param array $properties output_header()'s properties
- * @return array sidebar, button and drawer_only, each a bool
+ * @return array sidebar, button, drawer_only and bar_in_drawer, each a bool
  */
 function pg_menu_shell_parts($properties)
 {
@@ -3696,7 +3756,68 @@ function pg_menu_shell_parts($properties)
         'sidebar' => ($drawer || !$hidden),
         'button' => (!$drawer && !$hidden),
         'drawer_only' => $drawer,
+        'bar_in_drawer' => $drawer,
     );
+}
+
+/**
+ * The main menu's drawer on a screen that draws no top bar (Page Design
+ * Studio, menu_drawer): the bar's controls stand in it instead.
+ *
+ * The head is the logo, leading to the panel's home, and the button that
+ * shuts the drawer; under it one row of the bar's tools (search, quick note,
+ * help for this screen, Site Settings, notifications). The main menu follows
+ * as it is, and the foot holds Go to Site and the account menu, which opens
+ * upward over the drawer. The whole is #header, so every control keeps the
+ * rules and the scripts it has in the bar; the stylesheet lays it out as a
+ * column (backend.src.css, "The top bar in the drawer").
+ *
+ * $controls:
+ *   logo           the logo's markup, as in the bar
+ *   home           the address of the panel's home
+ *   parent_target  ' target="_parent"' inside a frame, '' otherwise
+ *   tools          the tools' markup, each in its own list, in order
+ *   site           the Go to Site link
+ *   account        the account menu's list item (pg_account_menu())
+ *
+ * @param string $menu     the main menu (nav#menu)
+ * @param array  $controls
+ * @return string
+ */
+function pg_menu_drawer_bar($menu, $controls)
+{
+    $controls += array(
+        'logo' => '',
+        'home' => '',
+        'parent_target' => '',
+        'tools' => array(),
+        'site' => '',
+        'account' => '',
+    );
+
+    $hide = lang('Hide menu');
+
+    return '
+                <div id="header" class="pg-drawer-bar">
+                    <div class="pg-db-head">
+                        <ul class="navbar-nav">
+                            <li class="nav-item pg-db-brand">
+                                <a href="' . h($controls['home']) . '"' . $controls['parent_target'] . ' class="nav-link rounded-pill fw-bolder">
+                                    ' . $controls['logo'] . '
+                                </a>
+                            </li>
+                        </ul>
+                        <button type="button" class="pg-icon-button pg-db-close no-popover" data-pg-menu-drawer-close aria-controls="menu" aria-label="' . h($hide) . '" title="' . h($hide) . '"><span class="bi bi-x-lg" aria-hidden="true"></span></button>
+                    </div>
+                    <div class="pg-rightcluster pg-db-tools">
+                        ' . implode('', (array) $controls['tools']) . '
+                    </div>
+                    ' . $menu . '
+                    <div class="pg-rightcluster pg-db-foot">
+                        ' . $controls['site'] . '
+                        <ul class="navbar-nav pg-db-account">' . trim($controls['account']) . '</ul>
+                    </div>
+                </div>';
 }
 
 /**
@@ -6573,7 +6694,7 @@ function license_check($properties = false)
                              style="width:' . h($bar_progress) . '%"
                              aria-valuenow="' . (int) $countdown . '" aria-valuemin="0" aria-valuemax="365"></div>
                     </div>
-                </div>';
+                </div>' . pg_ai_quota_card_html(pg_ai_quota_view(pg_ai_quota(), time()));
             } elseif ($status === 'success' && $expiration_dt instanceof DateTime) {
                 // expired — show the date it expired
                 $bar_body = '
@@ -8092,6 +8213,7 @@ function pg_js_bundles()
             'assets/js/workspace_channel_activity.js',
             'assets/js/workspace_conversation_timeline.js',
             'assets/js/workspace_my_calendar_roadmap.js',
+            'assets/js/workspace_my_calendar_week.js',
             'assets/js/workspace_my_calendar.js',
             'assets/js/workspace_translate.js',
             'assets/js/workspace_highlights.js',
@@ -8136,11 +8258,12 @@ function pg_js_bundles()
             'assets/js/pg_google_fonts.js', 'assets/js/pg_image_editor_model.js', 'assets/js/pg_image_editor.js',
             'assets/js/pg_image_editor_crop.js', 'assets/js/pg_image_editor_adjust.js', 'assets/js/pg_image_editor_layers.js',
             'assets/js/pg_image_editor_draw.js', 'assets/js/pg_image_editor_text.js', 'assets/js/pg_image_editor_sticker.js',
-            'assets/js/pg_image_editor_redact.js', 'assets/js/pg_image_editor_area.js', 'assets/js/pg_image_editor_versions.js', 'assets/js/pg_image_editor_artboard.js',
+            'assets/js/pg_image_editor_redact.js', 'assets/js/pg_image_editor_area.js', 'assets/js/pg_image_editor_versions.js', 'assets/js/pg_image_editor_artboard.js', 'assets/js/pg_image_editor_langview.js',
             'assets/js/pg_image_editor_export.js', 'assets/js/pg_image_editor_vector.js', 'assets/js/pg_image_editor_svg.js',
-            'assets/js/pg_image_editor_motion.js', 'assets/js/pg_image_editor_tracks.js', 'assets/js/pg_image_editor_sound.js', 'assets/js/pg_image_editor_keyframes.js', 'assets/js/pg_image_editor_render.js', 'assets/js/pg_image_editor_scenes.js', 'assets/js/pg_image_editor_present.js', 'assets/js/pg_image_editor_access.js', 'assets/js/pg_image_editor_record.js', 'assets/js/pg_image_editor_follow.js', 'assets/js/pg_image_editor_fonts.js',
-            'assets/js/pg_image_editor_glyph.js', 'assets/js/pg_image_editor_data.js', 'assets/js/pg_image_editor_warp.js', 'assets/js/pg_image_editor_puppet.js', 'assets/js/pg_image_editor_outline.js', 'assets/js/pg_image_editor_builder.js',
-            'assets/js/pg_image_editor_video.js', 'assets/js/pg_image_editor_clip.js', 'assets/js/pg_image_editor_mix.js', 'assets/js/pg_image_editor_upload.js', 'assets/js/pg_image_editor_phone.js', 'assets/js/pg_image_editor_actions.js', 'assets/js/pg_image_editor_menu.js'),
+            'assets/js/pg_image_editor_motion.js', 'assets/js/pg_image_editor_tracks.js', 'assets/js/pg_image_editor_sound.js', 'assets/js/pg_image_editor_keyframes.js', 'assets/js/pg_image_editor_render.js', 'assets/js/pg_image_editor_scenes.js', 'assets/js/pg_image_editor_present.js', 'assets/js/pg_image_editor_access.js', 'assets/js/pg_image_editor_record.js', 'assets/js/pg_image_editor_follow.js', 'assets/js/pg_image_editor_fonts.js', 'assets/js/pg_image_editor_textstyles.js',
+            'assets/js/pg_image_editor_glyph.js', 'assets/js/pg_image_editor_elements.js', 'assets/js/pg_image_editor_starts.js', 'assets/js/pg_image_editor_resize.js', 'assets/js/pg_image_editor_frames.js', 'assets/js/pg_image_editor_unsplash.js', 'assets/js/pg_image_editor_data.js', 'assets/js/pg_image_editor_warp.js', 'assets/js/pg_image_editor_puppet.js', 'assets/js/pg_image_editor_outline.js', 'assets/js/pg_image_editor_builder.js',
+            'assets/js/pg_image_editor_video.js', 'assets/js/pg_image_editor_clip.js', 'assets/js/pg_image_editor_mix.js', 'assets/js/pg_image_editor_upload.js', 'assets/js/pg_image_editor_phone.js', 'assets/js/pg_image_editor_colors.js', 'assets/js/pg_image_editor_actions.js',
+            'assets/js/pg_image_editor_menu.js'),
         // The image editor's animation encoder, started as a worker (or on the
         // page) by pg_image_editor_render.js.
         'assets/js/pg_image_editor_encode.min.js'  => array('assets/js/pg_image_editor_encode.js'),
@@ -8148,6 +8271,8 @@ function pg_js_bundles()
         'assets/js/pg_image_editor_subject.min.js' => array('assets/js/pg_image_editor_subject.js'),
         // Follow's tracker, started as a worker by the Animate tool.
         'assets/js/pg_image_editor_track.min.js'   => array('assets/js/pg_image_editor_track.js'),
+        // The design file's Import, loaded by the canvas when it is used.
+        'assets/js/pg_image_editor_design.min.js'  => array('assets/js/pg_image_editor_design.js'),
         'assets/js/pg_fx.min.js'                   => array('assets/js/pg_fx.src.js'),
         // The real-user speed beacon of public pages (includes/fn/page_vitals.php).
         'assets/js/pg_vitals.min.js'               => array('assets/js/pg_vitals.src.js'),

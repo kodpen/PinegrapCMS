@@ -326,7 +326,10 @@ function pg_library_export_text($items, $at)
 // "-library" ("Studio Calm" gives studio-calm-library.json).
 function pg_library_export_file_name($site_name)
 {
-    $slug = strtolower(trim((string)preg_replace('/[^a-zA-Z0-9]+/', '-', (string)$site_name), '-'));
+    // Accented and Turkish letters become their plain letters first, or
+    // "Müşteri" would lose them and give "m-teri".
+    $name = pg_ascii_file_name((string)$site_name);
+    $slug = strtolower(trim((string)preg_replace('/[^a-zA-Z0-9]+/', '-', $name), '-'));
     if ($slug === '') return 'library.json';
     return substr($slug, 0, 60) . '-library.json';
 }

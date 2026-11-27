@@ -1910,6 +1910,7 @@ function get_system_status_checks()
     //   cone      → maintenance mode       rss      → product feeds
     //   bug       → PHP security fixes
     //   globe     → CORS preflight         hdd-network → unlisted proxy
+    //   credit-card → payment mode
     //
     // Where the family offers a natural negative form (unlock, shield-slash,
     // database-x) use it for the failing state: it reinforces the colour instead
@@ -1968,6 +1969,7 @@ function get_system_status_checks()
         'Object Storage'           => 'Storage',
         'Canvas Drawing'           => 'Canvas',
         'Unlisted Proxy'           => 'Proxy',
+        'Payment Mode'             => 'Payments',
     );
 
     // The three checks that answer "can someone get in": files that have been
@@ -2007,6 +2009,7 @@ function get_system_status_checks()
         'e-Fatura Threshold',
         'Object Storage',
         'Unlisted Proxy',
+        'Payment Mode',
     );
 
     // Records one check. Named $makeIcon still, and still called as
@@ -4096,6 +4099,66 @@ function get_system_status_checks()
                 pg_merchant_center_url($merchant_state['account']),
                 pg_merchant_issue_detail($merchant_state['issues'])
             );
+        }
+    }
+
+    // 💳 Payment mode (pg_launch_journey_payment_test_ways() in includes/fn/launch_journey.php)
+    //
+    // A row only on a site whose shop is on and that pressed "Go live" on the
+    // set-up card: a payment way put back to test there (a Stripe test key,
+    // PayPal sandbox, PayTR test) leaves customers unable to pay for real,
+    // and once the card is closed nothing else says so. The card's own rule
+    // decides, so the two never disagree; a way whose mode cannot be read is
+    // no warning. Reported, not scored, like Product Feeds.
+    if (defined('ECOMMERCE') && (ECOMMERCE === true) && function_exists('pg_launch_journey_payment_test_ways')) {
+
+        $payment_test = pg_launch_journey_payment_test_ways(
+            true,
+            pg_launch_journey_stored()['live_at'],
+            pg_launch_journey_payment_facts(),
+            defined('ECOMMERCE_PAYMENT_GATEWAY_MODE') ? (string) ECOMMERCE_PAYMENT_GATEWAY_MODE : ''
+        );
+
+        if ($payment_test !== null) {
+
+            $payment_href = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . pg_settings_link('commerce', 'pgset-payments');
+
+            if ($payment_test) {
+
+                $payment_detail = array();
+
+                foreach ($payment_test as $payment_way) {
+                    $payment_driver = pg_payment_driver($payment_way);
+
+                    $payment_detail[] = array(
+                        'label' => ($payment_driver !== null) ? $payment_driver['label'] : pg_payment_method_label($payment_way),
+                        'state' => 'warn',
+                        'when'  => lang('Test'),
+                    );
+                }
+
+                $output .= $makeIcon(
+                    'bi-credit-card',
+                    'fg-warning',
+                    'Payment Mode',
+                    'A payment way that is switched on is in test mode, so customers cannot pay for real. Switch it to live on the Payment Methods card.',
+                    lang(array('string' => '{var:1} in test', 'vars' => pg_format_number(count($payment_test), 0))),
+                    $payment_href,
+                    $payment_detail
+                );
+
+            } else {
+
+                $output .= $makeIcon(
+                    'bi-credit-card',
+                    'fg-success',
+                    'Payment Mode',
+                    'No payment way that is switched on is in test mode.',
+                    lang('Live'),
+                    $payment_href
+                );
+
+            }
         }
     }
 

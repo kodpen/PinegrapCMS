@@ -216,6 +216,21 @@ function test_publish_weight_findings_in_the_publish_check_shape()
 	pg_assert_contains((string) $budget['images'], $found[0]['detail'], 'the budget shown');
 }
 
+// A gallery, a carousel or a widget draws several pictures from one editor
+// node: each gets its own id (the nth picture of that node), so "Ignore on
+// this page" on one does not hide the others and the count stays right. The
+// first picture of a node keeps the id it had.
+function test_publish_weight_findings_of_pictures_of_one_node_have_their_own_ids()
+{
+	$html = '<html><body><div data-pg-node="g1"><img src="/a.jpg"><img src="/b.jpg"><img src="/c.jpg"></div>'
+		. '<img data-pg-node="n2" src="/d.jpg"></body></html>';
+	$found = pg_publish_weight_findings(pg_publish_weight_measure($html, array()), array(), array());
+	$ids = array_map(function ($f) { return $f['id']; }, $found);
+
+	pg_assert_same(array('weight:img_no_size:g1:0', 'weight:img_no_size:g1:1', 'weight:img_no_size:g1:2',
+		'weight:img_no_size:n2:0'), $ids);
+}
+
 function test_publish_weight_findings_of_a_light_page_are_none()
 {
 	$m = pg_publish_weight_measure('<html><body><img src="/a.jpg" width="10" height="10"></body></html>',
@@ -255,6 +270,24 @@ function test_publish_weight_local_files_reads_sizes_under_the_root_only()
 	@rmdir($root . '/files');
 	@rmdir($root);
 	@unlink(sys_get_temp_dir() . '/pgpw_outside.css');
+}
+
+// A picture address with an encoded null byte (/files/a%00.jpg, typed in
+// the draft) is a file the measure cannot read: it is left out, as a
+// missing file is, instead of stopping the whole check (PHP 8 throws on a
+// path with a null byte).
+function test_publish_weight_local_files_leaves_out_an_address_with_a_null_byte()
+{
+	$root = sys_get_temp_dir() . '/pgpwnul' . getmypid();
+	@mkdir($root, 0777, true);
+	file_put_contents($root . '/a.jpg', 'x');
+
+	$files = pg_publish_weight_local_files(array('/a%00.jpg', '/a.jpg'), $root, '/');
+
+	pg_assert_same(array('/a.jpg'), array_keys($files));
+
+	@unlink($root . '/a.jpg');
+	@rmdir($root);
 }
 
 // The design's own stylesheet is the one the render prints last as
@@ -316,4 +349,16 @@ function test_publish_weight_seo_check_wiring()
 	pg_assert_contains('pg_designer_publish_weight(', $src, 'measured');
 	pg_assert_contains('pg_publish_weight_report(', (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/seo_draft.php'), 'on the report');
 	pg_assert_contains("'weight'          => \$weight", $src, 'answered');
+}
+
+// seo_check reads a saved page's stored SEO findings, link score and speed
+// by the id the request names: a content-level operator who may not even
+// know the page is there ('hidden', as page_load refuses it) is refused.
+function test_publish_weight_seo_check_refuses_a_hidden_page()
+{
+	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/panel/designer.php');
+	$start = strpos($src, "case 'seo_check':");
+	$case = substr($src, $start, strpos($src, 'pg_seo_build_context(', $start) - $start);
+
+	pg_assert_contains("pg_designer_page_access(\$page_id, \$user) === 'hidden'", $case, 'checked before any stored row is read');
 }

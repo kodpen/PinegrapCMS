@@ -1,28 +1,18 @@
 ---
 name: settings-tidy-census-order
-description: Survey of the Site Settings categories, its second part: how old each category looks, what is already planned or decided, and the order of the per-category tidy plans
+description: Survey of the Site Settings categories, its second part: which categories still look old, their plans, and what is decided for every tidy
 ---
 
-## How old does each category look?
-- Look A today: Integrations, Assistants and agents, Features, Communication, Firewall and HTTPS, Accounts and sign-in (the `pg_settings_fold()` users), Channels; Team and working hours nearly.
-- Mixed: General, Appearance, SEO, Visitors and privacy, Languages and Translation, Fediverse, Updates and maintenance.
-- Old: Ecommerce (127 fields, 18 popover rows, 16 plain radios), Accounting (the ERP card about 40 fields flat, `accounting.php:29-288`), Bookings (a fieldset a service and an always-open empty "New service").
-- Old parts: popover rows under switches; plain radios where `pg-seg` is the rule; cards over 8 fields; raw input tables; long help paragraphs; logs inside settings; a Ctrl multi-select for feed categories (`commerce.php:1120-1124`).
-- Old buttons in helpers drawn into settings, not reached by the S5 pass: `includes/fn/address_autocomplete.php:804`, `carrier_api.php:648`, `carrier_labels.php:1446`, `geo.php:658`, `google_reviews.php:451`.
-
-## What is already planned?
-- Assistants and agents: done (AT1 to AT6, `ui/settings-fold-rows.md`). Features: done (`ui/settings-features.md`). E-mail: done (`ui/settings-mail.md`). Mailboxes: done (`ui/look-settings-mailboxes.md`). Visitors and privacy: done (`ui/settings-privacy.md`). Bookings: done (`ui/booking-settings.md`). Communication: done (`ui/settings-communication.md`). Firewall and HTTPS with Accounts and sign-in: done (`ui/settings-firewall.md`, `ui/settings-accounts.md`).
-- Credentials on category cards: all moved to Connections, the plan closed on 2026-11-24 (`ui/connections-one-place.md`); a tidy no longer waits for a connections step.
-- The starting-point sheet and the numbered-steps drawer: DX2 (#10885).
+## Which categories still look old?
+- Mixed, with no plan: SEO, Languages and Translation, Fediverse; their faults are in `settings-scan-findings.md`.
+- Old buttons in helpers drawn into settings: `includes/fn/geo.php`, `google_reviews.php`.
+- Done: General, Appearance, Features, E-mail, Mailboxes, Visitors and privacy, Bookings, Communication, Ecommerce, Firewall and HTTPS, Accounts and sign-in, Assistants and agents, Accounting, Updates and maintenance (their `ui/settings-*.md`); the hand-over to Connections (`ui/settings-crossings-rule.md`).
 
 ## What is decided and stays?
 - One place per setting, the five groups, anchors and keys kept, one Save a pane: `decisions-made-product-14.md`. A drawer, never a second dialog: `decisions-made-panel-3.md`. An "Advanced" fold: `decisions-made-workspace-15.md`.
-- AI crawlers in SEO (#3908); Bookings' own hours honouring Workspace holidays (`commerce/bookings-model.md`); a disabled feature's card never hidden (`ui/settings-card-save-rules.md`); the sales watch's behaviour (`decisions-made-product-84.md`).
+- AI crawlers in SEO (#3908); a disabled feature's card never hidden (`ui/settings-card-save-rules.md`); the sales watch's behaviour (`decisions-made-product-84.md`).
 
-## In which order are the plans written?
-- One category a plan, each written when the queue allows and the session's PR before it has landed.
-- 5. General and Appearance: done (`ui/settings-general.md`, `ui/settings-appearance.md`).
-- 7. Ecommerce, after its CX11 step. 8. Accounting's ERP card split, after its CX11 step. 9. Updates and maintenance (cron steps, one S3, K2), after its CX11 step.
-- Which date format wins: a page in another language uses that language's format, said under Date Format (`ui/settings-general.md`). The Workspace menu's "Workspace Settings" entry stays: it names the group (`workspace/workspace-settings-place-names.md`).
+## In which order?
+- One category a plan, each written when the queue allows; the panes without a plan come next.
 
 Related: docs/memory/plans/settings-tidy-census.md

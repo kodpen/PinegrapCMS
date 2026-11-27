@@ -32,7 +32,6 @@ function test_settings_card_radio_groups_have_a_legend()
 {
 	$groups = array(
 		'appearance.php' => array('Editor version'),
-		'commerce.php' => array('Recipient Mode', 'Enforcement', 'Transaction Type', 'Mode', 'Price before the discount'),
 		'features.php' => array('Site Search Type', 'Setup'),
 		'firewall.php' => array('Mode', 'Restriction', 'Content security policy'),
 		'general.php' => array('Date Format', 'Time Format'),
@@ -50,8 +49,15 @@ function test_settings_card_radio_groups_have_a_legend()
 	}
 
 	$commerce = settings_card_names_source('commerce.php');
-	pg_assert_same(3, preg_match_all('/<legend class="form-label pg-field-label">\'\s*\.\s*lang\(\'Mode\'\)/', $commerce), 'commerce.php: all three Mode groups have a legend');
-	pg_assert_same(2, preg_match_all('/<legend class="form-label pg-field-label">\'\s*\.\s*lang\(\'Transaction Type\'\)/', $commerce), 'commerce.php: both Transaction Type groups have a legend');
+	// The gateways' choices are pg-segs; pg_commerce_settings_seg() draws
+	// their legend (tests/settings_commerce_store_payments_test.php).
+	pg_assert_same(3, substr_count($commerce, "pg_commerce_settings_seg(lang('Mode')"), 'commerce.php: all three Mode groups have a legend');
+	pg_assert_same(2, substr_count($commerce, "pg_commerce_settings_seg(lang('Transaction type')"), 'commerce.php: both Transaction type groups have a legend');
+	pg_assert_same(1, substr_count($commerce, "pg_commerce_settings_seg(lang('Recipient mode')"), 'commerce.php: Recipient mode has a legend');
+	pg_assert_same(1, substr_count($commerce, "pg_commerce_settings_seg(lang('Enforcement')"), 'commerce.php: Enforcement has a legend');
+	// The reference price rules are radio rows; pg_commerce_settings_choice()
+	// draws their legend (tests/settings_commerce_giftcards_test.php).
+	pg_assert_same(1, substr_count($commerce, "pg_commerce_settings_choice('ecommerce_reference_price_rule', lang('Price before the discount')"), 'commerce.php: Price before the discount has a legend');
 
 	$general = settings_card_names_source('general.php');
 	pg_assert_contains('<div class="pg-text-meta">\' . lang(\'Current Site Time\') . \': \'', $general, 'Current Site Time names no control, so it is a meta line, not a label');
@@ -86,16 +92,10 @@ function test_settings_card_code_fields_are_named()
 	$appearance = settings_card_names_source('appearance.php');
 	pg_assert_contains('<label class="form-label" for="custom_css">', $appearance, 'the Panel CSS label points at its textarea');
 
+	// The job commands are lines with a named Copy button; each job's switch
+	// is named by its row's name (tests/settings_maintenance_cron_test.php).
 	$general = settings_card_names_source('maintenance.php');
-	pg_assert_contains('<textarea id="cron_job_general_dispatch" aria-label="\' . h(lang(\'General job command\')) . \'">', $general, 'the dispatch command box has a translated name');
-
-	$jobs = array('general', 'webhook', 'push', 'exchange_rates', 'email_campaign', 'search_index', 'seo_score', 'seo_analyze', 'requrring_payment', 'membership', 'auto_backup');
-
-	foreach ($jobs as $job) {
-		$id = 'cron_job_' . $job;
-		pg_assert_contains('<h4 class="pg-group-label" id="' . $id . '_title">', $general, $id . ': its heading has an id');
-		pg_assert_contains('<textarea id="' . $id . '" aria-labelledby="' . $id . '_title">', $general, $id . ': its textarea is named by the heading');
-	}
+	pg_assert_contains('pg_copy_button($maintenance_cron_general, lang(\'Copy the command\'), \'cron_job_general_command\')', $general, 'the general job\'s command has a named Copy');
 }
 
 function test_settings_card_barcode_type_is_named()

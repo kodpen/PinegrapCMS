@@ -1,0 +1,160 @@
+{
+ "pairs": [
+  {
+   "id": "classic",
+   "head": {
+    "family": "Playfair Display",
+    "weight": 700,
+    "text": "fontPairClassicHead"
+   },
+   "line": {
+    "family": "Source Sans 3",
+    "weight": 400,
+    "text": "fontPairClassicLine"
+   }
+  },
+  {
+   "id": "modern",
+   "head": {
+    "family": "Montserrat",
+    "weight": 700,
+    "text": "fontPairModernHead"
+   },
+   "line": {
+    "family": "Merriweather",
+    "weight": 400,
+    "text": "fontPairModernLine"
+   }
+  },
+  {
+   "id": "bold",
+   "head": {
+    "family": "Bebas Neue",
+    "weight": 400,
+    "text": "fontPairBoldHead"
+   },
+   "line": {
+    "family": "Open Sans",
+    "weight": 400,
+    "text": "fontPairBoldLine"
+   }
+  },
+  {
+   "id": "elegant",
+   "head": {
+    "family": "Cormorant Garamond",
+    "weight": 600,
+    "text": "fontPairElegantHead"
+   },
+   "line": {
+    "family": "Lato",
+    "weight": 400,
+    "text": "fontPairElegantLine"
+   }
+  },
+  {
+   "id": "friendly",
+   "head": {
+    "family": "Pacifico",
+    "weight": 400,
+    "text": "fontPairFriendlyHead"
+   },
+   "line": {
+    "family": "Quicksand",
+    "weight": 400,
+    "text": "fontPairFriendlyLine"
+   }
+  },
+  {
+   "id": "editorial",
+   "head": {
+    "family": "DM Serif Display",
+    "weight": 400,
+    "text": "fontPairEditorialHead"
+   },
+   "line": {
+    "family": "DM Sans",
+    "weight": 400,
+    "text": "fontPairEditorialLine"
+   }
+  },
+  {
+   "id": "strong",
+   "head": {
+    "family": "Archivo Black",
+    "weight": 400,
+    "text": "fontPairStrongHead"
+   },
+   "line": {
+    "family": "Work Sans",
+    "weight": 400,
+    "text": "fontPairStrongLine"
+   }
+  },
+  {
+   "id": "story",
+   "head": {
+    "family": "Josefin Sans",
+    "weight": 700,
+    "text": "fontPairStoryHead"
+   },
+   "line": {
+    "family": "Libre Baskerville",
+    "weight": 400,
+    "text": "fontPairStoryLine"
+   }
+  },
+  {
+   "id": "launch",
+   "head": {
+    "family": "Space Grotesk",
+    "weight": 700,
+    "text": "fontPairLaunchHead"
+   },
+   "line": {
+    "family": "IBM Plex Mono",
+    "weight": 400,
+    "text": "fontPairLaunchLine"
+   }
+  },
+  {
+   "id": "menu",
+   "head": {
+    "family": "Fraunces",
+    "weight": 700,
+    "text": "fontPairMenuHead"
+   },
+   "line": {
+    "family": "Nunito",
+    "weight": 400,
+    "text": "fontPairMenuLine"
+   }
+  },
+  {
+   "id": "poster",
+   "head": {
+    "family": "Anton",
+    "weight": 400,
+    "text": "fontPairPosterHead"
+   },
+   "line": {
+    "family": "Karla",
+    "weight": 400,
+    "text": "fontPairPosterLine"
+   }
+  },
+  {
+   "id": "thanks",
+   "head": {
+    "family": "Dancing Script",
+    "weight": 700,
+    "text": "fontPairThanksHead"
+   },
+   "line": {
+    "family": "Raleway",
+    "weight": 400,
+    "text": "fontPairThanksLine"
+   }
+  }
+ ]
+}

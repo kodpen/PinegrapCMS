@@ -1,0 +1,1174 @@
+[
+	{
+		"about": "the owner's first case: a text alone grows into the free room, its middle kept",
+		"doc": {
+			"v": 1,
+			"artboard": {
+				"width": 1000,
+				"height": 500
+			},
+			"layers": [
+				{
+					"id": "a",
+					"type": "text",
+					"text": "Summer sale",
+					"size": 40,
+					"x": 390,
+					"y": 225,
+					"w": 220,
+					"h": 50,
+					"align": "center"
+				}
+			]
+		},
+		"texts": [
+			{
+				"id": "a",
+				"field": "text",
+				"text": "Sommerschlussverkauf"
+			}
+		],
+		"rooms": {
+			"a": {
+				"x": 20,
+				"y": 20,
+				"w": 960,
+				"h": 460
+			}
+		},
+		"layers": {
+			"a": {
+				"x": 300,
+				"y": 225,
+				"w": 400,
+				"h": 50,
+				"size": 40
+			}
+		},
+		"fit": 0
+	},
+	{
+		"about": "the owner's second case: a text on the left edge grows to the right",
+		"doc": {
+			"v": 1,
+			"artboard": {
+				"width": 1000,
+				"height": 500
+			},
+			"layers": [
+				{
+					"id": "a",
+					"type": "text",
+					"text": "Big deals",
+					"size": 40,
+					"x": 10,
+					"y": 100,
+					"w": 180,
+					"h": 50
+				}
+			]
+		},
+		"texts": [
+			{
+				"id": "a",
+				"field": "text",
+				"text": "Grosse Angebote heute"
+			}
+		],
+		"rooms": {
+			"a": {
+				"x": 10,
+				"y": 20,
+				"w": 970,
+				"h": 460
+			}
+		},
+		"layers": {
+			"a": {
+				"x": 10,
+				"y": 100,
+				"w": 420,
+				"h": 50,
+				"size": 40
+			}
+		},
+		"fit": 0
+	},
+	{
+		"about": "the owner's second case: a right aligned text on the right edge grows to the left",
+		"doc": {
+			"v": 1,
+			"artboard": {
+				"width": 1000,
+				"height": 500
+			},
+			"layers": [
+				{
+					"id": "a",
+					"type": "text",
+					"text": "Big deals",
+					"size": 40,
+					"x": 810,
+					"y": 100,
+					"w": 180,
+					"h": 50,
+					"align": "right"
+				}
+			]
+		},
+		"texts": [
+			{
+				"id": "a",
+				"field": "text",
+				"text": "Grosse Angebote heute"
+			}
+		],
+		"rooms": {
+			"a": {
+				"x": 20,
+				"y": 20,
+				"w": 970,
+				"h": 460
+			}
+		},
+		"layers": {
+			"a": {
+				"x": 570,
+				"y": 100,
+				"w": 420,
+				"h": 50,
+				"size": 40
+			}
+		},
+		"fit": 0
+	},
+	{
+		"about": "a centred text near the left edge slides right, its edge kept",
+		"doc": {
+			"v": 1,
+			"artboard": {
+				"width": 1000,
+				"height": 500
+			},
+			"layers": [
+				{
+					"id": "a",
+					"type": "text",
+					"text": "Big deals",
+					"size": 40,
+					"x": 30,
+					"y": 100,
+					"w": 180,
+					"h": 50,
+					"align": "center"
+				}
+			]
+		},
+		"texts": [
+			{
+				"id": "a",
+				"field": "text",
+				"text": "Grosse Angebote heute"
+			}
+		],
+		"rooms": {
+			"a": {
+				"x": 30,
+				"y": 20,
+				"w": 950,
+				"h": 460
+			}
+		},
+		"layers": {
+			"a": {
+				"x": 30,
+				"y": 100,
+				"w": 420,
+				"h": 50,
+				"size": 40
+			}
+		},
+		"fit": 0
+	},
+	{
+		"about": "a text on the top edge grows down with more lines",
+		"doc": {
+			"v": 1,
+			"artboard": {
+				"width": 1000,
+				"height": 500
+			},
+			"layers": [
+				{
+					"id": "a",
+					"type": "text",
+					"text": "Hello\nWorld",
+					"size": 40,
+					"x": 300,
+					"y": 5,
+					"w": 100,
+					"h": 100
+				}
+			]
+		},
+		"texts": [
+			{
+				"id": "a",
+				"field": "text",
+				"text": "Hallo\nliebe\nWelt"
+			}
+		],
+		"rooms": {
+			"a": {
+				"x": 20,
+				"y": 5,
+				"w": 960,
+				"h": 475
+			}
+		},
+		"layers": {
+			"a": {
+				"x": 300,
+				"y": 5,
+				"w": 100,
+				"h": 150,
+				"size": 40
+			}
+		},
+		"fit": 0
+	},
+	{
+		"about": "a text on the bottom edge grows up with more lines",
+		"doc": {
+			"v": 1,
+			"artboard": {
+				"width": 1000,
+				"height": 500
+			},
+			"layers": [
+				{
+					"id": "a",
+					"type": "text",
+					"text": "Hello\nWorld",
+					"size": 40,
+					"x": 300,
+					"y": 395,
+					"w": 100,
+					"h": 100
+				}
+			]
+		},
+		"texts": [
+			{
+				"id": "a",
+				"field": "text",
+				"text": "Hallo\nliebe\nWelt"
+			}
+		],
+		"rooms": {
+			"a": {
+				"x": 20,
+				"y": 20,
+				"w": 960,
+				"h": 475
+			}
+		},
+		"layers": {
+			"a": {
+				"x": 300,
+				"y": 345,
+				"w": 100,
+				"h": 150,
+				"size": 40
+			}
+		},
+		"fit": 0
+	},
+	{
+		"about": "the owner's third case: two texts side by side share the middle between them",
+		"doc": {
+			"v": 1,
+			"artboard": {
+				"width": 1000,
+				"height": 500
+			},
+			"layers": [
+				{
+					"id": "a",
+					"type": "text",
+					"text": "Fresh food",
+					"size": 40,
+					"x": 100,
+					"y": 200,
+					"w": 200,
+					"h": 50
+				},
+				{
+					"id": "b",
+					"type": "text",
+					"text": "Fast lanes",
+					"size": 40,
+					"x": 340,
+					"y": 200,
+					"w": 200,
+					"h": 50
+				}
+			]
+		},
+		"texts": [
+			{
+				"id": "a",
+				"field": "text",
+				"text": "Frische Speise"
+			},
+			{
+				"id": "b",
+				"field": "text",
+				"text": "Schnelle Wege"
+			}
+		],
+		"rooms": {
+			"a": {
+				"x": 20,
+				"y": 20,
+				"w": 290,
+				"h": 460
+			},
+			"b": {
+				"x": 330,
+				"y": 20,
+				"w": 650,
+				"h": 460
+			}
+		},
+		"layers": {
+			"a": {
+				"x": 30,
+				"y": 200,
+				"w": 280,
+				"h": 50,
+				"size": 40
+			},
+			"b": {
+				"x": 340,
+				"y": 200,
+				"w": 260,
+				"h": 50,
+				"size": 40
+			}
+		},
+		"fit": 0
+	},
+	{
+		"about": "two texts stacked share the middle upright",
+		"doc": {
+			"v": 1,
+			"artboard": {
+				"width": 1000,
+				"height": 500
+			},
+			"layers": [
+				{
+					"id": "a",
+					"type": "text",
+					"text": "Top line",
+					"size": 40,
+					"x": 300,
+					"y": 100,
+					"w": 160,
+					"h": 50
+				},
+				{
+					"id": "b",
+					"type": "text",
+					"text": "Next line",
+					"size": 40,
+					"x": 300,
+					"y": 170,
+					"w": 180,
+					"h": 50
+				}
+			]
+		},
+		"texts": [
+			{
+				"id": "a",
+				"field": "text",
+				"text": "Oberste\nZeile"
+			},
+			{
+				"id": "b",
+				"field": "text",
+				"text": "Zeile"
+			}
+		],
+		"rooms": {
+			"a": {
+				"x": 20,
+				"y": 20,
+				"w": 960,
+				"h": 130
+			},
+			"b": {
+				"x": 20,
+				"y": 170,
+				"w": 960,
+				"h": 310
+			}
+		},
+		"layers": {
+			"a": {
+				"x": 300,
+				"y": 50,
+				"w": 140,
+				"h": 100,
+				"size": 40
+			},
+			"b": {
+				"x": 300,
+				"y": 170,
+				"w": 100,
+				"h": 50,
+				"size": 40
+			}
+		},
+		"fit": 0
+	},
+	{
+		"about": "a headline over a line grows across, its height stops at the line",
+		"doc": {
+			"v": 1,
+			"artboard": {
+				"width": 1000,
+				"height": 500
+			},
+			"layers": [
+				{
+					"id": "a",
+					"type": "text",
+					"text": "Headline",
+					"size": 40,
+					"x": 340,
+					"y": 100,
+					"w": 160,
+					"h": 50,
+					"align": "center"
+				},
+				{
+					"id": "line",
+					"type": "rect",
+					"x": 300,
+					"y": 170,
+					"w": 400,
+					"h": 4
+				}
+			]
+		},
+		"texts": [
+			{
+				"id": "a",
+				"field": "text",
+				"text": "Die grosse\nSchlagzeile"
+			}
+		],
+		"rooms": {
+			"a": {
+				"x": 20,
+				"y": 20,
+				"w": 960,
+				"h": 130
+			}
+		},
+		"layers": {
+			"a": {
+				"x": 310,
+				"y": 50,
+				"w": 220,
+				"h": 100,
+				"size": 40
+			}
+		},
+		"fit": 0
+	},
+	{
+		"about": "a text on a card stays on the card and shrinks less than before",
+		"doc": {
+			"v": 1,
+			"artboard": {
+				"width": 1000,
+				"height": 500
+			},
+			"layers": [
+				{
+					"id": "card",
+					"type": "rect",
+					"x": 100,
+					"y": 100,
+					"w": 300,
+					"h": 200
+				},
+				{
+					"id": "a",
+					"type": "text",
+					"text": "Card title",
+					"size": 40,
+					"x": 150,
+					"y": 175,
+					"w": 200,
+					"h": 50,
+					"align": "center"
+				}
+			]
+		},
+		"texts": [
+			{
+				"id": "a",
+				"field": "text",
+				"text": "Kartenueberschriften"
+			}
+		],
+		"rooms": {
+			"a": {
+				"x": 108,
+				"y": 108,
+				"w": 284,
+				"h": 184
+			}
+		},
+		"layers": {
+			"a": {
+				"x": 108,
+				"y": 182.25,
+				"w": 284,
+				"h": 35.5,
+				"size": 28.4
+			}
+		},
+		"fit": 0
+	},
+	{
+		"about": "a text turned a quarter grows along its own frame",
+		"doc": {
+			"v": 1,
+			"artboard": {
+				"width": 1000,
+				"height": 500
+			},
+			"layers": [
+				{
+					"id": "a",
+					"type": "text",
+					"text": "Turned text",
+					"size": 40,
+					"x": 390,
+					"y": 225,
+					"w": 220,
+					"h": 50,
+					"align": "center",
+					"rot": 90
+				}
+			]
+		},
+		"texts": [
+			{
+				"id": "a",
+				"field": "text",
+				"text": "Gedrehter langer Text!"
+			}
+		],
+		"rooms": {
+			"a": {
+				"x": 270,
+				"y": -230,
+				"w": 460,
+				"h": 960
+			}
+		},
+		"layers": {
+			"a": {
+				"x": 280,
+				"y": 225,
+				"w": 440,
+				"h": 50,
+				"size": 40
+			}
+		},
+		"fit": 0
+	},
+	{
+		"about": "a text turned 30 degrees stays inside the picture",
+		"doc": {
+			"v": 1,
+			"artboard": {
+				"width": 600,
+				"height": 400
+			},
+			"layers": [
+				{
+					"id": "a",
+					"type": "text",
+					"text": "Slanted",
+					"size": 40,
+					"x": 230,
+					"y": 180,
+					"w": 140,
+					"h": 50,
+					"rot": 30
+				}
+			]
+		},
+		"texts": [
+			{
+				"id": "a",
+				"field": "text",
+				"text": "Schraeger langer Text"
+			}
+		],
+		"rooms": {
+			"a": {
+				"x": -13.5,
+				"y": 180,
+				"w": 627,
+				"h": 50
+			}
+		},
+		"layers": {
+			"a": {
+				"x": 179.63,
+				"y": 231.75,
+				"w": 420,
+				"h": 50,
+				"size": 40
+			}
+		},
+		"fit": 0
+	},
+	{
+		"about": "a sticker's label is left in its sticker, and the sticker bounds the text beside it",
+		"doc": {
+			"v": 1,
+			"artboard": {
+				"width": 1000,
+				"height": 500
+			},
+			"layers": [
+				{
+					"id": "a",
+					"type": "text",
+					"text": "Only today",
+					"size": 40,
+					"x": 300,
+					"y": 200,
+					"w": 200,
+					"h": 50
+				},
+				{
+					"id": "s",
+					"type": "sticker",
+					"kind": "burst",
+					"label": "New",
+					"x": 540,
+					"y": 180,
+					"w": 90,
+					"h": 90
+				}
+			]
+		},
+		"texts": [
+			{
+				"id": "a",
+				"field": "text",
+				"text": "Nur heute guenstiger"
+			},
+			{
+				"id": "s",
+				"field": "label",
+				"text": "Neu"
+			}
+		],
+		"rooms": {
+			"a": {
+				"x": 20,
+				"y": 20,
+				"w": 500,
+				"h": 460
+			}
+		},
+		"layers": {
+			"a": {
+				"x": 120,
+				"y": 200,
+				"w": 400,
+				"h": 50,
+				"size": 40
+			}
+		},
+		"fit": 0
+	},
+	{
+		"about": "a hidden layer, a clear one and one above that covers the text are not read",
+		"doc": {
+			"v": 1,
+			"artboard": {
+				"width": 1000,
+				"height": 500
+			},
+			"layers": [
+				{
+					"id": "a",
+					"type": "text",
+					"text": "Read me",
+					"size": 40,
+					"x": 300,
+					"y": 200,
+					"w": 140,
+					"h": 50
+				},
+				{
+					"id": "h",
+					"type": "rect",
+					"x": 450,
+					"y": 200,
+					"w": 50,
+					"h": 50,
+					"hidden": true
+				},
+				{
+					"id": "o",
+					"type": "rect",
+					"x": 450,
+					"y": 200,
+					"w": 50,
+					"h": 50,
+					"opacity": 0
+				},
+				{
+					"id": "cover",
+					"type": "rect",
+					"x": 250,
+					"y": 150,
+					"w": 300,
+					"h": 150
+				}
+			]
+		},
+		"texts": [
+			{
+				"id": "a",
+				"field": "text",
+				"text": "Lies mich bitte jetzt"
+			}
+		],
+		"rooms": {
+			"a": {
+				"x": 20,
+				"y": 20,
+				"w": 960,
+				"h": 460
+			}
+		},
+		"layers": {
+			"a": {
+				"x": 300,
+				"y": 200,
+				"w": 420,
+				"h": 50,
+				"size": 40
+			}
+		},
+		"fit": 0
+	},
+	{
+		"about": "a background that covers the whole picture is not in the way",
+		"doc": {
+			"v": 1,
+			"artboard": {
+				"width": 1000,
+				"height": 500
+			},
+			"layers": [
+				{
+					"id": "bg",
+					"type": "rect",
+					"x": 0,
+					"y": 0,
+					"w": 1000,
+					"h": 500
+				},
+				{
+					"id": "a",
+					"type": "text",
+					"text": "Summer sale",
+					"size": 40,
+					"x": 390,
+					"y": 225,
+					"w": 220,
+					"h": 50,
+					"align": "center"
+				}
+			]
+		},
+		"texts": [
+			{
+				"id": "a",
+				"field": "text",
+				"text": "Sommerschlussverkauf"
+			}
+		],
+		"rooms": {
+			"a": {
+				"x": 20,
+				"y": 20,
+				"w": 960,
+				"h": 460
+			}
+		},
+		"layers": {
+			"a": {
+				"x": 300,
+				"y": 225,
+				"w": 400,
+				"h": 50,
+				"size": 40
+			}
+		},
+		"fit": 0
+	},
+	{
+		"about": "a text that fits its source's box is drawn exactly as before",
+		"doc": {
+			"v": 1,
+			"artboard": {
+				"width": 1000,
+				"height": 500
+			},
+			"layers": [
+				{
+					"id": "a",
+					"type": "text",
+					"text": "Summer sale",
+					"size": 40,
+					"x": 390,
+					"y": 225,
+					"w": 220,
+					"h": 50,
+					"align": "right"
+				}
+			]
+		},
+		"texts": [
+			{
+				"id": "a",
+				"field": "text",
+				"text": "Sale"
+			}
+		],
+		"rooms": {
+			"a": {
+				"x": 20,
+				"y": 20,
+				"w": 960,
+				"h": 460
+			}
+		},
+		"layers": {
+			"a": {
+				"x": 530,
+				"y": 225,
+				"w": 80,
+				"h": 50,
+				"size": 40
+			}
+		},
+		"fit": 0
+	},
+	{
+		"about": "a text squeezed between two layers is wrapped into three lines at its size, its middle kept",
+		"doc": {
+			"v": 1,
+			"artboard": {
+				"width": 1000,
+				"height": 500
+			},
+			"layers": [
+				{
+					"id": "w",
+					"type": "rect",
+					"x": 280,
+					"y": 200,
+					"w": 10,
+					"h": 50
+				},
+				{
+					"id": "a",
+					"type": "text",
+					"text": "Tight fit",
+					"size": 40,
+					"x": 300,
+					"y": 200,
+					"w": 180,
+					"h": 50
+				},
+				{
+					"id": "e",
+					"type": "rect",
+					"x": 490,
+					"y": 200,
+					"w": 10,
+					"h": 50
+				}
+			]
+		},
+		"texts": [
+			{
+				"id": "a",
+				"field": "text",
+				"text": "Sehr enge Passform hier"
+			}
+		],
+		"rooms": {
+			"a": {
+				"x": 300,
+				"y": 20,
+				"w": 180,
+				"h": 460
+			}
+		},
+		"layers": {
+			"a": {
+				"x": 300,
+				"y": 150,
+				"w": 180,
+				"h": 150,
+				"size": 40,
+				"text": "Sehr enge\nPassform\nhier"
+			}
+		},
+		"fit": 0
+	},
+	{
+		"about": "one long word squeezed between two layers is never broken: it shrinks to its floor, is marked and is put in the middle of its room",
+		"doc": {
+			"v": 1,
+			"artboard": {
+				"width": 1000,
+				"height": 500
+			},
+			"layers": [
+				{
+					"id": "w",
+					"type": "rect",
+					"x": 280,
+					"y": 200,
+					"w": 10,
+					"h": 50
+				},
+				{
+					"id": "a",
+					"type": "text",
+					"text": "Tight fit",
+					"size": 40,
+					"x": 300,
+					"y": 200,
+					"w": 180,
+					"h": 50
+				},
+				{
+					"id": "e",
+					"type": "rect",
+					"x": 490,
+					"y": 200,
+					"w": 10,
+					"h": 50
+				}
+			]
+		},
+		"texts": [
+			{
+				"id": "a",
+				"field": "text",
+				"text": "Passformgarantieschein"
+			}
+		],
+		"rooms": {
+			"a": {
+				"x": 300,
+				"y": 20,
+				"w": 180,
+				"h": 460
+			}
+		},
+		"layers": {
+			"a": {
+				"x": 280,
+				"y": 212.5,
+				"w": 220,
+				"h": 25,
+				"size": 20,
+				"text": "Passformgarantieschein"
+			}
+		},
+		"fit": 1
+	},
+	{
+		"about": "a text leaning on both side edges is wrapped, then shrinks only as far as its longest word needs",
+		"doc": {
+			"v": 1,
+			"artboard": {
+				"width": 200,
+				"height": 500
+			},
+			"layers": [
+				{
+					"id": "a",
+					"type": "text",
+					"text": "Banner Ad",
+					"size": 40,
+					"x": 10,
+					"y": 100,
+					"w": 180,
+					"h": 50,
+					"align": "center"
+				}
+			]
+		},
+		"texts": [
+			{
+				"id": "a",
+				"field": "text",
+				"text": "Grosse Werbebanner heute"
+			}
+		],
+		"rooms": {
+			"a": {
+				"x": 10,
+				"y": 8,
+				"w": 180,
+				"h": 484
+			}
+		},
+		"layers": {
+			"a": {
+				"x": 9.99,
+				"y": 63.63,
+				"w": 180.02,
+				"h": 122.74,
+				"size": 32.73,
+				"text": "Grosse\nWerbebanner\nheute"
+			}
+		},
+		"fit": 0
+	},
+	{
+		"about": "a document with no size has no room: the old rule",
+		"doc": {
+			"v": 1,
+			"layers": [
+				{
+					"id": "a",
+					"type": "text",
+					"text": "Summer sale",
+					"size": 40,
+					"x": 390,
+					"y": 225,
+					"w": 220,
+					"h": 50,
+					"align": "center"
+				}
+			]
+		},
+		"texts": [
+			{
+				"id": "a",
+				"field": "text",
+				"text": "Sommerschlussverkauf"
+			}
+		],
+		"rooms": {
+			"a": null
+		},
+		"layers": {
+			"a": {
+				"x": 360,
+				"y": 232.5,
+				"w": 280,
+				"h": 35,
+				"size": 28
+			}
+		},
+		"fit": 1
+	},
+	{
+		"about": "a text in a crowd grows only as far as its neighbours let it, then wraps",
+		"doc": {
+			"v": 1,
+			"artboard": {
+				"width": 1000,
+				"height": 500
+			},
+			"layers": [
+				{
+					"id": "l",
+					"type": "rect",
+					"x": 100,
+					"y": 210,
+					"w": 40,
+					"h": 30
+				},
+				{
+					"id": "a",
+					"type": "text",
+					"text": "Centre",
+					"size": 40,
+					"x": 200,
+					"y": 200,
+					"w": 120,
+					"h": 50,
+					"align": "center"
+				},
+				{
+					"id": "r",
+					"type": "rect",
+					"x": 400,
+					"y": 210,
+					"w": 40,
+					"h": 30
+				},
+				{
+					"id": "u",
+					"type": "rect",
+					"x": 180,
+					"y": 120,
+					"w": 160,
+					"h": 40
+				}
+			]
+		},
+		"texts": [
+			{
+				"id": "a",
+				"field": "text",
+				"text": "Mittelpunkt hier"
+			}
+		],
+		"rooms": {
+			"a": {
+				"x": 160,
+				"y": 180,
+				"w": 220,
+				"h": 300
+			}
+		},
+		"layers": {
+			"a": {
+				"x": 160,
+				"y": 180,
+				"w": 220,
+				"h": 100,
+				"size": 40,
+				"text": "Mittelpunkt\nhier"
+			}
+		},
+		"fit": 0
+	}
+]

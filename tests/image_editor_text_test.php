@@ -163,6 +163,31 @@ function test_image_editor_text_fonts_and_effects()
 	pg_assert_same(array(null, null, 0), array($result['none']['outline'], $result['none']['shadow'], $result['none']['radius']), 'no background, no radius; a zero outline is none');
 }
 
+// The face is asked again for a layer whose text has letters the earlier
+// asks did not hold (digits, then Cyrillic), so each part of a Google font
+// is loaded before the draw; a text of known letters asks nothing.
+function test_image_editor_text_font_letters_asked_per_text()
+{
+	$result = image_editor_text_node('
+		console.log(JSON.stringify({
+			first: M.textFontLetters("", "Sale 20"),
+			same: M.textFontLetters("Sale 20", "sale 02 Sale"),
+			cyrillic: M.textFontLetters("Sale 20", "Скидка 20"),
+			empty: M.textFontLetters("", ""),
+			pair: M.textFontLetters("a", "a\ud83d\ude00")
+		}));');
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same('Sale 20', $result['first'], 'a first text asks its own letters, each once');
+	pg_assert_same('s', $result['same'], 'only the letters not asked yet');
+	pg_assert_same('Скида', $result['cyrillic'], 'a second text of another part asks that part');
+	pg_assert_same('', $result['empty'], 'an empty text asks nothing');
+	pg_assert_same("\u{1F600}", $result['pair'], 'a surrogate pair is one letter');
+}
+
 function test_image_editor_text_site_families()
 {
 	$json = json_encode(array(

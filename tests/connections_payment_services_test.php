@@ -197,7 +197,8 @@ function test_connections_payment_services_keys_left_the_cards()
 	}
 
 	foreach (array('ecommerce_givex', 'ecommerce_paypal_express_checkout', 'ecommerce_paypal_express_checkout_transaction_type', 'ecommerce_paypal_express_checkout_mode') as $kept) {
-		pg_assert_contains('name="' . $kept . '"', $card, $kept . ' stays on the card');
+		// Drawn as markup, or named to a pg_commerce_settings_*() helper.
+		pg_assert_true((strpos($card, 'name="' . $kept . '"') !== false) || (strpos($card, "'" . $kept . "'") !== false), $kept . ' stays on the card');
 		pg_assert_contains($kept . " = '", $save, $kept . ' is still written by the card');
 	}
 

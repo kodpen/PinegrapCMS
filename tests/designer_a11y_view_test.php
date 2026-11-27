@@ -224,3 +224,195 @@ function test_designer_a11y_view_see_as_is_style_only()
 	pg_assert_false((bool) preg_match('/getImageData|toDataURL|drawImage|localStorage|sessionStorage/', $js), 'no picture read, nothing kept');
 	pg_assert_true(strpos($js, "var see = V ? V.see : '';") !== false, 'a new canvas document keeps it until the view goes off');
 }
+
+// A fake canvas element for the part's functions run in Node: a tag, its
+// attributes, its children and its parent.
+function designer_a11y_view_fake_dom()
+{
+	return 'function El(tag, attrs, kids) { this.nodeType = 1; this.tagName = tag.toUpperCase(); this.attrs = attrs || {}; this.children = kids || []; this.parentElement = null;'
+		. ' var self = this; this.children.forEach(function (k) { k.parentElement = self; }); }' . "\n"
+		. 'El.prototype.hasAttribute = function (n) { return Object.prototype.hasOwnProperty.call(this.attrs, n); };' . "\n"
+		. 'El.prototype.getAttribute = function (n) { return this.hasAttribute(n) ? this.attrs[n] : null; };' . "\n"
+		. 'El.prototype.querySelector = function (sel) { var m = /^\[([a-z-]+)\]$/.exec(sel); for (var i = 0; i < this.children.length; i++) { var k = this.children[i];'
+		. ' if (m && k.hasAttribute(m[1])) return k; var d = k.querySelector(sel); if (d) return d; } return null; };' . "\n";
+}
+
+// A shared component's or a system widget's content is drawn inside the
+// editor's div.sd-shared-inner: it is the page's, never the editor's chrome.
+function test_designer_a11y_view_reads_shared_component_content()
+{
+	$res = designer_a11y_view_run('style_designer_accessview.js', array('chrome'),
+		designer_a11y_view_fake_dom()
+		. 'var link = new El("a", { "href": "/", "data-sd-id": "n2" });' . "\n"
+		. 'var inner = new El("div", { "class": "sd-shared-inner" }, [new El("nav", { "data-sd-id": "n1" }, [link])]);' . "\n"
+		. 'var tb = new El("div", { "class": "sd-tb" }, [new El("button", {})]);' . "\n"
+		. 'var badge = new El("span", { "class": "sd-issue-badge" });' . "\n"
+		. 'var wrap = new El("div", { "class": "sd-wrap sd-selected", "data-sd-id": "n3" });' . "\n"
+		. 'var page = new El("div", { "class": "card" });' . "\n"
+		. 'console.log(JSON.stringify([chrome(inner), chrome(tb), chrome(badge), chrome(wrap), chrome(page)]));');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array(false, true, true, false, false), $res, 'only the editor\'s own elements that hold nothing of the page are left out');
+}
+
+// Fakes for listen(): event targets that count their listeners, and a
+// MutationObserver that keeps what it watches so a test can call it.
+function designer_a11y_view_fake_listen()
+{
+	return 'function Target() { this.on = {}; }' . "\n"
+		. 'Target.prototype.addEventListener = function (t, f) { (this.on[t] = this.on[t] || []).push(f); };' . "\n"
+		. 'Target.prototype.removeEventListener = function (t, f) { this.on[t] = (this.on[t] || []).filter(function (g) { return g !== f; }); };' . "\n"
+		. 'Target.prototype.fire = function (t, e) { (this.on[t] || []).slice().forEach(function (f) { f(e || {}); }); };' . "\n"
+		. 'Target.prototype.count = function () { var o = this.on; return Object.keys(o).reduce(function (n, k) { return n + o[k].length; }, 0); };' . "\n"
+		. 'var observers = [];' . "\n"
+		. 'function MutationObserver(cb) { this.cb = cb; this.seen = []; this.off = false; observers.push(this); }' . "\n"
+		. 'MutationObserver.prototype.observe = function (n, o) { this.seen.push({ n: n, o: o }); };' . "\n"
+		. 'MutationObserver.prototype.disconnect = function () { this.off = true; };' . "\n"
+		. 'function watching(n) { return observers.filter(function (m) { return !m.off && m.seen.some(function (s) { return s.n === n; }); })[0]; }' . "\n"
+		. 'var window = new Target(), document = new Target();' . "\n"
+		. 'var calls = { rest: 0, soon: 0 };' . "\n"
+		. 'function rest() { calls.rest++; } function soon() { calls.soon++; }' . "\n"
+		. 'function onKey() {} function onCanvasMove() {} function onCanvasOut() {} function onDown() {} function onResize() {}' . "\n";
+}
+
+// Another screen size resizes the canvas window; a zoom writes the canvas's
+// <html> and Fit the frame's box: each moves the marks and reads the page
+// again, since what shows and where differ at another width.
+function test_designer_a11y_view_follows_screen_size_zoom_and_fit()
+{
+	$res = designer_a11y_view_run('style_designer_accessview.js', array('chrome', 'inChrome', 'pageChange', 'relayout', 'listen'),
+		designer_a11y_view_fake_dom() . designer_a11y_view_fake_listen()
+		. 'var box = new Target(); var win = new Target(); win.frameElement = { parentNode: box };' . "\n"
+		. 'var html = new Target(); var body = new Target();' . "\n"
+		. 'var doc = new Target(); doc.defaultView = win; doc.documentElement = html; doc.body = body;' . "\n"
+		. 'var V = { doc: doc };' . "\n"
+		. 'listen(true);' . "\n"
+		. 'var out = {};' . "\n"
+		. 'win.fire("resize"); out.size = [calls.soon, calls.rest];' . "\n"
+		. 'calls = { rest: 0, soon: 0 }; watching(html).cb([{ type: "attributes", target: html }]); out.zoom = [calls.soon, calls.rest];' . "\n"
+		. 'calls = { rest: 0, soon: 0 }; watching(box).cb([{ type: "attributes", target: box }]); out.fit = [calls.soon, calls.rest];' . "\n"
+		. 'out.watched = [watching(html).seen[0].o.attributeFilter, watching(box).seen[0].o.attributeFilter];' . "\n"
+		. 'listen(false);' . "\n"
+		. 'out.left = [win.count(), doc.count(), window.count(), document.count(), observers.filter(function (m) { return !m.off; }).length];' . "\n"
+		. 'console.log(JSON.stringify(out));');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array(1, 1), $res['size'], 'another screen size moves the marks and reads the page again');
+	pg_assert_same(array(1, 1), $res['zoom'], 'a zoom moves the marks');
+	pg_assert_same(array(1, 1), $res['fit'], 'Fit moves the marks');
+	pg_assert_same(array(array('style'), array('style')), $res['watched'], 'only the style of <html> and of the frame\'s box are watched');
+	pg_assert_same(array(0, 0, 0, 0, 0), $res['left'], 'nothing is left listening once the view is off');
+}
+
+// The editor writes its own chrome in the canvas on every hover and scroll
+// (a toolbar filled, a chip placed): that is no change of the page, and the
+// page is not read again for it.
+function test_designer_a11y_view_ignores_the_editors_own_changes()
+{
+	$res = designer_a11y_view_run('style_designer_accessview.js', array('chrome', 'inChrome', 'pageChange', 'relayout', 'listen'),
+		designer_a11y_view_fake_dom() . designer_a11y_view_fake_listen()
+		. 'var btn = new El("button", {}); var tb = new El("div", { "class": "sd-tb" }, [btn]);' . "\n"
+		. 'var a = new El("a", { "href": "/" }); var wrap = new El("div", { "class": "sd-wrap", "data-sd-id": "n1" }, [tb, a]);' . "\n"
+		. 'var text = { nodeType: 3, parentElement: a };' . "\n"
+		. 'var win = new Target(); win.frameElement = { parentNode: new Target() };' . "\n"
+		. 'var body = new Target(); var doc = new Target(); doc.defaultView = win; doc.documentElement = new Target(); doc.body = body;' . "\n"
+		. 'var V = { doc: doc };' . "\n"
+		. 'listen(true);' . "\n"
+		. 'var mo = watching(body), out = [];' . "\n"
+		. 'function n(recs) { calls.rest = 0; mo.cb(recs); return calls.rest; }' . "\n"
+		. 'out.push(n([{ type: "childList", target: tb, addedNodes: [btn], removedNodes: [] }]));' . "\n"
+		. 'out.push(n([{ type: "attributes", target: tb }]));' . "\n"
+		. 'out.push(n([{ type: "childList", target: wrap, addedNodes: [tb], removedNodes: [] }]));' . "\n"
+		. 'out.push(n([{ type: "attributes", target: a }]));' . "\n"
+		. 'out.push(n([{ type: "characterData", target: text }]));' . "\n"
+		. 'out.push(n([{ type: "childList", target: wrap, addedNodes: [], removedNodes: [a] }]));' . "\n"
+		. 'out.push(n([{ type: "attributes", target: tb }, { type: "attributes", target: a }]));' . "\n"
+		. 'out.push(mo.seen[0].o.attributeFilter.indexOf("contenteditable") !== -1);' . "\n"
+		. 'console.log(JSON.stringify(out));');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array(0, 0, 0, 1, 1, 1, 1, true), $res, 'a toolbar filled or placed reads nothing; a change of the page is read');
+}
+
+// While a text is edited in place the element carries the editor's state
+// (contenteditable, a label's for taken off), not the page's: the last
+// reading stays until the edit ends.
+function test_designer_a11y_view_waits_for_an_inplace_edit()
+{
+	$res = designer_a11y_view_run('style_designer_accessview.js', array('editing', 'refresh'),
+		'var reads = 0; function read() { reads++; return { controls: [] }; }' . "\n"
+		. 'function drawCard() {} function drawMarks() {} function closePop() {}' . "\n"
+		. 'var old = { controls: [] };' . "\n"
+		. 'var body = { isContentEditable: false };' . "\n"
+		. 'var V = { doc: { body: body, activeElement: { isContentEditable: true } }, r: old };' . "\n"
+		. 'var out = []; refresh(); out.push(reads, V.r === old);' . "\n"
+		. 'V.doc.activeElement = body; refresh(); out.push(reads, V.r !== old);' . "\n"
+		. 'V = { doc: { body: body, activeElement: { isContentEditable: true } }, r: null }; refresh(); out.push(reads);' . "\n"
+		. 'console.log(JSON.stringify(out));');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array(0, true, 1, true, 2), $res, 'no read during an in-place edit; read once it ends; the first read is always made');
+}
+
+// A tip stands at its element's place when shown: a draw (another kind, a
+// scroll, a new reading) takes it away, and so does the pointer leaving the
+// canvas.
+function test_designer_a11y_view_tip_goes_with_its_place()
+{
+	$res = designer_a11y_view_run('style_designer_accessview.js', array('hideTip', 'onCanvasOut', 'drawMarks'),
+		'var document = { createElement: function () { return { addEventListener: function () {}, style: {} }; } };' . "\n"
+		. 'function view() { return null; } function placeCard() {} function placePill() {} function onMarkClick() {} function onMarkOver() {} function onMarkOut() {}' . "\n"
+		. 'var V = { doc: {}, tip: { hidden: false }, tipFor: {}, kind: "order", r: {} };' . "\n"
+		. 'var out = []; drawMarks(); out.push(V.tip.hidden, V.tipFor);' . "\n"
+		. 'V.tip.hidden = false; V.tipFor = {}; onCanvasOut({ relatedTarget: {} }); out.push(V.tip.hidden);' . "\n"
+		. 'onCanvasOut({ relatedTarget: null }); out.push(V.tip.hidden, V.tipFor);' . "\n"
+		. 'console.log(JSON.stringify(out));');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array(true, null, false, true, null), $res, 'a draw hides the tip; leaving the canvas hides it, moving inside it does not');
+}
+
+// The card is drawn again on each reading: the heading outline keeps where
+// it was scrolled to and the row that had the focus, not the first row.
+function test_designer_a11y_view_outline_keeps_its_place()
+{
+	$res = designer_a11y_view_run('style_designer_accessview.js', array('drawCard'),
+		'function Btn(av, i) { this.attrs = { "data-av": av, "data-i": i }; }' . "\n"
+		. 'Btn.prototype.getAttribute = function (n) { return this.attrs.hasOwnProperty(n) && this.attrs[n] !== null ? this.attrs[n] : null; };' . "\n"
+		. 'Btn.prototype.focus = function () { focused = this; };' . "\n"
+		. 'var focused = null, rows = [new Btn("heading", "0"), new Btn("heading", "1"), new Btn("heading", "2")];' . "\n"
+		. 'var outline = { scrollTop: 0 };' . "\n"
+		. 'var card = { setAttribute: function () {}, addEventListener: function () {}, contains: function (e) { return rows.indexOf(e) !== -1; },' . "\n"
+		. '  querySelector: function (sel) { if (sel === ".sd-av-outline") return outline;' . "\n"
+		. '    return rows.filter(function (r) { return sel.indexOf(\'[data-av="heading"]\') === 0 && (sel.indexOf("data-i") === -1 || sel.indexOf(\'[data-i="\' + r.attrs["data-i"] + \'"]\') !== -1); })[0] || null; } };' . "\n"
+		. 'Object.defineProperty(card, "innerHTML", { set: function () { var t = outline.scrollTop; outline = { scrollTop: 0 }; rows = [new Btn("heading", "0"), new Btn("heading", "1"), new Btn("heading", "2")]; } });' . "\n"
+		. 'var document = { createElement: function () { return card; } };' . "\n"
+		. 'function narrow() { return false; } function cardHTML() { return ""; } function placeCard() {} function view() { return null; }' . "\n"
+		. 'function onCardClick() {} function onCardChange() {}' . "\n"
+		. 'var V = { host: { state: { fold: false } }, doc: {} };' . "\n"
+		. 'drawCard();' . "\n"
+		. 'outline.scrollTop = 240; document.activeElement = rows[2];' . "\n"
+		. 'drawCard();' . "\n"
+		. 'console.log(JSON.stringify([outline.scrollTop, focused === rows[2]]));');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array(240, true), $res, 'the outline\'s scroll and the focused row survive a redraw');
+}

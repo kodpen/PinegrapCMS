@@ -22,7 +22,7 @@ description: An agent's card, state dot and usage mark in a channel (agent_card.
 - `channels`: its `ws_channel_agents` rows the reader may read (`ws_agent_reader_channels()`, `ws_can_read_channel()`).
 - It sends the tier as a number and the member row's wake words; the panel's tier words are not on the card (`agent-card-look.md`).
 - The model, windows and context only for an `app` agent that reported (`agent-report.md`); null context when its last report named none.
-- The card draws the context first in the report box, "Context 412k of 1M tokens (41%)" with a bar, marked from 90% as a window (#10853). The same states in the Activity tab's rows (`channel-activity-tab.md`).
+- The card draws the context first in the report box, "Context 412k of 1M tokens (41%)" with a bar, marked from 90% as a window (#10853); no size: the words alone (`agent-context-size.md`). The same states in the Activity tab's rows (`channel-activity-tab.md`).
 
 ## And the API?
 - `ws_api_channel_agent_present($channel_id, $row, $counts, $now)` adds `state`, `waiting`, `seen_at`, `model`, `usage` (name, percent, resets_at), `reported_at`, `usage_high`; `WorkspaceChannelAgent` declares them. The list route reads the counts once.

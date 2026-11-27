@@ -81,7 +81,7 @@ function test_connections_mailchimp_left_the_sending_tab()
 
 	pg_assert_false(strpos($card, 'name="mailchimp_key"') !== false, 'the tab no longer types the key');
 	pg_assert_contains('id="pgsub-mailchimp-connection"', $card, 'Campaign mail shows the connection');
-	pg_assert_contains('connections.php?service=mailchimp', $card, 'and leads to its page');
+	pg_assert_contains("pg_connections_lead_url('mailchimp', 'email', 'pgset-mail-campaign')", $card, 'and leads to its page, and back');
 	pg_assert_false(strpos($save, 'mailchimp') !== false, 'the tab\'s save cannot empty MailChimp');
 
 	$email = pg_settings_email_category();

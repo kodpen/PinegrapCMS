@@ -25,6 +25,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/security_settings_fold.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/connections_screen.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/settings/fold.php');
 
 // One switch with its label and help line, as the Firewall and HTTPS rows
@@ -197,7 +198,7 @@ $signin_rows = $signin_connect_row('oauth_google_enabled', $oauth_google_enabled
     $signin_google_app_ready
         ? lang('Visitors and staff sign in through the Sign in with Google application set up on Google\'s page of Connections.')
         : lang('Set up the Sign in with Google application on Google\'s page of Connections first. Until then the button stays hidden.'),
-    'connections.php?service=google#connections-signin');
+    pg_connections_lead_url('google', 'security', 'pgset-signin', 'connections-signin'));
 
 if ($signin_ready) {
     $signin_microsoft_provider = pg_connect_provider('microsoft');
@@ -208,7 +209,7 @@ if ($signin_ready) {
         $signin_microsoft_app_ready
             ? lang('Work, school and personal Microsoft accounts sign in through the Microsoft application on Microsoft\'s page of Connections.')
             : lang('Set up the Microsoft application on Microsoft\'s page of Connections first. Until then the button stays hidden.'),
-        'connections.php?service=microsoft',
+        pg_connections_lead_url('microsoft', 'security', 'pgset-signin', 'connections-signin'),
         lang('A personal account\'s address counts as verified, so it can sign in to an existing account with the same address. A work or school address counts only when the directory confirms it owns the domain: in the Microsoft application, under Token configuration, add the optional claim xms_edov to the ID token. Without it, work and school accounts are refused.'));
 
     $signin_apple_provider = pg_connect_provider('apple');
@@ -219,7 +220,7 @@ if ($signin_ready) {
         $signin_apple_app_ready
             ? lang('Visitors sign in through the Sign in with Apple application set up on its page of Connections.')
             : lang('Set up the Sign in with Apple application on its page of Connections first. Until then the button stays hidden.'),
-        'connections.php?service=signin_apple');
+        pg_connections_lead_url('signin_apple', 'security', 'pgset-signin'));
 }
 
 // Which buttons visitors see now. pg_signin_buttons() prints them together,

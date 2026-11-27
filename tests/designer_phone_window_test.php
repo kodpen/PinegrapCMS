@@ -98,6 +98,83 @@ function test_designer_phone_window_draws_the_state_the_answer_asks_for()
 	pg_assert_same(array('ready', 'ended', 'team', 'failed', 'failed', 'failed'), $res);
 }
 
+// A failed answer says why: the server's message where it gave one, and
+// "Try again" only where trying again can help (no answer, a malformed one,
+// or a link the server could not store, marked `retry`). A design with no
+// draft pages gets its reason and no button.
+function test_designer_phone_window_says_why_no_link_was_made()
+{
+	$cases = array(
+		null,
+		array('status' => 'error', 'message' => 'This design has no draft pages.'),
+		array('status' => 'error', 'message' => 'Permission denied.'),
+		array('status' => 'error', 'message' => 'Sorry, we could not accept your request.', 'retry' => true),
+		array('status' => 'error'),
+		array('status' => 'success', 'link' => array('id' => 7), 'url' => 'https://x', 'qr' => ''),
+	);
+	$res = designer_phone_window_node(array('_phFailure'), json_encode($cases) . '.map(_phFailure)');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		array('text' => 'Nothing was changed.', 'again' => true),
+		array('text' => 'This design has no draft pages.', 'again' => false),
+		array('text' => 'Permission denied.', 'again' => false),
+		array('text' => 'Sorry, we could not accept your request.', 'again' => true),
+		array('text' => 'Nothing was changed.', 'again' => false),
+		array('text' => 'Nothing was changed.', 'again' => true),
+	), $res);
+
+	// Only the link the server could not store is marked to be tried again.
+	$server = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/prototype_phone.php');
+	pg_assert_same(1, substr_count($server, "'retry' => true"), 'one answer offers a retry');
+
+	// With no link the foot shows no buttons that look pressable.
+	$draw = designer_phone_window_fn(designer_phone_window_source(), '_phDraw');
+	pg_assert_contains('foot.hidden = ', $draw, 'the foot is hidden while there is no link');
+}
+
+// A design with no draft pages gets the code of its live page: the window
+// draws the live state, with "Copy link" and no countdown or "End now", as
+// no share link stands behind it.
+function test_designer_phone_window_draws_the_live_page_with_no_end_or_countdown()
+{
+	$live = array('status' => 'success', 'live' => true, 'url' => 'https://x/about', 'qr' => '<svg></svg>', 'start_page' => 'About');
+	$cases = array(
+		array($live, 0),
+		array(array_merge($live, array('qr' => '')), 0),
+		array(array_merge($live, array('url' => '')), 0),
+	);
+	$res = designer_phone_window_node(array('_phView'), json_encode($cases) . '.map(function (c) { return _phView(c[0], c[1]); })');
+
+	if ($res !== null) {
+		pg_assert_same(array('live', 'failed', 'failed'), $res);
+
+		$foot = designer_phone_window_node(array('_phFoot'), '(function () { esc = function (s) { return s; }; _phNarrow = function () { return false; }; return [_phFoot(true, true), _phFoot(true)]; })()');
+		pg_assert_contains('data-ph="copy"', $foot[0], 'the live page\'s address is copied');
+		pg_assert_false(strpos($foot[0], 'data-ph="end"'), 'nothing to end for the live page');
+		pg_assert_contains('data-ph="end"', $foot[1], 'a share link keeps End now');
+	}
+
+	// The host names the page on screen once it is saved, a page on the site
+	// too: the live code opens it, and the server takes a draft link's start
+	// only from a draft.
+	$core = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$host = substr($core, strpos($core, 'function _sdPhoneHost()'), 600);
+	pg_assert_contains('id: saved ? p.page_id : 0', $host, 'a saved page is named, draft or not');
+
+	$draw = designer_phone_window_fn(designer_phone_window_source(), '_phDraw');
+	$at = strpos($draw, "state.view === 'live'");
+	pg_assert_true($at !== false, 'the window draws the live state');
+	$next = strpos($draw, '} else if', $at + 1);
+	$branch = ($next === false) ? substr($draw, $at) : substr($draw, $at, $next - $at);
+	pg_assert_contains('opens the live page', $branch, 'the window says the code opens the live page');
+	pg_assert_false(strpos($branch, '_phStartsLine'), 'no countdown');
+	pg_assert_false(strpos($branch, '_phInfoLine'), 'no line about saves');
+}
+
 function test_designer_phone_window_is_a_part_opened_from_the_preview_menu()
 {
 	$parts = pg_designer_parts();

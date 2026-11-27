@@ -115,19 +115,28 @@
         return linked[name];
     }
 
-    // The face a layer needs, loaded once; the stage is drawn again when it
-    // comes, as the letters' widths change.
+    // The face a layer needs, loaded once per face and asked again for
+    // the letters of a layer's text it was not asked for yet, so a second
+    // text of one face in another part of the font (digits, then Cyrillic)
+    // waits for that part too; the stage is drawn again when a part comes,
+    // as the letters' widths change.
     Editor.prototype.loadTextFont = function (l) {
-        var self = this, font = M.textFont(l), family = String(l.font || ''), key = font + '|' + family, name;
+        var self = this, font = M.textFont(l), family = String(l.font || ''), key = font + '|' + family, face = this.textFonts[key], letters, name;
 
-        if (this.textFonts[key]) {
-            return this.textFonts[key];
+        if (!face) {
+            name = (family.slice(0, 2) === 'g:') ? M.textFamilyName(family.slice(2)) : '';
+            face = this.textFonts[key] = { asked: '', ready: (name ? linkFamily(name) : Promise.resolve()) };
         }
 
-        name = (family.slice(0, 2) === 'g:') ? M.textFamilyName(family.slice(2)) : '';
+        letters = M.textFontLetters(face.asked, (face.asked === '') ? (l.text || 'Aa') : l.text);
 
-        this.textFonts[key] = (name ? linkFamily(name) : Promise.resolve()).then(function () {
-            return (document.fonts && document.fonts.load) ? document.fonts.load(font, l.text || 'Aa') : null;
+        if (letters === '') {
+            return face.ready;
+        }
+
+        face.asked += letters;
+        face.ready = face.ready.then(function () {
+            return (document.fonts && document.fonts.load) ? document.fonts.load(font, letters) : null;
         }).catch(function () {
             // A face that does not load falls back to the next family.
             return null;
@@ -139,7 +148,7 @@
             }
         });
 
-        return this.textFonts[key];
+        return face.ready;
     };
 
     // The site's fonts (the families its styles load), asked once a page.

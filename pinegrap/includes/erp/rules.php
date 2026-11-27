@@ -107,6 +107,44 @@ function erp_vat_exemption_code_valid($code)
 }
 
 /**
+ * Whether an invoice line carries no VAT, however the rate column writes it.
+ *
+ * @param array $line  tax_rate
+ * @return bool
+ */
+function erp_vat_line_zero_rated($line)
+{
+    return abs((float) ($line['tax_rate'] ?? 0)) <= 0.0001;
+}
+
+/**
+ * The exemption code a line takes, from the codes it can come from: none
+ * for a line that carries VAT; for a zero-rated one its own code, else its
+ * product's, else the store's default. Pure.
+ *
+ * @param array  $line          tax_rate, vat_exemption_code (optional)
+ * @param string $product_code  products.vat_exemption_code, '' for none
+ * @param string $default_code  The store's default, '' for none
+ * @return string
+ */
+function erp_vat_exemption_code_pick($line, $product_code, $default_code)
+{
+    if (!erp_vat_line_zero_rated($line)) {
+        return '';
+    }
+
+    foreach (array($line['vat_exemption_code'] ?? '', $product_code, $default_code) as $code) {
+        $code = trim((string) $code);
+
+        if ($code !== '') {
+            return mb_substr($code, 0, 10);
+        }
+    }
+
+    return '';
+}
+
+/**
  * The exemption code an invoice line is written with: none for a line that
  * carries VAT; for a zero-rated one the code it already has (a return keeps
  * its invoice's), else its product's (products.vat_exemption_code), else the
@@ -117,27 +155,69 @@ function erp_vat_exemption_code_valid($code)
  */
 function erp_vat_line_exemption_code($line)
 {
-    if (abs((float) ($line['tax_rate'] ?? 0)) > 0.0001) {
+    if (!erp_vat_line_zero_rated($line)) {
         return '';
     }
 
-    $given = trim((string) ($line['vat_exemption_code'] ?? ''));
-
-    if ($given !== '') {
-        return mb_substr($given, 0, 10);
-    }
-
+    $product_code = '';
     $product_id = (int) ($line['product_id'] ?? 0);
 
-    if (($product_id > 0) && waf_table_has_column('products', 'vat_exemption_code')) {
-        $code = trim((string) db_value("SELECT vat_exemption_code FROM products WHERE id = '" . $product_id . "'"));
-
-        if ($code !== '') {
-            return mb_substr($code, 0, 10);
-        }
+    // The product is read only for a line that names no code of its own.
+    if ((trim((string) ($line['vat_exemption_code'] ?? '')) === '') && ($product_id > 0)
+        && waf_table_has_column('products', 'vat_exemption_code')) {
+        $product_code = (string) db_value("SELECT vat_exemption_code FROM products WHERE id = '" . $product_id . "'");
     }
 
-    return mb_substr(erp_vat_exemption_default(), 0, 10);
+    return erp_vat_exemption_code_pick($line, $product_code, erp_vat_exemption_default());
+}
+
+/**
+ * Why an e-document of these lines would be refused, or '': GİB's schema
+ * refuses a document with a line at 0% VAT that gives no exemption reason.
+ * The e-document send asks it before any request, for every driver
+ * (erp_edoc_invoice_lines_exemption()). The refusal names the lines and
+ * where a code comes from. Pure: each line's code is already resolved with
+ * erp_vat_line_exemption_code().
+ *
+ * Issuing an invoice refuses nothing for this: a store that sends no
+ * e-document needs no code, and the issue writes the code it finds then.
+ *
+ * @param array $lines  erp_invoice_items rows: line_no, description,
+ *                      tax_rate, vat_exemption_code
+ * @return string
+ */
+function erp_vat_exemption_missing_refusal($lines)
+{
+    $named = array();
+    $position = 0;
+
+    foreach ((array) $lines as $line) {
+        $position++;
+
+        if (!erp_vat_line_zero_rated($line) || (trim((string) ($line['vat_exemption_code'] ?? '')) !== '')) {
+            continue;
+        }
+
+        $number = ((int) ($line['line_no'] ?? 0) > 0) ? (int) $line['line_no'] : $position;
+        $text = trim((string) ($line['description'] ?? ''));
+
+        if (mb_strlen($text) > 60) {
+            $text = mb_substr($text, 0, 60) . '…';
+        }
+
+        $named[] = ($text !== '')
+            ? lang(array('string' => 'Line {var:1} ({var:2})', 'vars' => array($number, $text)))
+            : lang(array('string' => 'Line {var:1}', 'vars' => $number));
+    }
+
+    if (empty($named)) {
+        return '';
+    }
+
+    return lang(array(
+        'string' => 'No VAT exemption code is given for the 0% VAT on {var:1}, and GİB refuses an e-document without one, so nothing was sent. Set the exemption code for zero-rated lines under Accounting rules, or give the product its own exemption code, then send it again.',
+        'vars' => implode(', ', $named),
+    ));
 }
 
 /**

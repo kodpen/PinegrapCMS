@@ -6,7 +6,7 @@ module: designer_library_io
 
 ## What does an export file hold?
 - `pg_library_export_text($items, $at)` (`includes/fn/designer_library_io.php`, pure): `format` `pinegrap-library`, `version` 1, `exported` (Y-m-d), `items` (each as its own file holds it, without `id`, `file`, `order`, `dropped`).
-- The file is named after the site with "-library" (`pg_library_export_file_name(ORGANIZATION_NAME)`: "Studio Calm" gives `studio-calm-library.json`). One chosen item gives a file with one item; the format is the same.
+- The file is named after the site with "-library" (`pg_library_export_file_name(ORGANIZATION_NAME)`: "Studio Calm" gives `studio-calm-library.json`; accented and Turkish letters become plain ones through `pg_ascii_file_name()`, "Müşteri Hizmetleri" gives `musteri-hizmetleri-library.json`, PR #11856). One chosen item gives a file with one item; the format is the same.
 - `pg_library_export_items($ids)`: the chosen row ids in the library's order, every item when none is chosen.
 
 ## Where is Export started?

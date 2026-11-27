@@ -28,5 +28,5 @@ description: Decisions made, workspace part 49 (2026-11-23 on): a note written i
 
 ## Do this project's memory and plans leave git for the agent channel? (owner, 2026-11-23, in the architect's window)
 - Not now. He asked whether keeping them in git slows the work. The architect's answer, which he accepted ("makul", "önerilerinin büyük bölümü yerindeydi. bu şekilde ilerleriz"): the texts stay in git, where most PRs change memory together with code; what slows is a docs-only PR's full check and the plan file shared by workers and the architect.
-- Those two are taken now: "darboğaz için yukarıdaki önerilerini bugün yapmak makul" (`plans/plan-state-channel.md`).
+- Those two are taken now: "darboğaz için yukarıdaki önerilerini bugün yapmak makul" (`plan-step-state.md`, `docs-only-pr-checks.md`).
 - The agent channel on dev may be set up again and emptied at any time, so nothing lives only there; its last home is meant to be pinegrap.com.

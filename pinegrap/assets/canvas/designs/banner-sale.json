@@ -1,0 +1,14 @@
+{
+ "id": "banner-sale",
+ "width": 1920,
+ "height": 600,
+ "background": "#212529",
+ "layers": [
+  {"type": "slot", "x": 0, "y": 0, "w": 700, "h": 600},
+  {"type": "text", "text": "startBannerSaleSmall", "font": "g:Montserrat", "size": 40, "weight": 700, "color": "#ff922b", "align": "left", "x": 800, "y": 110, "maxW": 1020, "spacing": 0.2},
+  {"type": "text", "text": "startBannerSaleHead", "font": "g:Anton", "size": 140, "weight": 400, "color": "#ffffff", "align": "left", "x": 800, "y": 170, "maxW": 1020},
+  {"type": "text", "text": "startBannerSaleLine", "font": "g:Lato", "size": 40, "weight": 400, "color": "#adb5bd", "align": "left", "x": 800, "y": 360, "maxW": 1020},
+  {"type": "rect", "x": 800, "y": 450, "w": 320, "h": 84, "color": "#ff922b", "radius": 42},
+  {"type": "text", "text": "startShopSale", "font": "g:Montserrat", "size": 30, "weight": 700, "color": "#212529", "align": "center", "x": 960, "y": 474, "maxW": 280}
+ ]
+}

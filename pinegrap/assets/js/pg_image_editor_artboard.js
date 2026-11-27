@@ -428,7 +428,7 @@
 
         if ((mode === 'replace') || (mode === 'new') || (((mode === 'copy') || (mode === 'url')) && this.doc.artboard)) {
             this.doc.layers.forEach(function (l) {
-                if ((l.type === 'image') && !l.fileId && /^data:image\/(png|jpeg);base64,/.test(l.src || '')) {
+                if (((l.type === 'image') || (l.type === 'frame')) && !l.fileId && /^data:image\/(png|jpeg);base64,/.test(l.src || '')) {
                     list.push({ id: l.id, data: l.src, name: l.fileName || '' });
                 }
             });
@@ -534,6 +534,84 @@
     // More items of the Import menu (the video layer's part): fn() on the
     // editor gives [label, action] or null.
     Editor.importItems = [];
+
+    // The design file's script (pg_image_editor_design.js), loaded the first
+    // time Import's design item is used: it is not part of the canvas's load.
+    Editor.prototype.designScript = function () {
+        if (this.designImport) {
+            return Promise.resolve();
+        }
+
+        return (X.config().design || []).reduce(function (p, url) {
+            return p.then(function () {
+                return new Promise(function (resolve, reject) {
+                    var tag = document.createElement('script');
+
+                    tag.src = url;
+                    tag.onload = resolve;
+                    tag.onerror = reject;
+                    document.head.appendChild(tag);
+                });
+            });
+        }, Promise.resolve());
+    };
+
+    // Import's "A design file (.pptx)": a page of it as one group.
+    Editor.importItems.push(function () {
+        var self = this;
+
+        return this.importApi() ? [t('designImport'), function () {
+            self.designScript().then(function () {
+                self.designPick('import');
+            }, function () {
+                self.showMessage(t('designError'), true);
+            });
+        }] : null;
+    });
+
+    // Rows of the New image dialog under its sizes: fn() on the editor
+    // gives an element or null; close() closes the dialog as Cancel does.
+    Editor.newImageRows = [];
+
+    // Rows of the New image dialog above its sizes: fn(api) on the editor
+    // gives an element or null. api.close() closes the dialog as Cancel
+    // does; api.choose(make) picks a ready document instead of a blank
+    // board (make() gives { artboard, layers }), null goes back to blank.
+    // While one is picked the sizes and backgrounds are hidden.
+    Editor.newImageHeads = [];
+
+    // "Open a design file": a new canvas from a folder of Files (save mode
+    // new) opens a .pptx's pages as canvases or scenes. How the file is made
+    // and the reading or its refusal are written under the button; the
+    // dialog closes once the file is read and the window shows its pages.
+    Editor.newImageRows.push(function (close) {
+        var self = this, note, row;
+
+        if (!this.importApi() || (this.saveMode !== 'new') || !(this.opts.save && this.opts.save.folderId)) {
+            return null;
+        }
+
+        note = el('p', { class: 'pgie-doorhint', text: t('designDoorHint') });
+
+        var say = function (text, error) {
+            note.textContent = text;
+            note.classList.toggle('pgie-derror', !!error);
+            note.setAttribute('role', error ? 'alert' : 'status');
+        };
+
+        row = el('div', { class: 'pgie-door' }, [
+            el('button', { type: 'button', class: 'pgie-btn pgie-doorbtn', onclick: function () {
+                self.designScript().then(function () {
+                    self.designPick('new', say, close);
+                }, function () {
+                    say(t('designError'), true);
+                });
+            } }, [X.icon('import'), el('span', { text: t('designDoor') })]),
+            note
+        ]);
+
+        return row;
+    });
 
     // A file from this computer or a drop: an SVG becomes one SVG layer
     // (svgImport(), through the sanitizer), a video a video layer
@@ -887,7 +965,7 @@
     // stay in it: Tab goes round, Escape cancels, Enter in a size creates.
     Editor.prototype.openNewImage = function () {
         var self = this, a = this.doc.artboard;
-        var s = { preset: M.boardPreset(a.width, a.height), w: a.width, h: a.height, bg: a.background };
+        var s = { preset: M.boardPreset(a.width, a.height), w: a.width, h: a.height, bg: a.background, design: null };
         var presets = el('div', { class: 'pgie-presets' }), bgs = el('div', { class: 'pgie-bgopts' });
         var w = el('input', { type: 'number', class: 'pgie-input', min: '16', max: '8000', value: String(s.w), 'aria-label': t('width') });
         var h = el('input', { type: 'number', class: 'pgie-input', min: '16', max: '8000', value: String(s.h), 'aria-label': t('height') });
@@ -919,7 +997,7 @@
             return isFinite(n) && (n >= 16) && (n <= 8000);
         };
         var check = function () {
-            var mine = (s.preset === 'custom'), okW = !mine || sideOk(w.value), okH = !mine || sideOk(h.value);
+            var mine = (s.preset === 'custom') && !s.design, okW = !mine || sideOk(w.value), okH = !mine || sideOk(h.value);
 
             w.setAttribute('aria-invalid', okW ? 'false' : 'true');
             h.setAttribute('aria-invalid', okH ? 'false' : 'true');
@@ -975,13 +1053,30 @@
             });
         });
 
-        var box = el('div', { class: 'pgie-confirm-box pgie-newbox' }, [
-            el('h2', { id: 'pgie-new-title', text: t('newImage') }),
+        var rows = Editor.newImageRows.map(function (fn) {
+            return fn.call(self, function () { self.closeNewImage(null); });
+        });
+
+        var box, heads = Editor.newImageHeads.map(function (fn) {
+            return fn.call(self, {
+                close: function () { self.closeNewImage(null); },
+                choose: function (make) {
+                    s.design = make || null;
+                    box.classList.toggle('pgie-newdesign', !!make);
+                    check();
+                }
+            });
+        });
+
+        box = el('div', { class: 'pgie-confirm-box pgie-newbox' }, [
+            el('h2', { id: 'pgie-new-title', text: t('newImage') })
+        ].concat(heads, [
             presets,
-            custom,
-            section(t('boardBackground'), bgs),
+            custom
+        ], rows, [
+            el('div', { class: 'pgie-newbg' }, [section(t('boardBackground'), bgs)]),
             el('div', { class: 'pgie-confirm-actions' }, [cancel, create])
-        ]);
+        ]));
 
         this.board.dialog = el('div', { class: 'pgie-confirm', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'pgie-new-title' }, [box]);
         this.board.dialog.addEventListener('keydown', function (e) {
@@ -1006,16 +1101,32 @@
     };
 
     // s: the dialog's choice, or null for Cancel. The chosen canvas is the
-    // one the editor opened with: nothing to save yet, nothing to undo.
+    // one the editor opened with: nothing to undo, and nothing to save yet
+    // but a design's layers, which count as a change (a canvas saved over
+    // its address keeps them).
     Editor.prototype.closeNewImage = function (s) {
-        var a = this.doc.artboard, p;
+        var a = this.doc.artboard, p, layers = null;
 
-        if (s) {
+        if (s && s.design) {
+            p = s.design.call(this);
+            a.width = p.artboard.width;
+            a.height = p.artboard.height;
+            a.background = p.artboard.background;
+            layers = p.layers;
+        } else if (s) {
             p = M.BOARD_PRESETS.filter(function (x) { return x[0] === s.preset; })[0];
             a.width = p ? p[1] : M.boardSide(s.w);
             a.height = p ? p[2] : M.boardSide(s.h);
             a.background = s.bg;
+        }
+
+        if (s) {
             this.opening = M.clone(this.doc);
+
+            if (layers) {
+                this.doc.layers = layers;
+            }
+
             this.settleDirty();
             this.layersDirty = true;
             this.renderMeta();
@@ -1597,7 +1708,7 @@
         this.confirmBox = el('div', { class: 'pgie-confirm', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'pgie-lang-title' }, [
             el('div', { class: 'pgie-confirm-box pgie-langbox' }, [
                 el('div', { class: 'pgie-importhead' }, [el('h2', { id: 'pgie-lang-title', text: t('languages') }), close]),
-                el('p', { class: 'pgie-note', text: t('langNote') + ' ' + t('langSame') }),
+                el('p', { class: 'pgie-note', text: t('langNote') + ' ' + t('langSame') + ' ' + t('langFixNote') }),
                 this.dirty ? el('p', { class: 'pgie-note pgie-langwarn', text: t('langUnsaved') }) : null,
                 this.langList,
                 el('div', { class: 'pgie-langfoot' }, [this.langStatus, this.langAll])
@@ -1610,7 +1721,10 @@
     };
 
     // One row per language: the drawn picture beside its name, the state,
-    // how many texts are translated, Draw.
+    // how many texts are translated, how many are corrected by hand, Draw
+    // and, once every text is translated, Correct by hand (the language
+    // view, pg_image_editor_langview.js): the row's main button where the
+    // picture is to look at by hand.
     Editor.prototype.showLanguages = function () {
         var self = this, list = this.langList, data = this.langData;
 
@@ -1635,6 +1749,11 @@
                 'aria-label': t('langDraw') + ': ' + lang.name, onclick: function () {
                     self.drawLanguages([lang.code]);
                 } });
+            var fixes = Number(lang.corrected) || 0;
+            var correct = (M.languageDrawable(lang) && self.correctLanguage) ? el('button', { type: 'button', class: 'pgie-btn' + ((state === 'look') ? ' pgie-primary' : ''),
+                text: t('langCorrect'), disabled: self.langBusy, 'aria-label': t('langCorrect') + ': ' + lang.name, onclick: function () {
+                    self.correctLanguage(lang);
+                } }) : null;
 
             // The row says what a visitor sees where it asks for a draw, and
             // why Draw waits while a text is not translated.
@@ -1648,10 +1767,11 @@
                     : el('span', { class: 'pgie-langthumb pgie-checker' }),
                 el('span', { class: 'pgie-langname' }, [
                     el('strong', { text: lang.name }),
-                    el('span', { class: 'pgie-note', text: note })
+                    el('span', { class: 'pgie-note', text: note }),
+                    fixes ? el('span', { class: 'pgie-note pgie-langfixed', text: (fixes === 1) ? t('langCorrectedOne') : t('langCorrected').replace('{n}', String(fixes)) }) : null
                 ]),
                 state ? el('span', { class: 'pgie-langstate pgie-lang-' + state, text: t(LANG_STATES[state] || 'langNotTranslated') }) : null,
-                draw
+                el('span', { class: 'pgie-langacts' }, [draw, correct])
             ]));
         });
 
@@ -1768,20 +1888,20 @@
     }
 
     // One language's picture: its words in the layers, each changed text
-    // fitted to its source's box (smaller, never under the floor of its size
-    // on the picture's shorter side; the middle kept upright, the aligned
-    // side kept across), drawn and posted.
+    // fitted by M.languageFitted() (grown into its free room, wrapped
+    // between words past its width, smaller only past that, never under the
+    // floor of its size on the picture's shorter side) or put where it is
+    // corrected by hand for the language, drawn and posted.
     Editor.prototype.drawLanguage = function (data, lang) {
         var self = this, photo = (data.kind === 'photo');
         var opened = photo ? M.versionOpenDoc(data.doc, this.langFileId) : M.canvasOpenDoc(data.doc);
-        var put = opened ? M.languageDoc(opened, lang.texts) : null;
+        var put = opened ? M.languageDoc(opened, lang.texts, lang.code) : null;
 
         if (!put) {
             return Promise.resolve(null);
         }
 
         var painter = Object.create(Editor.prototype), mark = false, size = M.docSize(put.doc);
-        var side = Math.min(Number(size.w) || 0, Number(size.h) || 0);
 
         painter.doc = put.doc;
         painter.opts = { fileId: this.langFileId, fileName: data.name || '' };
@@ -1796,26 +1916,9 @@
 
             return painter.layersReady();
         }).then(function () {
-            put.doc.layers.forEach(function (l) {
-                var src = put.source[l.id];
+            var fitted = M.languageFitted(put, function (l) { return painter.textLayout(l); }, size);
 
-                if (!src) {
-                    return;
-                }
-
-                var before = painter.textLayout(src), wide = painter.textLayout(l);
-                var fit = M.languageFit(before.w, before.h, wide.w, wide.h, src.size, side);
-
-                l.size = Math.round((Number(src.size) || 1) * fit.scale * 100) / 100;
-
-                var after = painter.textLayout(l), box = M.textFit(src, after);
-
-                l.x = box.x;
-                l.w = box.w;
-                l.h = box.h;
-                l.y = Math.round(((Number(src.y) || 0) + (before.h - after.h) / 2) * 100) / 100;
-                mark = mark || fit.mark;
-            });
+            mark = !!(fitted && fitted.fit);
 
             return painter.layersReady();
         }).then(function () {

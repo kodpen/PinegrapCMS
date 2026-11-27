@@ -10,15 +10,15 @@ description: Legacy Paraşüt inbox (view_parasut_inbox.php): what its tabs read
 
 ## What query do the lists send? (#1505)
 - Both build it with `parasut_list_params()`: `page[number]`, `page[size]`, `sort=-issue_date`, `include`, the date range as `filter[issue_date][gteq]` / `[lteq]`, the contact (`supplier_id` / `contact_id`), `item_type`.
-- Paraşüt's range operators are eq, lt, gt, gteq, lteq and not_eq; until #1505 `[gte]` / `[lte]` made every filtered page "Bad Request: 'gte' is not a valid operator".
+- Paraşüt's range operators are eq, lt, gt, gteq, lteq and not_eq; until #1505 `[gte]` / `[lte]` made every filtered page "Bad Request: 'gte' is not a valid operator" (demo company, 2026-10-24).
 - A date that is not a calendar day written Y-m-d is left out: Paraşüt answers 400 "'issue_date' is not a date" for it, and for `filter[issue_date]=a..b` too.
-- Probed on the demo company (2026-10-24): `[gte]` 400, `[gteq]` 200.
 - `vkn`, `start_date`, `end_date`, `tab`, `pg` go through `pg_request_single_values()`: a list (`start_date[]=x`) threw a TypeError in `h()` / `trim()`, a 500 (#5751). Dates are shown with `prepare_form_data_for_output(…, 'date')`, in the detail too; the filter labels carry `for` (#5756).
 
 ## Which totals do the lists and the detail show? (#1600)
 - `parasut_inbox_totals()`: "Total before VAT" = `before_taxes_total` ("Vergiler Hariç Toplam": before ÖTV/ÖİV too); "Grand total (incl. VAT)" = `net_total` ("Genel Toplam": VAT, ÖTV, ÖİV on; VAT withheld and stopaj `withholding` off, each noted under it). The detail adds VAT, not ÖTV/ÖİV.
 - Checked live on two demo sales invoices (2026-10-24), discounts, ÖTV, ÖİV, withholding and stopaj included.
-- Purchase bills: swagger.json only, no bill read live. No `before_taxes_total`, no `withholding` (only `withholding_rate`), so the Incoming tab always takes `gross_total` − `total_discount` − `total_invoice_discount`, or `net_total` − `total_vat` for a bill without lines (`is_detailed` false: its only amounts). No stopaj note. Check on the first real bill.
+- Purchase bills: not in swagger.json, but staging's bills carry `before_taxes_total` and `withholding`, `is_detailed` false too (2026-11-27): the first branch runs, stopaj noted; `net_total` − `total_vat` and `gross_total` − discounts are fallbacks.
+- Live on staging (2026-11-27, #1600): both tabs, the VKN/TCKN tab's refusals, the ERP inbox's notice. Badge labels: erp-parasut-legacy-inbox-badges.md.
 - Until #1600: "Net" (`net_total`, "KDV Hariç") and "Gross" (`gross_total`, "KDV Dahil"); those keys stay (erp-translation-traps.md).
 
 ## Which numbers does the VKN/TCKN tab refuse? (#1600)

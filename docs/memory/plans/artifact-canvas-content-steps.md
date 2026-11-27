@@ -16,9 +16,9 @@ priority: 6
 - No schema change. Phone and dark as the canvas does them (`ui/image-editor-phone.md`).
 
 ## Which steps? (one at a time, each after the one before; S under 400, M about 1,000 product lines; tests red first)
-- AC4 (S) Site colours: the action that reads the site's palettes and variables, the row in the shared colour control.
-- AC5 (S) Text styles and font pairs in the Text panel.
-- AC6 (M) Element sets: about forty shapes in the Sticker tool, as svg layers.
+- AC4 (S) Done (#11854): Site colours: the action that reads the site's palettes and variables, the row in the shared colour control (`ui/image-editor-site-colors.md`).
+- AC5 (S) Done (#11881): Text styles and font pairs in the Text panel (`ui/image-editor-text-styles.md`).
+- AC6 (M) Done (#11897): Element sets (`ui/image-editor-elements.md`).
 - AC7 (M) "Start from a design": the row in the New image dialog, the tiles, the purpose filter, the index, the "Your picture" box, and the first six designs.
 - AC8 (M, content) The other twenty-four designs, six a purpose where a size fits it; each opened and saved once in a test.
 - AC9 (M) "Resize": the pure rule with tests, then the panel in the Canvas tool.
@@ -29,7 +29,7 @@ priority: 6
 - AC14 (S) Close-out: the rules into `ui/image-editor-content.md` and its parts, the `[NEW]` line named, the census files, this file, `artifact-canvas-content-screens.md` and `artifact-canvas-content.md` deleted.
 
 ## What runs beside them?
-- The design file's steps (`artifact-canvas-design-file.md`) and the picture text steps (`picture-text-fit.md`) are other plans: one step of each may run beside one step of this one. AC7 and DF4 both add a row to the New image dialog: the later one is built on the landed other.
+- The design file has landed (`ui/image-editor-design-file.md`); AC7 adds its row to the New image dialog through `Editor.newImageRows` beside DF4's (`ui/image-editor-design-chooser.md`).
 
 ## What did the architect settle for Unsplash? (2026-11-26, agent channel request 3151)
 - The API guidelines ask that every use shows the address the API returned, that the download address is called when a photo is chosen, and that the photographer and Unsplash are credited with a link (help.unsplash.com, "Unsplash API Guidelines", read 2026-11-26).

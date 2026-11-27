@@ -168,8 +168,18 @@ StyleDesigner.definePart('fonts', function (K) {
         det.querySelector('.sd-gf-det-add').addEventListener('click', function() {
             var wts = []; det.querySelectorAll('input:checked').forEach(function(c) { wts.push(parseInt(c.value,10)); });
             if (!wts.length) wts = [400];
-            var list = H.added().filter(function(f) { return f.family !== family; });
-            list.push({ family: family, weights: wts, enabled: true });
+            // Update changes the weights alone: a font turned off in the
+            // Fonts section stays off, in its place in the list.
+            var found = false;
+            var list = H.added().map(function(f) {
+                if (f.family !== family) return f;
+                found = true;
+                var next = {};
+                for (var k in f) if (Object.prototype.hasOwnProperty.call(f, k)) next[k] = f[k];
+                next.weights = wts;
+                return next;
+            });
+            if (!found) list.push({ family: family, weights: wts, enabled: true });
             H.set(list);
             renderGfBrowser(document.getElementById('sd-gf-search') ? document.getElementById('sd-gf-search').value : '');
             // Re-open with the now-existing entry so the title flips to

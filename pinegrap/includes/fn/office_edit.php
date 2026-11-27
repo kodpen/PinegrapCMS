@@ -26,6 +26,18 @@
  * sheet, and sheets whose cells carry no address. A package that is
  * digitally signed is not changed at all.
  *
+ * One save takes an ordered list of changes of every kind: cells, the format
+ * of ranges, rows and columns inserted or deleted, sheets added, renamed,
+ * deleted or moved (includes/fn/office_format.php, office_shift.php,
+ * office_sheets.php). Each is applied to the workbook as the one before it
+ * left it, all on one copy; a refusal writes nothing.
+ *
+ * One save takes an ordered list of changes of every kind: cells, the format
+ * of ranges, rows and columns inserted or deleted, sheets added, renamed,
+ * deleted or moved (includes/fn/office_format.php, office_shift.php,
+ * office_sheets.php). Each is applied to the workbook as the one before it
+ * left it, all on one copy; a refusal writes nothing.
+ *
  * The file is replaced in one step at the end: the new package is built and
  * checked beside it, and only a package that reads back is put in its place.
  * The version the person opened (a hash of the bytes) must still be the one
@@ -45,6 +57,13 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  * The most cells one save may change.
  */
 define('PG_OFFICE_EDIT_MAX_CHANGES', 5000);
+
+/**
+ * The most steps one save may take: each format range, row or column, and
+ * sheet change, and each run of cells between them, rebuilds the package
+ * once.
+ */
+define('PG_OFFICE_EDIT_MAX_STEPS', 100);
 
 /**
  * The longest text a spreadsheet cell holds (Excel's own limit).
@@ -1431,8 +1450,9 @@ function pg_office_xlsx_clear_cell($cell)
  * The rows that carry a change are found in the text and rewritten one by
  * one (pg_office_xlsx_patch_row()); everything between them is copied as it
  * was, byte for byte. Rows stand in number order in a sheet, so one pass
- * from the top finds them all. A row that is not in the sheet is not made:
- * the preview only offers the rows the sheet has.
+ * from the top finds them all. A row the sheet does not have (one inserted
+ * or a sheet added earlier in the same save) is made where its number puts
+ * it, with only the cells given a value.
  *
  * @param string $xml     the sheet part
  * @param array  $changes row number => [column number => cleaned text]
@@ -1465,8 +1485,16 @@ function pg_office_xlsx_patch_sheet($xml, $changes, $context)
     $context['declarations'] = implode('', $declarations[0]);
     $context['column_styles'] = pg_office_xlsx_column_styles($xml, $prefix);
 
-    if (!preg_match('/<' . $quoted . 'sheetData(?=[\s>\/])[^>]*>/', $xml, $data, PREG_OFFSET_CAPTURE) || (substr($data[0][0], -2) === '/>')) {
+    if (!preg_match('/<' . $quoted . 'sheetData(?=[\s>\/])[^>]*>/', $xml, $data, PREG_OFFSET_CAPTURE)) {
         return $fail('missing');
+    }
+
+    // An empty sheet's sheetData closes itself; it is opened so that rows
+    // can go in.
+    if (substr($data[0][0], -2) === '/>') {
+        $open = rtrim(substr($data[0][0], 0, -2)) . '>';
+        $xml = substr($xml, 0, $data[0][1]) . $open . '</' . $prefix . 'sheetData>' . substr($xml, $data[0][1] + strlen($data[0][0]));
+        $data[0][0] = $open;
     }
 
     $position = $data[0][1] + strlen($data[0][0]);
@@ -1484,9 +1512,34 @@ function pg_office_xlsx_patch_sheet($xml, $changes, $context)
     $close = '</' . $prefix . 'row>';
     $pattern = '/<' . $quoted . 'row(?=[\s>\/])[^>]*>/';
 
+    // A row the sheet lacks goes in at $at: before the next row, or at the
+    // end of sheetData.
+    $make = function ($number, $at) use (&$out, &$copied, $xml, $prefix, $changes, $context) {
+        $patched = pg_office_xlsx_patch_row('<' . $prefix . 'row r="' . $number . '"></' . $prefix . 'row>', $number, $changes[$number], $context);
+
+        if (!$patched['ok']) {
+            return $patched;
+        }
+
+        // A row given only empty values is not made.
+        if (strpos($patched['xml'], '<' . $prefix . 'c ') !== false) {
+            $out .= substr($xml, $copied, $at - $copied) . $patched['xml'];
+            $copied = $at;
+        }
+
+        return $patched;
+    };
+
     while ($target < count($targets)) {
         if (!preg_match($pattern, $xml, $tag, PREG_OFFSET_CAPTURE, $position) || ($tag[0][1] > $data_end)) {
-            return $fail('missing', pg_office_xlsx_column_name(key($changes[$targets[$target]])) . $targets[$target]);
+            $made = $make($targets[$target], $data_end);
+
+            if (!$made['ok']) {
+                return $fail($made['error'], $made['cell']);
+            }
+
+            $target++;
+            continue;
         }
 
         $start = $tag[0][1];
@@ -1510,7 +1563,14 @@ function pg_office_xlsx_patch_sheet($xml, $changes, $context)
         $row_number = (int) $number[1];
 
         if ($row_number > $targets[$target]) {
-            return $fail('missing', pg_office_xlsx_column_name(key($changes[$targets[$target]])) . $targets[$target]);
+            $made = $make($targets[$target], $start);
+
+            if (!$made['ok']) {
+                return $fail($made['error'], $made['cell']);
+            }
+
+            $target++;
+            continue;
         }
 
         if ($row_number === $targets[$target]) {
@@ -1764,6 +1824,8 @@ function pg_office_edit_message($code, $cell = '', $sheet = '')
             return lang('The file has a password to change it, so its cells are not changed here.');
         case 'many':
             return lang(array('string' => 'Too many cells were changed at once. Save at most {var:1} cells at a time.', 'vars' => array(PG_OFFICE_EDIT_MAX_CHANGES)));
+        case 'steps':
+            return lang(array('string' => 'Too many changes of formats, rows, columns and sheets were made at once. Save at most {var:1} at a time.', 'vars' => array(PG_OFFICE_EDIT_MAX_STEPS)));
         case 'long':
             return lang(array('string' => 'The text in cell {var:1} is longer than a spreadsheet cell can hold.', 'vars' => array($cell)));
         case 'text':
@@ -1787,40 +1849,6 @@ function pg_office_edit_message($code, $cell = '', $sheet = '')
     }
 
     return pg_office_shift_message($code, $cell, $sheet);
-}
-
-/**
- * Writes one inserted or deleted row or column into a workbook on disk,
- * under the file's lock, as pg_office_xlsx_save() writes cells.
- *
- * @param string   $path
- * @param array    $shift     pg_office_shift_request()
- * @param string   $version
- * @param string   $directory '' for data/temp
- * @param callable $fail
- * @return array ok, code, error, size, version, changed
- */
-function pg_office_xlsx_shift_save($path, $shift, $version, $directory, $fail)
-{
-    $directory = ($directory !== '') ? $directory : pg_office_edit_temp_directory();
-
-    if (!is_dir($directory)) {
-        @mkdir($directory, 0755, true);
-    }
-
-    $lock = pg_office_edit_lock($path, $directory);
-
-    if ($lock === null) {
-        return $fail('busy');
-    }
-
-    $result = pg_office_save_package($path, $version, $directory, $fail, function ($zip, $spool) use ($shift, $fail) {
-        return pg_office_xlsx_shift_parts($zip, $shift, $fail, $spool);
-    });
-
-    pg_office_edit_unlock($lock);
-
-    return $result;
 }
 
 /**
@@ -1868,67 +1896,84 @@ function pg_office_shift_message($code, $cell, $sheet)
 }
 
 /**
- * Writes the changed cells into a workbook on disk.
+ * The refusals that belong to the whole workbook or the whole save, not to
+ * one change of the list: their message is not given a place.
  *
- * @param string $path      the workbook
- * @param array  $changes   list of [sheet => position in the workbook, name => the sheet's name, cell => "B7", value => text]
- * @param string $version   what the person opened (pg_office_version())
- * @param string $directory where the new package is built; data/temp when ''
- * @return array ok, code, error, size, version, changed
+ * @return string[]
  */
-function pg_office_xlsx_save($path, $changes, $version, $directory = '')
+function pg_office_xlsx_save_list_codes()
 {
-    $fail = function ($code, $cell = '', $sheet = '') {
-        return array('ok' => false, 'code' => $code, 'error' => pg_office_edit_message($code, $cell, $sheet), 'size' => 0, 'version' => '', 'changed' => 0);
+    return array('ready', 'none', 'many', 'steps', 'busy', 'signed', 'password', 'read', 'save');
+}
+
+/**
+ * Reads the ordered list a workbook save sends into the steps it is applied
+ * in. Cells next to each other in the list are one step (a cell named twice
+ * takes the last value); a format range, an inserted or deleted row or
+ * column, and a sheet added, renamed, deleted or moved are a step each. Each
+ * step keeps its place in the list (0-based), and a cell step the place of
+ * every cell, so a refusal can name the change it came from.
+ *
+ * @param mixed $changes list of cell changes [sheet, name, cell, value] and of
+ *                       changes with an op (format, insert, delete, sheet_add,
+ *                       sheet_rename, sheet_delete, sheet_move)
+ * @return array ok, steps (kind cells|format|shift|sheets, at, request, places);
+ *               or ok false, code, at (null when it is the whole list), cell
+ */
+function pg_office_xlsx_save_steps($changes)
+{
+    $refuse = function ($code, $at = null, $cell = '') {
+        return array('ok' => false, 'code' => $code, 'at' => $at, 'cell' => $cell);
     };
 
-    if (!pg_office_ready()) {
-        return $fail('ready');
-    }
-
     if (!is_array($changes) || empty($changes)) {
-        return $fail('none');
+        return $refuse('none');
     }
 
     if (count($changes) > PG_OFFICE_EDIT_MAX_CHANGES) {
-        return $fail('many');
+        return $refuse('many');
     }
 
-    // A row or column inserted or deleted (includes/fn/office_shift.php),
-    // a sheet added, renamed, deleted or moved
-    // (includes/fn/office_sheets.php), or the format of a range of cells
-    // (includes/fn/office_format.php), is a save of its own.
-    foreach ($changes as $change) {
+    $steps = array();
+
+    foreach (array_values($changes) as $place => $change) {
         if (is_array($change) && isset($change['op'])) {
-            $format = (count($changes) === 1) ? pg_office_format_request($change) : null;
+            if (count($steps) >= PG_OFFICE_EDIT_MAX_STEPS) {
+                return $refuse('steps');
+            }
+
+            $format = pg_office_format_request($change);
 
             if ($format !== null) {
-                return pg_office_xlsx_format_save($path, $format, (string) $version, $directory, $fail);
+                $range = $format['range'];
+
+                if ((($range[2] - $range[0] + 1) * ($range[3] - $range[1] + 1)) > PG_OFFICE_EDIT_MAX_CHANGES) {
+                    return $refuse('many', $place);
+                }
+
+                $steps[] = array('kind' => 'format', 'at' => $place, 'request' => $format);
+                continue;
             }
 
-            $sheets = (count($changes) === 1) ? pg_office_sheets_request($change) : null;
+            $sheets = pg_office_sheets_request($change);
 
             if ($sheets !== null) {
-                return pg_office_xlsx_sheets_save($path, $sheets, (string) $version, $directory, $fail);
+                $steps[] = array('kind' => 'sheets', 'at' => $place, 'request' => $sheets);
+                continue;
             }
 
-            $shift = (count($changes) === 1) ? pg_office_shift_request($change) : null;
+            $shift = pg_office_shift_request($change);
 
-            if ($shift === null) {
-                return $fail('none');
+            if ($shift !== null) {
+                $steps[] = array('kind' => 'shift', 'at' => $place, 'request' => $shift);
+                continue;
             }
 
-            return pg_office_xlsx_shift_save($path, $shift, (string) $version, $directory, $fail);
+            return $refuse('none', $place);
         }
-    }
 
-    // What was asked, by sheet, row and column; a cell named twice takes
-    // the last value.
-    $wanted = array();
-
-    foreach ($changes as $change) {
         if (!is_array($change) || !isset($change['sheet'], $change['cell']) || !is_scalar($change['sheet']) || !is_string($change['cell'])) {
-            return $fail('none');
+            return $refuse('none', $place);
         }
 
         $position = pg_office_xlsx_cell(strtoupper($change['cell']));
@@ -1941,57 +1986,197 @@ function pg_office_xlsx_save($path, $changes, $version, $directory = '')
         $text = pg_office_xlsx_clean_text($value);
 
         if (($position === null) || ($position[1] >= PG_OFFICE_MAX_COLUMNS)) {
-            return $fail('none');
+            return $refuse('none', $place);
         }
 
         $reference = pg_office_xlsx_column_name($position[1]) . $position[0];
 
         if ($text === null) {
-            return $fail('text', $reference);
+            return $refuse('text', $place, $reference);
         }
 
         if (mb_strlen($text, 'UTF-8') > PG_OFFICE_EDIT_MAX_TEXT) {
-            return $fail('long', $reference);
+            return $refuse('long', $place, $reference);
+        }
+
+        $last = count($steps) - 1;
+
+        if (($last < 0) || ($steps[$last]['kind'] !== 'cells')) {
+            if (count($steps) >= PG_OFFICE_EDIT_MAX_STEPS) {
+                return $refuse('steps');
+            }
+
+            $steps[] = array('kind' => 'cells', 'at' => $place, 'request' => array(), 'places' => array());
+            $last++;
         }
 
         $sheet = (int) $change['sheet'];
-        $wanted[$sheet]['name'] = isset($change['name']) ? (string) $change['name'] : null;
-        $wanted[$sheet]['rows'][$position[0]][$position[1]] = $text;
+        $steps[$last]['request'][$sheet]['name'] = isset($change['name']) ? (string) $change['name'] : null;
+        $steps[$last]['request'][$sheet]['rows'][$position[0]][$position[1]] = $text;
+        $steps[$last]['places'][] = array($place, $reference);
     }
 
-    $directory = ($directory !== '') ? $directory : pg_office_edit_temp_directory();
+    return array('ok' => true, 'steps' => $steps);
+}
 
-    if (!is_dir($directory)) {
-        @mkdir($directory, 0755, true);
+/**
+ * Writes an ordered list of changes into a workbook on disk: cells, the
+ * format of ranges, rows and columns inserted or deleted, sheets added,
+ * renamed, deleted or moved. Each change is applied to the workbook as the
+ * one before it left it, so a position or a sheet name in the list is the
+ * workbook's at that point of the list. All of them are written under one
+ * lock and one version check, on one copy that takes the file's place only
+ * when every change went in: a refusal writes nothing and names the change's
+ * place in the list (at, 0-based).
+ *
+ * @param string $path      the workbook
+ * @param array  $changes   pg_office_xlsx_save_steps()
+ * @param string $version   what the person opened (pg_office_version())
+ * @param string $directory where the new package is built; data/temp when ''
+ * @return array ok, code, error, size, version, changed, at
+ */
+function pg_office_xlsx_save($path, $changes, $version, $directory = '')
+{
+    $fail = function ($code, $cell = '', $sheet = '') {
+        return array('ok' => false, 'code' => $code, 'error' => pg_office_edit_message($code, $cell, $sheet), 'size' => 0, 'version' => '', 'changed' => 0);
+    };
+
+    if (!pg_office_ready()) {
+        return $fail('ready') + array('at' => null);
     }
 
-    $lock = pg_office_edit_lock($path, $directory);
+    $plan = pg_office_xlsx_save_steps($changes);
 
-    if ($lock === null) {
-        return $fail('busy');
+    if (!$plan['ok']) {
+        $result = $fail($plan['code'], $plan['cell']) + array('at' => $plan['at']);
+    } else {
+        $directory = ($directory !== '') ? $directory : pg_office_edit_temp_directory();
+
+        if (!is_dir($directory)) {
+            @mkdir($directory, 0755, true);
+        }
+
+        $lock = pg_office_edit_lock($path, $directory);
+
+        if ($lock === null) {
+            return $fail('busy') + array('at' => null);
+        }
+
+        $result = pg_office_xlsx_save_list($path, $plan['steps'], (string) $version, $directory, $fail);
+        pg_office_edit_unlock($lock);
     }
 
-    $result = pg_office_xlsx_save_locked($path, $wanted, (string) $version, $directory, $fail);
-    pg_office_edit_unlock($lock);
+    if (!$result['ok'] && in_array($result['code'], pg_office_xlsx_save_list_codes(), true)) {
+        $result['at'] = null;
+    }
+
+    if (!$result['ok'] && ($result['at'] !== null) && (count($changes) > 1)) {
+        $result['error'] = lang(array('string' => 'Change {var:1} of {var:2} was not saved. {var:3}', 'vars' => array($result['at'] + 1, count($changes), $result['error'])));
+    }
 
     return $result;
 }
 
 /**
- * The part of pg_office_xlsx_save() that runs under the file's lock.
+ * The part of pg_office_xlsx_save() that runs under the file's lock. One
+ * step is written into the file as before; several are written one after
+ * the other into a copy, which takes the file's place at the end.
  *
  * @param string   $path
- * @param array    $wanted    sheet position => [name, rows => [row => [column => text]]]
+ * @param array    $steps     pg_office_xlsx_save_steps()
  * @param string   $version
  * @param string   $directory
  * @param callable $fail
- * @return array
+ * @return array ok, code, error, size, version, changed, at
  */
-function pg_office_xlsx_save_locked($path, $wanted, $version, $directory, $fail)
+function pg_office_xlsx_save_list($path, $steps, $version, $directory, $fail)
 {
-    return pg_office_save_package($path, $version, $directory, $fail, function ($zip, $spool) use ($wanted, $fail) {
-        return pg_office_xlsx_save_parts($zip, $wanted, $fail, $spool);
+    if (($version === '') || !hash_equals(pg_office_version($path), $version)) {
+        return $fail('changed') + array('at' => null);
+    }
+
+    if (count($steps) === 1) {
+        return pg_office_xlsx_save_step($path, $steps[0], $version, $directory, $fail);
+    }
+
+    $work = rtrim($directory, '/\\') . '/office_edit_' . bin2hex(random_bytes(8)) . '.work';
+
+    if (!@copy($path, $work)) {
+        return $fail('save') + array('at' => null);
+    }
+
+    $changed = 0;
+
+    foreach ($steps as $step) {
+        $result = pg_office_xlsx_save_step($work, $step, pg_office_version($work), $directory, $fail);
+
+        if (!$result['ok']) {
+            @unlink($work);
+
+            return $result;
+        }
+
+        $changed += (int) $result['changed'];
+    }
+
+    if (!pg_office_replace_file($work, $path)) {
+        return $fail('save') + array('at' => null);
+    }
+
+    return array('ok' => true, 'code' => '', 'error' => '', 'size' => (int) @filesize($path), 'version' => pg_office_version($path), 'changed' => $changed, 'at' => null);
+}
+
+/**
+ * Writes one step of a save's list into a workbook on disk with the writer
+ * of its kind (cells here, includes/fn/office_format.php,
+ * office_shift.php, office_sheets.php) and that writer's refusals. A refused
+ * cell is traced back to the last change of the step that named it.
+ *
+ * @param string   $path
+ * @param array    $step      one of pg_office_xlsx_save_steps()
+ * @param string   $version   the version of $path now
+ * @param string   $directory
+ * @param callable $fail
+ * @return array ok, code, error, size, version, changed, at
+ */
+function pg_office_xlsx_save_step($path, $step, $version, $directory, $fail)
+{
+    $refused_cell = '';
+
+    $step_fail = function ($code, $cell = '', $sheet = '') use ($fail, &$refused_cell) {
+        $refused_cell = (string) $cell;
+
+        return $fail($code, $cell, $sheet);
+    };
+
+    $result = pg_office_save_package($path, $version, $directory, $step_fail, function ($zip, $spool) use ($step, $step_fail) {
+        switch ($step['kind']) {
+            case 'format':
+                return pg_office_xlsx_format_parts($zip, $step['request'], $step_fail, $spool);
+            case 'sheets':
+                return pg_office_xlsx_sheets_parts($zip, $step['request'], $step_fail, $spool);
+            case 'shift':
+                return pg_office_xlsx_shift_parts($zip, $step['request'], $step_fail, $spool);
+        }
+
+        return pg_office_xlsx_save_parts($zip, $step['request'], $step_fail, $spool);
     });
+
+    $result['at'] = null;
+
+    if (!$result['ok']) {
+        $result['at'] = $step['at'];
+
+        if (($step['kind'] === 'cells') && ($refused_cell !== '')) {
+            foreach ($step['places'] as $place) {
+                if ($place[1] === $refused_cell) {
+                    $result['at'] = $place[0];
+                }
+            }
+        }
+    }
+
+    return $result;
 }
 
 /**
@@ -3107,11 +3292,11 @@ function pg_office_docx_edit_refusal($zip)
 }
 
 /**
- * The text, format and kind one entry of a save asks for, checked.
+ * The text, format, kind and alignment one entry of a save asks for, checked.
  *
  * @param array $change an entry of pg_office_docx_save()'s changes
  * @param bool  $added  whether it adds a paragraph, whose text is '' when not given
- * @return array|string text, format, kind (each null when not asked); or the refusal's code
+ * @return array|string text, format, kind, align (each null when not asked); or the refusal's code
  */
 function pg_office_docx_change_parts($change, $added)
 {
@@ -3135,9 +3320,19 @@ function pg_office_docx_change_parts($change, $added)
         }
     }
 
+    $align = null;
+
+    if (isset($change['align'])) {
+        $align = pg_office_docx_align_request($change['align']);
+
+        if ($align === null) {
+            return 'none';
+        }
+    }
+
     $text = null;
 
-    if ($added || (($format === null) && ($kind === null)) || isset($change['text'])) {
+    if ($added || (($format === null) && ($kind === null) && ($align === null)) || isset($change['text'])) {
         $text = pg_office_xlsx_clean_text(isset($change['text']) ? $change['text'] : '');
 
         if ($text === null) {
@@ -3149,7 +3344,7 @@ function pg_office_docx_change_parts($change, $added)
         }
     }
 
-    return array('text' => $text, 'format' => $format, 'kind' => $kind);
+    return array('text' => $text, 'format' => $format, 'kind' => $kind, 'align' => $align);
 }
 
 /**
@@ -3158,10 +3353,11 @@ function pg_office_docx_change_parts($change, $added)
  * @param string $path      the document
  * @param array  $changes   list of [p => the paragraph's position (pg_office_docx_paragraphs()), text => the new text,
  *                          format => stretches to make bold, italic or underlined (pg_office_docx_format_request()),
- *                          kind => normal, heading1 to heading3, bullet or number (pg_office_docx_kind_request())];
- *                          text, format or kind may be left out when another is there. [p, delete => true] deletes
+ *                          kind => normal, heading1 to heading3, bullet or number (pg_office_docx_kind_request()),
+ *                          align => start, center, end or justify (pg_office_docx_align_request())];
+ *                          text, format, kind or align may be left out when another is there. [p, delete => true] deletes
  *                          the paragraph; [after => a paragraph's position, text, format, kind] adds one after it
- *                          (includes/fn/office_docx_paragraphs.php), several after the same one in the order listed
+ *                          (includes/fn/office_docx_paragraphs.php), several after the same one in the order listed, with an align too
  * @param string $version   what the person opened (pg_office_version())
  * @param string $directory where the new package is built; data/temp when ''
  * @return array ok, code, error, size, version, changed
@@ -3187,7 +3383,8 @@ function pg_office_docx_save($path, $changes, $version, $directory = '')
     // A paragraph named twice takes the last change. A change holds a new
     // text, a format change of stretches of the text (written after the
     // text, counted in it: includes/fn/office_docx_format.php), a kind
-    // (includes/fn/office_docx_kind.php), or any of them together.
+    // (includes/fn/office_docx_kind.php), an alignment, or any of them
+    // together.
     $wanted = array();
     $added = array();
 
@@ -3213,7 +3410,7 @@ function pg_office_docx_save($path, $changes, $version, $directory = '')
         }
 
         if (!empty($change['delete'])) {
-            $wanted[(int) $change['p']] = array('text' => null, 'format' => null, 'kind' => null, 'delete' => true);
+            $wanted[(int) $change['p']] = array('text' => null, 'format' => null, 'kind' => null, 'align' => null, 'delete' => true);
             continue;
         }
 
@@ -3253,10 +3450,10 @@ function pg_office_docx_save($path, $changes, $version, $directory = '')
  *
  * @param ZipArchive $zip
  * @param array      $wanted paragraph position => [text => the new text or null, format => stretches or null, kind => a kind or null,
- *                           delete => true to delete it]
+ *                           align => an alignment or null, delete => true to delete it]
  * @param callable   $fail
  * @param callable   $spool  writes a part to a file (pg_office_save_package())
- * @param array      $added  paragraphs to add: list of [after => a position, text, format, kind]
+ * @param array      $added  paragraphs to add: list of [after => a position, text, format, kind, align]
  * @return array ok, parts (part name => file), changed; or a refusal
  */
 function pg_office_docx_save_parts($zip, $wanted, $fail, $spool, $added = array())
@@ -3342,7 +3539,14 @@ function pg_office_docx_save_parts($zip, $wanted, $fail, $spool, $added = array(
         $changed[spl_object_hash($paragraphs[$position])] = true;
     }
 
-    // Paragraphs added, with their own text, format and kind; then those
+    // Alignments (includes/fn/office_docx_format.php).
+    foreach ($wanted as $position => $change) {
+        if (empty($change['delete']) && ($change['align'] !== null) && pg_office_docx_paragraph_align_set($paragraphs[$position], $change['align'])) {
+            $changed[spl_object_hash($paragraphs[$position])] = true;
+        }
+    }
+
+    // Paragraphs added, with their own text, format, kind and alignment; then those
     // deleted, each refused when it may not go
     // (includes/fn/office_docx_paragraphs.php).
     $kinds = array();

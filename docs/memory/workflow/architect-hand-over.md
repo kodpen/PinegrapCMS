@@ -1,36 +1,38 @@
 ---
 name: architect-hand-over
-description: Hand-over note of the architect session of 2026-11-24 and 25, written as the owner moves the architect to another account: what is owed to the owner and what he was asked
+description: Hand-over note of the architect session of 2026-11-24 to 26, written as the owner moves the architect to another account: what is owed to the owner, what he decided last, what he was asked
 ---
 
 ## Why is there a note?
-- Owner (2026-11-25, in the architect's window): "tasarımcı başka hesaba taşınacak yakında bu mimar oturumu da öyle o yüzden elinde birşey bırakma." A note is written only when he asks (`architect-no-hand-over.md`).
+- Owner (2026-11-26, in the architect's window): the account's quota is at 96%; "elinde sadece sana özel bilgi varsa elden çıkart devir notu da, buranın kotası 100% olunca farklı hesaba taşıyacağım." A note is written only when he asks (`architect-no-hand-over.md`).
+- Only Pinegrap CMS work is carried. The Paraşüt staging account's details stay with him: never asked for, never written.
 - The work in flight is in `architect-hand-over-work.md`. The architect that continues deletes both files once their items are done or moved to their plans.
-- Owner (2026-11-25, agent channel): the architect's account is near its quota and is moved soon, "acil değil"; until then "adım adım git": one step at a time, each pushed when finished, no half work held.
+
+## How is the owner reached?
+- Owner (2026-11-26): "sorular kanaldan buradan soru sorarsan göremem, kaçırırız." A question for him is a one-choice poll in the agent channel (`architect-asking.md`), never a question at the end of a turn in the architect's window; pictures he should see go to the channel too.
+- The dev site is open to the session's own browser: look there, set up no sandbox, save nothing.
+
+## What did he decide on 2026-11-26?
+- Message 14316: the New design window, the Page Design Studio home and then the editor's own frame are made plain, drawn by the architect: plans `designer-home-tidy` (drawn, #11893) and `designer-frame-tidy` (#11898).
+- Poll 233: "Evet, sırada o", the editor's frame after the window and the home.
+- Poll 234 (message 14331): "Evet, tek çubuk". The panel's top bar is not drawn in the editor; its tools stand in the main menu's drawer. Step FR5 no longer waits (#11901).
 
 ## What is owed to the owner?
-- The ease-of-use study before the launch, which he asked for in four areas, for a site owner and for an agency. The visual designer's part became the designer plans; first setup and first day, Site Settings and the daily jobs are not started.
-- The lists' look: the All Orders drawing he accepted shows 14 px rows, quiet row actions and a checkbox per row; every list draws 16 px rows and boxed Action buttons from the list table driver. A question for him before any plan, since it changes every list; the decisions list holds no answer.
-- Automations on other screens: he wants the channel board's drawer spread later (workspace part 51 of the decisions list). Nothing is planned until he opens it.
-- His report of 2026-11-25, an SQL error on the "Edit Contact" screen: bug issue #11549, given to coordinator 1. He is told when its fix has landed.
-
-## What did he decide on 2026-11-25?
-- The Options panel census: he ticked every package of the three questions (product part 110 of the decisions list, in #11548). The plan, DO2 to DO27, is done (`designer/options-panel-census.md`). He was told that twenty-six more steps make 1 January 2027 tighter; what slips is his to choose.
-- Who draws while no design session runs: "sen çiz mimar ve tasarımcısın" (`design-work-session.md`).
+- The ease-of-use study before the launch, in four areas, for a site owner and for an agency. The designer's part is the designer plans, Site Settings the `settings-*` plans; first setup and first day and the daily jobs are not started.
+- After DF4 has landed: a poll whether the Page Design Studio's Canva start reads the same .pptx file.
+- EC5's open point: where the seller's identity stands, General › Organization or Product feeds.
+- Three plans have no coordinator (the Paraşüt DevHub connection, the security scan, the Claude plugin bundle): whose they are is his call. SEO, Languages and Translation, Fediverse, Integrations, Channels and Team have no tidy plan yet (`plans/settings-scan-findings.md`).
+- AH4 waits for his yes to the `addons` table.
+- Paraşüt: PS1 has landed (#11819). The connect of dev with his staging client and the live round are k2's, in a local session on the dev machine he started on 2026-11-26 (agent channel request 3220 says what it may touch); he enters the client secret himself.
+- The staging sign-in mail to his address with a "+" does not arrive, and Paraşüt's account form refuses that character. k2's close-out PR writes what is found into `erp/` and deletes the two DevHub plans; the partner approval is his poll.
+- Carried from the note of 2026-11-25, not looked at again: the lists' look (14 px rows and quiet row actions of the accepted All Orders drawing against the list table driver's 16 px rows), a question for him before any plan; automations on other screens, nothing planned until he opens it.
 
 ## What was he asked and has not answered? (none of it holds work)
-- Which level of the designer's ten levelled features must be finished before the launch (1 January 2027), and whether "seviyeli" was read right (`designer/designer-light-and-simple.md`).
-- The name "Güvenlik Taraması" for the security scan; his objections, if any, to CN7 and to option (b) of #11442; whether P9 is done inside 2026.11.0; whether the architect keeps an hourly wake.
-- A walk-in worker of coordinator 1 waits for his yes in its own session.
-
-## What is held until he says so?
-- Plan `plans/agent-memory-search.md` (MS1 to MS4): held until he opens it.
-- After the launch: the add-on hooks' steps AH4 to AH8 and the Claude plugin bundle's CB3 and CB5. The mobile API goes on beside the other plans.
-- Design template plans stay paused (`coordinator-no-plans.md`).
+- Which level of the designer's ten levelled features must be finished before the launch (`designer/designer-light-and-simple.md`).
+- The name "Güvenlik Taraması" for the security scan; whether P9 is done inside 2026.11.0.
 
 ## What order of work did he set?
-- The designer plans first and far ahead ("pinegrapcms nin kalbi gibi"), before bug hunts: "yapabildiğimize odaklanalım öncelik hata avı yerine bunlar" (`bug-hunt.md`).
-- The interface modern and simple; a feature never makes the person strain (`designer/designer-light-and-simple.md`).
-- A coordinator keeps its 8 places working inside the queue limit; it does not put work down by its own choice.
+- The designer plans first and far ahead ("pinegrapcms nin kalbi gibi"), before bug hunts (`bug-hunt.md`).
+- Design template plans stay paused (`coordinator-no-plans.md`). Pinegrap is free and needs no licence; API documentation goes under pinegrap.com's documentation.
 
-Related: docs/memory/workflow/architect.md, docs/memory/workflow/architect-no-hand-over.md
+Related: docs/memory/workflow/architect.md, docs/memory/workflow/architect-no-hand-over.md, docs/memory/workflow/architect-hand-over-work.md

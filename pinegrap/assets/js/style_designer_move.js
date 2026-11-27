@@ -70,6 +70,23 @@ StyleDesigner.definePart('move', function (K) {
         return (path.length > 4) ? [path[0], '…'].concat(path.slice(path.length - 2)) : path.slice();
     }
 
+    // The row a list of `hits` starts on: the chosen target's when it is
+    // among the first `max`, else the first; -1 for an empty list.
+    function _mvStartAt(hits, entries, target, max) {
+        var n = Math.min(hits.length, max);
+        for (var k = 0; k < n; k++) if (target && entries[hits[k].i].node === target) return k;
+        return n ? 0 : -1;
+    }
+
+    // What Enter does on row `active`: the index of the entry to choose
+    // when the lit row is not the target, 'go' to move to the target,
+    // null with neither.
+    function _mvEnterAct(hits, entries, active, target) {
+        var h = active >= 0 ? hits[active] : null;
+        if (h && entries[h.i].node !== target) return h.i;
+        return target ? 'go' : null;
+    }
+
     // `text` escaped, with `len` letters from `at` marked.
     function _mvMark(text, at, len) {
         if (at < 0 || !len) return esc(text);
@@ -113,8 +130,9 @@ StyleDesigner.definePart('move', function (K) {
                 _mvActivate(state.active + (e.key === 'ArrowDown' ? 1 : -1));
             } else if (e.key === 'Enter') {
                 e.preventDefault();
-                if (state.target) _mvGo();
-                else if (state.hits[state.active]) _mvPick(state.hits[state.active].i);
+                var act = _mvEnterAct(state.hits, state.entries, state.active, state.target);
+                if (act === 'go') _mvGo();
+                else if (act !== null) _mvPick(act);
             }
         });
         d.querySelector('.sd-move-list').addEventListener('click', function (e) {
@@ -161,7 +179,7 @@ StyleDesigner.definePart('move', function (K) {
         }).join('') + (state.hits.length > MAX_SHOWN
             ? '<li class="sd-move-more" aria-disabled="true">' + esc(_sdT('{var} more: type to narrow', state.hits.length - MAX_SHOWN)) + '</li>'
             : (state.hits.length ? '' : '<li class="sd-move-more" aria-disabled="true">' + esc(_sdT('No element by that name')) + '</li>'));
-        _mvActivate(state.hits.length ? 0 : -1);
+        _mvActivate(_mvStartAt(state.hits, state.entries, state.target, MAX_SHOWN));
     }
 
     function _mvActivate(k) {

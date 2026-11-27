@@ -17,4 +17,10 @@ module: parasut
 - While a portal connection is there, the older Connect (a pasted code, or Save with a code) is refused before the code is exchanged (`parasut_code_connect_refusal()`): before, it reported "Connected with an authorization code" and moved the company number while the requests kept going with the portal connection (#11741).
 - `parasut_disconnect()` ends both: the connection with its service entry, and the older token and secrets.
 
-Tests: `tests/parasut_devhub_connection_test.php` (authorize address, provider and purpose, token choice, status line, the older way's fold, the page's boxes). The guide's facts: `erp-parasut-devhub-client.md`; the older way: `erp-parasut-connection.md`.
+## Which Paraşüt user right do the requests need?
+- The user the connection signs in as needs Settings › Users › Edit › "Uygulama Entegrasyonları" = "Yetki Var" in Paraşüt.
+- Without it `/v4/me` answers 200, so the connect reports a company, but every company-scoped request answers 403 "User has no 3rd party integration permission for company: <id>" (seen on staging, 2026-11-27).
+- Since #12013 both connects (this one and a pasted code) end with one company-scoped read, `parasut_integration_permission_check()`: `GET contacts?page[size]=1`, no 429 wait, no renewal, as many 401/403 answers can get a client switched off. On that 403 the report warns, naming the setting.
+- Any later error text with that 403 (`_parasut_extract_error()`, `erp_edoc_parasut_error_text()`) gets the same guidance after Paraşüt's words (`parasut_integration_permission_hint()`).
+
+Tests: `tests/parasut_devhub_connection_test.php` (authorize address, provider and purpose, token choice, status line, the older way's fold, the page's boxes); `tests/parasut_integration_permission_test.php`. The guide's facts: `erp-parasut-devhub-client.md`; the older way: `erp-parasut-connection.md`.

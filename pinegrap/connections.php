@@ -38,6 +38,21 @@ $liveform = new liveform('connections');
 
 $screen_url = URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/connections.php';
 
+// Where a write on a service's page goes: back to that page, keeping the
+// Site Settings card that led there, marked saved when it went through and
+// took nothing away (pg_connections_back_after_write()).
+function connections_after_write($location) {
+
+	// The write's action, as the writes below read it.
+	global $liveform, $action, $ws_action;
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/connections_screen.php');
+
+	return pg_connections_back_after_write($location, isset($_POST['connections_from']) ? $_POST['connections_from'] : '',
+		(is_string($ws_action) && ($ws_action !== '')) ? $ws_action : (string) $action, (bool) $liveform->check_form_errors());
+
+}
+
 // A provider that only signs people in (accounts => false: Apple) has no
 // account for the site to connect; its application is set up with the
 // sign-in settings instead.
@@ -233,6 +248,64 @@ function connections_maintenance_may_manage($user) {
 
 }
 
+// What the viewer may open of a service's page: the gates of the cards
+// pg_connections_screen_page_cards() draws, each the gate of the place the
+// card came from. $app_provider is pg_connections_screen_app_here()'s
+// answer; $ws_viewer the Workspace viewer, read for GitHub's page only.
+function connections_page_can($page_id, $user, $is_manager, $app_provider, $ws_viewer) {
+
+	return array(
+		'manager'      => $is_manager,
+		'repositories' => is_array($ws_viewer) && ws_github_links_ready() && ws_github_links_can_manage($ws_viewer),
+		'ai'           => isset(pg_ai_connection_services()[$page_id]) && connections_ai_may_manage($user),
+		'seo'          => ($page_id === 'indexnow') && connections_seo_may_manage($user),
+		'privacy'      => ($page_id === 'google_analytics') && connections_privacy_may_manage($user),
+		'languages'    => ($page_id === 'google_translate') && connections_languages_may_manage($user),
+		'contact'      => in_array($page_id, array('whatsapp', 'iys', 'netgsm', 'iletimerkezi', 'twilio'), true) && connections_contact_may_manage($user),
+		'mail_sending' => ($page_id === 'mailchimp') && connections_mail_sending_may_manage($user),
+		'signin'       => (($page_id === 'signin_apple') && connections_signin_may_manage($user)),
+		'security'     => in_array($page_id, array('turnstile', 'hcaptcha'), true) && connections_signin_may_manage($user),
+		'commerce'     => in_array($page_id, pg_connections_screen_commerce_pages(), true) && connections_commerce_may_manage($user),
+		'accounting'   => in_array($page_id, pg_connections_screen_accounting_pages(), true) && connections_accounting_may_manage($user),
+		'integrations' => ($page_id === 'google_reviews') && connections_integrations_may_manage($user),
+		'maintenance'  => (pg_backup_cloud_type_of_service($page_id) !== '') && connections_maintenance_may_manage($user),
+		'chat_notify'  => in_array($page_id, array('slack', 'teams', 'telegram'), true) && connections_chat_notify_may_manage($user),
+		'claude'       => ($page_id === 'claude') && connections_claude_may_manage($user),
+		'mcp'          => (pg_connections_screen_mcp_connector($page_id) !== '') && connections_mcp_may_manage($user),
+		'figma'        => ($page_id === 'figma') && $is_manager,
+		'app'          => ($app_provider !== ''),
+	);
+
+}
+
+// Does the list's row of a service open its card instead of its page? The
+// page would show the viewer only its state (pg_connections_screen_opens_card()).
+function connections_list_opens_card($id, $row, $registry, $user, $is_manager, $provider_apps, $ai_services) {
+
+	if (!isset($registry[$id]) || !isset($row['url'])) {
+		return false;
+	}
+
+	$here = pg_connections_screen_page_here($id, array_merge(array_keys($ai_services), pg_ad_conversion_services()));
+
+	if ($here) {
+		return false;
+	}
+
+	$apps_ready = array();
+
+	foreach ($provider_apps as $app_provider => $app) {
+		$apps_ready[$app_provider] = pg_connect_app_ready($app);
+	}
+
+	$app_provider = pg_connections_screen_app_here($id, $registry[$id], $apps_ready, $is_manager);
+	$ws_viewer = ($id === 'github') ? connections_workspace_viewer($user) : null;
+	$cards = pg_connections_screen_page_cards($id, connections_page_can($id, $user, $is_manager, $app_provider, $ws_viewer));
+
+	return pg_connections_screen_opens_card($id, $cards, false, $row['url']);
+
+}
+
 // May the user change Google Analytics' tag and figures? They came from
 // Site Settings › Visitors and privacy, so they keep that category's gate.
 function connections_privacy_may_manage($user) {
@@ -361,7 +434,7 @@ if ($_POST) {
 			ws_github_links_settings_post($ws_viewer, $ws_action, $liveform);
 		}
 
-		header('Location: ' . $screen_url . '?service=github#connections-repositories');
+		header('Location: ' . connections_after_write($screen_url . '?service=github#connections-repositories'));
 		exit();
 
 	}
@@ -377,12 +450,15 @@ if ($_POST) {
 		$mcp_page = (isset($_GET['service']) && (pg_connections_screen_mcp_connector($_GET['service']) !== '')) ? (string) $_GET['service'] : '';
 
 		if (($mcp_page !== '') && connections_mcp_may_manage($user)) {
-			// A sign-in leaves for the service at once and comes back here.
-			ws_mcp_settings_place(array('return' => pg_connections_screen_page_url($mcp_page), 'anchor' => '#connections-details', 'hold' => false));
+			// A sign-in leaves for the service at once and comes back here, with
+			// the card that led here; its return carries no saved= mark, as
+			// mcp_connected= says how the sign-in went.
+			ws_mcp_settings_place(array('return' => pg_connections_back_after_write(pg_connections_screen_page_url($mcp_page),
+				isset($_POST['connections_from']) ? $_POST['connections_from'] : '', 'mcp_disconnect', true), 'anchor' => '#connections-details', 'hold' => false));
 			ws_mcp_settings_post(connections_workspace_viewer($user), $ws_action, $liveform);
 		}
 
-		header('Location: ' . $screen_url . (($mcp_page !== '') ? '?service=' . $mcp_page . '#connections-details' : ''));
+		header('Location: ' . connections_after_write($screen_url . (($mcp_page !== '') ? '?service=' . $mcp_page . '#connections-details' : '')));
 		exit();
 
 	}
@@ -1104,7 +1180,7 @@ if ($_POST) {
 
 		}
 
-		header('Location: ' . $screen_url . '?service=google#connections-signin');
+		header('Location: ' . connections_after_write($screen_url . '?service=google#connections-signin'));
 		exit();
 
 	}
@@ -1153,7 +1229,7 @@ if ($_POST) {
 
 		}
 
-		header('Location: ' . $screen_url . '?service=signin_apple');
+		header('Location: ' . connections_after_write($screen_url . '?service=signin_apple'));
 		exit();
 
 	}
@@ -1198,6 +1274,9 @@ if ($_POST) {
 
 				db("UPDATE config SET " . implode(', ', $gateway_sets) . ", last_modified_user_id = '" . (int) $user['id'] . "', last_modified_timestamp = UNIX_TIMESTAMP()");
 
+				// A classic gateway's key decides its mode on System Status.
+				pg_system_status_forget();
+
 			}
 
 			if ($action === 'gateway_remove') {
@@ -1210,7 +1289,7 @@ if ($_POST) {
 
 		}
 
-		header('Location: ' . $screen_url . (($gateway_definition !== null) ? '?service=' . $gateway_id : ''));
+		header('Location: ' . connections_after_write($screen_url . (($gateway_definition !== null) ? '?service=' . $gateway_id : '')));
 		exit();
 
 	}
@@ -1232,6 +1311,7 @@ if ($_POST) {
 			if ($action === 'driver_remove') {
 
 				if (pg_payment_settings_forget_keys($driver_id, $user['id'])) {
+					pg_system_status_forget();
 					$liveform->add_notice(lang(array('string' => '{var:1} was disconnected.', 'vars' => $driver_definition['label'])));
 					log_activity(lang(array('string' => 'removed the {var:1} connection', 'vars' => $driver_definition['label'])), $_SESSION['sessionusername']);
 				}
@@ -1255,6 +1335,8 @@ if ($_POST) {
 
 				if (!$liveform->check_form_errors() && $driver_decision['changed']) {
 					pg_payment_settings_store($driver_id, $driver_decision['values'], $driver_decision['secrets'], $driver_decision['enabled'], $user['id']);
+					// The keys decide the driver's mode on System Status.
+					pg_system_status_forget();
 					$liveform->add_notice(lang(array('string' => 'The {var:1} keys were saved.', 'vars' => $driver_definition['label'])));
 					log_activity(lang(array('string' => 'changed the {var:1} connection', 'vars' => $driver_definition['label'])), $_SESSION['sessionusername']);
 				}
@@ -1263,7 +1345,7 @@ if ($_POST) {
 
 		}
 
-		header('Location: ' . $screen_url . (($driver_definition !== null) ? '?service=' . $driver_id : ''));
+		header('Location: ' . connections_after_write($screen_url . (($driver_definition !== null) ? '?service=' . $driver_id : '')));
 		exit();
 
 	}
@@ -1318,7 +1400,7 @@ if ($_POST) {
 
 		}
 
-		header('Location: ' . $screen_url . (($method_definition !== null) ? '?service=' . $method_definition['page'] : ''));
+		header('Location: ' . connections_after_write($screen_url . (($method_definition !== null) ? '?service=' . $method_definition['page'] : '')));
 		exit();
 
 	}
@@ -1381,7 +1463,7 @@ if ($_POST) {
 
 		}
 
-		header('Location: ' . $screen_url . (($label_definition !== null) ? '?service=' . $label_id : ''));
+		header('Location: ' . connections_after_write($screen_url . (($label_definition !== null) ? '?service=' . $label_id : '')));
 		exit();
 
 	}
@@ -1444,7 +1526,7 @@ if ($_POST) {
 
 		}
 
-		header('Location: ' . $screen_url . (($carrier_definition !== null) ? '?service=' . $carrier_id : ''));
+		header('Location: ' . connections_after_write($screen_url . (($carrier_definition !== null) ? '?service=' . $carrier_id : '')));
 		exit();
 
 	}
@@ -1515,7 +1597,7 @@ if ($_POST) {
 
 		}
 
-		header('Location: ' . $screen_url . (($captcha_definition !== null) ? '?service=' . $captcha_provider : ''));
+		header('Location: ' . connections_after_write($screen_url . (($captcha_definition !== null) ? '?service=' . $captcha_provider : '')));
 		exit();
 
 	}
@@ -1676,7 +1758,7 @@ if ($_POST) {
 		&& preg_match('/^[a-z0-9_]{1,60}$/', $_POST['connections_return'])) ? $_POST['connections_return'] : '';
 
 	if ($return_service !== '') {
-		header('Location: ' . $screen_url . '?service=' . $return_service);
+		header('Location: ' . connections_after_write($screen_url . '?service=' . $return_service));
 		exit();
 	}
 
@@ -1686,11 +1768,11 @@ if ($_POST) {
 	$page_service = array_search($return_provider, pg_connections_screen_page_providers(), true);
 
 	if ($page_service !== false) {
-		header('Location: ' . $screen_url . '?service=' . $page_service);
+		header('Location: ' . connections_after_write($screen_url . '?service=' . $page_service));
 		exit();
 	}
 
-	header('Location: ' . $screen_url . (($return_provider !== '') ? '#connections-' . rawurlencode($return_provider) : ''));
+	header('Location: ' . connections_after_write($screen_url . (($return_provider !== '') ? '#connections-' . rawurlencode($return_provider) : '')));
 
 	exit();
 
@@ -1810,7 +1892,9 @@ function connections_state_pill($state) {
 $open_categories = array();
 $category_list = pg_settings_categories();
 
-foreach (pg_settings_categories_for($user, null, $category_list) as $category_key => $category) {
+$open_category_list = pg_settings_categories_for($user, null, $category_list);
+
+foreach ($open_category_list as $category_key => $category) {
 	$open_categories[$category_key] = true;
 }
 
@@ -1993,6 +2077,17 @@ if (isset($_GET['service']) && ($page_id === '')) {
 	header('Location: ' . $screen_url);
 	exit();
 }
+
+// The Site Settings card a lead to this page came from, among the
+// categories the user may open: the way back at the page's head, and where
+// a Save or a Connect that completes the service returns to.
+$back = ($page_id !== '') ? pg_connections_back(pg_connections_back_legacy($_GET, $page_id), $open_category_list) : null;
+$back_shell = is_array($back)
+	? array(
+		'label' => lang(array('string' => 'Back to {var:1}', 'vars' => $back['label'])),
+		'url'   => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . pg_settings_link($back['category'], $back['card']),
+	)
+	: null;
 
 // The seven mail routes are one row on the list, opening Site Settings ›
 // E-mail sending; a route's name still finds it, and a route's own page
@@ -2738,7 +2833,7 @@ function connections_method_page($page, $id, $may_manage) {
 		<section class="pg-card p-5 mb-6" id="' . h($section) . '" aria-labelledby="' . h($section) . '-title">
 			<h2 class="pg-title-section mb-1" id="' . h($section) . '-title">' . h($beside ? $definition['label'] : lang('Connection details')) . '</h2>
 			<p class="pg-card-sub mb-4">' . h(($id === 'givex')
-				? lang('The site\'s Givex account. Whether Givex cards are accepted is set on the Gift Cards & Rewards card of Site Settings › Ecommerce.')
+				? lang('The site\'s Givex account. Whether Givex cards are accepted is set on the Gift cards row of Site Settings › Ecommerce.')
 				: lang(array('string' => 'The site\'s {var:1} keys. Whether it is offered at checkout, its Transaction Type and Mode are set on the Payment Methods card of Site Settings › Ecommerce.', 'vars' => $definition['label']))) . '</p>
 			<form method="post" action="connections.php" class="connections-app-form">
 				' . get_token_field() . '
@@ -2764,7 +2859,7 @@ function connections_method_page($page, $id, $may_manage) {
 
 	}
 
-	$card_name = ($definition['card'] === 'pgset-giftcards') ? lang('Gift Cards & Rewards') : lang('Payment Methods');
+	$card_name = ($definition['card'] === 'pgset-giftcards') ? lang('Gift cards') : lang('Payment Methods');
 
 	$page['uses'] .= '
 				<a class="pg-card-inner-row connections-row" href="' . h(pg_settings_link('commerce', $definition['card'])) . '">
@@ -3280,7 +3375,10 @@ function connections_ga_page($page, $may_manage) {
 	$stats_url = defined('STATS_URL') ? (string) STATS_URL : '';
 	$ga_state = pg_ga_state();
 	$ga_connection = pg_ga_connection($ga_state);
-	$google_page = '<a href="' . h(pg_connections_screen_page_url('google')) . '">' . h(lang('Connections')) . ' › Google</a>';
+	// The application is asked on this page while it is missing.
+	$google_page = in_array('app', $page['cards'], true)
+		? '<a href="#connections-app">' . h(lang('Application')) . '</a>'
+		: '<a href="' . h(pg_connections_screen_page_url('google')) . '">' . h(lang('Connections')) . ' › Google</a>';
 
 	$page['status_extra'] = '
 			<div class="mt-4">
@@ -3688,7 +3786,9 @@ function connections_merchant_page($page, $may_manage) {
 
 			$body = '<p class="pg-text-2 mb-0">' . (pg_connect_app_ready(pg_connect_app('google'))
 				? h(lang('Connect a Google account under Status, then choose the Merchant Center account here.'))
-				: h(lang('To connect Merchant Center, set up the Google application first.')) . ' <a href="' . h(pg_connections_screen_page_url('google')) . '">' . h(lang('Connections')) . ' › Google</a>') . '</p>';
+				: h(lang('To connect Merchant Center, set up the Google application first.')) . ' ' . (in_array('app', $page['cards'], true)
+					? '<a href="#connections-app">' . h(lang('Application')) . '</a>'
+					: '<a href="' . h(pg_connections_screen_page_url('google')) . '">' . h(lang('Connections')) . ' › Google</a>')) . '</p>';
 
 		} elseif ($state['account'] === '') {
 
@@ -4174,6 +4274,28 @@ function connections_app_form($provider_key, $provider, $app, $provider_draft, $
 
 }
 
+/* The provider's application on an account service's own page, while it
+   is missing (pg_connections_screen_app_here()): the provider page's form,
+   saved to the same place by save_app, which comes back to this page. Once
+   it is ready the card is gone and Status connects the account. */
+
+function connections_app_card($page_id, $provider_key, $provider, $app, $provider_draft, $can_seal, $redirect_uri) {
+
+	$hint = connections_app_hint($app);
+
+	return '
+		<section class="pg-card p-5 mb-6" id="connections-app" aria-labelledby="connections-page-app">
+			<div class="d-flex flex-wrap align-items-center gap-3 mb-1">
+				<h2 class="pg-title-section mb-0" id="connections-page-app">' . h(lang('Application')) . '</h2>
+				<span class="pg-pill pg-tone-gray">' . h((is_array($app) && !$app['enabled']) ? lang('Off') : lang('Not set up')) . '</span>
+			</div>
+			<p class="pg-card-sub mb-4">' . h(lang(array('string' => 'The {var:1} application the site connects its accounts through.', 'vars' => $provider['label']))) . '</p>
+			' . (($hint === '') ? '' : '<p class="pg-field-help mt-0">' . h($hint) . '</p>') . '
+			' . connections_app_form($provider_key, $provider, $app, $provider_draft, $can_seal, $redirect_uri, $page_id) . '
+		</section>';
+
+}
+
 /* A provider's accounts as list items: purposes, when connected and last
    used, the last error, and Check or Connect again and Disconnect. */
 
@@ -4379,7 +4501,15 @@ function connections_service_page($id, $service, $row, $tile, $facts, $providers
 					data-purpose="' . h($state['purpose']) . '" data-connection="0"' . (($ready && $can_seal) ? '' : ' disabled') . '>
 					<i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Connect a {var:1} account', 'vars' => $providers[$provider_key]['label']))) . '</button>
 			</div>';
+		} elseif (in_array('app', $page['cards'], true)) {
+			// The application is asked on this page, below.
+			$extra .= '
+			<p class="pg-text-meta mt-4 mb-0">' . h(lang('Set up the application below first.')) . ' <a href="#connections-app">' . h(lang('Application')) . '</a></p>';
+		} elseif (in_array('backups', $page['cards'], true)) {
+			// A drive's page connects its account for backups itself, in
+			// Status below: one answer, not a pointer beside it.
 		} elseif (isset($providers[$provider_key]) && in_array($provider_key, pg_connections_screen_page_providers(), true)) {
+			// Nothing on this page connects the account: the provider's page does.
 			$extra .= '
 			<p class="pg-text-meta mt-4 mb-0">' . h(lang(array('string' => 'Accounts are connected on the {var:1} page of Connections, where its application is set up.', 'vars' => $providers[$provider_key]['label']))) . '
 				<a href="' . h(pg_connections_screen_page_url(array_search($provider_key, pg_connections_screen_page_providers(), true))) . '">' . h(lang('Connections')) . ' › ' . h($providers[$provider_key]['label']) . '</a></p>';
@@ -4436,6 +4566,7 @@ function connections_service_page($id, $service, $row, $tile, $facts, $providers
 			</div>
 			<dl class="pg-kv mb-0">' . $facts_html . '</dl>' . $extra . $place . '
 		</section>',
+		'app' => isset($page['app']) ? $page['app'] : '',
 		'details' => $page['details'],
 		'uses' => '
 		<section class="pg-card p-5 mb-6" aria-labelledby="connections-page-uses">
@@ -4635,6 +4766,27 @@ function connections_signin_google_part() {
 
 }
 
+/* Sign in with Microsoft on Microsoft's page: it signs people in through
+   the application below, the one the connected accounts use, so this part
+   only says so and leads to the switch in Accounts and sign-in. */
+
+function connections_signin_microsoft_part($ready) {
+
+	return '
+			<div id="connections-signin">
+				<div class="d-flex flex-wrap align-items-center gap-3 mb-1">
+					<h3 class="pg-group-label mb-0">' . h(lang(array('string' => 'Sign in with {var:1}', 'vars' => 'Microsoft'))) . '</h3>
+					' . ($ready
+						? '<span class="pg-pill pg-tone-teal">' . h(lang('Ready')) . '</span>'
+						: '<span class="pg-pill pg-tone-gray">' . h(lang('Not set up')) . '</span>') . '
+				</div>
+				<p class="pg-field-help mt-0">' . h(lang('Visitors and staff sign in with the Microsoft application below. Whether the button is shown is switched in Site Settings › Accounts and sign-in.')) . '</p>
+				<a class="pg-button pg-button-sm pg-button-quiet" href="' . h(pg_settings_link('security', 'pgset-signin')) . '">
+					' . h(lang('Accounts and sign-in')) . ' ›</a>
+			</div>';
+
+}
+
 /* Google's parts of "Connection details": the APIs each Google feature
    calls, read from the registry, with the page that turns each on, and
    Google's verification warning. */
@@ -4798,6 +4950,14 @@ foreach ($order as $group_key => $ids) {
 				. $inner . '
 			</a>';
 
+		} elseif (connections_list_opens_card($id, $row, $registry, $user, $is_manager, $provider_apps, $ai_services)) {
+
+			// The page would only show its state: the row opens the card.
+			$group_rows .= '
+			<a class="pg-card-inner-row connections-row" href="' . h($row['url']) . '"' . $hidden . '>'
+				. $inner . '
+			</a>';
+
 		} else {
 
 			// A service opens its own page.
@@ -4911,6 +5071,24 @@ if (($page_id !== '') && (pg_connections_screen_mcp_connector($page_id) !== '') 
 
 }
 
+// How the write or the sign-in that brought the person back here ended,
+// for the return to the card that led here: a Save that went through
+// (saved=), or a Connect (connect.php's message, an MCP connector's
+// sign-in). A refusal, or a Paraşüt company that could not be read, stays.
+$back_done = '';
+
+if (is_array($back) && !$liveform->check_form_errors()) {
+
+	if (!empty($_GET['saved'])) {
+		$back_done = 'saved';
+	}
+
+	if ((is_array($flash) && ($flash['kind'] === 'notice') && empty($parasut_answer['warnings'])) || isset($_GET['mcp_connected'])) {
+		$back_done = 'connected';
+	}
+
+}
+
 $liveform_messages = $liveform->output_errors() . $liveform->output_notices();
 
 $liveform->remove_form();
@@ -4942,12 +5120,13 @@ if ($provider_page !== '') {
 			array('label' => lang('Connections'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/connections.php'),
 			array('label' => $page_row['name']),
 		),
+		'back'                => $back_shell,
 	));
 
 	$details = '';
 	$page_cards = pg_connections_screen_page_cards($page_id, array(
 		'manager'   => $is_manager,
-		'signin'    => ($provider_page === 'google') && connections_signin_may_manage($user),
+		'signin'    => connections_signin_may_manage($user),
 		'mailboxes' => connections_mailboxes_may_manage($user),
 	));
 
@@ -4955,16 +5134,22 @@ if ($provider_page !== '') {
 	$mail_part = '';
 
 	if (in_array('mailboxes', $page_cards, true) && pg_connect_purpose('mail_read')) {
-		$mail_return = pg_connections_screen_mail_return(isset($_GET['mail_return']) ? $_GET['mail_return'] : '');
 		$mail_part = connections_mail_part($provider_page,
 			isset($site_accounts[$provider_page]) ? $site_accounts[$provider_page] : array(),
 			pg_connect_app_ready($provider_apps[$provider_page]) && $can_seal,
-			pg_connect_return_path(($mail_return !== '') ? $mail_return : pg_connections_screen_page_url($page_id)));
+			pg_connect_return_path(pg_connections_back_page_url($page_id, $back)));
 	}
 
 	// Google's two applications are shown together: the connected accounts'
-	// one falls back to the Sign in with Google application.
-	$signin_part = in_array('signin', $page_cards, true) ? connections_signin_google_part() : '';
+	// one falls back to the Sign in with Google application. Microsoft's one
+	// application serves both, so its part only leads to the switch.
+	$signin_part = '';
+
+	if (in_array('signin', $page_cards, true)) {
+		$signin_part = ($provider_page === 'google')
+			? connections_signin_google_part()
+			: connections_signin_microsoft_part(pg_connect_app_ready($provider_apps[$provider_page]));
+	}
 
 	if (in_array('details', $page_cards, true)) {
 
@@ -4973,11 +5158,11 @@ if ($provider_page !== '') {
 		$details = '
 		<section class="pg-card p-5 mb-6" id="connections-details" aria-labelledby="connections-page-details">
 			<h2 class="pg-title-section mb-1" id="connections-page-details">' . h(lang('Connection details')) . '</h2>
-			<p class="pg-card-sub mb-4">' . h(($signin_part !== '')
+			<p class="pg-card-sub mb-4">' . h((($signin_part !== '') && ($provider_page === 'google'))
 				? lang('The Google applications the site signs people in and connects its accounts through.')
 				: lang(array('string' => 'The {var:1} application the site connects its accounts through.', 'vars' => $provider['label']))) . '</p>
 			' . $signin_part . '
-			' . (($signin_part !== '') ? '<h3 class="pg-group-label mt-5 mb-1">' . h(lang('Connected accounts application')) . '</h3>' : '') . '
+			' . (($signin_part !== '') ? '<h3 class="pg-group-label mt-5 mb-1">' . h(($provider_page === 'google') ? lang('Connected accounts application') : lang('Application')) . '</h3>' : '') . '
 			' . (($hint === '') ? '' : '<p class="pg-field-help mt-0">' . h($hint) . '</p>') . '
 			' . connections_app_form($provider_page, $provider, $provider_apps[$provider_page],
 				(is_array($draft) && ($draft['provider'] === $provider_page)) ? $draft : null, $can_seal, $redirect_uri, $page_id) . '
@@ -5004,7 +5189,13 @@ if ($provider_page !== '') {
 	</div>';
 
 	$drawers = '';
-	$connect_return = pg_connections_screen_page_url($page_id);
+	$connect_return = pg_connections_back_page_url($page_id, $back);
+
+	// What returning to the card asks of this page: its application set up.
+	// Mailboxes is the exception: its account is connected here, so only a
+	// Connect returns there.
+	$back_state = (pg_connect_app_ready($provider_apps[$provider_page]) && !(is_array($back) && ($back['card'] === 'pgset-ws-mail')))
+		? 'connected' : 'not_connected';
 
 } elseif ($page_id !== '') {
 
@@ -5022,42 +5213,33 @@ if ($provider_page !== '') {
 			array('label' => lang('Connections'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/connections.php'),
 			array('label' => $page_row['name']),
 		),
+		'back'                => $back_shell,
 	));
 
 	$page_providers = pg_connections_screen_page_providers();
 	$page_provider = isset($page_providers[$page_id]) ? $page_providers[$page_id] : '';
 	$ws_viewer = ($page_id === 'github') ? connections_workspace_viewer($user) : null;
 
+	// A Google or Microsoft account service asks for the provider's
+	// application on its own page while it is missing.
+	$apps_ready = array();
+
+	foreach ($provider_apps as $app_provider => $app) {
+		$apps_ready[$app_provider] = pg_connect_app_ready($app);
+	}
+
+	$app_provider = isset($registry[$page_id]) ? pg_connections_screen_app_here($page_id, $registry[$page_id], $apps_ready, $is_manager) : '';
+	$app_provider = isset($providers[$app_provider]) ? $app_provider : '';
+
 	$page = array(
-		'cards'   => pg_connections_screen_page_cards($page_id, array(
-			'manager'      => $is_manager,
-			'repositories' => is_array($ws_viewer) && ws_github_links_ready() && ws_github_links_can_manage($ws_viewer),
-			'ai'           => isset($ai_services[$page_id]) && connections_ai_may_manage($user),
-			'seo'          => ($page_id === 'indexnow') && connections_seo_may_manage($user),
-			'privacy'      => ($page_id === 'google_analytics') && connections_privacy_may_manage($user),
-			'languages'    => ($page_id === 'google_translate') && connections_languages_may_manage($user),
-			'contact'      => in_array($page_id, array('whatsapp', 'iys', 'netgsm', 'iletimerkezi', 'twilio'), true) && connections_contact_may_manage($user),
-			'mail_sending' => ($page_id === 'mailchimp') && connections_mail_sending_may_manage($user),
-			'signin'       => (($page_id === 'signin_apple') && connections_signin_may_manage($user)),
-			'security'     => in_array($page_id, array('turnstile', 'hcaptcha'), true) && connections_signin_may_manage($user),
-			'commerce'     => in_array($page_id, pg_connections_screen_commerce_pages(), true) && connections_commerce_may_manage($user),
-			'accounting'   => in_array($page_id, pg_connections_screen_accounting_pages(), true) && connections_accounting_may_manage($user),
-			'integrations' => ($page_id === 'google_reviews') && connections_integrations_may_manage($user),
-			'maintenance'  => (pg_backup_cloud_type_of_service($page_id) !== '') && connections_maintenance_may_manage($user),
-			'chat_notify'  => in_array($page_id, array('slack', 'teams', 'telegram'), true) && connections_chat_notify_may_manage($user),
-			'claude'       => ($page_id === 'claude') && connections_claude_may_manage($user),
-			'mcp'          => (pg_connections_screen_mcp_connector($page_id) !== '') && connections_mcp_may_manage($user),
-			'figma'        => ($page_id === 'figma') && $is_manager,
-		)),
+		'cards'   => pg_connections_screen_page_cards($page_id, connections_page_can($page_id, $user, $is_manager, $app_provider, $ws_viewer)),
+		'app'          => '',
 		'details'      => '',
 		'note'         => '',
 		'own'          => '',
 		'uses'         => '',
 		'status_extra' => '',
-		'here'         => isset($ai_services[$page_id]) || in_array($page_id, array('indexnow', 'google_analytics', 'google_translate', 'whatsapp', 'iys', 'mailchimp', 'netgsm', 'iletimerkezi', 'twilio', 'signin_apple', 'turnstile', 'hcaptcha'), true) || in_array($page_id, pg_connections_screen_commerce_pages(), true)
-			|| in_array($page_id, pg_connections_screen_accounting_pages(), true) || ($page_id === 'google_reviews')
-			|| in_array($page_id, array('slack', 'teams', 'telegram'), true) || in_array($page_id, array('claude', 'figma'), true)
-			|| (pg_connections_screen_mcp_connector($page_id) !== ''),
+		'here'         => pg_connections_screen_page_here($page_id, array_merge(array_keys($ai_services), pg_ad_conversion_services())),
 	);
 
 	// A card gateway's page: its keys and the card that chooses it.
@@ -5199,14 +5381,14 @@ if ($provider_page !== '') {
 	}
 
 	// Google Drive's, OneDrive's and Dropbox's pages: connect an account for
-	// backups, back to the Backups card when started from it.
+	// backups, back to the card that led here (the Backups card).
 	if (in_array('backups', $page['cards'], true)) {
 		$backup_type = pg_backup_cloud_type_of_service($page_id);
 		$backup_provider = pg_backup_cloud_types()[$backup_type]['provider'];
 		$page['status_extra'] .= connections_backup_part($backup_provider,
 			isset($providers[$backup_provider]) ? $providers[$backup_provider]['label'] : $backup_provider,
 			isset($provider_apps[$backup_provider]) && pg_connect_app_ready($provider_apps[$backup_provider]) && $can_seal && pg_connect_purpose('backup'),
-			pg_connect_return_path(!empty($_GET['backup_return']) ? pg_backup_cloud_connect_return($backup_type) : pg_connections_screen_page_url($page_id)));
+			pg_connect_return_path(pg_connections_back_page_url($page_id, $back)));
 	}
 
 	// An AI provider's page: its key, and the assistants that use it.
@@ -5227,6 +5409,12 @@ if ($provider_page !== '') {
 				(is_array($draft) && ($draft['provider'] === $page_provider)) ? $draft : null, $can_seal, $redirect_uri, $page_id) . '
 		</section>';
 
+	}
+
+	if (in_array('app', $page['cards'], true)) {
+		$page['app'] = connections_app_card($page_id, $app_provider, $providers[$app_provider],
+			isset($provider_apps[$app_provider]) ? $provider_apps[$app_provider] : null,
+			(is_array($draft) && ($draft['provider'] === $app_provider)) ? $draft : null, $can_seal, $redirect_uri);
 	}
 
 	if (in_array('repositories', $page['cards'], true)) {
@@ -5253,7 +5441,8 @@ if ($provider_page !== '') {
 	</div>';
 
 	$drawers = '';
-	$connect_return = pg_connections_screen_page_url($page_id);
+	$connect_return = pg_connections_back_page_url($page_id, $back);
+	$back_state = $page_row['state'];
 
 } else {
 
@@ -5295,6 +5484,36 @@ if ($provider_page !== '') {
 		</div>';
 
 	$connect_return = 'connections.php';
+	$back_state = '';
+
+}
+
+// A Save or a Connect that completes the service returns to the card that
+// led here, with a line saying what was connected (read by the card's
+// screen, includes/settings/screen.php). connect.php's own message is put
+// back for the cards that read it (Mailboxes, Backups).
+if (($page_id !== '') && pg_connections_back_due($back, $back_done, $back_state)) {
+
+	$back_url = pg_connections_back_destination($back, $page_id);
+
+	if ($back_url === '') {
+		$back_url = pg_settings_link($back['category'], $back['card']);
+	}
+
+	$back_text = '';
+
+	if (($back_done === 'connected') && is_array($flash)) {
+		pg_connect_flash($flash['kind'], $flash['text'], $flash['connection_id']);
+	} elseif ($provider_page !== '') {
+		$back_text = lang(array('string' => 'The {var:1} application is set up.', 'vars' => $providers[$provider_page]['label']));
+	} else {
+		$back_text = lang(array('string' => '{var:1} is connected.', 'vars' => $rows[$page_id]['name']));
+	}
+
+	$_SESSION['software']['settings_returned'] = array('category' => $back['category'], 'text' => $back_text);
+
+	header('Location: ' . URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/' . $back_url);
+	exit();
 
 }
 
@@ -5330,6 +5549,21 @@ echo $shell . '
 (function () {
 
 	var phone = window.matchMedia("(max-width: 575.98px)");
+
+	// A page led to from a Site Settings card: each of its forms carries the
+	// card, so a Save keeps the way back and can return there.
+	var from = ' . json_encode(is_array($back) ? $back['value'] : '', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) . ';
+	if (from) {
+		document.querySelectorAll("form").forEach(function (form) {
+			var action = form.getAttribute("action") || "";
+			if (String(form.method).toLowerCase() !== "post" || (action !== "" && !/(^|\/)connections\.php(\?|#|$)/.test(action)) || form.elements.connections_from) { return; }
+			var field = document.createElement("input");
+			field.type = "hidden";
+			field.name = "connections_from";
+			field.value = from;
+			form.appendChild(field);
+		});
+	}
 
 	// A provider row opens its drawer; on a phone the drawer is a sheet
 	// from the bottom.

@@ -1,0 +1,18 @@
+{
+ "id": "invite-square",
+ "width": 1080,
+ "height": 1080,
+ "background": "#fff0f6",
+ "layers": [
+  {"type": "star", "x": 100, "y": 100, "w": 80, "h": 80, "color": "#f783ac"},
+  {"type": "star", "x": 900, "y": 140, "w": 60, "h": 60, "color": "#faa2c1"},
+  {"type": "ellipse", "x": 860, "y": 860, "w": 120, "h": 120, "color": "#fcc2d7"},
+  {"type": "ellipse", "x": 120, "y": 880, "w": 60, "h": 60, "color": "#f783ac"},
+  {"type": "text", "text": "startInviteBdSmall", "font": "g:Montserrat", "size": 40, "weight": 600, "color": "#c2255c", "align": "center", "x": 540, "y": 200, "maxW": 920, "spacing": 0.15},
+  {"type": "text", "text": "startInviteBdHead", "font": "g:Pacifico", "size": 96, "weight": 400, "color": "#a61e4d", "align": "center", "x": 540, "y": 280, "maxW": 920},
+  {"type": "text", "text": "startInviteBdWhen", "font": "g:Montserrat", "size": 40, "weight": 400, "color": "#495057", "align": "center", "x": 540, "y": 520, "maxW": 920},
+  {"type": "text", "text": "startInviteBdWhere", "font": "g:Montserrat", "size": 40, "weight": 400, "color": "#495057", "align": "center", "x": 540, "y": 590, "maxW": 920},
+  {"type": "rect", "x": 340, "y": 720, "w": 400, "h": 90, "color": "#c2255c", "radius": 45},
+  {"type": "text", "text": "startInviteBdReply", "font": "g:Montserrat", "size": 34, "weight": 700, "color": "#ffffff", "align": "center", "x": 540, "y": 745, "maxW": 360}
+ ]
+}

@@ -170,7 +170,9 @@ function pg_style_guide_text_styles($css, $model)
             $key = _pg_style_guide_selector_key($sel);
             if ($key === null) {
                 if (!preg_match('/^\.([a-z][a-z0-9_-]{0,40})$/i', $sel, $m) || !isset($decl['size'])) continue;
-                $key = strtolower($m[1]);
+                // Class names are case-sensitive in HTML: the sample is
+                // drawn with the class as the stylesheet writes it.
+                $key = $m[1];
                 if (isset($styles[$key])) {
                     if ($styles[$key]['source'] !== 'class') continue;
                 } else {

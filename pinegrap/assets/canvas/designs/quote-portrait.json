@@ -1,0 +1,15 @@
+{
+ "id": "quote-portrait",
+ "width": 1080,
+ "height": 1350,
+ "background": "#f4fce3",
+ "layers": [
+  {"type": "slot", "x": 0, "y": 0, "w": 1080, "h": 620},
+  {"type": "text", "text": "startQuotePicLine1", "font": "g:Lora", "size": 64, "weight": 700, "color": "#2b8a3e", "align": "center", "x": 540, "y": 720, "maxW": 960, "italic": true},
+  {"type": "text", "text": "startQuotePicLine2", "font": "g:Lora", "size": 64, "weight": 700, "color": "#2b8a3e", "align": "center", "x": 540, "y": 810, "maxW": 960, "italic": true},
+  {"type": "rect", "x": 490, "y": 950, "w": 100, "h": 6, "color": "#74b816"},
+  {"type": "text", "text": "startQuoteAuthor", "font": "g:Montserrat", "size": 36, "weight": 600, "color": "#495057", "align": "center", "x": 540, "y": 1000, "maxW": 960, "spacing": 0.1},
+  {"type": "ellipse", "x": 80, "y": 1170, "w": 120, "h": 120, "color": "#c0eb75"},
+  {"type": "ellipse", "x": 880, "y": 1170, "w": 120, "h": 120, "color": "#c0eb75"}
+ ]
+}

@@ -30,9 +30,10 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 
 - `agent-canvas-*`: 15 files; start at `agent-canvas-overview.md`.
 - `automation-flows-*`: 6 files.
+- `channel-memory-*`: 6 files; start at `channel-memory.md`.
 - `mail-phone-*`: 6 files.
 - `share-links-*`: 6 files; start at `share-links.md`.
-- `workflow-tables-*`: 30 files; start at `workflow-tables.md`.
+- `workflow-tables-*`: 31 files; start at `workflow-tables.md`.
 - `workspace-api-*`: 19 files; start at `workspace-api-overview.md`.
 - `workspace-app-*`: 7 files.
 - `workspace-channel-*`: 30 files; start at `workspace-channel-overview.md`.
@@ -42,7 +43,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - `workspace-message-*`: 6 files.
 - `workspace-notes-*`: 30 files; start at `workspace-notes.md`.
 - `workspace-personal-*`: 13 files; start at `workspace-personal-overview.md`.
-- `workspace-voice-*`: 14 files; start at `workspace-voice-overview.md`.
+- `workspace-voice-*`: 15 files; start at `workspace-voice-overview.md`.
 
 ## Files
 

@@ -1,0 +1,15 @@
+{
+ "id": "sale-square",
+ "width": 1080,
+ "height": 1080,
+ "background": "#fff4e6",
+ "layers": [
+  {"type": "slot", "x": 540, "y": 0, "w": 540, "h": 1080},
+  {"type": "rect", "x": 70, "y": 150, "w": 120, "h": 10, "color": "#e8590c"},
+  {"type": "text", "text": "startSaleHead", "font": "g:Anton", "size": 130, "weight": 400, "color": "#212529", "align": "left", "x": 70, "y": 200, "maxW": 440, "lineHeight": 1.05},
+  {"type": "text", "text": "startSaleOff", "font": "g:Montserrat", "size": 54, "weight": 700, "color": "#e8590c", "align": "left", "x": 70, "y": 380, "maxW": 440},
+  {"type": "text", "text": "startSaleWhen", "font": "g:Montserrat", "size": 34, "weight": 400, "color": "#495057", "align": "left", "x": 70, "y": 470, "maxW": 440},
+  {"type": "ellipse", "x": 130, "y": 700, "w": 240, "h": 240, "color": "#e8590c"},
+  {"type": "text", "text": "startSaleShop", "font": "g:Montserrat", "size": 34, "weight": 700, "color": "#ffffff", "align": "center", "x": 250, "y": 800, "maxW": 200}
+ ]
+}

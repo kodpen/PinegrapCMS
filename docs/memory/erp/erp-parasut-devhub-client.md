@@ -15,7 +15,7 @@ description: Paraşüt's Developer Portal (DevHub) client as its guide describes
 - The access token lives 300 s, the refresh token 30 days from its last use and is replaced on each refresh; without `offline_access` it dies when the person signs out of Paraşüt. `invalid_grant` means authorize again.
 
 ## What are the API's limits?
-- The API is unchanged: `https://api.parasut.com/v4/{company}`. The free "Temel" package: one company, 10 requests in 10 s, 25,000 a month; a 429 says how long to wait; a client answering many 401 or 403 may be switched off.
+- The API is unchanged: `https://api.parasut.com/v4/{company}`; staging answers at `https://api-staging.parasut.com` (`erp-parasut-devhub-staging.md`). The free "Temel" package: one company, 10 requests in 10 s, 25,000 a month; a 429 says how long to wait; a client answering many 401 or 403 may be switched off.
 
 ## What does Pinegrap do with it?
 - Since #11694 a portal client is the connected accounts' provider `parasut` (`erp-parasut-devhub-connection.md`). Not yet tried against Paraşüt: what the live answers show is added here once dev is connected (plan `plans/parasut-devhub-connection.md`).

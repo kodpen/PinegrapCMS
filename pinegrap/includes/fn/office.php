@@ -688,9 +688,11 @@ function pg_office_xlsx_date_styles($zip, &$refused = null, &$looks = null)
 
 /**
  * What each cell format of a styles part looks like in the preview, and what
- * the format controls show as chosen: bold (b), italic (i), a text colour (c)
- * and a solid fill (bg) given as RRGGBB, a horizontal alignment (a: left,
- * center, right) and the kind of number format (n: number, money, percent,
+ * the format controls show as chosen: bold (b), italic (i), underline (u),
+ * strikethrough (st), a font size other than the default font's (sz, in
+ * points), a text colour (c) and a solid fill (bg) given as RRGGBB, a
+ * horizontal alignment (a: left, center, right), wrap text (w), the border
+ * sides drawn (bd: l, r, t, b in that order) and the kind of number format (n: number, money, percent,
  * date, or other for one the controls do not offer; general is left out).
  * A number, money or percent also carries its decimals (d) and grouping
  * (g), money its symbol (y) and its place (p: before or after).
@@ -744,8 +746,9 @@ function pg_office_xlsx_style_looks($styles)
     };
 
     $fonts = array();
+    $base_size = null;
 
-    foreach ($list('fonts', 'font') as $font) {
+    foreach ($list('fonts', 'font') as $index => $font) {
         $look = array();
 
         if ($on($child($font, 'b'))) {
@@ -754,6 +757,27 @@ function pg_office_xlsx_style_looks($styles)
 
         if ($on($child($font, 'i'))) {
             $look['i'] = 1;
+        }
+
+        $underline = $child($font, 'u');
+
+        if ($on($underline) && (strtolower(pg_office_attr($underline, 'val')) !== 'none')) {
+            $look['u'] = 1;
+        }
+
+        if ($on($child($font, 'strike'))) {
+            $look['st'] = 1;
+        }
+
+        // A size of its own: one the first font, the workbook's default,
+        // does not have.
+        $size = $child($font, 'sz');
+        $size = (($size !== null) && is_numeric(pg_office_attr($size, 'val'))) ? (float) pg_office_attr($size, 'val') : null;
+
+        if ($index === 0) {
+            $base_size = $size;
+        } elseif (($size !== null) && ($size !== $base_size) && ($size > 0) && ($size <= 409)) {
+            $look['sz'] = (floor($size) === $size) ? (int) $size : $size;
         }
 
         $color = $rgb($child($font, 'color'));
@@ -770,6 +794,27 @@ function pg_office_xlsx_style_looks($styles)
     foreach ($list('fills', 'fill') as $fill) {
         $pattern = $child($fill, 'patternFill');
         $fills[] = (($pattern !== null) && (pg_office_attr($pattern, 'patternType') === 'solid')) ? $rgb($child($pattern, 'fgColor')) : '';
+    }
+
+    // The sides each border draws, as l, r, t and b.
+    $borders = array();
+
+    foreach ($list('borders', 'border') as $border) {
+        $drawn = '';
+
+        foreach (array('l' => array('left', 'start'), 'r' => array('right', 'end'), 't' => array('top'), 'b' => array('bottom')) as $letter => $names) {
+            foreach ($names as $name) {
+                $side = $child($border, $name);
+
+                if ($side !== null) {
+                    $style = pg_office_attr($side, 'style');
+                    $drawn .= (($style !== '') && ($style !== 'none')) ? $letter : '';
+                    break;
+                }
+            }
+        }
+
+        $borders[] = $drawn;
     }
 
     $codes = array();
@@ -795,6 +840,16 @@ function pg_office_xlsx_style_looks($styles)
 
         if (isset($aligns[$horizontal])) {
             $look['a'] = $aligns[$horizontal];
+        }
+
+        if (($alignment !== null) && in_array(strtolower(pg_office_attr($alignment, 'wrapText')), array('1', 'true'), true)) {
+            $look['w'] = 1;
+        }
+
+        $border_id = (int) pg_office_attr($xf, 'borderId');
+
+        if (isset($borders[$border_id]) && ($borders[$border_id] !== '')) {
+            $look['bd'] = $borders[$border_id];
         }
 
         $format_id = (int) pg_office_attr($xf, 'numFmtId');
@@ -2137,10 +2192,16 @@ function pg_office_docx_edit_mark(&$state, $paragraph)
 
     $state['edit']['texts'][(string) $position] = $edit['text'];
 
-    // Bold, italic and underline of the text, which the editor's format
-    // bar starts from (includes/fn/office_docx_format.php).
+    // The look of the text and the paragraph's alignment when it is not
+    // the start, which the editor's format bar starts from
+    // (includes/fn/office_docx_format.php).
     if (function_exists('pg_office_docx_paragraph_marks')) {
         $state['edit']['marks'][(string) $position] = pg_office_docx_paragraph_marks($edit);
+        $align = pg_office_docx_paragraph_align($paragraph);
+
+        if ($align !== 'start') {
+            $state['edit']['aligns'][(string) $position] = $align;
+        }
     }
 
     return ' data-p="' . $position . '"';
@@ -2200,7 +2261,7 @@ function pg_office_docx_read($path, $edit = false)
     }
 
     if ($edit && ($refusal === '')) {
-        $state['edit'] = array('index' => array(), 'texts' => array(), 'marks' => array(), 'kinds' => array(), 'keeps' => array(), 'shut' => array());
+        $state['edit'] = array('index' => array(), 'texts' => array(), 'marks' => array(), 'kinds' => array(), 'aligns' => array(), 'keeps' => array(), 'shut' => array());
 
         foreach (pg_office_docx_paragraphs($document) as $position => $paragraph) {
             $state['edit']['index'][$paragraph->getNodePath()] = $position;
@@ -2220,7 +2281,7 @@ function pg_office_docx_read($path, $edit = false)
         $out['edit'] = ($refusal !== '')
             ? array('ok' => false, 'why' => $refusal)
             : array('ok' => true, 'why' => '', 'paragraphs' => (object) $state['edit']['texts'], 'marks' => (object) $state['edit']['marks'], 'kinds' => (object) $state['edit']['kinds'],
-                'keeps' => (object) $state['edit']['keeps'], 'shut' => (object) $state['edit']['shut']);
+                'aligns' => (object) $state['edit']['aligns'], 'keeps' => (object) $state['edit']['keeps'], 'shut' => (object) $state['edit']['shut']);
         $out['version'] = $version;
     }
 
@@ -3012,9 +3073,10 @@ function pg_office_xls_copy($path, $target)
  * @param ZipArchive $zip
  * @param string     $refused set to large or damaged when the presentation part or a relationships part could not be read whole
  * @param bool       $found   whether the package holds a presentation part at all
+ * @param string     $main    set to the presentation part's name
  * @return array[]
  */
-function pg_office_pptx_slides($zip, &$refused = null, &$found = null)
+function pg_office_pptx_slides($zip, &$refused = null, &$found = null, &$main = null)
 {
     $out = array();
     $refused = '';
@@ -3470,7 +3532,7 @@ function pg_office_view_strings()
         'empty'             => lang('The sheet is empty.'),
         'calc'              => lang('Worked out by a formula when the file is opened in a spreadsheet program.'),
         'edit_hint'         => lang('Double-click a cell, or select it and type, to change it. Enter keeps the change, Esc undoes it.'),
-        'changed'           => lang('{1} cell(s) changed.'),
+        'unsaved'           => lang('{1} change(s) not saved.'),
         'recalc'            => lang('Formulas are worked out again when the file is opened in a spreadsheet program.'),
         'formula_text'      => lang('Kept as text: formulas are not worked out here.'),
         'shift_hint'        => lang('Click a row\'s number or a column\'s letter to insert or delete it.'),
@@ -3509,15 +3571,6 @@ function pg_office_view_strings()
         'column_before'     => lang('Insert a column on the left'),
         'column_after'      => lang('Insert a column on the right'),
         'column_delete'     => lang('Delete column {1}'),
-        'shift_undo'        => lang('Undo the row or column change'),
-        'shift_first'       => lang('Save the changed cells first, then insert or delete rows and columns.'),
-        'shift_row_before'  => lang('A row is inserted above row {1} when you save.'),
-        'shift_row_after'   => lang('A row is inserted below row {1} when you save.'),
-        'shift_row_delete'  => lang('Row {1} is deleted when you save.'),
-        'shift_column_before' => lang('A column is inserted left of column {1} when you save.'),
-        'shift_column_after'  => lang('A column is inserted right of column {1} when you save.'),
-        'shift_column_delete' => lang('Column {1} is deleted when you save.'),
-        'shift_sheet'       => lang('Sheet: {1}.'),
         'sheet_hint'        => lang('Click the open sheet\'s tab to rename, move or delete it.'),
         'sheet_menu'        => lang('Sheet'),
         'sheet_add'         => lang('Add a sheet'),
@@ -3525,17 +3578,10 @@ function pg_office_view_strings()
         'sheet_left'        => lang('Move left'),
         'sheet_right'       => lang('Move right'),
         'sheet_delete'      => lang('Delete sheet {1}'),
-        'sheet_undo'        => lang('Undo the sheet change'),
-        'sheet_first'       => lang('Save the other changes first, then change the sheets.'),
-        'sheet_one'         => lang('One sheet change is saved at a time. Save or undo the waiting one first.'),
         'sheet_name'        => lang('Name of the sheet'),
         'sheet_new'         => lang('Sheet{1}'),
         'sheet_bad'         => lang('A sheet name is 1 to 31 characters long, without \\ / ? * [ ] : and not starting or ending with an apostrophe.'),
         'sheet_taken'       => lang('Another sheet is already named {1}.'),
-        'sheet_pending_add'    => lang('Sheet {1} is added after the last sheet when you save.'),
-        'sheet_pending_rename' => lang('Sheet {1} is renamed {2} when you save.'),
-        'sheet_pending_delete' => lang('Sheet {1} is deleted when you save.'),
-        'sheet_pending_move'   => lang('Sheet {1} moves to place {2} when you save.'),
         'format_bar'        => lang('Format of the selected cells'),
         'format_bold'       => lang('Bold'),
         'format_italic'     => lang('Italic'),
@@ -3572,11 +3618,7 @@ function pg_office_view_strings()
         'format_money_kind'   => lang('Money'),
         'format_percent_kind' => lang('Percent'),
         'format_date_kind'    => lang('Date'),
-        'format_undo'       => lang('Undo the format change'),
         'format_hint'       => lang('Shift+click or Shift+arrow keys select more cells; the bar above the sheet changes their format.'),
-        'format_pending'    => lang('The format of {1} changes when you save.'),
-        'format_first'      => lang('Save the other changes first, then change the format.'),
-        'format_one'        => lang('One format change is saved at a time. Save or undo the waiting one first.'),
         'format_many'       => lang('Select at most 5000 cells to change their format.'),
         'locked_formula'    => lang('Worked out by a formula. Change it in a spreadsheet program.'),
         'locked_formula_is' => lang('Worked out by a formula: {1}'),
@@ -3592,7 +3634,7 @@ function pg_office_view_strings()
         'sheet_kind'        => lang('This sheet has no cells to change.'),
         'sheet_large'       => lang('This sheet is too large to change here.'),
         'sheet_unusual'     => lang('This sheet cannot be changed here.'),
-        'doc_hint'          => lang('Click a paragraph, then click it again (or press Enter) to change its text. Enter keeps the change, Shift+Enter starts a new line, Esc undoes it.'),
+        'doc_hint'          => lang('Click where you want to type. Enter starts a new paragraph, Backspace at its start joins it to the one before, Shift+Enter starts a new line, Esc undoes what you typed in the paragraph.'),
         'doc_changed'       => lang('{1} paragraph(s) changed.'),
         'doc_format'        => lang('Changed paragraphs show their formatting again once saved.'),
         'doc'               => lang('Document preview'),
@@ -3607,11 +3649,13 @@ function pg_office_view_strings()
         'kind_bullet'       => lang('Bulleted list'),
         'kind_number'       => lang('Numbered list'),
         'kind_other'        => lang('Other style'),
-        'doc_add'           => lang('Add a paragraph after this one'),
+        'doc_undo'          => lang('Undo (Ctrl+Z)'),
+        'doc_redo'          => lang('Redo (Ctrl+Y)'),
         'doc_delete'        => lang('Delete the paragraph'),
         'doc_restore'       => lang('Keep the paragraph'),
         'doc_pick'          => lang('Click a paragraph first.'),
         'doc_deleted'       => lang('This paragraph is deleted when you save. Press the delete button again to keep it.'),
+        'doc_cells'         => lang('Paragraphs in different table cells are not joined.'),
         'doc_shut'          => lang('No paragraph can be added after this one here: it is in a content control, a text box, a merged cell or a tracked change.'),
         'keep_picture'      => lang('This paragraph holds a picture, so it is not deleted here.'),
         'keep_section'      => lang('This paragraph ends a section of the document, which holds its page layout, so it is not deleted here.'),
@@ -3619,7 +3663,6 @@ function pg_office_view_strings()
         'keep_last'         => lang('This is the last paragraph of the document, so it is not deleted. Its text can be emptied.'),
         'keep_bookmark'     => lang('This paragraph holds one end of a bookmark that reaches into other paragraphs, so it is not deleted here.'),
         'keep_locked'       => lang('This paragraph holds more than text, so it is not deleted here.'),
-        'doc_editor'        => lang('Text of the paragraph'),
         'doc_link'          => lang('Hold Ctrl (Cmd on a Mac) and click to follow the link.'),
         'doc_signed'        => lang('The file is digitally signed, so its text is not changed here.'),
         'doc_protected'     => lang('The document is protected against changes.'),

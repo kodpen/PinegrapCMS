@@ -1,0 +1,15 @@
+{
+ "id": "event-story",
+ "width": 1080,
+ "height": 1920,
+ "background": "#e7f5ff",
+ "layers": [
+  {"type": "ellipse", "x": -200, "y": -200, "w": 700, "h": 700, "color": "#a5d8ff"},
+  {"type": "ellipse", "x": 750, "y": 1600, "w": 500, "h": 500, "color": "#d0ebff"},
+  {"type": "text", "text": "startEventDayHead", "font": "g:Bebas Neue", "size": 220, "weight": 400, "color": "#1864ab", "align": "center", "x": 540, "y": 220, "maxW": 960},
+  {"type": "text", "text": "startEventDayLine", "font": "g:Raleway", "size": 50, "weight": 600, "color": "#1c7ed6", "align": "center", "x": 540, "y": 500, "maxW": 960},
+  {"type": "slot", "x": 140, "y": 640, "w": 800, "h": 800, "radius": 60},
+  {"type": "text", "text": "startEventDayWhen", "font": "g:Raleway", "size": 54, "weight": 700, "color": "#1864ab", "align": "center", "x": 540, "y": 1520, "maxW": 960},
+  {"type": "text", "text": "startEventDayNote", "font": "g:Raleway", "size": 40, "weight": 400, "color": "#495057", "align": "center", "x": 540, "y": 1610, "maxW": 960}
+ ]
+}

@@ -302,7 +302,9 @@ function _parasut_request_once($method, $url, $body = null, $token = null, $retr
 }
 
 /**
- * Return the Parasut API base URL (production or sandbox).
+ * The API address of the older way (a client from before the portal): its
+ * OAuth addresses (/oauth/token, /oauth/authorize) and, for a site without a
+ * portal connection, the v4 requests.
  */
 function _parasut_base()
 {
@@ -311,21 +313,56 @@ function _parasut_base()
     // sandbox offered to customers: it does not answer to a merchant's
     // credentials, and because the OAuth call goes through here too, turning the
     // switch on stopped the integration working at all.
-    return defined('PARASUT_API_BASE') ? PARASUT_API_BASE : parasut_api_base(parasut_environment());
+    return defined('PARASUT_API_BASE') ? PARASUT_API_BASE : parasut_api_base('live');
 }
 
 /**
- * The API address of an environment. Paraşüt's pages name no API address of
- * its own for the test environment (staging): their examples read
- * api.parasut.com for both, so both answer it until a connect with a staging
- * client shows otherwise. Pure.
+ * The API address of an environment: api.parasut.com for live,
+ * api-staging.parasut.com for staging. api.parasut.com refuses a token issued
+ * by id-staging.parasut.com with 401 "Invalid token". Pure.
  *
  * @param string $environment  'live' | 'staging'
  * @return string
  */
 function parasut_api_base($environment)
 {
-    return 'https://api.parasut.com';
+    return ($environment === 'staging') ? 'https://api-staging.parasut.com' : 'https://api.parasut.com';
+}
+
+/**
+ * The environment the v4 requests go to, decided by the token in use: staging
+ * only for the portal connection's token while the site's environment is
+ * staging. The older way's token was issued by the live host, so it stays
+ * there whatever the environment row says. Pure.
+ *
+ * @param string $choice       parasut_token_choice()
+ * @param string $environment  parasut_environment()
+ * @return string  'live' | 'staging'
+ */
+function parasut_api_environment($choice, $environment)
+{
+    return (($choice === 'connection') && ($environment === 'staging')) ? 'staging' : 'live';
+}
+
+/**
+ * The site's API environment now (parasut_api_environment()).
+ *
+ * @return string  'live' | 'staging'
+ */
+function _parasut_api_environment()
+{
+    return parasut_api_environment(parasut_token_choice(parasut_devhub_connection()), parasut_environment());
+}
+
+/**
+ * The API address the v4 requests go to: the staging host for a portal
+ * connection in staging, else the older way's base.
+ *
+ * @return string
+ */
+function _parasut_v4_base()
+{
+    return (_parasut_api_environment() === 'staging') ? parasut_api_base('staging') : _parasut_base();
 }
 
 /**
@@ -333,17 +370,20 @@ function parasut_api_base($environment)
  */
 function _parasut_prefix()
 {
-    return _parasut_base() . '/v4/' . PARASUT_COMPANY_ID;
+    return _parasut_v4_base() . '/v4/' . PARASUT_COMPANY_ID;
 }
 
 /**
- * Extract a readable error message from a Parasut API response.
+ * Extract a readable error message from a Parasut API response. A refused
+ * integration permission (parasut_integration_permission_refused()) gets the
+ * setting to change after Paraşüt's own text.
  */
 function _parasut_extract_error($result)
 {
     if (isset($result['curl_error'])) {
         return $result['curl_error'];
     }
+    $hint = parasut_integration_permission_refused($result) ? ' ' . parasut_integration_permission_hint() : '';
     $body = $result['body'] ?? [];
     if (!empty($body['errors'])) {
         $msgs = [];
@@ -353,12 +393,90 @@ function _parasut_extract_error($result)
             $detail = is_array($err) ? trim((string) ($err['detail'] ?? '')) : trim((string) $err);
             $msgs[] = (($title !== '') && ($detail !== '') && ($title !== $detail)) ? $title . ': ' . $detail : (($detail !== '') ? $detail : $title);
         }
-        return implode(' | ', $msgs);
+        return implode(' | ', $msgs) . $hint;
     }
     if (!empty($body['error_description'])) {
-        return $body['error_description'];
+        return $body['error_description'] . $hint;
     }
-    return 'HTTP ' . ($result['http_code'] ?? '?');
+    return 'HTTP ' . ($result['http_code'] ?? '?') . $hint;
+}
+
+/**
+ * Whether Paraşüt refused a request because the signed-in user may not use
+ * application integrations in the company: GET /v4/me answers 200 for such
+ * a user, and every company-scoped call 403 "User has no 3rd party
+ * integration permission for company: <id>". Pure.
+ *
+ * @param mixed $result  A request answer (http_code, body, raw)
+ * @return bool
+ */
+function parasut_integration_permission_refused($result)
+{
+    if (!is_array($result) || ((int) ($result['http_code'] ?? 0) !== 403)) {
+        return false;
+    }
+
+    $said = (is_array($result['body'] ?? null) ? (string) json_encode($result['body']) : (string) ($result['body'] ?? ''))
+        . ' ' . (is_scalar($result['raw'] ?? null) ? (string) $result['raw'] : '');
+
+    return stripos($said, '3rd party integration permission') !== false;
+}
+
+/**
+ * The Paraşüt setting a refused integration permission
+ * (parasut_integration_permission_refused()) is fixed with.
+ *
+ * @return string  Plain text, not escaped
+ */
+function parasut_integration_permission_hint()
+{
+    return lang('The Paraşüt user is not allowed to use app integrations. In Paraşüt, open Ayarlar › Kullanıcılar, choose the user who connects, press Düzenle, set Uygulama Entegrasyonları to Yetki Var, then connect again.');
+}
+
+/**
+ * Connect's one company-scoped read, since GET /v4/me answers 200 for a
+ * user whose every company call Paraşüt refuses: the company's contacts,
+ * one card long. Sent once; nothing is retried.
+ *
+ * @param string   $company_id
+ * @param callable $get  function (string $path): the answer of GET <API base> . $path
+ * @return string  The warning when Paraşüt refuses the integration
+ *                 permission, '' otherwise; plain text, not escaped
+ */
+function parasut_integration_permission_warning($company_id, $get)
+{
+    $company_id = trim((string) $company_id);
+
+    if ($company_id === '') {
+        return '';
+    }
+
+    $result = call_user_func($get, '/v4/' . rawurlencode($company_id) . '/contacts?page[size]=1');
+
+    if (!parasut_integration_permission_refused($result)) {
+        return '';
+    }
+
+    return lang(array(
+        'string' => 'Connected, but Paraşüt refuses every request in company {var:1}: {var:2}',
+        'vars' => array($company_id, _parasut_extract_error($result)),
+    ));
+}
+
+/**
+ * parasut_integration_permission_warning() with the token just received:
+ * without the 429 wait and without a renewal, as Paraşüt may switch off a
+ * client that collects many 401/403 answers.
+ *
+ * @param string $company_id
+ * @param string $token
+ * @return string
+ */
+function parasut_integration_permission_check($company_id, $token)
+{
+    return parasut_integration_permission_warning($company_id, function ($path) use ($token) {
+        return _parasut_request('GET', _parasut_v4_base() . $path, null, (string) $token, false, false);
+    });
 }
 
 /**
@@ -1168,7 +1286,7 @@ function parasut_authorize_url($client_id = null)
  */
 function parasut_me($token)
 {
-    $result = _parasut_request('GET', _parasut_base() . '/v4/me?include=companies', null, $token, true, false);
+    $result = _parasut_request('GET', _parasut_v4_base() . '/v4/me?include=companies', null, $token, true, false);
 
     if (($result['http_code'] !== 200) || empty($result['body']['data'])) {
         return ['success' => false, 'email' => '', 'name' => '', 'companies' => [], 'error' => _parasut_extract_error($result)];
@@ -1287,7 +1405,8 @@ function parasut_connect_company($posted, $saved, $companies)
  * the authorized user's one company (parasut_connect_company()), the switch
  * is a warning naming both numbers - the default product/service and
  * warehouse ids on the card were set for the company before - and the log
- * line names both numbers too.
+ * line names both numbers too. A permission_warning
+ * (parasut_integration_permission_check()) is a warning as well.
  *
  * @param array $result  A successful parasut_connect_with_code() answer
  * @return array ['notices' => string[], 'warnings' => string[], 'log' => string];
@@ -1324,6 +1443,12 @@ function parasut_connect_report($result)
         ));
     }
 
+    $refused = trim((string) ($result['permission_warning'] ?? ''));
+
+    if ($refused !== '') {
+        $report['warnings'][] = $refused;
+    }
+
     return $report;
 }
 
@@ -1338,6 +1463,8 @@ function parasut_connect_report($result)
  *
  * A code is good for one exchange and a few minutes; a second click with
  * the same code is refused by Paraşüt, which is what the error says.
+ * Once all is saved, one company-scoped read tells whether the user may
+ * use application integrations (parasut_integration_permission_check()).
  *
  * @param string $code           What Paraşüt printed after the sign-in
  * @param string $client_id      As typed on the card (the saved one when empty)
@@ -1346,6 +1473,7 @@ function parasut_connect_report($result)
  * @return array ['success' => bool, 'company_id' => string, 'company_name' => string,
  *                'email' => string, 'owner' => string (the token's owner stamp),
  *                'replaced_company_id' => string (the saved number given up, or ''),
+ *                'permission_warning' => string (on success only, '' when none),
  *                'error' => string]
  */
 function parasut_connect_with_code($code, $client_id = '', $client_secret = '', $company_id = '')
@@ -1440,6 +1568,7 @@ function parasut_connect_with_code($code, $client_id = '', $client_secret = '', 
         'email' => $me['email'],
         'owner' => $owner,
         'replaced_company_id' => $company['replaced'],
+        'permission_warning' => parasut_integration_permission_check($company_id, (string) $data['access_token']),
         'error' => '',
     ];
 }
@@ -1785,7 +1914,9 @@ function parasut_devhub_status($connection, $details)
  * account which companies it may use (GET /v4/me?include=companies), takes
  * the company as a pasted code does (parasut_connect_company(), from the
  * saved number), writes its number into the config row and keeps the
- * e-mail and the company name for the status line.
+ * e-mail and the company name for the status line. /v4/me answers 200
+ * without the integration permission too, so one company-scoped read
+ * follows (parasut_integration_permission_check()).
  *
  * @param int $connection_id
  * @return array ['notices' => list, 'warnings' => list, 'log' => string]
@@ -1842,6 +1973,7 @@ function parasut_devhub_after_connect($connection_id)
         'company_name' => $company_name,
         'email' => $me['email'],
         'replaced_company_id' => $company['replaced'],
+        'permission_warning' => parasut_integration_permission_check($company_id, (string) $token['token']),
     ));
 }
 
@@ -2414,15 +2546,21 @@ function parasut_currency_code($currency)
  * the card ends below Pinegrap's count by that order's units. Which earlier
  * orders will ever be documented at Paraşüt cannot be told here.
  *
- * @param array       $product    A products row: name, short_description, price
- *                                (minor units), inventory, inventory_quantity, tax_rate
- * @param int         $taken_out  Units of the product the documented sale took out of
- *                                inventory_quantity (parasut_stock_taken_units()); 0 for none
- * @param string|null $currency   The store's base currency (ISO code); null reads
- *                                BASE_CURRENCY_CODE, and with none defined the lira
+ * A card opened for an invoice line takes that line's VAT rate ($vat_rate):
+ * the line is what the sale charged, and a catalogue rate Paraşüt no longer
+ * takes (18 %) would make it refuse the card and stop the invoice. A caller
+ * with no line (E-Shipment) keeps the catalogue's products.tax_rate.
+ *
+ * @param array             $product    A products row: name, short_description, price
+ *                                      (minor units), inventory, inventory_quantity, tax_rate
+ * @param int               $taken_out  Units of the product the documented sale took out of
+ *                                      inventory_quantity (parasut_stock_taken_units()); 0 for none
+ * @param string|null       $currency   The store's base currency (ISO code); null reads
+ *                                      BASE_CURRENCY_CODE, and with none defined the lira
+ * @param float|string|null $vat_rate   The invoice line's VAT rate; null or '' for the catalogue's
  * @return array
  */
-function parasut_product_attributes($product, $taken_out = 0, $currency = null)
+function parasut_product_attributes($product, $taken_out = 0, $currency = null, $vat_rate = null)
 {
     $track_stock = !empty($product['inventory']);
 
@@ -2432,15 +2570,21 @@ function parasut_product_attributes($product, $taken_out = 0, $currency = null)
 
     $currency_code = parasut_currency_code($currency);
 
+    // Default rate on the Paraşüt product card. Invoice lines carry their own
+    // rate and override this, so it only matters for documents raised inside
+    // Paraşüt. A null products.tax_rate means "the zone decides", which has no
+    // equivalent on a product card - 0 is the safe default there.
+    $rate = ($product['tax_rate'] === null || $product['tax_rate'] === '') ? 0 : (float) $product['tax_rate'];
+
+    if (($vat_rate !== null) && ($vat_rate !== '')) {
+        $rate = (float) $vat_rate;
+    }
+
     $attributes = [
         'name' => $product['short_description'] ?: ($product['name'] ?: lang('No Product Name')),
         'list_price' => round($product['price'] / 100, 2),
         'currency' => $currency_code,
-        // Default rate on the Parasut product card. Invoice lines carry their own
-        // rate and override this, so it only matters for documents raised inside
-        // Parasut. A null products.tax_rate means "the zone decides", which has no
-        // equivalent on a product card - 0 is the safe default there.
-        'vat_rate' => ($product['tax_rate'] === null || $product['tax_rate'] === '') ? 0 : (float) $product['tax_rate'],
+        'vat_rate' => $rate,
         'inventory_tracking' => $track_stock,
     ];
 
@@ -2635,11 +2779,14 @@ function _parasut_stock_taken_read($what, $id)
  * @param int    $taken_out   Units the sale behind the document already took out of
  *                            inventory_quantity and the document takes out at Paraşüt;
  *                            used only when the card is opened
+ * @param float|string|null $vat_rate  The invoice line's VAT rate the card opens at; null
+ *                            keeps the catalogue's (parasut_product_attributes()). A card
+ *                            already kept is never updated to it.
  * @return array ['success' => bool, 'parasut_product_id' => string|null, 'track_stock' => bool, 'error' => string];
  *               'missing' => true when the products row no longer exists, 'read_failed' => true
  *               when it could not be read (no request was sent in either case)
  */
-function parasut_sync_product($product_id, $token, $taken_out = 0)
+function parasut_sync_product($product_id, $token, $taken_out = 0, $vat_rate = null)
 {
     // Fetch product details (needed for both new creation and track_stock flag).
     $result = mysqli_query(db::$con, "SELECT name, short_description, price, inventory, inventory_quantity, tax_rate, parasut_product_id FROM products WHERE id = '" . escape($product_id) . "' LIMIT 1");
@@ -2668,7 +2815,7 @@ function parasut_sync_product($product_id, $token, $taken_out = 0)
     $body = [
         'data' => [
             'type' => 'products',
-            'attributes' => parasut_product_attributes($product, $taken_out),
+            'attributes' => parasut_product_attributes($product, $taken_out, null, $vat_rate),
         ],
     ];
 
@@ -3101,9 +3248,9 @@ function parasut_order_contact_search_number($identity)
  * (parasut_order_contact_attributes()), case and outer spaces aside, as the
  * ERP's driver matches a final consumer's card
  * (erp_edoc_parasut_final_consumer_card_matches()). A placeholder that
- * passes the check digits is typed by strangers too, and a card is taken as
- * it is: the invoice carries no buyer details of its own, so another buyer's
- * card would put the e-Arşiv in their name and mail it to them.
+ * passes the check digits is typed by strangers too, and the invoice
+ * carries no buyer details of its own, so another buyer's card would put
+ * the e-Arşiv in their name and mail it to them.
  *
  * @param mixed $card        attributes of a listed card
  * @param array $attributes  parasut_order_contact_attributes()
@@ -3136,7 +3283,10 @@ function parasut_order_contact_card_is_buyers($card, $attributes)
  * GET contacts?filter[tax_number], newest first, page by page up to
  * ERP_EDOC_PARASUT_FIND_PAGES pages, and the first card that is not
  * archived, carries exactly the number and is this buyer's
- * (parasut_order_contact_card_is_buyers()) is taken as it is. A page that
+ * (parasut_order_contact_card_is_buyers()) is taken. The fields it holds
+ * empty are filled with $attributes in one PUT, a field it holds is never
+ * overwritten (erp_edoc_parasut_contact_fill_send()); a refused user stops
+ * there, any other refusal leaves the card as it is. A page that
  * answers neither a list nor 404 (no card under the number) refuses: no card
  * is opened while one may be unread. The driver's own function is not called
  * because it opens a missing card with the ERP account's details and logs
@@ -3193,6 +3343,17 @@ function parasut_order_contact_for($identity, $attributes, $request)
             if (($id !== '') && empty($card['archived'])
                 && (preg_replace('/\D/', '', (string) ($card['tax_number'] ?? '')) === $number)
                 && parasut_order_contact_card_is_buyers($card, $attributes)) {
+                // The fields the card holds empty are filled with the
+                // order's; a field it holds stays as it is.
+                $put = erp_edoc_parasut_contact_fill_send($id, $card, $attributes, $request);
+
+                if (erp_edoc_parasut_contact_fill_stops($put)) {
+                    return array('id' => '', 'reused' => false, 'error' => lang(array(
+                        'string' => 'Paraşüt would not fill the empty fields of the buyer card: {var:1}',
+                        'vars' => array(_parasut_extract_error($put)),
+                    )));
+                }
+
                 return array('id' => $id, 'reused' => true, 'error' => '');
             }
         }
@@ -4739,8 +4900,10 @@ function _parasut_create_invoice_claimed($order_id, &$notices)
     }
 
     // Even if the e-invoice/e-archive step fails, the order keeps the sales
-    // invoice ID (stored when the record was created or found).
-    if (!in_array($doc_result['http_code'], [200, 201])) {
+    // invoice ID (stored when the record was created or found). The
+    // conversion answers 202 Accepted with a trackable job, so any 2xx is
+    // accepted, as the ERP's driver reads it.
+    if (!erp_edoc_parasut_ok($doc_result)) {
         $msg = _parasut_extract_error($doc_result);
         // The order is not flagged as exported: the flag drives the badge in
         // the order list, and marking it here would show a document as filed

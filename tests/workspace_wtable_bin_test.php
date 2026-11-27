@@ -187,7 +187,7 @@ function test_ws_wtable_bin_screen_wiring()
 	$screen = ws_wtable_bin_test_source('workspace_wtables.php');
 
 	foreach (array("case 'table_restore':", "case 'row_restore':", "case 'bin_row_delete':", 'ws_wtable_restore($viewer', 'ws_wtable_row_restore($viewer', 'ws_wtable_bin_row_delete($viewer',
-		'ws_wtables_binned($viewer)', 'ws_wtable_bin_rows($viewer, $table)', 'id="ws-wt-deleted"', 'id="ws-wt-deleted-rows"', '<input type="hidden" name="wt_bin" value="">', "'wt_bin'") as $needle) {
+		'ws_wtables_binned($viewer)', 'ws_wtable_bin_rows($viewer, $table)', 'id="ws-wt-deleted"', "ws_wtable_screen_drawer('ws-wt-deleted-rows'", '<input type="hidden" name="wt_bin" value="">', "'wt_bin'") as $needle) {
 		pg_assert_contains($needle, $screen);
 	}
 

@@ -30,7 +30,7 @@
 - erp-cash-forecast.md: ERP cash forecast: what counts as money in and out over 30, 60 or 90 days, the item shape, cheque tills left out of today's cash, how a new source is added, the API's scope.
 - erp-cashflow-report.md: ERP cash flow report: transfers excluded in all-till view, opening balance rule, period slice keys, payment-method labels, toolbar and tr.json traps.
 - erp-cheque-bank-till-and-due.md: Which bank till a cheque step may use (screen and API alike), and what the cheque list's "Due within a week" card counts.
-- erp-cheque-form-checks.md: Cheque and note form and step checks (PR #5636): the amount limit, the step reason in the notes, the full status filter, required and labelled fields, action-named step buttons.
+- erp-cheque-form-checks.md: Cheque and note form and step checks (PR #5636, #11844): amount limit, step reason, status filter, labelled fields, step buttons, endorse account, typed step date.
 - erp-cheque-receipts.md: Why a cheque's or note's receipt is not cancelled on its own (screen, erp_receipt_cancel(), API 409 receipt_belongs_to_cheque), and what to do with a cheque entered by mistake
 - erp-cheques.md: ERP cheques and promissory notes (4.101): the steps, money only through erp_post_receipt and erp_post_transfer, a step never rewrites an earlier movement, which tills hold them. [decision: decisions-made-product-15.md]
 - erp-counter-sale-completion.md: Counter sale completion in pg_local_order_complete() (shared with the API): claim and numbering order, the invoice with the ERP on, receipts and split payment, the cash right, failures as warnings.
@@ -51,6 +51,7 @@
 - erp-edoc-send-readiness.md: What the provider would refuse, asked before it is: missing-field lists and format helpers, the repair form, the not-ready filter, the final-consumer number, sales-only rules, GİB's date order.
 - erp-edoc-settings-card.md: The E-Invoice card (pgset-invoice, Site Settings › Accounting): e-Document Provider choice (only a connected one), Test the connection, the owner decision to keep it there
 - erp-efatura-threshold.md: The e-Fatura threshold warning (includes/erp/efatura_threshold.php): the two threshold settings, what counts as a sale, the daily cached sum, the System Status tile and its deadline. [decision: decisions-made.md]
+- erp-expense-change-lock.md: A change of an expense locks its row and is refused when it was paid or cancelled since the form read it, so it is never paid twice or rewritten behind its till movement
 - erp-expense-change-reaches-repeat.md: Changing an expense also updates the active repeat of its family (supplier, tax number, category, description, amount, tax rate, tax_deductible); frequency, day, end and till stay [decision: decisions-made-product-28.md]
 - erp-expense-form-checks.md: Expense screen checks: non-numbers, the field a refusal marks, the paid cancel's till right, send_to, repeat end dates, refused category saves, kept dates, card-body grids, the form layout.
 - erp-expense-receipts.md: An ERP expense's receipt file: one door for form and API, type read from the bytes, replacing keeps the old copy (erp_archive_store again), readers take the newest row, MAX(id) in direct joins.
@@ -110,12 +111,13 @@
 - erp-overdue-reminders.md: ERP overdue receivable reminders (erp_overdue_check): thresholds, one summary per period, delivery channels, scheduling, recipients, Workspace collection follow-up.
 - erp-overdue-second-notice.md: ERP overdue round 2 (migration 4.56): candidate states, second notice at threshold+30, snooze, bell/menu badge, customer e-mail switches and stamps.
 - erp-parasut-accounts.md: Paraşüt's customer and supplier cards in ERP › Account sync (accounts capability): the lists a read pages through, archived and unlisted cards, card shape, writing a card, the linked card on invoices
+- erp-parasut-buyer-card-fill.md: A reused Paraşüt buyer card gets the order's details only in the fields it holds empty, in one PUT of the whole card; a refused user stops, any other refusal keeps the card (#12013, decision #2441)
 - erp-parasut-connect-card.md: Paraşüt's boxes on its page of Connections: Connect in three steps, secret and password boxes, Save, Disconnect, which company Connect takes; Default Product/Service ID
 - erp-parasut-connection.md: Paraşüt's older connection (pasted authorization code or password grant), where its token and the secrets live, the token's owner stamp, the Connect endpoint
 - erp-parasut-devhub-application.md: Paraşüt's partner application (2026-11-26): what was entered, the two fixed redirect addresses, the staging client and company, a partner client on a self-hosted site [decision: here]
 - erp-parasut-devhub-client.md: Paraşüt's Developer Portal (DevHub) client as its guide describes it: the application and its fixed redirect address, sign-in at id.parasut.com with PKCE, token lifetimes, the Temel package's limits
 - erp-parasut-devhub-connection.md: Paraşüt through a Developer Portal client (#11694): provider and purpose of connected accounts, the company read on return, which token the requests use, Disconnect
-- erp-parasut-devhub-staging.md: Paraşüt's test environment (staging) for a Developer Portal client (PS1): the config_text row, the sign-in host, the read-only Environment select, the amber pill
+- erp-parasut-devhub-staging.md: Paraşüt's test environment (staging) for a Developer Portal client: the config_text row, the sign-in and API hosts by token, the read-only Environment select, the amber pill, the screen link
 - erp-parasut-driver-2.md: Paraşüt driver, part 2: how the conversion picks e-Fatura or e-Arşiv (fresh GİB lookup, the card's alias, the scenario, a failed lookup) and its request layer (token lock, retries, throttle)
 - erp-parasut-driver.md: Paraşüt e-document driver (includes/erp/edoc/parasut.php): requests, buyer card, sales invoice, conversion, poll, PDF, cancel; what the live API showed
 - erp-parasut-final-consumer-card.md: Which Paraşüt card the invoice of a buyer without a TCKN (final consumer, 11111111111) goes on, why a name match is not enough, how many pages of cards are read, and what is still open
@@ -124,6 +126,7 @@
 - erp-parasut-legacy-buyer-number.md: The buyer's VKN/TCKN the order screen's Paraşüt buttons send: a Turkish buyer's digits, and Create Invoice refuses a number that fails the check digits instead of issuing an e-Archive (#7674, #8371)
 - erp-parasut-legacy-export-discount.md: Orders > Export for Paraşüt Selected: the order discount in İNDİRİM TUTARI (column Q) of the product lines, spread by line value, so the invoice is what was paid (#9139)
 - erp-parasut-legacy-export-text-cells.md: Orders > Export for Paraşüt writes typed text (names, e-mail, address, identity number, product name) as text cells, never a formula, through the shared xlsx writer.
+- erp-parasut-legacy-inbox-badges.md: Legacy Paraşüt inbox badges: every v4 payment status and item type code has a lang() label, "Export invoice" and "Sales quote" instead of the bare keys, the fallback for an unknown code (#12017)
 - erp-parasut-legacy-inbox.md: Legacy Paraşüt inbox (view_parasut_inbox.php): what its tabs read, the list query (gteq/lteq, #1505), the totals it shows and the VKN/TCKN it refuses (#1600), flaky purchase_bills
 - erp-parasut-legacy-invoice-shipment.md: The order screen's Paraşüt Create Invoice and E-Shipment on one order: shipment_included, the link between the two records, which press is refused, and the stock counted out twice before #1506
 - erp-parasut-legacy-invoice.md: What the order screen's legacy Paraşüt "Create Invoice" sends: its lines and refusals (#1268), an unanswered create (#1416), the buyer card (#1408), its e-document (#1278), after E-Shipment (#1506)
@@ -143,6 +146,7 @@
 - erp-parasut-send-failures.md: What the ERP does when a Paraşüt send step goes wrong (no answer, a record not deleted, a failed job, a record deleted there) so no second sales invoice is opened
 - erp-parasut-sent-cancel.md: Why Cancel of a Paraşüt e-Fatura handed to GİB is refused from the row, the way out, the company guard on the deleted-record 404, and what is still open
 - erp-parasut-shipped-order.md: The ERP driver's sales invoice for an order the legacy E-Shipment already shipped: sent without shipment and naming the shipment document, so Paraşüt counts the goods out once (#1530)
+- erp-parasut-staging-company.md: Paraşüt's staging company 35477 in a live round (2026-11-27): e-Arşiv jobs end in error, no e-Invoice recipient, shared rate limit, Cloudflare challenge, settings a round needs
 - erp-parasut-stale-kept-ids.md: Paraşüt ids Pinegrap sends without a read (product card, default warehouse, buyer card, the driver's shipment document): a create answered 404 naming one forgets it and is sent once more (#1627)
 - erp-percent-shares.md: Whole-percent shares of a set of amounts (erp_percent_shares()) add up to 100; the dashboard's Receivables by age card reads them once for its bar and legend.
 - erp-period-lock.md: ERP period lock (config.erp_lock_date, 4.79): what it refuses, the two checks every ledger or till write meets, which date a cancel, return or payment is judged by, who moves the lock.
@@ -150,8 +154,9 @@
 - erp-profit-report.md: ERP profit and loss (includes/erp/profit.php): what counts as revenue and cost, the optional uninvoiced orders, the negative margin text, and where a new cost or revenue source goes.
 - erp-purchase-order-double-press.md: Two presses at once on a purchase order: the invoice draft is made under the order's row lock, status moves (sent, cancelled, opened again) are guarded updates that announce once.
 - erp-purchase-orders.md: ERP purchase orders (10.58): own table and series, the line key that ties invoice lines back, status read from purchase invoices, the draft made from an order, shared refusals, API line keys.
-- erp-quote-double-invoice.md: Two presses at once on a quote's "Turn into an invoice": the quote row is locked before its state is read, so one quote makes one invoice draft.
+- erp-quote-double-invoice.md: Two presses at once on a quote's "Turn into an invoice": the quote row is locked before its state is read, and a status move is guarded, so one quote makes one invoice draft.
 - erp-quote-guest-link.md: Sales quote guest link (#3761, 2026.11.0 step 11.0.64): erp_quote_links, erp_quote.php, one live link, expiry, acceptance through erp_signatures and erp_quote_set_status(), WAF, e-mail [decision: decisions-made-product-9.md]
+- erp-quote-link-accept-lock.md: Guest link Sign and accept under the quote's row lock (#11860): one transaction, a refused move rolls back, a used link reads accepted only while the quote is accepted or invoiced
 - erp-quote-screen-layout.md: edit_erp_quote.php toolbar, two-column layout and where the messages of the signature, guest link and e-mail cards are drawn.
 - erp-quote-templates.md: Sales quote templates (#3717, step 11.0.63; API #3921): table, who sees and writes one, what it keeps, shared checks, events, the panel box, the API routes. [decision: decisions-made-product-9.md]
 - erp-quotes.md: ERP sales quotes (4.92) and their signature (8.58): own table, numbering, state, printing, invoicing, signature, guest link, expiry, Workspace tag.
@@ -183,6 +188,7 @@
 - erp-till-inactive-payments.md: No expense, receipt, payment or transfer uses a missing till or one taken off (is_active = 0): the gates, who meets them, the cheque exception, what a repeat does then
 - erp-translation-traps.md: Short translation keys that read wrong as ERP labels (Quote, By, From, To, Count, Record, Due, Net, Method) and the longer keys ERP screens use instead.
 - erp-typed-line-numbers.md: How the document editors refuse a signed or lettered quantity or rate and a line amount past the cap
+- erp-vat-exemption-send-check.md: The e-document send refuses a 0% VAT line with no exemption code before any request, for every driver (#11983): where the check sits, how the code is resolved and written, why issuing refuses nothing.
 - erp-vat-per-rate-group.md: How the ERP takes a document's VAT, withholding and second tax per rate group, as Paraşüt does (owner decision 2026-10-21), where the rule applies, and where the checkout and charge decisions are kept [decision: here]
 - erp-vat-report.md: ERP VAT report: the one place tax totals are added up (vat_report.php), calculated, deductible and difference, what never counts, the figures and chart on top, the menu name.
 - erp-vat-withholding.md: VAT withholding (tevkifat, migration 4.68) on ERP documents: what tax_total, withholding_total and grand_total hold, the line columns, the code list rule, returns, document type.

@@ -45,8 +45,7 @@ function test_parasut_staging_environment_value()
 }
 
 // Live signs in at id.parasut.com, staging at id-staging.parasut.com, on the
-// same paths; the API address is the same for both until a connect shows
-// otherwise.
+// same paths; the API answers at api.parasut.com and api-staging.parasut.com.
 function test_parasut_staging_sign_in_addresses()
 {
 	$live = parasut_sign_in('live');
@@ -62,7 +61,42 @@ function test_parasut_staging_sign_in_addresses()
 	pg_assert_same($live, parasut_sign_in('anything'), 'an unknown value is live');
 
 	pg_assert_same('https://api.parasut.com', parasut_api_base('live'));
-	pg_assert_same('https://api.parasut.com', parasut_api_base('staging'));
+	pg_assert_same('https://api-staging.parasut.com', parasut_api_base('staging'));
+	pg_assert_same('https://api.parasut.com', parasut_api_base('anything'), 'an unknown value is live');
+}
+
+// The token in use decides the API host: staging only for the portal
+// connection's token in the staging environment. The older way's token stays
+// on the live host whatever the row says.
+function test_parasut_staging_api_host_follows_the_token()
+{
+	pg_assert_same('staging', parasut_api_environment('connection', 'staging'));
+	pg_assert_same('live', parasut_api_environment('connection', 'live'));
+	pg_assert_same('live', parasut_api_environment('legacy', 'staging'), 'the older token with the staging row');
+	pg_assert_same('live', parasut_api_environment('legacy', 'live'));
+
+	pg_assert_same('https://api-staging.parasut.com', parasut_api_base(parasut_api_environment('connection', 'staging')));
+	pg_assert_same('https://api.parasut.com', parasut_api_base(parasut_api_environment('connection', 'live')));
+	pg_assert_same('https://api.parasut.com', parasut_api_base(parasut_api_environment('legacy', 'staging')));
+
+	// The v4 requests and the /me read go through the environment-aware base;
+	// the older way's OAuth addresses keep the old one.
+	pg_assert_contains('_parasut_v4_base()', parasut_staging_test_body('includes/fn/parasut.php', '_parasut_prefix'));
+	pg_assert_contains('_parasut_v4_base()', parasut_staging_test_body('includes/fn/parasut.php', 'parasut_me'));
+	pg_assert_contains('_parasut_base()', parasut_staging_test_body('includes/fn/parasut.php', 'parasut_authorize_url'));
+	pg_assert_contains('_parasut_base()', parasut_staging_test_body('includes/fn/parasut.php', '_parasut_token_exchange'));
+}
+
+// The invoice on Paraşüt's own screen: uygulama.parasut.com for live,
+// uygulama-staging.parasut.com for staging.
+function test_parasut_staging_screen_link()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/erp/edoc/parasut.php');
+
+	pg_assert_same('https://uygulama.parasut.com/123/satislar/456', erp_edoc_parasut_panel_address('123', '456', 'live'));
+	pg_assert_same('https://uygulama-staging.parasut.com/35477/satislar/9', erp_edoc_parasut_panel_address('35477', '9', 'staging'));
+	pg_assert_same('', erp_edoc_parasut_panel_address('', '9', 'staging'), 'no company');
+	pg_assert_same('', erp_edoc_parasut_panel_address('35477', ' ', 'live'), 'no record');
 }
 
 // The provider takes its addresses and the issuer it checks from the site's

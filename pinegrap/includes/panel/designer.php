@@ -269,6 +269,20 @@ function pg_panel_designer($request, $action)
         respond(pg_library_editor($sub, $request, $user));
     }
 
+    // A live page's new version (includes/fn/page_versions.php): started
+    // from a live tab with that tab's state, discarded from its draft's tab.
+    // Designers only: the list above does not open them to a content-level
+    // operator, and the module asks the bundle's right again.
+    if ($sub === 'version_start') {
+        $nv_page = isset($request['page']) ? $request['page'] : null;
+        if (is_string($nv_page)) $nv_page = json_decode($nv_page, true);
+        respond(pg_page_version_start(isset($request['page_id']) ? (int)$request['page_id'] : 0,
+            is_array($nv_page) ? $nv_page : null, $user));
+    }
+    if ($sub === 'version_discard') {
+        respond(pg_page_version_discard(isset($request['page_id']) ? (int)$request['page_id'] : 0, $user));
+    }
+
     switch ($sub) {
 
         // ── PRESENCE ─────────────────────────────────────────────────
@@ -523,6 +537,13 @@ function pg_panel_designer($request, $action)
             respond(pg_designer_sketch_details($request));
             break;
 
+        // "Describe the page" and "Write the texts" of a sketch page: one
+        // Pinegrap AI call, nothing written on the server.
+        case 'sketch_ai':
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/sketch_ai.php');
+            respond(pg_sketch_ai_request($request, $user));
+            break;
+
         // Pages the "Select Page" picker may offer: every visual-designer
         // page not already on this design, with the design it belongs to
         // now so the picker can say what attaching it will change.
@@ -760,6 +781,12 @@ function pg_panel_designer($request, $action)
                 respond(array('status' => 'error', 'message' => lang('SEO scoring is not available on this installation.')));
             }
             $page_id = isset($request['page_id']) ? (int)$request['page_id'] : 0;
+            // The stored findings, link score and speed below are read by
+            // this id: a page the operator may not know is there is refused,
+            // as page_load refuses it.
+            if ($page_id > 0 && pg_designer_page_access($page_id, $user) === 'hidden') {
+                respond(array('status' => 'error', 'message' => lang('Permission denied.')));
+            }
             $folder_id = isset($request['page_folder']) ? (int)$request['page_folder'] : 0;
             $folder = $folder_id > 0 ? db_item("SELECT folder_access_control_type, folder_archived FROM folder WHERE folder_id = '$folder_id' LIMIT 1") : null;
             $row = array(
@@ -1152,11 +1179,19 @@ function pg_panel_designer($request, $action)
                         : lang(array('string' => 'Comes off the site {var:1}', 'vars' => array(pg_page_schedule_label($dp_t['unpublish_at']))));
                 }
             }
+            // The pages still drafts after the move, for the chips: a draft a
+            // prototype link holds stays one, and so does a page the move
+            // could not take.
+            $dp_draft_ids = array();
+            foreach ((array)db_items("SELECT page_id, page_folder FROM page WHERE page_style = '$dp_style_id' AND " . pg_page_visual_design_sql() . pg_designer_not_binned_sql()) as $dp_p) {
+                if (pg_page_is_draft($dp_p['page_folder'])) $dp_draft_ids[] = (int)$dp_p['page_id'];
+            }
             respond(array(
                 'status'    => 'success',
                 'message'   => $dp_message,
                 'changed'   => $dp['changed'],
                 'drafts'    => $dp_row['draft_count'],
+                'draft_ids' => $dp_draft_ids,
                 'cell'      => pg_designer_list_status_cell($dp_row),
                 'scheduled' => (object)$dp_scheduled,
             ));
@@ -1494,6 +1529,21 @@ function pg_panel_designer($request, $action)
                 $lists['files']['rows'][$i]['url'] = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/') . rawurlencode($f['name']) . '?v=' . $f['time'];
             }
             respond(array('status' => 'success') + $lists);
+            break;
+
+        // "Remove" of the Clean up window
+        // (includes/fn/design_cleanup_remove.php): what is ticked and still
+        // unused. Files go to the Recycle Bin and shared components are
+        // deleted here; the rules and variables come back without the
+        // ticked ones, for the editor to save after its snapshot.
+        case 'cleanup_remove':
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/design_cleanup_remove.php');
+            $cu_ticked = isset($request['ticked']) && is_array($request['ticked']) ? $request['ticked'] : array();
+            $cu_done = pg_cleanup_remove(isset($request['style_id']) ? (int)$request['style_id'] : 0, $cu_ticked, $user);
+            if ($cu_done === null) {
+                respond(array('status' => 'error', 'message' => lang('Not found.')));
+            }
+            respond(array('status' => 'success') + $cu_done);
             break;
 
         // The Style guide sheet of the Preview menu

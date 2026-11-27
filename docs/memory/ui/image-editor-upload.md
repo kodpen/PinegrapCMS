@@ -6,11 +6,11 @@ module: image_editor
 
 ## Where is it?
 - Part `upload`: `assets/js/pg_image_editor_upload.js` (bundled after `mix`), the model's `UPLOAD` section, labels `pg_image_editor_strings_upload()`, actions `upload_start`, `upload_part`, `upload_status`, `sound_upload`, its stylesheet section, `tests/image_editor_upload_test.php`. Added in #8585.
-- Hooks calling `editor.uploadSend(file, kind, head, opts)`: `clipUpload()`, `saveAnimationFile()` (Save to Files), the Add sound box's first button.
+- Hooks calling `editor.uploadSend(file, kind, head, opts)`: `clipUpload()`, `saveAnimationFile()` (Save to Files), the Add sound box's first button, a design file's Import (kind `design`, `image-editor-design-file.md`).
 
 ## How does a file go?
 - Up to one part (config `uploadPart`): one request, the line then the bytes (`pg_image_editor_binary_body()`).
-- Larger: `upload_start` {kind, size} → an id (32 hex); `upload_part` {upload, offset} + bytes for each part in order; then the kind's action (`video_upload`, `sound_upload`, `animation`) with `upload: id` and no bytes. `pg_image_editor_upload_take()` hands the action the first 64 KB (the type) and the size; `pg_image_editor_upload_put()` moves the file into Files (rename, never read into memory).
+- Larger: `upload_start` {kind, size} → an id (32 hex); `upload_part` {upload, offset} + bytes for each part in order; then the kind's action (`video_upload`, `sound_upload`, `animation`, `design_file`) with `upload: id` and no bytes. `pg_image_editor_upload_take()` hands the action the first 64 KB (the type) and the size; `pg_image_editor_upload_put()` moves the file into Files (rename, never read into memory).
 - A part that starts elsewhere than the server's count gets 409 `upload_offset` with `received`: the browser goes on from there, so a part sent twice is written once (counted under `flock`). No answer or a 5xx: the same part after 1, 2, 4, 8, 15 s, or when the browser is online again, six tries (`M.UPLOAD_TRIES`), then "The upload stopped. Pick the same file again…".
 - The id is kept in `localStorage` under `M.uploadKey()` (kind, destination, file name, size, time). The same file picked again after a reload asks `upload_status` and goes on from its count ("Going on with {name} from {done}."). An export's Blob has no key: it resumes only while the dialog runs.
 - Progress: a toast changed in place; in Save animation "{done} of {size} sent" under the bar.

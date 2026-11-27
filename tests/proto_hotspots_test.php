@@ -2468,7 +2468,8 @@ function test_proto_hotspots_view_zooms_to_a_frame()
 	pg_assert_contains("_sdProto.canvas.view.zoomTo(item);", $source, 'the core zooms to the frame');
 	pg_assert_contains("if (!_sdProto.zoom) _sdProto.zoom = { id: '', back: { x: v.x, y: v.y, k: v.k } };", $source, 'the view from before the first zoom is kept');
 	pg_assert_contains("if (event.key === 'Escape') { if (!_sdProtoPathClear() && !_sdProtoZoomBack()) _sdProtoClose(); return true; }", $source, 'Esc goes back first (after a shortest path), then closes');
-	pg_assert_contains("if (event.key === 'Enter' && event.target.classList && event.target.classList.contains('sd-proto-frame')) return _sdProtoZoomTo(event.target.getAttribute('data-node'));", $source, 'Enter on a frame zooms to it');
+	pg_assert_contains("if (event.key === 'Enter' && event.target.classList && event.target.classList.contains('sd-proto-frame')) {", $source, 'Enter on a frame');
+	pg_assert_contains("_sdProtoSelect({ type: 'node', id: _sdProto.byId[zid].id });\n                    }\n                    return _sdProtoZoomTo(zid);", $source, 'selects it, then zooms to it');
 	pg_assert_contains("_sdT('All')", $source, 'the "All" control');
 	pg_assert_contains("_sdProtoZoomForget();\n            _sdProto.canvas.view.fit();", $source, 'Fit forgets the zoom');
 	pg_assert_contains("if (event.key === '0') _sdProtoZoomForget();", $source, 'the 0 key fits and forgets it');

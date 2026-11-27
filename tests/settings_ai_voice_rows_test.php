@@ -156,6 +156,11 @@ function test_settings_ai_voice_rows_ai_parts_in_order()
 	pg_assert_contains('<span class="pg-pill pg-tone-teal">Valid until 01.01.2027</span>', $facts[1], 'the licence pill');
 	pg_assert_contains('<code>pinegrap-1</code>', $facts[1], 'the model');
 	pg_assert_contains('Tokens, last 7 days: 1,200; last 30 days: 4,800', $facts[1], 'the tokens');
+	pg_assert_false(strpos($facts[1], h(lang(array('string' => 'Licence today: {var:1}', 'vars' => '')))) !== false, 'no count of the day while none is known');
+
+	$quota = array('used' => 4500, 'limit' => 5000, 'percent' => 90, 'tone' => 'warning', 'resets_at' => 0);
+	preg_match('/<div class="[^"]*ws-ai-facts[^"]*">(.*?)<\/div>/s', ws_ai_row_html(settings_ai_voice_rows_test_ai(array('quota' => $quota))), $facts);
+	pg_assert_contains('<span class="fg-warning">' . h(lang(array('string' => 'Licence today: {var:1}', 'vars' => pg_ai_quota_line($quota)))) . '</span>', $facts[1], 'the licence count of the day');
 
 	pg_assert_contains(h(lang('Nobody has asked Pinegrap AI yet.')), ws_ai_row_html(settings_ai_voice_rows_test_ai(array('last' => lang('Nobody has asked Pinegrap AI yet.')))), 'none yet');
 	pg_assert_false(strpos(ws_ai_row_html(settings_ai_voice_rows_test_ai(array('config' => array('enabled' => true, 'app_id' => 7, 'model' => '', 'license_set' => false)))), 'ws_ai_test') !== false, 'no test without a licence key');

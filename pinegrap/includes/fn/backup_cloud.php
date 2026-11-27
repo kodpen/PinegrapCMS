@@ -70,7 +70,7 @@ function pg_backup_cloud_type_of_service($service)
 
 /**
  * The page on Connections where a destination's accounts are connected,
- * asked to return to the Backups card (backup_return). Pure.
+ * returning to the Backups card (pg_connections_back()). Pure.
  *
  * @param string $type a key of pg_backup_cloud_types()
  * @return string the address, or '' for an unknown type
@@ -81,7 +81,33 @@ function pg_backup_cloud_connections_url($type)
         return '';
     }
 
-    return 'connections.php?service=' . pg_backup_cloud_types()[$type]['service'] . '&backup_return=1';
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/connections_screen.php');
+
+    return pg_connections_lead_url(pg_backup_cloud_types()[$type]['service'], 'maintenance', 'pgset-backup');
+}
+
+/**
+ * Where a destination's application is set up, returning to the Backups
+ * card: the drive's own page of Connections, which asks for Google's or
+ * Microsoft's application while it is missing, or the list's drawer of a
+ * provider without a page of its own (Dropbox). Pure.
+ *
+ * @param string $type a key of pg_backup_cloud_types()
+ * @return string the address, or '' for an unknown type
+ */
+function pg_backup_cloud_app_url($type)
+{
+    if (!pg_backup_cloud_is_type($type)) {
+        return '';
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/connections_screen.php');
+
+    $cloud = pg_backup_cloud_types()[$type];
+
+    return isset(pg_connections_screen_page_providers()[$cloud['provider']])
+        ? pg_connections_lead_url($cloud['service'], 'maintenance', 'pgset-backup', 'connections-app')
+        : 'connections.php#connections-' . $cloud['provider'];
 }
 
 

@@ -112,17 +112,38 @@ StyleDesigner.definePart('sketchbuild', function (K) {
         return out;
     }
 
+    // A section kept on the page by "Build again" keeps the fingerprint it
+    // was built with (`was`, id => {sig, fp}), so an edit made in Design
+    // still counts as one: `secs` are the fingerprints of the nodes as they
+    // stand, `keep` the kept sections (id => node). Its sig is the new one.
+    function keptFp(secs, was, keep) {
+        Object.keys(keep || {}).forEach(function (id) {
+            if (secs[id] && was && was[id] && was[id].fp) secs[id].fp = was[id].fp;
+        });
+        return secs;
+    }
+
+    // The sketch the built draft was built from: the one kept in its root,
+    // which an undo in Design brings back with the page; else the browser's
+    // mark on the sketch page.
+    function keptSig(page, root) {
+        var kept = root && root.props && root.props._sketch;
+        if (kept && kept.sig) return String(kept.sig);
+        return (page && page.built && page.built.sig) || '';
+    }
+
     // The page's children in the sketch's order: `ids` the sections in
     // order, `nodeFor(id)` the node of each. A node added in Design (no
-    // _sketchId) stays after the section it followed; after a removed
-    // section, after the one before that.
+    // _sketchId, or a copy of a section carrying its _sketchId) stays after
+    // the section it followed; after a removed section, after the one
+    // before that.
     function arrange(children, ids, nodeFor) {
         var extras = { '': [] };
         var order = [];
         var anchor = '';
         (children || []).forEach(function (c) {
             var id = sketchIdOf(c);
-            if (id) {
+            if (id && !extras[id]) {
                 anchor = id;
                 order.push(id);
                 extras[id] = extras[id] || [];
@@ -246,6 +267,8 @@ StyleDesigner.definePart('sketchbuild', function (K) {
             if (text) text.textContent = host.kindLabel(s.kind);
             el.classList.remove('sd-sketch-unread');
             el.classList.add('sd-sketch-kind-' + s.kind);
+            // The box's name as its chip reads, no longer "Not read yet".
+            el.setAttribute('aria-label', host.kindLabel(s.kind) + (b.text ? ': ' + b.text : ''));
             if (s.unsure) {
                 var mark = host.el('span', 'bi bi-question-circle-fill sd-skb-mark');
                 mark.setAttribute('aria-hidden', 'true');
@@ -274,7 +297,7 @@ StyleDesigner.definePart('sketchbuild', function (K) {
             if (!page.boxes.length) {
                 go.disabled = true;
                 go.title = _sdT('Draw a box first');
-            } else if (again && page.built.sig === boxSig(page)) {
+            } else if (again && keptSig(page, host.treeOf(built)) === boxSig(page)) {
                 go.disabled = true;
                 go.title = _sdT('The sketch has not changed since the page was built.');
             } else if (check && check.frame === frameId) {
@@ -625,6 +648,7 @@ StyleDesigner.definePart('sketchbuild', function (K) {
             var root = host.treeOf(p);
             var children = arrange(root.children, r.sections.map(function (s) { return String(s.id); }), function (id) { return byId[id]; });
             var m = meta(root.props._sketch.uid, page, r, r.sections.map(function (s) { return byId[String(s.id)]; }));
+            keptFp(m.secs, root.props._sketch.secs, keep);
             busy = null;
             if (!host.setChildren(p, children, m)) { failed(frameId, name); return; }
             host.blockStyles(list.blocks);
@@ -760,6 +784,6 @@ StyleDesigner.definePart('sketchbuild', function (K) {
         fill: function (h, frameId, node, head, body) { host = h; fill(frameId, node, head, body); },
         reading: function (h, frameId, boxId) { host = h; return reading(frameId, boxId); },
         escape: escape,
-        pure: { hash: hash, boxSig: boxSig, secSig: secSig, nodeFp: nodeFp, plan: plan, arrange: arrange }
+        pure: { hash: hash, boxSig: boxSig, secSig: secSig, nodeFp: nodeFp, plan: plan, arrange: arrange, keptFp: keptFp, keptSig: keptSig }
     };
 });

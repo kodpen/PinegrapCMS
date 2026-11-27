@@ -102,12 +102,15 @@ function test_workspace_agent_app_setup_fields_keep_the_agents_own()
 	pg_assert_same('', $new['door_secret_clear'], 'the door secret is never cleared');
 	pg_assert_same(array_keys(ws_agents_settings_input(array())), array_keys($new), 'the Agents card\'s fields');
 
-	$current = array('duty' => 'Keep the board.', 'status' => 'paused', 'wake_every' => 30, 'wake_note' => 'Look');
+	pg_assert_same('', $new['context_size'], 'a new agent has no context window size');
+
+	$current = array('duty' => 'Keep the board.', 'status' => 'paused', 'wake_every' => 30, 'wake_note' => 'Look', 'context_size' => 250000);
 	$kept = ws_agent_app_setup_fields(9, $current, array('door_kind' => 'push', 'door_url' => 'https://hook') + $posted);
 	pg_assert_same('Keep the board.', $kept['duty'], 'the duty stays');
 	pg_assert_same('paused', $kept['status'], 'the status stays');
 	pg_assert_same('30', $kept['wake_every'], 'the schedule stays');
 	pg_assert_same('Look', $kept['wake_note'], 'the wake note stays');
+	pg_assert_same('250000', $kept['context_size'], 'the context window size stays');
 	pg_assert_same('https://hook', $kept['door_url'], 'a push door takes its address');
 }
 

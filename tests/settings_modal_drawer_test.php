@@ -119,7 +119,7 @@ function test_settings_modal_drawer_cards_hand_over_no_second_dialog()
 			$entries++;
 			// pg_settings_drawer(), or a card's helper that returns one
 			// (ws_settings_department_drawer()).
-			$drawer = (bool) preg_match('/^(pg_settings_drawer|ws_settings_[a-z_]+_drawer)\(/', $entry);
+			$drawer = (bool) preg_match('/^(pg_settings_drawer|ws_settings_[a-z_]+_drawer|pg_maintenance_cron_guide_drawer)\(/', $entry);
 			$form = (bool) preg_match('/^\'\s*<form method="post" action="(connect|view_waf_log)\.php" id="pgset_[a-z_]+(\' \. \$[a-z_]+ \. \')?" class="disable_shortcut d-none">/', $entry);
 			// Mailboxes' Bring in an .eml file: a hidden form its pane's
 			// fields name (ws_mail_eml_pane_form()).
@@ -130,7 +130,7 @@ function test_settings_modal_drawer_cards_hand_over_no_second_dialog()
 		}
 	}
 
-	pg_assert_same(34, $entries, 'Cron Jobs, E-mail sending\'s Connect form, Mailboxes\' Allow reading mail forms, E-mail sending\'s two ways sheets, the firewall\'s bans drawer and Release form, Mailboxes\' .eml form, the two department drawers, the Working calendar\'s three, Claude\'s new secret, set-up and latest requests, Pinegrap AI\'s latest requests, the two agent drawers, the two MCP server drawers, the two mailbox drawers, the mailboxes\' set-up drawers, the Assistants and agents guides, the three Show all drawers, the two service drawers and the two staff drawers of Bookings and the two footer link drawers of Appearance');
+	pg_assert_same(35, $entries, 'Cron Jobs, E-mail sending\'s Connect form, Mailboxes\' Allow reading mail forms, E-mail sending\'s two ways sheets, the firewall\'s bans drawer and Release form, Mailboxes\' .eml form, the two department drawers, the Working calendar\'s three, Claude\'s new secret, set-up and latest requests, Pinegrap AI\'s latest requests, the two agent drawers, the two MCP server drawers, the two mailbox drawers, the mailboxes\' set-up drawers, the Assistants and agents guides, the three Show all drawers, the two service drawers and the two staff drawers of Bookings and the two footer link drawers of Appearance, Product feeds\' New address');
 }
 
 function test_settings_modal_drawer_second_dialog_path_is_gone()
@@ -145,15 +145,14 @@ function test_settings_modal_drawer_second_dialog_path_is_gone()
 function test_settings_modal_drawer_cron_jobs_is_its_first_user()
 {
 	$cards = settings_modal_drawer_test_source('includes/settings/maintenance.php');
+	$list = settings_modal_drawer_test_source('includes/fn/maintenance_cron_list.php');
 
-	pg_assert_contains('data-bs-toggle="drawer" data-bs-target="#cron_jobs" aria-controls="cron_jobs"', $cards, 'the card opens a drawer');
-	pg_assert_same(false, (bool) preg_match('/<dialog[^>]*id="cron_jobs"/', $cards), 'no second dialog for the cron commands');
-	pg_assert_contains("\$pg_settings_modals[] = pg_settings_drawer('cron_jobs',", $cards, 'handed over as a dialog is');
+	// Each job's "How to schedule it" opens its own steps drawer.
+	pg_assert_contains('data-bs-toggle="drawer" data-bs-target="#\' . h($guide) . \'" aria-controls="\' . h($guide) . \'"', $list, 'a row opens a drawer');
+	pg_assert_same(false, (bool) preg_match('/<dialog[^>]*id="pgset-cron/', $cards . $list), 'no second dialog for the cron commands');
+	pg_assert_contains('$pg_settings_modals[] = pg_maintenance_cron_guide_drawer(', $cards, 'handed over as a dialog is');
+	pg_assert_contains('return pg_settings_drawer($id,', $list, 'the shell is the settings drawer');
 	pg_assert_contains('!empty($pg_settings_in_dialog)', $cards, 'the shell follows where the card is drawn');
-
-	// The command fields stay read-only code fields.
-	pg_assert_same(12, substr_count($cards, "pg_code_editor_attach(array('id' => 'cron_job_"), 'the commands are code fields');
-	pg_assert_same(0, preg_match_all("/pg_code_editor_attach\(array\('id' => 'cron_job_[a-z_]+', 'code_type' => 'plain'(?!,'readonly'=>true )/", $cards), 'all read-only');
 }
 
 function test_settings_modal_drawer_shell_is_named_by_its_caller()

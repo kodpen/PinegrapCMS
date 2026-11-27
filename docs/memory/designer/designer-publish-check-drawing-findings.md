@@ -31,7 +31,7 @@ description: Publish check drawing, boards P5 to P7 (step PC5): "Fix", "Show me"
 
 ## How are the rules no page uses drawn?
 - One folded list at the end of the Weight group, head "Rules no page of the design uses" with "3 rules · 1.2 KB". Each line: the rule's selector in a fixed-width face and its stylesheet's name.
-- The list ends with "Listed for you to look at; nothing is removed by itself." and a quiet "Clean up", which opens the Clean up window (`designer-cleanup-drawing.md`, built by step CU2 of plan `designer-cleanup`; until then the line has no button).
+- The list ends with "Listed for you to look at; nothing is removed by itself." and a quiet "Clean up", which opens the Clean up window (`designer-cleanup.md`, built in #11668).
 - It is about the whole design, so it is the same list on every page's row.
 
 ## What does the keyboard do?

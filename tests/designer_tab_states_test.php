@@ -130,3 +130,61 @@ function test_designer_tab_states_page_without_content_rights()
 	pg_assert_same(array('home'), $out[0]['before'], 'nobody\'s lock is shown on a page that does not open');
 	pg_assert_same(array('home', 'rights'), $out[0]['tip'], 'the tip names the folder note');
 }
+
+function test_designer_tab_states_new_version_pill()
+{
+	$out = designer_tab_states(array(
+		array(array('page_id' => 5, 'page_draft' => 1), array('drafts' => true, 'version' => 'About us', 'menus' => true)),
+		array(array('page_id' => 5, 'page_draft' => 1), array('drafts' => true, 'version' => 'About us', 'sched' => 'Goes on the site at 10:00', 'menus' => true)),
+		array(array('page_id' => 5, 'page_draft' => 1), array('drafts' => false, 'version' => 'About us', 'menus' => true)),
+	));
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('version'), $out[0]['after'], 'a new version carries its pill in the draft pill\'s place');
+	pg_assert_same(array('version'), $out[0]['tip'], 'the tip names the page it replaces');
+	pg_assert_same(array('version'), $out[1]['after'], 'a schedule on a version\'s draft does not hide the pill');
+	pg_assert_same(array('version'), $out[2]['after'], 'the pill does not wait for the draft feature');
+}
+
+// Runs _pgVersionDoor() on [page, entry, opts] cases.
+function designer_version_doors($cases)
+{
+	return designer_tab_states_node('out = ' . json_encode($cases) . '.map(function (c) { return _pgVersionDoor(c[0], c[1], c[2]); });');
+}
+
+function test_designer_version_door()
+{
+	$on = array('ready' => true, 'canChange' => true);
+	$out = designer_version_doors(array(
+		array(array('page_id' => 7, 'page_draft' => 0), null, $on),
+		array(array('page_id' => 7, 'page_draft' => 0), array('role' => 'live'), $on),
+		array(array('page_id' => 8, 'page_draft' => 1), array('role' => 'version'), $on),
+		array(array('page_id' => 9, 'page_draft' => 1), null, $on),
+		array(array('page_id' => 0, 'page_draft' => 0), null, $on),
+		array(array('page_id' => 7, 'page_draft' => 0, 'pickedPending' => true), null, $on),
+		array(array('page_id' => 7, 'page_draft' => 0, 'access' => 'locked'), null, $on),
+		array(array('page_id' => 7, 'page_draft' => 0), null, array('ready' => false, 'canChange' => true)),
+		array(array('page_id' => 7, 'page_draft' => 0), null, array('ready' => true, 'canChange' => false)),
+		array(array('page_id' => 7, 'page_draft' => 0), null, array('ready' => true, 'canChange' => true, 'experiment' => true)),
+		array(array('page_id' => 7, 'page_draft' => 0, 'page_home' => 1), null, $on),
+	));
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same('start', $out[0], 'a saved live page may start a new version');
+	pg_assert_same('open', $out[1], 'a live page that has one opens it');
+	pg_assert_same('', $out[2], 'a version\'s own draft has no door');
+	pg_assert_same('', $out[3], 'a plain draft has no door');
+	pg_assert_same('', $out[4], 'a page never saved has no door');
+	pg_assert_same('', $out[5], 'a page picked from another design has no door');
+	pg_assert_same('', $out[6], 'a page without content rights has no door');
+	pg_assert_same('', $out[7], 'no door before the upgrade');
+	pg_assert_same('', $out[8], 'no door for who cannot change states');
+	pg_assert_same('', $out[9], 'no door while the page has an open experiment');
+	pg_assert_same('start', $out[10], 'the home page may have a new version');
+}

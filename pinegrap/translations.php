@@ -98,7 +98,8 @@ if ($group !== '') {
 // the Artifact Canvas's own drawing (assets/js/picture_queue.js). The server
 // checks each draw as the Artifact Canvas's Languages list does. Without this
 // view the same rows are drawn by an open panel page (picture_auto.js) and
-// by the translation job (pg_picture_tr_draw_due()).
+// by the translation job (pg_picture_tr_draw_due()). A Look by hand row's
+// button opens the canvas on that language's view (data-pg-image-language).
 if (($group === 'pictures') && !empty($_GET['draw'])) {
     $queue = pg_picture_tr_queue();
     $queue_back = 'translations.php?' . http_build_query(array('language' => $language, 'group' => 'pictures'));
@@ -111,7 +112,7 @@ if (($group === 'pictures') && !empty($_GET['draw'])) {
                 <div class="pg-list-row-main">
                     <div class="pg-list-row-head pg-list-row-head-wrap"><span class="pg-list-row-title">' . h($queue_item['name']) . '</span><span class="pg-pill pg-tone-gray text-nowrap">' . lang('Waiting') . '</span></div>
                     <div class="pg-list-row-text"><span' . $text_lang($queue_item['language']) . '>' . h($queue_item['label']) . '</span><span data-pq-reason="1"> · ' . (($queue_item['state'] === 2) ? lang('Out of date') : lang('Not drawn yet')) . '</span><span class="d-block" data-pq-note="1" hidden></span></div>
-                    <div class="pg-list-row-actions" data-pq-edit="1" hidden><button type="button" class="pg-button pg-button-quiet pg-button-sm" data-pg-image-edit="' . h($queue_item['name']) . '" title="' . h($open_picture_label) . '">' . pg_design_canvas_icon_one_colour('') . lang('Edit in Artifact Canvas') . '</button></div>
+                    <div class="pg-list-row-actions" data-pq-edit="1" hidden><button type="button" class="pg-button pg-button-quiet pg-button-sm" data-pg-image-edit="' . h($queue_item['name']) . '" data-pg-image-language="' . h($queue_item['language']) . '" title="' . h($open_picture_label) . '">' . pg_design_canvas_icon_one_colour('') . lang('Edit in Artifact Canvas') . '</button></div>
                 </div>
             </li>';
     }
@@ -148,7 +149,7 @@ if (($group === 'pictures') && !empty($_GET['draw'])) {
         </div>
         <section class="pg-card p-5" aria-labelledby="pg_pq_title">
             <h2 class="pg-title-section" id="pg_pq_title">' . lang('Waiting pictures') . '</h2>
-            <p class="pg-card-sub">' . lang('Each language is drawn from the picture\'s last saved version once every one of its texts is translated. The pages in that language show it from then on.') . '</p>
+            <p class="pg-card-sub">' . lang('Each language is drawn from the picture\'s last saved version once every one of its texts is translated. The pages in that language show it from then on.') . ' ' . lang('A longer translation takes the free room around its text, then wraps and gets smaller; a picture where a text still does not fit ends as "Look by hand" and is corrected in the Artifact Canvas.') . '</p>
             ' . ($queue ? '<ul class="list-unstyled mb-0">' . $queue_rows . '</ul>' : '<p class="pg-text-2 mb-0">' . lang('Nothing is waiting to be drawn.') . '</p>') . '
         </section>
     </div>

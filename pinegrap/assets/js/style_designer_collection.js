@@ -71,6 +71,13 @@ StyleDesigner.definePart('collection', function (K) {
         for (var n = 2; ; n++) if (!t[base + '-' + n]) return base + '-' + n;
     }
 
+    // The address page k ('list' or 'detail') takes from its name while
+    // none was typed: free of the design's pages and of the other page.
+    function _ncFollow(pages, k, title, taken) {
+        var other = pages[k === 'list' ? 'detail' : 'list'];
+        return _ncFree(_ncSlug(title), (taken || []).concat([String(other.name).trim()]));
+    }
+
     // A field's name in the form, made from its label and kept apart from
     // the names used before it.
     function _ncKey(label, used) {
@@ -91,7 +98,9 @@ StyleDesigner.definePart('collection', function (K) {
         (collections || []).forEach(function (c) {
             if (name && String(c.name).toLowerCase() === name.toLowerCase()) out.taken = c;
         });
+        // The locked line shows the Title in the editor's language.
         var seen = { title: true };
+        seen[String(_sdT('Title')).trim().toLowerCase()] = true;
         (state.fields || []).forEach(function (f) {
             var n = String(f.name || '').trim().toLowerCase();
             if (!n) return;
@@ -624,7 +633,7 @@ StyleDesigner.definePart('collection', function (K) {
                 var p = S.pages[t.getAttribute('data-ptitle')];
                 p.title = t.value;
                 // The address follows the name until one is typed by hand.
-                if (!p.typed) p.name = _ncFree(_ncSlug(t.value), S.host.addresses().concat(t.getAttribute('data-ptitle') === 'detail' ? [S.pages.list.name] : []));
+                if (!p.typed) p.name = _ncFollow(S.pages, t.getAttribute('data-ptitle'), t.value, S.host.addresses());
                 _ncAskTaken();
             } else if (t.hasAttribute('data-pname')) { S.pages[t.getAttribute('data-pname')].name = t.value; S.pages[t.getAttribute('data-pname')].typed = true; _ncAskTaken(); }
             else return;

@@ -32,8 +32,9 @@
 (function () {
     'use strict';
 
-    // The handle's thickness in screen pixels: a faint inner handle sits
-    // this far inside the frame so it does not cover the outer one.
+    // The handle's thickness in screen pixels: an inner handle sits at
+    // least this far inside the frame (a side with no padding, or less than
+    // this on screen), so its pill never covers the outer one.
     var HANDLE = 6;
     // Bootstrap 5.3's $spacers as multiples of the root font size (as
     // PGCanvasGuides has them; kept here so this part needs no other).
@@ -76,6 +77,7 @@
         var midX = (b.left + b.right) / 2;
         var inTop = b.top + p.top * k, inBottom = b.bottom - p.bottom * k;
         var midY = (inTop + inBottom) / 2;
+        var hTop = Math.max(inTop, b.top + HANDLE), hBottom = Math.min(inBottom, b.bottom - HANDLE);
         var outer = [], inner = [];
         ['t', 'e', 'b', 's'].forEach(function (side) {
             var e = edge(side, rtl);
@@ -84,22 +86,22 @@
                 band = { left: b.left, top: b.top - mo, right: b.right, bottom: b.top };
                 at = { x: midX, y: band.top, axis: 'x' };
                 hb = { left: b.left, top: b.top, right: b.right, bottom: inTop };
-                inner.push(item('p', side, e, hb, { x: midX, y: pi > 0 ? inTop : b.top + HANDLE, axis: 'x' }, pi));
+                inner.push(item('p', side, e, hb, { x: midX, y: hTop, axis: 'x' }, pi));
             } else if (e === 'bottom') {
                 band = { left: b.left, top: b.bottom, right: b.right, bottom: b.bottom + mo };
                 at = { x: midX, y: band.bottom, axis: 'x' };
                 hb = { left: b.left, top: inBottom, right: b.right, bottom: b.bottom };
-                inner.push(item('p', side, e, hb, { x: midX, y: pi > 0 ? inBottom : b.bottom - HANDLE, axis: 'x' }, pi));
+                inner.push(item('p', side, e, hb, { x: midX, y: hBottom, axis: 'x' }, pi));
             } else if (e === 'left') {
                 band = { left: b.left - mo, top: b.top, right: b.left, bottom: b.bottom };
                 at = { x: band.left, y: midY, axis: 'y' };
                 hb = { left: b.left, top: inTop, right: b.left + pi, bottom: inBottom };
-                inner.push(item('p', side, e, hb, { x: pi > 0 ? hb.right : b.left + HANDLE, y: midY, axis: 'y' }, pi));
+                inner.push(item('p', side, e, hb, { x: Math.max(hb.right, b.left + HANDLE), y: midY, axis: 'y' }, pi));
             } else {
                 band = { left: b.right, top: b.top, right: b.right + mo, bottom: b.bottom };
                 at = { x: band.right, y: midY, axis: 'y' };
                 hb = { left: b.right - pi, top: inTop, right: b.right, bottom: inBottom };
-                inner.push(item('p', side, e, hb, { x: pi > 0 ? hb.left : b.right - HANDLE, y: midY, axis: 'y' }, pi));
+                inner.push(item('p', side, e, hb, { x: Math.min(hb.left, b.right - HANDLE), y: midY, axis: 'y' }, pi));
             }
             outer.push(item('m', side, e, band, at, mo));
         });
@@ -164,12 +166,49 @@
 
     // The step of `steps` (a scale) nearest to `value` page pixels:
     // { step: '0'..'5', px }; halfway between two steps takes the smaller.
-    function nearestStep(value, steps) {
+    // `from`, a start off the scale (startStep()), counts as one more step,
+    // so a drag from it keeps it until a scale step is nearer.
+    function nearestStep(value, steps, from) {
         var v = Math.max(0, num(value)), best = 0;
         for (var i = 1; i < steps.length; i++) {
             if (Math.abs(steps[i] - v) < Math.abs(steps[best] - v)) best = i;
         }
+        if (offScale(from) && Math.abs(num(from.px) - v) < Math.abs(steps[best] - v)) {
+            return { step: from.step, px: num(from.px) };
+        }
         return { step: String(best), px: steps[best] };
+    }
+
+    function offScale(at) {
+        return !!at && !/^[0-9]+$/.test(String(at.step));
+    }
+
+    // Where a change on a side `value` page pixels wide starts: its scale
+    // step, or, for an automatic margin (`auto`), { step: 'auto', px } and
+    // for a value off the scale { step: '', px }, as the band shows it.
+    // Reading 186 px of `mx-auto` as step 5 made a drag write nothing
+    // outwards and jump the element to the edge inwards.
+    function startStep(value, steps, auto) {
+        var v = Math.max(0, num(value));
+        if (auto) return { step: 'auto', px: v };
+        var n = nearestStep(v, steps);
+        return Math.abs(n.px - v) <= 0.5 ? n : { step: '', px: v };
+    }
+
+    // The step an arrow key takes `at` ({ step, px }) to: a scale step as
+    // keyStep(); a start off the scale goes to the next scale step that
+    // way, and stays when there is none.
+    function keyStepFrom(at, dir, steps) {
+        if (!offScale(at)) {
+            var s = keyStep(at.step, dir, steps.length);
+            return { step: s, px: steps[parseInt(s, 10)] };
+        }
+        var px = num(at.px), pick = null;
+        steps.forEach(function (p, i) {
+            var ok = dir > 0 ? p > px : dir < 0 ? p < px : false;
+            if (ok && (!pick || (dir > 0 ? p < pick.px : p > pick.px))) pick = { step: String(i), px: p };
+        });
+        return pick || at;
     }
 
     // The screen size a canvas `width` pixels wide stands for: 'xs' to 'xxl'.
@@ -260,6 +299,16 @@
         return Math.abs(num(raw) - held.px) < Math.abs(num(raw) - nearest.px) + num(extra) ? held : nearest;
     }
 
+    // A CSS length's scale on the layer: `k` scales the canvas' rectangles
+    // (_sdBandsGeo()), and where the browser answers them already zoomed
+    // (Chromium: the <html> box `rectWidth` on screen for `cssWidth` CSS
+    // pixels) a margin or padding read in CSS pixels takes that ratio too.
+    function lengthScale(k, rectWidth, cssWidth) {
+        k = num(k) > 0 ? num(k) : 1;
+        var r = num(rectWidth) / num(cssWidth);
+        return k * (isFinite(r) && r > 0 ? r : 1);
+    }
+
     window.PGCanvasBands = {
         colGrid: colGrid,
         colSpan: colSpan,
@@ -269,8 +318,11 @@
         HANDLE: HANDLE,
         edge: edge,
         layout: layout,
+        lengthScale: lengthScale,
         growth: growth,
         keyStep: keyStep,
+        keyStepFrom: keyStepFrom,
+        startStep: startStep,
         reach: reach,
         labelAt: labelAt,
         sizeFor: sizeFor,

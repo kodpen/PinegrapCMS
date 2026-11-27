@@ -322,7 +322,10 @@ function pg_whatsapp_settings_fields()
 function pg_whatsapp_settings_card_html($app, $channel_html)
 {
     $connected = $app['enabled'] && pg_whatsapp_app_complete($app);
-    $url = (defined('PATH') ? PATH : '') . (defined('SOFTWARE_DIRECTORY') ? SOFTWARE_DIRECTORY : '') . '/connections.php?service=whatsapp';
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/connections_screen.php');
+
+    $url = (defined('PATH') ? PATH : '') . (defined('SOFTWARE_DIRECTORY') ? SOFTWARE_DIRECTORY : '') . '/'
+        . pg_connections_lead_url('whatsapp', 'contact', 'pgset-whatsapp');
 
     $line = $connected
         ? lang('Messages go out through the site\'s own WhatsApp Business account. The account is kept on WhatsApp\'s page of Connections.')

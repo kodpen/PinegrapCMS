@@ -1,0 +1,15 @@
+{
+ "id": "invitation-portrait",
+ "width": 1080,
+ "height": 1350,
+ "background": "#fffaf3",
+ "layers": [
+  {"type": "rect", "x": 60, "y": 60, "w": 960, "h": 1230, "color": "#c9a227", "fill": "none", "stroke": 4},
+  {"type": "text", "text": "startInviteHead", "font": "g:Dancing Script", "size": 110, "weight": 700, "color": "#8a6d1f", "align": "center", "x": 540, "y": 150, "maxW": 900},
+  {"type": "slot", "x": 340, "y": 350, "w": 400, "h": 400, "radius": 200},
+  {"type": "text", "text": "startInviteWhat", "font": "g:Cormorant Garamond", "size": 60, "weight": 600, "color": "#3b2f1e", "align": "center", "x": 540, "y": 820, "maxW": 900},
+  {"type": "text", "text": "startInviteWhen", "font": "g:Cormorant Garamond", "size": 44, "weight": 400, "color": "#5c4a2e", "align": "center", "x": 540, "y": 920, "maxW": 900},
+  {"type": "text", "text": "startInviteReply", "font": "g:Lato", "size": 32, "weight": 400, "color": "#8a6d1f", "align": "center", "x": 540, "y": 1040, "maxW": 900},
+  {"type": "star", "x": 515, "y": 1150, "w": 50, "h": 50, "color": "#c9a227"}
+ ]
+}

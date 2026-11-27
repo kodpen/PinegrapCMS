@@ -24,7 +24,8 @@ require_once(PG_FUNCTIONS_DIR . '/includes/erp/edoc/parasut.php');
 /**
  * A request stand-in for parasut_order_contact_for(): GET lists the cards a
  * page at a time as Paraşüt does (25 a page, meta.total_pages), POST opens a
- * card with id 9001. Every call is recorded.
+ * card with id 9001, PUT answers with the card it was sent. Every call is
+ * recorded.
  *
  * @param array $cards        Listed cards, newest first: ['id' => ..., 'attributes' => ...]
  * @param array $calls        Receives [method, path, body] of each call
@@ -43,6 +44,10 @@ function parasut_contact_reuse_test_request($cards, &$calls, $answers = array(),
 
 		if ($method === 'POST') {
 			return array('http_code' => 201, 'body' => array('data' => array('id' => '9001', 'type' => 'contacts')), 'raw' => '{}');
+		}
+
+		if ($method === 'PUT') {
+			return array('http_code' => 200, 'body' => array('data' => $body['data']), 'raw' => '{}');
 		}
 
 		$page = preg_match('/page\[number\]=(\d+)/', (string) $path, $match) ? (int) $match[1] : 1;
@@ -102,7 +107,9 @@ function test_parasut_order_contact_search_number()
 }
 
 // A repeat buyer goes on the card Paraşüt already holds for the number, read
-// newest first as the ERP's driver reads it; nothing is opened.
+// newest first as the ERP's driver reads it; nothing is opened. The address
+// the card holds empty is filled with the order's, the rest of the card
+// going back as it was listed.
 function test_parasut_order_contact_for_reuses_the_card_of_the_number()
 {
 	$calls = array();
@@ -110,7 +117,22 @@ function test_parasut_order_contact_for_reuses_the_card_of_the_number()
 	$contact = parasut_order_contact_for('10000000146', parasut_contact_reuse_test_attributes(), parasut_contact_reuse_test_request($cards, $calls));
 
 	pg_assert_same(array('id' => '7001', 'reused' => true, 'error' => ''), $contact);
-	pg_assert_same(array(array('GET', '/contacts?filter[tax_number]=10000000146&sort=-id&page[number]=1&page[size]=25', null)), $calls);
+	pg_assert_same(array(
+		array('GET', '/contacts?filter[tax_number]=10000000146&sort=-id&page[number]=1&page[size]=25', null),
+		array('PUT', '/contacts/7001', array('data' => array('id' => '7001', 'type' => 'contacts', 'attributes' => array(
+			'name' => 'Ayşe Demir', 'contact_type' => 'person', 'account_type' => 'customer', 'email' => 'ayse@example.com',
+			'tax_number' => '10000000146', 'archived' => false, 'address' => 'Test Sokak 1',
+		)))),
+	), $calls);
+
+	// A card that holds the address: nothing is sent.
+	$calls = array();
+	$full = parasut_contact_reuse_test_card(7001, '10000000146');
+	$full['attributes']['address'] = 'Eski Sokak 2';
+	$contact = parasut_order_contact_for('10000000146', parasut_contact_reuse_test_attributes(), parasut_contact_reuse_test_request(array($full), $calls));
+
+	pg_assert_same(array('id' => '7001', 'reused' => true, 'error' => ''), $contact);
+	pg_assert_same(array('GET'), array_column($calls, 0));
 }
 
 // An archived card, and a card whose number only begins the same way, are
@@ -197,7 +219,8 @@ function test_parasut_order_contact_for_reads_later_pages()
 	$contact = parasut_order_contact_for('10000000146', parasut_contact_reuse_test_attributes(), parasut_contact_reuse_test_request($cards, $calls));
 
 	pg_assert_same(array('id' => '5005', 'reused' => true, 'error' => ''), $contact);
-	pg_assert_same(2, count($calls), 'pages 1 and 2, nothing opened');
+	pg_assert_same(2, parasut_contact_reuse_test_calls_of($calls, 'GET'), 'pages 1 and 2');
+	pg_assert_same(0, parasut_contact_reuse_test_calls_of($calls, 'POST'), 'nothing opened');
 	pg_assert_contains('&page[number]=2&', $calls[1][1]);
 }
 

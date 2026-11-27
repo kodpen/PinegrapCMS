@@ -146,3 +146,17 @@ function test_designer_curve_script()
 	pg_assert_same(array(true, false, true), $got['over'], 'overshoot');
 	pg_assert_same(array(array(0.12, 1.5, 0, 1), array(0.2, 0, 0, -0.5), array(0.2, 0, 0.56, 1)), $got['move'], 'a handle held in the room, two decimals');
 }
+
+// The arrow keys write the curve once they rest (500 ms). A panel drawing
+// in that time (another row changed) opens the editor anew: the curve the
+// keys reached was lost, and the old timer then wrote the new editor's
+// curve, a stored one as plain numbers that left its design variable.
+// The timer belongs to its editor, and the same row reopened keeps the
+// keys' curve and writes it when they rest.
+function test_designer_curve_keys_survive_a_reopen()
+{
+	$part = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_curve.js');
+	pg_assert_contains('if (E !== ed) return;', $part, 'a timer writes only through its own editor');
+	pg_assert_contains('old.timer && old.host.at === host.at', $part, 'the same row reopened keeps the keys\' curve');
+	pg_assert_contains('clearTimeout(old.timer);', $part, 'a replaced editor\'s timer is stopped');
+}

@@ -6,10 +6,11 @@ module: component_overrides
 
 ## Where are the open fields and a place's values kept?
 - In the component's tree: a node's `props._open` is a list of `{id, kind, label}`. Kinds: `text` (`props.text`), `picture` (`props.src`, `props.alt`), `link` (`props.href`), `icon` (`props.iconName`), `shown` (false leaves the node out). An entry with an unknown kind or a bad id is ignored.
-- On the page: the placing `shared_ref` node's `props._place`, an object id => value. No table or column (plan `designer-component-overrides.md`).
+- On the page: the placing `shared_ref` node's `props._place`, an object id => value. No table or column (`component-overrides-overview.md`).
 
 ## What is a field id?
-- `of_` and eight random lower-case letters or digits (`pg_co_new_field_id($taken)`); valid ids are a lower-case letter then up to 39 of `[a-z0-9_]` (`pg_co_valid_field_id()`). Random, never counted, so a field opened after another was closed never takes the closed field's stored values. An id met twice in a tree keeps its first node.
+- `of_` and eight random lower-case letters or digits (`pg_co_new_field_id($taken)`); valid ids are a lower-case letter then up to 39 of `[a-z0-9_]` (`pg_co_valid_field_id()`). Random, never counted, so a field opened after another was closed never takes the closed field's stored values.
+- An id met twice in a tree (a duplicated element) keeps its first node; a place that hides that node takes the ids of its subtree with it, so the copy draws as the component has it (#11998; the copy keeping the ids is #11999).
 
 ## Which functions are there?
 - PHP `includes/fn/component_overrides.php`; the twin `assets/js/pg_component_overrides.js` (`window.PGComponentOverrides`), bundled first in the designer part `overrides` (`component-overrides-fields.md`; drawing: `component-overrides-render.md`).

@@ -24,7 +24,7 @@ module: output
 
 ## When does an empty page offer its starts?
 - `_sdEmptySync()` at the end of `render()`: a root with no children, full access, not a shared component alone, Prototype view closed. Drawn in `#sd-canvas .sd-iframe-area`, never in the page; it goes with the first element.
-- "Add a section" opens the palette on "Blocks" (shown when the Blocks list exists); "Sketch it" runs `_sdSketchStart()` (when the Prototype view can load); "From a document" calls `_sdDocumentReady()` / `_sdDocumentOpen()` of the part `document` when those exist (`document-start.md`).
+- "Add a section" opens the palette on "Blocks" (shown when the Blocks list exists); "Sketch it" runs `_sdSketchStart()` (when the Prototype view can load): with no sketch page yet it waits for the map's first drawing and makes one to draw in (#11884; before, the map opened with nothing to draw on); "From a document" calls `_sdDocumentReady()` / `_sdDocumentOpen()` of the part `document` when those exist (`document-start.md`).
 - Only the cards take the pointer; a drag fades them and lets the drop reach the canvas. Under 620 px of canvas they stand in a column, 250 px wide.
 
 ## What was not checked?

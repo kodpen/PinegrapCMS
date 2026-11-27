@@ -45,9 +45,9 @@
 .sdh-head {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
+  align-items: center;
   gap: .5rem 1rem;
-  margin-bottom: .875rem;
+  margin-bottom: 1.25rem;
 }
 
 .sdh-head-text {
@@ -81,8 +81,124 @@
   margin-left: auto;
 }
 
-.sdh-head-tools .form-adorn {
+.sdh-search {
   width: 15rem;
+}
+
+/* Below designer: one grey line under the head. */
+.sdh-note {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin: 0 0 1.25rem;
+  font-size: .875rem;
+  color: var(--pg-fg-2);
+}
+
+/* ── The first visit: three starting points ────────────────────────────── */
+
+.sdh-first {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3rem 1.5rem;
+  text-align: center;
+  background: var(--pg-card-bg, var(--pg-bg-body));
+  border: 1px solid var(--pg-border-color);
+  border-radius: calc(var(--sdh-radius) + .25rem);
+}
+
+.sdh-first h3 {
+  margin: .875rem 0 .25rem;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: var(--pg-fg-emphasis);
+}
+
+.sdh-first > p {
+  margin: 0;
+  font-size: .875rem;
+  color: var(--pg-fg-2);
+}
+
+.sdh-first-starts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .75rem;
+  width: 100%;
+  max-width: 46rem;
+  margin-top: 1.5rem;
+}
+
+.sdh-first-start {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: .75rem;
+  padding: 1rem;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+  background: var(--sdh-paper);
+  border: 1px solid var(--pg-border-color);
+  border-radius: var(--sdh-radius);
+  transition: border-color .15s ease-in-out;
+}
+
+.sdh-first-start:hover {
+  border-color: var(--sdh-hover-line);
+}
+
+.sdh-first-start:focus-visible {
+  outline: var(--pg-focus-ring-width) solid var(--pg-primary-ink);
+  outline-offset: var(--pg-focus-ring-offset);
+}
+
+.sdh-first-start:disabled {
+  cursor: default;
+  opacity: .5;
+}
+
+.sdh-first-start:disabled:hover {
+  border-color: var(--pg-border-color);
+}
+
+.sdh-first-text {
+  display: flex;
+  flex-direction: column;
+  gap: .125rem;
+}
+
+.sdh-first-text strong {
+  font-size: .875rem;
+  font-weight: 600;
+  color: var(--pg-fg-emphasis);
+}
+
+.sdh-first-text small {
+  font-size: .8125rem;
+  color: var(--pg-fg-2);
+}
+
+.sdh-first-steps {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: .25rem .625rem;
+  margin: 1.25rem 0 0;
+  font-size: .8125rem;
+  color: var(--pg-fg-2);
+}
+
+.sdh-first-steps b {
+  font-weight: 600;
+  color: var(--pg-fg-body);
+}
+
+.sdh-first-steps > .bi {
+  font-size: .625rem;
 }
 
 .sdh-subhead {
@@ -90,132 +206,6 @@
   font-size: .9375rem;
   font-weight: 600;
   color: var(--pg-fg-emphasis);
-}
-
-/* ── Start cards ───────────────────────────────────────────────────────── */
-
-.sdh-start {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  overflow: hidden;
-  color: inherit;
-  text-decoration: none;
-  background: var(--pg-card-bg, var(--pg-bg-body));
-  border: 1px solid var(--pg-border-color);
-  border-radius: var(--sdh-radius);
-  transition: border-color .15s ease-in-out;
-}
-
-.sdh-start:hover {
-  color: inherit;
-  border-color: var(--sdh-hover-line);
-}
-
-.sdh-start:hover .sdh-start-title > .bi {
-  color: var(--sdh-accent-ink);
-}
-
-.sdh-start:focus-visible {
-  outline: var(--pg-focus-ring-width) solid var(--pg-primary-ink);
-  outline-offset: var(--pg-focus-ring-offset);
-  border-color: var(--sdh-hover-line);
-}
-
-.sdh-start[aria-disabled="true"] {
-  cursor: not-allowed;
-  opacity: .55;
-}
-
-.sdh-start[aria-disabled="true"]:hover {
-  border-color: var(--pg-border-color);
-}
-
-.sdh-start-body {
-  display: flex;
-  flex-direction: column;
-  gap: .25rem;
-  padding: .75rem 1rem .875rem;
-}
-
-.sdh-start-title {
-  display: flex;
-  align-items: center;
-  gap: .5rem;
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--pg-fg-emphasis);
-}
-
-.sdh-start-title > .bi {
-  color: var(--pg-fg-2);
-}
-
-.sdh-start-title .badge {
-  margin-left: auto;
-  font-weight: 500;
-}
-
-.sdh-start-text {
-  font-size: .8125rem;
-  line-height: 1.45;
-  color: var(--pg-fg-2);
-}
-
-/* ── Drawings ──────────────────────────────────────────────────────────── */
-
-.sdh-ill {
-  position: relative;
-  display: block;
-  aspect-ratio: 3 / 1;
-  overflow: hidden;
-  background: var(--sdh-ground);
-  border-bottom: 1px solid var(--pg-border-color);
-}
-
-.sdh-ill > svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-/* Only the drawings' own shapes: a template picture inside the gallery card
-   is an SVG of its own and keeps its colours. */
-.sdh-ill > svg .p { fill: var(--sdh-paper); }
-.sdh-ill > svg .g { fill: var(--pg-bg-2); }
-.sdh-ill > svg .l { fill: var(--sdh-line); }
-.sdh-ill > svg .k { fill: var(--sdh-ink); }
-.sdh-ill > svg .a { fill: var(--sdh-accent); }
-.sdh-ill > svg .as { fill: var(--sdh-accent-soft); }
-.sdh-ill > svg .s { stroke: var(--sdh-line); stroke-width: 1.25; }
-.sdh-ill > svg .s:not(.p) { fill: none; }
-.sdh-ill > svg .sk { fill: none; stroke: var(--sdh-ink); stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
-.sdh-ill > svg .dash { fill: none; stroke: var(--sdh-ink); stroke-width: 1.25; stroke-dasharray: 4 3; }
-.sdh-ill > svg .cursor { fill: var(--sdh-paper); stroke: var(--pg-fg-emphasis); stroke-width: 1.2; stroke-linejoin: round; }
-
-/* The template gallery: three of the shipped templates side by side, as
-   they are. */
-.sdh-ill-tpl {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4%;
-  padding: 0 6%;
-}
-
-.sdh-ill-tpl .sdh-tpl-mini {
-  flex: 0 1 30%;
-  aspect-ratio: 16 / 10;
-  overflow: hidden;
-  background: #fff;
-  border-radius: .25rem;
-  box-shadow: 0 0 0 1px var(--pg-border-color);
-}
-
-.sdh-ill-tpl .sdh-tpl-mini svg {
-  display: block;
-  width: 100%;
-  height: 100%;
 }
 
 /* ── A design's picture, in a browser window ───────────────────────────── */
@@ -276,14 +266,9 @@
 /* The design's page as a live picture (pg_design_live_picture()): the
    browser window is its frame, so the box has none of its own. */
 .sdh-browser-view > .pg-live-picture,
-.sdh-ill-tpl .sdh-tpl-mini > .pg-live-picture,
 .sd-tpl-thumb > .pg-live-picture {
   border: 0;
   border-radius: 0;
-}
-
-.sdh-ill-tpl .sdh-tpl-mini > .pg-live-picture {
-  height: 100%;
 }
 
 .sdh-browser-view > svg {
@@ -328,10 +313,12 @@
   border-color: var(--sdh-hover-line);
 }
 
-/* The card or the page the open menu speaks for. */
+/* The card or the page the open menu speaks for wears the focus ring until
+   the menu closes. */
 .sdh-card.sdh-menu-for,
 .sdh-pages .sdh-page.sdh-menu-for {
-  border-color: var(--pg-fg-2);
+  outline: var(--pg-focus-ring-width) solid var(--pg-primary-ink);
+  outline-offset: var(--pg-focus-ring-offset);
 }
 
 .sdh-site {
@@ -430,26 +417,33 @@
   color: var(--sdh-accent-ink);
 }
 
-/* What the design is built on, label beside value. */
+/* What the design is built on: four facts in one row under a hairline, a
+   label over each value; they wrap two a row where the card is narrow. */
 .sdh-facts {
   display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
-  gap: .375rem 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: .75rem 1.25rem;
   margin: 1rem 0 0;
   padding-top: 1rem;
   font-size: .875rem;
   border-top: 1px solid var(--pg-border-color);
 }
 
-.sdh-facts dt {
-  margin: 0;
-  font-weight: 500;
+.sdh-fact {
+  display: flex;
+  flex-direction: column;
+  gap: .125rem;
+  min-width: 0;
+}
+
+.sdh-fact small {
+  font-size: .75rem;
   color: var(--pg-fg-2);
 }
 
-.sdh-facts dd {
+.sdh-fact b {
   min-width: 0;
-  margin: 0;
+  font-weight: 500;
   color: var(--pg-fg-body);
   overflow-wrap: anywhere;
 }
@@ -550,6 +544,17 @@ button.sdh-page:hover {
   display: none;
 }
 
+/* Folded, the chips stand in --sdh-chip-rows rows (one; two on a phone):
+   assets/js/designer_home.js measures them wrapped and keeps as many as
+   fit, then "+n more"; open, they all wrap. */
+.sdh-pages.is-row {
+  --sdh-chip-rows: 1;
+}
+
+.sdh-pages-toggle[hidden] {
+  display: none;
+}
+
 .sdh-actions {
   display: flex;
   flex-wrap: wrap;
@@ -586,76 +591,96 @@ button.sdh-page:hover {
   line-height: 1.35;
 }
 
-.sdh-tile .sdh-status {
-  margin-top: .125rem;
+/* One line under the name: the state's mark and words, the page count,
+   the time at the right. */
+.sdh-tile-line {
+  display: flex;
+  align-items: center;
+  gap: .375rem;
+  min-width: 0;
+  margin-top: auto;
+  padding-top: .25rem;
+  font-size: .8125rem;
+  color: var(--pg-fg-2);
+  white-space: nowrap;
 }
 
-/* A tile has room for the badge; only "n of m pages are drafts" adds to it. */
-.sdh-tile .sdh-status:not([data-state="mixed"]) .sdh-status-note {
+.sdh-tile .sdh-status {
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  margin-top: 0;
+}
+
+.sdh-tile .sdh-status-note {
   display: none;
 }
 
-.sdh-tile-meta {
-  margin-top: auto;
-  padding-top: .375rem;
-  font-size: .8125rem;
-  color: var(--pg-fg-2);
+.sdh-tile-pages {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* ── Nothing yet ───────────────────────────────────────────────────────── */
-
-.sdh-empty {
-  padding: 1.5rem;
-  background: var(--pg-card-bg, var(--pg-bg-body));
-  border: 1px dashed var(--pg-rule-dashed, var(--pg-border-color));
-  border-radius: calc(var(--sdh-radius) + .25rem);
-}
-
-.sdh-empty h3 {
-  margin: 0 0 .25rem;
-  font-size: 1.0625rem;
-  font-weight: 600;
-  color: var(--pg-fg-emphasis);
-}
-
-.sdh-empty > p {
-  margin: 0;
-  font-size: .875rem;
-  color: var(--pg-fg-2);
-}
-
-.sdh-steps {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
-  gap: 1rem 1.5rem;
-  margin: 1.25rem 0 0;
-  padding: 0;
-  list-style: none;
-  counter-reset: sdh-step;
-}
-
-.sdh-steps li {
-  display: flex;
-  align-items: flex-start;
-  gap: .75rem;
-  font-size: .875rem;
-  color: var(--pg-fg-body);
-  counter-increment: sdh-step;
-}
-
-.sdh-steps li::before {
-  display: flex;
+.sdh-tile-time {
   flex: 0 0 auto;
+  margin-left: auto;
+  padding-left: .5rem;
+}
+
+/* A design with no page: "No pages yet" in the picture's place. */
+.sdh-nopic {
+  display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
+  gap: .375rem;
+  aspect-ratio: 16 / 10;
   font-size: .8125rem;
-  font-weight: 600;
   color: var(--pg-fg-2);
-  content: counter(sdh-step);
-  border: 1px solid var(--pg-border-color);
-  border-radius: 50%;
+  text-decoration: none;
+  background: var(--sdh-ground);
+  border-bottom: 1px solid var(--pg-border-color);
+}
+
+.sdh-nopic > .bi {
+  font-size: 1.25rem;
+}
+
+/* The other designs: four a row from 1400 px, three from 1000 px, two from
+   560 px, one below. */
+.sdh-tiles {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+}
+
+@media (min-width: 560px) {
+  .sdh-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1000px) {
+  .sdh-tiles {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1400px) {
+  .sdh-tiles {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* Nothing found: the words and "Clear the search". */
+.sdh-filter-empty {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem;
+  margin: 1rem 0 0;
+  font-size: .875rem;
+  color: var(--pg-fg-2);
 }
 
 /* ── The menu ──────────────────────────────────────────────────────────── */
@@ -696,10 +721,8 @@ button.sdh-page:hover {
   border-radius: .45rem;
 }
 
-.sdh-menu .menu-item > .bi {
-  flex: 0 0 auto;
-  width: 1.1rem;
-  text-align: center;
+.sdh-menu .menu-item.sdh-menu-danger {
+  color: var(--pg-tone-rose-text);
 }
 
 .sdh-menu-key {
@@ -723,58 +746,205 @@ button.sdh-page:hover {
 
 /* ── The New design window ─────────────────────────────────────────────── */
 
-/* Wide, for the template start's gallery beside the list of starts. */
-#sdStartModal.sd-ns-dialog {
-  --bs-dialog-width: min(96vw, 1600px);
+/* A window in the middle of the screen, at most 1120 x 720 px and 24 px
+   from each edge below that, one height whatever the start; below 768 px
+   it is the whole screen (md-down:dialog-fullscreen). */
+@media (min-width: 768px) {
+  #sdStartModal.sd-ns-dialog {
+    --bs-dialog-width: 1120px;
+    --bs-dialog-margin: 24px;
+    height: min(720px, calc(100dvh - 48px));
+  }
 }
 
-/* The starts on the left (the settings rail's rows), the chosen start's
-   pane on the right; the list stays in view while a long pane scrolls. */
+/* The rail (256 px, its own surface) beside the chosen start's pane; each
+   scrolls on its own, the window's head and foot stay. */
 .sd-ns {
   display: grid;
-  grid-template-columns: 248px minmax(0, 1fr);
-  gap: 1.5rem;
-  align-items: start;
+  grid-template-columns: 256px minmax(0, 1fr);
+  padding: 0;
+  overflow: hidden;
+}
+
+.dialog.dialog-scrollable[open] .dialog-body.sd-ns {
+  overflow: hidden;
 }
 
 .sd-ns-list {
-  position: sticky;
-  top: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px 12px;
+  border-right: 1px solid var(--pg-border-color);
+  background: var(--pg-bg-1);
 }
 
+.sd-ns-panes {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 26px 24px 28px;
+}
+
+/* A group's grey label over its rows. */
+.sd-ns-group {
+  margin: 16px 10px 6px;
+}
+
+.sd-ns-group:first-child {
+  margin-top: 2px;
+}
+
+/* A row: one icon tile, the name and one line that never wraps. */
 .sd-ns-item {
-  align-items: flex-start;
+  gap: 11px;
+  padding: 7px 10px;
+  border-radius: 11px;
+}
+
+.sd-ns-tile {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  font-size: 15px;
+}
+
+.pg-sm-link.is-active .sd-ns-tile,
+.sd-ns-head-tile {
+  --pg-tone: var(--pg-accent);
 }
 
 .sd-ns-item[aria-disabled="true"] {
   cursor: default;
-  opacity: .6;
+  opacity: .45;
 }
 
-/* A small drawing before the words, from the home's start cards. */
-.sd-ns-item .sdh-ill {
-  flex: 0 0 72px;
-  width: 72px;
-  border: 1px solid var(--pg-border-color);
-  border-radius: 6px;
+.sd-ns-item[aria-disabled="true"]:hover {
+  background: none;
 }
 
 .sd-ns-text {
   display: flex;
   flex-direction: column;
-  gap: 2px;
   min-width: 0;
 }
 
-.sd-ns-title .bi {
-  margin-right: .375rem;
+.sd-ns-title {
+  color: var(--pg-fg-body);
+  font-weight: 600;
 }
 
+.pg-sm-link .sd-ns-line {
+  overflow: hidden;
+  overflow-wrap: normal;
+  color: var(--pg-fg-3);
+  font-size: var(--pg-text-meta);
+  font-weight: 400;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* The pane's head: the start's icon as a 44 px accent tile, the act and
+   one sentence of what happens next. */
+.sd-ns-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.sd-ns-head-tile {
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  font-size: 20px;
+}
+
+.sd-ns-head .pg-title-section {
+  margin: 0;
+}
+
+.sd-ns-head .pg-sm-desc {
+  max-width: 560px;
+  margin: 3px 0 0;
+}
+
+/* "Built on": two choice cards, a line and three ticks each, at most
+   720 px wide; the lock line once under them, grey. */
+.sd-ns-built {
+  max-width: 720px;
+}
+
+.sd-ns-fw {
+  cursor: pointer;
+}
+
+.sd-ns-fw .pg-start-head .pg-pill {
+  margin-left: 0;
+}
+
+.sd-ns-ticks {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0 0;
+  padding: 11px 0 0;
+  border-top: 1px solid var(--pg-border-color-translucent);
+  color: var(--pg-fg-body);
+  list-style: none;
+}
+
+.sd-ns-ticks li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sd-ns-ticks .bi {
+  color: var(--pg-fg-3);
+}
+
+.sd-ns-fw:has(:checked) .sd-ns-ticks .bi {
+  color: var(--pg-accent);
+}
+
+.sd-ns-lock {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0 0;
+  color: var(--pg-fg-3);
+  font-size: var(--pg-text-meta);
+}
+
+/* Template: a card is chosen by a press and wears the chosen ring. */
+.sd-tpl-card {
+  cursor: pointer;
+}
+
+.sd-tpl-card.is-chosen {
+  border-color: var(--pg-accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--pg-accent) 18%, transparent);
+}
+
+.sd-tpl-card:focus-visible {
+  outline: 2px solid var(--pg-accent);
+  outline-offset: 2px;
+}
+
+/* The pane is a Tab stop after the list (the tab pattern): it shows it. */
 .sd-ns-pane:focus-visible {
-  outline: none;
+  outline: var(--pg-focus-ring-width) solid var(--pg-primary-ink);
+  outline-offset: var(--pg-focus-ring-offset);
+  border-radius: var(--sdh-radius);
+}
+
+/* A start's own foot keeps its quiet words (the Canva hint, the document's
+   "read on this site" and its Back) at the left and Cancel beside the filled
+   button, as every other start's foot. */
+#sdStartModal .sd-ns-part-foot > .me-auto,
+#sdStartModal .sd-ns-part-foot > .sd-cv-hint {
+  order: -1;
 }
 
 /* The Figma start (pg_designer_figma_pane(), assets/js/designer_figma.js):
@@ -793,8 +963,17 @@ button.sdh-page:hover {
   border-radius: 12px;
 }
 
-.sd-fg-ask {
+.sd-fg-ask,
+.sd-fg > .alert {
   max-width: 560px;
+}
+
+.sd-fg-manage {
+  white-space: nowrap;
+}
+
+.sd-fg-empty .pg-icon-tile {
+  margin-inline: auto;
 }
 
 .sd-fg-empty {
@@ -1211,18 +1390,79 @@ button.sdh-page:hover {
   }
 }
 
-/* Phones: the list over the pane, words only. */
+/* The narrow window's chevrons and its bar back to the list. */
+.sd-ns-chev,
+.sd-ns-back {
+  display: none;
+}
+
+/* Below 768 px the list and the chosen pane are two screens of the one
+   window (assets/js/designer_home.js sets .is-pane): first the starts as
+   one grouped list, a row ending in a chevron and none marked; then the
+   pane under a bar with "All starts", the foot's buttons at full width,
+   the filled one on top. */
 @media (max-width: 767.98px) {
   .sd-ns {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .sd-ns-list {
-    position: static;
+  .dialog.dialog-scrollable[open] .dialog-body.sd-ns {
+    overflow-y: auto;
   }
 
-  .sd-ns-item .sdh-ill {
+  .sd-ns-list,
+  .sd-ns-panes {
+    overflow: visible;
+  }
+
+  .sd-ns-list {
+    border-right: 0;
+  }
+
+  .sd-ns-panes {
+    padding: 0 16px 24px;
+  }
+
+  #sdStartModal:not(.is-pane) .sd-ns-panes,
+  #sdStartModal:not(.is-pane) .dialog-footer,
+  #sdStartModal.is-pane .sd-ns-list {
     display: none;
+  }
+
+  /* The settings window hides its descriptions on a phone; the pane's
+     head keeps its one sentence. */
+  .sd-ns-head .pg-sm-desc {
+    display: block;
+  }
+
+  .sd-ns-chev {
+    display: block;
+    flex: 0 0 auto;
+    margin-left: auto;
+    color: var(--pg-fg-3);
+  }
+
+  .sd-ns-back {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    margin: 0 -16px 20px;
+    padding: 8px 8px;
+    background: var(--pg-bg-body);
+    border-bottom: 1px solid var(--pg-border-color);
+  }
+
+  #sdStartModal .dialog-footer {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  #sdStartModal .dialog-footer > *,
+  #sdStartModal .sd-ns-part-foot > * {
+    width: 100%;
+    margin: 0;
+    justify-content: center;
   }
 }
 
@@ -1321,41 +1561,41 @@ button.sdh-page:hover {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sdh-start,
+  .sdh-first-start,
   .sdh-tile {
     transition: none;
   }
 }
 
-/* The hint under Designs names the gesture the screen has. */
-.sdh-hint-touch {
-  display: none;
-}
+/* Phones: one column. The head keeps the title, the count and "New
+   design"; the shared components button is its icon (the words its
+   tooltip), the sentence leaves and the search takes a row of its own. The
+   large card stacks, its pages wrap to two rows and its buttons share the
+   width. The first visit's three cards are rows. */
+@media (max-width: 575.98px) {
+  .sdh-head {
+    flex-wrap: wrap;
+  }
 
-@media (hover: none) and (pointer: coarse) {
-  .sdh-hint-mouse {
+  .sdh-head-text {
+    flex: 1 1 auto;
+  }
+
+  .sdh-head p {
     display: none;
   }
 
-  .sdh-hint-touch {
-    display: inline;
-  }
-}
-
-/* Phones: the four starts two by two, the drawing and the name, so the
-   site's design is not four screens down. */
-@media (max-width: 575.98px) {
-  .sdh-start-body {
-    padding: .625rem .75rem .75rem;
+  .sdh-head-tools {
+    display: contents;
   }
 
-  .sdh-start-title {
-    gap: .375rem;
-    font-size: .875rem;
-    line-height: 1.3;
+  .sdh-search {
+    order: 1;
+    flex: 1 1 100%;
+    width: auto;
   }
 
-  .sdh-start-text {
+  .sdh-comp-label {
     display: none;
   }
 
@@ -1363,9 +1603,65 @@ button.sdh-page:hover {
     padding: 1rem;
   }
 
-  .sdh-head-tools,
-  .sdh-head-tools .form-adorn {
-    width: 100%;
+  .sdh-pages.is-row {
+    --sdh-chip-rows: 2;
+  }
+
+  .sdh-actions > .pg-button:not(.d-none) {
+    flex: 1 1 0;
+    justify-content: center;
+    min-width: max-content;
+  }
+
+  .sdh-first {
+    padding: 2rem 1rem;
+  }
+
+  .sdh-first-starts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sdh-first-start {
+    flex-direction: row;
+    align-items: center;
+  }
+}
+
+/* Below 560 px the other designs are a list: a small preview at the left,
+   then the name with its menu button and the one line. */
+@media (max-width: 559.98px) {
+  .sdh-tiles {
+    gap: .5rem;
+  }
+
+  .sdh-tile {
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  .sdh-tile > .sdh-browser,
+  .sdh-tile > .sdh-nopic {
+    flex: 0 0 5.5rem;
+    align-self: center;
+    margin: .5rem 0 .5rem .5rem;
+    border: 1px solid var(--pg-border-color);
+    border-radius: calc(var(--sdh-radius) - .125rem);
+  }
+
+  .sdh-tile .sdh-browser-bar {
+    display: none;
+  }
+
+  .sdh-tile > .sdh-nopic {
+    gap: .125rem;
+    font-size: .6875rem;
+    text-align: center;
+  }
+
+  .sdh-tile-body {
+    min-width: 0;
+    justify-content: center;
+    padding: .5rem .75rem;
   }
 }
 

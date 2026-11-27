@@ -19,4 +19,4 @@ description: tools/plan_state.php <plan> [--tasks]: step states from PRs (draft 
 - 0 printed (and written); 1 GitHub or the site refused, or gave no answer (the other tasks are still tried); 2 usage or a missing setting.
 - Pure parts tested in `tests/plan_state_tool_test.php`.
 
-Related: docs/memory/plans/plan-state-channel.md, docs/memory/workflow/agent-channel-note-tool.md
+Related: docs/memory/workflow/plan-step-state.md, docs/memory/workflow/agent-channel-note-tool.md

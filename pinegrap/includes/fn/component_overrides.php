@@ -271,7 +271,10 @@ function pg_co_apply($tree, $values)
             $value = $usable[$entry['id']];
             switch ($entry['kind']) {
                 case 'shown':
-                    if ($value === false && !$root) return null;
+                    if ($value === false && !$root) {
+                        _pg_co_claim_ids($node, $seen);
+                        return null;
+                    }
                     break;
                 case 'text':
                     $node['props']['text'] = $value;
@@ -300,6 +303,20 @@ function pg_co_apply($tree, $values)
         return $node;
     };
     return $walk($tree, true);
+}
+
+// A node left out of a place takes its own field ids and those of its
+// subtree with it, as pg_co_open_fields() gives them to it: they are marked
+// in $seen, so a later node with the same id (a duplicated element) never
+// takes their values. A placed component inside is not entered.
+function _pg_co_claim_ids($node, &$seen)
+{
+    if (!is_array($node)) return;
+    foreach (pg_co_node_open($node) as $entry) $seen[$entry['id']] = true;
+    if (isset($node['type']) && $node['type'] === 'shared_ref') return;
+    if (!empty($node['children']) && is_array($node['children'])) {
+        foreach ($node['children'] as $child) _pg_co_claim_ids($child, $seen);
+    }
 }
 
 // The ids of a place's values that are left over: no open field has the id
@@ -415,23 +432,33 @@ function pg_co_place_texts($tree, $values)
         if ($field['kind'] === 'text' && array_key_exists($field['id'], $safe)) $texts[$field['id']] = true;
     }
     if (empty($texts)) return array();
+    // The walk of pg_co_apply() on the given tree: a node keeps the ids it
+    // meets first, and a node the place hides takes its subtree's with it.
     $out = array();
     $seen = array();
-    $walk = function ($node) use (&$walk, &$out, &$seen, $texts) {
+    $walk = function ($node, $root) use (&$walk, &$out, &$seen, $texts, $safe) {
         if (!is_array($node)) return;
+        $mine = array();
         foreach (pg_co_node_open($node) as $entry) {
             if (isset($seen[$entry['id']])) continue;
             $seen[$entry['id']] = true;
-            if ($entry['kind'] === 'text' && isset($texts[$entry['id']])) {
-                $out[] = array('id' => $entry['id'], 'node' => $node);
+            if ($entry['kind'] === 'shown' && !$root && array_key_exists($entry['id'], $safe) && $safe[$entry['id']] === false) {
+                _pg_co_claim_ids($node, $seen);
+                return;
             }
+            if ($entry['kind'] === 'text' && isset($texts[$entry['id']])) $mine[] = $entry['id'];
+        }
+        foreach ($mine as $id) {
+            $drawn = $node;
+            $drawn['props']['text'] = $safe[$id];
+            $out[] = array('id' => $id, 'node' => $drawn);
         }
         if (isset($node['type']) && $node['type'] === 'shared_ref') return;
         if (!empty($node['children']) && is_array($node['children'])) {
-            foreach ($node['children'] as $child) $walk($child);
+            foreach ($node['children'] as $child) $walk($child, false);
         }
     };
-    $walk(pg_co_apply($tree, $safe));
+    $walk($tree, true);
     return $out;
 }
 
@@ -441,6 +468,9 @@ function pg_co_place_texts($tree, $values)
 // `nodes` mapping a node's id (pg_co_node_id()) to the props the variant
 // gives it. A place keeps only a variant's name, `props._variant` on its
 // placing node. Texts, pictures, links and icons stay the component's.
+// A renamed variant keeps its former names (`was`), so a place saved with
+// one still draws it: the places live in other pages' trees, which a rename
+// does not write.
 
 // A variant's name as kept: trimmed, at most 60 characters; '' when it is
 // not a string or is empty.
@@ -478,18 +508,27 @@ function pg_co_clean_variant_props($props)
     return $out;
 }
 
+// A variant name as compared for "taken": any case.
+function pg_co_variant_key($name)
+{
+    return function_exists('mb_strtolower') ? mb_strtolower($name, 'UTF-8') : strtolower($name);
+}
+
 // The component's variants, cleaned: a name (unique, any case; the first
 // keeps it) and the nodes' props; a node with nothing left is dropped. At
-// most 50.
+// most 50. A variant renamed keeps `was`, its former names (at most 20): a
+// former name that is a variant's name now, or that an earlier variant
+// keeps, is dropped, and a variant with none has no `was`.
 function pg_co_variants($tree)
 {
     if (!is_array($tree) || !isset($tree['props']['_variants']) || !is_array($tree['props']['_variants'])) return array();
     $out = array();
     $names = array();
+    $formers = array();
     foreach ($tree['props']['_variants'] as $entry) {
         if (!is_array($entry)) continue;
         $name = pg_co_clean_variant_name(isset($entry['name']) ? $entry['name'] : null);
-        $key = function_exists('mb_strtolower') ? mb_strtolower($name, 'UTF-8') : strtolower($name);
+        $key = pg_co_variant_key($name);
         if ($name === '' || isset($names[$key])) continue;
         $names[$key] = true;
         $nodes = array();
@@ -500,18 +539,37 @@ function pg_co_variants($tree)
             }
         }
         $out[] = array('name' => $name, 'nodes' => $nodes);
+        $formers[] = (isset($entry['was']) && is_array($entry['was'])) ? $entry['was'] : array();
         if (count($out) >= 50) break;
+    }
+    $claimed = $names;
+    foreach ($out as $i => $variant) {
+        $was = array();
+        foreach ($formers[$i] as $former) {
+            $former = pg_co_clean_variant_name($former);
+            $key = pg_co_variant_key($former);
+            if ($former === '' || isset($claimed[$key])) continue;
+            $claimed[$key] = true;
+            $was[] = $former;
+            if (count($was) >= 20) break;
+        }
+        if ($was) $out[$i]['was'] = $was;
     }
     return $out;
 }
 
-// The variant named $name, or null.
+// The variant named $name, or null: a variant's name now first, then a
+// former name of a renamed one (the same case, as a name is matched).
 function pg_co_variant($tree, $name)
 {
     $name = pg_co_clean_variant_name($name);
     if ($name === '') return null;
-    foreach (pg_co_variants($tree) as $variant) {
+    $list = pg_co_variants($tree);
+    foreach ($list as $variant) {
         if ($variant['name'] === $name) return $variant;
+    }
+    foreach ($list as $variant) {
+        if (!empty($variant['was']) && in_array($name, $variant['was'], true)) return $variant;
     }
     return null;
 }

@@ -461,18 +461,24 @@
 .sd-design-menu .sd-menu-item-danger:focus-visible { background: color-mix(in srgb, var(--sd-danger) 18%, transparent); }
 .sd-design-menu .menu-divider { height: 1px; margin: .3rem .2rem; border: 0; background: var(--sd-panel-border); opacity: 1; }
 .sd-toolbar-actions { flex: 0 0 auto; margin-left: auto; }
-@media (max-width: 1023.98px) {
+/* At 1024 px the columns are 190 and 240 px (the :root rule further down),
+   so the bar's words go from that width on: Add Page keeps its plus. */
+@media (max-width: 1024px) {
     .sd-tabs-add-txt { display: none; }
 }
-/* The Pages button after the strip, shown while the strip overflows. */
+/* The Pages button after the strip, shown while the strip overflows.
+   Its rule and the suggested groups' one below carry .sd-icon-btn: the
+   bare .sd-icon-btn rule comes later in this file with width: 32px and
+   font-size: 1rem, and at equal weight it would win, leaving the label
+   wider than its box and written over the next control. */
 .sd-tabs-all { flex: 0 0 auto; display: flex; align-items: center; }
 .sd-tabs-all[hidden] { display: none; }
-.sd-tabs-all-btn { width: auto; min-width: 32px; padding: 0 .4rem; gap: .25rem; font-size: .9rem; }
+.sd-icon-btn.sd-tabs-all-btn { width: auto; min-width: 32px; padding: 0 .4rem; gap: .25rem; font-size: .9rem; }
 .sd-tabs-all-count { font-size: .66rem; font-weight: 600; }
 .sd-tabs-all-count:empty { display: none; }
 /* The suggested groups' offer (a design without groups) and its menu.
    Under 768 px the button keeps its icon only. */
-.sd-tab-suggest-btn { flex: 0 0 auto; width: auto; min-width: 32px; padding: 0 .5rem; gap: .35rem; font-size: .78rem; white-space: nowrap; }
+.sd-icon-btn.sd-tab-suggest-btn { flex: 0 0 auto; width: auto; min-width: 32px; padding: 0 .5rem; gap: .35rem; font-size: .78rem; white-space: nowrap; }
 .sd-tab-suggest-menu { max-width: 300px; }
 .sd-tab-suggest-row { display: flex; align-items: center; gap: .5rem; padding: .3rem .6rem; color: var(--sd-text); font-size: .8rem; }
 .sd-tab-suggest-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -657,8 +663,7 @@
 .sd-category-header {
     display:flex; align-items:center;
     padding:.4rem .7rem; cursor:pointer;
-    font-size:.67rem; font-weight:700;
-    text-transform:uppercase; letter-spacing:.05em;
+    font-size:11.5px; font-weight:600;
     color:var(--sd-text-muted); -webkit-user-select: none; user-select: none;
     transition:background .12s;
 }
@@ -742,8 +747,12 @@
 .sd-panel-bottom.collapsed:not(.sd-docked) .sd-bp-quad-hdr {
     min-height: 0; padding: 0 .4rem;
     background: transparent; border-bottom: 0;
-    font-size: .68rem; color: var(--sd-label);
+    font-size: 12px; color: var(--sd-label);
 }
+/* The Styles part takes the rest of the strip, so the chevron stands at its
+   right end, where the open panel's chevron is. */
+.sd-panel-bottom.collapsed:not(.sd-docked) .sd-bp-quad-tr,
+.sd-panel-bottom.collapsed:not(.sd-docked) .sd-bp-quad-tr .sd-bp-quad-hdr { flex: 1 1 auto; }
 .sd-panel-bottom.collapsed:not(.sd-docked):hover .sd-bp-quad-hdr { color: var(--sd-text); }
 .sd-panel-bottom.collapsed:not(.sd-docked) .sd-bp-quad-bl::before,
 .sd-panel-bottom.collapsed:not(.sd-docked) .sd-bp-quad-tr::before {
@@ -756,7 +765,7 @@
 .sd-panel-bottom.collapsed:not(.sd-docked) .sd-styles-tool,
 .sd-panel-bottom.collapsed:not(.sd-docked) .sd-styles-find,
 .sd-panel-bottom.collapsed:not(.sd-docked) .sd-bp-quad-hdr > .bi:not(.sd-bp-collapse) { display: none; }
-.sd-panel-bottom.collapsed:not(.sd-docked) .sd-bp-collapse { order: -1; padding: 0 .4rem 0 0; }
+.sd-panel-bottom.collapsed:not(.sd-docked) .sd-bp-collapse { margin-left: auto; padding: 0 0 0 .4rem; }
 
 /* ── Vertical resize handle (resizes the bottom panel up/down) ──
    The panel's top edge owns a strip 4px above the line and 5px below it,
@@ -1827,8 +1836,7 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     transition:color .15s, background .15s; display:flex; align-items:center; gap:.25rem;
 }
 .sd-status-btn:hover { color:var(--sd-text); background:rgba(255,255,255,.06); }
-.sd-status-validate { color:#f0ad4e; }
-.sd-status-validate:hover { color:#ffcc70; }
+.sd-status-txt { white-space:nowrap; }
 
 /* Canvas size badge — floats over selected element's bottom-right corner */
 .sd-canvas-size-badge {
@@ -2052,6 +2060,14 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     cursor: ns-resize; pointer-events: auto; touch-action: none;
 }
 .sd-cgb-h::before { content: ''; position: absolute; inset: -6px; }
+/* A side handle reaches 6 px out only away from its pair: an outer handle
+   outwards, an inner one inwards. With one reach all round the inner pill's
+   (later in the layer) covered the outer pill's middle where the two sit a
+   handle apart, so a margin handle could not be held. */
+.sd-cgb-h[data-k="m"][data-e="top"]::before, .sd-cgb-h[data-k="p"][data-e="bottom"]::before { bottom: 0; }
+.sd-cgb-h[data-k="m"][data-e="bottom"]::before, .sd-cgb-h[data-k="p"][data-e="top"]::before { top: 0; }
+.sd-cgb-h[data-k="m"][data-e="left"]::before, .sd-cgb-h[data-k="p"][data-e="right"]::before { right: 0; }
+.sd-cgb-h[data-k="m"][data-e="right"]::before, .sd-cgb-h[data-k="p"][data-e="left"]::before { left: 0; }
 .sd-cgb-h.is-v { width: 6px; height: 22px; cursor: ew-resize; }
 .sd-cgb-h.is-faint { opacity: .45; }
 .sd-cgb-h:hover, .sd-cgb-h.is-on { opacity: 1; box-shadow: 0 0 0 2px var(--sd-accent-strong), 0 1px 3px rgba(0,0,0,.35); }
@@ -2748,30 +2764,80 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     color: color-mix(in srgb, var(--sd-accent) 55%, var(--sd-text));
     border-bottom-color: var(--sd-accent, #58a6ff);
 }
-/* Four tabs share this strip, 62px each in a 249px panel. The strip-wide
-   uppercase + .72rem leaves ~54px of room for a 10-character label, so the
-   longest ones were clipped mid-word: drop the case transform and a step of
-   font size here rather than shortening the labels, which are shared keys. */
-#sd-panel-tabs .sd-panel-tab {
-    padding-left: .25rem;
-    padding-right: .25rem;
-    font-size: .62rem;
+/* The palette's head is its tab holder: a 40 px row, the holder 32 px,
+   the dock button at its end. Tabs are words in sentence case, none in a
+   colour of its own; under 230 px a tab that is not open shows its rail
+   icon, the word staying in its tip. */
+.sd-panel-header.sd-pal-head {
+    container-type: inline-size;
+    min-height: 40px;
+    gap: 4px;
+    padding: 0 6px 0 8px;
+    background: var(--sd-panel-bg);
+    border-bottom: 0;
     text-transform: none;
     letter-spacing: 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
-/* Light indigo keeps the System tab apart and reads 5.1:1 on the panel. */
-#sd-panel-tabs .sd-panel-tab[data-tab="system"] { color: #818cf8; }
+.sd-pal-head .sd-dock-spacer { display: none; }
+.sd-panel-header.sd-pal-head .sd-dock-toggle {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; padding: 0; border-radius: 6px; font-size: 13px;
+}
+.sd-pal-tabs {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 32px;
+    padding: 3px;
+    gap: 3px;
+    display: flex;
+    border-radius: 10px;
+    background: var(--sd-input-bg);
+    border: 1px solid var(--sd-panel-border);
+}
+#sd-panel-tabs .sd-panel-tab {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    padding: 0 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 7px;
+    background: none;
+    color: var(--sd-label);
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+    white-space: nowrap;
+}
+#sd-panel-tabs .sd-panel-tab:hover { color: var(--sd-text); }
+#sd-panel-tabs .sd-panel-tab.active { background: var(--sd-raised-bg-2); color: var(--sd-text); }
+#sd-panel-tabs .sd-panel-tab:focus-visible { outline: 0; box-shadow: inset 0 0 0 2px var(--sd-accent); }
+#sd-panel-tabs .sd-pal-tab-txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+#sd-panel-tabs .sd-pal-tab-ic { display: none; font-size: 12.5px; }
+@container (max-width: 229.98px) {
+    #sd-panel-tabs .sd-panel-tab:not(.active) { flex: none; width: 30px; padding: 0; }
+    #sd-panel-tabs .sd-panel-tab:not(.active) .sd-pal-tab-ic { display: inline-block; }
+    #sd-panel-tabs .sd-panel-tab:not(.active) .sd-pal-tab-txt { display: none; }
+    /* At 1024 px the column is 190 px: the open tab's word still fits whole. */
+    #sd-panel-tabs .sd-panel-tab.active { padding: 0 4px; }
+}
+@media (forced-colors: active) {
+    #sd-panel-tabs .sd-panel-tab.active,
+    .sd-ov-subtabs .sd-ov-subtab.active {
+        forced-color-adjust: none;
+        background-color: Highlight;
+        color: HighlightText;
+    }
+}
 /* System tab contents */
 .sd-system-regions-wrap { padding: .5rem .25rem; }
 .sd-system-header {
-    font-size: .7rem;
+    font-size: 11.5px;
     font-weight: 600;
     color: var(--sd-text-muted, #8b9ab0);
-    text-transform: uppercase;
-    letter-spacing: .06em;
     padding: .25rem .5rem .5rem;
 }
 .sd-system-empty {
@@ -2833,7 +2899,7 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 }
 
 /* Overview header — shares the look of `.sd-panel-header`.
-   Detailed rules: the "Overview: header + sub-tabs" block at the section start. */
+   Detailed rules: the "Overview: its head" block further down. */
 .sd-overview-header { border-top: 1px solid var(--sd-panel-border); }
 .sd-overview-header .bi { font-size: .6rem; }
 
@@ -2983,14 +3049,14 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
    button groups are (28 high, segments 24). A state that holds a value
    carries a ring, 7 px, a 1.5 px accent line, white on the chosen
    segment. Under 300 px the group stands under its label. */
-.sd-state-row { display: flex; align-items: center; gap: 6px 10px; margin: 2px 0 8px; padding-left: 14px; }
+.sd-state-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 2px 0 8px; padding: 0 12px 0 14px; }
 .sd-state-lbl { width: 92px; min-width: 92px; font-size: 12px; color: var(--sd-label); }
 .sd-state-grp {
-    display: flex; align-items: center; gap: 2px; flex: 1; min-width: 0; height: 28px; padding: 1px;
+    display: flex; align-items: center; gap: 2px; flex: 1 0 auto; max-width: 100%; height: 28px; padding: 1px;
     border: 1px solid var(--sd-input-border); border-radius: 9px; background: var(--sd-input-bg); box-sizing: border-box;
 }
 .sd-state-seg {
-    flex: 1 1 auto; display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+    flex: 1 0 auto; display: inline-flex; align-items: center; justify-content: center; gap: 4px;
     min-width: 24px; height: 24px; padding: 0 6px; border: none; border-radius: 7px;
     background: transparent; color: var(--sd-label); font-size: 11.5px; font-weight: 600;
     white-space: nowrap; overflow: hidden; cursor: pointer;
@@ -3009,6 +3075,10 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-state-seg.sd-seg-on .sd-state-ring { border-color: #fff; }
 .sd-rcol-narrow .sd-state-row { flex-direction: column; align-items: stretch; }
 .sd-rcol-narrow .sd-state-lbl { width: auto; min-width: 0; }
+/* A group too wide for the row (four states in Turkish) stands under the
+   label; under 300 px its segments go two to a line, never cut. */
+.sd-rcol-narrow .sd-state-grp { flex-wrap: wrap; height: auto; }
+.sd-rcol-narrow .sd-state-seg { flex: 1 0 calc(50% - 1px); }
 @media (prefers-reduced-motion: reduce) { .sd-state-seg { transition: none; } }
 /* The line under the row, the first-use line. */
 .sd-state-line, .sd-state-hint {
@@ -3080,6 +3150,36 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 #sd-properties.sd-state-on .sd-trans-all { display: inline-block; }
 .sd-trans-ms { display: flex; align-items: center; gap: 8px; }
 .sd-trans-ms .form-range-input { flex: 1 1 auto; min-width: 0; }
+/* Bootstrap 6 sets a range's track and thumb from .form-range, which the
+   panel's sliders have no wrapper of: without these the thumb is not drawn. */
+#sd-properties .sd-trans-ms .form-range-input {
+    --bs-range-track-width: 100%; --bs-range-track-height: 4px; --bs-range-track-cursor: pointer;
+    --bs-range-track-bg: var(--sd-border-strong); --bs-range-track-border-radius: 99px; --bs-range-track-fill-bg: var(--sd-accent-strong);
+    --bs-range-thumb-width: 14px; --bs-range-thumb-height: 14px; --bs-range-thumb-bg: var(--sd-accent-strong);
+    --bs-range-thumb-border: 2px solid var(--sd-text); --bs-range-thumb-border-radius: 99px; --bs-range-thumb-box-shadow: none;
+    --bs-range-thumb-active-bg: var(--sd-accent); --bs-range-thumb-transition-property: background-color;
+    --bs-range-thumb-transition-duration: .12s; --bs-range-thumb-transition-timing: ease;
+    height: 24px; padding: 0; border: 0; background: transparent; box-shadow: none;
+}
+/* A unit or an axis beside a field: grey on the chrome's ground, not the
+   page theme's light one. */
+#sd-properties .input-group-text {
+    height: 30px; padding: 0 7px; font-size: 11.5px; color: var(--sd-text-muted);
+    background: var(--sd-raised-bg-2); border-color: var(--sd-input-border);
+}
+/* A field joined to a unit or a list in a spacing-style row (Z Index and
+   its layer list) on the chrome's field look; a slider's number keeps room
+   for four digits beside its unit. */
+#sd-properties .sd-sp-row > .input-group > .form-control {
+    height: 30px; min-height: 30px; padding: .3rem .6rem; font-size: 12px; line-height: 1.4;
+    color: var(--sd-text); background-color: var(--sd-input-bg); border-color: var(--sd-input-border); box-shadow: none;
+}
+#sd-properties .sd-sp-row > .input-group > select.form-control {
+    appearance: none; -webkit-appearance: none; cursor: pointer; padding-right: 1.75rem;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23b8bdc4' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+    background-repeat: no-repeat; background-position: right .5rem center; background-size: 12px 10px;
+}
+#sd-properties .sd-trans-ms .input-group > .form-control { padding-left: 6px; padding-right: 4px; }
 .sd-trans-ms .input-group { flex: 0 0 84px; width: 84px; }
 .sd-trans-ms.sd-trans-inh .form-range-input { filter: grayscale(1); opacity: .6; }
 /* Transform in Shadow and effect: Move and Skew as two fields, a value
@@ -3087,6 +3187,8 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
    effect, the section's "More" / "Less" row. */
 .sd-tf-pair { display: flex; gap: 6px; }
 .sd-tf-pair .input-group { flex: 1 1 0; min-width: 0; }
+.sd-tf-pair .input-group > .form-control { min-width: 0; }
+.sd-tf-pair > select { flex: 1 1 0; min-width: 0; }
 .sd-tf-pair .input-group-text { padding: 0 5px; }
 .sd-tf .sd-trans-inh .form-control::placeholder { color: var(--sd-text-muted); }
 .sd-tf-og { display: flex; align-items: center; gap: 10px; }
@@ -3219,19 +3321,42 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-bp-quad-bl { grid-column: 3; grid-row: 1; }
 .sd-bp-quad-tr { grid-column: 5; grid-row: 1; }
 
+/* A part's head: 30 px, sentence case at 12.5 px like every head of the
+   frame. Its tools never run out of the part: the Styles head drops its
+   words first (.sd-bp-styles-narrow). */
 .sd-bp-quad-hdr {
+    position: relative;
     display: flex; align-items: center; gap: .25rem;
-    padding: .3rem .55rem;
+    padding: 0 .55rem;
     background: #1c1e22;
     border-bottom: 1px solid var(--sd-panel-border);
-    font-size: .65rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .04em;
-    color: var(--sd-text-muted);
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--sd-label);
     -webkit-user-select: none; user-select: none;
     flex-shrink: 0;
-    min-height: 26px;
+    min-height: 30px;
+    white-space: nowrap;
+    overflow: hidden;
+}
+.sd-bp-quad-hdr .sd-attrs-elem-badge { min-width: 0; }
+/* Attributes and Styles with nothing selected: one line at the top. */
+.sd-bp-none {
+    padding: .5rem .65rem;
+    font-size: 11.5px;
+    color: var(--sd-text-muted);
+}
+/* The Styles head under 460 px: "Create" keeps its word, the export is its
+   icon, the search a button that lays the field over the head. */
+.sd-styles-tool-txt { margin-left: .25rem; }
+.sd-styles-find-btn { display: none; }
+.sd-bp-styles-narrow .sd-styles-tool-txt,
+.sd-bp-styles-narrow .sd-styles-find { display: none; }
+.sd-bp-styles-narrow .sd-styles-find-btn { display: inline-flex; }
+.sd-bp-styles-narrow.sd-find-open .sd-styles-find {
+    display: block;
+    position: absolute; top: 4px; left: .55rem; right: 2rem;
+    width: auto; z-index: 2;
 }
 .sd-bp-quad-spacer { flex: 1; }
 .sd-bp-quad-body {
@@ -5017,27 +5142,27 @@ body.sd-resizing * { cursor: col-resize !important; }
 .sd-co-pop {
     position: fixed; z-index: 99999; width: 300px; max-width: calc(100vw - 16px);
     background: var(--sd-raised-bg-2); border: 1px solid var(--sd-panel-border);
-    border-radius: 6px; padding: 10px 12px;
+    border-radius: 12px; padding: 10px 12px;
     box-shadow: 0 6px 22px color-mix(in srgb, var(--sd-shadow) 65%, transparent);
-    font-size: .74rem; color: var(--sd-text);
+    font-size: 12px; line-height: 1.45; color: var(--sd-text);
 }
-.sd-co-ph, .sd-co-sub { margin: 0 0 6px; font-size: .68rem; font-weight: 600; color: var(--sd-label); }
+.sd-co-ph, .sd-co-sub { margin: 0 0 6px; font-size: 11.5px; font-weight: 600; color: var(--sd-label); }
 .sd-co-sub { margin: 8px 0 4px; }
 .sd-co-por { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 32px; }
-.sd-co-por small { display: block; font-size: .66rem; color: var(--sd-text-muted); }
+.sd-co-por small { display: block; font-size: 11.5px; color: var(--sd-text-muted); }
 .sd-co-dis .sd-co-pname { opacity: .6; }
 .sd-co-pol { display: flex; align-items: center; gap: 8px; padding: 0 0 6px 12px; }
-.sd-co-pol > span { flex: 0 0 44px; color: var(--sd-label); font-size: .68rem; }
+.sd-co-pol > span { flex: 0 0 44px; color: var(--sd-label); font-size: 12px; }
 .sd-co-first {
     display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
     margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--sd-panel-border);
-    color: var(--sd-text-muted); font-size: .7rem; line-height: 1.4;
+    color: var(--sd-text-muted); font-size: 11.5px; line-height: 1.45;
 }
-.sd-co-none { margin: 0 0 6px; font-size: .68rem; line-height: 1.4; color: var(--sd-text-muted); }
+.sd-co-none { margin: 0 0 6px; font-size: 11.5px; line-height: 1.45; color: var(--sd-text-muted); }
 .sd-co-rows { margin-bottom: 6px; }
 .sd-co-row {
     display: flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 2px;
-    border-radius: 4px; font-size: .72rem;
+    border-radius: 8px; font-size: 12px;
 }
 .sd-co-row:hover, .sd-co-row:focus-visible { background: rgba(var(--sd-accent-rgb), .08); outline: none; }
 .sd-co-row:focus-visible { box-shadow: inset 0 0 0 2px var(--sd-accent); }
@@ -5046,36 +5171,64 @@ body.sd-resizing * { cursor: col-resize !important; }
 .sd-co-ki { color: var(--sd-label); }
 .sd-co-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
 .sd-co-rename { flex: 1 1 auto; min-width: 0; }
-.sd-co-more { border: 0; background: none; color: var(--sd-label); padding: 2px 4px; border-radius: 3px; cursor: pointer; }
+.sd-co-more {
+    display: inline-flex; align-items: center; justify-content: center; min-width: 24px; min-height: 24px;
+    border: 0; background: none; color: var(--sd-label); padding: 0 4px; border-radius: 7px; cursor: pointer;
+}
 .sd-co-more:hover, .sd-co-more:focus-visible { background: var(--sd-raised-bg-2); color: var(--sd-text); }
 /* "This place": a place's own values of a component's open fields. */
-.sd-co-shown { margin-left: 6px; font-size: .7rem; color: var(--sd-text-muted); }
+.sd-co-shown { margin-left: 6px; font-size: 11.5px; color: var(--sd-text-muted); }
 .sd-co-foot {
     display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;
-    margin-top: 6px; font-size: .68rem; color: var(--sd-text-muted);
+    margin-top: 6px; font-size: 11.5px; line-height: 1.45; color: var(--sd-text-muted);
 }
 .sd-co-partof {
     display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;
-    margin: 8px 10px; font-size: .7rem; color: var(--sd-text-muted);
+    margin: 8px 10px; font-size: 11.5px; line-height: 1.45; color: var(--sd-text-muted);
 }
 .sd-rcol-narrow .sd-co-prow { flex-direction: column; align-items: stretch; }
 .sd-rcol-narrow .sd-co-prow > .sd-prop-control { width: 100%; }
 .sd-rcol-narrow .sd-co-foot { flex-direction: column; align-items: flex-start; }
-.sd-co-result { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: .7rem; }
-.sd-co-result .pg-result-line { flex: 1 1 auto; }
+.sd-co-result { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; padding: 8px 10px; border-radius: 9px; font-size: 11.5px; }
+/* The Result line's words on the chrome's text colour: the panel's own
+   (--pg-fg-2) is a light-theme grey that fades on the dark card. */
+.sd-co-result .pg-result-line { flex: 1 1 auto; min-width: 0; font-size: 11.5px; line-height: 1.45; color: var(--sd-label); }
+/* The place's text is plain text, not code: the panel's type, not the
+   monospace of .sd-prop-control textarea. */
+.sd-co-prow .sd-prop-control textarea { font-family: inherit; font-size: 12px; line-height: 1.45; }
+/* The fields' list hangs on the page's body and the variant's line over
+   the canvas, outside #sd-properties: their field and quiet buttons on the
+   chrome's tokens, never Bootstrap's, which follow the page's (light)
+   theme. The panel's own buttons of this part take the same. */
+.sd-co-pop .form-control {
+    height: 30px; padding: .3rem .6rem; font-size: 12px; line-height: 1.4; border-radius: 9px;
+    color: var(--sd-text); background-color: var(--sd-input-bg); border: 1px solid var(--sd-input-border); box-shadow: none;
+}
+.sd-co-pop .form-control:focus { border-color: var(--sd-accent); box-shadow: var(--sd-focus-ring); }
+.sd-co-pop .btn-outline.theme-secondary, .sd-co-vline .btn-outline.theme-secondary,
+.sd-co-result .btn-outline.theme-secondary, .sd-co-foot .btn-outline.theme-secondary,
+.sd-co-partof .btn-outline.theme-secondary, .sd-co-vars .btn-outline.theme-secondary {
+    height: 26px; padding: 0 10px; font-size: 12px; border-radius: 8px;
+    background: var(--sd-raised-bg-2); color: var(--sd-text); border: 1px solid var(--sd-border-strong);
+}
+.sd-co-pop .btn-outline.theme-secondary:hover, .sd-co-vline .btn-outline.theme-secondary:hover,
+.sd-co-result .btn-outline.theme-secondary:hover, .sd-co-foot .btn-outline.theme-secondary:hover,
+.sd-co-partof .btn-outline.theme-secondary:hover, .sd-co-vars .btn-outline.theme-secondary:hover {
+    background: color-mix(in srgb, var(--sd-text) 8%, var(--sd-raised-bg-2));
+}
 /* Variants: the list in the component's settings, the line over the
    canvas while one is edited, the amber line of a refused change or a
    variant that is gone. */
 .sd-co-vrow { cursor: pointer; }
 .sd-co-tick { width: 13px; flex: 0 0 13px; color: var(--sd-accent); }
-.sd-co-vcount { flex: 0 0 auto; font-size: .66rem; color: var(--sd-text-muted); font-variant-numeric: tabular-nums; }
+.sd-co-vcount { flex: 0 0 auto; font-size: 11.5px; color: var(--sd-text-muted); font-variant-numeric: tabular-nums; }
 .sd-co-vname { padding: 2px 0 2px 8px; }
 .sd-co-vadd { margin-bottom: 8px; }
-.sd-co-vline { flex: 0 0 auto; z-index: 5; background: var(--sd-raised-bg-2); border-bottom: 1px solid rgba(var(--sd-accent-rgb), .35); font-size: .72rem; color: var(--sd-text); }
+.sd-co-vline { flex: 0 0 auto; z-index: 5; background: var(--sd-raised-bg-2); border-bottom: 1px solid rgba(var(--sd-accent-rgb), .35); font-size: 12px; line-height: 1.45; color: var(--sd-text); }
 .sd-co-vline-main { display: flex; align-items: center; gap: 8px; padding: 6px 12px; }
 .sd-co-vline-main > span:nth-child(2) { flex: 1 1 auto; min-width: 0; }
 .sd-co-vline-main > .bi { color: var(--sd-accent); }
-.sd-co-vwarn { display: flex; align-items: flex-start; gap: 8px; padding: 6px 12px; background: var(--sd-warning-soft); color: var(--sd-warning); font-size: .7rem; line-height: 1.4; }
+.sd-co-vwarn { display: flex; align-items: flex-start; gap: 8px; padding: 6px 12px; background: var(--sd-warning-soft); color: var(--sd-warning); font-size: 11.5px; line-height: 1.45; }
 .sd-co-place .sd-co-vwarn { margin-bottom: 6px; border-radius: 4px; padding: 6px 8px; }
 
 /* ========================= SHARED COMPONENTS PALETTE TAB ========================= */
@@ -5145,6 +5298,18 @@ body.sd-resizing * { cursor: col-resize !important; }
 .sd-bulk-confirm-list li + li { margin-top: .25rem; }
 
 /* ========================= RECENTLY USED COMPS ========================= */
+/* "Recently used" is a quiet group label with the link Clear at its right. */
+.sd-pal-label {
+    display: flex; align-items: center;
+    padding: 12px 12px 4px;
+    font-size: 11.5px; font-weight: 600;
+    color: var(--sd-text-muted);
+}
+.sd-pal-label .sd-recent-clear-btn {
+    margin-left: auto; padding: 0;
+    color: var(--sd-accent); font-size: 11.5px; font-weight: 500;
+}
+.sd-pal-label .sd-recent-clear-btn:hover { color: var(--sd-accent); text-decoration: underline; }
 .sd-recent-section { border-bottom: 2px solid rgba(88,166,255,.2); }
 .sd-recent-section .sd-category-header {
     background: rgba(88,166,255,.06); color: var(--sd-accent, #58a6ff);
@@ -5260,6 +5425,10 @@ body.sd-resizing * { cursor: col-resize !important; }
 }
 .sd-icon-btn-primary:hover { background: color-mix(in srgb, var(--sd-accent-strong) 85%, var(--sd-shadow)); }
 .sd-icon-btn[disabled], .sd-icon-btn.disabled { opacity: .4; pointer-events: none; }
+/* Undo and Redo in the page bar: 28 px icon buttons between two lines
+   (.sd-bar-line), greyed while there is nothing to undo. */
+.sd-history-btn { width: 28px; height: 28px; font-size: .95rem; }
+.sd-bar-line { flex-shrink: 0; width: 1px; height: 20px; margin: 0 4px; background: var(--sd-panel-border); }
 
 /* The classic style's "Also convert the pages that take it from their
    folder" choice (pg_classic_style_folder_pages_field()). It sits outside the
@@ -5858,56 +6027,79 @@ dialog.sd-cmp-host[open], dialog.dialog.sd-cmp-host[open] { transform: none; fil
     transform: scale(1.15);
 }
 
-/* ========== Overview: header + sub-tabs (Tree ↔ Notes) ========== */
-/* Mirrors the right panel's Design/Themes pattern: panel header on top
-   (clickable, collapses everything), full-width tab strip below, content
-   under that. Tree-collapse-all moved into the search row. */
-.sd-overview-header {
-    display: flex;
-    align-items: center;
-    gap: .35rem;
-    padding: .45rem .6rem;
+/* ========== Overview: its head (name, Tree / Notes, caret) ========== */
+/* One 40 px row: the name is a button that shuts and opens the section
+   (the caret at the right shows which), Tree / Notes a small pair beside
+   it. Under 230 px the name is its icon. */
+.sd-panel-header.sd-overview-header {
+    container-type: inline-size;
+    min-height: 40px;
+    gap: 6px;
+    padding: 0 6px 0 10px;
+    background: var(--sd-panel-bg);
+    text-transform: none;
+    letter-spacing: 0;
+    cursor: pointer;
 }
+.sd-ov-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--sd-text);
+    font-size: 12.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    text-align: start;
+    cursor: pointer;
+}
+.sd-panel-header .sd-ov-name .bi { font-size: 13px; color: var(--sd-label); }
+.sd-ov-name-txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.sd-ov-name:focus-visible { outline: 2px solid var(--sd-accent); outline-offset: 2px; border-radius: 4px; }
 .sd-overview-header .sd-panel-caret {
-    margin-left: auto;
-    font-size: .65rem;
-    transition: transform .15s ease;
+    flex: none;
+    width: 20px;
+    text-align: center;
+    font-size: 11px;
     color: var(--sd-text-muted);
 }
-.sd-overview-section.sd-ov-collapsed .sd-overview-header .sd-panel-caret {
-    transform: rotate(180deg);
+.sd-overview-header:hover .sd-ov-name { color: var(--sd-text); }
+@container (max-width: 229.98px) {
+    .sd-ov-name-txt { display: none; }
 }
-.sd-overview-header:hover { background: color-mix(in srgb, var(--sd-text) 3%, transparent); }
 
 .sd-ov-subtabs {
+    flex: none;
     display: flex;
-    border-bottom: 1px solid color-mix(in srgb, var(--sd-text) 6%, transparent);
+    gap: 3px;
+    height: 28px;
+    padding: 3px;
+    border-radius: 10px;
     background: var(--sd-input-bg);
+    border: 1px solid var(--sd-panel-border);
+    cursor: default;
 }
 .sd-ov-subtabs .sd-ov-subtab {
-    flex: 1;
-    padding: .35rem .5rem;
-    background: transparent;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 0 9px;
     border: 0;
-    border-bottom: 2px solid transparent;
-    color: var(--sd-text-muted);
-    font-size: .7rem;
+    border-radius: 7px;
+    background: none;
+    color: var(--sd-label);
+    font-size: 11.5px;
+    font-weight: 600;
+    white-space: nowrap;
     cursor: pointer;
-    text-transform: uppercase;
-    letter-spacing: .04em;
-    display: inline-flex; align-items: center; justify-content: center;
-    gap: .25rem;
 }
-.sd-ov-subtabs .sd-ov-subtab.active {
-    color: var(--sd-accent);
-    border-bottom-color: var(--sd-accent);
-    background: rgba(var(--sd-accent-rgb),.05);
-}
-.sd-ov-subtabs .sd-ov-subtab:not(.active):hover {
-    color: var(--sd-text);
-    background: color-mix(in srgb, var(--sd-text) 3%, transparent);
-}
-.sd-ov-subtab .bi { font-size: .72rem; }
+.sd-ov-subtabs .sd-ov-subtab:hover { color: var(--sd-text); }
+.sd-ov-subtabs .sd-ov-subtab.active { background: var(--sd-raised-bg-2); color: var(--sd-text); }
+.sd-ov-subtabs .sd-ov-subtab:focus-visible { outline: 0; box-shadow: inset 0 0 0 2px var(--sd-accent); }
 
 /* Tree-collapse-all moves into the search row — small icon button on the right */
 .sd-ov-search-box { position: relative; }
@@ -6031,7 +6223,6 @@ dialog.sd-cmp-host[open], dialog.dialog.sd-cmp-host[open] { transform: none; fil
 .sd-ov-path-step:hover { color: var(--sd-text); background: color-mix(in srgb, var(--sd-text) 6%, transparent); }
 .sd-ov-path-step:focus-visible { outline: none; box-shadow: var(--sd-focus-ring); }
 .sd-ov-path-step.sd-ov-path-cur { flex-shrink: 0; max-width: 60%; color: var(--sd-text); font-weight: 600; }
-.sd-ov-subtab .bi { font-size: .72rem; }
 .sd-ov-subtab .sd-notes-tab-count {
     display: inline-block;
     min-width: 16px;
@@ -7318,12 +7509,9 @@ textarea.sd-as-co-input { resize: vertical; min-height: 38px; }
 
 /* ── Selection badge on toolbar (validate) ── */
 .sd-validate-warn {
-    background: rgba(255,193,7,.12) !important;
-    color: #ffc107 !important;
+    background: var(--sd-warning-soft) !important;
+    color: var(--sd-warning) !important;
     border-radius: 4px !important;
-    border: 1px solid rgba(255,193,7,.2) !important;
-    padding: .15rem .4rem !important;
-    font-size: .68rem !important;
 }
 
 /* ── Smoother panel collapse ── */
@@ -7693,14 +7881,6 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-rail-btn:hover { color: var(--sd-text); background: rgba(255,255,255,.06); }
 .sd-rail-btn.active { color: var(--sd-accent); background: rgba(var(--sd-accent-rgb),.14); }
 .sd-rail.sd-rail-open .sd-rail-btn.active { box-shadow: inset 0 0 0 1px rgba(var(--sd-accent-rgb),.45); }
-.sd-rail-label {
-    writing-mode: vertical-rl;
-    margin-top: .35rem;
-    font-size: .6rem; font-weight: 700; letter-spacing: .08em;
-    text-transform: uppercase; color: var(--sd-text-muted);
-    white-space: nowrap; overflow: hidden; min-height: 0;
-    -webkit-user-select: none; user-select: none;
-}
 
 /* ── Docked side panels ── */
 .sd-body.sd-dock-left  > .sd-panel-left,
@@ -7776,6 +7956,36 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
     font-size: .68rem; opacity: .6; transition: transform .18s;
 }
 .sd-panel-bottom.sd-docked .sd-bp-quad.sd-dock-open .sd-dock-caret { transform: rotate(180deg); opacity: 1; }
+/* Shut, the docked panel is one 28 px strip like the undocked one:
+   "HTML · Attributes · Styles" and the chevron at its right end. Each name
+   is still its part's header, so a press opens that part as the sheet; with
+   a part open the three strips stand one above the other again. */
+/* The headers keep the strip's full height, so each name is a 28 px target. */
+.sd-panel-bottom.sd-docked:not(.sd-dock-open) .sd-bp-grid {
+    flex-direction: row; align-items: stretch;
+    height: 28px; padding: 0 .5rem;
+    border-top: 1px solid var(--sd-panel-border);
+}
+.sd-panel-bottom.sd-docked:not(.sd-dock-open) .sd-bp-quad {
+    flex-direction: row; align-items: stretch;
+    border-top: 0; background: transparent;
+}
+.sd-panel-bottom.sd-docked:not(.sd-dock-open) .sd-bp-quad-hdr {
+    min-height: 0; padding: 0 .4rem;
+    background: transparent; border-bottom: 0;
+    font-size: 12px; color: var(--sd-label);
+}
+.sd-panel-bottom.sd-docked:not(.sd-dock-open) .sd-bp-quad-tr,
+.sd-panel-bottom.sd-docked:not(.sd-dock-open) .sd-bp-quad-tr .sd-bp-quad-hdr { flex: 1 1 auto; }
+.sd-panel-bottom.sd-docked:not(.sd-dock-open) .sd-bp-quad-bl::before,
+.sd-panel-bottom.sd-docked:not(.sd-dock-open) .sd-bp-quad-tr::before {
+    content: '\00b7'; color: var(--sd-text-muted); font-weight: 700;
+}
+.sd-panel-bottom.sd-docked:not(.sd-dock-open) .sd-bp-quad-spacer,
+.sd-panel-bottom.sd-docked:not(.sd-dock-open) .sd-attrs-elem-badge,
+.sd-panel-bottom.sd-docked:not(.sd-dock-open) .sd-bp-quad-bl .bi,
+.sd-panel-bottom.sd-docked:not(.sd-dock-open) .sd-bp-quad-tr .bi:not(.sd-dock-caret),
+.sd-panel-bottom.sd-docked:not(.sd-dock-open) .sd-bp-quad-tl .sd-dock-caret { display: none; }
 
 /* ===================== SETTINGS MODAL ===================== */
 /* The largest dialog from 1024px up (dialog-xl), the whole screen below it
@@ -8001,7 +8211,7 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
     font-weight: 600;
     white-space: nowrap;
 }
-@media (max-width: 1023.98px) {
+@media (max-width: 1024px) {
     #sd-ajax-save.sd-publish-btn,
     #sd-publish-page.sd-publish-btn { width: 32px; padding: 0; }
     #sd-ajax-save .sd-publish-txt,
@@ -8023,7 +8233,7 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 #sd-preview-menu-btn[aria-expanded="true"] { background: var(--sd-raised-bg); }
 .sd-preview-menu .sd-vb-row[hidden] { display: none; }
 .sd-preview-menu a.sd-vb-row { text-decoration: none; }
-@media (max-width: 1023.98px) {
+@media (max-width: 1024px) {
     #sd-preview-menu-btn.sd-preview-btn { padding: 0 .4rem; }
     #sd-preview-menu-btn .sd-preview-txt { display: none; }
 }
@@ -8033,6 +8243,14 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 @media (max-width: 767.98px) {
     #sd-preview-menu-btn.sd-preview-btn { width: 32px; padding: 0; order: 1; }
     #sd-preview-menu-btn .sd-preview-caret { display: none; }
+}
+/* A phone's bar is one 48 px row over the canvas bar: no lines around Undo
+   and Redo, 3 px between controls, so the open page's tab keeps its name.
+   The status bar's Help is its icon, the word in its tip. */
+@media (max-width: 575.98px) {
+    .sd-toolbar.sd-toolbar-tabs { gap: 3px; padding-left: 8px; padding-right: 8px; }
+    .sd-toolbar-actions .sd-bar-line { display: none; }
+    #sd-status-shortcuts .sd-status-txt { display: none; }
 }
 
 /* ── Template: "your design is being prepared" ──
@@ -8192,7 +8410,21 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 
 /* The Variables tab (style_designer_variables.js): a fold per group, a row per variable. */
 .sd-vars-group { margin-bottom: 8px; border: 1px solid #30363d; border-radius: 8px; background: #0d1117; }
-.sd-vars-summary { padding: 7px 10px; font-size: 12.5px; font-weight: 600; color: #e6edf3; cursor: pointer; }
+.sd-vars-summary { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 8px 12px; color: var(--sd-text); cursor: pointer; list-style: none; }
+.sd-vars-summary::-webkit-details-marker { display: none; }
+.sd-vars-summary:focus-visible { outline: 0; box-shadow: var(--sd-focus-ring); border-radius: 8px; }
+.sd-vars-tile { flex: 0 0 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; font-size: 15px; color: var(--sd-tile, var(--sd-accent)); background: color-mix(in srgb, var(--sd-tile, var(--sd-accent)) 16%, transparent); }
+.sd-vars-group[data-group="type"] { --sd-tile: #a78bfa; }
+.sd-vars-group[data-group="spacing"] { --sd-tile: var(--sd-success); }
+.sd-vars-group[data-group="shape"] { --sd-tile: var(--sd-warning); }
+.sd-vars-fn { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.sd-vars-fn b { font-size: 12.5px; font-weight: 600; }
+.sd-vars-fn small { font-size: 11.5px; color: var(--sd-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-vars-ch { flex: 0 0 auto; color: var(--sd-text-muted); transition: transform 120ms; }
+.sd-vars-group[open] > .sd-vars-summary .sd-vars-ch { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) { .sd-vars-ch { transition: none; } }
+.sd-vars-cols { padding-top: 4px; padding-bottom: 4px; font-size: 10.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--sd-text-muted); }
+.sd-vars-cols .sd-vars-pair > span { width: 36px; text-align: center; }
 .sd-vars-row { display: grid; grid-template-columns: 26px minmax(0, 1fr) minmax(0, 1.3fr) auto auto; align-items: center; gap: 8px; padding: 5px 10px; border-top: 1px solid #21262d; font-size: 12px; color: #c9d1d9; }
 .sd-vars-row .form-control { background-color: #161b22; color: #c9d1d9; border-color: #30363d; }
 .sd-vars-row.is-marked { background: rgba(88, 166, 255, .12); box-shadow: inset 3px 0 0 #58a6ff; }
@@ -8397,6 +8629,10 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
    the same pill, outlined in the tab's ink; the time is its title. */
 .sd-tab-sched-badge { padding: 0 .3rem; border-color: currentColor; background: transparent; color: inherit; }
 .sd-tab-sched-badge .bi { font-size: .62rem; }
+/* A live page's new version: the same pill in the accent, its word "New
+   version"; on the narrowest strip its outline is the accent too. */
+.sd-tab-version-badge { background: color-mix(in srgb, var(--sd-accent) 18%, transparent); color: var(--sd-accent); }
+.sd-strip-draftshort .sd-tab.active .sd-tab-version-badge { border-color: var(--sd-accent); }
 #sd-ajax-save.sd-publish-draft { background: #373e47; border-color: #545d68; }
 #sd-ajax-save.sd-publish-draft:hover { background: #444c56; }
 /* The Publish sheet (pg_designer_publish.js): one row per page, its state
@@ -9037,6 +9273,23 @@ button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible, bu
     .sd-skd-note { display: none; }
     .sd-skd-foot { justify-content: flex-end; }
 }
+/* The Sketch tool's buttons (its windows, the list of boxes to check, the
+   frame's head and foot) on the chrome's tokens: Bootstrap's own primary and
+   secondary follow the page theme and drew a pale blue Save beside a black
+   Cancel on the dark chrome. */
+.sd-skd .btn-solid.theme-primary, .sd-skb-check .btn-solid.theme-primary, .sd-sketch-act.btn-solid.theme-primary {
+    background: var(--sd-accent-strong); border-color: var(--sd-accent-strong); color: var(--sd-on-accent); border-radius: 8px;
+}
+.sd-skd .btn-solid.theme-primary:hover, .sd-skb-check .btn-solid.theme-primary:hover, .sd-sketch-act.btn-solid.theme-primary:hover {
+    background: color-mix(in srgb, var(--sd-on-accent) 10%, var(--sd-accent-strong)); border-color: color-mix(in srgb, var(--sd-on-accent) 10%, var(--sd-accent-strong));
+}
+.sd-skd .btn-outline.theme-secondary, .sd-skb-check .btn-outline.theme-secondary, .sd-sketch-act.btn-outline.theme-secondary {
+    background: var(--sd-raised-bg-2); color: var(--sd-text); border-color: var(--sd-border-strong); border-radius: 8px;
+}
+.sd-skd .btn-outline.theme-secondary:hover, .sd-skb-check .btn-outline.theme-secondary:hover, .sd-sketch-act.btn-outline.theme-secondary:hover {
+    background: color-mix(in srgb, var(--sd-text) 8%, var(--sd-raised-bg-2)); color: var(--sd-text);
+}
+.sd-skd .btn:disabled, .sd-skb-check .btn:disabled, .sd-sketch-act.btn:disabled { opacity: .45; cursor: default; }
 /* Read out by a screen reader only. */
 .sd-proto-sr { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
@@ -9346,6 +9599,9 @@ button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible, bu
 .sd-cu-state-head { margin: 4px 0 0; font-weight: 600; }
 .sd-cu-foot { gap: 8px; }
 .sd-cu-ticked { font-size: .78rem; color: var(--sd-text-muted); }
+/* The closing line after "Remove" over the lists; a row that stayed says why. */
+.sd-cu-result { margin-bottom: 4px; }
+.sd-cu-failed { color: var(--sd-warning); }
 .sd-pc-unused-end { display: flex; align-items: center; gap: 8px; }
 .sd-pc-unused-end .sd-pc-bar-note { flex: 1; }
 @media (max-width: 767.98px) {
@@ -9405,12 +9661,10 @@ button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible, bu
 }
 
 /* The "Clicks" layer (the part 'clicks', assets/js/style_designer_clicks.js):
-   its toolbar toggle, and its panel over the canvas' right edge, 300 wide,
-   scrolling on its own. The badges and tenth lines are in the canvas
-   document and take their look from _sdClicksCanvasStyle(). */
-.sd-clicks-btn { width: auto; gap: .35rem; padding: 0 .55rem; }
-.sd-clicks-btn.active { background: rgba(var(--sd-accent-rgb), .22); border-color: rgba(var(--sd-accent-rgb), .5); }
-.sd-clicks-btn-txt { font-size: .8rem; }
+   its panel over the canvas' right edge, 300 wide, scrolling on its own. Its
+   switch is the View menu's row "Clicks on this page" (#sd-clicks-btn). The
+   badges and tenth lines are in the canvas document and take their look
+   from _sdClicksCanvasStyle(). */
 .sd-clicks-panel {
     position: absolute; top: 12px; right: 12px; bottom: 12px; z-index: 30;
     display: flex; flex-direction: column; width: 300px; max-width: calc(100% - 24px);
@@ -9428,7 +9682,6 @@ button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible, bu
 .sd-clicks-off p { color: var(--sd-text); line-height: 1.45; }
 .sd-clicks-missing li { border-color: var(--sd-panel-border) !important; }
 .sd-clicks-missing li > span:last-child { font-weight: 600; font-variant-numeric: tabular-nums; }
-@media (max-width: 575.98px) { .sd-clicks-btn-txt { display: none; } }
 
 /* My library (style_designer_mylibrary.js): the group at the top of the
    Blocks list, its own group names, its first-use line; the save window's
@@ -9449,13 +9702,13 @@ button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible, bu
 .sd-lib-offers {
     position: absolute; z-index: 5; left: 0; right: 0; top: calc(100% + 2px);
     max-height: 180px; overflow: auto; margin: 0; padding: 4px 0; list-style: none;
-    border: 1px solid var(--bs-border-color, #d0d7de); border-radius: 6px;
-    background: var(--bs-body-bg, #fff); box-shadow: 0 6px 18px rgba(0, 0, 0, .18);
+    border: 1px solid var(--pg-border-color); border-radius: 6px;
+    background: var(--pg-bg-body); box-shadow: var(--pg-shadow-float);
 }
 .sd-lib-offers[hidden] { display: none; }
 .sd-lib-offers li { padding: 5px 10px; cursor: pointer; }
 .sd-lib-offers li:hover,
-.sd-lib-offers li.active { background: rgba(13, 110, 253, .12); }
+.sd-lib-offers li.active { background: color-mix(in srgb, var(--pg-primary) 12%, transparent); }
 /* "Manage library": the group's last row in the Blocks list; the window's
    rows (grip, checkbox, drawing, name, what it is), group heads, the drop
    line, the rows' menu; full screen at phone width. */
@@ -9469,40 +9722,41 @@ button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible, bu
 .sd-lib-mlist { display: flex; flex-direction: column; gap: 2px; }
 .sd-lib-mgroup {
     display: flex; align-items: center; gap: .4rem; padding: .6rem .25rem .2rem;
-    font-size: .7rem; font-weight: 600; color: var(--bs-secondary-color, #6c757d);
+    font-size: .7rem; font-weight: 600; color: var(--pg-fg-2);
 }
-.sd-lib-mgroup .sd-lib-count { margin-left: 0; }
+/* The window is the panel's light or dark dialog, not the dark chrome. */
+.sd-lib-mgroup .sd-lib-count { margin-left: 0; color: var(--pg-fg-2); background: var(--pg-bg-2); }
 .sd-lib-mgroup[hidden], .sd-lib-mrow[hidden] { display: none; }
 .sd-lib-mrow {
     display: flex; align-items: center; gap: .55rem; padding: .35rem .4rem; border-radius: 6px;
     border: 1px solid transparent;
 }
-.sd-lib-mrow:hover { background: rgba(13, 110, 253, .05); }
-.sd-lib-mrow:focus-visible { outline: 2px solid rgba(13, 110, 253, .55); outline-offset: -1px; }
-.sd-lib-mrow.is-chosen { background: rgba(13, 110, 253, .1); border-color: rgba(13, 110, 253, .25); }
+.sd-lib-mrow:hover { background: color-mix(in srgb, var(--pg-primary) 6%, transparent); }
+.sd-lib-mrow:focus-visible { outline: 2px solid var(--pg-primary); outline-offset: -1px; }
+.sd-lib-mrow.is-chosen { background: color-mix(in srgb, var(--pg-primary) 12%, transparent); border-color: color-mix(in srgb, var(--pg-primary) 35%, transparent); }
 .sd-lib-mrow.is-dragged { opacity: .45; }
-.sd-lib-grip { cursor: grab; touch-action: none; padding: .25rem 0; color: var(--bs-secondary-color, #6c757d); }
+.sd-lib-grip { cursor: grab; touch-action: none; padding: .25rem 0; color: var(--pg-fg-3); }
 .is-searching .sd-lib-grip { visibility: hidden; }
 .sd-lib-thumb {
     flex: 0 0 64px; height: 40px; overflow: hidden; border-radius: 4px;
-    border: 1px solid var(--bs-border-color, #d0d7de); background: var(--bs-body-bg, #fff);
+    border: 1px solid var(--pg-border-color); background: #fff;
 }
 .sd-lib-thumb svg { display: block; width: 100%; height: 100%; }
 .sd-lib-mtext { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
 .sd-lib-mname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
-.sd-lib-mmeta { font-size: .68rem; color: var(--bs-secondary-color, #6c757d); }
+.sd-lib-mmeta { font-size: .68rem; color: var(--pg-fg-2); }
 .sd-lib-mrename { flex: 1 1 auto; min-width: 0; }
-.sd-lib-mdrop { height: 2px; margin: -1px 0; border-radius: 1px; background: var(--bs-primary, #0d6efd); }
+.sd-lib-mdrop { height: 2px; margin: -1px 0; border-radius: 1px; background: var(--pg-primary); }
 .sd-lib-pop {
     position: absolute; z-index: 10; min-width: 180px; max-height: 260px; overflow: auto; padding: 4px 0;
-    border: 1px solid var(--bs-border-color, #d0d7de); border-radius: 6px;
-    background: var(--bs-body-bg, #fff); box-shadow: 0 6px 18px rgba(0, 0, 0, .18);
+    border: 1px solid var(--pg-border-color); border-radius: 6px;
+    background: var(--pg-bg-body); box-shadow: var(--pg-shadow-float);
 }
 .sd-lib-popitem {
     display: flex; align-items: center; width: 100%; padding: 5px 12px; border: 0;
     background: none; font-size: .78rem; text-align: left; color: inherit;
 }
-.sd-lib-popitem:hover, .sd-lib-popitem:focus-visible { background: rgba(13, 110, 253, .12); outline: 0; }
+.sd-lib-popitem:hover, .sd-lib-popitem:focus-visible { background: color-mix(in srgb, var(--pg-primary) 12%, transparent); outline: 0; }
 .sd-lib-manage .dialog-footer { gap: .4rem; }
 @media (max-width: 575.98px) {
     .sd-lib-manage { width: 100vw; max-width: none; height: 100dvh; max-height: none; margin: 0; border-radius: 0; }
@@ -9793,3 +10047,28 @@ button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible, bu
 .sd-ga-foot > span { flex: 1; }
 .sd-ga-foot > button { flex: none; padding: 2px 8px; font-size: 11.5px; border-radius: 7px; border: 1px solid var(--sd-border-strong); background: none; color: var(--sd-label); }
 .sd-ga-dim { opacity: .5; }
+
+/* The Sketch tool's Pinegrap AI actions (style_designer_sketchai.js): the
+   "Describe the page" window and the page dimmed while it is drawn. */
+.sd-sai { width: min(480px, 100%); }
+.sd-sai .sd-skd-body { padding-top: .85rem; }
+.sd-sai-field { min-height: 7.5rem; resize: vertical; }
+.sd-sai-note { margin: .4rem 0 .6rem; font-size: .75rem; color: var(--sd-text-muted); }
+.sd-sai-warn { margin: 0 0 .85rem; padding: .45rem .6rem; border-radius: 8px; font-size: .75rem; background: color-mix(in srgb, #f5a524 16%, transparent); color: #f5c46b; }
+.sd-sai .sd-skd-foot { justify-content: flex-end; }
+.sd-sai-dim { pointer-events: none; }
+.sd-sai-dim .sd-sketch-box { opacity: .4; filter: grayscale(1); }
+@media (max-width: 575.98px) {
+    .sd-skd-back:has(.sd-sai) { padding: 0; align-items: flex-end; }
+    .sd-sai { width: 100%; border-radius: 12px 12px 0 0; }
+    .sd-sai .sd-skd-foot > * { flex: 1; }
+}
+
+/* The Options panel's secondary buttons ("Add layer", "Play on the canvas",
+   "Edit the curve") and its help lines on the chrome's tokens: the chrome is
+   always dark, Bootstrap's own colours follow the page theme. */
+#sd-properties .btn-outline.theme-secondary {
+    background: var(--sd-raised-bg-2); color: var(--sd-text); border-color: var(--sd-border-strong); border-radius: 8px;
+}
+#sd-properties .btn-outline.theme-secondary:hover { background: color-mix(in srgb, var(--sd-text) 8%, var(--sd-raised-bg-2)); }
+#sd-properties .form-text { color: var(--sd-text-muted); font-size: 11.5px; line-height: 1.45; }

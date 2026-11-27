@@ -14,6 +14,7 @@ description: Starting a stopped repeating expense again goes on from where it st
 - A restart keeps `source_expense_id` of the stopped repeat (the first expense), even when started from an expense the repeat wrote; the expense it was started from gets `recurrence_id` of the new row.
 - `erp_expense_recurrence_of()` looks at that family: the expense's own source rows, its `recurrence_id`, and the rows sharing that recurrence's source; the active one first, else the latest. So an expense written by a stopped repeat shows the active restart (and stops it), and a second, parallel repeat of the same expenses is refused ("This expense repeats already.").
 - Rows restarted before the fix may have the restarted-from expense as source; they are not rewritten.
+- `erp_expense_recurrence_create()` takes its named lock on the family (`erp_expense_recurrence_lock_id()`: the stopped repeat's `source_expense_id`, else the expense). Locked by the expense, a restart sent from two of its expenses at once (two tabs) passed the "repeats already" look twice and left two active repeats writing every period (PR #11843).
 
 ## What does the card show?
 - `edit_erp_expense.php`, for a stopped repeat: the period preselected to the stopped one's, and the date it goes on from ("Started again, it goes on from …").

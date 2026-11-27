@@ -46,7 +46,7 @@ function test_connections_signin_google_card_keeps_the_sign_in_gate()
 	pg_assert_same(array('status', 'signin', 'details', 'uses'), pg_connections_screen_page_cards('google', array('manager' => true, 'signin' => true)), 'the sign-in application above the connected accounts\' one');
 	pg_assert_same(array('status', 'details', 'uses'), pg_connections_screen_page_cards('google', array('manager' => true, 'signin' => false)), 'not without the sign-in settings\' right');
 	pg_assert_same(array('status', 'signin', 'uses'), pg_connections_screen_page_cards('google', array('manager' => false, 'signin' => true)), 'each part keeps its own gate');
-	pg_assert_same(array('status', 'details', 'uses'), pg_connections_screen_page_cards('microsoft', array('manager' => true, 'signin' => true)), 'only Google\'s page has it');
+	pg_assert_same(array('status', 'signin', 'details', 'uses'), pg_connections_screen_page_cards('microsoft', array('manager' => true, 'signin' => true)), 'Microsoft\'s page has Sign in with Microsoft\'s part');
 
 	// Accounts and sign-in is a manager's category, the gate of the card
 	// the application came from; nobody gains or loses a right.
@@ -59,7 +59,7 @@ function test_connections_signin_google_card_keeps_the_sign_in_gate()
 	$save = strpos($screen, "if (\$action === 'signin_google_save') {");
 	pg_assert_true($save !== false, 'the save action is there');
 	pg_assert_contains('if (connections_signin_may_manage($user)) {', substr($screen, $save, 200), 'the save asks the gate first');
-	pg_assert_contains("'signin'    => (\$provider_page === 'google') && connections_signin_may_manage(\$user),", $screen, 'and so does the drawing');
+	pg_assert_contains("'signin'    => connections_signin_may_manage(\$user),", $screen, 'and so does the drawing');
 }
 
 function test_connections_signin_google_fields_moved_to_the_page()
@@ -73,7 +73,7 @@ function test_connections_signin_google_fields_moved_to_the_page()
 	pg_assert_false(strpos($card, 'name="oauth_google_client_id"') !== false, 'the sign-in card no longer types the client');
 	pg_assert_false(strpos($card, 'name="oauth_google_client_secret"') !== false, 'nor the secret');
 	pg_assert_contains('$signin_connect_row(\'oauth_google_enabled\'', $card, 'the switch stays, a connect row posting oauth_google_enabled');
-	pg_assert_contains("'connections.php?service=google#connections-signin'", $card, 'a row leads to Google\'s page');
+	pg_assert_contains("pg_connections_lead_url('google', 'security', 'pgset-signin', 'connections-signin')", $card, 'a row leads to Google\'s page, and back');
 
 	$save = connections_signin_google_test_source('includes/settings/security.save.php');
 	pg_assert_false(strpos($save, 'oauth_google_client_id') !== false, 'saving the sign-in settings leaves the client ID alone');

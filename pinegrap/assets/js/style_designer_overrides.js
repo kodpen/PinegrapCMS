@@ -37,8 +37,9 @@ StyleDesigner.definePart('overrides', function (K) {
     var FIRST_KEY = 'sd_co_first_seen';
 
     // The open list over the panel, the last Result line of the settings
-    // list, and the element whose menu row is focused for the keyboard.
-    var state = { pop: null, popNode: null, popSid: 0, result: null, focusId: '' };
+    // list, the element whose menu row is focused for the keyboard, and
+    // what had the focus when the list opened.
+    var state = { pop: null, popNode: null, popSid: 0, result: null, focusId: '', opener: null, focusUndo: false };
 
     function kindName(kind) {
         return {
@@ -172,11 +173,33 @@ StyleDesigner.definePart('overrides', function (K) {
 
     // ── The list of an element's fields ──────────────────────────────────
 
-    function closePop() {
-        if (state.pop) state.pop.remove();
+    // The element of the open list in the component's tree as the editor
+    // has it now: Undo puts a new copy of the tree in place, and a write
+    // into the element as it was would be lost. Null when it is gone.
+    function popNodeNow() {
+        var node = state.popNode, root = compTree(state.popSid);
+        if (!node || !root || node._id == null) return node;
+        state.popNode = findById(root, node._id);
+        return state.popNode;
+    }
+
+    // Closes the list. A label typed and not yet left is kept (a click
+    // outside, another list opened), since removing its field fires no
+    // change; `discard` (Escape) drops it.
+    function closePop(discard) {
+        var pop = state.pop, node = pop ? popNodeNow() : null, sid = state.popSid;
         state.pop = null;
         state.popNode = null;
+        state.opener = null;
         document.removeEventListener('mousedown', onOutside, true);
+        if (!pop) return;
+        var typed = discard === true ? [] : Array.prototype.filter.call(pop.querySelectorAll('[data-co-label]'), function (inp) {
+            return inp.value !== inp.defaultValue;
+        });
+        pop.remove();
+        typed.forEach(function (inp) {
+            if (node) setLabel(node, sid, inp.getAttribute('data-co-label'), inp.value);
+        });
     }
 
     function onOutside(e) {
@@ -263,7 +286,9 @@ StyleDesigner.definePart('overrides', function (K) {
     function openFor(node, anchor) {
         var sid = K._resolveSharedSid(node);
         if (!(sid > 0) || !compTree(sid)) return;
+        var opener = document.activeElement;
         closePop();
+        state.opener = opener;
         var pop = document.createElement('div');
         pop.className = 'sd-co-pop';
         pop.setAttribute('role', 'dialog');
@@ -280,15 +305,18 @@ StyleDesigner.definePart('overrides', function (K) {
 
         pop.addEventListener('change', function (e) {
             var t = e.target;
+            if (state.pop !== pop) return;
+            var node = popNodeNow();
+            if (!node) { closePop(true); return; }
             var kind = t.getAttribute('data-co-kind');
             if (kind) {
                 var first = t.checked && !firstSeen();
-                setOpen(state.popNode, state.popSid, kind, t.checked);
+                setOpen(node, state.popSid, kind, t.checked);
                 drawPop(kind, first);
                 return;
             }
             kind = t.getAttribute('data-co-label');
-            if (kind) setLabel(state.popNode, state.popSid, kind, t.value);
+            if (kind) setLabel(node, state.popSid, kind, t.value);
         });
         pop.addEventListener('click', function (e) {
             if (!e.target.closest('[data-co-got]')) return;
@@ -300,12 +328,20 @@ StyleDesigner.definePart('overrides', function (K) {
             if (e.key === 'Escape') {
                 e.preventDefault();
                 e.stopPropagation();
-                closePop();
+                var back = state.opener;
+                closePop(true);
+                // Back to what opened the list; the element's three-dot
+                // button when that was redrawn meanwhile.
+                if (!(back && back !== document.body && back.isConnected && back.focus && back.getClientRects().length)) back = document.getElementById('sd-id-more');
+                if (back) back.focus();
                 return;
             }
             if (e.key === 'Enter' && e.target.hasAttribute('data-co-label')) {
+                // Keeps the label (its change runs on leaving the field) and
+                // stays in the list, on the field's switch.
                 e.preventDefault();
-                e.target.blur();
+                var sw = pop.querySelector('[data-co-kind="' + e.target.getAttribute('data-co-label') + '"]');
+                if (sw) sw.focus(); else e.target.blur();
                 return;
             }
             if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
@@ -340,7 +376,7 @@ StyleDesigner.definePart('overrides', function (K) {
         }
         h += '<div class="sd-co-rows" role="list">';
         fields.forEach(function (f) {
-            h += '<div class="sd-co-row" role="listitem" tabindex="0" data-co-id="' + esc(f.id) + '" title="' + esc(_sdT('Alt+Up and Alt+Down move the field')) + '">' +
+            h += '<div class="sd-co-row" role="listitem" tabindex="0" data-co-id="' + esc(f.id) + '" title="' + esc(_sdT('Alt+Up and Alt+Down move the field')) + '" aria-keyshortcuts="F2 Delete Alt+ArrowUp Alt+ArrowDown">' +
                 '<span class="sd-co-grip bi bi-grip-vertical" aria-hidden="true"></span>' +
                 '<span class="sd-co-ki bi ' + (KIND_ICON[f.kind] || 'bi-dot') + '" aria-hidden="true"></span>' +
                 '<b class="sd-co-label">' + esc(f.label || kindName(f.kind)) + '</b>' +
@@ -405,6 +441,7 @@ StyleDesigner.definePart('overrides', function (K) {
             var r = compTree(sid);
             var n = r ? findById(r, nodeId) : null;
             if (!n) return;
+            state.focusId = keep.entry.id;
             write(sid, function () {
                 var list = openList(n, true);
                 list.splice(Math.min(keep.index, list.length), 0, keep.entry);
@@ -413,6 +450,7 @@ StyleDesigner.definePart('overrides', function (K) {
                 else if (order) order.push(keep.entry.id);
             });
         } };
+        state.focusUndo = true;
         K.renderProperties();
     }
 
@@ -501,6 +539,13 @@ StyleDesigner.definePart('overrides', function (K) {
     function fillList(el, sid) {
         if (state.result && state.result.sid !== sid) state.result = null;
         el.innerHTML = listHtml(sid);
+        if (state.focusUndo && el.isConnected) {
+            // After "Close the field" the keyboard is on its Undo (in the
+            // drawing that is in the page, not one queued before it).
+            state.focusUndo = false;
+            var undo = el.querySelector('[data-co-undo]');
+            if (undo) undo.focus();
+        }
         if (state.focusId) {
             var again = el.querySelector('.sd-co-row[data-co-id="' + state.focusId + '"]');
             state.focusId = '';
@@ -524,7 +569,17 @@ StyleDesigner.definePart('overrides', function (K) {
         });
         el.addEventListener('keydown', function (e) {
             var row = e.target.classList && e.target.classList.contains('sd-co-row') ? e.target : null;
-            if (!row || !e.altKey || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+            if (!row) return;
+            // F2 and Delete as in the variants' list: the row's menu is
+            // reached by the pointer only.
+            if (e.key === 'F2' && !e.altKey) { e.preventDefault(); rename(sid, row); return; }
+            if ((e.key === 'Delete' || e.key === 'Backspace') && !e.altKey) {
+                e.preventDefault();
+                e.stopPropagation();
+                closeField(sid, row.getAttribute('data-co-id'));
+                return;
+            }
+            if (!e.altKey || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
             e.preventDefault();
             var id = row.getAttribute('data-co-id');
             var ids = fieldsOf(sid).map(function (f) { return f.id; });
@@ -654,7 +709,7 @@ StyleDesigner.definePart('overrides', function (K) {
             (opts.mayEdit ? '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-co-edit>' + esc(_sdT('Edit the component')) + '</button>' : '') +
             '</div>';
         holder.innerHTML = h;
-        headSum(holder, changed, values, ref);
+        headSum(holder, changed, values, ref, sid);
         if (opts.focusId) {
             var want = holder.querySelector('[data-co-field="' + opts.focusId + '"]');
             if (want) want.focus();
@@ -723,11 +778,14 @@ StyleDesigner.definePart('overrides', function (K) {
             var t = e.target;
             if (!t.getAttribute || !t.getAttribute('data-co-field')) return;
             if (e.key === 'Escape') {
-                // Leaves the field with what it held.
+                // Leaves the field with what it held, the refusal's message
+                // gone with its mark.
                 e.preventDefault();
                 e.stopPropagation();
                 t.value = t.defaultValue;
                 t.classList.remove('is-invalid');
+                var why = holder.querySelector('[data-co-why="' + t.getAttribute('data-co-field') + '"]');
+                if (why) { why.textContent = ''; why.style.display = ''; }
                 t.blur();
             } else if (e.key === 'Enter' && t.tagName === 'INPUT') {
                 e.preventDefault();
@@ -738,7 +796,7 @@ StyleDesigner.definePart('overrides', function (K) {
 
     // The section head: the count of changed fields (none at none) and, while
     // closed, the first changed value.
-    function headSum(holder, changed, values, ref) {
+    function headSum(holder, changed, values, ref, sid) {
         var card = holder.closest('[data-sd-card]');
         var hdr = card ? card.querySelector(':scope > .sd-sect-hdr') : null;
         if (!hdr) return;
@@ -746,7 +804,7 @@ StyleDesigner.definePart('overrides', function (K) {
         var sum = null;
         if (changed.length) {
             var first = changed[0], v = values[first.id];
-            var text = first.kind === 'variant' ? CO.placeVariant(ref)
+            var text = first.kind === 'variant' ? (placeVariantName(sid, ref) || CO.placeVariant(ref))
                 : (first.kind === 'shown' ? _sdT('Hidden') : plainOf(first.kind === 'picture' ? (v && v.src) || v : v));
             sum = { count: changed.length, kind: 'value', text: text, swatch: '' };
         }
@@ -798,7 +856,7 @@ StyleDesigner.definePart('overrides', function (K) {
 
     // The Result line after "Delete", the field of a variant being added or
     // renamed, its message, and the row to focus after a draw.
-    var vstate = { result: null, adding: 0, renaming: '', err: '', focus: null, keyOn: false };
+    var vstate = { result: null, adding: 0, renaming: '', err: '', focus: null, keyOn: false, focusUndo: false };
 
     function variantsOf(sid) {
         var root = compTree(sid);
@@ -820,6 +878,18 @@ StyleDesigner.definePart('overrides', function (K) {
             if (list[i] && CO.cleanVariantName(list[i].name) === name) return i;
         }
         return -1;
+    }
+
+    // A name a variant takes stops being any variant's former name, so a
+    // place on that name follows the variant that has it now, also after
+    // that one is renamed again.
+    function forgetFormer(root, name) {
+        var low = name.toLowerCase();
+        rawVariants(root, false).forEach(function (v) {
+            if (!v || !Array.isArray(v.was)) return;
+            v.was = v.was.filter(function (w) { return CO.cleanVariantName(w).toLowerCase() !== low; });
+            if (!v.was.length) delete v.was;
+        });
     }
 
     // Why a name cannot be used, or '' when it can.
@@ -873,7 +943,14 @@ StyleDesigner.definePart('overrides', function (K) {
         if (vstate.adding && vstate.adding !== sid) vstate.adding = 0;
         el.innerHTML = varsHtml(sid);
         var field = el.querySelector('[data-co-vname]');
-        if (field) {
+        // A drawing queued before the last one fills a box no longer in the
+        // page: the focus waits for the one that is.
+        var vundo = (vstate.focusUndo && el.isConnected) ? el.querySelector('[data-co-vundo]') : null;
+        if (el.isConnected) vstate.focusUndo = false;
+        if (vundo) {
+            // After "Delete" the keyboard is on its Undo.
+            vundo.focus();
+        } else if (field) {
             field.focus();
             field.setSelectionRange(field.value.length, field.value.length);
         } else if (vstate.focus !== null) {
@@ -1002,11 +1079,21 @@ StyleDesigner.definePart('overrides', function (K) {
             if (i === -1) return;
             vstate.focus = name;
             if (K.coVar && K.coVar.sid === sid && K.coVar.name === renaming) K.coVar.name = name;
-            write(sid, function () { rawVariants(root, false)[i].name = name; });
+            // The old name stays a former name: places on other pages keep
+            // it and still draw this variant.
+            write(sid, function () {
+                var v = rawVariants(root, false)[i];
+                forgetFormer(root, name);
+                v.was = (Array.isArray(v.was) ? v.was : []).concat([renaming]);
+                v.name = name;
+            });
             drawLine();
             return;
         }
-        write(sid, function () { rawVariants(root, true).push({ name: name, nodes: {} }); });
+        write(sid, function () {
+            forgetFormer(root, name);
+            rawVariants(root, true).push({ name: name, nodes: {} });
+        });
         startVariant(sid, name);
     }
 
@@ -1050,11 +1137,13 @@ StyleDesigner.definePart('overrides', function (K) {
         vstate.result = { sid: sid, text: _sdT('The variant “{var}” was deleted. Places that used it show the default.', name), undo: function () {
             var r = compTree(sid);
             if (!r) return;
+            vstate.focus = name;
             write(sid, function () {
                 var list = rawVariants(r, true);
                 list.splice(Math.min(i, list.length), 0, kept);
             });
         } };
+        vstate.focusUndo = true;
         K.renderProperties();
     }
 
@@ -1126,6 +1215,10 @@ StyleDesigner.definePart('overrides', function (K) {
             drawLine();
             listen(true);
         });
+        // The list the variant was chosen in is gone with the selection:
+        // the keyboard goes on with "Done" over the canvas.
+        var done = document.querySelector('.sd-co-vline [data-co-vdone]');
+        if (done) done.focus();
     }
 
     // "Done": the variant keeps what differs from the component's own, which
@@ -1192,14 +1285,16 @@ StyleDesigner.definePart('overrides', function (K) {
             (warn ? '<div class="sd-co-vwarn"><span class="bi bi-exclamation-triangle" aria-hidden="true"></span><span>' + esc(warn) + '</span></div>' : '');
     }
 
-    // Escape ends the editing, but not inside a field or an open menu.
+    // Escape ends the editing, but not inside a field; with the editor's
+    // menu open (showCtxMenu(), a row's three-dot menu) it closes the menu.
     function onEscape(e) {
         if (e.key !== 'Escape' || !K.coVar) return;
         var t = e.target;
         if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName || ''))) return;
-        if (document.querySelector('.sd-ctx-menu.show, .sd-ctx-menu[style*="block"]')) return;
         e.preventDefault();
         e.stopPropagation();
+        var menu = document.getElementById('sd-tree-ctx-menu');
+        if (menu) { menu.remove(); return; }
         variantDone();
     }
 
@@ -1215,11 +1310,13 @@ StyleDesigner.definePart('overrides', function (K) {
     // The variant row of "This place": { html, changed, gone }.
     function placeVariantRow(ref, sid, ro) {
         var list = variantsOf(sid);
-        var mine = CO.placeVariant(ref);
-        if (!list.length && !mine) return { html: '', changed: false, gone: '' };
-        var known = list.some(function (v) { return v.name === mine; });
-        var gone = (mine && !known) ? mine : '';
-        var changed = mine !== '';
+        var stored = CO.placeVariant(ref);
+        if (!list.length && !stored) return { html: '', changed: false, gone: '' };
+        // A name kept from before a rename shows the variant's name now.
+        var mine = placeVariantName(sid, ref);
+        var known = mine !== '';
+        var gone = (stored && !known) ? stored : '';
+        var changed = stored !== '';
         var opts = '<option value=""' + (!known ? ' selected' : '') + '>' + esc(_sdT('Default')) + '</option>';
         list.forEach(function (v) {
             opts += '<option value="' + esc(v.name) + '"' + (v.name === mine ? ' selected' : '') + '>' + esc(v.name) + '</option>';
@@ -1232,6 +1329,13 @@ StyleDesigner.definePart('overrides', function (K) {
             '<label class="sd-prop-label' + (changed ? ' sd-prop-modified' : '') + '" for="sd-co-variant">' + esc(_sdT('Variant')) + '</label>' +
             '<div class="sd-prop-control"><select class="form-control form-control-sm" id="sd-co-variant" data-co-variant' + (ro ? ' disabled' : '') + '>' + opts + '</select></div></div>';
         return { html: html, changed: changed, gone: gone };
+    }
+
+    // The name of the variant a place draws now, '' for none or a gone one.
+    function placeVariantName(sid, ref) {
+        var root = compTree(sid), stored = CO.placeVariant(ref);
+        var v = (root && stored) ? CO.variant(root, stored) : null;
+        return v ? v.name : '';
     }
 
     // A place picks a variant ('' is "Default"): one undo step, the page changed.
@@ -1262,6 +1366,8 @@ StyleDesigner.definePart('overrides', function (K) {
         addVariantFor: addVariantFor,
         placeVariant: placeVariant,
         placeVariantRow: placeVariantRow,
+        renameVariant: renameVariant,
+        nameDone: nameDone,
         nameWhy: nameWhy,
         variantDone: variantDone,
         variantGuard: variantGuard,

@@ -1,0 +1,15 @@
+{
+ "id": "story-offer",
+ "width": 1080,
+ "height": 1920,
+ "background": "#ff6b6b",
+ "layers": [
+  {"type": "text", "text": "startStoryOfferSmall", "font": "g:Bebas Neue", "size": 90, "weight": 400, "color": "#ffffff", "align": "center", "x": 540, "y": 180, "maxW": 960, "spacing": 0.1},
+  {"type": "ellipse", "x": 110, "y": 330, "w": 860, "h": 860, "color": "#ffffff", "fill": "none", "stroke": 8},
+  {"type": "slot", "x": 140, "y": 360, "w": 800, "h": 800, "radius": 400},
+  {"type": "text", "text": "startStoryOfferHead", "font": "g:Anton", "size": 110, "weight": 400, "color": "#ffffff", "align": "center", "x": 540, "y": 1260, "maxW": 960},
+  {"type": "text", "text": "startStoryOfferLine", "font": "g:Montserrat", "size": 40, "weight": 600, "color": "#ffe3e3", "align": "center", "x": 540, "y": 1430, "maxW": 960},
+  {"type": "rect", "x": 290, "y": 1620, "w": 500, "h": 120, "color": "#ffffff", "radius": 60},
+  {"type": "text", "text": "startStoryOfferOrder", "font": "g:Montserrat", "size": 44, "weight": 700, "color": "#e03131", "align": "center", "x": 540, "y": 1653, "maxW": 460}
+ ]
+}

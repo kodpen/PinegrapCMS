@@ -20,6 +20,7 @@ module: connections_screen
 ## What stays in Site Settings?
 - The MCP servers row: the servers, tools, refresh, off/on, remove, Connect on the row, and servers added by their address (their Connection settings stay in the drawer).
 - The card and Add a server say "The ready-made connectors are added, and their address and sign-in kept, on their pages in Connections." with Open in Connections (`ws_mcp_connections_line_html('')`, `#connections-group-mcp`); Add a server has no catalogue tiles there (the old Workspace Settings path, form null, keeps them).
+- The line opens in the same tab; a connector's page is led to with `from=workspace_assistants/pgset-ws-mcp`, and its sign-in returns to MCP servers (`connections-return-to-card.md`, #11862).
 - A connector's server drawer has its tools and "Its address and sign-in are on its page in Connections." with Manage in Connections instead of Connection settings (`ws_mcp_catalogue_entry_for_url()`).
 
 ## What did the registry change?

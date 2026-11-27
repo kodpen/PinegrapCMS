@@ -11627,6 +11627,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             blank: { width: BLANK_IMAGE_SIZE, height: BLANK_IMAGE_SIZE, background: '#ffffff' },
             save: { mode: 'new', folderId: folderId, name: L.new_image_name },
             send: canvasSend(),
+            // The New image dialog's "Open a design file" writes a canvas a
+            // page before the editor closes: the folder shows them now.
+            onCreated: function () {
+                if (folderId !== state.folderId) { exitAllFiles(folderId); } else { reload(); }
+            },
             onSave: function (result) {
 
                 var response = result.file || {};
@@ -15011,7 +15016,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // A .csv or .tsv is drawn as a sheet in Quick Look, only looked at; the
     // file window keeps opening it in the text editor, where it is changed.
     var OFFICE_SHEET_TYPES = ['csv', 'tsv'];
-    var OFFICE_STRINGS = <?php echo encode_json(pg_office_view_strings()); ?>;
+    var OFFICE_STRINGS = <?php echo encode_json(pg_office_view_strings() + pg_office_format_view_strings()); ?>;
 
     function isOfficeType(type) {
         return OFFICE_TYPES.indexOf(String(type || '').toLowerCase()) !== -1;

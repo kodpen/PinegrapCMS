@@ -19,6 +19,8 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     exit;
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/connections_screen.php');
+
 // ── Search Engine Optimization ──
 // The IndexNow key is typed on IndexNow's page of Connections; this card
 // shows its state and leads there.
@@ -84,7 +86,7 @@ $pg_settings_cards[] = '
                                                 <div class="form-text mt-0">' . h($indexnow_connected
                                                     ? lang('Search engines that support IndexNow are told when the sitemap.xml file changes. Its key is kept on IndexNow\'s page of Connections.')
                                                     : lang('With an IndexNow key, search engines that support IndexNow are told when the sitemap.xml file changes. The key is set on IndexNow\'s page of Connections.')) . '</div>
-                                                <a class="pg-button pg-button-quiet pg-button-sm" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/connections.php?service=indexnow">' . h($indexnow_connected ? lang('Manage in Connections') : lang('Connect in Connections')) . '</a>
+                                                <a class="pg-button pg-button-quiet pg-button-sm" href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . pg_connections_lead_url('indexnow', 'seo', 'pgset-seo')) . '">' . h($indexnow_connected ? lang('Manage in Connections') : lang('Connect in Connections')) . '</a>
                                             </div>
                                         </div>
                                     </div>

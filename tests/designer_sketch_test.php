@@ -59,7 +59,9 @@ function designer_sketch_test_node($script)
 		. designer_sketch_test_js('function _sdSketchClean(')
 		. designer_sketch_test_js('function _sdSketchBodyH(')
 		. designer_sketch_test_js('function _sdSketchNearSide(')
-		. designer_sketch_test_js('function _sdSketchRect(');
+		. designer_sketch_test_js('function _sdSketchRect(')
+		. designer_sketch_test_js('function _sdSketchAddRect(')
+		. designer_sketch_test_js('function _sdSketchSize(');
 	$file = tempnam(sys_get_temp_dir(), 'pgsk') . '.js';
 	file_put_contents($file, "var window = {}; var document = {};\n" . $core . "\nfunction _sdT(text) { return text; }\nvar _sdProto = { view: { x: 0, y: 0, k: 1 } };\n" . $parts . "\n" . $script);
 	$lines = array();
@@ -190,6 +192,26 @@ function test_designer_sketch_details_wiring()
 	pg_assert_same(array('assets/js/pg_sketch_details.js', 'assets/js/style_designer_sketchdetails.js'), $bundles[$parts['sketchdetails']], 'its pure values, then the window');
 }
 
+// "Sketch it" (the empty page's start) with no sketch page yet makes one to
+// draw in; "New page" and a start zoom to the frame, so a page taller than
+// the view still shows its head; the zoom's crumb follows a rename; the
+// Design canvas under the view takes no focus.
+function test_designer_sketch_start_new_page()
+{
+	$start = designer_sketch_test_js('function _sdSketchStart(');
+	$new = designer_sketch_test_js('function _sdSketchNewPage(');
+
+	pg_assert_contains("if (!first) { _sdSketchNewPage(); return; }", $start, 'no sketch page: a new one');
+	pg_assert_contains('_sdProto.afterDraw = { seq: _sdProto.seq, run: _sdSketchStart };', $start, 'a view just opened waits for its map');
+	pg_assert_contains('if (after && after.seq === _sdProto.seq) after.run();', designer_sketch_test_js('function _sdProtoDraw('), 'the drawing of that load runs it');
+	pg_assert_contains('if (item) _sdProtoZoomTo(item.id);', $start, 'a start zooms to its first page');
+	pg_assert_contains('_sdProtoZoomTo(item.id);', $new, 'New page zooms to the frame, Esc goes back');
+	pg_assert_same(false, strpos($new, 'view.reveal('), 'not centred whole when taller than the view');
+	pg_assert_contains('_sdProtoZoomShow();', designer_sketch_test_js('function _sdSketchMount('), 'a renamed page renames the zoom\'s crumb');
+	pg_assert_contains('_sdProtoInert(true);', designer_sketch_test_js('function _sdProtoOpen('), 'what the view lies over is out of Tab\'s reach');
+	pg_assert_contains('_sdProtoInert(false);', designer_sketch_test_js('function _sdProtoClose('), 'and back on close');
+}
+
 // A box's rectangle: a move lines it up with another box and stays inside
 // the frame, a resize from the left stops at the frame's edge, a drawing
 // goes either way, the zoom scales the drag.
@@ -205,6 +227,8 @@ out.move = _sdSketchRect(ev, { kind: 'skmove', page: page, box: mine, start: { x
 out.right = _sdSketchRect(ev, { kind: 'skmove', page: page, box: mine, start: { x: 300, y: 300, w: 100, h: 60 } }, 500, 0);
 out.west = _sdSketchRect(ev, { kind: 'skresize', side: 'w', page: page, box: mine, start: { x: 300, y: 300, w: 100, h: 60 } }, -400, 0);
 out.draw = _sdSketchRect(ev, { kind: 'skdraw', page: page, local: { x: 200, y: 400 } }, -100, -50);
+out.from = _sdSketchRect(ev, { kind: 'skdraw', page: page, local: { x: 17, y: 163 } }, 140, 115);
+out.edge = _sdSketchRect(ev, { kind: 'skdraw', page: page, local: { x: 243, y: 37 } }, 100, 60);
 _sdProto.view.k = 2;
 out.zoomed = _sdSketchRect(ev, { kind: 'skmove', page: page, box: mine, start: { x: 300, y: 300, w: 100, h: 60 } }, 32, 0);
 console.log(JSON.stringify(out));
@@ -220,6 +244,8 @@ JS
 	pg_assert_same(380, $result['right']['x'], 'kept inside the frame\'s width');
 	pg_assert_same(array(0, 400), array($result['west']['x'], $result['west']['w']), 'a left side stops at the frame');
 	pg_assert_same(array(104, 352, 96, 48), array($result['draw']['x'], $result['draw']['y'], $result['draw']['w'], $result['draw']['h']), 'drawn up and to the left, on the grid');
+	pg_assert_same(array(16, 160, 144, 120), array($result['from']['x'], $result['from']['y'], $result['from']['w'], $result['from']['h']), 'the corner pressed lines up on the grid too');
+	pg_assert_same(array(240, 40), array($result['edge']['x'], $result['edge']['y']), 'the corner pressed lines up with a near box');
 	pg_assert_same(320, $result['zoomed']['x'], 'a drag on a zoomed map moves the box by the map\'s units');
 }
 
@@ -337,4 +363,71 @@ function test_designer_sketch_feel()
 	pg_assert_contains('}, SD_SKETCH.rest);', $soon, 'after the rest');
 	pg_assert_contains('if (_sdProto.sk.soon) { clearTimeout(_sdProto.sk.soon); _sdProto.sk.soon = 0; }', $mount, 'a full draw makes the waiting one needless');
 	pg_assert_contains('.sd-sketch-box.sd-sketch-on { z-index: 1;', $css, 'the selected box and its handles over the others');
+}
+
+// A box added by the keyboard (B, "Add a box"): as wide as the page, 96
+// units high, 16 under the lowest box, at the top of an empty page.
+function test_designer_sketch_add_rect()
+{
+	$result = designer_sketch_test_node(<<<'JS'
+var out = {};
+out.empty = _sdSketchAddRect({ boxes: [] });
+out.under = _sdSketchAddRect({ boxes: [{ x: 0, y: 300, w: 100, h: 60 }, { x: 200, y: 40, w: 200, h: 400 }, { x: 40, y: 0, w: 80, h: 24 }] });
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('x' => 0, 'y' => 0, 'w' => 480, 'h' => 96), $result['empty'], 'at the top of an empty page, as wide as the page');
+	pg_assert_same(array('x' => 0, 'y' => 456, 'w' => 480, 'h' => 96), $result['under'], '16 under the lowest box');
+}
+
+// A box sized by the keyboard (Alt and an arrow): its right or bottom edge
+// moves, never under 24 by 24, never past the page's width.
+function test_designer_sketch_size()
+{
+	$result = designer_sketch_test_node(<<<'JS'
+var out = {};
+var b = { x: 100, y: 40, w: 200, h: 96 };
+out.wider = _sdSketchSize(b, 8, 0);
+out.lower = _sdSketchSize(b, 0, 32);
+out.past = _sdSketchSize(b, 400, 0);
+out.small = _sdSketchSize({ x: 0, y: 0, w: 32, h: 30 }, -32, -32);
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('w' => 208, 'h' => 96), $result['wider'], 'the right edge by 8');
+	pg_assert_same(array('w' => 200, 'h' => 128), $result['lower'], 'the bottom edge by 32');
+	pg_assert_same(array('w' => 380, 'h' => 96), $result['past'], 'never past the page\'s width');
+	pg_assert_same(array('w' => 24, 'h' => 24), $result['small'], 'never under 24 by 24');
+}
+
+// The keys and rows that make a box without a pointer, the empty page's
+// line and the links panel's sentence for a sketch page.
+function test_designer_sketch_keyboard_wiring()
+{
+	$key = designer_sketch_test_js('function _sdSketchKey(');
+	$more = designer_sketch_test_js('function _sdSketchMoreRows(');
+	$fill = designer_sketch_test_js('function _sdSketchFill(');
+	$list = designer_sketch_test_js('function _sdProtoListDraw(');
+	$palette = designer_sketch_test_js('function _getCpActionItems(');
+	$help = designer_sketch_test_js('function openShortcutsModal(');
+
+	pg_assert_contains("return _sdSketchAddBox(", $key, 'B adds a box');
+	pg_assert_contains('_sdSketchSize(b, ', $key, 'Alt and an arrow size a box');
+	pg_assert_contains("text: _sdT('Add a box'), key: 'B'", $more, 'the first row of More');
+	pg_assert_true(strpos($more, "_sdT('Add a box')") < strpos($more, "_sdT('Reference picture')"), 'before the picture rows');
+	pg_assert_contains("_sdT('Drag to draw a box, or press B')", $fill, 'the empty page\'s line');
+	pg_assert_contains("_sdT('A sketch page has no links until it is built.')", $list, 'the links panel\'s sentence');
+	pg_assert_contains("id: 'act_sketch_add_box'", $palette, 'a row of the command palette');
+	pg_assert_contains("_sdT('Add a box to the selected sketch page')", $help, 'B in the shortcuts help');
+	pg_assert_contains("_sdT('Size the selected sketch box by 8 / 32 units')", $help, 'Alt and the arrows in the shortcuts help');
 }

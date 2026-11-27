@@ -157,6 +157,58 @@ function erp_storefront_on_account($limit, $balance, $pending, $total)
 }
 
 /**
+ * What the account's orders put on it at checkout and not invoiced yet come
+ * to (kurus): the ledger holds an order only once it is invoiced.
+ *
+ * @param int $account_id
+ * @return int
+ */
+function erp_storefront_on_account_pending($account_id)
+{
+    return (int) db_value("SELECT COALESCE(SUM(total), 0) FROM orders
+        WHERE erp_on_account = 1
+          AND erp_account_id = '" . (int) $account_id . "'
+          AND erp_invoice_id = 0
+          AND status IN ('complete', 'exported')");
+}
+
+/**
+ * Weighs an order about to go on the account (erp_storefront_on_account())
+ * under the account's credit lock (erp_credit_lock()), with the limit, the
+ * balance and the pending orders read after the lock: figures read earlier
+ * miss an order another checkout put on the account meanwhile, and two
+ * orders that each fit alone would both pass. When the order is allowed the
+ * lock is kept, so the next checkout of the account waits until this order
+ * is written; the caller gives it back (erp_credit_unlock()) once it is,
+ * else the end of the request does.
+ *
+ * @param int $account_id
+ * @param int $total  This order's total (kurus)
+ * @return array  erp_storefront_on_account()'s answer, and busy (bool): the
+ *                lock was not got in time and nothing was weighed
+ */
+function erp_storefront_on_account_hold($account_id, $total)
+{
+    $account_id = (int) $account_id;
+
+    if (!erp_credit_lock($account_id)) {
+        return array('allowed' => false, 'available' => 0, 'after' => 0, 'busy' => true);
+    }
+
+    $row = db_item("SELECT credit_limit, balance FROM erp_accounts WHERE id = '" . $account_id . "' LIMIT 1");
+    $row = is_array($row) ? $row : array('credit_limit' => 0, 'balance' => 0);
+
+    $check = erp_storefront_on_account((int) $row['credit_limit'], (int) $row['balance'], erp_storefront_on_account_pending($account_id), (int) $total);
+    $check['busy'] = false;
+
+    if (!$check['allowed']) {
+        erp_credit_unlock($account_id);
+    }
+
+    return $check;
+}
+
+/**
  * The account's issued sales invoices and returns, newest first.
  *
  * Drafts and cancelled documents are never shown; a document without a

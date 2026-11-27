@@ -222,7 +222,9 @@ function erp_edoc_parasut_ok($result)
 
 /**
  * The server's own words for a refusal (JSON:API errors[].title / detail,
- * the OAuth error_description), or the transport error, or the code.
+ * the OAuth error_description), or the transport error, or the code. A
+ * refused integration permission (parasut_integration_permission_refused())
+ * gets the setting to change after Paraşüt's own text.
  *
  * @param array $result
  * @return string
@@ -237,6 +239,8 @@ function erp_edoc_parasut_error_text($result)
         return (string) $result['error'];
     }
 
+    $hint = (function_exists('parasut_integration_permission_refused') && parasut_integration_permission_refused($result))
+        ? ' ' . parasut_integration_permission_hint() : '';
     $body = is_array($result['body'] ?? null) ? $result['body'] : array();
     $said = array();
 
@@ -256,18 +260,18 @@ function erp_edoc_parasut_error_text($result)
     }
 
     if (!empty($said)) {
-        return implode(' | ', $said);
+        return implode(' | ', $said) . $hint;
     }
 
     if ((string) ($body['error_description'] ?? '') !== '') {
-        return (string) $body['error_description'];
+        return (string) $body['error_description'] . $hint;
     }
 
     if ((string) ($body['error'] ?? '') !== '') {
-        return (string) $body['error'];
+        return (string) $body['error'] . $hint;
     }
 
-    return 'HTTP ' . (int) ($result['http_code'] ?? 0);
+    return 'HTTP ' . (int) ($result['http_code'] ?? 0) . $hint;
 }
 
 /**
@@ -662,6 +666,10 @@ function erp_edoc_parasut_contact_attributes($party, $tax_number)
  * After that many pages without a match a card is opened, as for a buyer
  * Paraşüt does not know.
  *
+ * A card that is taken, linked or found, gets the fields it holds empty
+ * filled with the buyer's (erp_edoc_parasut_contact_taken()); a field it
+ * holds is never overwritten.
+ *
  * @param array $party       erp_edoc_invoice_party() output (+ provider_code)
  * @param string $tax_number Digits
  * @param array $context     For the log
@@ -681,7 +689,7 @@ function erp_edoc_parasut_contact_for($party, $tax_number, $context = array(), $
         }
 
         if (erp_edoc_parasut_ok($read) && erp_edoc_parasut_linked_contact_usable($read['body']['data'] ?? null, $linked, $tax_number)) {
-            return array('id' => $linked, 'error' => '');
+            return erp_edoc_parasut_contact_taken($linked, $read['body']['data']['attributes'] ?? null, $party, $tax_number, $context, $request);
         }
     }
 
@@ -738,7 +746,7 @@ function erp_edoc_parasut_contact_for($party, $tax_number, $context = array(), $
                 continue;
             }
 
-            return array('id' => $id, 'error' => '');
+            return erp_edoc_parasut_contact_taken($id, $attributes, $party, $tax_number, $context, $request);
         }
 
         if ($page >= max(1, (int) ($found['body']['meta']['total_pages'] ?? 1))) {
@@ -816,6 +824,116 @@ function erp_edoc_parasut_linked_contact_usable($contact, $id, $tax_number)
         && (preg_replace('/\D/', '', (string) ($attributes['tax_number'] ?? '')) === (string) $tax_number);
 }
 
+/**
+ * The fields of a buyer card Paraşüt already keeps that the buyer's details
+ * fill: those the card holds empty (missing, null or blank) and the buyer
+ * has. A field the card holds is never overwritten, even when the buyer's
+ * value differs, and the card's name, number and kind are never touched:
+ * they are what the card was taken by.
+ *
+ * @param mixed $card    attributes of the card as Paraşüt listed or read it
+ * @param array $wanted  attributes a new card for the buyer would be opened with
+ *                       (erp_edoc_parasut_contact_attributes(), or
+ *                       parasut_order_contact_attributes() for the order screen)
+ * @return array  attribute => the buyer's value; empty when there is nothing to fill
+ */
+function erp_edoc_parasut_contact_fill($card, $wanted)
+{
+    $card = is_array($card) ? $card : array();
+    $wanted = is_array($wanted) ? $wanted : array();
+    $fill = array();
+
+    foreach (array('email', 'phone', 'tax_office', 'address', 'district', 'city', 'postal_code') as $key) {
+        $have = $card[$key] ?? null;
+        $want = is_scalar($wanted[$key] ?? null) ? trim((string) $wanted[$key]) : '';
+
+        if (($want === '') || (is_scalar($have) && (trim((string) $have) !== ''))) {
+            continue;
+        }
+
+        $fill[$key] = $want;
+    }
+
+    return $fill;
+}
+
+/**
+ * Fills the empty fields of a buyer card that is taken
+ * (erp_edoc_parasut_contact_fill()) in one PUT contacts/{id}; nothing is sent
+ * when there is nothing to fill. The card goes back whole, every attribute
+ * it lets be written as it was read (erp_edoc_parasut_card_attributes()),
+ * with only the empty fields filled, so the change is the same whether
+ * Paraşüt replaces the attributes it is sent or merges them.
+ *
+ * @param string   $id       The card's id
+ * @param mixed    $card     attributes of the card as Paraşüt listed or read it
+ * @param array    $wanted   attributes a new card for the buyer would be opened with
+ * @param callable $request  function (string $method, string $path, array $body): the
+ *                           answer to the request under the company prefix
+ * @return array|null  The answer to the PUT; null when nothing was sent
+ */
+function erp_edoc_parasut_contact_fill_send($id, $card, $wanted, $request)
+{
+    $fill = erp_edoc_parasut_contact_fill($card, $wanted);
+
+    if (empty($fill)) {
+        return null;
+    }
+
+    $attributes = array_merge(erp_edoc_parasut_card_attributes(array(), is_array($card) ? $card : array()), $fill);
+
+    return call_user_func($request, 'PUT', '/contacts/' . rawurlencode((string) $id), array('data' => array(
+        'id' => (string) $id,
+        'type' => 'contacts',
+        'attributes' => $attributes,
+    )));
+}
+
+/**
+ * Whether the answer to a buyer card's fill (erp_edoc_parasut_contact_fill_send())
+ * stops the send: the login failed, or Paraşüt refused the user (a 401 with
+ * the renewed token, a 403). Many such answers can get the API client
+ * switched off, so no request follows. Any other refusal leaves the card as
+ * it is, and the document goes on it as it went before the fill.
+ *
+ * @param array|null $result
+ * @return bool
+ */
+function erp_edoc_parasut_contact_fill_stops($result)
+{
+    if (!is_array($result)) {
+        return false;
+    }
+
+    return ((string) ($result['login_error'] ?? '') !== '') || in_array((int) ($result['http_code'] ?? 0), array(401, 403), true);
+}
+
+/**
+ * The card the driver takes for the buyer, its empty fields filled first
+ * (erp_edoc_parasut_contact_fill_send()) with the details a new card would
+ * be opened with.
+ *
+ * @param string   $id          The card's id
+ * @param mixed    $card        attributes of the card as Paraşüt listed or read it
+ * @param array    $party       erp_edoc_invoice_party() output
+ * @param string   $tax_number  Digits
+ * @param array    $context     For the log
+ * @param callable $request     erp_edoc_parasut_request() or a stand-in
+ * @return array ['id' => string, 'error' => string]
+ */
+function erp_edoc_parasut_contact_taken($id, $card, $party, $tax_number, $context, $request)
+{
+    $put = erp_edoc_parasut_contact_fill_send($id, $card, erp_edoc_parasut_contact_attributes($party, $tax_number), function ($method, $path, $body) use ($request, $context) {
+        return call_user_func($request, $method, $path, $body, $context);
+    });
+
+    if (erp_edoc_parasut_contact_fill_stops($put)) {
+        return array('id' => '', 'error' => lang(array('string' => 'Paraşüt would not fill the empty fields of the buyer card: {var:1}', 'vars' => array(erp_edoc_parasut_error_text($put)))));
+    }
+
+    return array('id' => (string) $id, 'error' => '');
+}
+
 /* ---------------------------------------------------------------------------
    The sales invoice
    --------------------------------------------------------------------------- */
@@ -829,7 +947,10 @@ function erp_edoc_parasut_linked_contact_usable($contact, $id, $tax_number)
  * product whose card Paraşüt did not open is refused, not put on the
  * default (erp_edoc_parasut_line_product_pick()).
  *
- * @param array $line       An erp_invoice_items row
+ * A card opened here takes the line's VAT rate, not the catalogue's: the
+ * line is what the sale charged. A card already kept stays as it is.
+ *
+ * @param array $line       An erp_invoice_items row (product_id, tax_rate)
  * @param int   $taken_out  Units of the line's product the invoice's sale already took out
  *                          of Pinegrap's count (parasut_invoice_stock_taken()): a card
  *                          opened now starts from the stock before the invoice
@@ -847,7 +968,7 @@ function erp_edoc_parasut_line_product($line, $taken_out = 0)
             return array('id' => '', 'error' => (string) $token['error']);
         }
 
-        $sync = parasut_sync_product($product_id, (string) $token['token'], $taken_out);
+        $sync = parasut_sync_product($product_id, (string) $token['token'], $taken_out, $line['tax_rate'] ?? null);
     }
 
     return erp_edoc_parasut_line_product_pick($line, $sync, defined('PARASUT_DEFAULT_PRODUCT_ID') ? (string) PARASUT_DEFAULT_PRODUCT_ID : '');
@@ -3234,20 +3355,41 @@ function erp_edoc_parasut_cancellable($invoice)
 }
 
 /**
- * The invoice on Paraşüt's own screen, for the operator.
+ * The invoice on Paraşüt's own screen, for the operator, in the environment
+ * the requests go to.
  *
  * @param string $external_id
  * @return string
  */
 function erp_edoc_parasut_panel_url($external_id)
 {
-    $company = defined('PARASUT_COMPANY_ID') ? trim((string) PARASUT_COMPANY_ID) : '';
+    $company = defined('PARASUT_COMPANY_ID') ? (string) PARASUT_COMPANY_ID : '';
 
-    if (($company === '') || (trim((string) $external_id) === '')) {
+    return erp_edoc_parasut_panel_address($company, $external_id, _parasut_api_environment());
+}
+
+/**
+ * The address of a sales invoice on Paraşüt's screen:
+ * uygulama.parasut.com for live, uygulama-staging.parasut.com for staging.
+ * Empty without a company or a record. Pure.
+ *
+ * @param string $company      Paraşüt company number
+ * @param string $external_id  Paraşüt sales invoice id
+ * @param string $environment  'live' | 'staging'
+ * @return string
+ */
+function erp_edoc_parasut_panel_address($company, $external_id, $environment)
+{
+    $company = trim((string) $company);
+    $external_id = trim((string) $external_id);
+
+    if (($company === '') || ($external_id === '')) {
         return '';
     }
 
-    return 'https://uygulama.parasut.com/' . rawurlencode($company) . '/satislar/' . rawurlencode((string) $external_id);
+    $host = ($environment === 'staging') ? 'https://uygulama-staging.parasut.com' : 'https://uygulama.parasut.com';
+
+    return $host . '/' . rawurlencode($company) . '/satislar/' . rawurlencode($external_id);
 }
 
 /**

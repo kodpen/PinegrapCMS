@@ -145,10 +145,13 @@ StyleDesigner.definePart('tour', function (K) {
         return M.read(raw);
     }
 
+    // Writes the state; false when the browser refused it (storage full,
+    // writes blocked), as nothing then remembers it at the next visit.
     function save(state) {
         var k = storageKey();
-        if (!k) return;
-        try { window.localStorage.setItem(k, M.write(state)); } catch (e) { /* kept for this visit only */ }
+        if (!k) return false;
+        try { window.localStorage.setItem(k, M.write(state)); } catch (e) { return false; }
+        return true;
     }
 
     function reduced() {
@@ -159,14 +162,34 @@ StyleDesigner.definePart('tour', function (K) {
         return window.innerWidth < PHONE;
     }
 
-    // Whether the control `sel` is on the screen now: drawn, with a size,
-    // and inside the window.
-    function has(sel) {
+    // The control `sel` as a person sees it: { el, box, scroll } (the model's
+    // visible()), null when it is not drawn or has no size. Its ancestors
+    // that cut what overflows them (a panel, its scrolling list) cut it too.
+    function sight(sel) {
         var el = document.querySelector(sel);
-        if (!el || !el.getClientRects().length) return false;
+        if (!el || !el.getClientRects().length) return null;
         var r = el.getBoundingClientRect();
-        return r.width > 0 && r.height > 0 && r.right > 0 && r.bottom > 0 &&
-            r.left < window.innerWidth && r.top < window.innerHeight;
+        if (!(r.width > 0 && r.height > 0)) return null;
+        var clips = [];
+        for (var p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+            var cs = window.getComputedStyle(p);
+            var ox = cs.overflowX, oy = cs.overflowY;
+            if (ox === 'visible' && oy === 'visible') continue;
+            var pr = p.getBoundingClientRect();
+            clips.push({
+                left: pr.left, top: pr.top, right: pr.right, bottom: pr.bottom,
+                scroll: /auto|scroll/.test(ox + ' ' + oy)
+            });
+        }
+        var v = M.visible({ left: r.left, top: r.top, right: r.right, bottom: r.bottom }, clips, window.innerWidth, window.innerHeight);
+        return { el: el, box: v.box, scroll: v.scroll };
+    }
+
+    // Whether the control `sel` is on the screen now, or below the fold of
+    // a list a scroll brings it in from.
+    function has(sel) {
+        var v = sight(sel);
+        return !!(v && (v.box || v.scroll));
     }
 
     function own(el) {
@@ -192,8 +215,25 @@ StyleDesigner.definePart('tour', function (K) {
         return !/^(button|submit|reset|checkbox|radio|range|color|file|image)$/i.test(a.type || '');
     }
 
+    // A menu is open (the Preview menu, a button whose list is open). A
+    // listbox is not one: many stay drawn in the panels.
+    function menuOpen() {
+        var list = document.querySelectorAll('[aria-haspopup][aria-expanded="true"], [role="menu"]:not([hidden])');
+        for (var i = 0; i < list.length; i++) {
+            if (!own(list[i]) && list[i].getClientRects().length) return true;
+        }
+        return false;
+    }
+
     function busy() {
         return { dialog: dialogOpen(), typing: typingIn(document) || typingIn(K.canvasDoc), dragging: S.held };
+    }
+
+    // Escape is the tour's only when no dialog, menu or typed field takes it.
+    function escapeIsOurs() {
+        var b = busy();
+        b.menu = menuOpen();
+        return M.escapes(b);
     }
 
     // While the card waits: a held pointer or a drag counts as dragging.
@@ -248,8 +288,9 @@ StyleDesigner.definePart('tour', function (K) {
         var state = load();
         if (M.offer(state, access(), busy())) {
             holdWatch(false);
-            save(M.offered(state));
-            showCard();
+            // A browser that keeps nothing would bring the card back at
+            // every visit: without the state kept, no card.
+            if (save(M.offered(state))) showCard();
             return;
         }
         // Offered or seen in another tab meanwhile: nothing to wait for.
@@ -290,7 +331,7 @@ StyleDesigner.definePart('tour', function (K) {
     }
 
     function onCardKey(e) {
-        if (e.key === 'Escape' && !dialogOpen()) closeCard();
+        if (e.key === 'Escape' && escapeIsOurs()) closeCard();
     }
 
     function onCardResize() {
@@ -339,6 +380,7 @@ StyleDesigner.definePart('tour', function (K) {
         if (!at) { if (!how) finish(); return false; }
         var t = S.tour = {
             list: list, at: at, back: back, hidden: false, timer: 0, key: '', how: how, docs: [],
+            sig: '', wait: -1, scrolled: -1,
             ring: document.createElement('div'), bubble: document.createElement('div')
         };
         t.ring.className = 'sd-tour-ring' + (reduced() ? '' : ' is-gliding');
@@ -383,6 +425,10 @@ StyleDesigner.definePart('tour', function (K) {
             : (String(el.tagName).toLowerCase() === 'iframe' && el.contentDocument === doc);
         if (!inside) return;
         var i = t.at.i;
+        // Until goSoon() moves on, follow() leaves the pressed pointer in
+        // place though its control went away (the press opened something
+        // over it).
+        t.wait = i;
         setTimeout(function () { if (S.tour === t && t.at.i === i) goSoon(t); }, PRESS_MS);
     }
 
@@ -391,13 +437,16 @@ StyleDesigner.definePart('tour', function (K) {
     // looked for a few times before it is skipped.
     function goSoon(t) {
         var tries = 0;
+        var i = t.at.i;
         (function look() {
-            if (S.tour !== t) return;
-            var next = t.list[t.at.i + 1];
+            // Moved on meanwhile (Next, Back): this press is answered.
+            if (S.tour !== t || t.at.i !== i) { if (t.wait === i) t.wait = -1; return; }
+            var next = t.list[i + 1];
             if (next && !M.anchor(next, has) && tries++ < WAIT_TRIES) {
                 setTimeout(look, PRESS_MS);
                 return;
             }
+            t.wait = -1;
             go(1);
         })();
     }
@@ -419,7 +468,7 @@ StyleDesigner.definePart('tour', function (K) {
     }
 
     function onTourKey(e) {
-        if (e.key === 'Escape' && S.tour && !dialogOpen()) finish();
+        if (e.key === 'Escape' && S.tour && escapeIsOurs()) finish();
     }
 
     function go(dir) {
@@ -431,6 +480,7 @@ StyleDesigner.definePart('tour', function (K) {
             return;
         }
         t.at = to;
+        t.wait = -1;
         draw(true);
     }
 
@@ -465,6 +515,7 @@ StyleDesigner.definePart('tour', function (K) {
         var t = S.tour;
         var how = t.how;
         var shown = M.shown(t.list, has);
+        t.sig = signature(shown);
         var place = 0;
         shown.forEach(function (s, n) { if (s.i === t.at.i) place = n; });
         var total = shown.length || 1;
@@ -521,11 +572,29 @@ StyleDesigner.definePart('tour', function (K) {
             t.key = '';
         }
         if (wait) return;
-        // The control went away: its stop's other control, else the next stop.
+        // The control went away: its stop's other control, else the next
+        // stop; a pressed pointer's control waits for goSoon().
         var sel = M.anchor(t.list[t.at.i], has);
-        if (!sel) { go(1); return; }
+        if (!sel) {
+            if (t.wait !== t.at.i) go(1);
+            return;
+        }
         if (sel !== t.at.anchor) t.at = { i: t.at.i, id: t.at.id, anchor: sel };
-        var r = document.querySelector(sel).getBoundingClientRect();
+        // Another stop came or went (a narrower window, a panel closed):
+        // the count, the dots, Back and Done are drawn again.
+        if (!t.how && signature(M.shown(t.list, has)) !== t.sig) { draw(false); return; }
+        var v = sight(sel);
+        // Below the fold of its list, or cut by it: scrolled into view once
+        // per stop, then the part in sight is ringed.
+        if (v.scroll && t.scrolled !== t.at.i) {
+            t.scrolled = t.at.i;
+            try { v.el.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch (e) { v.el.scrollIntoView(false); }
+            v = sight(sel) || v;
+        }
+        if (!v.box) return;
+        var r = v.box;
+        r.width = r.right - r.left;
+        r.height = r.bottom - r.top;
         var W = window.innerWidth, H = window.innerHeight;
         var key = [r.left, r.top, r.width, r.height, W, H].map(Math.round).join(',');
         if (key === t.key) return;
@@ -604,6 +673,11 @@ StyleDesigner.definePart('tour', function (K) {
         bs.width = bw + 'px';
         bs.left = Math.round(left) + 'px';
         bs.top = Math.round(top) + 'px';
+    }
+
+    // The stops on the screen, as their places in the list.
+    function signature(shown) {
+        return shown.map(function (s) { return s.i; }).join(',');
     }
 
     function clamp(v, lo, hi) {

@@ -203,6 +203,80 @@ function test_canvas_bands_scale_and_nearest_step()
 	pg_assert_same('5', $res[5]['step'], 'above the scale is its top');
 }
 
+// A side with no spacing, or less than a handle, keeps its inner handle a
+// handle's thickness inside the frame, so the outer and inner pills never
+// overlap (#11921): at 50 % a 4 px padding is 2 screen px.
+function test_canvas_bands_inner_handle_clears_the_outer()
+{
+	$res = canvas_bands_test_node('var b = { left: 100, top: 100, right: 300, bottom: 200 };'
+		. ' var L = C.layout(b, { top: 0, right: 0, bottom: 0, left: 0 }, { top: 4, right: 4, bottom: 4, left: 30 }, 0.5, false);'
+		. ' out = { t: L.inner[0].handle, e: L.inner[1].handle, b: L.inner[2].handle, s: L.inner[3].handle, ot: L.outer[0].handle };');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(106, $res['t']['y'], 'top: one handle inside, not at the 2 px edge');
+	pg_assert_false($res['t']['faint'], 'still drawn as set');
+	pg_assert_same(294, $res['e']['x'], 'end: one handle inside');
+	pg_assert_same(194, $res['b']['y'], 'bottom: one handle inside');
+	pg_assert_same(115, $res['s']['x'], 'a wider padding keeps its band edge');
+	pg_assert_same(100, $res['ot']['y'], 'the outer handle stays on the frame');
+}
+
+// A change starts where the band shows it: a scale step when the value is
+// one, an automatic margin as 'auto', any other value as '' (#11921).
+function test_canvas_bands_start_step()
+{
+	$res = canvas_bands_test_node('var sc = C.scale(16); out = [C.startStep(24, sc, false), C.startStep(186, sc, true), C.startStep(12, sc, false), C.startStep(24.3, sc, false), C.startStep(-4, sc, false)];');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array('step' => '4', 'px' => 24), $res[0], 'on the scale');
+	pg_assert_same(array('step' => 'auto', 'px' => 186), $res[1], 'automatic');
+	pg_assert_same(array('step' => '', 'px' => 12), $res[2], 'off the scale');
+	pg_assert_same('4', $res[3]['step'], 'rounding is still the step');
+	pg_assert_same(array('step' => '0', 'px' => 0), $res[4], 'below 0 is 0');
+}
+
+// A drag from an automatic margin of 186 px keeps 'auto' until a scale step
+// is nearer; outwards it stays (#11921).
+function test_canvas_bands_nearest_step_from_auto()
+{
+	$res = canvas_bands_test_node('var sc = C.scale(16), a = { step: "auto", px: 186 };'
+		. ' out = [C.nearestStep(186, sc, a), C.nearestStep(240, sc, a), C.nearestStep(126, sc, a), C.nearestStep(110, sc, a), C.nearestStep(117, sc, { step: "4", px: 24 })];');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array('step' => 'auto', 'px' => 186), $res[0], 'at the start');
+	pg_assert_same('auto', $res[1]['step'], 'outwards it stays');
+	pg_assert_same('auto', $res[2]['step'], '60 px in it stays');
+	pg_assert_same(array('step' => '5', 'px' => 48), $res[3], 'nearer to 48 it takes step 5');
+	pg_assert_same('5', $res[4]['step'], 'a scale step as the start adds nothing');
+}
+
+// The arrows from a start off the scale go to the next scale step that way;
+// none that way keeps it (#11921).
+function test_canvas_bands_key_step_from()
+{
+	$res = canvas_bands_test_node('var sc = C.scale(16), a = { step: "auto", px: 186 }, o = { step: "", px: 12 };'
+		. ' out = [C.keyStepFrom(a, -1, sc), C.keyStepFrom(a, 1, sc), C.keyStepFrom(o, 1, sc), C.keyStepFrom(o, -1, sc), C.keyStepFrom({ step: "3", px: 16 }, 1, sc)];');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array('step' => '5', 'px' => 48), $res[0], 'inwards from auto: step 5');
+	pg_assert_same(array('step' => 'auto', 'px' => 186), $res[1], 'outwards from auto: stays');
+	pg_assert_same(array('step' => '3', 'px' => 16), $res[2], '12 up: 16');
+	pg_assert_same(array('step' => '2', 'px' => 8), $res[3], '12 down: 8');
+	pg_assert_same(array('step' => '4', 'px' => 24), $res[4], 'a scale step steps as before');
+}
+
 // The bands are a part of their own: the modules first, the part last; the
 // core only asks it to draw or hide, handing it a host.
 function test_canvas_bands_are_a_part()
@@ -222,6 +296,22 @@ function test_canvas_bands_are_a_part()
 	pg_assert_contains("_sdPartCall('bands', 'draw', [_sdBandsHost(node)])", $core, 'the core draws through the part');
 	pg_assert_contains("_sdPartLoad('spacing').then(", $core, 'after the Spacing box\'s part, which brings PGSpacingBox');
 	pg_assert_contains("_sdPartApis.bands.hide()", $core, 'and hides it once loaded');
+}
+
+// The part may run before the Spacing box's part (the Side by side mirrors
+// load it at start): it reads PGSpacingBox when a change writes, never once
+// in its factory, and the mirrors' first-use line asks the part 'tour',
+// which brings PGDesignerTour, not 'bands' (#11921).
+function test_canvas_bands_read_the_spacing_box_late()
+{
+	$part = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_bands.js');
+	pg_assert_false(strpos($part, 'var B = window.PGSpacingBox') !== false, 'not taken once in the factory');
+	pg_assert_false((bool) preg_match('/\\bB\\.(read|sides|write)\\(/', $part), 'no use of a captured B');
+	pg_assert_contains('window.PGSpacingBox', $part, 'read where it is used');
+
+	$core = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	pg_assert_false(strpos($core, "tour: function () { return _sdPartLoad('bands'); }") !== false, 'the mirrors do not load the bands for the tour');
+	pg_assert_contains("tour: function () { return _sdPartCall('tour', 'model', []); }", $core, 'they ask the tour part');
 }
 
 // The drawing's row (G3): 626 px wide at 36, gutter 12 px; its twelve
@@ -346,4 +436,35 @@ function test_canvas_bands_column_handle_and_gaps_in_the_part()
 	pg_assert_contains('node.props[size] = ', $fn, 'the column control\'s width for the size');
 	pg_assert_contains('host.col = _sdBandsCol(node);', $core, 'handed with the bands\' host');
 	pg_assert_contains('host.siblings = ', $core, 'the siblings for the equal gaps');
+}
+
+// A drag whose release the handle did not hear (the button let go outside
+// the window, a capture lost) ends: the next move without the main button
+// held writes as a release, a lost capture puts the value back. Before,
+// the drag went on following the pointer with no button held and every
+// handle refused the next drag (S.live stayed set).
+function test_canvas_bands_drag_ends_without_its_release()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_bands.js');
+
+	pg_assert_true(strpos($js, 'function _bdLetGo(ev) {') !== false, 'a move with the main button no longer held is told');
+	pg_assert_true(strpos($js, "return typeof ev.buttons === 'number' && !(ev.buttons & 1);") !== false, 'from the buttons held');
+	pg_assert_same(2, substr_count($js, "if (_bdLetGo(ev)) { up({ type: 'pointerup' }); return; }"), 'the spacing and the column handle end as a release');
+	pg_assert_same(2, substr_count($js, "h.addEventListener('lostpointercapture', up);"), 'both end on a lost capture');
+	pg_assert_same(2, substr_count($js, "h.removeEventListener('lostpointercapture', up);"), 'and drop that listener with the others');
+}
+
+// A panel docked or a column resized moves a canvas of a fixed width
+// without resizing its window, so no canvas draw follows: the bands and
+// the layout lines follow the canvas area's size themselves while shown,
+// and drop the observer with their other listeners.
+function test_canvas_bands_and_lines_follow_the_area_size()
+{
+	$bands = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_bands.js');
+	$guides = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_guides.js');
+
+	pg_assert_true(strpos($bands, 'S.ro = new ResizeObserver(_bdAreaScroll);') !== false && strpos($bands, 'S.ro.observe(area);') !== false, 'the bands observe the area');
+	pg_assert_same(2, substr_count($bands, 'if (S.ro) { S.ro.disconnect(); S.ro = null; }'), 'and let it go with the area or on hide');
+	pg_assert_true(strpos($guides, 'L.ro = new ResizeObserver(linesSoon);') !== false && strpos($guides, 'L.ro.observe(area);') !== false, 'the lines observe the area');
+	pg_assert_true(strpos($guides, 'if (L.ro) { L.ro.disconnect(); L.ro = null; }') !== false, 'and let it go when they end');
 }

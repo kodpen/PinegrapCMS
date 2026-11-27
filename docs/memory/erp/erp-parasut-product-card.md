@@ -4,13 +4,13 @@ description: The Paraşüt product card of a Pinegrap product (parasut_sync_prod
 ---
 
 ## Who opens a product card?
-- `parasut_sync_product($product_id, $token, $taken_out)` (includes/fn/parasut.php), once per product: the id is kept in `products.parasut_product_id` and later calls return it without a request.
+- `parasut_sync_product($product_id, $token, $taken_out)` (includes/fn/parasut.php, the legacy client: its `POST products` is not written to `erp_edoc_log`), once per product: the id is kept in `products.parasut_product_id` and later calls return it without a request.
 - Callers: the ERP driver's `erp_edoc_parasut_line_product()` (an invoice line with a product, also the legacy Create Invoice's lines) and E-Shipment (`parasut_create_shipment()`, a tracked line without an id; reads `error`).
 - A card Paraşüt does not open refuses the invoice; the default product/service takes only lines without a product (erp-parasut-product-card-not-opened.md). A kept card Paraşüt no longer holds is forgotten and opened again (erp-parasut-stale-kept-ids.md).
 
 ## What does the create send? (#1517)
-- `POST products` with `parasut_product_attributes()`: `name` (short description, else the product name), `list_price` (`price` / 100, two decimals), `currency`, `vat_rate` (`tax_rate`; none → 0, a card has no "zone decides"), `inventory_tracking` (`products.inventory`), and for a tracked product `initial_stock_count`: the stock before the document (erp-parasut-product-card-opening-stock.md).
-- Before #1517 the price went as `unit_price`. A create with it on 2026-10-24 came back without `list_price`; cards the old code opened earlier do show one, so Paraşüt may have read `unit_price` once. `product_type` went too; v4 products have no such attribute.
+- `POST products` with `parasut_product_attributes()`: `name` (short description, else the product name), `list_price` (`price` / 100, two decimals), `currency`, `vat_rate` (the invoice line's rate, else `tax_rate`; none → 0, a card has no "zone decides": erp-parasut-product-card-not-opened.md), `inventory_tracking` (`products.inventory`), and for a tracked product `initial_stock_count`: the stock before the document (erp-parasut-product-card-opening-stock.md).
+- Before #1517 the price went as `unit_price` (a create with it on 2026-10-24 came back without `list_price`) with `product_type`, which v4 products do not have.
 
 ## Which currency is the price in? (#1631)
 - The store's base currency (`BASE_CURRENCY_CODE`, the one `price` is held in) in Paraşüt's code: `parasut_currency_code()`, TRY/TL → TRL, USD, EUR, GBP as they are. Paraşüt's swagger takes only these four for documents; a card's `currency` has no enum.
@@ -25,10 +25,7 @@ description: The Paraşüt product card of a Pinegrap product (parasut_sync_prod
 - `parasut_sync_product()` on dev product 43 (79.95, tracked, 9986 in stock): one request (POST products); the card read `list_price` "79.95", `currency` "TRL", `stock_count` "9986.0", `has_stock_movements` false; the config warehouse id stayed empty. The card takes `list_price` without `code` or `unit`.
 - Card deleted (204), product 43's id cleared, demo products equal to the baseline.
 - A tracked product with 0 in stock opens too: dev product 45 (`inventory` 1, `inventory_quantity` 0) got card 1079494466, read back with `inventory_tracking` true (the same day, the driver's resend after a stale card: erp-parasut-stale-kept-ids.md).
-- #1631's currency: unit tests only (demo key expired 2026-10-25); a card in EUR, USD or GBP, or without `currency`, never ran live.
-
-## What if Paraşüt no longer holds a kept card?
-- It is forgotten on every product holding it and the create sent once more: erp-parasut-stale-kept-ids.md.
+- #1631's currency on staging (2026-11-27): a TRY store's card shows TRL on Paraşüt's screen. A card in EUR, USD or GBP, or without `currency`, never ran live.
 
 ## Tests
 - `tests/parasut_product_test.php`: the attributes (tracked, untracked, below zero) and, from the source, no `stock_updates`, warehouse lookup, `unit_price` or `product_type` in `parasut_sync_product()`.

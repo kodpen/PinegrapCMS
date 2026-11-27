@@ -348,7 +348,24 @@ StyleDesigner.definePart('spacing', function (K) {
             var y0 = e.clientY, moved = false, shown = from;
             var was = btn.textContent;
             try { btn.setPointerCapture(e.pointerId); } catch (err) { /* an old browser keeps the plain click */ }
+            // Ends the drag; `write` on a release. Only a release heard on
+            // the button is followed by its click, which a drag swallows:
+            // after a cancel, or a release the button did not hear, the
+            // next click opens the field again.
+            var end = function (ev, write, clicks) {
+                btn.removeEventListener('pointermove', move);
+                btn.removeEventListener('pointerup', up);
+                btn.removeEventListener('pointercancel', up);
+                btn.removeEventListener('lostpointercapture', up);
+                if (!moved) return;
+                btn._spbDragged = clicks;
+                btn.classList.remove('is-drag');
+                if (!write || shown === from) { btn.textContent = was; return; }
+                _spbCommit(host, btn, shown, e.shiftKey || ev.shiftKey, e.altKey || ev.altKey);
+            };
             var move = function (ev) {
+                // The main button let go where the button did not hear it.
+                if (typeof ev.buttons === 'number' && !(ev.buttons & 1)) { end(ev, true, false); return; }
                 var dy = y0 - ev.clientY;
                 if (!moved && Math.abs(dy) < 4) return;
                 moved = true;
@@ -357,18 +374,12 @@ StyleDesigner.definePart('spacing', function (K) {
                 btn.textContent = _spbText(shown, kind);
             };
             var up = function (ev) {
-                btn.removeEventListener('pointermove', move);
-                btn.removeEventListener('pointerup', up);
-                btn.removeEventListener('pointercancel', up);
-                if (!moved) return;
-                btn._spbDragged = true;
-                btn.classList.remove('is-drag');
-                if (ev.type === 'pointercancel' || shown === from) { btn.textContent = was; return; }
-                _spbCommit(host, btn, shown, e.shiftKey || ev.shiftKey, e.altKey || ev.altKey);
+                end(ev, ev.type === 'pointerup', ev.type === 'pointerup');
             };
             btn.addEventListener('pointermove', move);
             btn.addEventListener('pointerup', up);
             btn.addEventListener('pointercancel', up);
+            btn.addEventListener('lostpointercapture', up);
         });
     }
 
@@ -708,7 +719,9 @@ StyleDesigner.definePart('spacing', function (K) {
         if (!box || !nodes.length) return;
         var reads = nodes.map(function (n) { return Z.hideOn(_cssOf(n)); });
         var names = [['phone', _sdT('Phone')], ['tablet', _sdT('Tablet')], ['desktop', _sdT('Desktop')]];
-        box.className = 'sd-sp-row';
+        // Three written segments are wider than the control beside the
+        // label (162 px) in English and Turkish: the group stands under it.
+        box.className = 'sd-sp-row sd-row-stack';
         box.innerHTML = '<span class="sd-sp-label">' + esc(_sdT('Hide on')) + '</span>' +
             '<div class="sd-seg-grp" role="group" aria-label="' + esc(_sdT('Hide on')) + '">' +
             names.map(function (g) {

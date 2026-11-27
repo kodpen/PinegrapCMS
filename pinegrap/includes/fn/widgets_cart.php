@@ -795,15 +795,16 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
     // create one. Like the legacy cart, the first real write does
     // (cart_action.php, add_to_cart.php); every signed-out open, bots
     // included, used to leave an empty incomplete order behind.
-    if (function_exists('initialize_order') && !empty($_SESSION['ecommerce']['order_id'])) initialize_order();
-    if (function_exists('check_inventory') && $_pg_cart_form_lf) {
-        check_inventory($_pg_cart_form_lf);
-    }
-    if (function_exists('update_order_item_prices')) update_order_item_prices();
+    // A background render (the designer's Preview) reads the order as it
+    // stands: the session's order is the operator's own cart there.
+    $_pg_cart_write = pg_preview_as_may_write();
+    if ($_pg_cart_write && function_exists('initialize_order') && !empty($_SESSION['ecommerce']['order_id'])) initialize_order();
+    if ($_pg_cart_write && function_exists('check_inventory') && $_pg_cart_form_lf) check_inventory($_pg_cart_form_lf);
+    if ($_pg_cart_write && function_exists('update_order_item_prices')) update_order_item_prices();
     // Capture offers result so the cart widget can render upsell banners
     // (e.g. "Spend ₺X more, get free shipping") and an applied-offers
     // summary. Same data shape express_order uses.
-    $_pg_cart_offers = function_exists('apply_offers_to_cart') ? apply_offers_to_cart() : array();
+    $_pg_cart_offers = ($_pg_cart_write && function_exists('apply_offers_to_cart')) ? apply_offers_to_cart() : array();
     if (!is_array($_pg_cart_offers)) $_pg_cart_offers = array();
 
     // ── Decode + split widget tree ────────────────────────────────────────
@@ -3005,11 +3006,16 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
         unset($_SESSION['ecommerce']['shopping_cart_page_id']);
     }
 
+    // A background render (the designer's Preview) writes nothing: the
+    // settings it draws are the editor's unsaved ones and the session's
+    // order is the operator's own cart.
+    $_eo_write = pg_preview_as_may_write();
+
     // Auto-provision an express_order_pages row for this page if missing.
     // Without it the legacy handler runs OK but error messages reference an
     // empty `$shopping_cart_label` / `$special_offer_code_label`. A tiny
     // INSERT IGNORE keeps the rest of the system happy.
-    if ($_eo_page_id > 0) {
+    if ($_eo_page_id > 0 && $_eo_write) {
         // Compute offline_payment_always_allowed default from the global
         // toggle. Without this, picking "Çevrimdışı Ödeme" from the radio
         // list hits the "Seçilen ödeme yöntemi mevcut değil" guard in
@@ -3102,14 +3108,14 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
     // Only an order already in the session is brought up to date; viewing
     // the page creates none (see the shopping cart widget above). Without
     // an order the cart is empty and the widget shows its empty message.
-    if (function_exists('initialize_order') && !empty($_SESSION['ecommerce']['order_id'])) initialize_order();
-    if (function_exists('check_inventory') && $_eo_lf) check_inventory($_eo_lf);
-    if (function_exists('update_order_item_prices')) update_order_item_prices();
+    if ($_eo_write && function_exists('initialize_order') && !empty($_SESSION['ecommerce']['order_id'])) initialize_order();
+    if ($_eo_write && function_exists('check_inventory') && $_eo_lf) check_inventory($_eo_lf);
+    if ($_eo_write && function_exists('update_order_item_prices')) update_order_item_prices();
     // Capture the offer-processing result so the upsell/applied bindings
     // below can render Bootstrap alerts. apply_offers_to_cart() returns
     // ['pending_offers' => [...], 'upsell_offers' => [...]] — see
     // get_express_order.php:111-114 for the canonical contract.
-    $_eo_offers = function_exists('apply_offers_to_cart') ? apply_offers_to_cart() : array();
+    $_eo_offers = ($_eo_write && function_exists('apply_offers_to_cart')) ? apply_offers_to_cart() : array();
     // The KVKK notice page and consent sentence ('' while not set or the
     // checkout documents are off), for the flags of the KVKK lines.
     $_eo_kvkk = pg_legal_kvkk_settings();
@@ -3174,7 +3180,7 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
             $_eo_same = (string)$_eo_lf->get_field_value('billing_same_as_shipping');
         }
     }
-    pg_express_order_tax_pass($order_id, $_eo_ship_tos, $_eo_tax_fields, $_eo_same);
+    if ($_eo_write) pg_express_order_tax_pass($order_id, $_eo_ship_tos, $_eo_tax_fields, $_eo_same);
 
     // ── Load cart items + per-recipient totals ───────────────────────────────
     // Phase-1 simplified: collapse to a single flat list. Phase-2 will split

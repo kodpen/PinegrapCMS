@@ -204,6 +204,19 @@ function test_document_reader_plain_text()
 	pg_assert_same(array(1, 2, 2), array_values(array_filter(array_column($paragraphs, 'level'))), 'the first is the title');
 	pg_assert_same('We use stone mills and slow fermentation for all of our bread.', $paragraphs[3]['text'], 'a broken line joined');
 
+	// A block's short first line is its heading when the next line does
+	// not continue it, as a text copied with no blank line under its
+	// headings is written; a short line inside a block is not.
+	$tight = document_reader_test_node('out = R.paragraphs(' . json_encode(
+		"Calm Studio\n\nBreathe and slow down.\n\nAbout us\nWe opened in 2019 with one room.\n\nPrices\nSingle class: 15 EUR\nTen class card\nMonthly card: 89 EUR",
+		JSON_UNESCAPED_UNICODE
+	) . ');');
+
+	pg_assert_same(array('heading', 'paragraph', 'heading', 'paragraph', 'heading', 'paragraph', 'paragraph', 'paragraph'), array_column($tight, 'style'), 'a heading straight over its block');
+	pg_assert_same(array('Calm Studio', 'About us', 'Prices'), array_values(array_column(array_filter($tight, function ($p) {
+		return $p['style'] === 'heading';
+	}), 'text')), 'only the blocks\' first lines');
+
 	$long = str_repeat('Words that go on. ', 120);
 	$result = document_reader_test_read(array(
 		array('text' => 'A line before any heading.'),

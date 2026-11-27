@@ -1,12 +1,12 @@
 ---
 name: designer-sketch-drawing
-description: The drawing of the Sketch tool's later steps (plans/designer-sketch.md, SK4 to SK7): the three sheets, where each part is described, and which board belongs to which step
+description: The drawing of the Sketch tool's later steps (SK4 to SK7, `sketch-overview.md`): the three sheets, where each part is described, and which board belongs to which step
 ---
 
 ## Where is the drawing?
 - `designer/designer-sketch-drawing/`: `build.html` (part A), `details.html` (part B) and `ai-and-picture.html` (part C), each with a `-dark.jpg` and a `-light.jpg` picture; the sheets share `drawing.css` on top of `ui/look-sheet/sheet.css`.
 - The designer's frame is drawn as it is today, dark in both pictures; only the sheet around it follows the theme.
-- Sample pages, names and counts are examples; the labels are the steps'. Where the plan and a sheet differ the sheet wins (`workflow/architect-draws-new-part.md`).
+- Sample pages, names and counts are examples; the labels are the steps'. Where the plan and a sheet differed the sheet won (`workflow/architect-draws-new-part.md`).
 - Part A: `designer-sketch-drawing-build.md` (the two actions, the "More" menu, the palette, the built page), `designer-sketch-drawing-check.md` (the unsure boxes: the chip's mark and the one list at the build) and `designer-sketch-drawing-build-again.md` (the "Build again" question, what goes wrong, narrow).
 - Part B: `designer-sketch-drawing-details.md`. Part C: `designer-sketch-drawing-ai.md` (the two AI actions) and `designer-sketch-drawing-picture.md` (the reference picture and "Read the picture").
 

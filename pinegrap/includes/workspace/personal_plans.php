@@ -709,6 +709,7 @@ function ws_personal_plans_place($days, $plans, $reader = 0, $names = array())
                 'kind'        => 'personal',
                 'title'       => (string) $plan['title'],
                 'time'        => ((int) $plan['all_day'] === 1) ? '' : date('H:i', max((int) $plan['starts_at'], $day_start)),
+                'until'       => ws_calendar_until($plan, $day_end),
                 'scope'       => 'people',
                 'people'      => array(),
                 'meeting_url' => '',

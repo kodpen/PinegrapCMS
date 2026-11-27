@@ -240,6 +240,11 @@
     var COLORS = [['#ffffff', 'colorWhite'], ['#1a1c1e', 'colorBlack'], ['#e53935', 'colorRed'], ['#fb8c00', 'colorOrange'],
         ['#fdd835', 'colorYellow'], ['#43a047', 'colorGreen'], ['#1e88e5', 'colorBlue'], ['#8e24aa', 'colorPurple']];
 
+    // Rows a part puts before the shared swatches (the site colours of
+    // pg_image_editor_colors.js): each is called with the chosen colour and
+    // pick, and answers an element or null.
+    var swatchRows = [];
+
     // A panel section of colour swatches; value is the chosen colour.
     // pick(color, live): live is true while the colour input moves (one undo
     // step), false for a swatch or the input's change. opts.custom (default
@@ -270,7 +275,17 @@
             row.appendChild(input);
         }
 
-        return section(label, row);
+        var sec = section(label, row);
+
+        swatchRows.forEach(function (make) {
+            var extra = make(now, pick);
+
+            if (extra) {
+                sec.insertBefore(extra, row);
+            }
+        });
+
+        return sec;
     }
 
     function panelTheme() {
@@ -2447,7 +2462,7 @@
         // For the tool files: the editor and the helpers they build with.
         parts: {
             Editor: Editor, M: M, SVGNS: SVGNS, icons: ICONS, config: config, find: find, t: t, el: el, icon: icon,
-            section: section, tile: tile, decimal: decimal, pct: pct, shapeRadius: shapeRadius, button: button, colors: COLORS, swatches: swatches
+            section: section, tile: tile, decimal: decimal, pct: pct, shapeRadius: shapeRadius, button: button, colors: COLORS, swatches: swatches, swatchRows: swatchRows
         }
     };
 }());

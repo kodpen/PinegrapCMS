@@ -6,12 +6,13 @@ description: The Paraşüt card the order screen's buttons put an order on: the 
 ## Which card does an order go on?
 - `parasut_sync_contact()`, called by both buttons: the id the order holds (`orders.parasut_contact_id`); else `parasut_order_contact_for()`: the card Paraşüt holds for the buyer's VKN/TCKN, else a new card. Either id is stored on the order.
 - A held id Paraşüt no longer has: erp-parasut-stale-kept-ids.md.
-- Before #1543 every order opened a card of its own, so a repeat buyer collected one card per order.
+- Before #1543 every order opened a card of its own.
 
 ## When is a card looked up, and how? (#1543)
 - Only for a number that passes GİB's check digits (`parasut_order_contact_search_number()`, `erp_edoc_tax_number_valid()`), as digits. Not for an empty field, the final consumer's `11111111111`, a mistyped number, or a placeholder that fails the check (`00000000000`, `2222222222`, `12345678901`).
 - A real VKN/TCKN always passes. A placeholder that passes too (`1234567890`, `4444444444`) is looked up like a real number, but strangers type it too, so a card is taken only when it is the buyer's (next answer). The invoice carries no buyer details of its own: another buyer's card would put the e-Arşiv in their name and mail it to them.
-- As the ERP's driver looks (erp-parasut-final-consumer-card.md): `GET contacts?filter[tax_number]=N&sort=-id`, 25 a page, until a card is taken, at most `ERP_EDOC_PARASUT_FIND_PAGES` (20). The first card not archived, carrying exactly the number (digits compared) and the order's name and e-mail (`parasut_order_contact_card_is_buyers()`, case and outer spaces aside, as the driver's final-consumer match) is taken as it is: nothing is PUT, even when the address differs. A repeat buyer with a new name or e-mail gets a new card.
+- As the ERP's driver looks (erp-parasut-final-consumer-card.md): `GET contacts?filter[tax_number]=N&sort=-id`, 25 a page, until a card is taken, at most `ERP_EDOC_PARASUT_FIND_PAGES` (20).
+- The first card not archived, carrying exactly the number (digits compared) and the order's name and e-mail (`parasut_order_contact_card_is_buyers()`, case and outer spaces aside, as the driver's final-consumer match) is taken, its empty fields filled (below). A repeat buyer with a new name or e-mail gets a new card.
 - 404 or no such card: a card is opened. Any other answer refuses ("Paraşüt would not search its contacts: …"); nothing is opened, the order keeps no id, the press can be repeated.
 - The driver's `erp_edoc_parasut_contact_for()` is not called: it opens a missing card with the ERP account's details and logs each call to `erp_edoc_log`.
 
@@ -22,8 +23,11 @@ description: The Paraşüt card the order screen's buttons put an order on: the 
 ## Which buyers still get a card per order?
 - No number, the final consumer, a number that fails the check. The ERP's driver takes a final-consumer card only when name, address and e-mail match (#1405); the legacy buttons do not look.
 
+## Should a reused card be brought up to date?
+- Rule (#2441, the driver and both legacy buttons): only its empty fields are filled; a value it has is never overwritten. Built in #12013: erp-parasut-buyer-card-fill.md.
+
 ## How was it checked live? (demo company, 2026-10-24)
-- Branch code, dev orders 438 and 439, `parasut_tc_in_field` custom_field_1 = 10000000146. The number held only an archived card, which the search does not list (200, `total_pages` 0). Order 438's sync opened card A; E-Shipment on order 439 stored card A without opening one (unarchived contacts 14 → 14: the 13 before the run plus card A), then stopped at "no stock-tracked items". Order 438 without a number, then with 11111111111, each opened a card of its own. Cards deleted, dev values restored.
+- Two dev orders; the "TC/VKN field" held a valid number only an archived card carried (not listed). The first order's sync opened card A; E-Shipment on the second reused it, then stopped at "no stock-tracked items". Without a number, then with 11111111111, each sync opened a card of its own. Cleaned up.
 
 ## Tests
 - `tests/parasut_contact_reuse_test.php`: the number rule, reuse, archived and other numbers, another buyer's card under the number, later pages, page cap, 404, a failed search, no number, a refused create, the steps of `parasut_sync_contact()`.

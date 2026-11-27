@@ -11,7 +11,7 @@ description: Paraşüt's customer and supplier cards in ERP › Account sync (ac
 
 ## Which cards do the lists leave out? (live, 2026-10-20)
 - Archived cards: the list leaves them out, so a complete read showed an archived card as gone until #884. `filter[archived]=true` (documented for other lists only) lists them alone; they come in passive.
-- Unlisted cards (`untrackable`, fixed when a card is opened) are in no list and no `filter[tax_number]` search; `filter[untrackable]` is refused ("Acceptable: name, email, tax_number, tax_office, city, updated_at"). Only `GET contacts/{id}` reads one: the invoice path never lands on one; an account linked to one shows it as gone.
+- Unlisted cards (`untrackable`, fixed when a card is opened) are in no list and no `filter[tax_number]` search; `filter[untrackable]` is refused. Only `GET contacts/{id}` reads one: the invoice path never lands on one; an account linked to one shows it as gone.
 
 ## What does a Paraşüt card look like here?
 - `erp_edoc_parasut_card()`: one `name`; `contact_type` person|company; `tax_number` VKN or TCKN (letters kept: a mistyped number stays mistyped); `postal_code`; `account_type` customer|supplier (no "both"); `archived` = not active.
@@ -23,9 +23,9 @@ description: Paraşüt's customer and supplier cards in ERP › Account sync (ac
 - A short name that mirrored the name follows it; an account that is both goes as a customer; a Turkish number goes as digits. A new card is written with the fields that hold something; the ERP's `PG-<id>` code and e-Invoice answer are not Paraşüt fields.
 
 ## What happens to an invoice of a linked account?
-- `erp_edoc_parasut_contact_for()` reads the linked contact (one GET) and uses it only while it is not archived and still carries the buyer's number (`erp_edoc_parasut_linked_contact_usable()`); otherwise it searches by tax number.
+- `erp_edoc_parasut_contact_for()` reads the linked contact (one GET) and uses it only while it is not archived and still carries the buyer's number (`erp_edoc_parasut_linked_contact_usable()`); otherwise it searches by tax number. A reused card gets only its empty fields filled (#12013): erp-parasut-buyer-card-fill.md.
 - A poll links an account with no card yet to its invoice's contact (`erp_edoc_account_link_from_invoice()`, one more GET).
-- A card the invoice path opens (`erp_edoc_parasut_contact_attributes()`) carries the buyer's postal code (#742); live, it read back equal to its account.
+- A card the invoice path opens (`erp_edoc_parasut_contact_attributes()`) carries the buyer's postal code (#742).
 
 ## What did the live test show? (demo company, 2026-10-20)
 - Read: the VKN card linked itself to its account by tax number; the final-consumer card (11111111111) did not. PUT: a postal code, and Status → passive (`archived`), read back equal. POST: a person's account opened an equal card, as a customer.

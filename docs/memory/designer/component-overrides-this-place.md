@@ -9,7 +9,7 @@ module: component_overrides
 
 ## What does a row do?
 - Values live on the placing node, `props._place` (id => value), written by the part (`placeSet()` / `placeReset()`, one `saveState()` step, `render()`); Save sends the page.
-- An empty value, or one equal to the component's, resets the row. "Shown" stores only `false`. A link or picture that would run a script is refused (rose field, nothing kept).
+- An empty value, or one equal to the component's, resets the row. "Shown" stores only `false`. A link or picture that would run a script is refused (rose field and message, nothing kept); Escape gives the field back what it held and clears both (#11998).
 - A changed row has the panel's `.sd-chg-reset` dot with "Reset to the component"; the holder stops the click so the panel's own reset never runs for these rows. The section head is filled by the part (`_sdSectHeadExtras()`).
 
 ## What does the canvas do?

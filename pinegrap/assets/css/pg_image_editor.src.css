@@ -58,6 +58,8 @@
   --pgie-ink: var(--pg-primary-ink, #1565c0);
   --pgie-sel: #1e88e5;
   --pgie-danger: #c62828;
+  /* A page of a design file not read whole, the report line after it. */
+  --pgie-amber: #f9a825;
   --pgie-shadow: 0 10px 30px rgba(16, 24, 40, 0.16);
   position: relative;
   display: flex;
@@ -1096,6 +1098,22 @@
   opacity: 0;
 }
 
+/* The site colours row before the shared swatches (pg_image_editor_colors.js). */
+.pgie-site-colors {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pgie-site-lbl {
+  font-size: 12px;
+  color: var(--pgie-muted);
+}
+
+.pgie-swatches.pgie-site-swatches {
+  margin-bottom: 2px;
+}
+
 .pgie-range {
   width: 100%;
   margin: 0;
@@ -1488,6 +1506,127 @@
 
 .pgie .pgie-textweight {
   width: 100%;
+}
+
+/* -- Element sets (pg_image_editor_elements.js) -- */
+
+.pgie-elbox {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pgie-els {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.pgie .pgie-elb {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  padding: 6px;
+  border: 1px solid var(--pgie-line);
+  border-radius: 12px;
+  background: var(--pgie-hover);
+  color: inherit;
+  cursor: pointer;
+}
+
+.pgie .pgie-elb:hover {
+  border-color: var(--pgie-pline);
+}
+
+.pgie-elb svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* -- Text styles and font pairs (pg_image_editor_textstyles.js) -- */
+
+.pgie-tpresets {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pgie .pgie-tpreset {
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 12px;
+  border: 1px solid var(--pgie-line);
+  border-radius: 12px;
+  background: var(--pgie-surface);
+  color: var(--pgie-tx);
+  line-height: 1.15;
+  text-align: start;
+  cursor: pointer;
+}
+
+.pgie .pgie-tpreset:hover {
+  background: var(--pgie-hover);
+}
+
+.pgie .pgie-tpreset-heading {
+  font-size: 24px;
+  font-weight: 650;
+}
+
+.pgie .pgie-tpreset-subheading {
+  font-size: 17px;
+  font-weight: 550;
+}
+
+.pgie .pgie-tpreset-body {
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.pgie-tpairs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.pgie .pgie-tpair {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  min-height: 72px;
+  padding: 8px 6px;
+  border: 1px solid var(--pgie-line);
+  border-radius: 12px;
+  background: var(--pgie-surface);
+  color: var(--pgie-tx);
+  text-align: center;
+  cursor: pointer;
+}
+
+.pgie .pgie-tpair:hover {
+  background: var(--pgie-hover);
+}
+
+.pgie-tpair b,
+.pgie-tpair span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pgie-tpair b {
+  font-size: 17px;
+  line-height: 1.1;
+}
+
+.pgie-tpair span {
+  color: var(--pgie-muted);
+  font-size: 11px;
 }
 
 /* -- Stickers and frames (pg_image_editor_sticker.js) -- */
@@ -2135,6 +2274,352 @@
   }
 }
 
+/* The New image dialog's "Open a design file": a row under the sizes, how
+   the file is made under it (a refusal in the danger colour). */
+.pgie-door {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.pgie .pgie-doorbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pgie-confirm-box .pgie-doorhint,
+.pgie-confirm-box .pgie-dnote {
+  margin: 0;
+  color: var(--pgie-muted);
+  font-size: 12px;
+}
+
+.pgie-confirm-box .pgie-derror {
+  color: var(--pgie-danger);
+}
+
+/* -- Start from a design (pg_image_editor_starts.js) --
+   A row above the sizes: its head opens the purpose chips and the tiles,
+   three a row, two on a phone; the chips are one row that scrolls. A picked
+   design hides the sizes and backgrounds, which it brings itself. */
+.pgie-start {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pgie .pgie-starthead {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 12px 0 8px;
+  border: 1px solid var(--pgie-line);
+  border-radius: 9px;
+  background: var(--pgie-surface);
+  color: var(--pgie-tx);
+  cursor: pointer;
+}
+
+.pgie .pgie-starthead svg {
+  transform: rotate(-90deg);
+  transition: transform 0.15s ease;
+}
+
+.pgie .pgie-starthead.on svg {
+  transform: none;
+}
+
+.pgie-startbody {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pgie-startbody[hidden] {
+  display: none;
+}
+
+.pgie-sttiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  max-height: 360px;
+  overflow-y: auto;
+  padding: 2px;
+}
+
+.pgie-sttiles > .pgie-note {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.pgie .pgie-sttile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--pgie-line);
+  border-radius: 14px;
+  background: var(--pgie-surface);
+  color: var(--pgie-tx);
+  text-align: left;
+  cursor: pointer;
+}
+
+.pgie .pgie-sttile:hover {
+  background: var(--pgie-hover);
+}
+
+.pgie .pgie-sttile.on {
+  border-color: var(--pgie-pline);
+  background: var(--pgie-pw);
+}
+
+.pgie-stthumb {
+  display: block;
+  width: 100%;
+  height: 120px;
+  overflow: hidden;
+  border: 1px solid var(--pgie-line);
+  border-radius: 8px;
+  background: var(--pgie-surface);
+}
+
+.pgie-stthumb svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.pgie-stthumb.pgie-stblank {
+  border-style: dashed;
+}
+
+.pgie-sttile b {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pgie-stsize {
+  min-height: 1em;
+  color: var(--pgie-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pgie-newdesign .pgie-presets,
+.pgie-newdesign .pgie-wh,
+.pgie-newdesign .pgie-newbg {
+  display: none;
+}
+
+.pgie-stslot {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.pgie-stslot .pgie-note,
+.pgie .pgie-stfor {
+  margin: 0;
+}
+
+.pgie .pgie-stslot .pgie-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (max-width: 599.98px) {
+  .pgie-sttiles {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pgie .pgie-starthead svg {
+    transition: none;
+  }
+}
+
+/* -- Resize to other sizes (pg_image_editor_resize.js) --
+   Under the canvas size: the button, the sizes as tick rows, the custom
+   size's fields, Make, and the line saying what was made. */
+.pgie-resize {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 12px 0 0;
+}
+
+.pgie .pgie-resize-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pgie-resize-list {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+}
+
+.pgie-resize-list .pgie-check {
+  margin: 8px 0 0;
+}
+
+.pgie-resize-custom {
+  margin: 8px 0 0 24px;
+}
+
+.pgie-resize-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* The window "Open a design file": the pages as tiles that scroll, the foot
+   always in view; two tiles a row on a phone. */
+.pgie-confirm-box.pgie-designbox {
+  width: min(860px, calc(100% - 32px));
+  overflow: hidden;
+}
+
+.pgie-dtiles {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 2px;
+}
+
+.pgie .pgie-dtile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--pgie-line);
+  border-radius: 14px;
+  background: var(--pgie-surface);
+  color: var(--pgie-tx);
+  text-align: left;
+  cursor: pointer;
+}
+
+.pgie .pgie-dtile:hover {
+  background: var(--pgie-hover);
+}
+
+.pgie .pgie-dtile.on {
+  border-color: var(--pgie-pline);
+  background: var(--pgie-pw);
+}
+
+.pgie-dpic {
+  display: block;
+  aspect-ratio: 16 / 10;
+  border-radius: 8px;
+  background: var(--pgie-stage);
+  overflow: hidden;
+}
+
+.pgie-dthumb {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.pgie-dname {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pgie-dtick {
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--pgie-muted);
+  border-radius: 4px;
+}
+
+.pgie-dtile.on .pgie-dtick {
+  border-color: var(--pgie-sel);
+  background: var(--pgie-sel) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-7' fill='none' stroke='%23fff' stroke-width='2'/%3E%3C/svg%3E") center / 12px no-repeat;
+}
+
+.pgie-damber {
+  width: 10px;
+  height: 10px;
+  margin-left: auto;
+  border-radius: 50%;
+  background: var(--pgie-amber);
+}
+
+.pgie-dfoot {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--pgie-line);
+}
+
+.pgie-dcount {
+  font-weight: 650;
+}
+
+/* The line under the top bar after a design file is opened: the report,
+   Details opening the list under it. */
+.pgie-dreport {
+  flex: none;
+  padding: 6px 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--pgie-amber) 45%, transparent);
+  background: color-mix(in srgb, var(--pgie-amber) 14%, var(--pgie-surface));
+  color: var(--pgie-tx);
+  font-size: 13px;
+}
+
+.pgie-drow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pgie-dtext {
+  flex: 1;
+  min-width: 0;
+}
+
+.pgie-dlist {
+  margin: 6px 0 2px;
+  padding-left: 20px;
+}
+
+@media (max-width: 599.98px) {
+  .pgie-dtiles {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .pgie-drow {
+    flex-wrap: wrap;
+  }
+}
+
 /* Import in the top bar: its menu under the button, the Files box. */
 
 .pgie-importwrap {
@@ -2322,9 +2807,140 @@ a.pgie-langthumb:focus-visible {
     justify-self: start;
   }
 
-  .pgie-langrow > .pgie-btn {
+  .pgie-langrow > .pgie-langacts {
     grid-column: 3;
     grid-row: 1 / span 2;
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+/* A row's Draw and Correct by hand, side by side. */
+.pgie-langacts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.pgie-langfixed {
+  color: var(--pgie-ink);
+}
+
+/* -- The language view (pg_image_editor_langview.js) -- */
+
+/* The bar over the stage's top: the language, the line, the menu, Back
+   to automatic and Done; at the stage's foot where the panel is a sheet,
+   in the selection bar's place (hidden in the view, as is the context
+   menu's bar). */
+.pgie-lvbar {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--pgie-line);
+  border-radius: 10px;
+  background: var(--pgie-surface);
+  box-shadow: var(--pgie-shadow);
+}
+
+.pgie-lvname {
+  display: flex;
+  flex: 1 1 220px;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.pgie-lvmore {
+  position: relative;
+}
+
+.pgie-lvmenu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 4;
+  min-width: 220px;
+  padding: 4px;
+  border: 1px solid var(--pgie-line);
+  border-radius: 8px;
+  background: var(--pgie-surface);
+  box-shadow: var(--pgie-shadow);
+}
+
+.pgie-lvmenu[hidden] {
+  display: none;
+}
+
+.pgie-lvmenu a {
+  display: block;
+  padding: 8px 10px;
+  border-radius: 6px;
+  color: var(--pgie-tx);
+  text-decoration: none;
+}
+
+.pgie-lvmenu a:hover,
+.pgie-lvmenu a:focus-visible {
+  background: var(--pgie-hover);
+}
+
+.pgie-langview .pgie-actwrap,
+.pgie-langview .pgie-sh[data-h="n"],
+.pgie-langview .pgie-sh[data-h="s"],
+.pgie-langview .pgie-sh[data-h="rot"] {
+  display: none;
+}
+
+/* A corrected text's dot and a text past the picture's edge, drawn over
+   the stage for every text of the view. */
+.pgie-lvbox {
+  position: absolute;
+  transform-origin: 50% 50%;
+  pointer-events: none;
+}
+
+.pgie-lvbox.pgie-lvpast {
+  outline: 2px dashed var(--pg-warning);
+}
+
+.pgie-lvdot {
+  display: inline-block;
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-left: auto;
+  border-radius: 50%;
+  background: var(--pgie-primary);
+}
+
+.pgie-lvbox > .pgie-lvdot {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  margin: 0;
+  box-shadow: 0 0 0 2px var(--pgie-surface);
+}
+
+.pgie-lrow.pgie-lvlocked .pgie-lname {
+  opacity: 0.6;
+}
+
+@media (max-width: 767.98px), (max-height: 499.98px) {
+  .pgie-lvbar {
+    top: auto;
+    bottom: calc(var(--pgie-act-bottom, 0px) + 10px);
+  }
+
+  .pgie-lvmenu {
+    top: auto;
+    bottom: calc(100% + 4px);
   }
 }
 

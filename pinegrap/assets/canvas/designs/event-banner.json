@@ -1,0 +1,15 @@
+{
+ "id": "event-banner",
+ "width": 1920,
+ "height": 600,
+ "background": "#102a43",
+ "layers": [
+  {"type": "polygon", "x": 1500, "y": 80, "w": 440, "h": 440, "color": "#243b53"},
+  {"type": "polygon", "x": 1660, "y": 300, "w": 300, "h": 300, "color": "#334e68", "fill": "soft"},
+  {"type": "text", "text": "startEventWebSmall", "font": "g:Montserrat", "size": 36, "weight": 700, "color": "#4fd1c5", "align": "left", "x": 120, "y": 110, "maxW": 1300, "spacing": 0.2},
+  {"type": "text", "text": "startEventWebHead", "font": "g:DM Serif Display", "size": 96, "weight": 400, "color": "#ffffff", "align": "left", "x": 120, "y": 170, "maxW": 1300},
+  {"type": "text", "text": "startEventWebWhen", "font": "g:DM Sans", "size": 40, "weight": 400, "color": "#bcccdc", "align": "left", "x": 120, "y": 320, "maxW": 1300},
+  {"type": "rect", "x": 120, "y": 420, "w": 360, "h": 90, "color": "#4fd1c5", "radius": 45},
+  {"type": "text", "text": "startEventWebBook", "font": "g:DM Sans", "size": 34, "weight": 700, "color": "#102a43", "align": "center", "x": 300, "y": 445, "maxW": 320}
+ ]
+}

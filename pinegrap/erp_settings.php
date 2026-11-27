@@ -170,7 +170,7 @@ function erp_settings_placeholders_from_data($data, $prefix = '')
 // Where the seller's details are kept, named as plain text on the role 3
 // user's Seller Information card: that user has no Site Settings to link to.
 $organization_place = lang('Site Settings') . ' &rsaquo; ' . lang('General') . ' &rsaquo; ' . lang('Organization');
-$settings_place = lang('Site Settings') . ' &rsaquo; ' . lang('Accounting') . ' &rsaquo; ' . lang('ERP');
+$settings_place = lang('Site Settings') . ' &rsaquo; ' . lang('Accounting') . ' &rsaquo; ' . lang('Documents');
 $edoc_place = lang('Site Settings') . ' &rsaquo; ' . lang('Accounting') . ' &rsaquo; ' . lang('E-Invoice');
 
 // The names a template may use, grouped the way the data is nested. Kept next
@@ -382,7 +382,7 @@ if ($can_site_settings) {
     $output_seller = '
                         <p class="small mb-3">' . lang('The seller title, address, logo, tax number and tax office printed on the invoice are on the Organization card.') . '
                             ' . $organization_place . '</p>
-                        <p class="small mb-3">' . lang('The address the sale was made at is on the ERP card of the accounting settings.') . '
+                        <p class="small mb-3">' . lang('The address the sale was made at is on the Documents row of the accounting settings.') . '
                             ' . $settings_place . '</p>
                         <p class="small mb-0">' . lang('The e-document provider (Paraşüt, Logo İşbaşı) is picked on the E-Invoice card of the accounting settings; its credentials are on its page of Connections.') . '
                             ' . $edoc_place . '</p>';

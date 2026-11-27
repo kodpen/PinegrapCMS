@@ -65,6 +65,12 @@ StyleDesigner.definePart('sketchdetails', function (K) {
         return t[type] || t['public'];
     }
 
+    // The head's words beside the title: the page's name and whether it
+    // was built into a draft yet.
+    function _skdSub(page, name) {
+        return (page && page.built) ? _sdT('{var:1} · draft', name) : _sdT('{var:1} · sketch page, not built yet', name);
+    }
+
     function _skdError(e) {
         if (e.field === 'name') return _sdT('A page needs a name.');
         if (e.field === 'address') {
@@ -102,7 +108,7 @@ StyleDesigner.definePart('sketchdetails', function (K) {
         win.innerHTML =
             '<div class="sd-skd-head">' +
                 '<span class="sd-skd-title" id="sd-skd-title">' + esc(_sdT('Page details')) + '</span>' +
-                '<span class="sd-skd-sub">' + esc(_sdT('{var:1} · sketch page, not built yet', h.fallback)) + '</span>' +
+                '<span class="sd-skd-sub">' + esc(_skdSub(h.page, h.fallback)) + '</span>' +
                 '<button type="button" class="sd-skd-x" data-act="cancel" title="' + esc(_sdT('Close')) + '" aria-label="' + esc(_sdT('Close')) + '"><span class="bi bi-x-lg" aria-hidden="true"></span></button>' +
             '</div>' +
             '<div class="sd-skd-body">' +
@@ -364,5 +370,5 @@ StyleDesigner.definePart('sketchdetails', function (K) {
         }
     }
 
-    return { open: open, close: close };
+    return { open: open, close: close, pure: { sub: _skdSub } };
 });

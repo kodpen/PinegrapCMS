@@ -21,13 +21,13 @@ priority: 6
 - The PR writes `workflow/designer-use-round-<feature>.md`: what was used and at which sizes, what was found and fixed, what was left and why, what could not be run (an AI action without a key, Figma without a token).
 
 ## Which steps? (each S to M)
-- UR1 Design variables (`designer/design-variables-overview.md`): the start questions, the Variables tab, the Options chip, "Ask me again", Export and Import.
-- UR2 The New design window, its quick starts and the Figma and Canva starts (`designer/new-design-window.md`, `designer/designer-start-import.md`).
-- UR3 after SK6 has landed: the Prototype view as a drawing board (`designer/prototype-view.md`, `designer/prototype-sketch-tool.md`, `designer/sketch-page-details.md`, `designer/sketch-build.md`, `designer/sketch-build-again.md`, `designer/prototype-sketch-picture.md`).
-- UR4 The Options panel's parts added by the DO steps (`designer/designer-options-overview.md`), in a 240 px column too (`designer/designer-options-narrow.md`).
-- UR5 after CO5 has landed: a shared component's fields per place and its variants (`designer/component-overrides-fields.md`, `designer/component-overrides-this-place.md`).
+- UR1 Design variables (`designer/design-variables-overview.md`): the start questions, the Variables tab, the Options chip, "Ask me again", Export and Import. Done: #11835.
+- UR2 (done, #11839) The New design window, its quick starts and the Figma and Canva starts (`designer/new-design-window.md`, `designer/designer-start-import.md`).
+- UR3 Prototype view as a drawing board (`designer/prototype-view.md`, `designer/prototype-sketch-tool.md`, `designer/sketch-page-details.md`, `designer/sketch-build.md`, `designer/sketch-build-again.md`, `designer/prototype-sketch-picture.md`). Done: #11884.
+- UR4 The Options panel's parts added by the DO steps (`designer/designer-options-overview.md`), in a 240 px column too (`designer/designer-options-narrow.md`). Done (#11834).
+- UR5 A shared component's fields per place and its variants (`designer/component-overrides-fields.md`, `designer/component-overrides-this-place.md`). Done: #11853.
 - UR6 "Preview on a phone" (`designer/designer-phone-preview-rules.md`), the Activity tab (`designer/designer-activity.md`), "Compare with the live page" (`designer/designer-compare-look-tab.md`). Done: #11855.
-- UR7 My library (`designer/designer-my-library-overview.md`), a page from a document (`designer/document-to-page.md`), canvas guides (`designer/designer-canvas-guides-overview.md`), a picture's focus point (`designer/image-focus-overview.md`).
+- UR7 My library (`designer/designer-my-library-overview.md`), a page from a document (`designer/document-to-page.md`), canvas guides (`designer/designer-canvas-guides-overview.md`), a picture's focus point (`designer/image-focus-overview.md`). Done: #11856.
 - UR8 after CU3 has landed: "Clean up"; then the close-out: the round's files read as one, a fault that repeated across features written into `designer/` as a rule, this file deleted.
 
 ## Who gives it out, and how many at once?

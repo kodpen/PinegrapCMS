@@ -1,0 +1,14 @@
+{
+ "id": "sale-share",
+ "width": 1200,
+ "height": 630,
+ "background": "#2b8a3e",
+ "layers": [
+  {"type": "rect", "x": 40, "y": 40, "w": 1120, "h": 550, "color": "#ffffff", "fill": "none", "stroke": 4, "dash": "dashed", "radius": 24},
+  {"type": "text", "text": "startSaleCouponSmall", "font": "g:Montserrat", "size": 34, "weight": 700, "color": "#b2f2bb", "align": "center", "x": 600, "y": 100, "maxW": 1000, "spacing": 0.2},
+  {"type": "text", "text": "startSaleCouponHead", "font": "g:DM Serif Display", "size": 68, "weight": 400, "color": "#ffffff", "align": "center", "x": 600, "y": 170, "maxW": 1000},
+  {"type": "text", "text": "startSaleCouponLine", "font": "g:Montserrat", "size": 36, "weight": 400, "color": "#d3f9d8", "align": "center", "x": 600, "y": 290, "maxW": 1000},
+  {"type": "rect", "x": 400, "y": 390, "w": 400, "h": 100, "color": "#ffffff", "radius": 16},
+  {"type": "text", "text": "startSaleCouponCode", "font": "g:Montserrat", "size": 44, "weight": 700, "color": "#2b8a3e", "align": "center", "x": 600, "y": 414, "maxW": 360, "spacing": 0.1}
+ ]
+}

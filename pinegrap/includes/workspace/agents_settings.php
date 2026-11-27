@@ -36,14 +36,15 @@ function ws_agents_settings_apps()
  * @param array $source field => value
  * @return array kind, handle, name, role, app_id, provider, model, status,
  *               door_kind, door_url, base, wake_every, wake_note, key,
- *               key_clear, door_secret, door_secret_clear, token_limit
+ *               key_clear, door_secret, door_secret_clear, token_limit,
+ *               context_size
  */
 function ws_agents_settings_input($source)
 {
     $input = array();
 
     foreach (array('kind', 'handle', 'name', 'role', 'duty', 'app_id', 'provider', 'model', 'status', 'door_kind', 'door_url', 'base', 'wake_every', 'wake_note',
-        'key', 'key_clear', 'door_secret', 'door_secret_clear', 'token_limit') as $field) {
+        'key', 'key_clear', 'door_secret', 'door_secret_clear', 'token_limit', 'context_size') as $field) {
         $value = is_array($source) ? ($source[$field] ?? null) : null;
         $input[$field] = is_scalar($value) ? (string) $value : '';
     }
@@ -73,13 +74,15 @@ function ws_agents_settings_old_input($post)
 /**
  * Checks an agent's form before anything is written: the registry's rules
  * (ws_agent_save_check()), the secrets sealed, a model's key and its
- * monthly token limit. Administrators only.
+ * monthly token limit, an application agent's context window size.
+ * Administrators only.
  *
  * @param array $viewer
  * @param int   $id    0 for a new agent
  * @param array $input ws_agents_settings_input()
  * @return array ok, error (a sentence), field (the form's field), and what
- *               ws_agents_settings_write() needs: current, values, key, door, token_limit
+ *               ws_agents_settings_write() needs: current, values, key, door, token_limit,
+ *               context_size
  */
 function ws_agents_settings_check($viewer, $id, $input)
 {
@@ -172,7 +175,14 @@ function ws_agents_settings_check($viewer, $id, $input)
         return $fail($token_limit['error'], 'token_limit');
     }
 
-    return array('ok' => true, 'error' => '', 'field' => '', 'current' => $current, 'values' => $check['values'], 'key' => $key, 'door' => $door, 'token_limit' => $token_limit);
+    // The context window's size belongs to an application agent alone.
+    $context_size = ($check['values']['kind'] === 'app') ? ws_agent_context_size_check($input['context_size']) : null;
+
+    if ($context_size && !$context_size['ok']) {
+        return $fail($context_size['error'], 'context_size');
+    }
+
+    return array('ok' => true, 'error' => '', 'field' => '', 'current' => $current, 'values' => $check['values'], 'key' => $key, 'door' => $door, 'token_limit' => $token_limit, 'context_size' => $context_size);
 }
 
 /**
@@ -188,6 +198,10 @@ function ws_agents_settings_write($viewer, $checked)
 
     if ($checked['token_limit'] && ($saved_id > 0)) {
         ws_agent_token_limit_save($saved_id, $checked['token_limit']['value']);
+    }
+
+    if (!empty($checked['context_size']) && ($saved_id > 0)) {
+        ws_agent_context_size_save($saved_id, $checked['context_size']['value']);
     }
 
     log_activity(lang(array('string' => 'the agent @{var:1} was saved', 'vars' => $checked['values']['handle'])), $_SESSION['sessionusername'] ?? '');
@@ -390,6 +404,14 @@ function ws_agents_settings_form($self_url, $agent, $apps, $admin, $form = null)
         $push = $agent && ($agent['door_kind'] === 'push');
 
         $rows .= $field('app_id', lang('Application'), $select('app_id', $app_options, $agent ? $agent['app_id'] : 0), lang('The application it reads and writes through, with that application\'s permissions.'), $when_kind('app'));
+
+        // Typed by an administrator: a session cannot read its window's
+        // size; empty while not entered, then no ring is drawn.
+        if (ws_agent_context_size_ready()) {
+            $size = $agent ? (int) ($agent['context_size'] ?? 0) : 0;
+            $rows .= $field('context_size', lang('Context window (tokens)'), $input('context_size', ($size > 0) ? (string) $size : '', ' inputmode="numeric" maxlength="12" autocomplete="off" placeholder="250000"'),
+                lang('The size of the model\'s context window. The agent reports the tokens it uses; the ring on its card fills from this size. Empty: only the used tokens are shown.'), $when_kind('app'));
+        }
         $rows .= $doors($agent ? $agent['door_kind'] : 'poll', $when_kind('app'));
         // Shown while the address is a routine's (the script follows the typing).
         $routine = $agent && ws_claude_url_valid(trim((string) $agent['door_url']));
@@ -435,7 +457,7 @@ function ws_agents_settings_form($self_url, $agent, $apps, $admin, $form = null)
                 ? array('name' => $name('key_clear'), 'id' => $p . 'key-use-' . $provider_id, 'attrs' => $disabled)
                 : null;
             $rows .= '<div class="col-12' . (($shown && ($chosen === $provider_id)) ? '' : ' d-none') . '" data-ws-agent-when="provider=' . h($provider_id) . '">'
-                . pg_ai_connection_block_html($provider_id, ws_model_provider_name($provider_id), pg_ai_connection_ready($provider_id), $own) . '</div>';
+                . pg_ai_connection_block_html($provider_id, ws_model_provider_name($provider_id), pg_ai_connection_ready($provider_id), $own, 'pgset-ws-agents') . '</div>';
         }
 
         if ($own_key) {

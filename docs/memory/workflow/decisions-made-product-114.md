@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-114
-description: Decisions made, product part 114 (2026-11-26 on): the Artifact Canvas gets all ten kinds of ready content the census proposed, the basics first
+description: Decisions made, product part 114 (2026-11-26 on): all ten kinds of ready content for the Artifact Canvas, the basics first; a settings card and its Connections page hand over in one trip
 ---
 
 ## Where are the rules and the earlier parts?
@@ -15,4 +15,12 @@ description: Decisions made, product part 114 (2026-11-26 on): the Artifact Canv
 - All of it is own code and own content, or content whose licence allows it on every site; nothing is taken from Canva; ready content is read when its panel opens, never on the canvas's first load.
 - The steps and how each part is put together: `plans/artifact-canvas-content-steps.md`, `plans/artifact-canvas-content-screens.md`.
 
-Related: docs/memory/plans/artifact-canvas-content.md
+## How does a Site Settings card hand over to its Connections page and back? (owner, 2026-11-26, agent channel poll 232, message 14187)
+- Owner (2026-11-26, agent channel message 14113): "bazı ayarların bağlantılardan ayarlara ayarlardan bağlantılara kullanıcıyı yöndendirip durması kafamı karıştırdı."
+- What was found (the crossings census, #11829): nothing returns to the card after a Save; a first set-up of Backups to Google Drive takes seven hops; a third page (Google's or Microsoft's) sits in the middle of every account service; a choice made on the card is lost when its lead is followed; 28 pages only show a state.
+- Asked with three choices: one trip and a return by itself; never leaving the card (the key form in a window over it); only the ten worst paths repaired.
+- Owner: "Tek gidiş, kendiliğinden dönüş".
+- So: a card's button goes to the service's own page; everything missing is finished there; a Save or Connect that completes it brings the person back to the card they came from, their unsaved choice kept; a page that only shows a state is skipped from the list.
+- Where keys and switches sit stays as decided (`decisions-made-product-76.md`, `-77.md`, `-100.md`). The rule: `ui/settings-crossings-rule.md`.
+
+Related: docs/memory/plans/artifact-canvas-content.md, docs/memory/ui/settings-crossings-rule.md

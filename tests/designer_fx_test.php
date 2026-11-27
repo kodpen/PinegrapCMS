@@ -669,6 +669,36 @@ function test_designer_fx_panel()
 	pg_assert_contains("var _fxAttrs = _sdFxAttrs(node.props);", $js, 'canvas elements carry the attributes');
 }
 
+// Switching the effect keeps the Distance only where it means the same:
+// a slide's px between slides. Blur in reads it as the blur and Rotate in
+// as the angle (pg_fx.src.js), and Scale and the others draw no Distance
+// row, so a slide's 120 px must not become a 120 degree turn or a hidden
+// value.
+function test_designer_fx_switch_drops_a_distance_of_another_meaning()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$part = (string) @file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_interactions.js');
+	$twins = strpos($js, '    // The lists are first-is-default');
+	$twins_end = strpos($js, '    // The id, the title and tooltip, the interaction');
+	pg_assert_true($twins !== false && $twins_end !== false && $part !== '', 'the code is found');
+	$script = 'function esc(s) { return String(s); } function _sdT(s) { return s; }'
+		. substr($js, $twins, $twins_end - $twins)
+		. 'var factory = null; var StyleDesigner = { definePart: function (n, f) { if (n === "interactions") factory = f; } };'
+		. "\n" . $part . "\n"
+		. 'var set = factory({ esc: esc, _sdT: _sdT, _sdFxSpec: _sdFxSpec, _sdFxNormalize: _sdFxNormalize }).set;'
+		. 'var slide = { effect: "slide-up", trigger: "view", distance: 120 };'
+		. 'console.log(JSON.stringify([set(slide, "effect", "rotate-in").distance, set(slide, "effect", "blur-in").distance, set(slide, "effect", "scale").distance,'
+		. ' set(slide, "effect", "slide-left").distance, set({ effect: "blur-in", trigger: "view", distance: 20 }, "effect", "rotate-in").distance,'
+		. ' set(slide, "trigger", "hover").distance, set(slide, "effect", "rotate-in").trigger]));';
+	$got = _test_fx_node($script);
+
+	if ($got === null) {
+		return;
+	}
+
+	pg_assert_same(array(0, 0, 0, 120, 0, 120, 'view'), $got, 'the distance kept between slides and when only the trigger changes, the rest at the effect\'s own');
+}
+
 // A small fake document for pg_fx.src.js under Node: elements with
 // attributes, classes, inline style and a box (`rect`, drawn with the
 // shift and scale their transform holds, as a browser measures it), a

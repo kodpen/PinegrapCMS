@@ -8,6 +8,9 @@ module: designer
 - In the part `sketchbuild` (`designer/sketch-build.md`), on the draft found by the uid kept in its root.
 - `plan()`: a section is matched by its id (its first box's). Unchanged or edited with the same box: stays; changed, not edited: built again; edited and changed: stays unless its tick is on; new: added; gone: removed. Header and footer stay. Edited = the node's `nodeFp()` (no `_id`, `_expanded`) differs from the one kept at the build.
 - Asks (the question, blue tile, filled button, Design examples "Confirm with its effects, undone by History") only for a removal or a clash; "More" lists the clashes with "Build … again from the sketch". Enter builds, Escape cancels.
+- A section kept on the page keeps the fingerprint it was built with (`keptFp()`): edited in Design or by "Write the texts", it still counts as edited after "Build again", so its next box change asks. A rebuilt or new section takes its new fingerprint.
+- A section duplicated in Design carries its source's `_sketchId`: only the first counts as the section, a copy stays after it like a node added in Design (`arrange()`).
+- "Build again" is offered while the boxes differ from the sketch kept in the draft's root (`keptSig()`, `props._sketch.sig`), not only the browser's `page.built.sig`: an undo in Design of a build brings the older sketch back and offers it again.
 - First the built page's tab opens and a History snapshot "Before “Build again” of …" is written and read back; if it is not there nothing is built. Then one undo step; nodes added in Design stay after the section they followed (`arrange()`).
 
 ## What was not done or checked?

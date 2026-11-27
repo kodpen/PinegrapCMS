@@ -1,0 +1,15 @@
+{
+ "id": "sale-portrait",
+ "width": 1080,
+ "height": 1350,
+ "background": "#ffffff",
+ "layers": [
+  {"type": "slot", "x": 60, "y": 60, "w": 960, "h": 760, "radius": 30},
+  {"type": "rect", "x": 60, "y": 860, "w": 960, "h": 430, "color": "#f1f3f5", "radius": 30},
+  {"type": "text", "text": "startSaleDropHead", "font": "g:Bebas Neue", "size": 150, "weight": 400, "color": "#1971c2", "align": "left", "x": 110, "y": 900, "maxW": 860},
+  {"type": "text", "text": "startSaleDropLine", "font": "g:Lato", "size": 42, "weight": 400, "color": "#343a40", "align": "left", "x": 110, "y": 1070, "maxW": 860},
+  {"type": "text", "text": "startSaleDropWhen", "font": "g:Lato", "size": 34, "weight": 400, "color": "#868e96", "align": "left", "x": 110, "y": 1140, "maxW": 860},
+  {"type": "ellipse", "x": 820, "y": 700, "w": 220, "h": 220, "color": "#1971c2"},
+  {"type": "text", "text": "startSaleDropNow", "font": "g:Montserrat", "size": 54, "weight": 700, "color": "#ffffff", "align": "center", "x": 930, "y": 778, "maxW": 180}
+ ]
+}

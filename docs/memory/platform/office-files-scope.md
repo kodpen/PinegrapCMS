@@ -1,19 +1,27 @@
 ---
 name: office-files-scope
-description: What the Word and Excel support does not do and why: edits stop at cells, rows, columns and paragraphs, .pptx and .xls only shown, no .doc/.ppt, no library; where the xlsx reader may go next
+description: How far the own Word and Excel code goes and why: what is edited, what is only shown, what is never built (charts, pivots, layout; formulas beyond the simple ones), the rules every edit keeps
 ---
 
-## What does "simple editing" mean?
-- Cell edits, one inserted or deleted row or column, or one added, renamed, deleted or moved sheet at a time in a workbook (`office-cell-edits.md`, `office-sheet-rows-columns.md`, `office-sheets.md`) and paragraph text in a document (`office-paragraph-edits.md`), in the file window and a channel's preview (owner request 2026-10-19).
-- A document's selected text also takes bold, italic and underline (`office-docx-format.md`).
-- An editor that keeps the whole layout needs a document server such as OnlyOffice, which shared hosting cannot run, so none is planned.
+## How far does it go?
+- Owner (2026-11-19): full scope with the product's own code, PHPExcel removed and no library added; it replaced the "simple editing" scope of 2026-10-19 (`workflow/decisions-made-product-79.md`). The parts and their files: `office-overview.md`.
+- An .xlsx: cells (`office-cell-edits.md`), one row or column inserted or deleted (`office-sheet-rows-columns.md`), one sheet added, renamed, deleted or moved (`office-sheets.md`), the selected cells' format (`office-sheet-format.md`), each a save.
+- A .docx: paragraph text (`office-paragraph-edits.md`), bold, italic and underline on selected text (`office-docx-format.md`), a paragraph's kind (`office-docx-paragraph-kind.md`), a paragraph added or deleted (`office-docx-add-delete.md`).
+- Both: "New spreadsheet" and "New document" (`office-new-files.md`), in the file window and a channel's preview with the same controls.
 
-## Which files are out?
-- .pptx: shown as a list of slides, only looked at (`office-pptx-preview.md`); never edited.
-- .doc, .ppt (binary): no preview or edit. An .xls is shown and saved as a copy in .xlsx, never edited in place (`office-xls-preview.md`). A channel still takes them; it refuses only the macro forms of the new formats (`workspace/workspace-upload-refusals.md`).
-- No library is added for any of them (SheetJS, docx-preview, mammoth, JSZip, PhpSpreadsheet, PHPWord): the readers and writers are the product's own (`office-files.md`), as its xlsx writer is (`erp/erp-accountant-pack.md`).
-- PHPExcel, the one spreadsheet library the product carried, is removed (#10528): the importers read .xlsx, .xls and .ods through the sheet reader (`sheet-reader.md`), the Paraşüt exports are written by the xlsx writer (`erp/parasut-import-sheets.md`).
+## Which files are only shown, or not at all?
+- Shown, never edited in place: .csv and .tsv (changed in the text editor), .ods, .xls (Save a copy as .xlsx), .pptx as a list of slides: `pg_office_kind()`, which every edit asks, gives '' for them.
+- .doc, .ppt (binary): no preview or edit. A channel still takes them; it refuses only the macro forms of the new formats (`workspace/workspace-upload-refusals.md`).
+- No library for any of them (SheetJS, docx-preview, mammoth, JSZip, PhpSpreadsheet, PHPWord) and none from a CDN: the readers and writers are the product's own (`office-files.md`). PHPExcel is removed (#10528): importers read through `sheet-reader.md`, the Paraşüt exports are written by the xlsx writer (`erp/parasut-import-sheets.md`).
+
+## What is never built, and why?
+- Charts, pivot tables, tracked changes, comments, page layout.
+- A formula engine beyond simple formulas. Owner (2026-11-26, `workflow/decisions-made-product-115.md`): simple ones (one sheet's references, the four operations, SUM, AVERAGE, MIN, MAX, COUNT) are built by `plans/office-sheet-formulas.md`. Until it lands, and for every other formula after it, a formula is kept with its last stored result and loses it when a cell it may depend on changes.
+- An editor that keeps a document's whole layout: it needs a document server such as OnlyOffice, which shared hosting cannot run.
+
+## Which rules does every edit keep?
+- It writes only what it changes and carries every other part over as it is; a file it cannot carry safely is refused with its reason, never written damaged. Tests read a written file back with the product's reader and compare untouched parts byte for byte.
+- The preview's limits (`office-files.md`, `office-dom-ceiling.md`) and the cell locks (`office-cell-locks.md`) hold for every format; who may edit is who may edit the file; no schema.
 
 ## Where may the xlsx reader go next?
-- Its twin in `import_products_f.php` walks a sheet the same way (XMLReader, a row at a time) and reads cells and shared strings through its node-by-node helpers (`pg_office_xlsx_cell_parts()`, `pg_office_reader_text()`), but keeps its own walk and value rules: booleans as 1/0, its own date text, no row, column or string limits (`office-dom-ceiling.md`). Replacing the walk itself with `pg_office_xlsx_rows()` would cut an import at the preview's limits.
-- The importers' own sheet reader (`sheet-reader.md`) walks a sheet with the same helpers and no limits.
+- Its twin in `import_products_f.php` walks a sheet the same way and reads cells through the same node helpers (`pg_office_xlsx_cell_parts()`, `pg_office_reader_text()`) but keeps its own value rules and no limits; swapping its walk for `pg_office_xlsx_rows()` would cut an import at the preview's limits. The importers' sheet reader (`sheet-reader.md`) uses the same helpers with no limits.

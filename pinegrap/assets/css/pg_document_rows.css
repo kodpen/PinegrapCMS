@@ -18,6 +18,13 @@
  */
 
 .pg-doc-text { min-height: 12rem; font-family: var(--pg-font-monospace, monospace); }
+/* The designer's window names the start in its own title: its form shows
+   only the line under the heading, set off from the field. */
+.sd-doc-win .pg-sm-heading { display: none; }
+.sd-doc-win .pg-sm-desc { margin-bottom: 1rem; color: var(--pg-fg-2); }
+/* A narrow window puts the drop place's buttons under its words. */
+.pg-doc-drop { flex-wrap: wrap; }
+.pg-doc-drop > .pg-doc-grow { flex-basis: 12rem; }
 .pg-doc-drop,
 .pg-doc-file { display: flex; align-items: center; gap: .75rem; padding: .75rem 1rem; border: 1px dashed var(--pg-border-color); border-radius: var(--pg-radius-lg, .5rem); }
 .pg-doc-file { border-style: solid; }

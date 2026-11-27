@@ -4,10 +4,12 @@
  *
  * Site Settings - the Updates and maintenance cards: which releases the site takes, what runs on a schedule, how the site is backed up, who is told when something stops working and the maintenance screen.
  *
- * Fills $pg_settings_cards, one grid column per card, in reading order. Which
- * cards belong here is said once, in includes/settings/registry.php; this file
- * holds them, and <key>.save.php writes what they edit. The variables they read
- * are prepared by includes/settings/prep.php.
+ * Fills $pg_settings_cards with one entry: the cards as folded rows
+ * (includes/settings/fold.php), each with its line of state from
+ * includes/fn/maintenance_settings_fold.php. Which cards belong here is said
+ * once, in includes/settings/registry.php; this file holds them, and
+ * <key>.save.php writes what they edit. The variables they read are prepared
+ * by includes/settings/prep.php.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -19,65 +21,81 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     exit;
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/settings/fold.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/maintenance_settings_fold.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/maintenance_settings_open.php');
+
+// Each part: its card's markup and its row's line, pill and attention.
+$maintenance_parts = array();
+$maintenance_now = time();
+
 // ── Update Channel ──
-$pg_settings_cards[] = '
+//
+// Stable or Beta as a pg-seg, the vendor check's line, the backup before an
+// update as a switch.
+$maintenance_parts['channel'] = array('html' => '
     <div id="pgset-channel" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 pg-title-section">
                 ' . lang('Update Channel') . '
             </div>
             <div class="card-body">
-                <div class="row gy-5">
+                <div class="row gy-5">' . pg_maintenance_settings_seg(lang('Update channel'), 'software_update_channel', array('stable' => lang('Stable'), 'beta' => lang('Beta')), $software_update_channel, lang('Beta gets new versions earlier, for a test site; switching back keeps a beta until a stable release passes it.'))
+                    . ((defined('PG_VENDOR_API_V1') && (PG_VENDOR_API_V1 === true)) ? '
                     <div class="col-12">
-                        <select name="software_update_channel" id="software_update_channel" class="form-control" aria-label="' . h(lang('Update Channel')) . '">
-                            <option value="stable"' . (($software_update_channel === 'stable') ? ' selected="selected"' : '') . '>' . lang('Stable') . '</option>
-                            <option value="beta"' . (($software_update_channel === 'beta') ? ' selected="selected"' : '') . '>' . lang('Beta') . '</option>
-                        </select>
-                    </div>
-                    <div class="col-12">
-                        <div class="alert' . (($software_update_channel === 'beta') ? ' theme-warning' : ' theme-secondary') . ' mb-0 py-3 small">' . lang('Stable is the release everyone runs. Beta receives new versions earlier, before they have been through as many sites; use it on a test installation or when you are working with us on a fix. Switching back to stable does not remove a beta already installed — the site stays on it until a stable release passes it.') . '</div>
-                    </div>' . ((defined('PG_VENDOR_API_V1') && (PG_VENDOR_API_V1 === true)) ? '
-                    <div class="col-12">
-                        <div class="form-text">' . lang('License and update checks send Kodpen this site\'s Hostname, the server\'s IP address and the versions of the software, PHP, the database and the web server.') . '</div>
-                    </div>' : '') . ($update_backup_ready ? '
-                    <div class="col-12">
-                        <div class="form-field">
-                            <div class="switch"><input value="1"' . ($update_backup ? ' checked="checked"' : '') . ' class="" type="checkbox" id="update_backup" name="update_backup"/></div>
-                            <label class="" for="update_backup">' . lang('Back up before updating') . '</label><div class="form-text">' . lang('Before an update or a repair replaces the software files, the files it replaces and the database are written to data/backups/pre-update-….zip; the three newest are kept. Repair Software rolls the files back from it, and the installation screen restores its database. Switch it off only for a site too large to back up within one request.') . '</div>
-                        </div>
-                    </div>' : '') . '
+                        <p class="pg-text-meta fg-secondary mb-0">' . lang('License and update checks send Kodpen this site\'s Hostname, the server\'s IP address and the versions of the software, PHP, the database and the web server.') . '</p>
+                    </div>' : '')
+                    . ($update_backup_ready ? pg_maintenance_settings_switch('update_backup', (bool) $update_backup, lang('Back up before updating'), lang('The files an update replaces and the database go to data/backups first; the three newest are kept.')) : '') . '
                 </div>
             </div>
         </div>
-    </div>';
+    </div>') + pg_maintenance_fold_channel($software_update_channel, $update_backup_ready, $update_backup);
 
-// ── Cron Jobs ──
-$pg_settings_cards[] = '
+// ── Scheduled jobs ──
+//
+// The general job's command on one line, then one row a job of the catalogue
+// (includes/fn/maintenance_cron_list.php). Each row's "How to schedule it"
+// opens that job's numbered steps; the drawers are printed outside the form,
+// so they travel in $pg_settings_modals.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/maintenance_cron_list.php');
+
+$maintenance_cron_runs = pg_cron_last_runs();
+$maintenance_cron_jobs = pg_cron_jobs();
+$maintenance_cron_inactive = array();
+$maintenance_cron_warnings = array();
+
+if (!extension_loaded('pdo_mysql')) {
+    $maintenance_cron_warnings['auto_backup'] = lang('pdo_mysql.dll is not enabled. Please enable it for Auto Backup feature.');
+}
+
+// The structure pass parses rendered markup with DOMDocument; without it the
+// job records its run and analyzes nothing.
+if (!class_exists('DOMDocument')) {
+    $maintenance_cron_warnings['seo_analyze_job'] = lang('The PHP DOM extension is not enabled. Please enable it for the SEO structure analysis job.');
+}
+
+foreach ($maintenance_cron_jobs as $maintenance_cron_name => $maintenance_cron_job) {
+    if (!empty($maintenance_cron_job['dispatch']) && !pg_cron_job_active($maintenance_cron_name)) {
+        $maintenance_cron_inactive[] = $maintenance_cron_name;
+    }
+}
+
+$maintenance_cron_general = pg_maintenance_cron_command($output_os_family, PG_FUNCTIONS_DIR, $maintenance_cron_jobs['job']['script']);
+
+$maintenance_parts['cron'] = array('html' => '
                         <div id="pgset-cron" class="pg-set-card">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
-                                    <span class="pg-title-section">' . lang('Cron Jobs') . ' (<span lang="en">' . h($output_os_family) . '</span>)</span>
-                                    <button type="button" class="pg-button pg-button-quiet pg-button-sm" data-bs-toggle="drawer" data-bs-target="#cron_jobs" aria-controls="cron_jobs"><i class="bi bi-clock-history" aria-hidden="true"></i>' . lang('Setup Instructions') . '</button>
-                                </div>
+                                <div class="card-header bg-reset border-0 pg-title-section">' . lang('Scheduled jobs') . '</div>
                                 <div class="card-body">
-                                   <div class="row gy-5">
-                                        <div class="col-12 ">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . $job_dispatch_enabled_checked . ' class="" type="checkbox" id="job_dispatch_enabled" name="job_dispatch_enabled"/></div>
-                                                <label class="" for="job_dispatch_enabled">' . lang('Run Cron Jobs Automatically') . '</label><div class="form-text">' . lang('The jobs selected below run together with the general job instead of needing a scheduled task of their own. One job per turn, the one waiting longest first, so a single turn never takes longer than one job. Long jobs (backup, SEO, search index) and short ones take turns in two separate lanes, so a running backup does not hold up the short jobs. Leaving a job\'s own scheduled task in place is safe: every job records when it last finished, whoever started it, so one that is already running on its own schedule is never started a second time from here.') . '</div>
-                                            </div>
-                                        </div>
-                                        <div class="col-12" id="job_dispatch_jobs">
-                                           <div class="row gy-5">
-                                                <div class="col-12 ">
-                                                    <div class="alert theme-secondary py-3 small">' . lang('The general job must have a scheduled task of its own for this to work, and it is the only one that then needs one. Its command for this server is below.') . '</div>
-                                                    <textarea id="cron_job_general_dispatch" aria-label="' . h(lang('General job command')) . '">' . $cron_job_general . '</textarea>
-                                                    ' . pg_code_editor_attach(array('id' => 'cron_job_general_dispatch', 'code_type' => 'plain','readonly'=>true )) . '
-                                                    <div class="form-text">' . lang('Recommended Schedule: Every Minute') . '</div>
-                                                </div>' . $output_job_dispatch_switches . '
-                                            </div>
-                                        </div>
+                                    <h4 class="pg-group-label">' . lang('General job') . '</h4>
+                                    <p class="d-flex align-items-center gap-2 mb-1"><code class="text-break" id="cron_job_general_command">' . h($maintenance_cron_general) . '</code><span class="pg-copy">' . pg_copy_button($maintenance_cron_general, lang('Copy the command'), 'cron_job_general_command') . '</span></p>
+                                    <p class="pg-text-meta mb-5">' . lang('Every minute') . ' &middot; <span lang="en">' . h($output_os_family) . '</span> &middot; ' . lang('Every site needs this task: it keeps the alerts and the health address working.') . '</p>
+                                    <div class="form-field">
+                                        <div class="switch"><input value="1"' . $job_dispatch_enabled_checked . ' type="checkbox" id="job_dispatch_enabled" name="job_dispatch_enabled"/></div>
+                                        <label for="job_dispatch_enabled">' . lang('Run the jobs with the general job') . '</label><div class="form-text">' . lang('A job switched on below runs with the general job, one at a time, and needs no task of its own.') . '</div>
                                     </div>
+                                    <h4 class="pg-group-label mt-5">' . lang('Jobs') . '</h4>
+                                    ' . pg_maintenance_cron_list_html(pg_maintenance_cron_rows($maintenance_cron_jobs, $job_dispatch_selection, $maintenance_cron_inactive), ($job_dispatch_enabled == 1)) . '
                                 </div>
                             </div>
                         </div>
@@ -90,121 +108,38 @@ $pg_settings_cards[] = '
                                     return;
                                 }
 
-                                // The selection stays posted while hidden on purpose: switching
-                                // the master off and saving must not clear what was chosen.
+                                // A job\'s switch shows only while the master is on. It is
+                                // hidden, never disabled: the selection stays posted, so
+                                // switching the master off and saving keeps what was chosen.
                                 function sync() {
-                                    list.style.display = master.checked ? "" : "none";
+                                    list.querySelectorAll("[data-pg-cron-switch]").forEach(function (box) {
+                                        box.classList.toggle("d-none", !master.checked);
+                                    });
                                 }
 
                                 master.addEventListener("change", sync);
                                 sync();
                             })();
-                        </script>';
+                        </script>') + pg_maintenance_fold_cron(
+    (is_array($maintenance_cron_runs) && !empty($maintenance_cron_runs['job'])) ? (int) $maintenance_cron_runs['job'] : 0,
+    $maintenance_now,
+    (int) $maintenance_cron_jobs['job']['stale_after'],
+    ($job_dispatch_enabled == 1),
+    pg_maintenance_fold_cron_count($job_dispatch_selection, $maintenance_cron_jobs, $maintenance_cron_inactive)
+);
 
-// The setup instructions explain every job the card can switch on, with the
-// command that runs it on this server. A drawer over the pane, not a second
-// dialog (includes/settings/drawer.php); printed outside the form, so it
-// travels in its own variable.
-$pg_settings_modals[] = pg_settings_drawer('cron_jobs', lang('Cron Jobs') . ' (<span lang="en">' . h($output_os_family) . '</span>)', '
-                               <div class="row gy-5">
-                                    <div class="col-12">
-                                        <div class="alert theme-success form-text" role="alert">
-                                            ' . lang('There are several optional Pinegrap programs or "jobs" which can be scheduled to run automatically on your web server. The setup of these jobs (commonly referred to as "scheduled tasks" or "cron jobs") is optional depending on which Pinegrap features that are going to be used.') . '
-                                        </div>
-                                        <div class="alert theme-secondary form-text" role="alert">
-                                            ' . lang('You do not have to schedule every one of them separately. Turn on "Run Cron Jobs Automatically" in the Cron Jobs card and the general job runs the ones you select, one per run - then the general job is the only one that needs a scheduled task of its own.') . '
-                                        </div>
-                                    </div>
-                                    <div class="col-12 ">
-                                        <h4 class="pg-group-label" id="cron_job_general_title">' . lang('General Jobs') . '</h4>
-                                        <p>' . lang('Every site needs a scheduled task for the general job: it runs the jobs selected under "Run Cron Jobs Automatically", publishes scheduled comments and keeps the health address and the alerts working. While it does not run, the health address answers 503.') . '</p>
-                                        <textarea id="cron_job_general" aria-labelledby="cron_job_general_title">' . $cron_job_general . '</textarea>
-                                        ' . pg_code_editor_attach(array('id' => 'cron_job_general', 'code_type' => 'plain','readonly'=>true )) . '
-                                        <div class="form-text">' . lang('Recommended Schedule: Every Minute') . '</div>
-                                    </div>
-                                    <div class="col-12 ">
-                                        <h4 class="pg-group-label" id="cron_job_webhook_title">' . lang('Webhook Delivery Jobs') . '</h4>
-                                        <p>' . lang('The webhook delivery job sends the events your integrations asked to hear about: a new order, a cancelled order, a stock change. It usually needs no scheduled task of its own - the general job runs it on every turn as long as "Webhook delivery" is selected in the list further down this page, and on a site with no subscriptions that costs a single indexed read.') . '</p>
-                                        <div class="alert theme-secondary">' . lang('NOTE: Schedule the command below only if you want an event delivered within a minute of it happening, without waiting for the general job. It is the same work either way; a dedicated task simply runs it more often.') . '</div>
-                                        <textarea id="cron_job_webhook" aria-labelledby="cron_job_webhook_title">' . $cron_job_webhook . '</textarea>
-                                        ' . pg_code_editor_attach(array('id' => 'cron_job_webhook', 'code_type' => 'plain','readonly'=>true )) . '
-                                        <div class="form-text">' . lang('Recommended Schedule: Every Minute') . '</div>
-                                    </div>
-                                    <div class="col-12 ">
-                                        <h4 class="pg-group-label" id="cron_job_push_title">' . lang('Device Notification Jobs') . '</h4>
-                                        <p>' . lang('The device notification job wakes the phones and computers your operators have turned notifications on for: a new order, a submitted form, a new comment, an unanswered chat message. Like the webhook job it runs inside the general job on every turn as long as "Device notifications" is selected in the list further down this page, so it needs no scheduled task of its own.') . '</p>
-                                        <div class="alert theme-secondary">' . lang('NOTE: A chat message waits a minute before it is sent, so that a message somebody has already read on screen does not arrive on their phone as well. The delay an operator feels is that wait plus however often this job runs.') . '</div>
-                                        <textarea id="cron_job_push" aria-labelledby="cron_job_push_title">' . $cron_job_push . '</textarea>
-                                        ' . pg_code_editor_attach(array('id' => 'cron_job_push', 'code_type' => 'plain','readonly'=>true )) . '
-                                        <div class="form-text">' . lang('Recommended Schedule: Every Minute') . '</div>
-                                    </div>
-                                    <div class="col-12 ">
-                                        <h4 class="pg-group-label" id="cron_job_exchange_rates_title">' . lang('Exchange Rates Jobs') . '</h4>
-                                        <p>' . lang('The exchange rates job is an optional feature which only needs to be enabled if you are using the multi-currency e-commerce feature and want exchange rates for currencies to be updated automatically. Exchange rates can be manually updated via the Admin Panel.') . '</p>
-                                        <textarea id="cron_job_exchange_rates" aria-labelledby="cron_job_exchange_rates_title">' . $cron_job_exchange_rates . '</textarea>
-                                        ' . pg_code_editor_attach(array('id' => 'cron_job_exchange_rates', 'code_type' => 'plain','readonly'=>true )) . '
-                                        <div class="form-text">' . lang('Recommended Schedule: Once a Day') . '</div>
-                                    </div>
-                                    <div class="col-12 ">
-                                        <h4 class="pg-group-label" id="cron_job_email_campaign_title">' . lang('Email Campaign Jobs') . '</h4>
-                                        <p>' . lang(array('string' => 'The e-mail campaign job is an alternative to users manually sending e-mail campaigns from the Software. It is a script that can be scheduled to automatically send e-mail Campaigns. Also, the e-mail campaign job allows e-mail campaigns to be scheduled to be sent at a later time. If you are interested in using the e-mail campaign job, please complete {var:1}.', 'vars' => array('<a class="pg-link-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . pg_settings_link('mail_sending', 'pgset-mail-campaign') . '">' . lang('campaign smtp settings') . '</a>'))) . '</p>
-                                        <div class="alert theme-danger">' . lang('WARNING: Once the e-mail campaign job is enabled, it will send e-mails for all campaigns where the status was "Ready to Send", so please make sure you update the status for old, incomplete, e-mail campaigns to be "Cancelled" before you enable the e-mail campaign job.') . '</div>
-                                        <textarea id="cron_job_email_campaign" aria-labelledby="cron_job_email_campaign_title">' . $cron_job_email_campaign . '</textarea>
-                                        ' . pg_code_editor_attach(array('id' => 'cron_job_email_campaign', 'code_type' => 'plain','readonly'=>true )) . '
-                                        <div class="form-text">' . lang('Recommended Schedule: Every 5 Minutes') . '</div>
-                                    </div>
-                                    <div class="col-12 ">
-                                        <h4 class="pg-group-label" id="cron_job_search_index_title">' . lang('Update Search Index Jobs') . '</h4>
-                                        <p>' . lang('The update search index job is an alternative to clicking the Update Search Index button on the Pages tab. It does the spidering of your website and updates the search index with any new or changed content it finds. Since this is an intensive script that may slow down your site while it runs, you should not run it more than once an hour at the most. Less frequently is even better.') . '</p>
-                                        <textarea id="cron_job_search_index" aria-labelledby="cron_job_search_index_title">' . $cron_job_search_index . '</textarea>
-                                        ' . pg_code_editor_attach(array('id' => 'cron_job_search_index', 'code_type' => 'plain','readonly'=>true )) . '
-                                        <div class="form-text">' . lang('Recommended Schedule: Once a Day') . '</div>
-                                    </div>
-                                    <div class="col-12 ">
-                                        <h4 class="pg-group-label" id="cron_job_seo_score_title">' . lang('SEO Score Jobs') . '</h4>
-                                        <p>' . lang('The SEO score job recalculates the SEO score of every page, product and product group. It only reads database columns, so it is quick, but it has to cover the whole site because the duplicate title and duplicate description checks depend on every other record. Schedule it before the SEO structure analysis job.') . '</p>
-                                        <textarea id="cron_job_seo_score" aria-labelledby="cron_job_seo_score_title">' . $cron_job_seo_score . '</textarea>
-                                        ' . pg_code_editor_attach(array('id' => 'cron_job_seo_score', 'code_type' => 'plain','readonly'=>true )) . '
-                                        <div class="form-text">' . lang('Recommended Schedule: Once a Day') . '</div>
-                                    </div>
-                                    <div class="col-12 ">
-                                        <h4 class="pg-group-label" id="cron_job_seo_analyze_title">' . lang('SEO Structure Analysis Jobs') . '</h4>
-                                        ' . $output_warnings_for_seo_analyze . '
-                                        <p>' . lang('The SEO structure analysis job renders each page in the background and examines the resulting HTML: heading order, image alt text, internal links and orphan pages. This is the expensive half of the SEO score, so it works within a time budget and may need several runs to get through a large site for the first time.') . '</p>
-                                        <div class="alert theme-secondary">' . lang('NOTE: Schedule this job to run after the SEO score job, because a catalog page is scored from the products it lists.') . '</div>
-                                        <textarea id="cron_job_seo_analyze" aria-labelledby="cron_job_seo_analyze_title">' . $cron_job_seo_analyze . '</textarea>
-                                        ' . pg_code_editor_attach(array('id' => 'cron_job_seo_analyze', 'code_type' => 'plain','readonly'=>true )) . '
-                                        <div class="form-text">' . lang('Recommended Schedule: Once a Day') . '</div>
-                                    </div>
-                                    <div class="col-12 ">
-                                        <h4 class="pg-group-label" id="cron_job_requrring_payment_title">' . lang('Recurring Payment Jobs') . '</h4>
-                                        <p>' . lang('The recurring payment job is an optional feature which only needs to be enabled if you want actions to be performed when a recurring payment profile is disabled (i.e. suspended, cancelled, or expired) (e.g. credit card declined). This job requires the PayPal Website Payments Pro payment gateway. The following actions can be performed when the recurring payment profile is disabled. These options can be set in the properties for the product that creates the recurring payment profile.') . '<br>
-                                        ' . lang('Expire membership.') . '<br>
-                                        ' . lang('Revoke private access.') . '<br>
-                                        ' . lang('Send an e-mail to the customer.') . '<br>
-                                        ' . lang('For example, if you have a membership product which has a monthly recurring payment, you might want to expire a persons membership if his/her payment fails (e.g. credit card declined). Also, you might want to send an e-mail to the member with a link to order new membership.') . '</p>
-                                        <div class="alert theme-secondary">' . lang('NOTE: The Recurring Payment Job is NOT REQUIRED for setting up Recurring Products. That is handled through your payment gateway automatically once an Order is submitted for one or more recurring products through your Pinegrap website.') . '</div>
-                                        <textarea id="cron_job_requrring_payment" aria-labelledby="cron_job_requrring_payment_title">' . $cron_job_requrring_payment . '</textarea>
-                                        ' . pg_code_editor_attach(array('id' => 'cron_job_requrring_payment', 'code_type' => 'plain','readonly'=>true )) . '
-                                        <div class="form-text">' . lang('Recommended Schedule: Once a Day') . '</div>
-                                    </div>
-                                    <div class="col-12 ">
-                                        <h4 class="pg-group-label" id="cron_job_membership_title">' . lang('Membership Jobs') . '</h4>
-                                        <p>' . lang('The membership job is an optional feature which only needs to be enabled if you want one or more of the features below. Send membership expiration warning e-mail to members whose membership is about to expire. You can turn it on and set it up in Accounts and sign-in, Registration &amp; Membership card. Remove contacts from the Membership Contact Group when a contact\'s membership is no longer valid (e.g. membership has expired). This feature runs automatically once a scheduled task is setup for the membership job.') . '</p>
-                                        <textarea id="cron_job_membership" aria-labelledby="cron_job_membership_title">' . $cron_job_membership . '</textarea>
-                                        ' . pg_code_editor_attach(array('id' => 'cron_job_membership', 'code_type' => 'plain','readonly'=>true )) . '
-                                        <div class="form-text">' . lang('Recommended Schedule: Once a Day') . '</div>
-                                    </div>
-                                    <div class="col-12 ">
-                                        <h4 class="pg-group-label" id="cron_job_auto_backup_title">' . lang('Auto Backup Jobs') . '</h4>
-                                        ' . $output_warnings_for_auto_backup . '
-                                        <p>' . lang('The auto backup job is an optional feature that must be enabled only if you want the automatic backup feature.') . '</p>
-                                        <div class="alert theme-secondary">' . lang('NOTE: Auto Backup feature is available by default but can be disabled by a developer from the config.php file. This feature can only be operated once a day.') . '</div>
-                                        <textarea id="cron_job_auto_backup" aria-labelledby="cron_job_auto_backup_title">' . $cron_job_auto_backup . '</textarea>
-                                        ' . pg_code_editor_attach(array('id' => 'cron_job_auto_backup', 'code_type' => 'plain','readonly'=>true )) . '
-                                        <div class="form-text">' . lang('Recommended Schedule: Once a week') . '</div>
-                                    </div>
-                                </div>', !empty($pg_settings_in_dialog));
+foreach ($maintenance_cron_jobs as $maintenance_cron_name => $maintenance_cron_job) {
+    if (!empty($maintenance_cron_job['dispatch'])) {
+        $pg_settings_modals[] = pg_maintenance_cron_guide_drawer(
+            $maintenance_cron_name,
+            $maintenance_cron_job,
+            $output_os_family,
+            pg_maintenance_cron_command($output_os_family, PG_FUNCTIONS_DIR, $maintenance_cron_job['script']),
+            !empty($pg_settings_in_dialog),
+            $maintenance_cron_warnings[$maintenance_cron_name] ?? ''
+        );
+    }
+}
 
 // ── Backups ──
 //
@@ -296,9 +231,9 @@ if ($backup_settings_ready) {
                         <div class="row gy-5">' . ($backup_cloud_ready ? '' : '
                             <div class="col-12">
                                 <div class="alert theme-secondary mb-0 py-3 small">' . h(lang(array(
-                                    'string' => 'The {var:1} application is not set up yet. Enter it on Connected accounts first.',
+                                    'string' => 'The {var:1} application is not set up yet. Enter it on its page of Connections first.',
                                     'vars'   => $backup_cloud_provider['label'],
-                                ))) . ' <a href="connections.php">' . h(lang('Connected accounts')) . '</a></div>
+                                ))) . ' <a href="' . h(pg_backup_cloud_app_url($backup_cloud_type)) . '">' . h(lang(array('string' => 'Set up the {var:1} application', 'vars' => $backup_cloud_provider['label']))) . '</a></div>
                             </div>') . '
                             <div class="pg-f-md">
                                 <label for="backup_' . $backup_cloud_type . '_connection" class="form-label">' . lang('Account') . '</label>
@@ -334,21 +269,21 @@ if ($backup_settings_ready) {
         }
     }
 
-    $output_backup_settings = '
+    $output_backup_settings = pg_maintenance_settings_group(lang('Automatic backups')) . '
                     <div class="pg-f-xs">
                         <label for="backup_keep" class="form-label">' . lang('Automatic backups to keep') . '</label>
-                        <input type="number" name="backup_keep" id="backup_keep" min="0" max="9999" step="1" class="form-control" value="' . h($backup_keep) . '" />
+                        <input type="number" name="backup_keep" id="backup_keep" min="0" max="9999" step="1" class="form-control" value="' . h($backup_keep) . '" aria-describedby="backup_keep_help" />
+                        <p class="pg-field-help pg-text-meta fg-secondary mb-0" id="backup_keep_help">' . lang('One backup a week, the older weeks past this number deleted; 0 keeps all. Backups taken by hand are never deleted.') . '</p>
                     </div>
                     <div class="col-12">
-                        <div class="form-text">' . lang('The automatic backup keeps one backup per week; every run in the same week replaces it. Older weeks beyond this number are deleted. 0 keeps all of them. Backups taken by hand and the install dumps are never deleted.') . '</div>
-                        <div class="form-text">' . lang('Database backups leave out the rows of visit records, page view counts, form item view counts, the firewall, performance and API request logs and the Search Console figures: those tables are backed up empty. The daily visitor summary and the hourly visitor chart are backed up in full; the Search Console figures of the last 90 days are downloaded again after a restore.') . '</div>
+                        <p class="pg-text-meta fg-secondary mb-0">' . lang('Visit records, view counts and logs are backed up empty; the visitor summaries in full.') . '</p>
                     </div>' . (class_exists('ZipArchive') ? '' : '
                     <div class="col-12">
                         <div class="alert theme-warning mb-0 py-3 small">' . lang('The ZipArchive extension of PHP is not available: automatic backups stay folders and no remote copy is made.') . '</div>
-                    </div>') . '
+                    </div>') . pg_maintenance_settings_group(lang('Remote copy')) . '
                     <div class="pg-f-md">
                         <label for="backup_remote_type" class="form-label">' . lang('Remote copy') . '</label>
-                        <select name="backup_remote_type" id="backup_remote_type" class="form-control">
+                        <select name="backup_remote_type" id="backup_remote_type" class="form-control" aria-describedby="backup_remote_type_help">
                             <option value=""' . (($backup_remote_type_shown === '') ? ' selected="selected"' : '') . '>' . lang('None') . '</option>
                             <option value="ftp"' . (($backup_remote_type_shown === 'ftp') ? ' selected="selected"' : '') . '>FTP</option>
                             <option value="s3"' . (($backup_remote_type_shown === 's3') ? ' selected="selected"' : '') . '>' . lang('S3-compatible storage') . '</option>
@@ -356,16 +291,14 @@ if ($backup_settings_ready) {
                             <option value="onedrive"' . (($backup_remote_type_shown === 'onedrive') ? ' selected="selected"' : '') . '>OneDrive</option>
                             <option value="dropbox"' . (($backup_remote_type_shown === 'dropbox') ? ' selected="selected"' : '') . '>Dropbox</option>
                         </select>
-                    </div>
-                    <div class="col-12">
-                        <div class="form-text">' . lang('After every automatic backup the archive is sent here as well. A backup kept in a folder is not sent. Choosing None forgets the saved connection details.') . '</div>
+                        <p class="pg-field-help pg-text-meta fg-secondary mb-0" id="backup_remote_type_help">' . lang('Every automatic backup archive is sent here too. None forgets the saved details.') . '</p>
                     </div>
                     <div class="col-12" id="backup_remote_ftp_fields">
                         <div class="row gy-5">' . (extension_loaded('ftp') ? '' : '
                             <div class="col-12">
                                 <div class="alert theme-warning mb-0 py-3 small">' . lang('The FTP extension of PHP is not available on this server.') . '</div>
                             </div>') . '
-                            <div class="pg-f-md">
+                            <div class="pg-f-lg">
                                 <label for="backup_ftp_host" class="form-label">' . lang('FTP server') . '</label>
                                 <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="backup_ftp_host" id="backup_ftp_host" maxlength="255" class="form-control" value="' . h($backup_remote_ftp['host']) . '" placeholder="ftp.example.com" />
                             </div>
@@ -374,31 +307,25 @@ if ($backup_settings_ready) {
                                 <input type="number" name="backup_ftp_port" id="backup_ftp_port" min="1" max="65535" class="form-control" value="' . h($backup_remote_ftp['port']) . '" />
                             </div>
                             <div class="pg-f-md">
+                                <label for="backup_ftp_path" class="form-label">' . lang('Folder on the server') . '</label>
+                                <input type="text" spellcheck="false" autocapitalize="off" name="backup_ftp_path" id="backup_ftp_path" maxlength="255" class="form-control" value="' . h($backup_remote_ftp['path']) . '" placeholder="/backups" />
+                            </div>
+                            <div class="pg-f-md">
                                 <label for="backup_ftp_user" class="form-label">' . lang('Username') . '</label>
                                 <input type="text" spellcheck="false" autocapitalize="off" name="backup_ftp_user" id="backup_ftp_user" maxlength="255" class="form-control" value="' . h($backup_remote_ftp['user']) . '" autocomplete="off" />
                             </div>
                             <div class="pg-f-md">
                                 <label for="backup_ftp_password" class="form-label">' . lang('Password') . '</label>
                                 <input type="password" name="backup_ftp_password" id="backup_ftp_password" class="form-control" value="" autocomplete="new-password" placeholder="' . h($backup_secret_placeholder_ftp) . '" />
-                            </div>
-                            <div class="pg-f-md">
-                                <label for="backup_ftp_path" class="form-label">' . lang('Folder on the server') . '</label>
-                                <input type="text" spellcheck="false" autocapitalize="off" name="backup_ftp_path" id="backup_ftp_path" maxlength="255" class="form-control" value="' . h($backup_remote_ftp['path']) . '" placeholder="/backups" />
-                            </div>
-                            <div class="col-12">
-                                <div class="form-field">
-                                    <div class="switch"><input value="1"' . ($backup_remote_ftp['tls'] ? ' checked="checked"' : '') . ' class="" type="checkbox" id="backup_ftp_tls" name="backup_ftp_tls"/></div>
-                                    <label class="" for="backup_ftp_tls">' . lang('Encrypted connection (explicit FTPS)') . '</label>
-                                </div>
-                            </div>
+                            </div>' . pg_maintenance_settings_switch('backup_ftp_tls', (bool) $backup_remote_ftp['tls'], lang('Encrypted connection (explicit FTPS)')) . '
                         </div>
                     </div>
                     <div class="col-12" id="backup_remote_s3_fields">
                         <div class="row gy-5">
                             <div class="pg-f-lg">
                                 <label for="backup_s3_endpoint" class="form-label">' . lang('Endpoint address') . '</label>
-                                <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="backup_s3_endpoint" id="backup_s3_endpoint" maxlength="255" class="form-control" value="' . h($backup_remote_s3['endpoint']) . '" placeholder="https://s3.eu-central-1.amazonaws.com" />
-                                <div class="form-text">' . lang('Leave empty for Amazon S3 in the region below.') . '</div>
+                                <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="backup_s3_endpoint" id="backup_s3_endpoint" maxlength="255" class="form-control" value="' . h($backup_remote_s3['endpoint']) . '" placeholder="https://s3.eu-central-1.amazonaws.com" aria-describedby="backup_s3_endpoint_help" />
+                                <p class="pg-field-help pg-text-meta fg-secondary mb-0" id="backup_s3_endpoint_help">' . lang('Leave empty for Amazon S3 in the region below.') . '</p>
                             </div>
                             <div class="pg-f-sm">
                                 <label for="backup_s3_region" class="form-label">' . lang('Region') . '</label>
@@ -419,20 +346,14 @@ if ($backup_settings_ready) {
                             <div class="pg-f-md">
                                 <label for="backup_s3_secret_key" class="form-label">' . lang('Secret Key') . '</label>
                                 <input type="password" name="backup_s3_secret_key" id="backup_s3_secret_key" class="form-control" value="" autocomplete="new-password" placeholder="' . h($backup_secret_placeholder_s3) . '" />
-                            </div>
-                            <div class="col-12">
-                                <div class="form-field">
-                                    <div class="switch"><input value="1"' . ($backup_remote_s3['path_style'] ? ' checked="checked"' : '') . ' class="" type="checkbox" id="backup_s3_path_style" name="backup_s3_path_style"/></div>
-                                    <label class="" for="backup_s3_path_style">' . lang('Path-style addresses') . '</label><div class="form-text">' . lang('The bucket goes in the path instead of the host name. MinIO and most self-hosted stores need this; Amazon S3 does not.') . '</div>
-                                </div>
-                            </div>
+                            </div>' . pg_maintenance_settings_switch('backup_s3_path_style', (bool) $backup_remote_s3['path_style'], lang('Path-style addresses'), lang('The bucket goes in the path; MinIO and most self-hosted stores need it.')) . '
                         </div>
                     </div>
 ' . $backup_cloud_groups . '
                     <div class="col-12" id="backup_remote_shared">
                         <div class="row gy-5">
                             <div class="col-12" id="backup_remote_secret_help">
-                                <div class="form-text">' . h($backup_secret_help) . '</div>
+                                <p class="pg-text-meta fg-secondary mb-0">' . h($backup_secret_help) . '</p>
                             </div>' . (($backup_remote_status !== '') ? '
                             <div class="col-12">' . $backup_remote_status . '</div>' : '') . '
                             <div class="col-12">
@@ -477,7 +398,9 @@ if ($backup_settings_ready) {
     </script>';
 }
 
-$pg_settings_cards[] = '
+$maintenance_backup_newest = function_exists('pg_backup_newest') ? pg_backup_newest() : array('newest' => 0);
+
+$maintenance_parts['backup'] = array('html' => '
     <div id="pgset-backup" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
@@ -489,7 +412,7 @@ $pg_settings_cards[] = '
                 </div>
             </div>
         </div>
-    </div>';
+    </div>') + pg_maintenance_fold_backup($backup_remote_type, $backup_remote_error, (int) $maintenance_backup_newest['newest'], $maintenance_now);
 
 // ── Storage ──
 //
@@ -499,6 +422,11 @@ $pg_settings_cards[] = '
 // drawn (object_storage_card). The secret is drawn empty; an empty box keeps
 // it. "Save and test" saves first, then writes, reads and deletes one small
 // file.
+//
+// The row's facts: a store in use, its bucket, the move under way and how
+// many files it still has to carry, the last test.
+$maintenance_storage = array('used' => false, 'bucket' => '', 'direction' => '', 'paused' => false, 'left' => 0, 'test_ok' => null);
+
 if (!$object_storage_ready) {
 
     $output_object_storage_settings = '
@@ -511,11 +439,12 @@ if (!$object_storage_ready) {
     $output_object_storage_last_test = '';
 
     if ($object_storage_last_test) {
+        $maintenance_storage['test_ok'] = (bool) $object_storage_last_test['ok'];
         $object_storage_last_when = get_relative_time(array('timestamp' => $object_storage_last_test['at'], 'format' => 'plain_text'));
         $output_object_storage_last_test = '
-                        <div class="form-text ' . ($object_storage_last_test['ok'] ? 'fg-success' : 'fg-danger') . '">' . ($object_storage_last_test['ok']
+                        <p class="pg-field-help pg-text-meta mb-0 ' . ($object_storage_last_test['ok'] ? 'fg-success' : 'fg-danger') . '">' . ($object_storage_last_test['ok']
             ? h(lang(array('string' => 'Last test {var:1}: passed.', 'vars' => array($object_storage_last_when))))
-            : h(lang(array('string' => 'Last test {var:1}: failed. {var:2}', 'vars' => array($object_storage_last_when, $object_storage_last_test['message']))))) . '</div>';
+            : h(lang(array('string' => 'Last test {var:1}: failed. {var:2}', 'vars' => array($object_storage_last_when, $object_storage_last_test['message']))))) . '</p>';
     }
 
     // Uploaded files (includes/fn/file_storage.php): where they are now, the
@@ -529,6 +458,15 @@ if (!$object_storage_ready) {
         $object_storage_switch = pg_config_text('object_storage_files');
         $object_storage_mode = pg_file_storage_mode($object_storage_switch);
         $object_storage_usage = pg_file_storage_usage();
+
+        $maintenance_storage = array(
+            'used'      => true,
+            'bucket'    => (string) $object_storage['bucket'],
+            'direction' => $object_storage_mode['direction'],
+            'paused'    => $object_storage_mode['paused'],
+            'left'      => ($object_storage_mode['direction'] === 'back') ? (int) $object_storage_usage['stored_files'] : (int) $object_storage_usage['local_files'],
+            'test_ok'   => $maintenance_storage['test_ok'],
+        );
 
         $object_storage_status = lang('Files stay on the disk.');
 
@@ -548,10 +486,10 @@ if (!$object_storage_ready) {
 
             if ($object_storage_failures['failing'] + $object_storage_failures['given_up'] > 0) {
                 $object_storage_failed = '
-                        <div class="form-text fg-warning">' . h(lang(array(
+                        <p class="pg-field-help pg-text-meta fg-warning mb-0">' . h(lang(array(
                     'string' => 'Failed: {var:1} being retried, {var:2} left where they are after three attempts (named in the Site Log).',
                     'vars'   => array(pg_format_number($object_storage_failures['failing'], 0), pg_format_number($object_storage_failures['given_up'], 0)),
-                ))) . '</div>';
+                ))) . '</p>';
             }
         }
 
@@ -565,13 +503,12 @@ if (!$object_storage_ready) {
 
         foreach (pg_file_storage_actions($object_storage_switch) as $object_storage_action) {
             $output_object_storage_buttons .= '
-                        <button type="submit" name="object_storage_files_action" value="' . $object_storage_action . '" class="pg-button pg-button-quiet pg-button-sm me-2"><i class="bi ' . $object_storage_buttons[$object_storage_action][0] . '" aria-hidden="true"></i>' . h($object_storage_buttons[$object_storage_action][1]) . '</button>';
+                        <button type="submit" name="object_storage_files_action" value="' . $object_storage_action . '" class="pg-button pg-button-quiet pg-button-sm"><i class="bi ' . $object_storage_buttons[$object_storage_action][0] . '" aria-hidden="true"></i>' . h($object_storage_buttons[$object_storage_action][1]) . '</button>';
         }
 
-        $output_object_storage_files = '
+        $output_object_storage_files = pg_maintenance_settings_group(lang('Move files')) . '
                     <div class="col-12">
-                        <div class="form-label">' . lang('Uploaded files') . '</div>
-                        <div>' . h(lang(array(
+                        <p class="mb-0">' . h(lang(array(
             'string' => 'On the disk: {var:1} files ({var:2}). In the storage: {var:3} files ({var:4}).',
             'vars'   => array(
                 pg_format_number($object_storage_usage['local_files'], 0),
@@ -579,25 +516,19 @@ if (!$object_storage_ready) {
                 pg_format_number($object_storage_usage['stored_files'], 0),
                 convert_bytes_to_string($object_storage_usage['stored_bytes'], 1),
             ),
-        ))) . '</div>
-                        <div class="form-text">' . h($object_storage_status) . ' ' . lang('Design and theme files, style sheets and scripts always stay on the disk.') . '</div>' . $object_storage_failed . '
-                        <div class="mt-3">' . $output_object_storage_buttons . '
+        ))) . '</p>
+                        <p class="pg-field-help pg-text-meta fg-secondary mb-0">' . h($object_storage_status) . ' ' . lang('Design and theme files, style sheets and scripts always stay on the disk.') . '</p>' . $object_storage_failed . '
+                        <div class="d-flex flex-wrap gap-3 mt-3">' . $output_object_storage_buttons . '
                         </div>
                     </div>';
     }
 
     $output_object_storage_settings = '
-                    <div class="col-12">
-                        <input type="hidden" name="object_storage_card" value="1"/>
-                        <div class="form-field">
-                            <div class="switch"><input value="1"' . ($object_storage['enabled'] ? ' checked="checked"' : '') . ' class="" type="checkbox" id="object_storage_enabled" name="object_storage_enabled"/></div>
-                            <label class="" for="object_storage_enabled">' . lang('Use object storage') . '</label><div class="form-text">' . lang('A bucket on any service with an S3-compatible API, hosted or on your own server. Switched off, nothing is sent there.') . '</div>
-                        </div>
-                    </div>
+                    <input type="hidden" name="object_storage_card" value="1"/>' . pg_maintenance_settings_switch('object_storage_enabled', (bool) $object_storage['enabled'], lang('Use object storage'), lang('A bucket on any service with an S3-compatible API. Switched off, nothing is sent there.')) . pg_maintenance_settings_group(lang('Bucket')) . '
                     <div class="pg-f-lg">
                         <label for="object_storage_endpoint" class="form-label">' . lang('Endpoint address') . '</label>
-                        <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="object_storage_endpoint" id="object_storage_endpoint" maxlength="255" class="form-control" value="' . h($object_storage['endpoint']) . '" placeholder="https://s3.example.com" />
-                        <div class="form-text">' . lang('The service\'s S3 API address, as its documentation gives it. Plain http only for a store on the same server or network.') . '</div>
+                        <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="object_storage_endpoint" id="object_storage_endpoint" maxlength="255" class="form-control" value="' . h($object_storage['endpoint']) . '" placeholder="https://s3.example.com" aria-describedby="object_storage_endpoint_help" />
+                        <p class="pg-field-help pg-text-meta fg-secondary mb-0" id="object_storage_endpoint_help">' . lang('The service\'s S3 API address; plain http only on the same network.') . '</p>
                     </div>
                     <div class="pg-f-sm">
                         <label for="object_storage_region" class="form-label">' . lang('Region') . '</label>
@@ -618,21 +549,17 @@ if (!$object_storage_ready) {
                     <div class="pg-f-md">
                         <label for="object_storage_secret" class="form-label">' . lang('Secret Key') . '</label>
                         <input type="password" name="object_storage_secret" id="object_storage_secret" class="form-control" value="" autocomplete="new-password" placeholder="' . h($object_storage['secret_stored'] ? lang('Saved') : '') . '" />
-                        <div class="form-text">' . lang('Stored encrypted and never shown again. Leave empty to keep the saved key.') . '</div>
-                    </div>
+                    </div>' . pg_maintenance_settings_switch('object_storage_path_style', (bool) $object_storage['path_style'], lang('Path-style addresses'), lang('The bucket goes in the path; MinIO and most self-hosted stores need it.')) . '
                     <div class="col-12">
-                        <div class="form-field">
-                            <div class="switch"><input value="1"' . ($object_storage['path_style'] ? ' checked="checked"' : '') . ' class="" type="checkbox" id="object_storage_path_style" name="object_storage_path_style"/></div>
-                            <label class="" for="object_storage_path_style">' . lang('Path-style addresses') . '</label><div class="form-text">' . lang('The bucket goes in the path instead of the host name. MinIO and most self-hosted stores need this; Amazon S3 does not.') . '</div>
-                        </div>
+                        <p class="pg-text-meta fg-secondary mb-0">' . lang('The secret is stored encrypted and never shown. Leave its box empty to keep it.') . '</p>
                     </div>
                     <div class="col-12">
                         <button type="submit" name="object_storage_test" value="1" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-plug" aria-hidden="true"></i>' . lang('Save and test the connection') . '</button>
-                        <div class="form-text">' . lang('Writes a small file to the bucket, reads it back and deletes it.') . '</div>' . $output_object_storage_last_test . '
+                        <p class="pg-field-help pg-text-meta fg-secondary mb-0">' . lang('Writes a small file to the bucket, reads it back and deletes it.') . '</p>' . $output_object_storage_last_test . '
                     </div>' . $output_object_storage_files;
 }
 
-$pg_settings_cards[] = '
+$maintenance_parts['storage'] = array('html' => '
     <div id="pgset-storage" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 pg-title-section">
@@ -643,7 +570,14 @@ $pg_settings_cards[] = '
                 </div>
             </div>
         </div>
-    </div>';
+    </div>') + pg_maintenance_fold_storage(
+    $maintenance_storage['used'],
+    $maintenance_storage['bucket'],
+    $maintenance_storage['direction'],
+    $maintenance_storage['paused'],
+    $maintenance_storage['left'],
+    $maintenance_storage['test_ok']
+);
 
 // ── Alerts ──
 //
@@ -656,52 +590,37 @@ $output_ops_alert_settings = '<div class="col-12"><div class="alert theme-second
 
 if ($ops_alerts_ready) {
 
-    $output_ops_alert_settings = '
-                    <div class="col-12">
-                        <div class="form-field">
-                            <div class="switch"><input value="1"' . ($ops_alerts ? ' checked="checked"' : '') . ' class="" type="checkbox" id="ops_alerts" name="ops_alerts"/></div>
-                            <label class="" for="ops_alerts">' . lang('Operations alerts') . '</label><div class="form-text">' . lang('Tells the people who run the site when something stops working: an automatic backup fails or goes stale, a scheduled task stops running, the software files no longer match the release, PHP errors pile up, the disk runs full, e-mails or event notifications stop going out, or the site\'s certificate is about to run out. Each problem is told at most once a day while it lasts, on the panel bell of managers and administrators and by the channels below. System Status lists the alerts of the last seven days.') . '</div>
-                        </div>
-                    </div>
+    $output_ops_alert_settings = pg_maintenance_settings_switch('ops_alerts', (bool) $ops_alerts, lang('Operations alerts'), lang('Tells managers and administrators, once a day while it lasts, when a backup, a job, the files, the disk, the e-mails or the certificate fails. System Status lists the last seven days.')) . '
                     <div class="col-12" id="ops_alert_fields">
-                        <div class="row gy-5">
-                            <div class="col-12">
-                                <div class="form-field">
-                                    <div class="switch"><input value="1"' . ($ops_alert_email ? ' checked="checked"' : '') . ' class="" type="checkbox" id="ops_alert_email" name="ops_alert_email"/></div>
-                                    <label class="" for="ops_alert_email">' . lang('Send alerts by e-mail') . '</label>
-                                </div>
-                            </div>
+                        <div class="row gy-5">' . pg_maintenance_settings_group(lang('Channels'))
+                            . pg_maintenance_settings_switch('ops_alert_email', (bool) $ops_alert_email, lang('Send alerts by e-mail')) . '
                             <div class="pg-f-lg">
                                 <label for="ops_alert_recipients" class="form-label">' . lang('Alert recipients') . '</label>
-                                <input type="text" name="ops_alert_recipients" id="ops_alert_recipients" maxlength="1000" class="form-control" value="' . h($ops_alert_recipients) . '" placeholder="' . h($email_address) . '" inputmode="email" autocomplete="off" />
-                                <div class="form-text">' . lang('Separate several addresses with commas. Left empty, the alerts go to the site e-mail address.') . '</div>
-                            </div>
+                                <input type="text" name="ops_alert_recipients" id="ops_alert_recipients" maxlength="1000" class="form-control" value="' . h($ops_alert_recipients) . '" placeholder="' . h($email_address) . '" inputmode="email" autocomplete="off" aria-describedby="ops_alert_recipients_help" />
+                                <p class="pg-field-help pg-text-meta fg-secondary mb-0" id="ops_alert_recipients_help">' . lang('Separate several addresses with commas. Left empty, the alerts go to the site e-mail address.') . '</p>
+                            </div>' . pg_maintenance_settings_switch('ops_alert_push', (bool) $ops_alert_push, lang('Send alerts to subscribed devices'), lang('Devices where a manager turned notifications on; sent by the Device notifications job.')) . pg_maintenance_settings_group(lang('When to tell')) . '
                             <div class="col-12">
-                                <div class="form-field">
-                                    <div class="switch"><input value="1"' . ($ops_alert_push ? ' checked="checked"' : '') . ' class="" type="checkbox" id="ops_alert_push" name="ops_alert_push"/></div>
-                                    <label class="" for="ops_alert_push">' . lang('Send alerts to subscribed devices') . '</label><div class="form-text">' . lang('Phones and computers on which a manager or administrator turned notifications on. Delivered by the Device notifications job, which has to be selected under Cron Jobs.') . '</div>
+                                <div class="row gy-5">
+                                    <div class="col-12 md:col-6"><div>
+                                        <label for="ops_alert_error_rate" class="form-label">' . lang('PHP errors in an hour') . '</label>
+                                        <input type="number" name="ops_alert_error_rate" id="ops_alert_error_rate" min="0" max="100000" step="1" class="form-control" value="' . (int) $ops_alert_error_rate . '" />
+                                    </div></div>
+                                    <div class="col-12 md:col-6"><div>
+                                        <label for="ops_alert_disk_percent" class="form-label">' . lang('Free disk space below %') . '</label>
+                                        <div class="form-range pg-range-bubble" data-pg-range="' . h(lang('{var:1}%')) . '">
+                                            <input type="range" name="ops_alert_disk_percent" id="ops_alert_disk_percent" min="0" max="50" step="1" class="form-range-input" value="' . (int) $ops_alert_disk_percent . '" />
+                                        </div>
+                                    </div></div>
+                                    <div class="col-12 md:col-6"><div>
+                                        <label for="ops_alert_mail_failures" class="form-label">' . lang('Failed e-mails in a day') . '</label>
+                                        <input type="number" name="ops_alert_mail_failures" id="ops_alert_mail_failures" min="0" max="100000" step="1" class="form-control" value="' . (int) $ops_alert_mail_failures . '" />
+                                    </div></div>
+                                    <div class="col-12 md:col-6"><div>
+                                        <label for="ops_alert_cert_days" class="form-label">' . lang('Certificate days left') . '</label>
+                                        <input type="number" name="ops_alert_cert_days" id="ops_alert_cert_days" min="0" max="60" step="1" class="form-control" value="' . (int) $ops_alert_cert_days . '" />
+                                    </div></div>
                                 </div>
-                            </div>
-                            <div class="pg-f-xs">
-                                <label for="ops_alert_error_rate" class="form-label">' . lang('PHP errors in an hour') . '</label>
-                                <input type="number" name="ops_alert_error_rate" id="ops_alert_error_rate" min="0" max="100000" step="1" class="form-control" value="' . (int) $ops_alert_error_rate . '" />
-                            </div>
-                            <div class="pg-f-xs">
-                                <label for="ops_alert_disk_percent" class="form-label">' . lang('Free disk space below %') . '</label>
-                                <div class="form-range pg-range-bubble" data-pg-range="' . h(lang('{var:1}%')) . '">
-                                    <input type="range" name="ops_alert_disk_percent" id="ops_alert_disk_percent" min="0" max="50" step="1" class="form-range-input" value="' . (int) $ops_alert_disk_percent . '" />
-                                </div>
-                            </div>
-                            <div class="pg-f-xs">
-                                <label for="ops_alert_mail_failures" class="form-label">' . lang('Failed e-mails in a day') . '</label>
-                                <input type="number" name="ops_alert_mail_failures" id="ops_alert_mail_failures" min="0" max="100000" step="1" class="form-control" value="' . (int) $ops_alert_mail_failures . '" />
-                            </div>
-                            <div class="pg-f-xs">
-                                <label for="ops_alert_cert_days" class="form-label">' . lang('Certificate days left') . '</label>
-                                <input type="number" name="ops_alert_cert_days" id="ops_alert_cert_days" min="0" max="60" step="1" class="form-control" value="' . (int) $ops_alert_cert_days . '" />
-                            </div>
-                            <div class="col-12">
-                                <div class="form-text">' . lang('An alert goes out when the number is reached: as many PHP errors recorded in an hour, free disk space under this share of the disk (or under 1 GB), as many e-mails of the last day failing, or the site\'s certificate ending within as many days. 0 switches that check off. The certificate is checked once a day, only while the site is served over https.') . '</div>
+                                <p class="pg-field-help pg-text-meta fg-secondary mt-2 mb-0">' . lang('An alert goes out when a number is reached; 0 switches that check off. The disk also counts under 1 GB; the certificate only over https.') . '</p>
                             </div>
                         </div>
                     </div>';
@@ -719,13 +638,20 @@ if ($ops_alerts_ready) {
                 return;
             }
 
+            // The Sales watch card stops with this switch: its fields hide
+            // and its note leads back here.
             var sales = document.getElementById("sales_watch_fields");
+            var salesOff = document.getElementById("sales_watch_off");
 
             function sync() {
                 fields.style.display = master.checked ? "" : "none";
 
                 if (sales) {
                     sales.style.display = master.checked ? "" : "none";
+                }
+
+                if (salesOff) {
+                    salesOff.style.display = master.checked ? "none" : "";
                 }
             }
 
@@ -735,11 +661,25 @@ if ($ops_alerts_ready) {
     </script>';
 }
 
+$maintenance_parts['alerts'] = array('html' => '
+    <div id="pgset-alerts" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 pg-title-section">
+                ' . lang('Alerts') . '
+            </div>
+            <div class="card-body">
+                <div class="row gy-5">' . $output_ops_alert_settings . '
+                </div>
+            </div>
+        </div>
+    </div>') + pg_maintenance_fold_alerts($ops_alerts_ready, (bool) $ops_alerts, (bool) $ops_alert_email, $ops_alert_recipients, (bool) $ops_alert_push);
+
 // ── Sales watch ──
 //
-// Part of the Alerts card, shown and hidden with its master switch: the
-// shop's own alerts (includes/fn/sales_watch.php), one config_text row. The
-// save module writes it only when this part was drawn (sales_watch_card).
+// A card of its own that still stops with Operations alerts: its fields
+// hide with that switch and a note leads to its row. The shop's own alerts
+// (includes/fn/sales_watch.php), one config_text row. The save module writes
+// it only when this card was drawn (sales_watch_card).
 if ($ops_alerts_ready && $sales_watch_ready) {
 
     $sales_watch_codes = pg_ops_alert_codes();
@@ -761,12 +701,6 @@ if ($ops_alerts_ready && $sales_watch_ready) {
                                     </div>';
     }
 
-    $sales_watch_level_options = '';
-
-    foreach (array('low' => lang('Low (0.1%)'), 'normal' => lang('Normal (1%)'), 'high' => lang('High (5%)')) as $sales_watch_level => $sales_watch_level_label) {
-        $sales_watch_level_options .= '<option value="' . h($sales_watch_level) . '"' . (($sales_watch['level'] === $sales_watch_level) ? ' selected="selected"' : '') . '>' . h($sales_watch_level_label) . '</option>';
-    }
-
     $sales_watch_pauses = '';
     $sales_watch_now = time();
 
@@ -784,59 +718,47 @@ if ($ops_alerts_ready && $sales_watch_ready) {
                                     </div>';
     }
 
-    $output_ops_alert_settings .= '
+    $output_sales_watch_settings = '
+                    <div class="col-12" id="sales_watch_off">
+                        <p class="pg-text-meta fg-secondary mb-0">' . lang('Off with Operations alerts: the watch tells nothing while they are switched off.') . '</p>
+                        <button type="button" class="pg-button pg-button-quiet pg-button-sm mt-3" data-pg-set-goto="pgset-alerts"><i class="bi bi-bell" aria-hidden="true"></i>' . lang('Open Operations alerts') . '</button>
+                    </div>
                     <div class="col-12" id="sales_watch_fields">
                         <input type="hidden" name="sales_watch_card" value="1"/>
                         <div class="row gy-5">
                             <div class="col-12">
-                                <h4 class="pg-group-label">' . lang('Sales watch') . '</h4>
-                                <div class="form-text">' . lang('The store learns how many orders each channel - the site and every marketplace account - usually brings in each hour of the week, and says when the shop stops working as usual: orders stop coming in, or carts reach payment but are not completed. Counter sales are left out. A channel with fewer than 20 orders in eight weeks is not watched yet.') . '</div>
-                            </div>
+                                <p class="pg-text-meta fg-secondary mb-0">' . lang('Learns how many orders each channel usually brings in each hour of the week and tells when they stop, or carts stop being paid. A channel with fewer than 20 orders in eight weeks is not watched yet.') . '</p>
+                            </div>' . pg_maintenance_settings_group(lang('Watch for')) . '
                             <div class="col-12">
                                 <div class="row gy-5">' . $sales_watch_alerts . '
                                 </div>
-                            </div>
-                            <div class="pg-f-sm">
-                                <label for="sales_watch_level" class="form-label">' . lang('Sensitivity') . '</label>
-                                <select name="sales_watch_level" id="sales_watch_level" class="form-control">' . $sales_watch_level_options . '</select>
-                            </div>
-                            <div class="col-12">
-                                <div class="form-text">' . lang('How unlikely a quiet spell has to be before it is told. High tells sooner and is wrong more often; low tells only what is almost certainly a problem.') . '</div>
-                            </div>
-                            <div class="col-12">
-                                <div class="form-field">
-                                    <div class="switch"><input value="1"' . (!empty($sales_watch['close_products']) ? ' checked="checked"' : '') . ' class="" type="checkbox" id="sales_watch_close_products" name="sales_watch_close_products"/></div>
-                                    <label class="" for="sales_watch_close_products">' . lang('Take a product off sale on a price error') . '</label><div class="form-text">' . lang('A product selling fast at far below its usual price is switched off until someone switches it on again. Stock is never changed. At most 5 products a check and 20 a day; when more look wrong at once, none is switched off and the alert asks whether a campaign is running.') . '</div>
-                                </div>
-                            </div>
+                            </div>' . pg_maintenance_settings_seg(lang('Sensitivity'), 'sales_watch_level', array('low' => lang('Low (0.1%)'), 'normal' => lang('Normal (1%)'), 'high' => lang('High (5%)')), $sales_watch['level'], lang('High tells sooner and is wrong more often; low tells only what is almost certainly a problem.')) . pg_maintenance_settings_group(lang('Price errors'))
+                            . pg_maintenance_settings_switch('sales_watch_close_products', !empty($sales_watch['close_products']), lang('Take a product off sale on a price error'), lang('Switched off until someone switches it on; at most 5 a check and 20 a day, stock never changed.')) . '
                             <div class="pg-f-xs">
                                 <label for="sales_watch_price_drop" class="form-label">' . lang('Price error below %') . '</label>
-                                <input type="number" name="sales_watch_price_drop" id="sales_watch_price_drop" min="10" max="90" step="1" class="form-control" value="' . (int) round($sales_watch['price_drop'] * 100) . '" />
-                            </div>
+                                <input type="number" name="sales_watch_price_drop" id="sales_watch_price_drop" min="10" max="90" step="1" class="form-control" value="' . (int) round($sales_watch['price_drop'] * 100) . '" aria-describedby="sales_watch_price_drop_help" />
+                                <p class="pg-field-help pg-text-meta fg-secondary mb-0" id="sales_watch_price_drop_help">' . lang('A price under this share of the product\'s usual price of the last 30 days counts as a possible error.') . '</p>
+                            </div>' . pg_maintenance_settings_group(lang('Pause the watch until')) . '
                             <div class="col-12">
-                                <div class="form-text">' . lang('A price under this share of the product\'s usual price of the last 30 days counts as a possible error.') . '</div>
-                            </div>
-                            <div class="col-12">
-                                <div class="form-label mb-0">' . lang('Pause the watch until') . '</div>
-                                <div class="form-text">' . lang('For a holiday or a planned shutdown: nothing is told for the store or the channel through the end of the chosen day. Leave empty to watch.') . '</div>
+                                <p class="pg-text-meta fg-secondary mb-0">' . lang('For a holiday or a planned shutdown: nothing is told for the store or the channel through the end of the chosen day. Leave empty to watch.') . '</p>
                             </div>' . $sales_watch_pauses . '
                             <div class="d-none">' . get_date_picker_format() . pg_fields_script() . '</div>
                         </div>
                     </div>';
-}
 
-$pg_settings_cards[] = '
-    <div id="pgset-alerts" class="pg-set-card">
+    $maintenance_parts['sales-watch'] = array('html' => '
+    <div id="pgset-sales-watch" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 pg-title-section">
-                ' . lang('Alerts') . '
+                ' . lang('Sales watch') . '
             </div>
             <div class="card-body">
-                <div class="row gy-5">' . $output_ops_alert_settings . '
+                <div class="row gy-5">' . $output_sales_watch_settings . '
                 </div>
             </div>
         </div>
-    </div>';
+    </div>') + pg_maintenance_fold_sales((bool) $ops_alerts, $sales_watch, $maintenance_now);
+}
 
 // ── Chat notifications ──
 //
@@ -847,7 +769,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/notify_channels_page.php');
 
 $output_notify_settings = pg_notify_settings_card_html(pg_notify_target_counts($notify_targets));
 
-$pg_settings_cards[] = '
+$maintenance_parts['chat-notify'] = array('html' => '
     <div id="pgset-chat-notify" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 pg-title-section">
@@ -858,7 +780,7 @@ $pg_settings_cards[] = '
                 </div>
             </div>
         </div>
-    </div>';
+    </div>') + pg_maintenance_fold_chat($notify_targets, pg_notify_channel_kinds());
 
 // ── Maintenance Mode ──
 //
@@ -884,35 +806,30 @@ if ($maintenance_ready) {
                     </div>';
     }
 
-    $output_maintenance_settings = '
-                    <div class="col-12">
-                        <div class="form-field">
-                            <div class="switch"><input value="1"' . ($maintenance_mode ? ' checked="checked"' : '') . ' class="" type="checkbox" id="maintenance_mode" name="maintenance_mode"/></div>
-                            <label class="" for="maintenance_mode">' . lang('Maintenance Mode') . '</label><div class="form-text">' . lang('Visitors who open a page of the site see the maintenance screen - the designed error page, or the classic one - with the 503 answer that tells search engines to come back later. Signed-in managers and administrators, and the addresses below, see the site as usual. Files, the control panel and payment callbacks keep working.') . '</div>
-                        </div>
-                    </div>' . $maintenance_state . '
+    $maintenance_health = URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/health.php';
+
+    $output_maintenance_settings = pg_maintenance_settings_switch('maintenance_mode', (bool) $maintenance_mode, lang('Maintenance Mode'), lang('Visitors see the maintenance screen with a 503; managers, administrators and the addresses below see the site. Files, the panel and payment callbacks keep working.')) . $maintenance_state . '
                     <div class="pg-f-sm">
                         <label for="maintenance_until" class="form-label">' . lang('Ends at') . '</label>
-                        <input type="datetime-local" data-pg-datetime name="maintenance_until" id="maintenance_until" class="form-control" value="' . h($maintenance_until_value) . '" />' . get_date_picker_format() . pg_fields_script() . '
-                    </div>
-                    <div class="col-12">
-                        <div class="form-text">' . lang('Optional. At this time the site opens to visitors again by itself, and search engines are told to come back then.') . '</div>
+                        <input type="datetime-local" data-pg-datetime name="maintenance_until" id="maintenance_until" class="form-control" value="' . h($maintenance_until_value) . '" aria-describedby="maintenance_until_help" />' . get_date_picker_format() . pg_fields_script() . '
+                        <p class="pg-field-help pg-text-meta fg-secondary mb-0" id="maintenance_until_help">' . lang('Optional. At this time the site opens to visitors again by itself, and search engines are told to come back then.') . '</p>
                     </div>
                     <div class="col-12">
                         <label for="maintenance_allow_ips" class="form-label">' . lang('Addresses that see the site') . '</label>
-                        <textarea name="maintenance_allow_ips" id="maintenance_allow_ips" rows="2" class="form-control" spellcheck="false">' . h($maintenance_allow_ips) . '</textarea>
-                        <div class="form-text">' . lang(array('string' => 'Addresses or ranges (CIDR), separated by commas or one per line. Your address: {var:1}', 'vars' => array(h($maintenance_my_ip)))) . '</div>'
+                        <textarea name="maintenance_allow_ips" id="maintenance_allow_ips" rows="2" class="form-control" spellcheck="false" aria-describedby="maintenance_allow_ips_help">' . h($maintenance_allow_ips) . '</textarea>
+                        <p class="pg-field-help pg-text-meta fg-secondary mb-0" id="maintenance_allow_ips_help">' . lang(array('string' => 'Addresses or ranges (CIDR), separated by commas or one per line. Your address: {var:1}', 'vars' => array(h($maintenance_my_ip)))) . '</p>'
                         // Behind a tunnel or a proxy that is not declared,
                         // the address shown is the one every visitor has.
                         . ($maintenance_my_ip_shared ? '
                         <div class="alert theme-warning mt-3 mb-0 py-3 small">' . lang('This is the server or a proxy, not your own address: every visitor reaches the site through it, so listing it lets everyone see the site. Add it to Trusted Proxies on the Firewall card first; then this line shows your own address.') . '</div>' : '') . '
-                    </div>
+                    </div>' . pg_maintenance_settings_group(lang('Health address')) . '
                     <div class="col-12">
-                        <div class="form-text">' . lang('Uptime monitors can poll this address. It answers 200 while the site is up and its general job runs, and 503 during maintenance or when the general job has stopped:') . ' <code>' . h(URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/health.php') . '</code></div>
+                        <p class="d-flex align-items-center gap-2 mb-1"><code class="text-break" id="maintenance_health_address">' . h($maintenance_health) . '</code><span class="pg-copy">' . pg_copy_button($maintenance_health, lang('Copy the address'), 'maintenance_health_address') . '</span></p>
+                        <p class="pg-field-help pg-text-meta fg-secondary mb-0">' . lang('For an uptime monitor: 200 while the site is up and its general job runs, 503 during maintenance or when the job has stopped.') . '</p>
                     </div>';
 }
 
-$pg_settings_cards[] = '
+$maintenance_parts['maintenance'] = array('html' => '
     <div id="pgset-maintenance" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 pg-title-section">
@@ -923,4 +840,15 @@ $pg_settings_cards[] = '
                 </div>
             </div>
         </div>
-    </div>';
+    </div>') + pg_maintenance_fold_mode($maintenance_ready, (bool) $maintenance_mode, $maintenance_until, $maintenance_now);
+
+// ── The rows ──
+$maintenance_rows = array();
+
+foreach (pg_maintenance_fold_order() as $maintenance_key) {
+    if (isset($maintenance_parts[$maintenance_key])) {
+        $maintenance_rows[] = array('key' => $maintenance_key) + pg_maintenance_fold_face($maintenance_key) + $maintenance_parts[$maintenance_key];
+    }
+}
+
+$pg_settings_cards[] = pg_settings_fold($maintenance_rows);

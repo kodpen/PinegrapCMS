@@ -1,0 +1,20 @@
+{
+ "id": "announce-hours",
+ "width": 1080,
+ "height": 1350,
+ "background": "#ffffff",
+ "layers": [
+  {"type": "rect", "x": 0, "y": 0, "w": 1080, "h": 420, "color": "#343a40"},
+  {"type": "text", "text": "startAnnounceHoursHead", "font": "g:Oswald", "size": 96, "weight": 600, "color": "#ffffff", "align": "center", "x": 540, "y": 130, "maxW": 960},
+  {"type": "text", "text": "startAnnounceHoursLine", "font": "g:Lato", "size": 40, "weight": 400, "color": "#ced4da", "align": "center", "x": 540, "y": 290, "maxW": 960},
+  {"type": "text", "text": "startHoursWeek", "font": "g:Lato", "size": 44, "weight": 700, "color": "#212529", "align": "left", "x": 120, "y": 560, "maxW": 500},
+  {"type": "text", "text": "startHoursWeekTime", "font": "g:Lato", "size": 44, "weight": 400, "color": "#495057", "align": "right", "x": 960, "y": 560, "maxW": 340},
+  {"type": "rect", "x": 120, "y": 650, "w": 840, "h": 2, "color": "#dee2e6"},
+  {"type": "text", "text": "startHoursSat", "font": "g:Lato", "size": 44, "weight": 700, "color": "#212529", "align": "left", "x": 120, "y": 700, "maxW": 500},
+  {"type": "text", "text": "startHoursSatTime", "font": "g:Lato", "size": 44, "weight": 400, "color": "#495057", "align": "right", "x": 960, "y": 700, "maxW": 340},
+  {"type": "rect", "x": 120, "y": 790, "w": 840, "h": 2, "color": "#dee2e6"},
+  {"type": "text", "text": "startHoursSun", "font": "g:Lato", "size": 44, "weight": 700, "color": "#212529", "align": "left", "x": 120, "y": 840, "maxW": 500},
+  {"type": "text", "text": "startHoursSunTime", "font": "g:Lato", "size": 44, "weight": 400, "color": "#495057", "align": "right", "x": 960, "y": 840, "maxW": 340},
+  {"type": "text", "text": "startHoursBye", "font": "g:Dancing Script", "size": 72, "weight": 700, "color": "#343a40", "align": "center", "x": 540, "y": 1080, "maxW": 960}
+ ]
+}

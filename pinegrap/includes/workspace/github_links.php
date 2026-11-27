@@ -660,13 +660,16 @@ function ws_github_links_settings_channels($viewer)
 }
 
 /**
- * The address of the repository links on GitHub's page of Connections.
+ * The address of the repository links on GitHub's page of Connections,
+ * returning to the GitHub repositories card.
  *
  * @return string
  */
 function ws_github_links_page_url()
 {
-    return OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/connections.php?service=github#connections-repositories';
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/connections_screen.php');
+
+    return OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . pg_connections_lead_url('github', 'workspace_channels', 'pgset-ws-github', 'connections-repositories');
 }
 
 /**

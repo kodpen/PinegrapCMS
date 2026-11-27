@@ -45,11 +45,14 @@ function settings_maintenance_test_category($key)
 	return substr($source, $start, $end - $start);
 }
 
-// The field names a card file posts.
+// The field names a card file posts, written out or handed to the pane's
+// switch and choice helpers (includes/fn/maintenance_settings_open.php).
 function settings_maintenance_test_names($source)
 {
 	preg_match_all('/\bname="([a-z0-9_]+)(?:\[\])?"/', $source, $match);
-	$names = array_values(array_unique($match[1]));
+	preg_match_all("/pg_maintenance_settings_switch\\('([a-z0-9_]+)'/", $source, $switches);
+	preg_match_all("/pg_maintenance_settings_seg\\(lang\\('[^']*'\\), '([a-z0-9_]+)'/", $source, $segs);
+	$names = array_values(array_unique(array_merge($match[1], $switches[1], $segs[1])));
 	sort($names);
 
 	return $names;
@@ -57,7 +60,7 @@ function settings_maintenance_test_names($source)
 
 function settings_maintenance_test_sections()
 {
-	return array('pgset-channel', 'pgset-cron', 'pgset-alerts', 'pgset-maintenance');
+	return array('pgset-channel', 'pgset-maintenance', 'pgset-cron', 'pgset-alerts');
 }
 
 function test_settings_maintenance_category_is_last()
@@ -112,7 +115,7 @@ function test_settings_maintenance_cards_moved_out_of_general()
 		pg_assert_contains('id="' . $section . '"', $cards, $section . ' drawn here');
 	}
 
-	pg_assert_contains("pg_settings_drawer('cron_jobs',", $cards, 'the setup drawer goes with Cron Jobs');
+	pg_assert_contains('pg_maintenance_cron_guide_drawer(', $cards, 'the jobs\' steps drawers go with Scheduled jobs');
 	pg_assert_same(false, strpos($general, 'id="cron_jobs"'), 'and leaves General');
 
 	$names = settings_maintenance_test_names($cards);

@@ -158,10 +158,10 @@ function pg_office_docx_paragraph_add($anchor, $after)
 
 /**
  * Adds the asked paragraphs into a document being saved, each with its
- * text, format and kind as a changed paragraph has them.
+ * text, format, kind and alignment as a changed paragraph has them.
  *
  * @param DOMElement[] $paragraphs the document's paragraphs before anything was added
- * @param array        $added      list of [after, text, format, kind], in the order they read after the same paragraph
+ * @param array        $added      list of [after, text, format, kind, align], in the order they read after the same paragraph
  * @param array        $kinds      list of [paragraph, kind] the added ones' kinds are put on
  * @return array ok, code, paragraph (counted from 1), added (the new paragraphs)
  */
@@ -197,6 +197,10 @@ function pg_office_docx_paragraphs_add($paragraphs, $added, &$kinds)
             if ($code !== '') {
                 return array('ok' => false, 'code' => $code, 'paragraph' => (string) ($position + 1), 'added' => $made);
             }
+        }
+
+        if (isset($item['align'])) {
+            pg_office_docx_paragraph_align_set($paragraph, $item['align']);
         }
 
         if ($item['kind'] !== null) {

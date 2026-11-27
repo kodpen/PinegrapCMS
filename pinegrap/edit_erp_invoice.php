@@ -794,7 +794,7 @@ if (($reminder['phase'] !== 'off') || ($reminder['notified_at'] > 0) || ($remind
             // a claim that can be late (paid, cancelled). What was said about
             // it is still worth reading.
             if (!erp_overdue_notify_enabled()) {
-                $reminder_lines[] = lang('Reminders are switched off on the ERP settings card.');
+                $reminder_lines[] = lang('Reminders are switched off in Site Settings › Accounting › Reminders and notices.');
             }
             if ($reminder['notified_at'] > 0) {
                 $reminder_lines[] = lang(array('string' => 'Announced on {var:1}.', 'vars' => $date_stamp($reminder['notified_at'])));
@@ -873,7 +873,7 @@ if (($reminder['phase'] !== 'off') || ($reminder['notified_at'] > 0) || ($remind
                 <div class="card-body">
                     <div class="row">
                         <div class="col-12 lg:col-7 my-3">' . $output_reminder_lines . '
-                            <div class="form-text">' . lang('The digest goes to the panel bell, by e-mail and to subscribed devices as set on the ERP settings card. A document is announced when it passes the threshold and once more a month later; putting it off keeps it out of the digests until the date you choose.') . '</div>
+                            <div class="form-text">' . lang('The digest goes to the panel bell, by e-mail and to subscribed devices as set in Site Settings › Accounting › Reminders and notices. A document is announced when it passes the threshold and once more a month later; putting it off keeps it out of the digests until the date you choose.') . '</div>
                         </div>
                         <div class="col-12 lg:col-5 my-3">' . $output_snooze . '
                         </div>

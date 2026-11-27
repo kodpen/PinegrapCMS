@@ -748,11 +748,83 @@
         return (typeof opts.minimap === 'boolean') ? opts.minimap : _cfg.minimap;
     }
 
+    // How long the minimap waits after the last change of the text or of the
+    // editor's size before it draws again.
+    var MINIMAP_QUIET_MS = 300;
+
+    // @replit/codemirror-minimap draws its whole canvas inside every editor
+    // update, and before each draw it forgets the colour and font it read
+    // per highlight class and reads them again from a hidden element per
+    // class: one forced style recalculation each, about 45 a key on the
+    // designer's page. Its plugin is wrapped once here so that each minimap
+    // keeps what it read until the editor's classes or the page's colour
+    // theme change, and draws once typing or a resize pauses (a scroll or a
+    // selection draws on the next frame). The plugin is not exported, so it
+    // is reached through the facet's own `extensions`; when that shape is not
+    // found the minimap works as shipped.
+    function _minimapTame(cm) {
+        var facet = cm.minimap.showMinimap;
+        if (facet._pgTamed) return;
+        facet._pgTamed = true;
+        var walk = function (x) {
+            if (Array.isArray(x)) { x.forEach(walk); return; }
+            if (cm.view.ViewPlugin && x instanceof cm.view.ViewPlugin && typeof x.create === 'function') {
+                var create = x.create;
+                x.create = function (view) { return _minimapTameInstance(create.call(this, view), view); };
+            }
+        };
+        try { walk(facet.extensions); } catch (e) {}
+    }
+
+    // One minimap plugin instance (the overlay plugin has no render() and is
+    // left alone): the font cache kept, the draw deferred and coalesced.
+    function _minimapTameInstance(p, view) {
+        if (!p || typeof p.render !== 'function' || typeof p.update !== 'function' ||
+            !p.text || typeof p.text.beforeDraw !== 'function') return p;
+        var draw = p.render, update = p.update, destroy = p.destroy;
+        var themeKey = null, quietUntil = 0, timer = 0, frame = 0, dead = false;
+        p.text.beforeDraw = function () {
+            var key = view.dom.className + '|' + (document.documentElement.getAttribute('data-bs-theme') || '');
+            if (key === themeKey) return;
+            themeKey = key;
+            if (this._fontInfoMap && typeof this._fontInfoMap.clear === 'function') this._fontInfoMap.clear();
+        };
+        var run = function () {
+            timer = 0;
+            frame = 0;
+            if (!dead) draw.call(p);
+        };
+        p.render = function () {
+            if (dead) return;
+            var wait = quietUntil - Date.now();
+            if (wait > 0) {
+                if (frame) { cancelAnimationFrame(frame); frame = 0; }
+                if (timer) clearTimeout(timer);
+                timer = setTimeout(run, wait);
+                return;
+            }
+            if (timer || frame) return;
+            frame = requestAnimationFrame(run);
+        };
+        p.update = function (u) {
+            if (u.docChanged || u.geometryChanged) quietUntil = Date.now() + MINIMAP_QUIET_MS;
+            return update.call(this, u);
+        };
+        p.destroy = function () {
+            dead = true;
+            if (timer) clearTimeout(timer);
+            if (frame) cancelAnimationFrame(frame);
+            if (typeof destroy === 'function') return destroy.call(this);
+        };
+        return p;
+    }
+
     // The bundle's minimap beside the scroll bar, or nothing. Lines are drawn
     // as blocks (cheaper than characters on a long page) and the viewport
     // overlay shows only while the pointer is over the minimap.
     function _minimapExtension(cm, on) {
         if (!on || !cm.minimap || !cm.minimap.showMinimap) return [];
+        _minimapTame(cm);
         return cm.minimap.showMinimap.of({
             create: function () {
                 var dom = document.createElement('div');

@@ -1124,7 +1124,7 @@ function pg_label_connection_html($key, $definition, $fields, $settings)
     return pg_payment_connection_block_html(pg_label_input_name($key, 'connection'), $definition['label'], $connected, $connected
         ? lang('The keys are kept on its page of Connections.')
         : lang('The keys are missing, so no label can be made with this service. Enter them on its page of Connections.'),
-        pg_payment_gateway_connections_url($key));
+        pg_payment_gateway_connections_url($key, 'pgset-shipping'));
 }
 
 /**
@@ -1567,9 +1567,10 @@ function pg_label_settings_test($key, $liveform)
 }
 
 /**
- * The label drivers' rows of the Shipping card: per driver a switch, its
- * connection (the keys are typed on its page of Connections), the fields
- * that are no keys and a connection test. Nothing when no driver is
+ * The label drivers' rows of the Shipping card: the group "Carrier labels",
+ * then per driver a pg-switch heading its connection (the keys are typed on
+ * its page of Connections), the fields that are no keys and a connection
+ * test, all drawn whatever the switch says. Nothing when no driver is
  * installed.
  *
  * @return string
@@ -1583,14 +1584,14 @@ function pg_label_settings_rows()
     }
 
     $html = '
-                                                                        <div class="col-12"><h6 class="fg-secondary mb-0">' . lang('Carrier Labels') . '</h6>
-                                                                            <div class="form-text">' . lang('Shipments, labels and tracking numbers created through the account of a shipping service.') . '</div>
-                                                                        </div>';
+                    <div class="col-12">
+                        <h3 class="pg-group-label mb-0">' . lang('Carrier labels') . '</h3>
+                        <p class="pg-field-help pg-text-meta fg-secondary mb-0">' . lang('Shipments, labels and tracking numbers created through the account of a shipping service.') . '</p>
+                    </div>';
 
     foreach ($drivers as $key => $definition) {
         $fields = pg_label_fields($key);
         $settings = pg_label_settings($key);
-        $row = pg_label_input_name($key, 'row');
         $enabled_id = pg_label_input_name($key, 'enabled');
         $info = pg_label_info($key);
 
@@ -1600,25 +1601,25 @@ function pg_label_settings_rows()
             $carriers[] = pg_shipping_carriers()[$carrier]['name'];
         }
 
+        // The service's switch heads its fields, drawn whatever it says.
         $html .= '
-                                                                        <div class="col-12">
-                                                                            <div class="form-field">
-                                                                                <div class="switch"><input value="1"' . ($settings['enabled'] ? ' checked="checked"' : '') . ' class="collapse-switcher" type="checkbox" id="' . h($enabled_id) . '" name="' . h($enabled_id) . '" data-bs-target="#' . h($row) . '"/></div>
-                                                                                <label class="" for="' . h($enabled_id) . '">' . h($definition['label']) . '</label>' . ($carriers ? '<div class="form-text">' . h(implode(', ', $carriers)) . '</div>' : '') . '
-                                                                            </div>
-                                                                            <div class="collapse popover fade bs-popover-bottom p-0" id="' . h($row) . '">
-                                                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
-                                                                                <div class="popover-body">
-                                                                                   <div class="row gy-5">
-                                                                                        <input type="hidden" name="' . h(pg_label_input_name($key, 'present')) . '" value="1"/>'
+                    <div class="col-12">
+                        <input type="hidden" name="' . h(pg_label_input_name($key, 'present')) . '" value="1"/>
+                        <div class="d-flex align-items-center gap-5">
+                            <input type="checkbox" class="pg-switch" value="1"' . ($settings['enabled'] ? ' checked="checked"' : '') . ' id="' . h($enabled_id) . '" name="' . h($enabled_id) . '"' . ($carriers ? ' aria-describedby="' . h($enabled_id) . '_help"' : '') . '/>
+                            <label class="pg-group-label mb-0" for="' . h($enabled_id) . '">' . h($definition['label']) . '</label>
+                        </div>' . ($carriers ? '
+                        <p class="pg-field-help pg-text-meta fg-secondary mb-0" id="' . h($enabled_id) . '_help">' . h(implode(', ', $carriers)) . '</p>' : '') . '
+                    </div>'
             // The keys are typed on the driver's page of Connections.
             . pg_label_connection_html($key, $definition, $fields, $settings);
 
         foreach (pg_label_fields_part($fields, 'card') as $field) {
             $id = pg_label_input_name($key, $field['name']);
             $value = isset($settings['values'][$field['name']]) ? $settings['values'][$field['name']] : $field['default'];
+            $described = ($field['help'] !== '') ? ' aria-describedby="' . h($id) . '_help"' : '';
             $help = ($field['help'] !== '') ? '
-                                                                                            <div class="form-text">' . h($field['help']) . '</div>' : '';
+                        <div class="form-text" id="' . h($id) . '_help">' . h($field['help']) . '</div>' : '';
 
             if ($field['type'] === 'select') {
                 $options = '';
@@ -1627,16 +1628,16 @@ function pg_label_settings_rows()
                     $options .= '<option value="' . h($option) . '"' . (((string) $option === $value) ? ' selected="selected"' : '') . '>' . h($option_label) . '</option>';
                 }
 
-                $input = '<select class="form-control" id="' . h($id) . '" name="' . h($id) . '">' . $options . '</select>';
+                $input = '<select class="form-control" id="' . h($id) . '" name="' . h($id) . '"' . $described . '>' . $options . '</select>';
             } else {
-                $input = '<input class="form-control" type="text" id="' . h($id) . '" name="' . h($id) . '" value="' . h($value) . '" maxlength="' . (int) $field['max_length'] . '" autocomplete="off"/>';
+                $input = '<input class="form-control" type="text" id="' . h($id) . '" name="' . h($id) . '" value="' . h($value) . '" maxlength="' . (int) $field['max_length'] . '" autocomplete="off"' . $described . '/>';
             }
 
             $html .= '
-                                                                                        <div class="pg-f-md">
-                                                                                            <label class="form-label" for="' . h($id) . '">' . h($field['label']) . '</label>
-                                                                                            ' . $input . $help . '
-                                                                                        </div>';
+                    <div class="pg-f-md">
+                        <label class="form-label" for="' . h($id) . '">' . h($field['label']) . '</label>
+                        ' . $input . $help . '
+                    </div>';
         }
 
         // The automatic label once an order is paid
@@ -1646,13 +1647,13 @@ function pg_label_settings_rows()
             $auto_on = isset($settings['values']['auto_label']) && ($settings['values']['auto_label'] === '1');
 
             $html .= '
-                                                                                        <div class="col-12">
-                                                                                            <div class="form-field">
-                                                                                                <div class="switch"><input value="1"' . ($auto_on ? ' checked="checked"' : '') . ' type="checkbox" id="' . h($auto_id) . '" name="' . h($auto_id) . '"/></div>
-                                                                                                <label class="" for="' . h($auto_id) . '">' . lang('Create the label automatically once the order is paid') . '</label>
-                                                                                                <div class="form-text">' . lang('For orders paid after this is switched on, within 3 days of payment, at most 10 labels each time the scheduled job runs. Each address is tried once: when the service refuses, the order shows it and Create Label stays.') . '</div>
-                                                                                            </div>
-                                                                                        </div>';
+                    <div class="col-12">
+                        <div class="d-flex align-items-center gap-5">
+                            <input type="checkbox" class="pg-switch" value="1"' . ($auto_on ? ' checked="checked"' : '') . ' id="' . h($auto_id) . '" name="' . h($auto_id) . '" aria-describedby="' . h($auto_id) . '_help"/>
+                            <label class="pg-text-2" for="' . h($auto_id) . '">' . lang('Create the label automatically once the order is paid') . '</label>
+                        </div>
+                        <p class="pg-field-help pg-text-meta fg-secondary mb-0" id="' . h($auto_id) . '_help">' . lang('For orders paid after this is switched on: within 3 days of payment, at most 10 labels a run; a refused address shows on its order.') . '</p>
+                    </div>';
         }
 
         require_once(PG_FUNCTIONS_DIR . '/includes/fn/carrier_webhook.php');
@@ -1660,16 +1661,10 @@ function pg_label_settings_rows()
 
         if (pg_label_can($key, 'test')) {
             $html .= '
-                                                                                        <div class="col-12">
-                                                                                            <button type="submit" name="label_test" value="' . h($key) . '" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-plug" aria-hidden="true"></i>' . lang('Save and test the connection') . '</button>
-                                                                                        </div>';
+                    <div class="col-12">
+                        <button type="submit" name="label_test" value="' . h($key) . '" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-plug" aria-hidden="true"></i>' . lang('Save and test the connection') . '</button>
+                    </div>';
         }
-
-        $html .= '
-                                                                                    </div>
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>';
     }
 
     return $html;

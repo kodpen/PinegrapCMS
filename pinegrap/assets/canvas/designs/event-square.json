@@ -1,0 +1,16 @@
+{
+ "id": "event-square",
+ "width": 1080,
+ "height": 1080,
+ "background": "#f8f9fa",
+ "layers": [
+  {"type": "slot", "x": 0, "y": 0, "w": 1080, "h": 560},
+  {"type": "rect", "x": 0, "y": 560, "w": 1080, "h": 8, "color": "#f76707"},
+  {"type": "text", "text": "startEventShopSmall", "font": "g:Montserrat", "size": 36, "weight": 700, "color": "#f76707", "align": "left", "x": 80, "y": 620, "maxW": 920, "spacing": 0.15},
+  {"type": "text", "text": "startEventShopHead", "font": "g:Playfair Display", "size": 80, "weight": 700, "color": "#212529", "align": "left", "x": 80, "y": 680, "maxW": 920},
+  {"type": "text", "text": "startEventShopWhen", "font": "g:Lato", "size": 40, "weight": 400, "color": "#495057", "align": "left", "x": 80, "y": 800, "maxW": 920},
+  {"type": "text", "text": "startEventShopNote", "font": "g:Lato", "size": 34, "weight": 400, "color": "#868e96", "align": "left", "x": 80, "y": 870, "maxW": 600, "italic": true},
+  {"type": "rect", "x": 80, "y": 950, "w": 320, "h": 80, "color": "#f76707", "radius": 40},
+  {"type": "text", "text": "startSignUp", "font": "g:Montserrat", "size": 32, "weight": 700, "color": "#ffffff", "align": "center", "x": 240, "y": 972, "maxW": 280}
+ ]
+}

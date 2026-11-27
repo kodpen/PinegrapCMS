@@ -3110,6 +3110,138 @@ body:not(.toolbar) .software-content > #footer {
     transition: none;
   }
 }
+
+/* ── The top bar in the drawer ───────────────────────────────────────────────
+   A drawer-only screen (Page Design Studio) draws no top bar: its controls
+   stand in the drawer (pg_menu_drawer_bar()), which is #header there, so the
+   bar's rules keep sizing them. These lay it out as a column: the head (the
+   logo and the close button), one row of tools, the main menu, the foot (Go
+   to Site and the account). Every other screen keeps its bar. */
+.software-container.pg-bar-in-drawer {
+  --pg-navbar-h: 0px;
+  grid-template-rows: 0 minmax(0, 1fr);
+}
+.software-container.pg-bar-in-drawer .software-sidebar {
+  top: 0;
+  height: 100vh;
+  height: 100dvh;
+}
+.pg-bar-in-drawer #header.pg-drawer-bar {
+  --pg-db-row: calc(var(--pg-tap) + 0.5rem);
+  /* The foot: Go to Site and the account, one tap height each. */
+  --pg-db-foot: calc(2 * var(--pg-tap) + 1.25rem + 1px);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  box-shadow: none;
+}
+.pg-bar-in-drawer #header .pg-db-head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  height: var(--pg-db-row);
+  padding: 0 0.5rem 0 0.75rem;
+}
+.pg-bar-in-drawer #header .pg-db-brand > a {
+  padding-left: 0;
+  padding-right: 0;
+}
+.pg-bar-in-drawer #header .pg-db-tools {
+  flex: none;
+  height: var(--pg-db-row);
+  margin-left: 0;
+  padding: 0 0.5rem;
+  border-bottom: 1px solid var(--pg-border-color);
+}
+.pg-bar-in-drawer #header #menu {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
+}
+.pg-bar-in-drawer #header #menu .menu-body {
+  padding-bottom: 0.5rem;
+}
+.pg-bar-in-drawer #header .pg-db-foot {
+  flex: none;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.25rem;
+  height: var(--pg-db-foot);
+  margin-left: 0;
+  padding: 0.5rem;
+  border-top: 1px solid var(--pg-border-color);
+}
+.pg-bar-in-drawer #header .pg-db-site {
+  justify-content: flex-start;
+  min-height: var(--pg-tap);
+}
+.pg-bar-in-drawer #header .pg-db-account > li {
+  width: 100%;
+}
+.pg-bar-in-drawer #header .pg-acctbtn {
+  width: 100%;
+  justify-content: flex-start;
+}
+/* The name is d-none below lg in the bar; @layer utilities beats @layer
+   custom, so only an important declaration shows it in the drawer. */
+.pg-bar-in-drawer #header .pg-acctname {
+  display: inline !important;
+  flex: 1 1 auto;
+  max-width: none;
+  text-align: start;
+}
+/* The account menu opens upward, over the drawer. */
+.pg-bar-in-drawer #header .pg-chev {
+  transform: rotate(180deg);
+}
+.pg-bar-in-drawer #header .pg-usermenu {
+  top: auto;
+  right: auto;
+  bottom: calc(var(--pg-db-foot) + 0.25rem);
+  left: 0.5rem;
+  width: calc(min(280px, 84vw) - 1rem);
+  max-width: none;
+  max-height: calc(100vh - var(--pg-db-foot) - 1rem);
+  max-height: calc(100dvh - var(--pg-db-foot) - 1rem);
+  transform-origin: bottom left;
+}
+/* The quick note opens under the row of tools. */
+.pg-bar-in-drawer #pg_quick_note {
+  top: calc(2 * var(--pg-db-row) + 0.25rem) !important;
+  right: auto !important;
+  left: 0.5rem !important;
+  width: calc(min(280px, 84vw) - 1rem);
+  max-width: none;
+}
+/* What a phone's bar gives up for room stays in the drawer. */
+.pg-bar-in-drawer #header .pg-quick-note-nav,
+.pg-bar-in-drawer #header .pinegrap-logo-word {
+  display: flex;
+}
+/* The editor fills the window the bar left. */
+.pg-bar-in-drawer .sd-wrapper {
+  height: 100vh;
+  height: 100dvh;
+}
+/* An unread notification puts a dot on the button that opens the drawer
+   (backend.src.js, the notification poll). */
+[data-pg-menu-drawer-toggle].pg-menu-unread {
+  position: relative;
+}
+[data-pg-menu-drawer-toggle].pg-menu-unread::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--pg-danger);
+  pointer-events: none;
+}
 .navbar .vh {
   height: 28px;
 }
@@ -11117,9 +11249,14 @@ body.pg-side-panel-open .pg-chat-launcher {
      (one element to hide), so the first of them is the first child of a
      nested row and the rule above was never drawn on it: under Alerts,
      "Send alerts by e-mail" read as part of the master switch's
-     description. A cell holding only a nested row hands the line on. */
-  .pg-set-card .row > * + [class]:not(.collapse):has(> .row:only-child) > .row > [class]:first-child:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range),
-  .pg-set-card .row > * + [class]:not(.collapse):has(> .row:only-child) > .row > [class]:first-child:has(> .form-field > :is(input[type="checkbox"], .switch)) {
+     description. A cell holding only a nested row hands the line on.
+     Written with .row:only-child, never as :has(> .row:only-child) on the
+     cell: a :has() that is not the subject of its selector makes Chromium
+     restyle every [class] element under the body after any DOM change,
+     which in the visual designer cost a style pass over thousands of
+     elements on every click. */
+  .pg-set-card .row > * + [class]:not(.collapse) > .row:only-child > [class]:first-child:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range),
+  .pg-set-card .row > * + [class]:not(.collapse) > .row:only-child > [class]:first-child:has(> .form-field > :is(input[type="checkbox"], .switch)) {
     padding-top: var(--pg-set-row-y);
     border-top: 1px solid var(--pg-border-color-translucent);
   }
@@ -11907,6 +12044,12 @@ body.pg-side-panel-open .pg-chat-launcher {
 /* The same content in Bootstrap's drawer on the page path
    (settings_maintenance.php and the like, with no settings dialog around it). */
 .pg-set-drawer { --pg-drawer-width: min(42rem, 100vw); }
+/* A long ticked list of a settings row (Ecommerce › Product feeds, the groups
+   left out): it scrolls inside its own box under the filter. */
+.pg-commerce-ticks {
+  max-height: 18rem;
+  overflow-y: auto;
+}
 /* Folded rows of a settings pane (includes/settings/fold.php; Assistants and
    agents): one framed list, a row a part, its head a button with the icon
    tile, the name over one line of state, the pill and a chevron. The card a
@@ -20019,6 +20162,20 @@ a.ws-chip-message:hover,
 .ws-memory-part > .ws-empty {
   margin: 0 .9rem .9rem;
 }
+/* The search box over both parts; the parts under it keep the gap. */
+.ws-memory-results {
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+}
+.ws-memory-bar .ws-bar-search {
+  min-width: 0;
+  flex: 0 1 18rem;
+}
+.ws-memory-more {
+  padding: .55rem .9rem;
+  border-top: 1px solid var(--pg-border-color);
+}
 .ws-memory-project {
   border-top: 1px solid var(--pg-border-color);
 }
@@ -21564,13 +21721,12 @@ button.ws-file-name {
   opacity: .7;
 }
 /* A workbook whose sheets may change: its tab list is laid out in one strip
-   with the sheet being added and the add button. */
+   with the add button. */
 .office-tablist {
   display: contents;
 }
-.office-tab-add,
-.office-tab-new {
-  border: 1px dashed var(--pg-border-color);
+.office-tab-add {
+  border: 1px solid transparent;
   border-radius: 999px;
   padding: .15rem .6rem;
   font: inherit;
@@ -21578,22 +21734,9 @@ button.ws-file-name {
   color: var(--pg-fg-2);
   background: transparent;
 }
-.office-tab-add {
-  border-color: transparent;
-}
 .office-tab-add:hover {
   color: var(--pg-fg-body);
   background: var(--pg-bg-body);
-}
-.office-tab-delete {
-  background: var(--pg-danger-bg-subtle);
-}
-.office-tab-delete .office-tab-name {
-  text-decoration: line-through;
-}
-.office-tab-moved {
-  border-style: dashed;
-  border-color: var(--pg-primary);
 }
 .office-tab-input {
   width: 10rem;
@@ -21747,6 +21890,39 @@ button.ws-file-name {
   width: auto;
   max-width: 12rem;
 }
+/* The font size choice in a workbook's format bar. */
+.office-format .office-size {
+  width: auto;
+}
+/* A cell's border: a line along each side drawn, just inside the cell
+   (a cell clips what passes its edge). File content drawn in the text
+   colour of the theme, black on a cell drawn on paper (paint() in
+   pg_office_view.js). */
+.office-sheet td.office-bd {
+  position: relative;
+}
+.office-sheet td.office-bd::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 0 solid var(--pg-fg-emphasis);
+  pointer-events: none;
+}
+.office-sheet td.office-bd-paper::after {
+  color-scheme: light;
+}
+.office-sheet td.office-bd-l::after {
+  border-left-width: 1px;
+}
+.office-sheet td.office-bd-r::after {
+  border-right-width: 1px;
+}
+.office-sheet td.office-bd-t::after {
+  border-top-width: 1px;
+}
+.office-sheet td.office-bd-b::after {
+  border-bottom-width: 1px;
+}
 /* The tools over a workbook's grid: find in the workbook, the sheet's sort
    and filter with Clear, Download as CSV at the end. Wraps on a phone. */
 .office-tools {
@@ -21806,9 +21982,8 @@ button.ws-file-name {
 .office-head-menu [aria-checked="true"] > .office-menu-check {
   visibility: visible;
 }
-/* A row's or column's head opens its insert and delete menu; the line
-   waiting to be inserted is drawn before or after the row or column chosen,
-   the one waiting to be deleted struck through. */
+/* A row's or column's head opens its insert and delete menu; the head of a
+   row or column inserted by a change waiting is drawn in the accent. */
 .office-sheet .office-head {
   display: block;
   width: 100%;
@@ -21824,21 +21999,8 @@ button.ws-file-name {
 .office-sheet .office-head:focus-visible {
   color: var(--pg-primary);
 }
-.office-sheet .office-shift-insert-row {
-  box-shadow: inset 0 2px 0 var(--pg-primary);
-}
-.office-sheet .office-shift-insert-column {
-  box-shadow: inset 2px 0 0 var(--pg-primary);
-}
-.office-sheet .office-shift-insert-row-after {
-  box-shadow: inset 0 -2px 0 var(--pg-primary);
-}
-.office-sheet .office-shift-insert-column-after {
-  box-shadow: inset -2px 0 0 var(--pg-primary);
-}
-.office-sheet .office-shift-delete {
-  text-decoration: line-through;
-  background: var(--pg-danger-bg-subtle);
+.office-sheet .office-head-added {
+  color: var(--pg-primary);
 }
 .office-head-menu {
   position: absolute;
@@ -21890,6 +22052,41 @@ button.ws-file-name {
   padding: 1.25rem 1.5rem;
   line-height: 1.5;
   background: var(--pg-bg-body);
+}
+/* A Word document (renderDocument()) is drawn as a white sheet on the
+   window's quiet ground: a page wide at most, its side margins those of a
+   page, narrow on a phone. The sheet carries data-bs-theme="light", so its
+   tokens are the light theme's in both: file content, like a mail's body. */
+.office-doc-paged {
+  container: office-doc / inline-size;
+  padding: 1.5rem 1rem;
+  background: var(--pg-bg-2);
+}
+.office-paper {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 816px;
+  min-height: 100%;
+  margin: 0 auto;
+  padding: 72px 96px;
+  color: var(--pg-fg-body);
+  background: var(--pg-bg-body);
+  color-scheme: light;
+  border-radius: .25rem;
+  box-shadow: 0 0 0 1px var(--pg-border-color-translucent), 0 .25rem .75rem color-mix(in srgb, var(--pg-fg-body) 10%, transparent);
+}
+@container office-doc (max-width: 600px) {
+  .office-paper {
+    padding: 24px 16px;
+  }
+}
+@media (max-width: 599.98px) {
+  .office-doc-paged {
+    padding: .5rem 0;
+  }
+  .office-paper {
+    border-radius: 0;
+  }
 }
 .office-doc h1, .office-doc h2, .office-doc h3, .office-doc h4, .office-doc h5, .office-doc h6 {
   margin: 1rem 0 .4rem;
@@ -22003,8 +22200,10 @@ button.ws-file-name {
   border-left: 3px solid var(--pg-border-color);
   color: var(--pg-fg-2);
 }
-/* A document offered for editing (pg_office_view.js): a paragraph is
-   picked, then typed in a box that takes the place of its text. */
+/* A document offered for editing (pg_office_view.js): a paragraph that
+   may change is typed where it stands (contenteditable, .office-typing),
+   with no box or ring; one that may not is picked and ringed. Spaces and
+   line ends show as they are typed, and an empty one keeps a line. */
 .office-doc [data-p] {
   border-radius: .2rem;
 }
@@ -22022,10 +22221,22 @@ button.ws-file-name {
 .office-doc-edit .office-para {
   cursor: text;
 }
-.office-doc-edit .office-para:hover {
-  background: var(--pg-bg-1);
+/* The sheet is the one place typed in: the caret shows where, no ring
+   around the page. */
+.office-view .office-paper.office-sheet-typing {
+  outline: 0;
 }
-.office-doc .office-selected {
+.office-doc-edit .office-typing {
+  min-height: 1.5em;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  tab-size: 4;
+  outline: 0;
+}
+.office-view .office-doc .office-typing:focus-visible {
+  outline: 0;
+}
+.office-doc .office-selected:not(.office-typing) {
   box-shadow: 0 0 0 2px var(--pg-primary);
 }
 .office-doc .office-edited,
@@ -22043,15 +22254,6 @@ button.ws-file-name {
 .office-doc .office-deleted {
   text-decoration: line-through;
   opacity: .55;
-}
-.office-doc .office-para-editor {
-  min-width: 0;
-  padding: 0;
-  outline-offset: 2px;
-  text-align: inherit;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  tab-size: 4;
 }
 .office-note {
   padding: .5rem .75rem;
@@ -22559,8 +22761,157 @@ button.ws-cal-more {
   flex: 1;
   min-width: 0;
 }
-.ws-mycal-week .ws-cal-day {
-  min-height: 22rem;
+/* My calendar's week (workspace_my_calendar_week.js): the days' heads, a
+   strip of what has no hour, then 24 hours of which 07:00 to 20:00 are in
+   view; a column of hour labels on the left of each row. */
+.ws-mycal-hours {
+  --ws-mycal-hour: 3rem;
+  --ws-mycal-gutter: 3.5rem;
+}
+.ws-mycal-hours-row {
+  display: grid;
+  grid-template-columns: var(--ws-mycal-gutter) repeat(7, minmax(0, 1fr));
+}
+.ws-mycal-hours-head {
+  background: var(--pg-bg-1);
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+}
+.ws-mycal-hours-day {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 6px 4px;
+  cursor: pointer;
+}
+.ws-mycal-hours-day:hover {
+  background: var(--ws-soft);
+}
+.ws-mycal-weekday {
+  color: var(--pg-fg-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-mycal-gutter {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 6px 8px 0 0;
+  border-right: 1px solid var(--pg-border-color-translucent);
+}
+.ws-mycal-strip {
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+}
+.ws-mycal-strip-day {
+  --ws-cal-pad: .4rem;
+  min-width: 0;
+  min-height: 2rem;
+  padding: .3rem var(--ws-cal-pad) .1rem;
+  border-right: 1px solid var(--pg-border-color-translucent);
+}
+.ws-mycal-strip-day:last-child,
+.ws-mycal-hours-col:last-child {
+  border-right: 0;
+}
+.ws-mycal-strip-day.ws-cal-weekend,
+.ws-mycal-hours-col.ws-cal-weekend {
+  background: color-mix(in srgb, var(--pg-fg-emphasis) 2%, transparent);
+}
+.ws-mycal-scroll {
+  height: calc(var(--ws-mycal-hour) * 13);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.ws-mycal-hours-grid {
+  height: calc(var(--ws-mycal-hour) * 24);
+}
+.ws-mycal-hour-labels {
+  position: relative;
+  padding: 0;
+}
+.ws-mycal-hour-label {
+  position: absolute;
+  right: 8px;
+  transform: translateY(-50%);
+}
+.ws-mycal-hours-col {
+  position: relative;
+  min-width: 0;
+  border-right: 1px solid var(--pg-border-color-translucent);
+}
+.ws-mycal-slot {
+  height: calc(100% / 24);
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+}
+.ws-mycal-slot[role="button"] {
+  cursor: pointer;
+}
+.ws-mycal-slot[role="button"]:hover {
+  background: var(--ws-soft);
+}
+.ws-mycal-slot:focus-visible {
+  outline: 2px solid var(--ws-accent);
+  outline-offset: -2px;
+}
+/* An item with a time: the chip of its kind, at its start and as tall as
+   it lasts, its share of the width beside the items it overlaps. */
+.ws-cal-task.ws-mycal-block,
+.ws-cal-event.ws-mycal-block {
+  position: absolute;
+  align-items: flex-start;
+  margin: 0;
+  padding: .1rem .3rem;
+  border: 1px solid var(--pg-bg-body);
+  white-space: normal;
+  overflow: hidden;
+  z-index: 1;
+}
+.ws-cal-task.ws-mycal-block .ws-status-dot {
+  margin-top: .3rem;
+}
+.ws-mycal-block:focus-visible {
+  outline: 2px solid var(--ws-accent);
+  outline-offset: 0;
+  z-index: 2;
+}
+/* The line of now across today's column. */
+.ws-mycal-now {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--pg-danger);
+  pointer-events: none;
+  z-index: 3;
+}
+.ws-mycal-now::before {
+  content: "";
+  position: absolute;
+  left: -4px;
+  top: -3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--pg-danger);
+}
+/* On a phone the week's items keep the month's coloured bars, and an item
+   with a time still opens on a tap rather than the hour under it. */
+@media (max-width: 575.98px) {
+  .ws-mycal-hours {
+    --ws-mycal-gutter: 2.75rem;
+  }
+  .ws-mycal-hours-day {
+    flex-direction: column;
+    gap: 2px;
+  }
+  .ws-cal-task.ws-mycal-block,
+  .ws-cal-event.ws-mycal-block {
+    margin: 0;
+    border-radius: var(--ws-radius-xs);
+    pointer-events: auto;
+  }
 }
 .ws-mycal-list {
   padding: 8px 12px 12px;
@@ -36793,6 +37144,76 @@ textarea.pg-campaign-text {
   .ws-bar-box .ws-bar-views-select {
     max-width: none;
     width: 100%;
+  }
+}
+
+}
+
+/* ==========================================================================
+   Look A: a Data table's bar and drawers (workspace_wtables.php?id=N,
+   includes/workspace/wtable_screen_bar.php). The bar is the screen bar
+   above drawn by the server; "Filter" opens its box under the button, the
+   query bar's conditions one under the other. The cards that stood beside
+   the rows open as drawers from "⋯".
+   ========================================================================== */
+@layer custom {
+
+.ws-wt-filter {
+  position: relative;
+}
+.ws-wt-filter-box {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 1020;
+  width: 30rem;
+  max-width: calc(100vw - 32px);
+  box-shadow: var(--ws-shadow);
+}
+.ws-wt-filter-box[hidden] {
+  display: none;
+}
+.ws-wt-query-line {
+  display: grid;
+  gap: 6px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+}
+.ws-wt-query-value {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ws-wt-query-value > :first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ws-wt-query .ws-plan-pair {
+  gap: 6px;
+}
+.ws-wt-drawer {
+  --pg-drawer-width: min(32rem, 100vw);
+}
+.ws-wt-drawer .drawer-header {
+  gap: 12px;
+}
+.ws-wt-menu .menu-item {
+  white-space: nowrap;
+}
+/* A phone: the box spans the bar's frame, under the bar, wherever
+   "Filter" stands on the line. */
+@media (max-width: 575.98px) {
+  .ws-wt-bar-frame {
+    position: relative;
+  }
+  .ws-wt-filter {
+    position: static;
+  }
+  .ws-wt-filter-box {
+    top: 52px;
+    left: 0;
+    width: auto;
+    max-width: none;
   }
 }
 

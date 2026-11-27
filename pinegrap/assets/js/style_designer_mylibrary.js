@@ -168,12 +168,12 @@ StyleDesigner.definePart('mylibrary', function (K) {
                     '<div class="small fg-secondary">' + esc(_countLine(_kind(node), _count(node))) + '</div></div>' +
                 '<button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' + esc(_sdT('Close')) + '"></button></div>' +
             '<div class="dialog-body small">' +
-                '<label class="form-label" for="sd-lib-name">' + esc(_sdT('Name')) + '</label>' +
-                '<input type="text" class="form-control form-control-sm" id="sd-lib-name" maxlength="' + NAME_MAX + '" autocomplete="off" value="' + esc(name) + '">' +
+                '<label class="pg-field-label" for="sd-lib-name">' + esc(_sdT('Name')) + '</label>' +
+                '<input type="text" class="pg-input" id="sd-lib-name" maxlength="' + NAME_MAX + '" autocomplete="off" value="' + esc(name) + '">' +
                 '<div class="sd-lib-taken fg-warning mt-1" hidden></div>' +
-                '<label class="form-label mt-3" for="sd-lib-group">' + esc(_sdT('Group')) + '</label>' +
+                '<label class="pg-field-label mt-3" for="sd-lib-group">' + esc(_sdT('Group')) + '</label>' +
                 '<div class="sd-lib-combo">' +
-                    '<input type="text" class="form-control form-control-sm" id="sd-lib-group" maxlength="' + NAME_MAX + '" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="sd-lib-group-list" aria-autocomplete="list" value="' + esc(lastGroup) + '">' +
+                    '<input type="text" class="pg-input" id="sd-lib-group" maxlength="' + NAME_MAX + '" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="sd-lib-group-list" aria-autocomplete="list" value="' + esc(lastGroup) + '">' +
                     '<ul class="sd-lib-offers" id="sd-lib-group-list" role="listbox" hidden></ul>' +
                 '</div>' +
                 '<p class="fg-secondary mt-3 mb-0"><span class="bi bi-info-circle me-2" aria-hidden="true"></span>' +
@@ -181,8 +181,8 @@ StyleDesigner.definePart('mylibrary', function (K) {
                 '<div class="fg-danger mt-3" data-lib-error role="alert" hidden></div>' +
             '</div>' +
             '<div class="dialog-footer py-3">' +
-                '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-bs-dismiss="dialog">' + esc(_sdT('Cancel')) + '</button>' +
-                '<button type="button" class="btn btn-sm btn-solid theme-primary" data-lib-save>' + esc(_sdT('Save')) + '</button>' +
+                '<button type="button" class="pg-button pg-button-quiet" data-bs-dismiss="dialog">' + esc(_sdT('Cancel')) + '</button>' +
+                '<button type="button" class="pg-button pg-button-fill" data-lib-save>' + esc(_sdT('Save')) + '</button>' +
             '</div>';
         document.body.appendChild(el);
 
@@ -392,7 +392,12 @@ StyleDesigner.definePart('mylibrary', function (K) {
 
     // Opens the list on "My library" with an item in view.
     function show(id) {
+        // The palette's tab and, below 992 px, its drawer: at phone width
+        // the list is docked away and "Show" would otherwise change nothing.
+        var tab = document.querySelector('#sd-panel-tabs .sd-panel-tab[data-tab="components"]');
+        if (tab && !tab.classList.contains('active')) tab.click();
         K._sdPalSwitchShow(document.getElementById('sd-comp-outer'), 'blocks', true);
+        if (K._sdDockSetOpen) K._sdDockSetOpen('left', true);
         mount().then(function () {
             var sec = state.host && state.host.querySelector('.sd-lib-cat');
             if (!sec) return;

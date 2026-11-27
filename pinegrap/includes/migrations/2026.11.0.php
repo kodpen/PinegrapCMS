@@ -269,6 +269,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_security_finding();        // 11.0.277
 	upgrade_2026_11_0_launch_summary_answer_kind(); // 11.0.278
 	upgrade_2026_11_0_form_old_address();        // 11.0.279
+	upgrade_2026_11_0_ws_agent_context_size();   // 11.0.280
 
 }
 
@@ -9494,5 +9495,26 @@ function upgrade_2026_11_0_form_old_address() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Collections: a renamed post or category keeps answering at its old address.');
+
+}
+
+// 11.0.280 - An application agent's context window size in tokens
+// (includes/workspace/agent_report.php): typed on the agent's form, 0 when
+// not entered. The agent reports only the tokens it uses; the context ring
+// and percent are drawn from this size. Every existing agent starts with
+// none, so a context stored before reads as it did.
+function upgrade_2026_11_0_ws_agent_context_size() {
+
+	if (!install_table_exists('ws_agents')) {
+
+		install_skipped('ws_agents does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('ws_agents', 'context_size', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Workspace: an application agent\'s context window size can be typed on its form.');
 
 }

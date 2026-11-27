@@ -1,0 +1,18 @@
+{
+ "id": "story-tips",
+ "width": 1080,
+ "height": 1920,
+ "background": "#fff9db",
+ "layers": [
+  {"type": "text", "text": "startStoryTipsHead", "font": "g:Poppins", "size": 100, "weight": 700, "color": "#e67700", "align": "center", "x": 540, "y": 220, "maxW": 960},
+  {"type": "text", "text": "startStoryTipsLine", "font": "g:Poppins", "size": 44, "weight": 400, "color": "#495057", "align": "center", "x": 540, "y": 370, "maxW": 960},
+  {"type": "rect", "x": 100, "y": 520, "w": 880, "h": 240, "color": "#ffffff", "radius": 40},
+  {"type": "text", "text": "startStoryTipsOne", "font": "g:Poppins", "size": 44, "weight": 600, "color": "#212529", "align": "left", "x": 160, "y": 610, "maxW": 760},
+  {"type": "rect", "x": 100, "y": 820, "w": 880, "h": 240, "color": "#ffffff", "radius": 40},
+  {"type": "text", "text": "startStoryTipsTwo", "font": "g:Poppins", "size": 44, "weight": 600, "color": "#212529", "align": "left", "x": 160, "y": 910, "maxW": 760},
+  {"type": "rect", "x": 100, "y": 1120, "w": 880, "h": 240, "color": "#ffffff", "radius": 40},
+  {"type": "text", "text": "startStoryTipsThree", "font": "g:Poppins", "size": 44, "weight": 600, "color": "#212529", "align": "left", "x": 160, "y": 1210, "maxW": 760},
+  {"type": "star", "x": 470, "y": 1480, "w": 140, "h": 140, "color": "#fab005"},
+  {"type": "text", "text": "startStoryTipsMore", "font": "g:Montserrat", "size": 40, "weight": 600, "color": "#e67700", "align": "center", "x": 540, "y": 1720, "maxW": 960}
+ ]
+}

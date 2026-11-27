@@ -1,0 +1,14 @@
+{
+ "id": "announce-news",
+ "width": 1200,
+ "height": 630,
+ "background": "#fff5f5",
+ "layers": [
+  {"type": "ellipse", "x": 820, "y": -120, "w": 500, "h": 500, "color": "#ffc9c9"},
+  {"type": "star", "x": 960, "y": 400, "w": 120, "h": 120, "color": "#fa5252"},
+  {"type": "rect", "x": 70, "y": 120, "w": 100, "h": 8, "color": "#fa5252"},
+  {"type": "text", "text": "startAnnounceNewsHead", "font": "g:Archivo Black", "size": 96, "weight": 400, "color": "#c92a2a", "align": "left", "x": 70, "y": 160, "maxW": 800},
+  {"type": "text", "text": "startAnnounceNewsLine", "font": "g:Lato", "size": 40, "weight": 400, "color": "#495057", "align": "left", "x": 70, "y": 300, "maxW": 800},
+  {"type": "text", "text": "startAnnounceNewsSoon", "font": "g:Lato", "size": 32, "weight": 400, "color": "#868e96", "align": "left", "x": 70, "y": 380, "maxW": 800, "italic": true}
+ ]
+}

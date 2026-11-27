@@ -15,12 +15,17 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 
 ## Clusters
 
+- `accounting-sync-*`: 9 files; start at `accounting-sync.md`.
 - `addon-hook-*`: 11 files.
-- `artifact-canvas-*`: 9 files.
+- `artifact-canvas-*`: 7 files.
 - `automation-platforms-*`: 6 files; start at `automation-platforms.md`.
+- `help-centre-*`: 7 files; start at `help-centre.md`.
 - `integrations-census-*`: 12 files; start at `integrations-census.md`.
-- `settings-crossings-*`: 7 files.
+- `markets-price-*`: 8 files.
+- `sales-channels-*`: 9 files.
+- `site-from-*`: 6 files.
 - `storefront-api-*`: 9 files.
+- `tax-automatic-*`: 7 files; start at `tax-automatic.md`.
 
 ## Files
 

@@ -25,6 +25,13 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 const WS_MY_CALENDAR_LIST_DAYS = 30;
 
 /**
+ * The shortest stretch, in minutes, an item takes on the week's hour grid:
+ * a task with a due time is a mark this long ending at that time, and a
+ * shorter event is drawn (and shares the width) as if it lasted this long.
+ */
+const WS_MY_CALENDAR_HOUR_SHORTEST = 30;
+
+/**
  * The view a request names, or month.
  *
  * @param string $view
@@ -301,6 +308,11 @@ function ws_my_calendar($viewer, $view, $anchor = '')
 
     foreach ($days as $date => $day) {
         $days[$date]['events'] = ws_my_calendar_sort_events($day['events']);
+
+        // The week's hour grid: where each item with a time stands.
+        if ($range['view'] === 'week') {
+            $days[$date]['hours'] = ws_my_calendar_day_hours($days[$date]);
+        }
     }
 
     // A plan with a roadmap carries how far it has come.
@@ -317,12 +329,145 @@ function ws_my_calendar($viewer, $view, $anchor = '')
         'prev'     => $range['prev'],
         'next'     => $range['next'],
         'today'    => $today,
+        // The minute of the day now, for the week's line of now.
+        'now'      => ws_my_calendar_minutes(date('H:i')),
         'days'     => array_values($days),
         'spans'    => $spans,
         'weekdays' => array_values(ws_weekday_short_names()),
         'layers'   => array_values(array_filter(array_keys($layers), 'strlen')),
         'plans'    => function_exists('ws_personal_plans_ready') && ws_personal_plans_ready(),
     );
+}
+
+/**
+ * The minutes from midnight of an "H:i" time ("24:00" is 1440), or -1 for
+ * no time. Pure.
+ *
+ * @param string $time
+ * @return int
+ */
+function ws_my_calendar_minutes($time)
+{
+    if (!is_string($time) || !preg_match('/^([01][0-9]|2[0-4]):([0-5][0-9])$/', $time, $match)) {
+        return -1;
+    }
+
+    $minutes = (int) $match[1] * 60 + (int) $match[2];
+
+    return ($minutes > 1440) ? -1 : $minutes;
+}
+
+/**
+ * Where a day's items with a time stand on the week's hour grid. An event
+ * stands from its time to its end on that day; a task due at a time is a
+ * mark of WS_MY_CALENDAR_HOUR_SHORTEST minutes ending there. What has no
+ * hour (whole-day events, tasks without a due time, coming copies of a
+ * repeating task, a task over several days) and an event that fills the
+ * whole day (the middle of a long one) are left to the strip above the
+ * grid. Pure.
+ *
+ * @param array $day a day of ws_my_calendar(): date, events, tasks
+ * @return array[] type (event | task), index (in the day's events or
+ *                 tasks), start, end (minutes), column, columns
+ */
+function ws_my_calendar_day_hours($day)
+{
+    $items = array();
+
+    foreach ((array) ($day['events'] ?? array()) as $index => $event) {
+        $start = ws_my_calendar_minutes((string) ($event['time'] ?? ''));
+        $end = ws_my_calendar_minutes((string) ($event['until'] ?? ''));
+
+        if ($start < 0 || ($start === 0 && $end === 1440)) {
+            continue;
+        }
+
+        $items[] = array('type' => 'event', 'index' => $index, 'start' => $start, 'end' => max($start, $end));
+    }
+
+    foreach ((array) ($day['tasks'] ?? array()) as $index => $task) {
+        $due = ws_my_calendar_minutes((string) ($task['time'] ?? ''));
+
+        if ($due < 0 || !empty($task['upcoming']) || (string) ($task['due_date'] ?? '') !== (string) ($day['date'] ?? '')) {
+            continue;
+        }
+
+        $start = max(0, $due - WS_MY_CALENDAR_HOUR_SHORTEST);
+        $items[] = array('type' => 'task', 'index' => $index, 'start' => $start, 'end' => $start + WS_MY_CALENDAR_HOUR_SHORTEST);
+    }
+
+    foreach (ws_my_calendar_hours_place($items) as $key => $place) {
+        $items[$key] = $place + $items[$key];
+    }
+
+    return $items;
+}
+
+/**
+ * Lays items with a start and an end (minutes) side by side where they
+ * overlap: items that overlap, directly or through others, form a group
+ * sharing the day's width in as many columns as the group needs at once;
+ * each item takes the first column free at its start. An item shorter than
+ * WS_MY_CALENDAR_HOUR_SHORTEST is laid (and drawn) as that long, never past
+ * midnight. Pure.
+ *
+ * @param array[] $items each start, end
+ * @return array[] in the order given: start, end (as drawn), column (from
+ *                 0), columns
+ */
+function ws_my_calendar_hours_place($items)
+{
+    $out = array();
+
+    foreach ($items as $key => $item) {
+        $start = max(0, min(1440, (int) $item['start']));
+        $end = min(1440, max((int) $item['end'], $start + WS_MY_CALENDAR_HOUR_SHORTEST));
+        $start = min($start, $end - WS_MY_CALENDAR_HOUR_SHORTEST);
+        $out[$key] = array('start' => $start, 'end' => $end, 'column' => 0, 'columns' => 1);
+    }
+
+    $order = array_keys($out);
+
+    // By start; the longer first, then as given.
+    usort($order, function ($a, $b) use ($out, $order) {
+        return ($out[$a]['start'] - $out[$b]['start'])
+            ?: ($out[$b]['end'] - $out[$a]['end'])
+            ?: (array_search($a, $order, true) - array_search($b, $order, true));
+    });
+
+    $group = array();
+    $columns = array();
+    $group_end = -1;
+
+    $close = function () use (&$out, &$group, &$columns) {
+        foreach ($group as $key) {
+            $out[$key]['columns'] = count($columns);
+        }
+
+        $group = array();
+        $columns = array();
+    };
+
+    foreach ($order as $key) {
+        if ($out[$key]['start'] >= $group_end) {
+            $close();
+        }
+
+        $column = 0;
+
+        while (isset($columns[$column]) && $columns[$column] > $out[$key]['start']) {
+            $column++;
+        }
+
+        $columns[$column] = $out[$key]['end'];
+        $out[$key]['column'] = $column;
+        $group[] = $key;
+        $group_end = max($group_end, $out[$key]['end']);
+    }
+
+    $close();
+
+    return $out;
 }
 
 /**

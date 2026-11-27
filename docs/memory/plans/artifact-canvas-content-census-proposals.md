@@ -24,7 +24,7 @@ description: Plan artifact-canvas-content, step AC1: ten proposals for the Artif
 
 ## What is not proposed?
 - AI-generated designs or pictures, video and music libraries, illustration sets whose licence forbids redistribution in a product, and anything taken from Canva (`api/canva-api-terms.md`).
-- Opening a design made in Canva: its own steps (`artifact-canvas-design-file.md` in #11831).
+- Opening a design made in Canva: its own steps (`ui/image-editor-design-file.md`).
 
 ## What does AC3 ask?
 - The owner picks by poll which of the ten come first; the architect turns them into build steps in `artifact-canvas-content.md`.

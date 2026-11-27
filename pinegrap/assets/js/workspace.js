@@ -4617,8 +4617,16 @@
             var windows = el('div', 'ws-agent-card-box' + (data.stale ? ' is-stale' : ''));
 
             // The reported context, "Context 412k of 1M tokens (41%)", with
-            // its bar, marked from 90% as a plan window is.
-            if (data.context) {
+            // its bar, marked from 90% as a plan window is. With no size
+            // (percent null) the words alone, no bar and no mark.
+            if (data.context && (data.context.percent === null)) {
+                var ctxOnly = el('div', 'ws-agent-card-window');
+                var ctxOnlyTop = el('div', 'ws-agent-card-row');
+
+                ctxOnlyTop.appendChild(el('span', 'ws-agent-card-value pg-tabular', data.context.words));
+                ctxOnly.appendChild(ctxOnlyTop);
+                windows.appendChild(ctxOnly);
+            } else if (data.context) {
                 var held = Math.max(0, Math.min(100, data.context.percent));
                 var ctxItem = el('div', 'ws-agent-card-window' + (held >= 90 ? ' is-high' : ''));
                 var ctxTop = el('div', 'ws-agent-card-row');
@@ -19975,9 +19983,10 @@
             self.sendButton = send;
 
             // Beside it, the times the message can wait for instead
-            // (scheduled_messages.php).
+            // (scheduled_messages.php): one split button, Send its main half
+            // and the clock flush on its right (.pg-button-split).
             if (CFG.scheduled_messages && !self.era) {
-                var sendGroup = el('div', 'btn-group ws-send-group');
+                var sendGroup = el('span', 'pg-button-split ws-send-group');
                 var later = menuButton(button('pg-button pg-button-fill pg-button-sm pg-button-split-more ws-send-later', '', 'bi-clock', t('sm_send_later')));
 
                 later.addEventListener('click', function (event) {

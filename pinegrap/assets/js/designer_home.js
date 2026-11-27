@@ -24,6 +24,76 @@
 (function () {
     'use strict';
 
+    // ── Pure rules (tests/designer_home_js_test.php) ────────────────────
+
+    // A page chip's data-draft after api.php designer/design_publish:
+    // draftIds lists the design's pages still drafts (a draft a prototype
+    // link holds stays one); an answer without the list paints every chip
+    // the way the move went.
+    function chipDraft(pageId, off, draftIds) {
+        if (Array.isArray(draftIds)) {
+            return draftIds.map(String).indexOf(String(pageId)) !== -1 ? '1' : '0';
+        }
+        return off ? '1' : '0';
+    }
+
+    // What the rename box does with what was typed: 'finish' puts the name
+    // back, 'save' sends value. Leaving the box (onBlur) with a name the
+    // server has just refused puts the old name back instead of asking
+    // again and taking the focus back; Enter still tries again.
+    function renameStep(raw, oldName, refused, onBlur) {
+        var value = String(raw == null ? '' : raw).replace(/\s+/g, ' ').trim();
+
+        if ((value === '') || (value === oldName) || (onBlur && refused !== '' && value === refused)) {
+            return { act: 'finish', value: value };
+        }
+        return { act: 'save', value: value };
+    }
+
+    // hidden: the designs in their order, true where the search hides one.
+    // The one after index the search shows, else the one before it; -1
+    // when none shows.
+    function nextShown(hidden, index) {
+        var i;
+
+        for (i = index + 1; i < hidden.length; i++) {
+            if (!hidden[i]) {
+                return i;
+            }
+        }
+        for (i = index - 1; i >= 0; i--) {
+            if (!hidden[i]) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    // The address without its start= parameter, the rest kept as it was.
+    function withoutStart(href) {
+        var hash = '';
+        var at = href.indexOf('#');
+
+        if (at !== -1) {
+            hash = href.slice(at);
+            href = href.slice(0, at);
+        }
+
+        var q = href.indexOf('?');
+
+        if (q === -1) {
+            return href + hash;
+        }
+
+        var rest = href.slice(q + 1).split('&').filter(function (part) {
+            return (part !== '') && (part.split('=')[0] !== 'start');
+        });
+
+        return href.slice(0, q) + (rest.length ? '?' + rest.join('&') : '') + hash;
+    }
+
+    window.PgDesignerHome = { chipDraft: chipDraft, renameStep: renameStep, nextShown: nextShown, withoutStart: withoutStart };
+
     var configElement = document.getElementById('sdh-config');
     var menu = document.getElementById('sdh-menu');
 
@@ -165,59 +235,65 @@
     var keyboardMenuAt = 0;
     var lastLongPress = 0;
 
-    function entry(act, icon, label, key) {
-        return { act: act, icon: icon, label: label, key: key || '' };
+    function entry(act, label, key) {
+        return { act: act, label: label, key: key || '' };
     }
 
-    var DIVIDER = { divider: true };
+    // The rows in their groups, a divider between two groups; a row that
+    // does not apply is left out, and so is a group left empty.
+    function grouped(groups) {
+        var list = [];
 
+        groups.forEach(function (group) {
+            if (!group.length) {
+                return;
+            }
+            if (list.length) {
+                list.push({ divider: true });
+            }
+            list = list.concat(group);
+        });
+        return list;
+    }
+
+    // Work on it; the site; the design itself; Delete alone.
     function designEntries(card) {
         var state = stateOf(card);
         var data = card.dataset;
-        var list = [entry('open', 'bi-pencil-square', say('edit'), 'Enter'), entry('newtab', 'bi-box-arrow-up-right', say('newTab'))];
+        var work = [entry('open', say('edit'), 'Enter'), entry('newtab', say('newTab'))];
+        var site = [];
+        var self = [];
 
         if (C.canChange) {
-            list.push(entry('add', 'bi-file-earmark-plus', say('addPage')));
+            work.push(entry('add', say('addPage')));
         }
         if (data.viewUrl) {
-            list.push(entry('view', 'bi-eye', say('view')));
+            site.push(entry('view', say('view')));
         }
-
-        var change = [];
-
         if (C.canDraft && state.drafts > 0) {
-            change.push(entry('on', 'bi-cloud-check', say('on')));
+            site.push(entry('on', say('on')));
         }
         if (C.canDraft && state.offable > 0) {
-            change.push(entry('off', 'bi-cloud-slash', say('off')));
+            site.push(entry('off', say('off')));
         }
         if (C.canChange) {
-            change.push(entry('rename', 'bi-input-cursor-text', say('rename'), 'F2'));
+            self.push(entry('rename', say('rename'), 'F2'));
         }
         if (C.canTemplate && state.pages > 0) {
-            change.push(entry('template', 'bi-grid-1x2', say('template')));
+            self.push(entry('template', say('template')));
         }
-        if (change.length) {
-            list.push(DIVIDER);
-            list = list.concat(change);
-        }
-        if (C.canChange) {
-            list.push(DIVIDER);
-            list.push(entry('delete', 'bi-trash', say('delete'), 'Delete'));
-        }
-        return list;
+        return grouped([work, site, self, C.canChange ? [entry('delete', say('delete'), 'Delete')] : []]);
     }
 
+    // The page in the editor; the page on the site.
     function pageEntries(chip) {
-        var list = [];
+        var editor = [];
 
         if (chip.dataset.locked !== '1') {
-            list.push(entry('page-open', 'bi-pencil-square', say('editPage'), 'Enter'));
-            list.push(entry('page-newtab', 'bi-box-arrow-up-right', say('newTab')));
+            editor.push(entry('page-open', say('editPage'), 'Enter'));
+            editor.push(entry('page-newtab', say('newTab')));
         }
-        list.push(entry('page-view', 'bi-eye', say('view')));
-        list.push(entry('page-copy', 'bi-link-45deg', say('copy')));
-        return list;
+        return grouped([editor, [entry('page-view', say('view')), entry('page-copy', say('copy'))]]);
     }
 
     function drawMenu(title, list) {
@@ -228,8 +304,8 @@
                 html += '<div class="menu-divider" role="separator"></div>';
                 return;
             }
-            html += '<button type="button" class="menu-item" role="menuitem" tabindex="-1" data-act="' + item.act + '">'
-                + '<i class="bi ' + item.icon + '" aria-hidden="true"></i><span>' + escapeHtml(item.label) + '</span>'
+            html += '<button type="button" class="menu-item' + (item.act === 'delete' ? ' sdh-menu-danger' : '') + '" role="menuitem" tabindex="-1" data-act="' + item.act + '">'
+                + '<span>' + escapeHtml(item.label) + '</span>'
                 + (item.key ? '<span class="sdh-menu-key" aria-hidden="true">' + escapeHtml(item.key) + '</span>' : '')
                 + '</button>';
         });
@@ -495,8 +571,80 @@
             var folded = box.classList.toggle('is-folded');
             toggle.textContent = folded ? toggle.dataset.more : toggle.dataset.less;
             toggle.setAttribute('aria-expanded', folded ? 'false' : 'true');
+            if (folded) {
+                fitChips(box);
+            }
         }
     });
+
+    // ── One row of page chips ───────────────────────────────────────────
+
+    // A folded box shows as many chips as fit its rows (one, two on a
+    // phone: --sdh-chip-rows in designer_home.css), then "+n more"
+    // (pg_designer_home_page_chips() prints a first guess).
+    function fitChips(box) {
+        var toggle = box.querySelector('.sdh-pages-toggle');
+
+        if (!toggle || !box.classList.contains('is-folded') || !box.offsetParent) {
+            return;
+        }
+
+        var chips = Array.prototype.slice.call(box.querySelectorAll('.sdh-page:not(.sdh-pages-toggle)'));
+        var show = function (count) {
+            chips.forEach(function (chip, i) {
+                chip.classList.toggle('is-extra', i >= count);
+            });
+            toggle.dataset.more = say('pagesMore').replace('{var}', String(chips.length - count));
+            toggle.textContent = toggle.dataset.more;
+            toggle.hidden = (count >= chips.length);
+        };
+
+        toggle.hidden = true;
+        chips.forEach(function (chip) {
+            chip.classList.remove('is-extra');
+        });
+
+        var rows = parseInt(window.getComputedStyle(box).getPropertyValue('--sdh-chip-rows'), 10) || 1;
+        var tops = [];
+
+        chips.forEach(function (chip) {
+            if (tops.indexOf(chip.offsetTop) < 0) {
+                tops.push(chip.offsetTop);
+            }
+        });
+
+        // The top of the last row allowed: a chip below it is folded.
+        var top = tops.length ? tops[Math.min(rows, tops.length) - 1] : 0;
+        var count = chips.length;
+
+        for (var i = 1; i < chips.length; i++) {
+            if (chips[i].offsetTop > top) {
+                count = i;
+                break;
+            }
+        }
+
+        show(count);
+        while (count > 1 && !toggle.hidden && toggle.offsetTop > top) {
+            count--;
+            show(count);
+        }
+    }
+
+    function fitAllChips() {
+        document.querySelectorAll('.sdh-pages.is-row').forEach(fitChips);
+    }
+
+    var fitTimer = 0;
+
+    window.addEventListener('resize', function () {
+        window.clearTimeout(fitTimer);
+        fitTimer = window.setTimeout(fitAllChips, 120);
+    });
+    fitAllChips();
+    if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(fitAllChips);
+    }
 
     // ── Keys on a card or a chip ────────────────────────────────────────
 
@@ -665,7 +813,7 @@
                     var scheduled = (res.scheduled && typeof res.scheduled === 'object') ? res.scheduled : {};
                     card.querySelectorAll('.sdh-page[data-page-id]').forEach(function (chip) {
                         if (chip.dataset.home !== '1') {
-                            chip.dataset.draft = off ? '1' : '0';
+                            chip.dataset.draft = chipDraft(chip.dataset.pageId, off, res.draft_ids);
                             chip.dataset.scheduled = scheduled[chip.dataset.pageId] || '';
                             paintChip(chip);
                         }
@@ -698,6 +846,9 @@
         var input = document.createElement('input');
         var busy = false;
         var closed = false;
+        // The last name the server refused: leaving the box with it puts
+        // the old name back (renameStep()).
+        var refused = '';
 
         input.type = 'text';
         input.className = 'form-control form-control-sm sdh-rename';
@@ -722,14 +873,15 @@
             (link || card).focus({ preventScroll: true });
         }
 
-        function save() {
+        function save(onBlur) {
             if (busy || closed) {
                 return;
             }
 
-            var value = input.value.replace(/\s+/g, ' ').trim();
+            var step = renameStep(input.value, oldName, refused, onBlur);
+            var value = step.value;
 
-            if ((value === '') || (value === oldName)) {
+            if (step.act === 'finish') {
                 finish();
                 return;
             }
@@ -743,6 +895,7 @@
                     input.readOnly = false;
 
                     if (!res || res.status !== 'success') {
+                        refused = value;
                         toast((res && res.message) || say('fail'), 'danger');
                         input.focus();
                         input.select();
@@ -773,7 +926,7 @@
             event.stopPropagation();
             if (event.key === 'Enter') {
                 event.preventDefault();
-                save();
+                save(false);
             } else if (event.key === 'Escape') {
                 event.preventDefault();
                 finish();
@@ -782,7 +935,7 @@
 
         input.addEventListener('blur', function () {
             if (!busy) {
-                save();
+                save(true);
             }
         });
     }
@@ -851,11 +1004,10 @@
     }, true);
 
     // The New design window (pg_designer_start_window()): the starts are a
-    // vertical tab list, each showing its own pane; the foot's one button
-    // takes the chosen start's words and the address of its framework
-    // choice, and stands aside for the template start, whose cards carry
-    // their own button. A start card or ?start=<key> names the start it
-    // opens on.
+    // vertical tab list in three groups, each showing its own pane; the
+    // foot's one button takes the chosen start's words and the address of
+    // its framework choice, or of the chosen template card (grey until one
+    // is chosen). A start card or ?start=<key> names the start it opens on.
     (function () {
         var win = document.getElementById('sdStartModal');
 
@@ -865,6 +1017,13 @@
 
         var tabs = Array.prototype.slice.call(win.querySelectorAll('.sd-ns-item'));
         var go = document.getElementById('sd-ns-go');
+        var back = document.getElementById('sd-ns-back');
+
+        // Below 768 px the list and the chosen pane are two screens of the
+        // window (.is-pane); the pane adds a history entry, so the phone's
+        // Back returns to the list as "All starts" does.
+        var narrow = window.matchMedia('(max-width: 767.98px)');
+        var pushed = false;
 
         function open(tab) {
             return tab.getAttribute('aria-disabled') !== 'true';
@@ -901,13 +1060,93 @@
                 loadPart(part, pane);
             }
 
-            go.classList.toggle('d-none', !label || !pick);
+            // The template start: the chosen card, none until a press.
+            var card = pane.querySelector('.sd-tpl-card.is-chosen');
+            var href = pick ? pick.getAttribute('data-href') : (card ? card.getAttribute('data-use') : '');
+            var gallery = !!pane.querySelector('.sd-tpl-card');
 
-            if (label && pick) {
+            go.classList.toggle('d-none', !label || (!pick && !gallery));
+
+            if (label) {
                 go.textContent = label;
-                go.href = pick.getAttribute('data-href');
+            }
+            if (href) {
+                go.href = href;
+                go.removeAttribute('aria-disabled');
+                go.classList.remove('disabled');
+                go.removeAttribute('tabindex');
+            } else {
+                go.removeAttribute('href');
+                go.setAttribute('aria-disabled', 'true');
+                go.classList.add('disabled');
+                go.tabIndex = -1;
             }
         }
+
+        // A template card: a press chooses it, a double press or Enter uses
+        // it at once; its links and buttons (Preview, details, delete) keep
+        // their own work.
+        function chooseCard(card) {
+            win.querySelectorAll('.sd-tpl-card.is-chosen').forEach(function (other) {
+                other.classList.remove('is-chosen');
+                other.removeAttribute('aria-current');
+            });
+            card.classList.add('is-chosen');
+            card.setAttribute('aria-current', 'true');
+            syncGo();
+        }
+
+        function cardOf(event) {
+            var card = event.target.closest ? event.target.closest('.sd-tpl-card') : null;
+
+            if (!card || !win.contains(card) || event.target.closest('a, button, input, label')) {
+                return null;
+            }
+            return card;
+        }
+
+        win.addEventListener('click', function (event) {
+            var card = cardOf(event);
+
+            if (card) {
+                chooseCard(card);
+                return;
+            }
+
+            // A press anywhere on a framework card chooses it.
+            var fw = event.target.closest ? event.target.closest('.sd-ns-fw') : null;
+            var radio = fw ? fw.querySelector('input[type="radio"]') : null;
+
+            if (radio && !radio.checked && !event.target.closest('input, label')) {
+                radio.checked = true;
+                radio.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        });
+
+        win.addEventListener('dblclick', function (event) {
+            var card = cardOf(event);
+
+            if (card) {
+                chooseCard(card);
+                window.location.href = card.getAttribute('data-use');
+            }
+        });
+
+        win.addEventListener('keydown', function (event) {
+            var card = (event.target.classList && event.target.classList.contains('sd-tpl-card')) ? event.target : null;
+
+            if (!card) {
+                return;
+            }
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                chooseCard(card);
+                window.location.href = card.getAttribute('data-use');
+            } else if (event.key === ' ') {
+                event.preventDefault();
+                chooseCard(card);
+            }
+        });
 
         var parts = {};
 
@@ -967,9 +1206,9 @@
                 var on = (t === tab);
                 t.setAttribute('aria-selected', on ? 'true' : 'false');
                 t.tabIndex = on ? 0 : -1;
-                t.classList.toggle('is-active', on);
                 paneOf(t).hidden = !on;
             });
+            paintChosen();
 
             if (focus) {
                 tab.focus();
@@ -978,13 +1217,91 @@
             syncGo();
         }
 
+        // The chosen row wears the accent beside its pane; the narrow list
+        // stands alone, so none of its rows is marked.
+        function paintChosen() {
+            var alone = narrow.matches && !win.classList.contains('is-pane');
+
+            tabs.forEach(function (t) {
+                t.classList.toggle('is-active', !alone && t.getAttribute('aria-selected') === 'true');
+            });
+        }
+
+        function toPane(focus) {
+            win.classList.add('is-pane');
+            paintChosen();
+
+            if (!narrow.matches) {
+                return;
+            }
+
+            if (!pushed && window.history && window.history.pushState) {
+                window.history.pushState({ sdStartPane: true }, '');
+                pushed = true;
+            }
+
+            var body = win.querySelector('.sd-ns');
+
+            if (body) {
+                body.scrollTop = 0;
+            }
+
+            if (focus && back) {
+                back.focus();
+            }
+        }
+
+        // fromHistory: the phone's Back already left the pane's entry.
+        function toList(fromHistory) {
+            if (!win.classList.contains('is-pane')) {
+                return;
+            }
+
+            win.classList.remove('is-pane');
+            paintChosen();
+
+            if (pushed) {
+                pushed = false;
+
+                if (!fromHistory) {
+                    window.history.back();
+                }
+            }
+
+            var at = win.querySelector('.sd-ns-item[aria-selected="true"]');
+
+            if (at && narrow.matches && win.open) {
+                at.focus();
+            }
+        }
+
         tabs.forEach(function (tab) {
             tab.addEventListener('click', function () {
                 if (open(tab)) {
                     choose(tab.getAttribute('data-start'), false);
+                    if (narrow.matches) {
+                        toPane(true);
+                    }
                 }
             });
         });
+
+        if (back) {
+            back.addEventListener('click', function () {
+                toList(false);
+            });
+        }
+
+        window.addEventListener('popstate', function () {
+            if (pushed) {
+                pushed = false;
+                toList(true);
+            }
+        });
+
+        if (narrow.addEventListener) {
+            narrow.addEventListener('change', paintChosen);
+        }
 
         // Up and down walk the open starts, Home and End go to the ends.
         win.querySelector('.sd-ns-list').addEventListener('keydown', function (event) {
@@ -1131,12 +1448,17 @@
             });
         }
 
-        // A start with its own part (the document start) asks the questions
-        // before the address its own button leads to.
+        // A start with its own part (the document and Canva starts) asks the
+        // questions before the address its own button leads to.
         window.sdStartAsk = askQuestions;
 
         if (go) {
             go.addEventListener('click', function (event) {
+                if (go.getAttribute('aria-disabled') === 'true') {
+                    event.preventDefault();
+                    return;
+                }
+
                 var pane = win.querySelector('.sd-ns-pane:not([hidden])');
                 var pick = pane ? pane.querySelector('input[type="radio"][data-href]:checked') : null;
 
@@ -1151,20 +1473,47 @@
 
         pgUI.dialog.on(win, 'hidden', leaveQuestions);
 
-        // A start's own part (the Canva start) hands its pane over to the
-        // questions the same way.
-        window.sdStartAsk = askQuestions;
-
+        // Narrow, the head's "New design" opens on the list of starts; a
+        // start asked by name (a first-visit card, ?start=) on its pane.
         pgUI.dialog.on(win, 'show', function (event) {
             var source = event.relatedTarget;
-            choose((source && source.dataset && source.dataset.sdStart) || win.dataset.sdStart || 'blank', false);
+            var data = (source && source.dataset) || {};
+
+            win.classList.remove('is-pane');
+            choose(data.sdStart || win.dataset.sdStart || 'blank', false);
+
+            if (data.sdNarrow !== 'list') {
+                toPane(false);
+            }
+        });
+
+        // The keyboard starts on the chosen start, where Up and Down work,
+        // not on the window's Close button.
+        pgUI.dialog.on(win, 'shown', function () {
+            var at = (narrow.matches && win.classList.contains('is-pane')) ? back : win.querySelector('.sd-ns-item[aria-selected="true"]');
+
+            if (at && win.contains(document.activeElement) && !document.activeElement.closest('.sd-ns-panes')) {
+                at.focus();
+            }
         });
 
         pgUI.dialog.on(win, 'hidden', function () {
             delete win.dataset.sdStart;
+            win.classList.remove('is-pane');
+
+            if (pushed) {
+                pushed = false;
+                window.history.back();
+            }
         });
 
         var asked = new URLSearchParams(window.location.search).get('start');
+
+        // The window opens once for ?start=: a reload (the one after deleting
+        // the large design among them) does not open it again.
+        if (asked && window.history && window.history.replaceState) {
+            window.history.replaceState(window.history.state, '', withoutStart(window.location.href));
+        }
 
         if (asked && tabs.some(function (t) { return t.getAttribute('data-start') === asked; })) {
             var show = function () {
@@ -1183,8 +1532,12 @@
     function countDesigns() {
         var count = document.querySelectorAll('.sdh-card').length;
         var badge = document.querySelector('#sdh-designs-title .sdh-count');
+        var others = document.getElementById('sdh-others-count');
         if (badge) {
             badge.textContent = String(count);
+        }
+        if (others) {
+            others.textContent = String(document.querySelectorAll('.sdh-tile').length);
         }
     }
 
@@ -1235,14 +1588,21 @@
                             return;
                         }
 
-                        // The keyboard stays on the list: the next design (or
-                        // the one before it) takes the focus the deleted one had.
+                        // The keyboard stays on the list: the next design the
+                        // search shows (or the one before it) takes the focus
+                        // the deleted one had.
                         var column = card.closest('.sdh-tile-col') || card;
-                        var near = column.nextElementSibling || column.previousElementSibling;
+                        var columns = column.parentNode ? Array.prototype.slice.call(column.parentNode.children) : [column];
+                        var near = columns[nextShown(columns.map(function (c) { return c.classList.contains('d-none'); }), columns.indexOf(column))] || null;
                         var nextCard = near ? (near.matches('.sdh-card') ? near : near.querySelector('.sdh-card')) : null;
 
                         column.remove();
                         countDesigns();
+                        // The search's "No design matches" line, once the
+                        // last design it showed is gone.
+                        if (filter && filter.value.trim() !== '') {
+                            filter.dispatchEvent(new Event('input'));
+                        }
                         if (hadFocus && nextCard) {
                             nextCard.focus({ preventScroll: true });
                         }
@@ -1277,10 +1637,24 @@
             });
 
             var none = document.getElementById('sdh-filter-empty');
+            var words = document.getElementById('sdh-filter-empty-text');
             if (none) {
                 none.classList.toggle('d-none', (needle === '') || (shown > 0));
             }
+            if (words) {
+                words.textContent = say('noMatch').replace('{var}', filter.value.trim());
+            }
         });
+
+        var clear = document.getElementById('sdh-filter-clear');
+
+        if (clear) {
+            clear.addEventListener('click', function () {
+                filter.value = '';
+                filter.dispatchEvent(new Event('input'));
+                filter.focus();
+            });
+        }
     }
 
     // ── Shared components and system widgets (pg_designer_components_card()) ──

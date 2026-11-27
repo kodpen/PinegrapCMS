@@ -44,13 +44,27 @@ StyleDesigner.definePart('phone', function (K) {
     }
 
     // What the window shows for an answer of prototype_phone and the time
-    // left: 'team' (the page needs a team link), 'ready', 'ended' (ran out
-    // while open) or 'failed'.
+    // left: 'team' (the page needs a team link), 'live' (a design with no
+    // draft pages: the code of the live page, no link behind it), 'ready',
+    // 'ended' (ran out while open) or 'failed'.
     function _phView(res, secondsLeft) {
         if (!res || res.status !== 'success') return 'failed';
         if (res.team_only) return 'team';
+        if (res.live) return (res.url && res.qr) ? 'live' : 'failed';
         if (!res.link || !res.url || !res.qr) return 'failed';
         return secondsLeft > 0 ? 'ready' : 'ended';
+    }
+
+    // Why a 'failed' answer made no link, and whether "Try again" can help:
+    // the server's own message where it answered an error, retried only
+    // where it marks the answer `retry` (the link could not be stored); no
+    // answer or a malformed one says "Nothing was changed." and may be
+    // tried again. A design with no draft pages is never helped by a retry.
+    function _phFailure(res) {
+        if (res && res.status === 'error') {
+            return { text: res.message ? String(res.message) : _sdT('Nothing was changed.'), again: !!res.retry };
+        }
+        return { text: _sdT('Nothing was changed.'), again: true };
     }
 
     function _phLeft() {
@@ -110,10 +124,11 @@ StyleDesigner.definePart('phone', function (K) {
             esc(_sdT('The phone shows the pages as last saved and redraws after each save.')) + '</span></p>';
     }
 
-    function _phFoot(on) {
+    // The foot's buttons; a live page's address has no link to end.
+    function _phFoot(on, live) {
         var off = on ? '' : ' disabled';
         var copy = '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-ph="copy"' + off + '><span class="bi bi-copy me-1" aria-hidden="true"></span>' + esc(_sdT('Copy link')) + '</button>';
-        var end = '<button type="button" class="btn btn-sm btn-text theme-secondary" data-ph="end"' + off + '>' + esc(_sdT('End now')) + '</button>';
+        var end = live ? '' : '<button type="button" class="btn btn-sm btn-text theme-secondary" data-ph="end"' + off + '>' + esc(_sdT('End now')) + '</button>';
         if (_phNarrow()) {
             return '<button type="button" class="btn btn-sm btn-solid theme-primary" data-ph="open"' + off + '><span class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></span>' + esc(_sdT('Open here')) + '</button>' + copy + end;
         }
@@ -138,10 +153,12 @@ StyleDesigner.definePart('phone', function (K) {
                 '<p class="sd-phone-act"><button type="button" class="btn btn-sm btn-solid theme-primary" data-ph="team">' + esc(_sdT('Make a team link')) + '</button></p>';
             footHtml = '<span class="sd-phone-note">' + esc(_sdT('Team: administrators, designers and managers.')) + '</span>';
         } else if (state.view === 'failed') {
+            var why = _phFailure(res);
             html = '<div class="sd-phone-code sd-phone-wait"><span class="bi bi-qr-code" aria-hidden="true"></span></div>' +
                 '<p class="sd-phone-head">' + esc(_sdT('The link could not be made')) + '</p>' +
-                '<p class="sd-phone-sub">' + esc(_sdT('Nothing was changed.')) + '</p>' +
-                '<p class="sd-phone-act"><button type="button" class="btn btn-sm btn-outline theme-secondary" data-ph="again">' + esc(_sdT('Try again')) + '</button></p>';
+                '<p class="sd-phone-sub">' + esc(why.text) + '</p>' +
+                (why.again ? '<p class="sd-phone-act"><button type="button" class="btn btn-sm btn-outline theme-secondary" data-ph="again">' + esc(_sdT('Try again')) + '</button></p>' : '');
+            footHtml = '';
         } else if (state.view === 'ended') {
             html = '<div class="sd-phone-code sd-phone-dim">' + res.qr + '</div>' +
                 '<p class="sd-phone-head">' + esc(_sdT('This link has ended')) + '</p>' +
@@ -156,9 +173,20 @@ StyleDesigner.definePart('phone', function (K) {
                 (team ? '<p class="sd-phone-sub"><span class="badge theme-info me-1">' + esc(_sdT('Team link')) + '</span>' + esc(_sdT('Sign in on the phone to open it.')) + '</p>' : '') +
                 '<p class="sd-phone-sub" data-ph-left>' + _phStartsLine() + '</p>' + _phInfoLine();
             footHtml = _phFoot(true);
+        } else if (state.view === 'live') {
+            // No share link stands behind this code: no time left, nothing
+            // to end, no redraw after a save.
+            html = '<div class="sd-phone-code">' + res.qr + '</div>' +
+                '<p class="sd-phone-head">' + esc(_phNarrow() ? _sdT('Point another phone\'s camera here') : _sdT('Point your phone\'s camera here')) + '</p>' +
+                '<p class="sd-phone-sub">' + _sdT('Opens {var} on the site', '<b>' + esc(res.start_page || '') + '</b>') + '</p>' +
+                '<p class="sd-phone-line"><span class="bi bi-info-circle" aria-hidden="true"></span><span>' +
+                esc(_sdT('This design has no draft pages, so the code opens the live page as visitors see it.')) + '</span></p>';
+            footHtml = _phFoot(true, true);
         }
         body.innerHTML = html;
         foot.innerHTML = footHtml;
+        // No link, no foot: "Copy link" and "End now" are not drawn dead.
+        foot.hidden = footHtml === '';
     }
 
     function _phStartsLine() {

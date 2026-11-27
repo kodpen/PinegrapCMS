@@ -1,6 +1,6 @@
 ---
 name: picture-text-translation-fit-letters
-description: Picture text translation, a translated text's fit and its letters: the owner's words (2026-11-17, 2026-11-25), the floor by a text's size, what the draw does, what is open
+description: Picture text translation, a translated text's fit and its letters: the owner's words (2026-11-17, 2026-11-25), the floor by a text's size, the face asked per layer text, what is open
 module: picture_translation
 ---
 
@@ -9,8 +9,9 @@ module: picture_translation
 - The architect's reading, not his words: the fit as built is what he expects, and an improvement is made only where a point below turns out to need one. These words changed no behaviour.
 
 ## What does the draw already do for a longer text?
-- `M.languageFit()` (`picture-text-translation-draw.md`): the size shrinks until the text is inside its source's box, never under its floor (below). Under it the text is drawn at the floor, so it runs past the box, and the language is listed as "Look by hand". The server's draw follows the same rule with its own letter widths (`pg_picture_tr_language_fit()`, `picture-text-auto-server.md`).
-- A line breaks only where the text has a new line (`ui/image-editor-text.md`): a long translation is made smaller, never wrapped.
+- `M.languageFitted()` (`picture-text-translation-draw.md`): the text grows into its free room, is wrapped between words, then the size shrinks until it is inside that room, never under its floor (below). Under it the text is drawn at the floor, so it runs past the room, and the language is listed as "Look by hand" until that text is corrected by hand (`picture-text-fit-correct.md`).
+- The room: `picture-text-fit-room.md`. The server follows the same rule with its own letter widths (`picture-text-auto-server.md`).
+- Wider than its room a translation is first wrapped between words, then made smaller (`picture-text-fit-wrap.md`).
 
 ## What floor does a large text get?
 - Owner (2026-11-25), after a slightly longer English translation was marked at once: "küçültme oranı 70% ile sınırlı olsa da belli bir boyut üstünde tolerans artsın."
@@ -18,11 +19,13 @@ module: picture_translation
 - Built in `M.languageFloor()` / `M.languageFit()` and their PHP twins `pg_picture_tr_language_floor()` / `pg_picture_tr_language_fit()` (PR #11698): the side is `M.docSize()` in a browser, the artboard on the server; a text with no size or a picture with no side keeps 70%. The floor is rounded to four places.
 
 ## What does the draw already do for letters?
-- A browser: `loadTextFont()` (`assets/js/pg_image_editor_text.js`) asks the face with the layer's own text, so the part of a Google font that holds those letters is loaded before the draw; each language is drawn by a painter with its own font list. A letter the family lacks is drawn by the browser in the next family: never an empty box, but another face's letter, and nothing says so.
+- A browser: `loadTextFont()` (`assets/js/pg_image_editor_text.js`) links a Google family once per face (font string and family) and asks the face again for each layer text's letters it was not asked for yet (`M.textFontLetters()`), so a second text of one face in another part of the font (digits, then Cyrillic) waits for that part too;
+- Each language is drawn by a painter with its own font list. A letter the family lacks is drawn by the browser in the next family: never an empty box, but another face's letter, and nothing says so.
 - The server: text only in Latin, Greek and Cyrillic, and a letter the font file lacks leaves the whole document to a browser (`platform/image-server-draw.md`): it draws no empty box either.
 - Right-to-left languages are not drawn (`picture-text-overview.md`).
 
 ## What is open? (architect, 2026-11-17, read in the code, not tried in a browser)
-- Under the floor a text is still drawn at its floor and marked. Owner (2026-11-26, poll 229, `workflow/decisions-made-product-113.md`): it is to grow into the free room, then wrap, then shrink, and a language is to be corrected by hand. `plans/picture-text-fit.md` builds it; until its steps land the rule above is what runs.
-- The font list's key is the face and the family, not the text. Two text layers of one face, of which only the second has letters of another part of the font (digits, then Cyrillic), wait only for the first part, so the second may be drawn in the next family at the first draw. A small fix for a worker: ask the face per layer text.
 - A family with no letters of the language (a display face without Cyrillic or `ğ`, `ş`, `ı`): the picture is drawn with borrowed letters and listed as drawn. A mark on the Languages row would be a new control, so the owner's look.
+
+## Where is the rest of the fit?
+- Owner (2026-11-26, poll 229, `workflow/decisions-made-product-113.md`): a translated text grows into the free room, then wraps, then shrinks to the floor above, and one language's texts are corrected by hand: `picture-text-fit-room.md`, `picture-text-fit-wrap.md`, `picture-text-fit-correct.md`, `picture-text-fit-view.md`.

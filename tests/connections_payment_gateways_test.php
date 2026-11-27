@@ -127,7 +127,8 @@ function test_connections_gateway_keys_left_the_card()
 	}
 
 	foreach (array('ecommerce_payment_gateway', 'ecommerce_payment_gateway_mode', 'ecommerce_payment_gateway_transaction_type', 'ecommerce_paypal_payments_pro_gateway_mode', 'ecommerce_iyzipay_installment', 'ecommerce_iyzipay_threeds', 'ecommerce_surcharge_percentage') as $kept) {
-		pg_assert_contains('name="' . $kept . '"', $card, $kept . ' stays on the card');
+		// Drawn as markup, or named to a pg_commerce_settings_*() helper.
+		pg_assert_true((strpos($card, 'name="' . $kept . '"') !== false) || (strpos($card, "'" . $kept . "'") !== false), $kept . ' stays on the card');
 	}
 
 	pg_assert_contains('pg_payment_gateway_connections_html(', $card, 'the card shows each gateway\'s connection');
