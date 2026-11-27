@@ -460,6 +460,30 @@ function pg_accounting_sync_target()
 }
 
 /**
+ * Whether a connection holds the queue: it was refused and must be connected
+ * again. Rows are still written and wait. Pure.
+ *
+ * @param array|null $connection pg_connect_account()
+ * @return bool
+ */
+function pg_accounting_sync_connection_held($connection)
+{
+    return is_array($connection) && ((string) ($connection['status'] ?? '') === 'reauth');
+}
+
+/**
+ * Whether the site's accounting connection holds the queue now.
+ *
+ * @return bool
+ */
+function pg_accounting_sync_held()
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/xero.php');
+
+    return xero_ready() && pg_accounting_sync_connection_held(xero_connection());
+}
+
+/**
  * The key of an operation on a row (pg_accounting_sync_key_for()), under the
  * site's key.
  *
@@ -808,7 +832,8 @@ function pg_accounting_sync_driver($service)
  * at most the service's pace and within the time budget. A row is claimed
  * before its call, so two jobs never send it twice. The pass stops when the
  * service did not answer, asked to slow down or refused the token; a
- * service without a driver leaves its rows waiting.
+ * service without a driver, or a connection marked to be connected again,
+ * leaves its rows waiting.
  *
  * @param int $budget seconds
  * @return int rows sent
@@ -823,7 +848,8 @@ function pg_accounting_sync_dispatch($budget)
 
     $driver = pg_accounting_sync_driver($target['service']);
 
-    if ($driver === '') {
+    // A connection that must be connected again holds every row.
+    if (($driver === '') || pg_accounting_sync_held()) {
         return 0;
     }
 
