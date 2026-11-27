@@ -22897,6 +22897,85 @@ button.ws-cal-more {
   border: 0;
   background: none;
 }
+/* The Work Calendar's cells (workspace_calendar_cells.js): a chip takes its
+   cell's width and the title gets the room; the people's faces show only in
+   a cell wide enough to keep the title whole beside them. */
+.ws-cal-work .ws-cal-day {
+  container-type: inline-size;
+}
+.ws-cal-work .ws-cal-task .ws-avatars {
+  flex: none;
+}
+@container (max-width: 15rem) {
+  .ws-cal-work .ws-cal-task .ws-avatars {
+    display: none;
+  }
+}
+.ws-cal-work button.ws-cal-more {
+  width: 100%;
+  padding: .1rem .35rem;
+  border-radius: var(--ws-radius-xs);
+  text-align: left;
+}
+.ws-cal-work button.ws-cal-more:hover,
+.ws-cal-work button.ws-cal-more[aria-expanded="true"] {
+  background: var(--pg-hover);
+  color: var(--pg-fg-body);
+}
+.ws-cal-work button.ws-cal-more:focus-visible {
+  outline: 2px solid var(--pg-focus-ring-color);
+  outline-offset: 1px;
+}
+/* The day's list "+N more" opens beside its cell. */
+.ws-cal-more-card {
+  position: fixed;
+  z-index: 1060;
+  display: flex;
+  flex-direction: column;
+  width: 20rem;
+  max-width: calc(100vw - 16px);
+  max-height: min(28rem, calc(100vh - 16px));
+  padding: 12px 8px 8px;
+  box-shadow: var(--pg-shadow-float);
+}
+.ws-cal-more-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px 6px 8px;
+}
+.ws-cal-more-head .pg-title-section {
+  margin: 0;
+}
+.ws-cal-more-list {
+  overflow-y: auto;
+  min-height: 0;
+}
+.ws-cal-more-row {
+  cursor: pointer;
+  color: inherit;
+  text-decoration: none;
+}
+.ws-cal-more-row > .ws-status-dot,
+.ws-cal-more-row > .ws-cal-event-dot {
+  margin-top: 6px;
+}
+.ws-cal-more-row.is-done .pg-list-row-title {
+  text-decoration: line-through;
+  color: var(--pg-fg-2);
+}
+.ws-cal-more-row:focus-visible {
+  outline: 2px solid var(--pg-focus-ring-color);
+  outline-offset: -2px;
+}
+.ws-cal-more-day {
+  align-self: flex-start;
+  margin: 6px 4px 0;
+}
+/* "Figures" in the bar shows whether the side column is open. */
+.ws-cal-figures-toggle[aria-expanded="true"] {
+  background: var(--pg-hover);
+}
 /* The plans switch under the calendar: the text takes the row's width. */
 .ws-calsync-plans {
   margin-top: 16px;
