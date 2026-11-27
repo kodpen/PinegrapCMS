@@ -135,6 +135,7 @@
 - delivery-tower-segments.md: The link segments "Problems" / "Carrier scorecard" under the head of Delivery problems and the Carrier scorecard (DT5b): who sees which, how they are drawn [decision: here]
 - delivery-tower.md: Delivery tower overview (carrier times, problem parcels, Delivery problems, Carrier Scorecard, label chooser): what binds it, its files, each feature's PR [decision: decisions-made-product-90.md]
 - ebay-account-deletion.md: ebay_account_deletion.php, the deletion address eBay needs before production keys: challenge, signature and key cache, status codes, WAF entry, the privacy request it records
+- ebay-categories.md: eBay categories and item specifics on the Listings view: Taxonomy API with an application token, the cache key a site (ebay:EBAY_DE), aspects as attribute rows, free text with suggested values
 - ebay-connection.md: eBay marketplace accounts: the ebay and ebay_sandbox connect providers (RuName, three sell scopes), the connector test, the eBay site, remote selects for location and policies
 - edit-product-undrawn-columns-kept.md: Edit Product's save leaves out the shipping, customs, zone, gift card and unlabelled custom-field columns the screen does not draw.
 - eu-vat-check.md: EU VAT ids checked against VIES: the clean function and patterns per member state, the REST request, answer mapping, a day's cache, the reverse-charge decision; where it is wired [decision: decisions-made-product-19.md, decisions-made-product-26.md]
@@ -182,6 +183,7 @@
 - marketplace-buybox-read.md: The hourly buybox read (2026.11.0): the Trendyol connector ability buybox, its body, header and limit, the job pass, and what marketplace_price_state keeps [decision: here]
 - marketplace-channel-price.md: A marketplace account's own price by rules (2026.11.0, 11.0.256): rule pick, rounding endings, the profit floor, the three repricer tables, history rows on marketplace:<account id>
 - marketplace-commission-and-invoice-columns.md: marketplace_product_map.commission and marketplace_order_map.invoice_sent (2026.11.0, 11.0.37): what each holds, NULL vs 0, the probes code reads them through (#1687)
+- marketplace-listing-recycle-bin.md: Why a product in the Recycle Bin is never listed on a marketplace: the queries that leave it out, a line queued before binning closed failed with its reason, Try again after a restore
 - marketplace-listing-view.md: Listings view of marketplace_products.php (#2066): article cards with pictures, category search by path words, one category for many articles, required attributes first
 - marketplace-listings.md: Rules for opening products on a marketplace (listings.php): product_group as article, category/attribute caching and unread attributes, SET order, Recycle Bin, stock tracking, n11 VAT.
 - marketplace-order-import.md: Rules for importing marketplace orders (includes/api/outbound/orders.php): package as unit, map row first, side effects excluded, product matching, unmatched lines and their retry, relay emails. [decision: decisions-made-data.md]
@@ -226,6 +228,7 @@
 - order-cancel-shipping-gate.md: Who the shipping gate blocks on order cancel (customer only, by tracking code), why ship_date is ignored, USER_MANAGE_ECOMMERCE check, validate_user id key.
 - order-cancellation-config.md: Order cancel config defines, cancel_order.php endpoint, order_view cancel tokens/visibility flags, new cancel and refund columns, email and driver auto-refund gates.
 - order-cancellation-flow.md: process_order_cancellation as the only cancel path, admin cancel UI rules (no form in table rows), enum spelling cancelled, the one restore path, what the API status moves call.
+- order-charged-currency.md: orders.charged_currency and charged_rate (11.0.283): an order kept in the currency it is charged in, its rate, the base-unit sums, the marketplace fill, the money function
 - order-completion-account.md: pg_order_auto_register() (A3b, #3035): an order's auto-registration shared by the checkout and the payment message; the receipt names the account its completion hands it, not the session's [decision: decisions-made-product-2.md]
 - order-completion-after-lines.md: Order completion stage functions after the product loop (A2d1, #2914): private access, reward points and goal, contact groups, abandoned campaigns, visitor record, log and notification [decision: decisions-made-product-19.md]
 - order-completion-before-lock.md: Order completion A2d2 (#2937): key code use, gift card redemption and its error mail, affiliate commission rows moved behind the order lock; auto-registration stays before it, and why
@@ -316,6 +319,7 @@
 - payment-refunds.md: Money back through payment drivers (PRs #873, #903): the order's driver for the order screen's refund and the cancellation's void, log_name, the outcome lines [decision: here]
 - payment-return-after-message.md: A payment return that comes after the service's message completed the order leads to its receipt (pg_payment_return_receipt()), not to a new empty order's checkout
 - payment-return-language.md: The address a payment service sends the visitor back to carries the language of the page they paid from (pg_tr_script_url()), so completion, receipt mail and receipt page are in it (#11423)
+- payment-stripe-later-result.md: A Stripe PaymentIntent still processing places the order awaiting payment (card + pi_ id + paid_at 0); payment_intent.succeeded records it, payment_failed alerts; SEPA Direct Debit uses it (PR #12087)
 - payment-stripe-method-list.md: Stripe methods beside the card: list pg_payment_stripe_methods(), pure pg_payment_stripe_method_types() for page and intent, method_<type> switches in connect_apps
 - payment-unclear-answers.md: The 'unclear' flag of a payment driver's answer, how the iyzico refund sets it, why a return's refund stays refunded on it and who honours it (#970, PR #1260)
 - paypal-express-return-query.md: How the classic PayPal Express Checkout return in submit_order.php reads token and PayerID: one string each, an array or a missing one empty (#5270)
