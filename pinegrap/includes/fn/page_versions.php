@@ -13,7 +13,8 @@
  * module, then saves the tab's state onto the copy as a draft. A failure
  * after the bundle was made takes it back again. Discard removes the item,
  * deletes the emptied bundle and moves the draft to the Recycle Bin, in
- * that order: the bin refuses a draft its bundle still holds.
+ * that order: the bin refuses a draft its bundle still holds. Publish is
+ * the bundle's own publish, run while the bundle still has the shape.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -523,4 +524,84 @@ function pg_page_version_discard($draft_page_id, $user)
     });
 
     return pg_page_version_answer($run['ok'] ? '' : (string) $run['error'], $version);
+}
+
+/**
+ * The answer of a version's publish, from pg_page_bundle_publish_locked()
+ * (or the lock's busy answer). `changed`: the live page was changed since
+ * the version was started and no choice was given, so nothing was written
+ * and the Publish sheet asks "Replace anyway" or "Cancel". A page in the
+ * way says why: open in another editor, or the page save's refusal. Pure.
+ *
+ * @param array $result  ok, error, check (error, plan: ask, pages)
+ * @param array $version pg_page_versions_from_rows() entry, with draft_name
+ * @return array pg_page_version_answer() and changed
+ */
+function pg_page_version_publish_answer($result, $version)
+{
+    $result = (array) $result;
+    $plan = isset($result['check']['plan']) ? (array) $result['check']['plan'] : array();
+    $asked = in_array((int) $version['item_id'], array_map('intval', isset($plan['ask']) ? (array) $plan['ask'] : array()), true);
+
+    if (!empty($result['ok'])) {
+        return pg_page_version_answer('', $version) + array('changed' => false);
+    }
+
+    if ($asked) {
+        return pg_page_version_answer(lang('The page on the site was changed since this version was started.'), $version)
+            + array('changed' => true);
+    }
+
+    $error = isset($result['error']) ? (string) $result['error'] : '';
+
+    foreach (isset($plan['pages']) ? (array) $plan['pages'] : array() as $page) {
+        if ((string) $page['state'] === 'locked') {
+            $error = lang('Somebody has this page open in the Page Design Studio. Try again when they are done.');
+        } elseif (((string) $page['state'] === 'refused') && ((string) $page['text'] !== '')) {
+            $error = (string) $page['text'];
+        }
+    }
+
+    return pg_page_version_answer($error !== '' ? $error : lang('The new version could not be published.'), $version)
+        + array('changed' => false);
+}
+
+/**
+ * Publishes a new version: its bundle's publish writes the draft's tree,
+ * title and description onto the live page and bins the draft. The shape
+ * is read again under the bundle's lock: a page added or a time set since
+ * makes it a plain bundle, published from the Bundles screen only. A live
+ * page changed since the version was started is replaced only with
+ * $replace ("Replace anyway").
+ *
+ * @param int   $draft_page_id
+ * @param array $user
+ * @param bool  $replace
+ * @return array pg_page_version_publish_answer()
+ */
+function pg_page_version_publish($draft_page_id, $user, $replace = false)
+{
+    if (!pg_page_bundle_user_may($user)) {
+        return pg_page_version_answer(lang('Only administrators and designers can publish a release bundle.')) + array('changed' => false);
+    }
+
+    $version = pg_page_version_of_draft($draft_page_id);
+    $bundle = $version ? pg_page_bundle_get($version['bundle_id']) : null;
+
+    if (!$bundle) {
+        return pg_page_version_answer(lang('This page is not a new version of a page on the site.')) + array('changed' => false);
+    }
+
+    $version['draft_name'] = (string) db_value("SELECT page_name FROM page WHERE page_id = '" . (int) $version['draft_page_id'] . "' LIMIT 1");
+    $choices = $replace ? array((int) $version['item_id'] => 'replace') : array();
+
+    $result = pg_page_bundle_with_lock($bundle, $user, pg_page_bundle_busy_answer(), function ($fresh) use ($user, $choices) {
+        if (!pg_page_version_shape($fresh, pg_page_bundle_items($fresh['id']))) {
+            return array('ok' => false, 'error' => lang('This page is not a new version of a page on the site.'));
+        }
+
+        return pg_page_bundle_publish_locked($fresh, $user, $choices);
+    });
+
+    return pg_page_version_publish_answer($result, $version);
 }

@@ -282,6 +282,12 @@ function pg_panel_designer($request, $action)
     if ($sub === 'version_discard') {
         respond(pg_page_version_discard(isset($request['page_id']) ? (int)$request['page_id'] : 0, $user));
     }
+    // Publish of a version's draft from the Publish sheet; `replace` is
+    // "Replace anyway" for a live page changed since the version started.
+    if ($sub === 'version_publish') {
+        respond(pg_page_version_publish(isset($request['page_id']) ? (int)$request['page_id'] : 0, $user,
+            !empty($request['replace'])));
+    }
 
     switch ($sub) {
 
