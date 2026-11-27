@@ -962,6 +962,7 @@
     "New value": "Yeni değer",
     "New version": "Yeni sürüm",
     "New version of {var:1}": "{var:1} sayfasının yeni sürümü",
+    "New version of {var:1}: it replaces that page when it is published.": "{var:1} sayfasının yeni sürümü: yayımlandığında o sayfanın yerini alır.",
     "New versions are not available yet. Please run the upgrade.": "Yeni sürümler henüz kullanılamıyor. Lütfen yükseltmeyi çalıştırın.",
     "New viewing request: ^^listing^^": "Yeni gezme talebi: ^^listing^^",
     "New visit booking: ^^service^^": "Yeni ziyaret talebi: ^^service^^",

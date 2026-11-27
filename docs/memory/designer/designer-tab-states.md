@@ -5,7 +5,7 @@ description: A designer page tab's states beside its name (D49): changed dot, lo
 
 ## What does a tab show, in which order?
 - `_pgTabState(p, s)` (pure, `tests/designer_tab_states_test.php`) decides it; `_pgTabHtml()` draws it.
-- Before the name: the changed dot (accent, shown only while the page is changed), the amber lock of a page somebody else has open for editing, the home page's house. After it: the draft pill, or the schedule badge in its place. Last: the three-dot menu of the open tab, the × of a page never saved, or the muted lock of a page whose folder the operator has no content rights to (that tab does not open).
+- Before the name: the changed dot (accent, shown only while the page is changed), the amber lock of a page somebody else has open for editing, the home page's house. After it: the draft pill, or the schedule badge in its place; a live page's new version wears "New version" there instead (`designer-new-version-tab.md`). Last: the three-dot menu of the open tab, the × of a page never saved, or the muted lock of a page whose folder the operator has no content rights to (that tab does not open).
 - `after` is the place for another plan's mark after the name: it goes before the end mark, so a tab reads name, pill, mark, menu.
 
 ## Where does "open by somebody else" come from?

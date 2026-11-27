@@ -384,6 +384,15 @@ var PgDesignerPublish = (function () {
         };
         showOff('page-draft', !!active && active.state === 'live' && !active.home && !active.locked);
         showOff('all-draft', rows.some(function (r) { return r.state === 'live' && !r.home && !r.locked; }));
+        // "Save as a new version" (or "Open the new version") for the open
+        // page, where the editor offers it.
+        var nv = root.querySelector('[data-sdp-version]');
+        var nvLabel = (active && bridge.version) ? bridge.version.label(active.key) : '';
+        if (nv) {
+            nv.classList.toggle('d-none', !nvLabel);
+            var nvText = nv.querySelector('[data-sdp-version-label]');
+            if (nvText && nvLabel) nvText.textContent = nvLabel;
+        }
     }
 
     function draw() {
@@ -413,6 +422,8 @@ var PgDesignerPublish = (function () {
             var b = q('[data-sdp-act="' + act + '"]');
             if (b && result) b.classList.add('d-none');
         });
+        var nv = q('[data-sdp-version]');
+        if (nv && result) nv.classList.add('d-none');
         var go = q('[data-sdp-act="publish"]');
         if (go && !result) go.classList.remove('d-none');
         var done = q('[data-sdp-act="done"]');
@@ -523,6 +534,9 @@ var PgDesignerPublish = (function () {
             } else if (act === 'page-draft') {
                 var a = rows.filter(function (r) { return r.active; });
                 closeThen(function () { bridge.takeOff(a.map(function (r) { return r.key; })); });
+            } else if (act === 'new-version') {
+                var v = rows.filter(function (r) { return r.active; });
+                if (v.length && bridge.version) closeThen(function () { bridge.version.run(v[0].key); });
             } else if (act === 'all-draft') {
                 closeThen(function () { bridge.takeOff(rows.map(function (r) { return r.key; })); });
             }

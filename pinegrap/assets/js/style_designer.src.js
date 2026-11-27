@@ -65553,8 +65553,9 @@ const StyleDesigner = (function () {
 
     // Puts a page's tree and settings on its tab as its saved state: the tab
     // stays clean. A page the editor has already changed is left alone.
-    function _pgContentLay(p, t, fields) {
-        if (!p || !t || _pgPageDirty(p)) return false;
+    // `force` lays it over unsaved changes too (a new version took them).
+    function _pgContentLay(p, t, fields, force) {
+        if (!p || !t || (!force && _pgPageDirty(p))) return false;
         _sdTreeObjects(t);
         _normalizeToggleableShowState(t);
         var count = reindex(t);
@@ -87185,18 +87186,34 @@ const StyleDesigner = (function () {
     // never saved, or the lock of a page whose folder the operator has no
     // content rights to (that tab does not open, and nobody's lock is shown
     // on it). `tip` lists the states that show as a mark only, for the
-    // tab's title. Pure: s = { active, drafts, sched, holder, menus }.
+    // tab's title. A live page's new version (s.version, the live page's
+    // name) wears "New version" in the draft pill's place. Pure: s =
+    // { active, drafts, sched, holder, menus, version }.
     function _pgTabState(p, s) {
         var before = [], after = [], tip = [], end = '';
         var rights = (p.access === 'locked');
         if (s.holder && !rights) { before.push('busy'); tip.push('busy'); }
         if (p.page_home) { before.push('home'); tip.push('home'); }
-        if (s.sched) { after.push('sched'); tip.push('sched'); }
+        if (s.version) { after.push('version'); tip.push('version'); }
+        else if (s.sched) { after.push('sched'); tip.push('sched'); }
         else if (s.drafts && p.page_draft) { after.push('draft'); tip.push('draft'); }
         if (rights) { end = 'rights'; tip.push('rights'); }
         else if (s.menus && s.active) end = 'menu';
         else if (s.menus && p.page_id === 0) end = 'close';
         return { before: before, after: after, end: end, tip: tip };
+    }
+
+    // Which door to a new version a tab offers (the part 'versions'):
+    // 'start' ("Save as a new version") on a saved page on the site,
+    // 'open' ("Open the new version") where it has one, '' otherwise.
+    // `entry` is the page's row of the editor's versions block (role
+    // 'live' or 'version'); opts = { ready, canChange, experiment }. Pure.
+    function _pgVersionDoor(p, entry, opts) {
+        if (!p || !opts || !opts.ready || !opts.canChange) return '';
+        if (!(p.page_id > 0) || p.page_draft || p.pickedPending || p.access === 'locked') return '';
+        if (entry && entry.role === 'live') return 'open';
+        if (entry || opts.experiment) return '';
+        return 'start';
     }
 
     // One tab. A <div>, not a <button>: the label becomes an <input> while
@@ -87216,15 +87233,18 @@ const StyleDesigner = (function () {
         var draft = _pgDraftsReady() && !!p.page_draft;
         var sched = _pgScheduleNote(p);
         var holder = _pgTabHolder(p);
+        var version = _pgVersionOf(p);
+        var replaces = (version && version.role === 'version') ? (version.live_name || _sdT('the live page')) : '';
         // Only the active tab carries the ⋮ menu (rename, settings,
         // duplicate, detach, delete) so the strip stays quiet; every tab
         // opens the same menu on right-click.
-        var st = _pgTabState(p, { active: p.key === _activeKey, drafts: draft, sched: sched, holder: holder, menus: !_sdComponentOnly() });
+        var st = _pgTabState(p, { active: p.key === _activeKey, drafts: draft, sched: sched, holder: holder, menus: !_sdComponentOnly(), version: replaces });
         var words = {
             busy:   _sdT('Open for editing by {name}').replace('{name}', holder),
             home:   _sdT('Home page'),
             sched:  sched,
             draft:  _sdT('Draft: not on the site. Visitors cannot open it.'),
+            version: _sdT('New version of {var:1}: it replaces that page when it is published.', replaces),
             rights: _sdT('You do not have content rights for this page\'s folder.')
         };
         var marks = {
@@ -87232,6 +87252,7 @@ const StyleDesigner = (function () {
             home:   '<span class="sd-tab-home bi bi-house" title="' + esc(words.home) + '" aria-hidden="true"></span>',
             sched:  '<span class="sd-tab-draft-badge sd-tab-sched-badge" title="' + esc(sched) + '"><span class="bi bi-clock" aria-hidden="true"></span><span class="visually-hidden">' + esc(sched) + '</span></span>',
             draft:  '<span class="sd-tab-draft-badge" title="' + esc(words.draft) + '">' + esc(_sdT('Draft')) + '</span>',
+            version: '<span class="sd-tab-draft-badge sd-tab-version-badge" title="' + esc(words.version) + '">' + esc(_sdT('New version')) + '</span>',
             menu:   '<span class="sd-tab-menu" data-menu="' + esc(p.key) + '" title="' + esc(_sdT('Page options')) + '"><span class="bi bi-three-dots-vertical"></span></span>',
             close:  '<span class="sd-tab-close" data-close="' + esc(p.key) + '" title="' + esc(_sdT('Remove')) + '">&times;</span>',
             rights: '<span class="sd-tab-lock bi bi-lock-fill" title="' + esc(words.rights) + '"></span>'
@@ -88420,6 +88441,13 @@ const StyleDesigner = (function () {
                     disabled: !!p.page_home, title: _sdT('The home page stays on the site.') });
             }
         }
+        // A live page's new version: started, or opened where it has one;
+        // its draft's tab can discard it.
+        var door = _pgVersionDoorOf(p);
+        if (door) stateItem += item('version', door === 'open' ? 'bi-box-arrow-in-right' : 'bi-layers',
+            door === 'open' ? _sdT('Open the new version') : _sdT('Save as a new version'));
+        var ownVersion = _pgVersionOf(p);
+        if (ownVersion && ownVersion.role === 'version' && _pgDraftsCanChange()) stateItem += item('version-discard', 'bi-x-circle', _sdT('Discard this version'));
         // Groups: a new one, the first eight others in strip order, out.
         var groupItems = '';
         if (_pgTabLayoutEditable()) {
@@ -88493,7 +88521,8 @@ const StyleDesigner = (function () {
             var act = b.dataset.act;
             _pgTabsCloseMenu();
             if (key !== _activeKey && act !== 'discard' && act !== 'unpick' && act !== 'delete' && act !== 'detach' && act !== 'view' && act !== 'prototype' && act !== 'compare'
-                && act !== 'share-prototype' && act !== 'ws-tasks' && act !== 'draft' && act !== 'publish' && act !== 'copy-to' && act !== 'move-to' && act.indexOf('group-') !== 0) _pgTabsSwitch(key);
+                && act !== 'share-prototype' && act !== 'ws-tasks' && act !== 'draft' && act !== 'publish' && act !== 'copy-to' && act !== 'move-to' && act.indexOf('group-') !== 0
+                && act.indexOf('version') !== 0) _pgTabsSwitch(key);
             switch (act) {
                 case 'view':     if (viewUrl) window.open(viewUrl, '_blank', 'noopener'); break;
                 case 'prototype': if (protoUrl) window.open(protoUrl, '_blank', 'noopener'); break;
@@ -88501,6 +88530,8 @@ const StyleDesigner = (function () {
                 case 'share-prototype': _pgPrototypeShareDialog((p.page_id > 0 && p.page_draft && !p.pickedPending) ? p.page_id : 0); break;
                 case 'draft':    _pgSetDraft([key], true); break;
                 case 'publish':  _pgSetDraft([key], false); break;
+                case 'version':  _pgVersionCall('start', key); break;
+                case 'version-discard': _pgVersionCall('discard', key); break;
                 case 'rename':   _pgTabsRename(); break;
                 case 'settings': _pgTabsOpenPageSettings(); break;
                 case 'ws-tasks': _pgTabsOpenWorkspaceTasks(p); break;
@@ -90654,7 +90685,8 @@ const StyleDesigner = (function () {
     // ── Serialise for save ────────────────────────────────────────────────
     // Every tab, not just the active one: a single save persists the whole
     // design. Returns null when a tree fails validation (toast already shown).
-    function _pgTabsSerialize() {
+    // `onlyKey` serialises that one tab (a new version's start).
+    function _pgTabsSerialize(onlyKey) {
         _pgTabsPersistActive();
         // Every control inside a page-owned form widget carries a name by
         // the time the widget tree is flushed — the server reads the fields
@@ -90663,6 +90695,7 @@ const StyleDesigner = (function () {
         var out = [];
         for (var i = 0; i < _pages.length; i++) {
             var p = _pages[i];
+            if (onlyKey && p.key !== onlyKey) continue;
             var t = _pgTreeOf(p);
             if (!t) t = createDefaultTree();
             var vr = _validateTree(t);
@@ -91742,6 +91775,29 @@ const StyleDesigner = (function () {
         var st = _pgExperimentOf(p);
         return (st && st.hold_text) || _sdT('This page is a variant in an experiment: it stays a draft until the experiment ends.');
     }
+
+    // ── New versions ──
+    // A live page's new version (includes/fn/page_versions.php): a draft
+    // that replaces the page when it is published. The editor's versions
+    // block names, by page id, a version's draft (role 'version') and the
+    // live page that has one (role 'live'). The door and the tab's moves
+    // are the part 'versions' (style_designer_versions.js).
+    function _pgVersionOf(p) {
+        var v = _design && _design.versions;
+        if (!v || !p || !(p.page_id > 0)) return null;
+        return v[String(p.page_id)] || null;
+    }
+    function _pgVersionDoorOf(p) {
+        var st = _pgExperimentOf(p);
+        return _pgVersionDoor(p, _pgVersionOf(p), {
+            ready: !!(_design && _design.versionsReady) && !!_sdPartUrls('versions') && !_sdComponentOnly(),
+            canChange: _pgDraftsCanChange() && !!_collab.mayEdit,
+            experiment: !!(st && st.role !== 'bundle')
+        });
+    }
+    function _pgVersionCall(method, key) {
+        _sdPartCall('versions', method, [key]).catch(_sdPartFailed);
+    }
     function _pgExperimentSync(a) {
         var ex = (_design && _design.experiments) || {};
         var st = _pgExperimentOf(a);
@@ -91982,6 +92038,15 @@ const StyleDesigner = (function () {
                 else saveAjax({ hold: hold, reportSaved: report, onError: function () { report(null); } });
             },
             takeOff: function (keys) { _pgSetDraft(keys, true); },
+            // "Save as a new version" at the sheet's foot: its label for a
+            // page ('' where it is not offered), and the press.
+            version: {
+                label: function (key) {
+                    var door = _pgVersionDoorOf(_pgPageByKey(key));
+                    return door === 'open' ? _sdT('Open the new version') : (door ? _sdT('Save as a new version') : '');
+                },
+                run: function (key) { _pgVersionCall('start', key); }
+            },
             // Opened over the sheet; closing it gives the sheet back.
             compare: function (key) {
                 var p = _pgPageByKey(key);
@@ -93090,6 +93155,17 @@ const StyleDesigner = (function () {
                 { id: 'act_publish_page', label: _sdT('Publish this page'), icon: 'bi-rocket-takeoff', action: function () {
                     var a = _pgActivePage();
                     if (a) _pgSetDraft([a.key], false);
+                }});
+        }
+
+        // The open live page's new version: started, or opened.
+        var nvDoor = _pgVersionDoorOf(_pgActivePage());
+        if (nvDoor) {
+            items.splice(items.findIndex(function (it) { return it.id === 'act_save'; }) + 1, 0,
+                { id: 'act_new_version', label: nvDoor === 'open' ? _sdT('Open the new version') : _sdT('Save as a new version'),
+                  icon: nvDoor === 'open' ? 'bi-box-arrow-in-right' : 'bi-layers', meta: _sdT('Page'), action: function () {
+                    var a = _pgActivePage();
+                    if (a) _pgVersionCall('start', a.key);
                 }});
         }
 
@@ -99038,19 +99114,25 @@ const StyleDesigner = (function () {
             _normalizeToggleableShowState: _normalizeToggleableShowState,
             _parseInlineStyle: _parseInlineStyle,
             _pgApiPost: _pgApiPost,
+            _pgBaselineOf: _pgBaselineOf,
+            _pgContentLay: _pgContentLay,
             _pgDraftsReady: _pgDraftsReady,
             _pgNewPageDraft: _pgNewPageDraft,
             _pgPageByKey: _pgPageByKey,
+            _pgPageFromRow: _pgPageFromRow,
             _pgPublishSheet: _pgPublishSheet,
             _pgTabHolder: _pgTabHolder,
             _pgTabsInsertAfter: _pgTabsInsertAfter,
+            _pgTabsLayoutChanged: _pgTabsLayoutChanged,
             _pgTabsOpenPageSettings: _pgTabsOpenPageSettings,
             _pgTabsPersistActive: _pgTabsPersistActive,
             _pgTabsRender: _pgTabsRender,
+            _pgTabsSerialize: _pgTabsSerialize,
             _pgTabsSwitch: _pgTabsSwitch,
             _pgTemplateTrackRows: _pgTemplateTrackRows,
             _pgToken: _pgToken,
             _pgTreeOf: _pgTreeOf,
+            _pgVersionOf: _pgVersionOf,
             _refreshSharedPalette: _refreshSharedPalette,
             _resolveSharedSid: _resolveSharedSid,
             _sdAccess: _sdAccess,
