@@ -6,7 +6,7 @@ description: A Data table's column menu (workspace_wtables.php?id=N, DM4): sorts
 ## What does a column's head open?
 - Every head is a menu button (`ws_wtable_grid_menu()`, `.ws-wt-col-button`, the sort's arrow beside the name): Sort ascending, Sort descending (the one in force marked), Filter by this column; for a writer Rename, Change type (only when `ws_wtable_screen_retype_choices()` offers a type), Move left, Move right (not at that end) and Delete in red with the confirm the Columns drawer asks.
 - Entries: `ws_wtable_grid_column_menu_items()`. A lookup or rollup sorts nothing and takes no condition: a reader's head of one is the plain name. The old head click cycling asc → desc → table order is gone; the tag under the bar takes a sort off.
-- The menus are placed `data-bs-strategy="fixed"`: absolute, the grid's scrolling box cut them.
+- The grid's menus are `data-bs-strategy="fixed"` and `data-bs-container="body"`: absolute, the grid's scrolling box cut them; inside the sticky head, the sticky totals rows drew over them.
 - Filter by this column opens the bar's Filter box with the column chosen on its empty line and the comparison focused (the screen's inline script).
 - Rename and Change type open the Columns drawer at the column's `details#ws-wt-col-N`, opened, focusing its name or New type field (`data-ws-wt-goto`, `data-ws-wt-focus`). The "+" head after the last column (writers) does the same for New column.
 - Delete and the moves post through the screen's one action form with `target=rows`, so they come back to the grid, not to the Columns drawer.
