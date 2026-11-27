@@ -890,15 +890,8 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     }
     $software_language = $row['software_language'];
     if($software_language != NULL){
-        $selected_tr = '';
-        $selected_en = '';
-        if($software_language == 'tr'){
-            $selected_tr ='selected="selected"';
-        }
-        if($software_language == 'en'){
-            $selected_en ='selected="selected"';
-        }
-        $select_software_language_options ='<option value="en" '.$selected_en.'>' . lang('English') . '</option><option value="tr" '.$selected_tr.'>' . lang('Turkish') . '</option>';
+        // Each offered language under its own name (pg_software_languages()).
+        $select_software_language_options = pg_software_language_options_html((string) $software_language);
         $output_software_language ='
         <div class="pg-f-md">
             <label class="form-label" for="software_language">' . lang('Software Language') . $output_enforcement . '</label>

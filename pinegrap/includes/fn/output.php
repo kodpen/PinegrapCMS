@@ -2560,7 +2560,7 @@ function output_header_secure($properties = false)
     $output_host = defined('HOSTNAME') ? HOSTNAME : ($_SERVER['HTTP_HOST'] ?? '');
 
     $output = '<!DOCTYPE html>
-<html lang="' . lang(array('info' => '')) . '">
+<html lang="' . h(lang(array('info' => ''))) . '">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,minimum-scale=1,user-scalable=no">
@@ -3159,7 +3159,7 @@ function output_header($properties = false)
     $output_shortcuts_dialog = pg_shortcuts_dialog();
 
     $output = '<!DOCTYPE html>
-    <html lang="' . lang(array('info' => '')) . '">
+    <html lang="' . h(lang(array('info' => ''))) . '">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width,minimum-scale=1,user-scalable=no">

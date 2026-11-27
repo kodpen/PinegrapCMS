@@ -39,6 +39,9 @@ if (!defined('INSTALL_OR_UPDATE') && !defined('PG_FUNCTIONS_DIR')) {
 	exit;
 }
 
+// The installer requires this file before functions.php.
+require_once(dirname(__FILE__) . '/fn/software_languages.php');
+
 // The variables that are read, in the order the usage text lists them, with what each one is.
 function install_cli_variables() {
 
@@ -114,9 +117,9 @@ function install_cli_read($env, $defaults, $starter_sites) {
 
 	$language = $value('PG_INSTALL_LANGUAGE', isset($starter_sites[$starter]) ? $starter_sites[$starter] : 'en');
 
-	if (!in_array($language, array('en', 'tr'), true)) {
+	if (!pg_software_language_offered($language, dirname(__FILE__) . '/local')) {
 
-		$problems[] = 'PG_INSTALL_LANGUAGE must be en or tr.';
+		$problems[] = 'PG_INSTALL_LANGUAGE must be ' . implode(' or ', array_keys(pg_software_languages(dirname(__FILE__) . '/local'))) . '.';
 
 	}
 

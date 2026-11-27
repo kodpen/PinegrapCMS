@@ -44,6 +44,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/core.php');
 // get_file.php and the router's page cache module, which load it alone.
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/request_scheme.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/lang.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/software_languages.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/auth.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/mfa.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/encryption_key.php');

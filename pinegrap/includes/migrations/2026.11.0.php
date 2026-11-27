@@ -270,6 +270,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_launch_summary_answer_kind(); // 11.0.278
 	upgrade_2026_11_0_form_old_address();        // 11.0.279
 	upgrade_2026_11_0_ws_agent_context_size();   // 11.0.280
+	upgrade_2026_11_0_software_language_codes(); // 11.0.281
 
 }
 
@@ -9516,5 +9517,38 @@ function upgrade_2026_11_0_ws_agent_context_size() {
 	install_add_column('ws_agents', 'context_size', "INT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Workspace: an application agent\'s context window size can be typed on its form.');
+
+}
+
+// 11.0.281 - The codes config.software_language can hold
+// (pg_software_language_codes(), includes/fn/software_languages.php): the
+// ENUM is widened from English and Turkish to the panel's further languages,
+// English first and still the default, so every stored value stays. An ENUM
+// of up to 255 members takes one byte, as before: the config row has no
+// room for a VARCHAR (tests/innodb_test.php). A column that already lists
+// the codes is left alone, so the step runs twice without a change.
+function upgrade_2026_11_0_software_language_codes() {
+
+	$info = install_column_info('config', 'software_language');
+
+	if ($info === false) {
+
+		install_skipped('config.software_language does not exist, skipped');
+
+		return;
+
+	}
+
+	if (strtolower((string) $info['Type']) === "enum('en','tr','de','fr','es','it','pt','nl','pl','ru','uk','ar','fa','he','ja','ko','zh')") {
+
+		install_skipped('config.software_language already lists the panel languages');
+
+		return;
+
+	}
+
+	install_modify_column('config', 'software_language', "ENUM('en','tr','de','fr','es','it','pt','nl','pl','ru','uk','ar','fa','he','ja','ko','zh') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'en'");
+
+	install_note('Settings: the Software Language setting can hold the panel\'s further languages.');
 
 }
