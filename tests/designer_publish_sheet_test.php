@@ -84,7 +84,7 @@ function test_designer_publish_sheet_plan_defaults()
 		return;
 	}
 
-	pg_assert_same(array('publish' => array('c', 'g'), 'hold' => array(), 'save' => true, 'reasons' => array(), 'checks' => array(), 'missing' => false, 'waiting' => false), $got, 'the default selection');
+	pg_assert_same(array('publish' => array('c', 'g'), 'hold' => array(), 'versions' => array(), 'save' => true, 'reasons' => array(), 'checks' => array(), 'missing' => false, 'waiting' => false), $got, 'the default selection');
 }
 
 // An unchecked changed page on the site is held out of the save; a checked
@@ -102,9 +102,9 @@ function test_designer_publish_sheet_plan_choices()
 		return;
 	}
 
-	pg_assert_same(array('publish' => array('d'), 'hold' => array('b'), 'save' => true, 'reasons' => array(), 'checks' => array(), 'missing' => false, 'waiting' => false), $got[0], 'a scheduled page checked, the changed page unchecked');
-	pg_assert_same(array('publish' => array(), 'hold' => array('b'), 'save' => false, 'reasons' => array(), 'checks' => array(), 'missing' => false, 'waiting' => false), $got[1], 'nothing checked: nothing to do');
-	pg_assert_same(array('publish' => array(), 'hold' => array('b'), 'save' => true, 'reasons' => array(), 'checks' => array(), 'missing' => false, 'waiting' => false), $got[2], 'an unchanged live page checked saves the design');
+	pg_assert_same(array('publish' => array('d'), 'hold' => array('b'), 'versions' => array(), 'save' => true, 'reasons' => array(), 'checks' => array(), 'missing' => false, 'waiting' => false), $got[0], 'a scheduled page checked, the changed page unchecked');
+	pg_assert_same(array('publish' => array(), 'hold' => array('b'), 'versions' => array(), 'save' => false, 'reasons' => array(), 'checks' => array(), 'missing' => false, 'waiting' => false), $got[1], 'nothing checked: nothing to do');
+	pg_assert_same(array('publish' => array(), 'hold' => array('b'), 'versions' => array(), 'save' => true, 'reasons' => array(), 'checks' => array(), 'missing' => false, 'waiting' => false), $got[2], 'an unchanged live page checked saves the design');
 }
 
 // A draft waiting for approval: held, unless an administrator checked it
@@ -289,4 +289,65 @@ function test_designer_publish_sheet_check_reason()
 	pg_assert_contains("'page ({var:1}) was published with a blocking Publish check finding: {var:2}'", $save, 'the Site Log line');
 	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_contains('rec.publish_check_reason = p._publishCheckReason;', $js, 'the reason goes with the page');
+}
+
+// A live page's new version is no held row: it comes checked on its own tab
+// only, and checked it goes to `versions` (its bundle publishes it after the
+// save), never to the drafts put on the site.
+function test_designer_publish_sheet_version_row()
+{
+	$got = designer_publish_sheet_test_eval('(function () {'
+		. 'var v = rows.concat([{ key: "v", name: "about-copy", state: "version", changed: false, replaces: "About", label: "Replaces About" },'
+		. '{ key: "w", name: "team-copy", state: "version", changed: false, replaces: "Team", active: true }]);'
+		. 'return ['
+		. 'PgDesignerPublish.defaults(v),'
+		. 'PgDesignerPublish.plan(v, ["v"]),'
+		. 'PgDesignerPublish.plan(v, ["c", "w"])'
+		. ']; })()');
+
+	if ($got === null) {
+		return;
+	}
+
+	pg_assert_same(array('b', 'c', 'g', 'w'), $got[0], 'the version of the open tab comes checked, another does not');
+	pg_assert_same(array('v'), $got[1]['versions']);
+	pg_assert_same(array(), $got[1]['publish'], 'a version is not put on the site by the save');
+	pg_assert_true($got[1]['save'], 'a checked version alone saves the design first');
+	pg_assert_same(array('w'), $got[2]['versions']);
+	pg_assert_same(array('c'), $got[2]['publish']);
+}
+
+// The result lists a published version under its live page's name, on the
+// site, and not its live page's row again; a version that stays a draft
+// (cancelled or refused) under its own name.
+function test_designer_publish_sheet_version_outcome()
+{
+	$got = designer_publish_sheet_test_eval('(function () {'
+		. 'var v = [{ key: "p12", name: "About", state: "live" }, { key: "p13", name: "Team", state: "live" }, { key: "c", name: "New", state: "draft" },'
+		. '{ key: "v", name: "about-copy", state: "version", replaces: "About", replacesKey: "p12" },'
+		. '{ key: "w", name: "team-copy", state: "version", replaces: "Team", replacesKey: "p13" }];'
+		. 'return PgDesignerPublish.outcome(v, [{ key: "p12", draft: 0 }, { key: "p13", draft: 0 }, { key: "c", draft: 0 }, { key: "v", draft: 1 }, { key: "w", draft: 1 }], [], { v: "live", w: "draft" });'
+		. '})()');
+
+	if ($got === null) {
+		return;
+	}
+
+	pg_assert_same(array('live' => array('Team', 'New', 'About'), 'draft' => array('team-copy'), 'kept' => array()), $got, 'a replaced page is listed once, by its version');
+}
+
+// After the save the checked versions are handed to the editor one by one;
+// a changed live page is asked in the row's place.
+function test_designer_publish_sheet_version_wiring()
+{
+	$sheet = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_designer_publish.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+
+	pg_assert_contains('bridge.version.publish(key, !!vrun.replace[key]', $sheet);
+	pg_assert_contains('setTimeout(versionsNext, 0)', $sheet, 'after the editor took the reply in');
+	pg_assert_contains("if (vrun && has(vrun.ask, r.key)) { list.appendChild(askEl(r)); return; }", $sheet, 'the ask in the row\'s place');
+	pg_assert_contains("_sdPartCall('versions', 'publish', [key, replace])", $js);
+	pg_assert_contains("texts: { replace: _sdT('Replace anyway'), cancel: _sdT('Cancel') }", $js);
+	pg_assert_contains("(ver ? 'version' : (_pgExperimentHeld(p) ? 'held'", $js, 'a version is no held row; a plain bundle\'s draft stays held');
+	pg_assert_contains("(!_pgExperimentHeld(a) || _pgVersionDraft(a))", $js, 'the version\'s tab has Publish');
 }

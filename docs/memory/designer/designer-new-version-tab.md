@@ -9,7 +9,7 @@ description: A live page's new version in the Page Design Studio (NV2): the door
 
 ## What does a press do?
 - The part `versions` (`assets/js/style_designer_versions.js`, condition `publishcheck`) runs on first use. Start serialises that one tab (`_pgTabsSerialize(key)`); a tab with no change sends no page and the copy stays as the page on the site is. Then `designer/version_start` (`designer-new-version-server.md`).
-- On success the draft is loaded (`page_load`) and added as an unchanged tab right of the live one, selected; the live tab gets the stored page back with `_pgContentLay(p, tree, fields, true)` (`force` lays over unsaved changes: they went to the draft). The new draft is held in the editor's state like a bundled draft until NV3.
+- On success the draft is loaded (`page_load`) and added as an unchanged tab right of the live one, selected; the live tab gets the stored page back with `_pgContentLay(p, tree, fields, true)` (`force` lays over unsaved changes: they went to the draft). The new draft is held in the editor's state like a bundled draft; only its bundle publishes it, from the Publish sheet's row (`designer-new-version-publish.md`).
 - An answer with `existing` (a version already there, or a start that lost a race) opens that draft and leaves the live tab's changes where they are, with a warning toast.
 
 ## How does the draft's tab look?

@@ -206,3 +206,79 @@ function test_page_version_wiring()
 	pg_assert_contains("'versions'      => pg_page_version_editor_config(\$tab_page_ids)", $screen);
 	pg_assert_contains("/includes/fn/page_versions.php'", $manifest);
 }
+
+// A publish's answer: published; a live page changed since asks "Replace
+// anyway" (changed, nothing written); a page in the way says why.
+function test_page_version_publish_answer()
+{
+	$version = array('bundle_id' => 4, 'item_id' => 9, 'draft_page_id' => 31, 'live_page_id' => 12, 'draft_name' => 'home-copy');
+	$plan = function ($over) {
+		return array('check' => array('error' => '', 'plan' => $over + array('ok' => false, 'write' => array(), 'leave' => array(), 'ask' => array(), 'pages' => array())));
+	};
+
+	$done = pg_page_version_publish_answer(array('ok' => true, 'error' => '') + $plan(array('ok' => true, 'write' => array(9))), $version);
+	pg_assert_true($done['ok'], 'published');
+	pg_assert_false($done['changed']);
+	pg_assert_same(12, $done['live_page_id']);
+	pg_assert_same(31, $done['draft_page_id']);
+
+	$asked = pg_page_version_publish_answer(array('ok' => false, 'error' => 'Some pages are in the way; nothing was published.')
+		+ $plan(array('ask' => array('9'), 'pages' => array(array('state' => 'changed', 'text' => '')))), $version);
+	pg_assert_false($asked['ok']);
+	pg_assert_true($asked['changed'], 'the live page changed since: the sheet asks');
+	pg_assert_same('The page on the site was changed since this version was started.', $asked['error']);
+
+	$locked = pg_page_version_publish_answer(array('ok' => false, 'error' => 'Some pages are in the way; nothing was published.')
+		+ $plan(array('pages' => array(array('state' => 'locked', 'text' => '')))), $version);
+	pg_assert_false($locked['changed']);
+	pg_assert_contains('open in the Page Design Studio', $locked['error'], 'a page open elsewhere says so');
+
+	$refused = pg_page_version_publish_answer(array('ok' => false, 'error' => 'Some pages are in the way; nothing was published.')
+		+ $plan(array('pages' => array(array('state' => 'refused', 'text' => 'The page name is taken.')))), $version);
+	pg_assert_same('The page name is taken.', $refused['error'], 'the page save\'s refusal');
+
+	$busy = pg_page_version_publish_answer(array('ok' => false, 'error' => 'The bundle is being published right now. Try again in a moment.', 'busy' => true), $version);
+	pg_assert_same('The bundle is being published right now. Try again in a moment.', $busy['error'], 'a held lock');
+	pg_assert_false($busy['changed']);
+
+	$bare = pg_page_version_publish_answer(array('ok' => false, 'error' => ''), $version);
+	pg_assert_same('The new version could not be published.', $bare['error']);
+}
+
+// A publish runs the bundle's own publish under its lock, after the shape is
+// read again there; "Replace anyway" is the item's choice.
+function test_page_version_publish_uses_the_bundle()
+{
+	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/page_versions.php');
+	$fn = substr($src, strpos($src, 'function pg_page_version_publish('));
+	$panel = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/panel/designer.php');
+
+	pg_assert_contains('pg_page_bundle_with_lock(', $fn);
+	pg_assert_true(strpos($fn, 'pg_page_version_shape(') < strpos($fn, 'pg_page_bundle_publish_locked('), 'the shape is read under the lock first');
+	pg_assert_contains("=> 'replace')", $fn);
+	pg_assert_contains("\$sub === 'version_publish'", $panel);
+	pg_assert_true(strpos($panel, "\$sub === 'version_publish'") > strpos($panel, 'if (!pg_designer_is_full($user))'), 'after the content-level gate');
+}
+
+// The editor publishing a version has its draft open: its own page locks do
+// not count, every other caller's lock does; the key is cleared afterwards.
+function test_page_version_publish_acting_session()
+{
+	pg_assert_same('', pg_page_bundle_acting_session(), 'nobody by default');
+	pg_assert_same('sdabc', pg_page_bundle_acting_session('sdabc'));
+	pg_assert_same('sdabc', pg_page_bundle_acting_session());
+	pg_assert_same('', pg_page_bundle_acting_session(''));
+
+	$bundles = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/page_bundles.php');
+	$check = substr($bundles, strpos($bundles, 'function pg_page_bundle_check_item('));
+	$check = substr($check, 0, strpos($check, "\n}\n"));
+	pg_assert_contains('pg_collab_may_edit_page($acting, $draft_id)', $check);
+	$write = substr($bundles, strpos($bundles, 'function pg_page_bundle_write_item('));
+	$write = substr($write, 0, strpos($write, 'function pg_page_bundle_undo_item('));
+	pg_assert_true(strpos($write, "pg_collab_may_edit_page(''") === false, 'the write asks with the acting session too');
+
+	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/page_versions.php');
+	$fn = substr($src, strpos($src, 'function pg_page_version_publish('));
+	pg_assert_true(strpos($fn, 'pg_page_bundle_acting_session((string) $session_key)') < strpos($fn, 'pg_page_bundle_with_lock('), 'set before the publish');
+	pg_assert_contains("finally {\n        pg_page_bundle_acting_session('');", $fn, 'and cleared whatever happens');
+}

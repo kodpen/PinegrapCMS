@@ -91923,6 +91923,7 @@ const StyleDesigner = (function () {
         if (!v || !p || !(p.page_id > 0)) return null;
         return v[String(p.page_id)] || null;
     }
+    function _pgVersionDraft(p) { var v = _pgVersionOf(p); return !!(v && v.role === 'version'); }
     function _pgVersionDoorOf(p) {
         var st = _pgExperimentOf(p);
         return _pgVersionDoor(p, _pgVersionOf(p), {
@@ -92107,7 +92108,9 @@ const StyleDesigner = (function () {
         // Publish puts it on. A page on the site has one, Publish.
         var pub = document.getElementById('sd-publish-page');
         if (pub) {
-            var both = draft && _pgDraftsCanChange() && !!a && !a.pickedPending && !_pgExperimentHeld(a);
+            // A new version's draft is published from the sheet by its
+            // bundle; another held draft has no Publish.
+            var both = draft && _pgDraftsCanChange() && !!a && !a.pickedPending && (!_pgExperimentHeld(a) || _pgVersionDraft(a));
             pub.classList.toggle('d-none', !both);
         }
         _pgExperimentSync(a);
@@ -92120,8 +92123,11 @@ const StyleDesigner = (function () {
     function _pgPublishRows() {
         _pgTabsPersistActive();
         return _pages.map(function (p) {
+            // A new version's draft is no held row: it replaces its live
+            // page when checked (its bundle publishes it after the save).
+            var ver = (p.page_draft && _pgVersionDraft(p)) ? _pgVersionOf(p) : null;
             var state = !p.page_draft ? 'live'
-                      : (_pgExperimentHeld(p) ? 'held' : (_pgScheduleAhead(p.page_publish_at) ? 'scheduled' : 'draft'));
+                      : (ver ? 'version' : (_pgExperimentHeld(p) ? 'held' : (_pgScheduleAhead(p.page_publish_at) ? 'scheduled' : 'draft')));
             var t = _pgTreeOf(p);
             var hold = (state === 'held') ? _pgExperimentOf(p) : null;
             var changed = !(p.page_id > 0) || !_pgPageUnchanged(p, t || createDefaultTree(), null);
@@ -92129,8 +92135,10 @@ const StyleDesigner = (function () {
                 key: p.key,
                 name: p.page_name || _sdT('New Page'),
                 state: state,
-                label: (hold && hold.label) || '',
+                label: ver ? _sdT('Replaces {var:1}', ver.live_name || '') : ((hold && hold.label) || ''),
                 note: (hold && hold.hold_text) || '',
+                replaces: ver ? String(ver.live_name || '') : '',
+                replacesKey: ver ? 'p' + ver.live_page_id : '',
                 changed: changed,
                 // A page on the site that changed can be compared with it.
                 compare: state === 'live' && changed && p.page_id > 0 && !p.pickedPending,
@@ -92181,7 +92189,13 @@ const StyleDesigner = (function () {
                     var door = _pgVersionDoorOf(_pgPageByKey(key));
                     return door === 'open' ? _sdT('Open the new version') : (door ? _sdT('Save as a new version') : '');
                 },
-                run: function (key) { _pgVersionCall('start', key); }
+                run: function (key) { _pgVersionCall('start', key); },
+                // A checked version's draft, published by its bundle once the
+                // save is over: done(answer) or done(null).
+                publish: function (key, replace, done) {
+                    _sdPartCall('versions', 'publish', [key, replace]).then(done, function () { _sdPartFailed(); done(null); });
+                },
+                texts: { replace: _sdT('Replace anyway'), cancel: _sdT('Cancel') }
             },
             // Opened over the sheet; closing it gives the sheet back.
             compare: function (key) {
@@ -99243,6 +99257,7 @@ const StyleDesigner = (function () {
             _backfillIds: _backfillIds,
             _cfAdoptOnDrop: _cfAdoptOnDrop,
             _collab: _collab,
+            _collabKey: _collabKey,
             _findNodeAnywhereById: _findNodeAnywhereById,
             _getBindableProps: _getBindableProps,
             _isInsideSystemWidget: _isInsideSystemWidget,

@@ -1338,6 +1338,26 @@ function pg_page_bundle_draft_row($page_id)
 }
 
 /**
+ * The Page Design Studio session a publish acts for: the page locks that
+ * session holds do not stand in its way (a new version published from the
+ * editor that has its draft open, includes/fn/page_versions.php). '' for
+ * every other caller, so any lock counts. Called with a key, sets it.
+ *
+ * @param string|null $set
+ * @return string
+ */
+function pg_page_bundle_acting_session($set = null)
+{
+    static $key = '';
+
+    if ($set !== null) {
+        $key = (string) $set;
+    }
+
+    return $key;
+}
+
+/**
  * The checks of one waiting page before a publish: its lock (and the live
  * page's), the save's dry run, the home page, "changed since".
  *
@@ -1353,7 +1373,9 @@ function pg_page_bundle_check_item($item, $user)
     $draft_id = (int) $item['draft_page_id'];
     $live_id = (int) $item['live_page_id'];
 
-    if (!pg_collab_may_edit_page('', $draft_id) || (($live_id > 0) && !pg_collab_may_edit_page('', $live_id))) {
+    $acting = pg_page_bundle_acting_session();
+
+    if (!pg_collab_may_edit_page($acting, $draft_id) || (($live_id > 0) && !pg_collab_may_edit_page($acting, $live_id))) {
         $out['locked'] = true;
 
         return $out;
@@ -1504,7 +1526,7 @@ function pg_page_bundle_write_item($item, $bundle, $user)
         }
 
         if ($live_id <= 0) {
-            if (!pg_collab_may_edit_page('', $draft_id)) {
+            if (!pg_collab_may_edit_page(pg_page_bundle_acting_session(), $draft_id)) {
                 return $give_back($busy);
             }
 
@@ -1521,7 +1543,7 @@ function pg_page_bundle_write_item($item, $bundle, $user)
             return array('ok' => true, 'error' => '', 'revision_before' => 0, 'written_state' => $state);
         }
 
-        if (!pg_collab_may_edit_page('', $live_id)) {
+        if (!pg_collab_may_edit_page(pg_page_bundle_acting_session(), $live_id)) {
             return $give_back($busy);
         }
 

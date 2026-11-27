@@ -61,6 +61,6 @@ function test_experiment_editor_page_state_sheet_wiring()
 	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 
 	pg_assert_contains("state.textContent = r.label || text('state-' + r.state);", $sheet, 'the row label');
-	pg_assert_contains("label: (hold && hold.label) || '',", $js, 'the editor passes the label');
+	pg_assert_contains("label: ver ? _sdT('Replaces {var:1}', ver.live_name || '') : ((hold && hold.label) || ''),", $js, 'the editor passes the label; a new version names the page it replaces');
 	pg_assert_contains("note: (hold && hold.hold_text) || '',", $js, 'the editor passes the text');
 }

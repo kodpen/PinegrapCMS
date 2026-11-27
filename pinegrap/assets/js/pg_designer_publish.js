@@ -28,8 +28,18 @@
  *                          { state: 'failed' } when the check did not run
  *   findings(key, retry)   the element listing a checked page's findings,
  *                          drawn under its row; retry() checks it again
+ *   version                optional, a live page's new version:
+ *                          label(key) the foot button's text, run(key) its
+ *                          press, publish(key, replace, done) publishes a
+ *                          version's draft after the save and calls
+ *                          done(answer: ok, changed, error, or null),
+ *                          texts the words of the "Replace anyway" ask
  * update(key, summary) redraws a page's result after a change made inside
  * the sheet ("Fix", "Undo", "Ignore").
+ * A version's row (state 'version', `replaces` the live page's name) is
+ * published by its bundle once the save is over; a live page changed since
+ * the version was started is asked in the row's place: "Replace anyway"
+ * or "Cancel".
  * With check(), a ticked page gets its result at the end of its row; a
  * blocking page goes on the site only with "Publish anyway" and a reason
  * (publish()'s fifth argument: key => reason), as a held row does.
@@ -60,22 +70,27 @@ var PgDesignerPublish = (function () {
     }
 
     // The keys checked when the sheet opens: every draft (a page waiting
-    // for its publish time keeps waiting unless checked by hand) and every
-    // page on the site that changed. A row is
-    // { key, name, state: 'draft'|'scheduled'|'live'|'held', label, note, changed,
-    //   compare, locked, home, active, override }; `compare`: a page on the
+    // for its publish time keeps waiting unless checked by hand), every
+    // page on the site that changed, and a new version only on its own tab
+    // (it replaces a page on the site). A row is
+    // { key, name, state: 'draft'|'scheduled'|'live'|'held'|'version', label, note, changed,
+    //   compare, locked, home, active, override, replaces }; `compare`: a page on the
     //   site that changed, offered "Compare with the live page"; `override`: a held draft this
-    //   person may publish anyway with a reason.
+    //   person may publish anyway with a reason; `replaces`, `replacesKey`: a version's live
+    //   page name and its tab's key.
     function defaults(rows, check) {
         var blocked = (check && check.blocked) || null;
         return (rows || []).filter(function (r) {
-            return selectable(r, null, blocked) && (r.state === 'draft' || (r.state === 'live' && r.changed));
+            return selectable(r, null, blocked)
+                && (r.state === 'draft' || (r.state === 'live' && r.changed) || (r.state === 'version' && r.active));
         }).map(function (r) { return r.key; });
     }
 
     // What "Publish selected" does with the checked keys: `publish` the
     // drafts to put on the site, `hold` the changed pages on the site left
-    // out of the save, `save` whether there is anything to do. An unchecked
+    // out of the save, `versions` the new versions published by their
+    // bundles after the save (saved as drafts in it), `save` whether there
+    // is anything to do. An unchecked
     // draft is saved as it is, off the site. A held draft checked with
     // "Publish anyway" is published with its reason (`reasons`); without
     // one, `missing` keeps the button off.
@@ -89,7 +104,7 @@ var PgDesignerPublish = (function () {
         (keys || []).forEach(function (k) { on[k] = true; });
         var blocked = (check && check.blocked) || null;
         var pending = (check && check.pending) || null;
-        var out = { publish: [], hold: [], save: false, reasons: {}, checks: {}, missing: false, waiting: false };
+        var out = { publish: [], hold: [], versions: [], save: false, reasons: {}, checks: {}, missing: false, waiting: false };
         (rows || []).forEach(function (r) {
             if (!selectable(r, anyway, blocked)) {
                 if (r && !r.locked && has(blocked, r.key) && r.state === 'live' && r.changed) out.hold.push(r.key);
@@ -108,6 +123,8 @@ var PgDesignerPublish = (function () {
                 out.save = true;
             } else if (r.state === 'draft' || r.state === 'scheduled') {
                 if (on[r.key]) { out.publish.push(r.key); out.save = true; }
+            } else if (r.state === 'version') {
+                if (on[r.key]) { out.versions.push(r.key); out.save = true; }
             } else if (r.state === 'live' && r.changed) {
                 if (on[r.key]) out.save = true;
                 else out.hold.push(r.key);
@@ -122,13 +139,26 @@ var PgDesignerPublish = (function () {
     // draft }): `live` on the site, `draft` off it, `kept` not saved - held
     // back by the sheet, or held by another user (no state in the reply).
     // Names in the rows' order; a page the reply does not name is left out.
-    function outcome(rows, pages, hold) {
+    // `versions`: key => 'live' for a new version its bundle published (the
+    // page it replaced is listed once, as on the site, under its name) or
+    // 'draft' for one that stays a draft.
+    function outcome(rows, pages, hold, versions) {
         var got = {};
         (Array.isArray(pages) ? pages : []).forEach(function (m) { if (m && m.key) got[m.key] = m; });
         var held = {};
         (hold || []).forEach(function (k) { held[k] = true; });
         var out = { live: [], draft: [], kept: [] };
+        var replaced = {};
         (rows || []).forEach(function (r) {
+            if (has(versions, r.key) && versions[r.key] === 'live' && r.replacesKey) replaced[r.replacesKey] = true;
+        });
+        (rows || []).forEach(function (r) {
+            if (replaced[r.key]) return;
+            if (has(versions, r.key)) {
+                if (versions[r.key] === 'live') out.live.push(r.replaces || r.name);
+                else out.draft.push(r.name);
+                return;
+            }
             var m = got[r.key];
             if (!m) return;
             if (held[r.key] || typeof m.draft === 'undefined') out.kept.push(r.name);
@@ -160,6 +190,9 @@ var PgDesignerPublish = (function () {
     var pending = {};   // key => true while the page is checked
     var openKey = '';   // the row whose findings are shown
     var round = 0;      // answers of an earlier opening are dropped
+    // The new versions published after the save: { todo, replace, done,
+    // ask: key => why, reply, hold, rows }; null when none runs.
+    var vrun = null;
 
     function blockedKeys() {
         var out = {};
@@ -196,6 +229,12 @@ var PgDesignerPublish = (function () {
         return t ? t.textContent : key;
     }
 
+    // A word of the new version's ask, handed by the editor.
+    function vtext(key) {
+        var t = bridge && bridge.version && bridge.version.texts;
+        return (t && t[key]) || key;
+    }
+
     function rowEl(r) {
         var item = document.createElement('label');
         item.className = 'list-group-item bg-transparent d-flex align-items-center gap-3 sd-publish-row';
@@ -205,7 +244,7 @@ var PgDesignerPublish = (function () {
         box.className = 'check m-0 flex-shrink-0';
         var blocked = blockedKeys();
         box.checked = !!checked[r.key];
-        box.disabled = !selectable(r, anyway, blocked);
+        box.disabled = !selectable(r, anyway, blocked) || !!vrun;
         box.addEventListener('change', function () {
             if (box.checked) checked[r.key] = true; else delete checked[r.key];
             // Unchecked, a draft published anyway is held again.
@@ -220,7 +259,8 @@ var PgDesignerPublish = (function () {
         name.textContent = r.name;
         if (r.active) name.classList.add('fw-semibold');
         var state = document.createElement('span');
-        state.className = 'badge sd-publish-state sd-publish-state-' + r.state;
+        // A new version is a draft: it wears the draft's badge.
+        state.className = 'badge sd-publish-state sd-publish-state-' + (r.state === 'version' ? 'draft' : r.state);
         // A held row may bring its own words (a release bundle's draft names
         // the bundle); otherwise the state's text from the markup.
         state.textContent = r.label || text('state-' + r.state);
@@ -360,13 +400,88 @@ var PgDesignerPublish = (function () {
         return wrap;
     }
 
+    // In a new version's row place, when its live page changed since the
+    // version was started: why, "Replace anyway" and "Cancel".
+    function askEl(r) {
+        var wrap = document.createElement('div');
+        wrap.className = 'list-group-item bg-transparent sd-publish-reason';
+        wrap.setAttribute('data-sdp-ask', r.key);
+        wrap.setAttribute('role', 'group');
+        var why = document.createElement('p');
+        why.className = 'small fg-warning mb-2';
+        var name = document.createElement('span');
+        name.className = 'fw-semibold';
+        name.textContent = r.replaces || r.name;
+        why.appendChild(name);
+        why.appendChild(document.createTextNode(': ' + (vrun.ask[r.key] || '')));
+        var acts = document.createElement('div');
+        acts.className = 'd-flex flex-wrap gap-2';
+        [['replace', 'pg-button pg-button-sm pg-button-danger'], ['cancel', 'pg-button pg-button-sm pg-button-quiet']].forEach(function (b) {
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = b[1];
+            btn.textContent = vtext(b[0]);
+            btn.addEventListener('click', function () { answerAsk(r.key, b[0] === 'replace'); });
+            acts.appendChild(btn);
+        });
+        wrap.appendChild(why);
+        wrap.appendChild(acts);
+        return wrap;
+    }
+
+    // The checked new versions, one after the other, each by its bundle.
+    // A changed live page waits for its ask; when none is left, the result.
+    function versionsNext() {
+        if (!vrun) return;
+        var key = vrun.todo.shift();
+        if (!key) {
+            if (Object.keys(vrun.ask).length) {
+                busy(false);
+                var first = el() && el().querySelector('[data-sdp-ask] button');
+                if (first) first.focus();
+                return;
+            }
+            var run = vrun;
+            vrun = null;
+            busy(false);
+            drawResult(outcome(run.rows, run.reply.pages, run.hold, run.done));
+            view(true);
+            return;
+        }
+        var mine = round;
+        bridge.version.publish(key, !!vrun.replace[key], function (ans) {
+            if (mine !== round || !vrun) return;
+            if (ans && ans.ok) vrun.done[key] = 'live';
+            else if (ans && ans.changed) vrun.ask[key] = String(ans.error || '');
+            else vrun.done[key] = 'draft';
+            versionsNext();
+        });
+    }
+
+    function answerAsk(key, replace) {
+        if (!vrun || saving || !has(vrun.ask, key)) return;
+        delete vrun.ask[key];
+        if (replace) {
+            vrun.replace[key] = true;
+            vrun.todo.push(key);
+        } else {
+            vrun.done[key] = 'draft';
+        }
+        // Another ask still open waits for its answer.
+        if (Object.keys(vrun.ask).length && !vrun.todo.length) { draw(); return; }
+        busy(true);
+        versionsNext();
+    }
+
     function sync() {
         var root = el();
         if (!root || !bridge) return;
         var rows = current;
         var p = plan(rows, Object.keys(checked), anyway, checkState());
         var go = root.querySelector('[data-sdp-act="publish"]');
-        if (go) go.disabled = !p.save || p.missing || p.waiting;
+        if (go) go.disabled = !p.save || p.missing || p.waiting || !!vrun;
+        var all = root.querySelector('[data-sdp-act="all"]');
+        if (all) all.disabled = !!vrun;
         var busyN = Object.keys(pending).length;
         var wait = root.querySelector('[data-sdp-checking]');
         if (wait) {
@@ -382,12 +497,13 @@ var PgDesignerPublish = (function () {
             var b = root.querySelector('[data-sdp-act="' + act + '"]');
             if (b) b.classList.toggle('d-none', !on);
         };
-        showOff('page-draft', !!active && active.state === 'live' && !active.home && !active.locked);
-        showOff('all-draft', rows.some(function (r) { return r.state === 'live' && !r.home && !r.locked; }));
+        // While a new version's ask is open, only its two buttons act.
+        showOff('page-draft', !vrun && !!active && active.state === 'live' && !active.home && !active.locked);
+        showOff('all-draft', !vrun && rows.some(function (r) { return r.state === 'live' && !r.home && !r.locked; }));
         // "Save as a new version" (or "Open the new version") for the open
         // page, where the editor offers it.
         var nv = root.querySelector('[data-sdp-version]');
-        var nvLabel = (active && bridge.version) ? bridge.version.label(active.key) : '';
+        var nvLabel = (active && !vrun && bridge.version) ? bridge.version.label(active.key) : '';
         if (nv) {
             nv.classList.toggle('d-none', !nvLabel);
             var nvText = nv.querySelector('[data-sdp-version-label]');
@@ -401,6 +517,7 @@ var PgDesignerPublish = (function () {
         if (!list) return;
         list.textContent = '';
         current.forEach(function (r) {
+            if (vrun && has(vrun.ask, r.key)) { list.appendChild(askEl(r)); return; }
             list.appendChild(rowEl(r));
             if (has(anyway, r.key)) list.appendChild(reasonEl(r));
             var f = findingsEl(r);
@@ -521,6 +638,13 @@ var PgDesignerPublish = (function () {
                 var report = function (reply) {
                     var root = el();
                     if (!saving) return false;
+                    if (reply && p.versions.length && bridge.version && typeof bridge.version.publish === 'function') {
+                        // The versions go after the save is over: the
+                        // editor takes the reply in first (baselines).
+                        vrun = { todo: p.versions.slice(), replace: {}, done: {}, ask: {}, reply: reply, hold: p.hold, rows: rows };
+                        setTimeout(versionsNext, 0);
+                        return !!(root && root.open);
+                    }
                     busy(false);
                     if (!reply) return false;
                     drawResult(outcome(rows, reply.pages, p.hold));
@@ -549,6 +673,7 @@ var PgDesignerPublish = (function () {
         if (!root || !b) return false;
         if (saving) { if (window.pgUI) pgUI.dialog.show(root); return true; }
         bridge = b;
+        vrun = null;
         view(false);
         current = bridge.rows() || [];
         checked = {};
@@ -571,7 +696,7 @@ var PgDesignerPublish = (function () {
     // row's result and findings drawn again, and the focus put on `focus`
     // (a selector inside the sheet) when given.
     function update(key, sum, focus) {
-        if (!bridge || saving || !has(results, key)) return;
+        if (!bridge || saving || vrun || !has(results, key)) return;
         results[key] = sum || { state: 'failed' };
         current = bridge.rows() || current;
         if (results[key].state === 'block' && !has(anyway, key)) delete checked[key];

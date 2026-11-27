@@ -7,6 +7,7 @@ module: experiments_sheet
 ## Which pages are held rows?
 - A draft an open experiment keeps as its variant, a draft an open, scheduled or partly published release bundle holds (`pg_page_bundle_hold()`), and a draft a prototype link holds until approved (`pg_proto_approval_holds()`, `prototype-approval-hold.md`). The rows have state `held` and a disabled box (`designer-publish-sheet.md`).
 - The experiment comes first, then the bundle, then the approval; a draft in several reads as the first.
+- A live page's new version (a bundle of one replacement) is no held row: its row reads "Replaces <page>" and can be checked (`designer-new-version-publish.md`).
 
 ## Where does the hold come from?
 - The page load: `_design.experiments.pages` from `pg_experiment_editor_config()`, one entry per tab page by `pg_experiment_editor_page_state()`, or `pg_proto_approval_editor_state()` for the approval.
