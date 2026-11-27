@@ -3153,9 +3153,9 @@ function parasut_order_contact_search_number($identity)
  * (parasut_order_contact_attributes()), case and outer spaces aside, as the
  * ERP's driver matches a final consumer's card
  * (erp_edoc_parasut_final_consumer_card_matches()). A placeholder that
- * passes the check digits is typed by strangers too, and a card is taken as
- * it is: the invoice carries no buyer details of its own, so another buyer's
- * card would put the e-Arşiv in their name and mail it to them.
+ * passes the check digits is typed by strangers too, and the invoice
+ * carries no buyer details of its own, so another buyer's card would put
+ * the e-Arşiv in their name and mail it to them.
  *
  * @param mixed $card        attributes of a listed card
  * @param array $attributes  parasut_order_contact_attributes()
@@ -3188,7 +3188,10 @@ function parasut_order_contact_card_is_buyers($card, $attributes)
  * GET contacts?filter[tax_number], newest first, page by page up to
  * ERP_EDOC_PARASUT_FIND_PAGES pages, and the first card that is not
  * archived, carries exactly the number and is this buyer's
- * (parasut_order_contact_card_is_buyers()) is taken as it is. A page that
+ * (parasut_order_contact_card_is_buyers()) is taken. The fields it holds
+ * empty are filled with $attributes in one PUT, a field it holds is never
+ * overwritten (erp_edoc_parasut_contact_fill_send()); a refused user stops
+ * there, any other refusal leaves the card as it is. A page that
  * answers neither a list nor 404 (no card under the number) refuses: no card
  * is opened while one may be unread. The driver's own function is not called
  * because it opens a missing card with the ERP account's details and logs
@@ -3245,6 +3248,17 @@ function parasut_order_contact_for($identity, $attributes, $request)
             if (($id !== '') && empty($card['archived'])
                 && (preg_replace('/\D/', '', (string) ($card['tax_number'] ?? '')) === $number)
                 && parasut_order_contact_card_is_buyers($card, $attributes)) {
+                // The fields the card holds empty are filled with the
+                // order's; a field it holds stays as it is.
+                $put = erp_edoc_parasut_contact_fill_send($id, $card, $attributes, $request);
+
+                if (erp_edoc_parasut_contact_fill_stops($put)) {
+                    return array('id' => '', 'reused' => false, 'error' => lang(array(
+                        'string' => 'Paraşüt would not fill the empty fields of the buyer card: {var:1}',
+                        'vars' => array(_parasut_extract_error($put)),
+                    )));
+                }
+
                 return array('id' => $id, 'reused' => true, 'error' => '');
             }
         }
@@ -4791,8 +4805,10 @@ function _parasut_create_invoice_claimed($order_id, &$notices)
     }
 
     // Even if the e-invoice/e-archive step fails, the order keeps the sales
-    // invoice ID (stored when the record was created or found).
-    if (!in_array($doc_result['http_code'], [200, 201])) {
+    // invoice ID (stored when the record was created or found). The
+    // conversion answers 202 Accepted with a trackable job, so any 2xx is
+    // accepted, as the ERP's driver reads it.
+    if (!erp_edoc_parasut_ok($doc_result)) {
         $msg = _parasut_extract_error($doc_result);
         // The order is not flagged as exported: the flag drives the badge in
         // the order list, and marking it here would show a document as filed

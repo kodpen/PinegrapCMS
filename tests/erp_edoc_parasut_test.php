@@ -1489,10 +1489,10 @@ function test_erp_edoc_parasut_cancel_invoice_reads_the_mark()
 }
 
 // A stand-in for erp_edoc_parasut_request() that answers GET contacts out of
-// $cards, a page of the size asked for at a time, and POST contacts with a
-// new card 7999. Every call is written into $calls as "METHOD path". Page
-// $fail_page, when given, answers 500; $pages, when given, is the page count
-// it claims in meta.
+// $cards, a page of the size asked for at a time, POST contacts with a new
+// card 7999 and PUT contacts/{id} with the card it was sent. Every call is
+// written into $calls as "METHOD path". Page $fail_page, when given, answers
+// 500; $pages, when given, is the page count it claims in meta.
 function pg_test_parasut_contacts_request($cards, &$calls, $fail_page = 0, $pages = 0)
 {
 	return function ($method, $path, $body = null, $context = array()) use ($cards, &$calls, $fail_page, $pages) {
@@ -1502,6 +1502,8 @@ function pg_test_parasut_contacts_request($cards, &$calls, $fail_page = 0, $page
 		if ($method === 'POST') {
 			$answer['http_code'] = 201;
 			$answer['body'] = array('data' => array('id' => '7999', 'type' => 'contacts', 'attributes' => $body['data']['attributes']));
+		} elseif ($method === 'PUT') {
+			$answer['body'] = array('data' => $body['data']);
 		} else {
 			$query = array();
 			parse_str((string) parse_url($path, PHP_URL_QUERY), $query);
@@ -1630,7 +1632,8 @@ function test_erp_edoc_parasut_contact_for_refuses_on_a_failed_page()
 }
 
 // No card under the number (404) opens one; the card of a real tax number
-// is taken on the number alone, as before.
+// is taken on the number alone, as before, its empty fields filled with the
+// buyer's.
 function test_erp_edoc_parasut_contact_for_number_rules()
 {
 	$calls = array();
@@ -1650,5 +1653,6 @@ function test_erp_edoc_parasut_contact_for_number_rules()
 	$calls = array();
 
 	pg_assert_same(array('id' => '6001', 'error' => ''), erp_edoc_parasut_contact_for(pg_test_parasut_party(), '1234567808', array(), pg_test_parasut_contacts_request(array($archived, $company), $calls)));
-	pg_assert_same(1, count($calls));
+	pg_assert_same(2, count($calls));
+	pg_assert_same('PUT /contacts/6001', $calls[1]);
 }
