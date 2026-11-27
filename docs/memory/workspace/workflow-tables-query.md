@@ -13,7 +13,7 @@ description: The table screen's query bar, sort and totals line, and the rows AP
 - A GET form in the bar's "Filter" box (`ws_wtable_screen_query_bar()`, `workflow-tables-screen-bar.md`): `q[n][c|o|v]`, `join`, `sort`, `dir`, `totals`, so a filtered view is a link. Sort by leaves lookup and rollup columns out, as the condition lines do (PR #10370). A line per condition plus one empty line; a line without a column is dropped. The comparisons offered follow the column's type once it is chosen and applied; a status, checkbox and person value is a list, a date a native picker.
 - Values are typed the screen's way and turned into the engine's by `ws_wtable_query_screen_value()`: money the site's way into minor units (`round()`), numbers by `ws_calc_number()`, a date ISO or in the site's day/month order, a status by label or key, a checkbox yes/no or 1/0, a person by name or id, a record `kind:id` or its number.
 - A refused query shows its words in a warning line under the screen's bar and the rows unfiltered.
-- A column heading sorts: ascending, then descending, then the table order. With conditions the heading reads "N of M rows" and an empty result says "No row meets the conditions".
+- A column heading's menu has Sort ascending and Sort descending (`workflow-tables-grid-order.md`). With conditions the heading reads "N of M rows" and an empty result says "No row meets the conditions".
 - Paging: without a query, by position and the last row's id (`?after=&after_id=`, `ws_wtable_screen_after_qs()`; two rows may share a position, and paging by position alone hid the second before PR #10370); with one, by offset (`?from=`). Edit, Cancel and the pager keep the query and the page.
 
 ## What is the totals line?
