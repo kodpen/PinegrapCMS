@@ -147,3 +147,32 @@ function test_component_overrides_place_core_entry_points()
 	pg_assert_true(strpos($src, "_sdPartCall('overrides', 'fillPlace'") !== false, 'the rows are the part\'s, loaded on first use');
 	pg_assert_true(strpos($src, "id: 'act_edit_component'") !== false, 'the command palette has Edit the component');
 }
+
+// A refused address under "This place" shows its message; Escape gives the
+// field back what it held, and the message goes with the rose mark.
+function test_component_overrides_place_escape_clears_the_refusal()
+{
+	$code = "var cls = {}, why = { textContent: '', style: {} };\n"
+		. "var ctl = { value: '', defaultValue: '', tagName: 'INPUT', type: 'text', blur: function () {},\n"
+		. " getAttribute: function (a) { return a === 'data-co-field' ? 'of_l' : null; }, hasAttribute: function () { return false; },\n"
+		. " classList: { add: function (c) { cls[c] = true; }, remove: function (c) { delete cls[c]; } } };\n"
+		. "var on = {}, holder = { set innerHTML(v) {}, closest: function () { return null; }, addEventListener: function (t, f) { on[t] = f; },\n"
+		. " querySelector: function (s) { return /data-co-why/.test(s) ? why : (/data-co-field/.test(s) ? ctl : null); } };\n"
+		. "var comp = {_id: 'c', type: 'root', props: {}, children: [{_id: 'b', type: 'content', props: {contentType: 'link', text: 'Book', href: '/book',\n"
+		. " _open: [{id: 'of_l', kind: 'link', label: 'Link'}]}, children: []}]};\n"
+		. "kit.sharedCache = {5: {tree: comp}}; kit.saveState = function () {}; kit.render = function () {};\n"
+		. "var ref = {_id: 'p', type: 'shared_ref', props: {sharedId: 5}, children: []};\n"
+		. "part.fillPlace(holder, ref, 5, {});\n"
+		. "ctl.value = 'javascript:alert(1)';\n"
+		. "on.change({ target: ctl, stopPropagation: function () {} });\n"
+		. "out = { shown: why.textContent !== '' && why.style.display === 'block' && !!cls['is-invalid'] };\n"
+		. "on.keydown({ key: 'Escape', target: ctl, preventDefault: function () {}, stopPropagation: function () {} });\n"
+		. "out.after = { text: why.textContent, display: why.style.display, invalid: !!cls['is-invalid'], value: ctl.value, kept: !ref.props._place };";
+	$js = component_overrides_place_node($code);
+	if ($js === null) {
+		return;
+	}
+	pg_assert_true($js['shown'], 'the refusal is shown');
+	pg_assert_same(array('text' => '', 'display' => '', 'invalid' => false, 'value' => '', 'kept' => true), $js['after'],
+		'Escape leaves no message behind and keeps nothing');
+}

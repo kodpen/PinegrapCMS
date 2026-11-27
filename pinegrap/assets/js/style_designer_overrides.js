@@ -173,12 +173,33 @@ StyleDesigner.definePart('overrides', function (K) {
 
     // ── The list of an element's fields ──────────────────────────────────
 
-    function closePop() {
-        if (state.pop) state.pop.remove();
+    // The element of the open list in the component's tree as the editor
+    // has it now: Undo puts a new copy of the tree in place, and a write
+    // into the element as it was would be lost. Null when it is gone.
+    function popNodeNow() {
+        var node = state.popNode, root = compTree(state.popSid);
+        if (!node || !root || node._id == null) return node;
+        state.popNode = findById(root, node._id);
+        return state.popNode;
+    }
+
+    // Closes the list. A label typed and not yet left is kept (a click
+    // outside, another list opened), since removing its field fires no
+    // change; `discard` (Escape) drops it.
+    function closePop(discard) {
+        var pop = state.pop, node = pop ? popNodeNow() : null, sid = state.popSid;
         state.pop = null;
         state.popNode = null;
         state.opener = null;
         document.removeEventListener('mousedown', onOutside, true);
+        if (!pop) return;
+        var typed = discard === true ? [] : Array.prototype.filter.call(pop.querySelectorAll('[data-co-label]'), function (inp) {
+            return inp.value !== inp.defaultValue;
+        });
+        pop.remove();
+        typed.forEach(function (inp) {
+            if (node) setLabel(node, sid, inp.getAttribute('data-co-label'), inp.value);
+        });
     }
 
     function onOutside(e) {
@@ -284,15 +305,18 @@ StyleDesigner.definePart('overrides', function (K) {
 
         pop.addEventListener('change', function (e) {
             var t = e.target;
+            if (state.pop !== pop) return;
+            var node = popNodeNow();
+            if (!node) { closePop(true); return; }
             var kind = t.getAttribute('data-co-kind');
             if (kind) {
                 var first = t.checked && !firstSeen();
-                setOpen(state.popNode, state.popSid, kind, t.checked);
+                setOpen(node, state.popSid, kind, t.checked);
                 drawPop(kind, first);
                 return;
             }
             kind = t.getAttribute('data-co-label');
-            if (kind) setLabel(state.popNode, state.popSid, kind, t.value);
+            if (kind) setLabel(node, state.popSid, kind, t.value);
         });
         pop.addEventListener('click', function (e) {
             if (!e.target.closest('[data-co-got]')) return;
@@ -305,7 +329,7 @@ StyleDesigner.definePart('overrides', function (K) {
                 e.preventDefault();
                 e.stopPropagation();
                 var back = state.opener;
-                closePop();
+                closePop(true);
                 // Back to what opened the list; the element's three-dot
                 // button when that was redrawn meanwhile.
                 if (!(back && back !== document.body && back.isConnected && back.focus && back.getClientRects().length)) back = document.getElementById('sd-id-more');
@@ -754,11 +778,14 @@ StyleDesigner.definePart('overrides', function (K) {
             var t = e.target;
             if (!t.getAttribute || !t.getAttribute('data-co-field')) return;
             if (e.key === 'Escape') {
-                // Leaves the field with what it held.
+                // Leaves the field with what it held, the refusal's message
+                // gone with its mark.
                 e.preventDefault();
                 e.stopPropagation();
                 t.value = t.defaultValue;
                 t.classList.remove('is-invalid');
+                var why = holder.querySelector('[data-co-why="' + t.getAttribute('data-co-field') + '"]');
+                if (why) { why.textContent = ''; why.style.display = ''; }
                 t.blur();
             } else if (e.key === 'Enter' && t.tagName === 'INPUT') {
                 e.preventDefault();

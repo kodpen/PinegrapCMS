@@ -13,7 +13,7 @@ module: component_overrides
 - A switch on writes `{id, kind, label}` into `props._open` (id from `newFieldId()`), appended to the root's `props._openOrder` when one is stored; off removes it. A "Label" field under an open switch; empty goes back to the default.
 - Default label: the element's name; with two fields open both take "name field" ("Button text", "Button link"). Labels still at a default follow when a field opens or closes.
 - First use: one line with "Got it", kept in `localStorage` `sd_co_first_seen`.
-- Up and Down move between switches, Space flips, Tab reaches Label, Enter keeps a label and goes back to its switch, Escape closes and gives the focus back to what opened the list (the element's three-dot button when that was redrawn; #11853).
+- Up and Down move between switches, Space flips, Tab reaches Label, Enter keeps a label and goes back to its switch, Escape closes and gives the focus back to what opened the list (the element's three-dot button when that was redrawn; #11853). A label typed and not yet left is kept when the list closes otherwise (a click outside), dropped by Escape; after an Undo the list writes into the tree the editor has now (#11998).
 
 ## How is a change written?
 - Every write goes through the core's `_sdCoWrite(sid, fn)`: the row's snapshot taken first when none (never after a change), `saveState()` (one undo step; shared trees are in the step), the change, `_sharedDirty[sid]`, `render()`. Nothing is sent: Save sends the component.

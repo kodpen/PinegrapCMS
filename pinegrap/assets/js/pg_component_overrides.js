@@ -179,6 +179,16 @@
         });
         if (!any) return tree;
 
+        // A node left out takes its own ids and those of its subtree with
+        // it, as openFields() gives them to it: a later node with the same id
+        // (a duplicated element) never takes their values.
+        function claim(node) {
+            if (!isObject(node)) return;
+            nodeOpen(node).forEach(function (entry) { seen[entry.id] = true; });
+            if (node.type === 'shared_ref') return;
+            if (Array.isArray(node.children)) node.children.forEach(claim);
+        }
+
         // Answers the node with its values, or null when it is not shown.
         // The root itself is never left out.
         function walk(node, root) {
@@ -192,7 +202,10 @@
                 value = usable[entry.id];
                 switch (entry.kind) {
                     case 'shown':
-                        if (value === false && !root) return null;
+                        if (value === false && !root) {
+                            claim(node);
+                            return null;
+                        }
                         break;
                     case 'text':
                         node.props.text = value;
