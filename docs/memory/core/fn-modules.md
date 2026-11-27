@@ -336,6 +336,7 @@ description: Generated from the module field of the memory files: each includes/
 - `page_home`: [[single-home-page]]
 - `page_list`: [[page-list-paging]]
 - `page_revisions`: [[page-history-editor-revision]]
+- `page_versions`: [[designer-new-version-server]]
 - `page_vitals`: [[page-vitals-beacon]], [[page-vitals-figures]]
 - `panel_screens`: [[agent-guide-panel]]
 - `parasut`: [[connections-accounting-page]], [[erp-parasut-devhub-connection]], [[erp-parasut-devhub-staging]], [[erp-parasut-legacy-buyer-number]], [[erp-parasut-legacy-press-claim]], [[erp-parasut-legacy-token-401]], [[erp-parasut-overview]], [[erp-parasut-staging-company]]
