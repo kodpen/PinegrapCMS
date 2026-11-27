@@ -12,7 +12,7 @@ description: Task application mark (ws_tasks.app_id, #9994): routes that write i
 - A flow run an application started keeps `app_id` in its context, passes it to the runs it chains, and its boxes mark the tasks they open. An assistant's proposed task takes the answer's application (`ws_claude_draft_accept()`, `ws_message_app_id()`). A repeating task's copy keeps its template's mark.
 
 ## Where is it shown?
-- "Made by <application's name>" (robot icon, `.ws-task-made-by`) beside the creator on My Tasks' row, the Planning Board card and the task drawer (`ws_task_app_label()`); a deleted application reads "Made by an application".
+- "Made by <application's name>" (robot icon) on the task rows of a channel and a record (`.ws-task-made-by`), on the second line of My Tasks' row (`workspace-my-tasks-screen.md`), the Planning Board card and the task drawer (`ws_task_app_label()`); a deleted application reads "Made by an application".
 - My Tasks' "Made by agents" select: Made by anyone, Made by people, Made by agents (`made_by` '' | people | apps, `ws_task_made_by_sql()`). "Created by me" lists a task an application made with the reader's key only under Made by agents.
 
 ## What does the API carry?

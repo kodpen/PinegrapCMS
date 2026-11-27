@@ -26398,12 +26398,38 @@
                     countLine.textContent = data.tasks.length ? t('task_count', data.tasks.length) : t('nothing_found');
 
                     if (data.tasks.length) {
-                        taskRows(listBody, data.tasks, load);
+                        drawMyTasks(data.tasks);
                     } else {
                         clear(listBody).appendChild(tasksEmpty());
                     }
                 }
             }).catch(fail);
+        }
+
+        // My Tasks' own rows (workspace_my_tasks.js): the open tasks without
+        // a search stand under their date groups, which fold; closed tasks,
+        // all of them or a search keep one list. The row's menu and progress
+        // bar are lent from here.
+        var rowParts = {
+            progressBar: progressBar,
+            menu: function (row, task, onChange) {
+                onContext(row, function () {
+                    var people = task.assignees.map(function (member) {
+                        return { icon: 'bi-chat-dots', label: t('direct_message_to', member.name), action: function () { directMessage(member.id); } };
+                    }).filter(function (item, index) { return index < 3 && task.assignees[index].id !== BOOT.me.id; });
+
+                    return taskMenu(task, onChange, people.length ? ['-'].concat(people) : []);
+                });
+            }
+        };
+
+        function drawMyTasks(tasks) {
+            if (!window.PGWsMyTasks) {
+                taskRows(listBody, tasks, load);
+                return;
+            }
+
+            window.PGWsMyTasks.list(listBody, tasks, (state.status === 'open') && !state.search, partHelpers(), rowParts, load);
         }
 
         // Nothing in the list: narrowed by a filter or the search, it says
