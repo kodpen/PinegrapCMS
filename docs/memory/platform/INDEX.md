@@ -190,6 +190,7 @@
 - office-sheet-rows-columns.md: Insert and delete a row or column of an .xlsx (office_shift.php): the save entry, what moves, what is refused and why, one entry of a save's list
 - office-sheet-tabs.md: The sheet tabs' menu (pg_office_view.js, OE2b) that adds, renames, deletes or moves a sheet of an .xlsx: where it opens, what it puts in the list of changes, how the tabs are drawn
 - office-sheet-tools.md: The workbook view's tools (pg_office_view.js, OE4): sort by a column, filter by value, find in the workbook, Download as CSV of the open sheet; nothing written to the file
+- office-sheet-undo.md: Undo and Redo of a workbook's list of changes (pg_office_view.js, OF4): the bar's pair, Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z, what one press takes back, Escape keeping the list
 - office-sheets.md: Add, rename, delete and move a sheet of an .xlsx (office_sheets.php, OE2a): the save entry, what each change writes, what is refused and why, one entry of a save's list
 - office-xls-preview.md: .xls as a workbook in Quick Look, the file window and a channel's Preview (PR #10542), read through the sheet reader, view only; Save a copy as .xlsx beside the file or as a new message
 - office-xlsx-cell-values.md: How the Excel preview reads workbooks not written by Excel: prefixed elements, cells without r, times and durations (#1118), the styles part the relationships name (#10765)

@@ -27,6 +27,7 @@
 - architect.md: Decision questions: asked in the agent channel, no architect issue (2026-11-13); the architect decides technical ones, asks the owner schema and product-behaviour ones, records the answer [decision: decisions-made-schema.md, decisions-made.md]
 - auto-memory-off.md: Claude Code's auto memory (MEMORY.md) is off for this repository (2026-11-23, #11186): memory lives in docs/memory; what it cost
 - branch-guards.md: tools/check_pr.php (#1878): CI and pre-push fail a commit trailer, an author or committer other than Erdal Güral, a changelog.txt or data/config.php change; warn above 1,000 product lines
+- bug-hunt-accessibility-view.md: Bug hunt of the designer's Accessibility view (style_designer_accessview.js, PGA11yReader, includes/fn/a11y.php), 2026-11-26: the seven faults fixed in #12005, no issue opened, what read clean
 - bug-hunt-application-access.md: Bug hunt of Application Access (api_settings.php and its includes/api files), architect 2026-11-26 after #11805: the six faults fixed in #11826, no issue opened, what read clean [decision: here]
 - bug-hunt-areas-2.md: The areas given to a bug hunt from 2026-11-17 on (wholesale prices, publish approval, visitor push, gift cards and store credit), the issues each ended with and what it read clean [decision: here]
 - bug-hunt-areas-3.md: The areas given to a bug hunt from 2026-11-20 on (the own sheet reader and its importers; Incoming e-mail and Mailboxes at phone width), what each fixed, the issues it opened and what it read clean
@@ -51,6 +52,7 @@
 - bug-hunt-areas-booking-visitor.md: The bug hunt of bookings on the visitor's side (2026-11-20): the widget's endpoint, the slot engine, hold and confirm, the manage page, the deposit payment; what it fixed and what read clean
 - bug-hunt-areas-calendar-events.md: Bug hunt 29 of calendar events, repeats and the calendar feeds (.ics, Workspace subscription): four faults fixed, what was read clean, what was left
 - bug-hunt-areas-canvas-data-views.md: The bug hunt of the Artifact Canvas data views (DV1-DV6, #11353, 2026-11-24): the four faults fixed, what was read clean, what was not run [decision: here]
+- bug-hunt-areas-canvas-guides.md: Bug hunt of the designer's spacing handles, bands and canvas guides (2026-11-26, PR #12003): six faults fixed, one bug issue, what was read clean
 - bug-hunt-areas-channel-board.md: Bug hunt of a channel's Board tab (2026-11-26, PR #11743): who sees and moves a card, the four figures against the lists, moves, the board's rules, the kept view and ?view=board/list
 - bug-hunt-areas-channel-memory.md: Bug hunt of the channel memory (2026-11-26, PR #11790): who reads and writes, Claude's application and the general memory, a Turkish tag, the brief's size bound; what read clean and what is asked [decision: decisions-made-workspace-9.md]
 - bug-hunt-areas-channel-notes-share.md: Bug hunt of channel notes (CN1-CN3) and the share door (SL1-SL6): six faults fixed, what was read clean, what was left
@@ -107,6 +109,7 @@
 - bug-hunt-areas-phone-preview.md: Bug hunt in "Preview on a phone" (2026-11-26): failing asks that never stopped and a found link opening on the lock note, fixed; what was read clean and left [decision: here]
 - bug-hunt-areas-pick-pack.md: The bug hunt of pick and pack (PP1-PP7, 2026-11-24, #11341): six faults fixed, two issues opened for a decision, what was read clean
 - bug-hunt-areas-picture-translation.md: The bug hunt of picture text translation, the server's side (#10569, 2026-11-20): the seven faults fixed, what was read clean [decision: here]
+- bug-hunt-areas-preview-as.md: Bug hunt in "Preview as" (2026-11-26): cart and checkout writes, the comments thread record, "Sold out" and Record, a late draw in "Check all cases"; read clean and left
 - bug-hunt-areas-price-rounding.md: The bug hunt of price rounding (area 17, 2026-11-24): money in checkout, cart, offers, tax, shipping, refunds, the payment request and the ERP; four faults fixed, what was read clean
 - bug-hunt-areas-privacy-new-tables.md: Bug hunt of erasure, export, inventory, merge and keep periods over the 2026.11.0 tables (area 11, #11381): three faults fixed, what was read clean
 - bug-hunt-areas-privacy-requests.md: Bug hunt of the Privacy centre's request side (#11779: proof link, public form, 30 days, Send, download link, API): four faults fixed, two asked, what was read clean
