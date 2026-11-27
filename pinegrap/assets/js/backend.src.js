@@ -1256,6 +1256,10 @@ $(document).ready(function () {
     // by a button of its own instead of the bar's. Read up here too.
     pgSiteBarPhoneDrawer();
     var MENU_DRAWER_ONLY = document.querySelector('.software-container.menu-drawer-only') !== null;
+    // Such a screen draws no top bar: its controls stand at the head and the
+    // foot of the drawer (pg_menu_drawer_bar()), so a menu or a window one of
+    // them opens leaves the drawer open under it.
+    var MENU_BAR_IN_DRAWER = document.querySelector('.software-container.pg-bar-in-drawer') !== null;
 
     // The bar over a site page (toolbar.php) is a frame as wide as the site
     // page's layout viewport. A phone widens that viewport to a page wider
@@ -1537,6 +1541,19 @@ $(document).ready(function () {
                 focusMenuDrawer();
             }
         });
+
+        // The close button at the drawer's head: the focus goes back to the
+        // opener, as with Escape, not left behind in the inert drawer.
+        $(document).on('click', '[data-pg-menu-drawer-close]', function (e) {
+            e.preventDefault();
+            closeMenuDrawer();
+
+            var toggle = menuDrawerToggle();
+
+            if (toggle) {
+                toggle.focus();
+            }
+        });
     }
 
     function initMenuDrawer() {
@@ -1577,6 +1594,12 @@ $(document).ready(function () {
         // the next Escape closes the drawer.
         $(document).on('keydown', function (e) {
             if ((e.key === 'Escape' || e.key === 'Esc') && isMenuDrawerOpen()) {
+                // Escape shuts the window or the menu a tool of the drawer
+                // opened, not the drawer under it.
+                if (MENU_BAR_IN_DRAWER && document.querySelector('dialog[open], #header .menu.show')) {
+                    return;
+                }
+
                 if ($('#menu').hasClass('pg-menu-drilled')) {
                     backMenuPanel({ animate: true, focus: true });
                     return;
@@ -1612,6 +1635,12 @@ $(document).ready(function () {
                 return;
             }
 
+            // A window opened from a tool at the drawer's head (search, Site
+            // Settings, the bell) stands over it; the drawer waits under it.
+            if (MENU_BAR_IN_DRAWER && next.closest('dialog[open]')) {
+                return;
+            }
+
             closeMenuDrawer();
         }
 
@@ -1630,8 +1659,10 @@ $(document).ready(function () {
         // A menu of the header opens over the screen below it, and the drawer
         // is drawn above the header's layer: left open, it would cover the
         // account sheet on a phone. Opening any of them puts the drawer away.
+        // Where the header's controls are in the drawer, their menus open
+        // over it and it stays.
         pgUI.menu.on('#header', 'show', function () {
-            if (isMenuDrawerOpen()) {
+            if (!MENU_BAR_IN_DRAWER && isMenuDrawerOpen()) {
                 closeMenuDrawer();
             }
         });
@@ -4200,10 +4231,14 @@ function check_unread_notifications(refresh_type) {
                         //everything is allright, and there is new notifications. We output notificationn button with notices and badges.
                         $('#notification_toggle').addClass('fg-success');
                         $('#notification_toggle .has-notification-icon').html($output_unreads);
+                        // Where the bell is in the drawer (Page Design
+                        // Studio), a dot on the button that opens it.
+                        $('[data-pg-menu-drawer-toggle]').addClass('pg-menu-unread');
                     } else {
                         // we check but there is no notifications so we output only notification button.
                         $('#notification_toggle').removeClass('fg-success');
                         $('#notification_toggle .has-notification-icon').html('');
+                        $('[data-pg-menu-drawer-toggle]').removeClass('pg-menu-unread');
                     }
                     // we set callback equal to unreads we need this for check to new notifications is really new one or we seen old one.
                     $unreadsCallback = $unreads;
