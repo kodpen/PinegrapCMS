@@ -164,7 +164,7 @@ description: Generated from the module field of the memory files: each includes/
 - `document_paragraphs`: [[document-paragraphs]]
 - `document_sort`: [[document-sort]]
 - `document_start`: [[document-start]]
-- `ebay`: [[ebay-account-deletion]], [[ebay-categories]], [[ebay-connection]], [[ebay-listings]], [[ebay-orders]], [[ebay-stock-price]]
+- `ebay`: [[ebay-account-deletion]], [[ebay-categories]], [[ebay-connection]], [[ebay-listings]], [[ebay-orders]], [[ebay-stock-price]], [[marketplace-ebay]]
 - `ecommerce`: [[affiliate-code-on-order]], [[affiliate-link-offer-code]], [[barcode-stock-scan-checks]], [[bug-hunt-areas-product-variants-stock]], [[card-data-manual-processing]], [[cart-default-quantity]], [[cart-posted-quantity]], [[cart-stock-below-minimum]], [[contact-import-cells]], [[csv-import-headings]], [[currency-form-rules]], [[currency-names-display]], [[express-order-tax-address]], [[helper-fixes-2026-11]], [[import-decimal-cells]], [[marketplace-product-import-queue]], [[offer-gift-refusal]], [[offer-group-condition]], [[offer-use-at-submit]], [[order-cancel-commissions]], [[order-gift-card-owed]], [[panel-image-alt]], [[product-bulk-duplicate-code]], [[product-mass-edit-checks]], [[product-quantity-prices]]
 - `editor`: [[picker-designer-bridge]], [[picker-editor-bridge]], [[picker-remaining-screens]], [[rich-text-editor-files]], [[rich-text-editor-turkish]], [[rich-text-path-placeholder]], [[rich-text-profiles]], [[site-editor-picker-frame]]
 - `email_campaign_create`: [[api-campaign-create]]
