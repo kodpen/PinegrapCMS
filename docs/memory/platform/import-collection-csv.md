@@ -5,7 +5,7 @@ module: importers
 ---
 
 ## Where is it?
-- `includes/import/collection.php`, shared by the thin readers `webflow.php` and `wix.php` (their products, redirects and contacts come in later steps). Cells go to `write_record.php` (`import-records.md`).
+- `includes/import/collection.php` (PR #12134), shared by the thin readers `webflow.php` and `wix.php` (their products, redirects and contacts come in later steps). Cells go to `write_record.php` (`import-records.md`).
 - Tests: `tests/import_collection_test.php` on `tests/fixtures/import/webflow_collection.csv` and `wix_collection.csv`, built from the columns the census names (`import-site-builders-census-webflow.md`, `-wix.md`), not from a real export.
 
 ## How is the file told?
