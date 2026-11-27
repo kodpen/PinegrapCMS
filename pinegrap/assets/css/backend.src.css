@@ -22960,6 +22960,11 @@ button.ws-cal-more {
 .ws-cal-more-row > .ws-cal-event-dot {
   margin-top: 6px;
 }
+/* The day's list reads each title whole: it wraps instead of being cut. */
+.ws-cal-more-row .pg-list-row-title {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
 .ws-cal-more-row.is-done .pg-list-row-title {
   text-decoration: line-through;
   color: var(--pg-fg-2);
