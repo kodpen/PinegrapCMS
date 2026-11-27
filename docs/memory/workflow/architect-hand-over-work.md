@@ -20,7 +20,7 @@ description: Hand-over of the architect session of 2026-11-24 to 26, the work in
 ## What is still the architect's own?
 - After MS4 has landed: the merging session's rule for the memory mirror.
 - AC1's census may show that shared component and theme changes need a store, a schema question for the owner.
-- The office editors (`decisions-made-product-115.md`): both ability plans are free; `plans/office-sheet-formulas.md` waits: the architect marks its lines `free` by a docs PR when SA5 has landed, and tells k3.
+- The office editors (`decisions-made-product-115.md`): the ability plans and `plans/office-sheet-formulas.md` are free.
 - The owner asked for the designer first (`designer-faults-first.md`): an open designer `bug` issue goes ahead of a plan step, with k3.
 - The Translations screen (message 15186): `plans/translations-screen-modern.md`; a step needing a stored value comes back here.
 - Plan `designer-new-version` (poll 244): a step needing a table or column comes back here.
