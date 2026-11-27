@@ -179,6 +179,7 @@
 - office-docx-paragraph-kind.md: A .docx paragraph's kind (normal, heading 1-3, bulleted or numbered list) set from the format bar (office_docx_kind.php, OD2): save entry, styles and numbering used or added, refusals
 - office-docx-undo.md: Undo and Redo of a Word document typed on its sheet (OP3, PR #11963): the bar's pair, Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z, what one change is, what a press puts back
 - office-dom-ceiling.md: How much of a docx or xlsx becomes a libxml tree (office.php, office_edit.php, PR #882): 8 MB a DOM part, a long document read from its beginning, rows and strings node by node
+- office-edit-test-own-folder.md: Why the workbook save test (tests/office_edit_test.php) saves into a folder of its own run and not into the shared temporary folder (#12096)
 - office-files-scope.md: How far the own Word and Excel code goes and why: what is edited, what is only shown, what is never built (charts, pivots, layout; formulas beyond the simple ones), the rules every edit keeps [decision: decisions-made-product-115.md, decisions-made-product-79.md]
 - office-files.md: Word and Excel previews (includes/fn/office.php, pg_office_view.js): read on the server without a library, drawn in the file manager and the Workspace; limits, security, what is not read [decision: decisions-made-workspace-45.md]
 - office-new-files.md: New spreadsheet and New document (OE5, PR #11119): the File Manager's New menu and a channel's attach menu make an empty .xlsx or .docx with the product's writer and open it for editing

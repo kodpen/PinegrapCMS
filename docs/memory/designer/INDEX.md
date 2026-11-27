@@ -506,6 +506,7 @@
 - designer-my-library-overview.md: My library in the designer: a section saved as the site's own start, inserted as a copy, managed, exported and imported as a file; what binds it and which file holds which part [decision: decisions-made-product-106.md]
 - designer-my-library-save-and-group.md: "Save to my library" (element menu, command palette) and its window, the "My library" group atop the Blocks list with search and hover card, adding a copy, the amber mark of a cleared binding (ML2)
 - designer-narrow-screen-bars.md: Designer toolbars hide labels, never controls: the page bar at 1024px and on a phone, the canvas bar by its own width in fold levels (DP22), how to measure off-screen controls
+- designer-new-version-publish.md: Publishing a live page's new version from the Publish sheet (NV3): its row, the save then the bundle's publish, "Replace anyway" or "Cancel", the tab moves
 - designer-new-version-server.md: A live page's new version on the server (NV1, page_versions.php): the bundle shape, Start and its refusals, one per page, Discard's order, the editor's versions block [decision: here]
 - designer-new-version-tab.md: A live page's new version in the Page Design Studio (NV2): the door "Save as a new version" / "Open the new version", the draft's tab and its pill, "Discard this version", the part versions
 - designer-node-attributes.md: The attributes every designer content, semantic and grid node writes on the page and in the editor HTML: one style order, font quoting, title and tooltip, Attributes panel rules, sizing on content
