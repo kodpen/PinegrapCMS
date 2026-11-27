@@ -2182,7 +2182,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     </div>
                 </div>
             </div>
-            ' . (($page_type === 'custom form') ? pg_whatsapp_form_section_html($page_id) : '') . '
+            ' . (($page_type === 'custom form') ? pg_whatsapp_form_section_html($page_id) . pg_support_form_section_html($page_id) : '') . '
             <div class="col-12 my-3' . $custom_form_administrator_email_row_style . '" id="custom_form_administrator_email_row">
                 <div class="form-field">
                     <div class="switch"><input value="1"' . $custom_form_administrator_email_checked . ' id="custom_form_administrator_email" name="custom_form_administrator_email" class="collapse-switcher" type="checkbox" role="switch" data-bs-target="#show_or_hide_custom_form_administrator_email" /></div>
@@ -3654,6 +3654,9 @@ function pg_page_form_save_type_links($page_type, $page_id, $user)
             // The form's WhatsApp message to its sender (includes/fn/whatsapp_forms.php),
             // checked before by pg_whatsapp_form_errors().
             pg_whatsapp_form_save($page_id, $_POST, USER_ID);
+            // The support request it opens (includes/fn/support_forms.php),
+            // checked before by pg_support_form_errors().
+            pg_support_form_save($page_id, $_POST, USER_ID);
 
             break;
 

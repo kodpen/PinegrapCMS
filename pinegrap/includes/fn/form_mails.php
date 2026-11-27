@@ -240,9 +240,11 @@ function pg_cf_form_mails_send($page_id, $form_id, array $settings, array $mail)
     $plan = pg_cf_form_mails_plan($settings, $mail);
 
     // The form's WhatsApp message to its sender goes when its e-mails do:
-    // not while a fee is owed, once the record is paid.
+    // not while a fee is owed, once the record is paid. So does the support
+    // request the form opens (support_forms.php).
     if (empty($mail['fee_owed'])) {
         pg_whatsapp_form_message($page_id, $form_id);
+        pg_support_form_request($page_id, $form_id);
     }
 
     $submitter_email_address = (string) ($mail['submitter_email_address'] ?? '');
