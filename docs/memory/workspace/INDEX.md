@@ -619,7 +619,7 @@
 - workspace-note-lock-readers.md: Notes lock beyond the notes screen: API and MCP (locked, 423 note_locked), assistants, get_file.php, export, blocks, record history, table import; the readers guard test
 - workspace-note-lock-screen.md: Notes lock on My Notes (workspace_note_lock.js): toolbar Lock and dialogs, Lock/Unlock in menus, list marks, the lock pane and e-mailed code, the time-out, note_locked answers
 - workspace-note-lock.md: Notes lock store (note_lock.php): PIN set-up and checks, open lock in the session, times, wrong-PIN pause, e-mailed code, actions ws_note_lock_*; the gate in workspace-note-lock-gate.md
-- workspace-note-page.md: My Notes' note as a page (.ws-nb-page): title and text in a 46rem column without a frame, one sticky row of tools folding into More; what other writing boxes keep
+- workspace-note-page.md: My Notes' note as a page (#12055) (.ws-nb-page): title and text in a 46rem column without a frame, one sticky row of tools folding into More; what other writing boxes keep
 - workspace-note-tabs.md: Note tabs over an open note on My Notes — workspace_note_tabs.js (group as ARIA tablist, marks, +, keys, drag to reorder via ws_note_place) and drawTabs() in startNotes()
 - workspace-notes-deletions.md: Deleting a note over the API (PR #1674) and ws_note_deletions (schema 11.0.85): who may, whom a deletion or a person share taken back is kept for, how long, deleted in the changes listing, no MCP tool
 - workspace-notes-export.md: Notes leaving the Workspace as files (workspace_notes_export.php, notes_io.php): one note as Markdown with front matter, a print page, "Export all" as a zip vault; what the tags and attachments become

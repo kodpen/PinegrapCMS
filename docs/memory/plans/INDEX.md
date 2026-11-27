@@ -145,5 +145,4 @@
 - workspace-areas-modern.md: Owner (2026-11-27, message 14812): the Workspace's own screens (tasks, notes, data, calendars) modernised; the four plans, what the count found, the rules their steps keep, who draws
 - workspace-calendars-modern.md: Plan (owner 2026-11-27): the calendars modernised: My calendar's week with hours, a phone month with the day's list, a drag that moves, whole chips on the Work Calendar; steps CM1 to CM5
 - workspace-data-modern.md: Plan (owner 2026-11-27): a Data table's screen modernised: the Workspace bar, one-line cells, the row in a drawer, cells changed in the grid, a column menu; steps DM1 to DM5
-- workspace-notes-modern.md: Plan (owner 2026-11-27, message 14812): My Notes modernised: the note written as a page with one row of tools, the list as rows with a tinted choice and an order menu; steps NM1 to NM3
 - workspace-tasks-modern.md: Plan (owner 2026-11-27, message 14812): My Tasks modernised: tasks gathered by date in one-line rows, a line that adds a task, the task opened to read, a board layout; steps TM1 to TM5
