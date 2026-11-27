@@ -303,3 +303,56 @@ function test_office_sheet_list_history_controls()
 	pg_assert_true(strpos($book, 'historyKey(event)') !== false, 'Ctrl+Z, Ctrl+Y and Ctrl+Shift+Z in the grid');
 	pg_assert_true(strpos($book, 'stepHistory.clear()') !== false, 'dropping every change empties the history');
 }
+
+function test_office_sheet_list_new_formats()
+{
+	$result = office_sheet_list_test_node(<<<'JS'
+var out = {};
+var range = [2, 1, 4, 3];
+var sides = function (border, row, column) {
+    var got = L.sides(border, range, row, column);
+    return Object.keys(got).sort().map(function (side) { return side + '=' + got[side]; }).join(',');
+};
+out.all = sides('all', 3, 2);
+out.none = sides('none', 2, 1);
+out.corner = sides('outline', 2, 1);
+out.middle = sides('outline', 3, 2);
+out.endCorner = sides('outline', 4, 3);
+out.bottomLast = sides('bottom', 4, 2);
+out.bottomFirst = sides('bottom', 2, 2);
+out.look = L.look({ b: 1, sz: 14 }, [{ underline: true, strike: true, size: 20, wrap: true }]);
+out.off = L.look({ u: 1, st: 1, sz: 14, w: 1 }, [{ underline: false, strike: false, wrap: false }]);
+out.bdKept = L.look({ bd: 'lt' }, [{ sides: { bottom: true } }]);
+out.bdOff = L.look({ bd: 'lrtb' }, [{ sides: { left: false, right: false, top: false, bottom: false } }]);
+var list = [];
+L.format(list, 0, range, 'border', 'outline');
+L.format(list, 0, range, 'bold', true);
+var book = L.book([{ name: 'Sheet1', rows: [] }], list);
+out.cellB2 = L.look({}, book.sets[0].B2);
+out.cellC3 = L.look({}, book.sets[0].C3);
+out.cellD4 = L.look({}, book.sets[0].D4);
+out.sent = list[0].set;
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same('bottom=true,left=true,right=true,top=true', $result['all'], 'all borders line every side of every cell');
+	pg_assert_same('bottom=false,left=false,right=false,top=false', $result['none'], 'no borders takes every side off');
+	pg_assert_same('left=true,top=true', $result['corner'], 'the outline\'s first corner gets its left and top');
+	pg_assert_same('', $result['middle'], 'a cell inside the outline keeps its sides');
+	pg_assert_same('bottom=true,right=true', $result['endCorner'], 'the outline\'s last corner gets its right and bottom');
+	pg_assert_same('bottom=true', $result['bottomLast'], 'the bottom border lines the last row');
+	pg_assert_same('', $result['bottomFirst'], 'the bottom border leaves the other rows');
+	pg_assert_same(array('b' => 1, 'sz' => 20, 'u' => 1, 'st' => 1, 'w' => 1), $result['look'], 'underline, strikethrough, size and wrap laid on a look');
+	pg_assert_same(array('sz' => 14), $result['off'], 'underline, strikethrough and wrap taken off');
+	pg_assert_same(array('bd' => 'ltb'), $result['bdKept'], 'a side added keeps the sides drawn, in l, r, t, b order');
+	pg_assert_same(array(), $result['bdOff'], 'every side off leaves no border');
+	pg_assert_same(array('b' => 1, 'bd' => 'lt'), $result['cellB2'], 'each cell of an outlined range gets its own sides');
+	pg_assert_same(array('b' => 1), $result['cellC3'], 'a cell inside the outline gets the rest of the format');
+	pg_assert_same(array('b' => 1, 'bd' => 'rb'), $result['cellD4'], 'the range\'s last cell gets its right and bottom');
+	pg_assert_same(array('border' => 'outline', 'bold' => true), $result['sent'], 'the save sends the border as chosen, not the sides');
+}
