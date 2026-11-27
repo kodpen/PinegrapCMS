@@ -173,3 +173,31 @@ function test_designer_clip_shape_write_in_user_styles()
 	pg_assert_same(array(true, false, false), $r['maybe']);
 	pg_assert_same(".other { color: red; }\n", $r['badCls'], 'not a custom style class: nothing written');
 }
+
+// Whether the element's own rules hold a shape or a mask (the dashed
+// outline on the canvas): another element's clip-path in the same User
+// Styles is not this element's, nor is a rule inside a media query.
+function test_designer_clip_shape_has_own_rule_only()
+{
+	$r = designer_clip_shape_run(
+		'var text = ".pgs-aaa111 { color: red; }\n.pgs-bbb222 { clip-path: circle(50% at 50% 50%); }\n.pgs-ccc333:hover { -webkit-mask-image: none; mask-image: none; }\n'
+		. '.pgs-ddd444 { padding: 0; }\n.pgs-ddd444:focus-visible { clip-path: inset(5% round 16px); }\n";'
+		. 'console.log(JSON.stringify([C.has(text, "pgs-aaa111"), C.has(text, "pgs-bbb222"), C.has(text, "pgs-ccc333"), C.has(text, "pgs-ddd444"),'
+		. ' C.has(text, "pgs-eee555"), C.has(text, ""), C.has(".pgs-aaa111 { mask-image: linear-gradient(to bottom, #000 70%, transparent); }", "pgs-aaa111")]));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_same(false, $r[0], 'an element without a shape, beside one with a clip-path');
+	pg_assert_same(true, $r[1]);
+	pg_assert_same(false, $r[2], 'a state\'s None with no mask on Normal cuts nothing');
+	pg_assert_same(true, $r[3], 'a state\'s own shape');
+	pg_assert_same(false, $r[4]);
+	pg_assert_same(false, $r[5]);
+	pg_assert_same(true, $r[6], 'a mask alone');
+
+	$part = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_shape.js');
+	pg_assert_contains('C.has(host.text(), host.cls()', $part, 'the canvas outline asks the element\'s own rules');
+}

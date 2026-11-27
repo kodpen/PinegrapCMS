@@ -16,6 +16,7 @@
  *   PGClipShape.writeClip(text, cls, st, c)  // the new text with the shape c (null takes it out)
  *   PGClipShape.writeMask(text, cls, st, m)  // the new text with the mask m (null takes it out)
  *   PGClipShape.maybe(text, cls)         // whether the text may hold one (no parse)
+ *   PGClipShape.has(text, cls)           // whether the class's own rules hold one
  *
  * A shape: { kind: 'circle', size, at } | { kind: 'ellipse', w, h, at } |
  * { kind: 'inset', inset, corner } | { kind: 'slant', edge, amount, dir } |
@@ -317,6 +318,17 @@
         return text;
     }
 
+    // Whether the element's own rules (Normal's or a state's, outside a
+    // media query) cut it with a shape or a mask; a None cuts nothing.
+    // Another element's clip-path in the same text is not the element's.
+    function has(text, cls) {
+        if (!U() || !CLASS_RE.test(String(cls || ''))) return false;
+        return ['', 'hover', 'focus', 'pressed'].some(function (st) {
+            var r = read(text, cls, st);
+            return (!!r.clip && r.clip.kind !== 'none') || (!!r.mask && r.mask.kind !== 'none');
+        });
+    }
+
     function maybe(text, cls) {
         text = String(text || '');
         return !!cls && text.indexOf('.' + cls) !== -1 && /(?:^|[\s;{])(?:clip-path|(?:-webkit-)?mask(?:-image)?)\s*:/.test(text);
@@ -332,7 +344,8 @@
         read: read,
         writeClip: writeClip,
         writeMask: writeMask,
-        maybe: maybe
+        maybe: maybe,
+        has: has
     };
 
     root.PGClipShape = api;
