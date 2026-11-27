@@ -354,7 +354,7 @@ function pg_panel_actions()
         'ws_record_create',
         'ws_task_get', 'ws_task_check', 'ws_task_save',
         'ws_task_status', 'ws_task_move', 'ws_tasks', 'ws_board',
-        'ws_conflicts', 'ws_calendar', 'ws_my_calendar', 'ws_personal_plan_get', 'ws_personal_plan_save', 'ws_personal_plan_mail', 'ws_personal_plan_delete', 'ws_personal_plan_roadmap', 'ws_personal_plan_steps_save', 'ws_personal_plan_step_task', 'ws_personal_plan_contact', 'ws_personal_plan_contact_save', 'ws_personal_plan_copy_draft', 'ws_event_save', 'ws_event_get',
+        'ws_conflicts', 'ws_calendar', 'ws_my_calendar', 'ws_personal_plan_get', 'ws_personal_plan_save', 'ws_personal_plan_move', 'ws_personal_plan_mail', 'ws_personal_plan_delete', 'ws_personal_plan_roadmap', 'ws_personal_plan_steps_save', 'ws_personal_plan_step_task', 'ws_personal_plan_contact', 'ws_personal_plan_contact_save', 'ws_personal_plan_copy_draft', 'ws_event_save', 'ws_event_get',
         'ws_roadmap_templates', 'ws_roadmap_template_save', 'ws_roadmap_template_delete', 'ws_roadmap_template_draft',
         'ws_event_delete', 'ws_meeting_note', 'ws_meeting_transfer', 'ws_inbox', 'ws_inbox_read', 'ws_react',
         'ws_highlight_set', 'ws_highlight_note', 'ws_highlight_remove', 'ws_highlights_mine', 'ws_highlights_remove',

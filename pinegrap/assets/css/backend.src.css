@@ -22999,6 +22999,18 @@ button.ws-cal-more {
   outline-offset: 0;
   z-index: 2;
 }
+/* A plan or task the reader may move (workspace_my_calendar_move.js):
+   held while dragged, and the day or hours it would land on ringed. */
+.ws-mycal-movable {
+  cursor: grab;
+}
+.ws-mycal-dragging {
+  opacity: .5;
+}
+.ws-mycal-drop {
+  box-shadow: inset 0 0 0 2px var(--ws-accent);
+  background-color: color-mix(in srgb, var(--ws-accent) 8%, transparent);
+}
 /* The line of now across today's column. */
 .ws-mycal-now {
   position: absolute;
