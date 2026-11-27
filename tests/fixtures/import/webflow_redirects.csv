@@ -1,0 +1,6 @@
+source,target
+/old-blog/(.*),/blog/%1
+/about-us,/about
+/shop/old-mug,https://new.example.com/product/stone-mug
+
+/About-Us,/about

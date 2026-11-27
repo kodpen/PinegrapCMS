@@ -73,7 +73,7 @@ function pg_import_kinds()
         'woocommerce' => lang('WooCommerce products (CSV)'),
         'shopify'     => lang('Shopify products or customers (CSV)'),
         'squarespace' => lang('Squarespace site (XML), products or customers (CSV)'),
-        'webflow'     => lang('Webflow collection (CSV)'),
+        'webflow'     => lang('Webflow collection, products or 301 redirects (CSV)'),
         'wix'         => lang('Wix collection (CSV)'),
     );
 }
@@ -163,6 +163,19 @@ function pg_import_detect_kind($head)
     // name columns with Customer Since (the file has no consent column).
     if ($has(array('product page', 'product url')) || $has(array('first name', 'last name', 'email', 'customer since'))) {
         return 'squarespace';
+    }
+
+    // Webflow products: Product Handle with Variant Price, the columns of
+    // its import template.
+    if ($has(array('product handle', 'variant price'))) {
+        return 'webflow';
+    }
+
+    // Webflow's 301 redirects: two cells, a source and target header or an
+    // old path and a new address.
+    if ((count($cells) === 2) && ((($cells[0] === 'source') && ($cells[1] === 'target'))
+        || ((strpos($cells[0], '/') === 0) && preg_match('#^(/|https?://)#', $cells[1])))) {
+        return 'webflow';
     }
 
     // A collection's CMS export: Webflow's carries Item ID and Slug, Wix's

@@ -1,0 +1,15 @@
+Product ID,Variant ID,Product Type,Product Handle,Product Name,Product Description,Main Variant Image,More Variant Images,Product Categories,Product Taxable,Variant Price,Variant Compare-at Price,Variant Inventory,Variant SKU,Variant Weight,Variant Width,Variant Length,Variant Height,Requires Shipping,Option1 Name,Option1 Value,Option2 Name,Option2 Value,Option3 Name,Option3 Value
+65f0a1,65f0b1,Physical,cotton-tee,Cotton Tee,"A soft tee.
+
+Cotton & linen.",https://cdn.prod.website-files.com/65f0/tee-white-s.jpg,https://cdn.prod.website-files.com/65f0/tee-back.jpg; https://cdn.prod.website-files.com/65f0/tee-side.jpg,Clothing; Summer shirts,true,24.99,29.99,5,WF-TEE-W-S,0.2,,,,true,Size,S,Colour,White,,
+65f0a1,65f0b2,Physical,cotton-tee,Cotton Tee,"A soft tee.
+
+Cotton & linen.",https://cdn.prod.website-files.com/65f0/tee-white-m.jpg,,Clothing; Summer shirts,true,24.99,,,WF-TEE-W-M,0.25,,,,true,Size,M,Colour,White,,
+65f0a1,65f0b3,Physical,cotton-tee,Cotton Tee,"A soft tee.
+
+Cotton & linen.",,,Clothing; Summer shirts,true,26.5,,0,,0.3,,,,true,Size,L,Colour,Black,,
+65f0a2,65f0b4,Physical,stone-mug,Stone Mug,<p>Holds <strong>tea</strong>.</p>,https://cdn.prod.website-files.com/65f0/mug.jpg,,Kitchen,true,"12,00",15,,WF-MUG,"1,5",,,,true,,,,,,
+65f0a3,65f0b5,Service,garden-visit,Garden Visit,One hour in your garden.,,,,true,80,,,,,,,,false,,,,,,
+65f0a4,65f0b6,Digital,plant-guide,Plant Guide,An e-book.,,,,true,5,,,WF-GUIDE,,,,,false,,,,,,
+65f0a5,65f0b7,Advanced,gift-box,Gift Box,A box.,,,,true,40,,,WF-BOX,,,,,true,,,,,,
+65f0a6,65f0b8,Physical,broken-price,Broken Price,,,,,true,abc,,,WF-BROKEN,,,,,true,,,,,,
