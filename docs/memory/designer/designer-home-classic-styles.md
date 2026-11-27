@@ -18,5 +18,5 @@ module: designer
 - The page count beside it already left binned pages out; the `EXISTS` that listed the style did not.
 
 ## Does the External API follow the same filter?
-- Yes, since the fix of #12058: `GET /design/designs` lists the same designs as the home, and `POST /design/pages` takes only those, so such a style gets the 422 every classic style gets, "The design was not made in the Page Design Studio.".
+- Yes, since PR #12090 (issue #12058): `GET /design/designs` lists the same designs as the home, and `POST /design/pages` takes only those, so such a style gets the 422 every classic style gets, "The design was not made in the Page Design Studio.".
 - `GET /design/pages` already left binned pages out (`pg_designer_not_binned_sql()` on each page), and `GET /design/pages/{id}` answers 404 for a binned page (`pg_design_ai_page()`). The prototype link routes take visual designs only, which the filter never drops.
