@@ -11,8 +11,9 @@ module: legacy_to_classic
 
 ## How is a page's classic style found?
 - First from the kept run reports: a set's run writes each moved page in the state's `origins` (page id => style id, 1 when the page took the style from its folder; `pg_ltd_state_origin()`), and `pg_ltc_run_origins()` reads every report in `data/legacy_to_designer/`, a later run's record winning.
+- A record names its run's design (the set's `design`) and counts only while the page is in it (`pg_ltc_record_applies()`), else the frame tells; a page sent back and moved again went to the old style before.
 - A run kept before this record falls back to the frame components the page's tree places directly (`pg_ltd_shared_ids()`): category `classic_style:<id>` (a whole frame) or `classic_style:<id>:<part>` (`legacy-frame-split.md`), read by `pg_ltc_category_style()`. Frames of two styles, or none, give no origin.
-- So a page of such an older run whose style made no frame component (the e-mail styles draw their frame in the page's tree) is not listed; its run report names the style it came from.
+- An older run's page whose style made no frame component (e-mail styles) is not listed.
 - A design moved alone (its own style row became the design) is not listed: its pages' origin is its own id.
 - The page_style it gets (`pg_ltc_target_style()`): the style for a page that had it as its own; for a folder page (or a frame-found one), 0 while its folder still gives that style (`pg_classic_style_folder_styles()`), else the style.
 
@@ -27,7 +28,7 @@ module: legacy_to_classic
 - Its style is gone or is a visual design now.
 - An open experiment uses it as the live page or a variant (`pg_experiment_page_states()`).
 - It is held in the visual designer (`pg_collab_may_edit_page()`).
-- The screen shows the moved pages as a notice, the stayed ones as warnings, above the card (`#ltd-back-result`). One Site Log line per send.
+- Moved pages show as a notice, stayed ones as warnings (`#ltd-back-result`); one Site Log line per send.
 
 ## What does a visitor get?
 - The page as the classic style draws it, as before the move; the page cache is marked dirty by the signed-in POST.
