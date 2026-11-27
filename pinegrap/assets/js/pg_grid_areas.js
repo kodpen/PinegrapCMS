@@ -39,6 +39,9 @@
     var ITEM = 'grid-area';
     var MAX = 12;
     var NAME = /^[A-Za-z][A-Za-z0-9_-]*$/;
+    // Words `grid-area` reads as keywords, in any case: a child given one
+    // would not stand in an area of that name.
+    var KEYWORD = /^(?:auto|span|none|initial|inherit|unset|revert|revert-layer|default)$/i;
 
     function parse(value) {
         var v = String(value == null ? '' : value).trim();
@@ -109,7 +112,7 @@
 
     function nameError(name, areas, skip) {
         var n = String(name == null ? '' : name).trim();
-        if (!NAME.test(n) || n === 'auto' || n === 'span' || n === 'none') return 'bad';
+        if (!NAME.test(n) || KEYWORD.test(n)) return 'bad';
         for (var i = 0; i < (areas || []).length; i++) {
             if (i !== skip && areas[i].name === n) return 'taken';
         }
@@ -151,7 +154,7 @@
 
     function item(value) {
         var v = String(value == null ? '' : value).trim();
-        return NAME.test(v) && v !== 'auto' ? v : '';
+        return NAME.test(v) && !KEYWORD.test(v) ? v : '';
     }
 
     var api = { CSS: CSS, ITEM: ITEM, MAX: MAX, parse: parse, build: build, count: count, nameError: nameError,
