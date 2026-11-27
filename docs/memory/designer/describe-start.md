@@ -22,6 +22,6 @@ module: site_brief
 
 ## Where is the brief kept, and what does "Plan my site" do?
 - In `localStorage` `pg_site_brief` (the brief plus `keys`, chip label to page key); the pane fills from it when opened again. Nothing is stored on the server.
-- "Plan my site" checks, marks the fields (`aria-invalid`, the words under each) and focuses the first; while valid it keeps the brief and calls `sdStartParts.describe.plan(brief, state)` when a later step defines it, else says "Your description is kept in this browser." in the foot's line.
+- "Plan my site" checks, marks the fields (`aria-invalid`, the words under each) and focuses the first; while valid it keeps the brief and asks the plan of pages, shown on the plan screen (`site-plan-screen.md`).
 
 Related: docs/memory/designer/new-design-window.md, docs/memory/ui/ai-write.md, docs/memory/ui/launch-journey-setup-card.md

@@ -1313,6 +1313,7 @@
     "Rename {var:1} item(s)...": "{var:1} öğeyi yeniden adlandır...",
     "Rename, copy or set it up from the tab’s menu.": "Sekmenin menüsünden adını değiştirin, kopyalayın ya da ayarlayın.",
     "Rename, move, delete, or download this design file. (A rename/delete will require any links to this file to be updated. This file will not be viewable to site visitors if placed in a folder that is not public.)": "Bu tasarım dosyasını yeniden adlandırın, taşıyın, silin veya indirin. (Yeniden adlandırma/silme, bu dosyaya yönelik tüm bağlantıların güncellenmesini gerektirir. Bu dosya, herkese açık olmayan bir klasöre yerleştirilirse site ziyaretçileri tarafından görüntülenemez.)",
+    "Rename, reorder, add or remove pages. Nothing is made before \"Make my site\".": "Sayfaları yeniden adlandırın, sıralayın, ekleyin ya da kaldırın. \"Sitemi yap\" denmeden hiçbir şey yapılmaz.",
     "Renamed.": "Yeniden adlandırıldı.",
     "Renamed: <strong>{var}</strong>": "Yeniden adlandırıldı: <strong>{var}</strong>",
     "Renaming": "Yeniden adlandırılıyor",

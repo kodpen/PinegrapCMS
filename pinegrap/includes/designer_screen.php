@@ -1980,14 +1980,18 @@ function pg_designer_canva_pane($from_pages)
 /**
  * The "Describe it" start's pane: the brief's fields (includes/fn/site_brief.php),
  * the business's name taken from the site's and the kind from the set-up
- * card's purpose. The part assets/js/designer_describe.js checks and keeps
- * the brief in the browser and draws the foot's "Plan my site".
+ * card's purpose, then the plan screen's place (includes/fn/site_plan.php).
+ * The part assets/js/designer_describe.js checks and keeps the brief in the
+ * browser, draws the foot's "Plan my site", then the plan of pages and
+ * "Make my site".
  *
+ * @param bool $from_pages the window was opened from the Pages screen
  * @return string
  */
-function pg_designer_describe_pane()
+function pg_designer_describe_pane($from_pages = false)
 {
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/site_brief.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/site_plan.php');
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/ai_write.php');
     $purpose = '';
     if (function_exists('pg_launch_journey_stored')) {
@@ -1996,7 +2000,8 @@ function pg_designer_describe_pane()
     }
     $language = pg_ai_write_site_language();
 
-    return pg_site_brief_pane(defined('ORGANIZATION_NAME') ? (string) ORGANIZATION_NAME : '', $purpose, $language['name']);
+    return pg_site_brief_pane(defined('ORGANIZATION_NAME') ? (string) ORGANIZATION_NAME : '', $purpose, $language['name'])
+        . pg_site_plan_screen($from_pages);
 }
 
 /**
@@ -2136,7 +2141,7 @@ function pg_designer_start_go_href($key, $framework, $from_pages)
 {
     if ($key === 'template') return '';
     $href = 'add_system_style.php?framework=' . ($framework === 'custom' ? 'custom' : 'bootstrap5');
-    if ($key === 'import' || $key === 'paste' || $key === 'canva' || $key === 'document') $href .= '&start=' . $key;
+    if (in_array($key, array('import', 'paste', 'canva', 'document', 'describe'), true)) $href .= '&start=' . $key;
     return $href . ($from_pages ? '&from=pages' : '');
 }
 
@@ -2205,7 +2210,7 @@ function pg_designer_start_pane($kind, $templates, $from_pages)
         case 'canva':
             return pg_designer_canva_pane($from_pages);
         case 'describe':
-            return pg_designer_describe_pane();
+            return pg_designer_describe_pane($from_pages);
         case 'paste':
             return pg_designer_start_framework_choice('paste', $from_pages);
         default:

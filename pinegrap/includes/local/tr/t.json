@@ -3431,6 +3431,7 @@
     "The connection to the server was lost while a version was being applied. The server may still be working on it, or a limit stopped it. The versions before it are recorded, so the upgrade can continue from the same version.": "Bir sürüm uygulanırken sunucuyla bağlantı koptu. Sunucu hâlâ üzerinde çalışıyor olabilir ya da bir sınır onu durdurmuş olabilir. Önceki sürümler kaydedildi; yükseltme aynı sürümden devam edebilir.",
     "The connection took too long. Please start it again.": "Bağlantı çok uzun sürdü. Lütfen yeniden başlatın.",
     "The connection was lost.": "Bağlantı koptu.",
+    "The connection was lost. Please try again.": "Bağlantı koptu. Lütfen yeniden deneyin.",
     "The connection was lost. Trying again…": "Bağlantı koptu. Yeniden deneniyor…",
     "The connection was successful.": "Bağlantı başarılı.",
     "The consent sync needs the site's İYS account. The account is set up on İYS's page of Connections.": "İzin eşitlemesi sitenin İYS hesabını ister. Hesap, Bağlantılar'daki İYS sayfasında kurulur.",

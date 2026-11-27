@@ -14,7 +14,7 @@ module: site_plan
 ## What comes back?
 - `plan.pages`: `pg_site_plan_pages()`: name (40), address (`pg_site_plan_address()`: a-z, 0-9, hyphens, Turkish letters folded, 60, `page` when empty; a repeat gets `-2`, `-3`), purpose (200), sections (160 each, at most 10), menu `main` / `footer` / `none` (unknown is `main`). A page without a name or a section is dropped; at most 12 pages. No page left: refused, "The plan of pages could not be made. Please try again."
 - `plan.theme`: `pg_site_plan_theme()` through `pg_design_variables_answers()`; the brief's brand colour wins over the model's; unknown answers are `''` (skipped).
-- `drafts`: `cap`, `left` after this request, `run` = `pg_site_plan_cost()`: one draft a page (its describe) plus one a section (its texts). SB4's plan screen shows it and refuses a run larger than `left`.
+- `drafts`: `cap`, `left` after this request, `run` = `pg_site_plan_cost()`: one draft a page (its describe) plus one a section (its texts); a page with no sections (added on the plan screen) counts `PG_SITE_PLAN_GUESS` = 6. The plan screen counts again as rows change and refuses a run larger than `left` (`site-plan-screen.md`).
 
 ## Which limits apply?
 - Those of "Write with AI" and the Sketch tool (`sketch-ai.md`): `pg_ai_write_problem()` (answer `off: true`), `pg_ai_state()`, the request takes one daily draft, and the Sketch tool's pace of 20 a minute a person (same `waf_rate` bucket `sketch_ai`, as the run that follows uses those requests).

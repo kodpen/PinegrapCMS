@@ -33,6 +33,9 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/sketch_ai.php');
 define('PG_SITE_PLAN_PAGES', 12);
 // Sections one page of the plan may describe.
 define('PG_SITE_PLAN_SECTIONS', 10);
+// Sections a page added on the plan screen is counted with: it has none
+// in words until its sketch is described, and a page has 6 to 8.
+define('PG_SITE_PLAN_GUESS', 6);
 
 /**
  * The longest text of each part of a plan's page, in characters. A page's
@@ -166,8 +169,10 @@ function pg_site_plan_theme($answer, $colour)
 
 /**
  * The drafts of "Write with AI" a run of the plan takes: one a page for its
- * sketch ("Describe the page") and one a section for its texts. The plan's
- * own request is already counted. Pure.
+ * sketch ("Describe the page") and one a section for its texts; a page with
+ * no section in words (one added on the plan screen) is counted with
+ * PG_SITE_PLAN_GUESS. The plan's own request is already counted. The plan
+ * screen's twin is sdStartParts.describe.cost(). Pure.
  *
  * @param array $pages pg_site_plan_pages()
  * @return int
@@ -177,7 +182,8 @@ function pg_site_plan_cost($pages)
     $cost = 0;
 
     foreach (is_array($pages) ? $pages : array() as $p) {
-        $cost += 1 + ((isset($p['sections']) && is_array($p['sections'])) ? count($p['sections']) : 0);
+        $sections = (isset($p['sections']) && is_array($p['sections'])) ? count($p['sections']) : 0;
+        $cost += 1 + ($sections > 0 ? $sections : PG_SITE_PLAN_GUESS);
     }
 
     return $cost;
@@ -329,4 +335,95 @@ function pg_site_plan_request($request, $user)
             'run'  => pg_site_plan_cost($pages),
         ),
     );
+}
+
+/**
+ * The words of the plan screen (assets/js/designer_describe.js), translated.
+ *
+ * @return array
+ */
+function pg_site_plan_texts()
+{
+    return array(
+        'heading'   => lang('Your pages'),
+        'lead'      => lang('Rename, reorder, add or remove pages. Nothing is made before "Make my site".'),
+        'name'      => lang('Page name'),
+        'section1'  => lang('1 section'),
+        'sections'  => lang('{var:1} sections'),
+        'added'     => lang('Its sections are described from its name.'),
+        'menuLabel' => lang('Place in the menu'),
+        'menus'     => array(
+            'main'   => lang('Main menu'),
+            'footer' => lang('Footer only'),
+            'none'   => lang('Not in a menu'),
+        ),
+        'up'        => lang('Move {var:1} up'),
+        'down'      => lang('Move {var:1} down'),
+        'remove'    => lang('Remove {var:1}'),
+        'add'       => lang('Add a page'),
+        'newPage'   => lang('New page'),
+        'theme'     => lang('Theme'),
+        'themeLead' => lang('Pinegrap AI answered the five questions for you. Every answer can be changed later in Settings, Theme, Variables.'),
+        'unset'     => lang('Not chosen'),
+        'auto'      => lang('Choose for me'),
+        'own'       => lang('I will pick'),
+        'drafts'    => lang('Making these pages takes about {var:1} of the {var:2} drafts left today.'),
+        'tooMany'   => lang('Making these pages takes about {var:1} drafts and {var:2} are left today. Remove a page, or make the site tomorrow.'),
+        'nameEmpty' => lang('Give the page a name.'),
+        'noPages'   => lang('Keep one page at least.'),
+        'back'      => lang('Back'),
+        'make'      => lang('Make my site'),
+        'planning'  => lang('Planning your pages…'),
+        'network'   => lang('The connection was lost. Please try again.'),
+    );
+}
+
+/**
+ * The theme's choices the plan screen offers: the five questions' labels,
+ * the looks, type feels and rooms by key and name.
+ *
+ * @return array steps, looks, types, rooms
+ */
+function pg_site_plan_theme_choices()
+{
+    $q = pg_design_variables_questions();
+    $named = function ($list) {
+        $out = array();
+        foreach ($list as $key => $item) {
+            $out[] = array('key' => (string) $key, 'name' => $item['name']);
+        }
+        return $out;
+    };
+    $steps = array();
+
+    foreach ($q['steps'] as $key => $step) {
+        $steps[$key] = $step['label'];
+    }
+
+    return array(
+        'steps' => $steps,
+        'looks' => $named(pg_design_looks()),
+        'types' => $named($q['types']),
+        'rooms' => $named($q['rooms']),
+    );
+}
+
+/**
+ * The plan screen's place in the "Describe it" pane: empty and hidden until
+ * the plan comes; the part draws it from these words, the theme's choices,
+ * the limits and the address that opens the new design.
+ *
+ * @param bool $from_pages the window was opened from the Pages screen
+ * @return string
+ */
+function pg_site_plan_screen($from_pages)
+{
+    $limits = pg_site_plan_limits();
+    $flags = JSON_UNESCAPED_UNICODE;
+
+    return '<section class="sd-sp" hidden aria-labelledby="sd-sp-title"'
+        . ' data-texts="' . h(json_encode(pg_site_plan_texts(), $flags)) . '"'
+        . ' data-theme="' . h(json_encode(pg_site_plan_theme_choices(), $flags)) . '"'
+        . ' data-limits="' . h(json_encode(array('pages' => PG_SITE_PLAN_PAGES, 'name' => $limits['name'], 'address' => $limits['address'], 'guess' => PG_SITE_PLAN_GUESS))) . '"'
+        . ' data-href="' . h(pg_designer_start_go_href('describe', 'bootstrap5', $from_pages)) . '"></section>';
 }
