@@ -184,6 +184,7 @@
 - office-pptx-preview.md: .pptx as a list of slides in Quick Look, the file window and a channel's Preview (PR #10585): title, text in reading order, pictures, speaker notes; limits, refusals, view only
 - office-save-list.md: One workbook save as an ordered list of changes of every kind (office_edit.php): steps, one lock and version check, each change on the workbook the one before left, refusals naming their place
 - office-sheet-change-list.md: The workbook view's one list of changes (pg_office_view.js, PR #11946, #11964): cells, formats, rows, columns and sheets in order, the grid and tabs drawn from it, the count [decision: decisions-made-product-115.md]
+- office-sheet-format-borders.md: The border of a format entry (office_format.php): none, all sides, outline or bottom of the range turned into each cell's sides, how a side is written
 - office-sheet-format-controls.md: The sheet editor's format bar (OE3b) for the selected cells, its colour swatches, ranges waiting with the typed cells, and how each cell's look and number format is drawn [decision: here]
 - office-sheet-format.md: Format of selected cells of an .xlsx (office_format.php, OE3a): the save entry, how new styles are written beside the old ones, the number formats, what is refused and why
 - office-sheet-head-menu.md: The sheet grid's row and column head menu (pg_office_view.js) that inserts above/below, left/right or deletes one row or column: where it opens, what it puts in the list of changes

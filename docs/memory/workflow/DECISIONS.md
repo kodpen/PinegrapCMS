@@ -1507,6 +1507,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/image-editor-send.md: The Artifact Canvas's main button as a split button (#10858): the chevron's menu from M.sendMenu(), send to a Workspace channel, Download, who is offered what from a channel and from the File Manager
 - ui/image-editor-subject.md: The Artifact Canvas's Select subject (E28a, #6841): own GrabCut and Boykov-Kolmogorov max-flow in a worker, the start box, the subject op in doc.selection
 - ui/image-editor-touch.md: The Artifact Canvas on touch: two-finger twist, 44 px targets, the finger's reach (M.touchReach()), nudge arrows, groups and Attach to, a typed text Animate did not pick
+- ui/image-editor-unsplash.md: From Unsplash in the Artifact Canvas's Import (AC11): the item, the editor's dialog, a picture layer keeping the returned address and credit, its panel line, CORS for the save
 - ui/image-editor-upload-setting.md: The Artifact Canvas's largest upload as a setting (V8b): the config_text row image_editor_upload_max_mb in MB, 0 keeps upload_max_filesize, 10240 at most, its field on Settings, Features
 - ui/image-editor-video-files.md: Artifact Canvas on a video in Files (FV1, #9775): offered by type on any MP4 or WebM, a saved project opens as itself, a plain video as a new canvas holding it, saved beside it
 - ui/image-editor-workspace.md: Workspace canvas (E16 #4762, E16b): New canvas in a channel or note, saved with its document in file_versions and its pictures as files beside it, opened again with its layers
