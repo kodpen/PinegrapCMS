@@ -116,7 +116,7 @@
 - site-from-brief-census-proposal.md: Site from a brief census proposal: the "Describe it" start of the New design window, screen by screen (brief, plan of pages, making, editing), what is stored, the cost a site, the steps it suggests
 - site-from-brief-census-templates.md: Site from a brief census: how a design template installs (pages, header and footer, theme, sample content), which of its writes a brief flow could reuse, and the one that would touch the live site
 - site-from-brief-census.md: Site from a brief SB1 census from the code: what "Describe the page" sends and costs, how a design template installs, where a flow could start, the proposal, the owner's questions
-- site-from-brief.md: Plan (owner 2026-11-27, poll 246): a whole site from one brief, pages, menu and theme made by AI as drafts to edit; starts with the census step SB1, the build follows the owner's answers
+- site-from-brief.md: Plan (owner 2026-11-27, poll 246): a whole site from one brief, "Describe it" in the New design window; the census is done, steps SB2 to SB7 need no table and no column
 - storefront-api-acp-ucp.md: Storefront API design note: OpenAI ACP checkout_sessions mapped onto the storefront routes, the UCP manifest after checkout exists, MCP tools under the customer's consent, WAF agent verification
 - storefront-api-agentic-commerce.md: Plan (approved 2026-10-19; design note first, code after 2026.11.0 ships, #3798): public storefront API (cart, checkout, customer auth), base for OpenAI ACP and Google UCP bindings
 - storefront-api-callers.md: Storefront API design note: who calls it (application key + optional cart or customer token), the storefront:* scopes, rate buckets, Idempotency-Key and dry-run rules shared by every route
