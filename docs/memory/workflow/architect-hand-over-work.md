@@ -14,7 +14,7 @@ description: Hand-over of the architect session of 2026-11-24 to 26, the work in
 - `architect-draws-new-part.md`, `design-work-session.md`. The model is the latest committed sheet: `designer/designer-frame-tidy-drawing/` holds the editor's whole chrome as classes under `.ed` in `drawing.css`, `designer-home-tidy-drawing/` a window and a list screen.
 - One HTML file on `ui/look-sheet/sheet.css` and a local `drawing.css`; rendered by headless Chrome at 1600 px wide in both themes, cut to its content, saved as `-dark.jpg` and `-light.jpg`; looked at once per theme at device scale 1.
 - Beside it a memory file: each board's step, what the sheet fixes, what stays. Labels in English.
-- First the screen is counted on dev at 1440, 1024 and 390 px. The pictures go to the channel in Turkish.
+- First the screen is counted on dev at 1440, 1024 and 390 px.
 - A plan whose steps are "each waits for the one before it" gives out only its first open step (`tools/free_work.php`): a step waiting for the owner goes last among the screen steps, with "owner's" in its parenthesis.
 
 ## What is still the architect's own?
@@ -22,13 +22,12 @@ description: Hand-over of the architect session of 2026-11-24 to 26, the work in
 - AC1's census may show that shared component and theme changes need a store, a schema question for the owner.
 - The office editors (`decisions-made-product-115.md`): both ability plans are free; `plans/office-sheet-formulas.md` waits: the architect marks its lines `free` by a docs PR when SA5 has landed, and tells k3.
 - The owner asked for the designer first (`designer-faults-first.md`): an open designer `bug` issue goes ahead of a plan step, with k3.
-- His stutter is the design's size: #11974 and #12011 landed (`designer/designer-performance.md`); he has not tried design 838 again (poll 245).
-- Phone preview: #11966 and #11991 landed; another reason his window names gets its own issue.
-- Plan `designer-new-version` (poll 244, `decisions-made-product-116.md`): NV1 landed, NV2 is PR #12023; a step needing a table or column comes back here.
+- His stutter is the design's size (`designer/designer-performance.md`); he has not tried design 838 again (poll 245).
+- Plan `designer-new-version` (poll 244): a step needing a table or column comes back here.
 - Poll 242: Options is too narrow; his console line under it picks the issue.
 - Paraşüt: the six issues are fixed; what is left is in `plans/erp-parasut-open-work.md`.
-- The Workspace's own screens (message 14812): `plans/workspace-areas-modern.md` and its four plans; a step marked "drawing" is asked of the architect before its worker starts (TM3 so far).
-- Nine features (polls 246, 247): `plans/global-features.md`. After a census the architect writes its build steps and asks him the tables; German goes `free` after PL2.
+- The Workspace's own screens (message 14812): `plans/workspace-areas-modern.md` and its four plans; a step marked "drawing" is asked of the architect before its worker starts. TM3 is drawn: `workspace/workspace-task-read-drawing.md`.
+- Nine features (polls 246, 247): `plans/global-features.md`. Every census is read and every plan has its build steps; polls 248 to 253 are answered (`decisions-made-schema-53.md` to `-55.md`, `decisions-made-product-119.md`). Left: German goes `free` after PL2; Etsy's steps of `plans/sales-channels-global.md` after SC7.
 
 ## What is watched?
 - k3's own tasks: the context size on the agent form.
