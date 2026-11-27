@@ -834,10 +834,12 @@
 - toggle-and-mark-names.md: Toggle aria-labels follow state, icon marks carry visually-hidden text, radio groups get a legend or radiogroup name, reasons are printed not hovered (offers, key codes, ERP)
 - toolbar-phone-fit.md: Toolbar filter forms capped to the bar (.pg-toolbar-filter), Edit Comment / Edit Theme File facts in the grow slot, Subscriptions date range wrapping at 375 px (#4264)
 - translations-screen-csv-import.md: Translations screen's Import CSV: which rows of a file are written, which are left as they are (unchanged), and what the import notice counts
+- translations-screen-drawing.md: The Translations screen's redraw (2026-11-27): where its sheet is, what each board A to J shows, the measures, the keys, and the drawn choices that bind the steps of the plan
 - translations-screen-editor-rows.md: Translations screen (translations.php, translations.js): engine wait, row state and count sync, scoped chips, glossary duplicates and refused saves, return view, CSV guard, box size
 - translations-screen-noindex-reason.md: Translations screen: a page's search verdict in the page list, its own-noindex state, the "Why?" list of texts keeping it out (blocking filter) and "Keep as in the source and approve" [decision: decisions-made-product-38.md]
 - translations-screen-recent-jobs.md: Translations screen (translations.php), recent jobs list: how a job's scope is labelled, where its error shows, and which messages survive the reload after a job or a bulk action
 - translations-screen-text-language.md: Translations screen (translations.php): which elements carry lang and dir="rtl" so screen readers and right-to-left translators get the text's own language
+- translations-screen-today.md: Census of the Translations screen before its redraw (2026-11-27): its views, every control, a text's states, what runs by itself, what the API reaches, and the faults the redraw answers
 - translations-screen-unsaved-rows.md: Translations screen (translations.js): a row with typed, unsaved text, its Save highlight, the review (eye) button on it and the leave question
 - unsaved-changes-guard.md: Which panel screens ask before being left with unsaved changes (code fields, product, offer and layout editors, settings dialog, Translations), how each knows, submit and Ctrl+S traps
 - update-screens-steps.md: Software Updater, Repair Software and Backup Manager: the step loop with an error path, the status line, Return in Backup Name, labels kept while they work, a failed file copy removes the backup

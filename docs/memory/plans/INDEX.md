@@ -132,6 +132,7 @@
 - tax-automatic-census-us.md: Automatic tax census: US sales tax services a checkout driver could call (TaxJar, Avalara AvaTax, Stripe Tax, Quaderno), what each asks, and the free SST rate files
 - tax-automatic-census.md: Automatic tax census (TX1) start file: a line's tax rate at every door, the OSS report, EU rate sources, US sales tax services, the proposal, the owner's questions
 - tax-automatic.md: Plan (owner 2026-11-27, poll 246): automatic tax, the EU's VAT rate by the buyer's country, the reduced rate, an OSS report; both columns approved (poll 248), US sales tax not built (poll 249)
+- translations-screen-modern.md: Plan (owner 2026-11-27): the Translations screen redrawn (tabs, one rail, filter tiles, a new row, a selection bar, Activity, Glossary) and made fit for automation; steps TS1 to TS8
 - user-docs-2026-11-modules.md: Plan user-docs-2026-11: which 2026.11.0 feature goes on which module page of pinegrap.com (designer, SEO, commerce, ERP, Workspace, API, security), with the memory to write it from
 - user-docs-2026-11-new-pages.md: Plan user-docs-2026-11: the new pinegrap.com documentation pages (/templates, /visual-page-editor-cont, /artifact-canvas), what each holds, and where the other planned pages went instead
 - user-docs-2026-11-pages.md: Plan user-docs-2026-11: which 2026.11.0 feature goes on which existing pinegrap.com page, with the memory to write it from
