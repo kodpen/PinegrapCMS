@@ -4838,21 +4838,22 @@ function output_menu($properties = false)
         $menu_items[21]['data-bs-content'] = '';
 
         if ($user['role'] < 2) {
-            $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_system_styles.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-magic bi-me-2\'>' . lang('Page Design Studio') . '</a>';
-            $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_system_style.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang('Start Blank') . '</a>';
-            $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_system_style.php?start=import\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-file-earmark-zip bi-me-2\'>' . lang('Import HTML / ZIP') . '</a>';
-            $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_system_styles.php?start=template\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-grid-1x2 bi-me-2\'>' . lang('Choose a Template') . '</a>';
+            $studio_link_class = 'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi ';
+            $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_system_styles.php\'' . $output_parent_target . ' class=\'' . $studio_link_class . 'bi-magic bi-me-2\'>' . lang('Page Design Studio') . '</a>';
+            $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_system_style.php\'' . $output_parent_target . ' class=\'' . $studio_link_class . 'bi-plus-lg bi-me-2\'>' . lang('Start Blank') . '</a>';
+            $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_system_style.php?start=import\'' . $output_parent_target . ' class=\'' . $studio_link_class . 'bi-file-earmark-zip bi-me-2\'>' . lang('Import HTML / ZIP') . '</a>';
+            $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_system_styles.php?start=template\'' . $output_parent_target . ' class=\'' . $studio_link_class . 'bi-grid-1x2 bi-me-2\'>' . lang('Choose a Template') . '</a>';
             // PAGE DESIGN STUDIO > Translations: the pages of a design in
             // the site's other languages (includes/translate/).
             $menu_items[21]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
-            $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/translations.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-translate bi-me-2\'>' . lang('Translations') . '</a>';
+            $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/translations.php\'' . $output_parent_target . ' class=\'' . $studio_link_class . 'bi-translate bi-me-2\'>' . lang('Translations') . '</a>';
             // PAGE DESIGN STUDIO > Experiments: the A/B experiments of designed
             // pages and their results (experiments.php, designers).
-            $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/experiments.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-bar-chart-line bi-me-2\'>' . lang('Experiments') . '</a>';
+            $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/experiments.php\'' . $output_parent_target . ' class=\'' . $studio_link_class . 'bi-bar-chart-line bi-me-2\'>' . lang('Experiments') . '</a>';
             // PAGE DESIGN STUDIO > Bundles: release bundles, drafts that go
             // on the site together and a live page's new version
             // (page_bundles.php, designers, as its area gate).
-            $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/page_bundles.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-collection bi-me-2\'>' . lang('Bundles') . '</a>';
+            $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/page_bundles.php\'' . $output_parent_target . ' class=\'' . $studio_link_class . 'bi-collection bi-me-2\'>' . lang('Bundles') . '</a>';
         }
     }
 
