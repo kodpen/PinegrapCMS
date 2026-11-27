@@ -10,7 +10,7 @@ module: designer_preview_render
 - No `preview_as` = typical, signed out, default record: the Preview as before. The canvas's ghost records call it with no operator and get the default pick.
 
 ## Which record does a pick draw?
-- `pg_preview_as_record_target()` (form_item_view `?r=`, catalog_item_view the address after the page name, calendar_event_view `?id=`); the comments widget follows the page's stored form_item_view with the same choice.
+- `pg_preview_as_record_target()` (form_item_view `?r=`, catalog_item_view the address after the page name, calendar_event_view `?id=`); the comments widget follows the page's stored form_item_view with that widget's own choice, `pg_preview_as_row_choice()` (its row's record and case over the page's), so the thread is the drawn record's. Before the Preview as hunt it took the page's choice only, and the bar sends records per widget, so a chosen record showed the newest record's thread.
 - Statements: `pg_preview_as_record_sql()`, pure and SELECT only. A form keeps the widget's own filters (`pg_sw_record_filter_clause()`); longest = most characters of `form_data`, or of name plus full description; sold out = `inventory` on, quantity 0, no backorder; an event's default = the next to come, else the latest.
 - A pick other than default needs the operator's right; a chosen record they may not open, or a case the source has no record for, falls back to the default pick. An event is drawn only with the right (before PW2 the Preview drew no event).
 

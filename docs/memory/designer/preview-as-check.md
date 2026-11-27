@@ -7,6 +7,7 @@ module: designer
 ## Where does it start?
 - The last row of the "Case" menu and of the narrow window's sheet (part `previewas`, `checkRowHtml()`), and the command palette row "Check all cases" marked "Preview" (`act_check_cases`, listed when the page holds a system widget, `_sdPvAsHasWidget()`). No bar button.
 - From the palette with the Preview closed, `_sdPvAsCheck()` opens it and sets `_sdPvAs.check`; the run starts once the first answer has reached the part. A page with one case has no row and runs nothing.
+- Asked while a draw of the bar is on its way (`S.drawing`), the run waits (`S.waiting`) and starts with that draw's answer or once an opened row is drawn; a failed draw starts none. Before the Preview as hunt the late answer replaced a case's document half way and the wrong page was measured.
 
 ## Which cases are drawn?
 - `checkRuns(cases, audience)` (pure, in the part): each case of the page for signed out; where the page has an audience condition also for signed in and for signed out returning (the server takes one visitor). Runs in case order per visitor. The chosen records stay as kept.

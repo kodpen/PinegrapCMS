@@ -10779,9 +10779,7 @@ function pg_designer_preview_widgets($page_id, $widgets, $comment_settings = arr
             // The kind: a list of recent comments reads its own source
             // pages and takes no record of this page.
             $type = pg_sw_widget_kind($cfg);
-            $own  = $choice;
-            if ($ov['case'] !== '') $own['case'] = $ov['case'];
-            if (!empty($ov['record'])) $own['record'] = (int)$ov['record'];
+            $own  = pg_preview_as_row_choice($choice, $ov);
             $setup = pg_preview_as_setup($type, $own);
 
             $target = array('get' => array(), 'address' => '', 'id' => 0);
@@ -10789,10 +10787,11 @@ function pg_designer_preview_widgets($page_id, $widgets, $comment_settings = arr
                 $target = pg_preview_as_record_target($setup, $cfg, $page_id, $user);
             } elseif ($type === 'comments' && $page_id > 0) {
                 // A record page's thread is the shown record's: the record
-                // the page's stored record widget draws here.
+                // the page's stored record widget draws here, with that
+                // widget's own chosen record and case when it is drawn too.
                 $fiv = pg_sw_page_widget($page_id, 'form_item_view');
                 if ($fiv) {
-                    $target = pg_preview_as_record_target(pg_preview_as_setup('form_item_view', $choice), $fiv['cfg'], $page_id, $user);
+                    $target = pg_preview_as_record_target(pg_preview_as_setup('form_item_view', pg_preview_as_row_choice($choice, isset($overrides[(int)$fiv['id']]) ? $overrides[(int)$fiv['id']] : null)), $fiv['cfg'], $page_id, $user);
                     $target['id'] = 0;
                 }
             } elseif ($type === 'catalog_item_view' && $page_name !== '') {

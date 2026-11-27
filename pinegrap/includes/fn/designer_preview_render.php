@@ -83,6 +83,20 @@ function pg_preview_as_while($setup, $fn)
 }
 
 /**
+ * Whether the render may write the visitor's order and the page's own
+ * rows: on a real visit yes; in a background render (a Preview widget, the
+ * SEO pass) no. In a Preview the session's order is the operator's own
+ * cart and the widget settings are the editor's unsaved ones, so the cart
+ * widgets read the order as it stands and write nothing.
+ *
+ * @return bool
+ */
+function pg_preview_as_may_write()
+{
+    return !(function_exists('pg_seo_rendering') && pg_seo_rendering());
+}
+
+/**
  * A yes of a user row: validate_user() gives booleans, a raw row 'yes'.
  *
  * @param mixed $value
