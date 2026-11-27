@@ -1,0 +1,52 @@
+{
+  "href": "https://api.ebay.com/sell/inventory/v1/location?limit=100&offset=0",
+  "limit": 100,
+  "next": "",
+  "offset": 0,
+  "prev": "",
+  "total": 3,
+  "locations": [
+    {
+      "location": {
+        "address": {
+          "addressLine1": "2055 Hamilton Ave",
+          "city": "San Jose",
+          "stateOrProvince": "CA",
+          "postalCode": "95125",
+          "country": "US"
+        },
+        "locationId": "6800001"
+      },
+      "locationInstructions": "Items ship from here.",
+      "locationTypes": ["WAREHOUSE"],
+      "merchantLocationKey": "WH-SJ",
+      "merchantLocationStatus": "ENABLED",
+      "name": "San Jose warehouse"
+    },
+    {
+      "location": {
+        "address": {
+          "postalCode": "10001",
+          "country": "US"
+        },
+        "locationId": "6800002"
+      },
+      "locationTypes": ["WAREHOUSE"],
+      "merchantLocationKey": "WH-NY",
+      "merchantLocationStatus": "ENABLED"
+    },
+    {
+      "location": {
+        "address": {
+          "postalCode": "60601",
+          "country": "US"
+        },
+        "locationId": "6800003"
+      },
+      "locationTypes": ["STORE"],
+      "merchantLocationKey": "OLD-STORE",
+      "merchantLocationStatus": "DISABLED",
+      "name": "Closed store"
+    }
+  ]
+}

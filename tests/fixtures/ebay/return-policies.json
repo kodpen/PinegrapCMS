@@ -1,0 +1,26 @@
+{
+  "href": "https://api.ebay.com/sell/account/v1/return_policy?marketplace_id=EBAY_US",
+  "limit": 20,
+  "offset": 0,
+  "returnPolicies": [
+    {
+      "categoryTypes": [
+        {
+          "name": "ALL_EXCLUDING_MOTORS_VEHICLES",
+          "default": true
+        }
+      ],
+      "marketplaceId": "EBAY_US",
+      "name": "30 days, buyer pays",
+      "refundMethod": "MONEY_BACK",
+      "returnPeriod": {
+        "unit": "DAY",
+        "value": 30
+      },
+      "returnPolicyId": "6196948000",
+      "returnShippingCostPayer": "BUYER",
+      "returnsAccepted": true
+    }
+  ],
+  "total": 1
+}

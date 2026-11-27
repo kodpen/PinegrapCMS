@@ -4220,6 +4220,28 @@ function connections_app_form($provider_key, $provider, $app, $provider_draft, $
 
 	}
 
+	// Further values the provider's own console asks for (eBay: the address
+	// of its account deletion notices and their verification token).
+	foreach ((isset($provider['copy_values']) ? (array) $provider['copy_values'] : array()) as $copy_key => $copy) {
+
+		if ((string) $copy['value'] === '') {
+			continue;
+		}
+
+		$redirect_html .= '
+			<div>
+				<label class="pg-field-label" for="' . $field_id('copy_' . $copy_key) . '">' . h($copy['label']) . '</label>
+				<div class="d-flex align-items-center gap-2">
+					<input type="text" class="pg-input flex-grow-1 min-w-0" id="' . $field_id('copy_' . $copy_key) . '" value="' . h($copy['value']) . '" readonly>
+					<button type="button" class="pg-button pg-button-quiet pg-button-sm connections-copy" data-target="' . $field_id('copy_' . $copy_key) . '">
+						<i class="bi bi-clipboard me-1" aria-hidden="true"></i>' . h(lang('Copy')) . '</button>
+				</div>
+				' . $copy_status . '
+				' . (!empty($copy['help']) ? '<div class="pg-field-help">' . h($copy['help']) . '</div>' : '') . '
+			</div>';
+
+	}
+
 	// On a service's page Save is the one filled button and Save and try
 	// checks the site's accounts after the save; in the drawer Connect is.
 	$buttons = ($return_service !== '')

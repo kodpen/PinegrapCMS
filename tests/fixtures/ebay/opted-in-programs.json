@@ -1,0 +1,10 @@
+{
+  "programs": [
+    {
+      "programType": "OUT_OF_STOCK_CONTROL"
+    },
+    {
+      "programType": "SELLING_POLICY_MANAGEMENT"
+    }
+  ]
+}

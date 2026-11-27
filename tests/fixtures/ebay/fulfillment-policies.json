@@ -1,0 +1,53 @@
+{
+  "fulfillmentPolicies": [
+    {
+      "categoryTypes": [
+        {
+          "name": "ALL_EXCLUDING_MOTORS_VEHICLES",
+          "default": true
+        }
+      ],
+      "description": "Domestic shipping",
+      "fulfillmentPolicyId": "6196932000",
+      "handlingTime": {
+        "unit": "DAY",
+        "value": 1
+      },
+      "marketplaceId": "EBAY_US",
+      "name": "Standard shipping",
+      "shippingOptions": [
+        {
+          "costType": "FLAT_RATE",
+          "optionType": "DOMESTIC",
+          "shippingServices": [
+            {
+              "freeShipping": true,
+              "shippingCarrierCode": "USPS",
+              "shippingServiceCode": "USPSPriorityFlatRateBox",
+              "sortOrder": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "categoryTypes": [
+        {
+          "name": "ALL_EXCLUDING_MOTORS_VEHICLES",
+          "default": false
+        }
+      ],
+      "fulfillmentPolicyId": "6196940000",
+      "handlingTime": {
+        "unit": "DAY",
+        "value": 2
+      },
+      "marketplaceId": "EBAY_US",
+      "name": "Freight"
+    }
+  ],
+  "href": "https://api.ebay.com/sell/account/v1/fulfillment_policy?marketplace_id=EBAY_US",
+  "limit": 20,
+  "offset": 0,
+  "total": 2
+}

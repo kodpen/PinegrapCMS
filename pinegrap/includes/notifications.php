@@ -1076,10 +1076,19 @@ function pg_notification_display($notification, $reader_role = null)
 
 	} elseif ($action == 'privacy_request') {
 
-		// title holds the request's id, order_total the days left (7 or 2).
-		$display['title']       = h(lang(array('string' => 'A privacy request ends within {var:1} days', 'vars' => array((int) ($notification['order_total'] ?? 0)))));
-		$display['short']       = lang('Privacy request ending');
-		$display['description'] = h(lang('Answer it from Contacts › Privacy centre › Requests.'));
+		// title holds the request's id, order_total the days left (7 or 2),
+		// or 'marketplace' for an erasure eBay asked for when one of the
+		// shop's buyers closed their eBay account (includes/fn/ebay.php).
+		if ((string) ($notification['order_total'] ?? '') === 'marketplace') {
+			$display['title']       = h(lang('An eBay buyer closed their eBay account'));
+			$display['short']       = lang('eBay account deletion');
+			$display['description'] = h(lang('eBay asks for their data to be erased. The request names their orders: answer it from Contacts › Privacy centre › Requests.'));
+		} else {
+			$display['title']       = h(lang(array('string' => 'A privacy request ends within {var:1} days', 'vars' => array((int) ($notification['order_total'] ?? 0)))));
+			$display['short']       = lang('Privacy request ending');
+			$display['description'] = h(lang('Answer it from Contacts › Privacy centre › Requests.'));
+		}
+
 		$display['url']         = 'privacy_centre.php?view=requests&request=' . (int) ($notification['title'] ?? 0);
 		$display['icon']        = 'assets/images/notification-general.png';
 		$display['badge']       = 'assets/images/notification-general-badge.png';

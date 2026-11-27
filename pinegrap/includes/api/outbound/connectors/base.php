@@ -19,7 +19,9 @@
 //
 // The contract, all optional except test_credentials():
 //
-//   test_credentials($account)            can we talk to them at all
+//   test_credentials($account)            can we talk to them at all; may
+//                                         answer data['choices'], the options
+//                                         of the provider's remote selects
 //   push_stock_price($account, $rows)     one batch out, answers a task handle
 //   read_task($account, $task_id)         the result of an earlier batch
 //   pull_orders($account, $since)         their orders, ours to import
@@ -77,6 +79,7 @@ if (!defined('PG_INIT_LOADED')) {
 
 require_once(dirname(dirname(__FILE__)) . '/http.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/marketplace_pricing.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/ebay.php');
 
 // The providers this installation knows how to talk to.
 //
@@ -98,6 +101,13 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/marketplace_pricing.php');
 // its 'options' (stored value => label) and the 'default' an unknown answer
 // falls back to, and is never empty, so it is never "required". Labels and
 // 'help' are English source text, translated where the screen draws them.
+//
+// A select that says 'remote' => true has no options of its own: they are
+// what the marketplace account holds (eBay's business policies), read by
+// test_credentials() and kept in the credentials under 'choices'
+// (mp_account_choices_merge()). It may be empty until then, its options
+// are names the seller gave and are never translated, and the account
+// screen leaves it out of "add account".
 function mp_providers() {
 
 	return array(
@@ -142,6 +152,32 @@ function mp_providers() {
 				)
 			)
 		),
+		// The seller signs in on Connections (the ebay and ebay_sandbox
+		// providers of connected accounts); an account holds no key of its
+		// own. One account sells on one eBay site.
+		'ebay' => array(
+			'name'   => 'eBay',
+			'file'   => 'ebay.php',
+			'help'   => 'Connect your eBay seller account on Connections first. One account sells on one eBay site: add an account for each further site. Save, then test the connection to read your inventory locations and business policies.',
+			'fields' => array(
+				'environment' => array(
+					'label'   => 'Environment',
+					'type'    => 'select',
+					'options' => array('production' => 'Live', 'sandbox' => 'Test environment'),
+					'default' => 'production'
+				),
+				'site' => array(
+					'label'   => 'eBay site',
+					'type'    => 'select',
+					'options' => pg_ebay_site_options(),
+					'default' => 'EBAY_US'
+				),
+				'location'           => array('label' => 'Inventory location', 'type' => 'select', 'remote' => true, 'options' => array()),
+				'fulfillment_policy' => array('label' => 'Shipping policy',    'type' => 'select', 'remote' => true, 'options' => array()),
+				'payment_policy'     => array('label' => 'Payment policy',     'type' => 'select', 'remote' => true, 'options' => array()),
+				'return_policy'      => array('label' => 'Return policy',      'type' => 'select', 'remote' => true, 'options' => array())
+			)
+		),
 		// Managed: no fields of its own. Its page of Connections writes and
 		// deletes its account row (includes/fn/merchant_center_push.php); this
 		// screen lists it and never offers it under "add account".
@@ -169,8 +205,10 @@ function mp_provider_is_managed($provider) {
 // A text field is trimmed and may be empty (the caller decides what empty
 // means: required on create, "keep the stored one" on update). A select only
 // ever answers one of its own options, so a value that came from anywhere but
-// the form's own list is stored as the default instead.
-function mp_provider_credentials($provider, $input) {
+// the form's own list is stored as the default instead. A remote select's
+// options are the account's $choices (field => value => name); a value not
+// among them is stored empty.
+function mp_provider_credentials($provider, $input, $choices = array()) {
 
 	$providers = mp_providers();
 
@@ -186,7 +224,15 @@ function mp_provider_credentials($provider, $input) {
 
 		$value = (isset($input[$field]) && is_scalar($input[$field])) ? trim((string)$input[$field]) : '';
 
-		if (mp_provider_field_is_select($meta)) {
+		if (mp_provider_field_is_remote($meta)) {
+
+			if (!isset($choices[$field]) || !is_array($choices[$field]) || !isset($choices[$field][$value])) {
+
+				$value = '';
+
+			}
+
+		} elseif (mp_provider_field_is_select($meta)) {
 
 			$options = isset($meta['options']) ? (array)$meta['options'] : array();
 
@@ -209,6 +255,91 @@ function mp_provider_credentials($provider, $input) {
 function mp_provider_field_is_select($meta) {
 
 	return isset($meta['type']) && $meta['type'] === 'select';
+
+}
+
+function mp_provider_field_is_remote($meta) {
+
+	return mp_provider_field_is_select($meta) && !empty($meta['remote']);
+
+}
+
+// The options test_credentials() read for remote selects, made safe to keep
+// in the credentials: only the provider's remote fields, at most 100 options
+// each, value and name strings of at most 100 characters. Pure.
+function mp_choices_clean($provider, $choices) {
+
+	$providers = mp_providers();
+	$clean = array();
+
+	if (!isset($providers[$provider]['fields']) || !is_array($choices)) {
+
+		return $clean;
+
+	}
+
+	foreach ($providers[$provider]['fields'] as $field => $meta) {
+
+		if (!mp_provider_field_is_remote($meta) || !isset($choices[$field]) || !is_array($choices[$field])) {
+
+			continue;
+
+		}
+
+		$clean[$field] = array();
+
+		foreach ($choices[$field] as $value => $name) {
+
+			$value = (string)$value;
+
+			if (($value === '') || (mb_strlen($value) > 100) || !is_scalar($name) || (count($clean[$field]) >= 100)) {
+
+				continue;
+
+			}
+
+			$name = trim((string)$name);
+			$clean[$field][$value] = mb_substr(($name !== '') ? $name : $value, 0, 100);
+
+		}
+
+	}
+
+	return $clean;
+
+}
+
+// The credentials with freshly read choices: kept under 'choices', a chosen
+// value the account no longer holds cleared, and a field with nothing chosen
+// and one choice only given that one. Pure.
+function mp_account_choices_merge($provider, $credentials, $choices) {
+
+	$credentials = (array)$credentials;
+	$choices = mp_choices_clean($provider, $choices);
+
+	foreach ($choices as $field => $options) {
+
+		$chosen = isset($credentials[$field]) ? (string)$credentials[$field] : '';
+
+		if (($chosen !== '') && !isset($options[$chosen])) {
+
+			$chosen = '';
+
+		}
+
+		if (($chosen === '') && (count($options) === 1)) {
+
+			$chosen = (string)key($options);
+
+		}
+
+		$credentials[$field] = $chosen;
+
+	}
+
+	$credentials['choices'] = $choices;
+
+	return $credentials;
 
 }
 

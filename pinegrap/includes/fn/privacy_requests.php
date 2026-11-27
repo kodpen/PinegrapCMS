@@ -66,9 +66,10 @@ function pg_privacy_request_labels()
             'refused'  => lang('Refused'),
         ),
         'sources' => array(
-            'account' => lang('My Account'),
-            'staff'   => lang('Staff'),
-            'form'    => lang('Public form'),
+            'account'     => lang('My Account'),
+            'staff'       => lang('Staff'),
+            'form'        => lang('Public form'),
+            'marketplace' => lang('Marketplace'),
         ),
         'results' => array(
             'sent'    => lang('Answer sent'),
@@ -413,13 +414,15 @@ function pg_privacy_request_handlers()
 }
 
 /**
- * Add a request typed in by staff.
+ * Add a request typed in by staff, or one a marketplace sent (an eBay
+ * account deletion notice, includes/fn/ebay.php).
  *
- * @param array $input     see pg_privacy_request_from_input()
- * @param array $operator  id
+ * @param array  $input     see pg_privacy_request_from_input()
+ * @param array  $operator  id
+ * @param string $source    'staff' or 'marketplace'
  * @return array  errors, id
  */
-function pg_privacy_request_add(array $input, array $operator)
+function pg_privacy_request_add(array $input, array $operator, $source = 'staff')
 {
     $out = pg_privacy_request_from_input($input, time(), (int) ($operator['id'] ?? 0));
 
@@ -428,6 +431,10 @@ function pg_privacy_request_add(array $input, array $operator)
     }
 
     $row = $out['row'];
+
+    if ($source === 'marketplace') {
+        $row['source'] = 'marketplace';
+    }
     $found = pg_privacy_export_find(array('email' => $row['email']));
     $row['contact_id'] = (int) (reset($found['person']['contact_ids']) ?: 0);
     $row['user_id'] = (int) (reset($found['person']['user_ids']) ?: 0);
@@ -852,6 +859,28 @@ function _pg_privacy_request_gather_kv(array $list)
 }
 
 /**
+ * How a request's address came, by where the request came from: the fact
+ * on the request ('address') and the hint beside I checked who asks
+ * ('hint'). Pure.
+ *
+ * @param string $source
+ * @param string $text   'address' or 'hint'
+ * @return string
+ */
+function pg_privacy_request_source_text($source, $text)
+{
+    if ($source === 'staff') {
+        return ($text === 'address') ? lang('Typed in by staff') : lang('The request was typed in by staff: make sure it comes from the person whose data it is.');
+    }
+
+    if ($source === 'marketplace') {
+        return ($text === 'address') ? lang('From the buyer\'s latest order') : lang('eBay sent this when its member closed their eBay account; the message names their orders here. Erase what the orders no longer need.');
+    }
+
+    return ($text === 'address') ? lang('Proven by its link') : lang('The address was proven by its link. Ask for more only when the request is about somebody else.');
+}
+
+/**
  * The Answer tab, "Prepare the answer": four numbered steps, one open at a
  * time (check who asks, gather, write the answer, send). The send button is
  * the drawer's foot. A closed request shows the answer sent, read-only.
@@ -875,7 +904,7 @@ function pg_privacy_request_answer_pane(array $request, $gathered)
 
     // 1. Who asks.
     $check = '<div class="form-field mb-4"><div class="d-flex align-items-center gap-3"><input type="checkbox" class="pg-checkbox" id="privacy_request_verified" name="verified" value="1"' . (((int) $request['verified_at'] > 0) ? ' checked' : '') . '><label class="pg-text-2" for="privacy_request_verified">' . h(lang('I checked who asks')) . '</label></div>'
-        . '<div class="form-text">' . h(($request['source'] === 'staff') ? lang('The request was typed in by staff: make sure it comes from the person whose data it is.') : lang('The address was proven by its link. Ask for more only when the request is about somebody else.')) . '</div></div>'
+        . '<div class="form-text">' . h(pg_privacy_request_source_text((string) $request['source'], 'hint')) . '</div></div>'
         . '<button type="submit" name="action" value="save" class="pg-button pg-button-quiet pg-button-sm">' . h(lang('Save')) . '</button>';
 
     // 2. Gather.
@@ -1183,7 +1212,7 @@ function pg_privacy_request_drawer(array $request, array $labels, $now, $tab = '
     $facts = '<dl class="pg-kv mb-5">'
         . '<dt>' . h(lang('E-mail address')) . '</dt><dd>' . h($request['email']) . '</dd>'
         . '<dt>' . h(lang('Came from')) . '</dt><dd>' . h($labels['sources'][$request['source']] ?? $request['source']) . '</dd>'
-        . '<dt>' . h(lang('Address')) . '</dt><dd>' . h(($request['source'] === 'staff') ? lang('Typed in by staff') : lang('Proven by its link')) . '</dd>'
+        . '<dt>' . h(lang('Address')) . '</dt><dd>' . h(pg_privacy_request_source_text((string) $request['source'], 'address')) . '</dd>'
         . '<dt>' . h(lang('Who asks')) . '</dt><dd>' . h(((int) $request['verified_at'] > 0) ? lang('Checked') : lang('Not checked yet')) . '</dd>'
         . '<dt>' . h(lang('Received')) . '</dt><dd>' . $time($request['received_at']) . '</dd>'
         . '<dt>' . h(lang('Status')) . '</dt><dd>' . h($labels['statuses'][$request['status']] ?? $request['status']) . '</dd>'
