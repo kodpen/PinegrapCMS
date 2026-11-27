@@ -24,7 +24,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - `markets-price-*`: 8 files.
 - `sales-channels-*`: 8 files.
 - `storefront-api-*`: 9 files.
-- `tax-automatic-*`: 7 files; start at `tax-automatic.md`.
 
 ## Files
 
