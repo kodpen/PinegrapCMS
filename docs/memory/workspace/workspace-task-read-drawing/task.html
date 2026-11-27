@@ -90,6 +90,8 @@ body { font-family: "Inter", system-ui, sans-serif; font-size: 13.5px; line-heig
 .cut { margin: 0; padding: 7px 20px; font-size: 12px; color: var(--fg3); border-bottom: 1px dashed var(--field-line); background: var(--inset); display: flex; align-items: center; gap: 7px; }
 .gapm { margin: 0 20px; padding: 9px 0; text-align: center; font-size: 12px; color: var(--fg3); border-top: 1px dashed var(--field-line); }
 .grow { flex: 1; }
+.crops { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 4px 0 22px 28px; }
+.crops > div { width: 544px; }
 
 /* look A parts */
 .b { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 34px; padding: 0 14px; border-radius: 10px; font-size: 13px; font-weight: 550; white-space: nowrap; color: var(--fg); flex: none; }
@@ -114,10 +116,9 @@ body { font-family: "Inter", system-ui, sans-serif; font-size: 13.5px; line-heig
 .pill { --c: var(--gray); display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 9px 0 8px; border-radius: 11px; font-size: 12px; font-weight: 550; white-space: nowrap; flex: none; color: color-mix(in srgb, var(--c) 70%, var(--strong)); background: color-mix(in srgb, var(--c) var(--t2), transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) var(--tl), transparent); }
 .pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 18%, transparent); }
 .pill.plain { padding: 0 9px; } .pill.plain::before { display: none; }
-.t-blue { --c: var(--blue); } .t-amber { --c: var(--amber); } .t-teal { --c: var(--teal); } .t-rose { --c: var(--rose); } .t-gray { --c: var(--gray); } .t-violet { --c: var(--violet); }
-.av { flex: none; width: 24px; height: 24px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 10.5px; font-weight: 600; color: #fff; background: linear-gradient(135deg, #8b6cf6, #5b8def); box-shadow: inset 0 1px 0 rgba(255,255,255,.3); }
+.av { flex: none; width: 24px; height: 24px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 11.5px; font-weight: 600; color: #fff; background: linear-gradient(135deg, #8b6cf6, #5b8def); box-shadow: inset 0 1px 0 rgba(255,255,255,.3); }
 .av.a-T { background: linear-gradient(135deg, #2bb3a3, #3f8fd8); } .av.a-M { background: linear-gradient(135deg, #e08a4f, #d4577b); } .av.a-S { background: linear-gradient(135deg, #6a9a3a, #2f9a8a); }
-.av.s { width: 20px; height: 20px; font-size: 9.5px; margin-left: -5px; box-shadow: 0 0 0 2px var(--page); } .av.s:first-child { margin-left: 0; }
+.av.s { width: 22px; height: 22px; margin-left: -5px; box-shadow: 0 0 0 2px var(--page); } .av.s:first-child { margin-left: 0; }
 .who { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
 .spin { flex: none; width: 13px; height: 13px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--fg3) 35%, transparent); border-top-color: var(--accent); }
 .ck { flex: none; width: 17px; height: 17px; border-radius: 6px; box-shadow: inset 0 0 0 1.5px var(--fg3); display: inline-grid; place-items: center; font-size: 12px; }
@@ -130,7 +131,7 @@ body { font-family: "Inter", system-ui, sans-serif; font-size: 13.5px; line-heig
 .mi.cur { background: var(--hover); }
 .mi .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c); flex: none; }
 .mi > .bi-check-lg { margin-left: auto; color: var(--accent); }
-.mi > i:first-child { color: var(--fg2); width: 16px; text-align: center; }
+.mi > i:first-child { color: var(--fg2); width: 16px; text-align: center; flex: none; }
 .mi em { font-style: normal; color: var(--fg3); font-size: 12px; margin-left: auto; }
 .mdiv { height: 1px; background: var(--line); margin: 5px 0; }
 
@@ -162,8 +163,8 @@ body { font-family: "Inter", system-ui, sans-serif; font-size: 13.5px; line-heig
 .part-l { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-top: 8px; min-width: 0; }
 .part-l .q { color: var(--fg2); } .part-l .e { margin-left: auto; display: flex; align-items: center; gap: 2px; color: var(--fg2); }
 .rich { border: 1px solid var(--field-line); border-radius: 10px; background: var(--field); box-shadow: var(--field-shadow); }
-.rich .tx { padding: 9px 12px; font-size: 14px; line-height: 1.5; }
-.rich .tx p { margin: 0 0 4px; }
+.rich > .tx { padding: 9px 12px; font-size: 14px; line-height: 1.5; }
+.rich > .tx p { margin: 0 0 4px; }
 .rich .tools { display: flex; align-items: center; gap: 1px; padding: 4px 6px; border-top: 1px solid var(--line); }
 .rich .tools .sep { width: 1px; height: 16px; background: var(--line); margin: 0 5px; }
 
@@ -259,8 +260,12 @@ body { font-family: "Inter", system-ui, sans-serif; font-size: 13.5px; line-heig
 .phone .rt, .phone .glr, .phone .desc { margin-left: 16px; margin-right: 16px; }
 .phone .vrs, .phone .folds { margin-left: 16px; margin-right: 16px; }
 .phone .vr { grid-template-columns: 104px minmax(0, 1fr); }
+.phone .stc { height: 36px; border-radius: 18px; padding: 0 12px 0 13px; }
+.phone .cl li { min-height: 44px; }
+.phone .glr .b { height: 44px; }
 .phone .dimmer { position: absolute; inset: 0; background: var(--scrim); z-index: 3; }
 .bsheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 4; background: var(--pop); border-radius: 20px 20px 0 0; box-shadow: var(--shadow-float); padding: 8px 16px 18px; }
+.bsheet .dp { width: auto; padding: 0; }
 .bsheet .grab { width: 36px; height: 4px; border-radius: 2px; background: var(--field-line); margin: 0 auto 6px; }
 .bsheet .dp-h { font-size: 15px; padding: 0 0 4px 4px; min-height: 44px; }
 .bsheet .dp-g { grid-template-columns: repeat(7, 1fr); font-size: 14px; } .bsheet .dp-g span { height: 44px; border-radius: 12px; } .bsheet .dp-g .w { height: 26px; font-size: 12px; }
@@ -282,8 +287,10 @@ body { font-family: "Inter", system-ui, sans-serif; font-size: 13.5px; line-heig
 .keys td { padding: 8px 0; border-top: 1px solid var(--line); vertical-align: top; } .keys tr:first-child td { border-top: 0; }
 .keys td:first-child { width: 112px; padding-right: 10px; white-space: nowrap; }
 .kbd { display: inline-block; font-size: 11.5px; font-weight: 550; color: var(--fg2); padding: 2px 6px; border-radius: 6px; background: var(--quiet); box-shadow: inset 0 0 0 1px var(--line); }
+.szs { margin: 4px 0 0 76px; width: 900px; } .sz2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 40px; }
 .h3 { font-size: 13px; font-weight: 650; margin: 0 0 6px; } .h3 + .keys { margin-bottom: 18px; }
 .keys.sz td:first-child { width: auto; white-space: normal; color: var(--fg2); } .keys.sz td:last-child { text-align: right; font-weight: 550; white-space: nowrap; padding-left: 8px; font-variant-numeric: tabular-nums; }
+.t-blue { --c: var(--blue); } .t-amber { --c: var(--amber); } .t-teal { --c: var(--teal); } .t-rose { --c: var(--rose); } .t-gray { --c: var(--gray); } .t-violet { --c: var(--violet); }
 </style>
 </head>
 <body>
@@ -339,7 +346,7 @@ function menu(items, c, style) {
   return '<span class="pop' + (c ? ' ' + c : '') + '" style="' + (style || '') + '">' + items.map(function (m) { return m === '-' ? '<span class="mdiv"></span>' : '<span class="mi' + (m[2] ? ' cur' : '') + '">' + m[0] + m[1] + (m[2] ? ic('check-lg') : '') + (m[3] ? '<em>' + m[3] + '</em>' : '') + '</span>'; }).join('') + '</span>';
 }
 function stMenu(cur, first) {
-  var items = Object.keys(ST).map(function (k) { return ['<i class="dot t-' + ST[k][1] + '"></i>', ST[k][0], k === cur]; });
+  var items = Object.keys(ST).map(function (k) { return ['<span class="dot t-' + ST[k][1] + '"></span>', ST[k][0], k === cur]; });
   return menu(first ? first.concat(items) : items, 'abs', 'width:204px;display:block');
 }
 
@@ -366,10 +373,10 @@ var A1 = drawer(thead('T-128 · Task') + '<div class="tb">' +
   field('Title', inp(TITLE)) +
   field('Description', '<div class="rich"><div class="tx"><p>' + P1 + '</p><p>' + P2 + '</p><p style="color:var(--fg2)">' + ic('ui-checks') + ' Checklist · 5 items</p></div>' + TOOLS + '</div></div>', 'A checklist in the description (the list button, or lines that start with - [ ]) becomes the task’s checklist.') +
   '<div class="box"><div class="box-h">' + ic('calendar-event') + 'Dates and repeat</div><div class="g2">' + field('Starts', inp('16.11.2026', 'sm', 'calendar3')) + field('Due', inp('24.11.2026', 'sm', 'calendar3')) + '</div><div style="margin-top:10px">' + field('Repeat', sel('Does not repeat', 'sm')) + '</div></div>' +
+  '<div class="box"><div class="box-h">' + ic('bell') + 'Time and reminder</div><div class="g2">' + field('Due time', inp('09:30', 'sm', 'clock')) + field('Remind', '<div class="grp">' + inp('&nbsp;', 'sm') + sel('hours before', 'sm') + '</div>') + '</div><div class="sum">Leave the number empty for no reminder.</div></div>' +
+  '<div class="g2">' + field('Estimate (hours)', inp('4', 'sm'), 'Left empty, 1 h is counted.') + field('Task priority', sel('High', 'sm')) + field('Department', sel('Marketing', 'sm')) + '</div>' +
   '</div>', 'mid');
 var A2 = drawer(cut('The same drawer, scrolled on') + '<div class="tb">' +
-  '<div class="box"><div class="box-h">' + ic('bell') + 'Time and reminder</div><div class="g2">' + field('Due time', inp('09:30', 'sm', 'clock')) + field('Remind', '<div class="grp">' + inp('2', 'sm') + sel('hours before', 'sm') + '</div>') + '</div><div class="sum">The reminder went on 24.11.2026 07:30.</div></div>' +
-  '<div class="g2">' + field('Estimate (hours)', inp('4', 'sm'), 'Left empty, 1 h is counted.') + field('Task priority', sel('High', 'sm')) + field('Department', sel('Marketing', 'sm')) + '</div>' +
   field('Responsible people', people('NT'), 'Everyone chosen is responsible for the task.') +
   field('Tagged records', '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">' + REC + '</div>' + '<div class="in sm">' + ic('search') + '<span class="ph">Find a record to tag</span></div>') +
   part('stars', 'Assistant', '', '<div class="part-l">' + sel('— Not selected —', 'sm" style="flex:1') + b('Hand to an assistant', 'quiet sm') + '</div>') +
@@ -402,8 +409,8 @@ function rows(done, upTo) {
     vr('Department', '<span class="who"><i class="dot" style="width:8px;height:8px;border-radius:50%;background:var(--violet)"></i>Marketing</span>'),
     vr('Channel', '<span class="lnk">#winter-campaign</span>'),
     vr('Repeat', 'Does not repeat', { v: 'none' }),
-    vr('Remind', '2 hours before'),
-    vr('Estimate', 'None', { v: 'none' })
+    vr('Remind', 'None', { v: 'none' }),
+    vr('Estimate', '4 h')
   ];
   return '<div class="vrs">' + list.slice(0, upTo || 9).join('') + '</div>';
 }
@@ -436,7 +443,7 @@ function folds(open, timeRunning) {
     fr('stars', 'Assistant', 'Not handed over', 0) +
     fr('stopwatch', 'Time spent', '2 h 30 min spent of 4 h', open.time, timeBody(timeRunning)) +
     fr('diagram-2', 'Dependencies', 'Waiting for T-121', open.dep, F_DEP) +
-    fr('patch-check', 'Customer approval', 'Nobody asked yet', 0) +
+    fr('patch-check', 'Customer approval', 'No request yet', 0) +
     fr('journal-text', 'Notes', '2', open.notes, F_NOTES) + '</div>';
 }
 var MADE = '<div class="made">Created by Nora, 19.11 09:12</div>';
@@ -448,8 +455,8 @@ var B = frame(stage(B1 + B2));
 function cell(n, name, line, inner, style) { return '<div' + (style ? ' style="' + style + '"' : '') + '><div class="cap"><i>' + n + '</i><b>' + name + '</b><span>' + line + '</span></div><div class="panel">' + inner + '</div></div>'; }
 function one(row) { return '<div class="vrs">' + row + '</div>'; }
 var PENCIL = ic('pencil');
-function cal(c) {
-  var h = '<span class="pop dp' + (c ? ' ' + c : '') + '" style="display:block"><span class="dp-h">November 2026<span class="grow"></span>' + ib('chevron-left', 'sm') + ib('chevron-right', 'sm') + '</span><span class="dp-g">';
+function cal(sheet) {
+  var h = (sheet ? '<span class="dp" style="display:block">' : '<span class="pop dp" style="display:block">') + '<span class="dp-h">' + (sheet ? 'Due · ' : '') + 'November 2026<span class="grow"></span>' + ib('chevron-left', sheet ? 't44' : 'sm') + ib('chevron-right', sheet ? 't44' : 'sm') + '</span><span class="dp-g">';
   ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].forEach(function (w) { h += '<span class="w">' + w + '</span>'; });
   for (var d = -5; d <= 36; d++) {
     var out = d < 1 || d > 30;
@@ -483,12 +490,12 @@ var D = frame('<div class="pad"><div class="cells c2">' +
 /* ── E: the status control, a finished task ── */
 var REOPEN = [[ic('arrow-counterclockwise'), 'Open it again', 0, 'to “To do”'], '-'];
 function crop(n, name, line, inner, h) { return '<div><div class="cap" style="margin-top:14px"><i>' + n + '</i><b>' + name + '</b><span>' + line + '</span></div><div class="panel" style="min-height:' + h + 'px">' + inner + '</div></div>'; }
-var E1 = '<div style="position:relative;z-index:1;width:544px;flex:none;padding-bottom:20px">' +
+var E1 = '<div class="crops">' +
   crop(1, 'The status menu', 'each status with its dot, a check on the current one', rhead({ menu: stMenu('doing') }) + '<div class="rt"><span>' + TITLE + '</span></div>' + rows(0, 2), 258) +
   crop(2, 'On a finished task', '“Open it again” first, then the statuses', rhead({ st: 'done', menu: stMenu('done', REOPEN) }) + '<div class="rt"><span>' + TITLE + '</span></div>' + rows(1, 3), 306) +
   crop(3, 'Time spent while the timer runs', 'today’s line, “Stop the timer” in the danger look', '<div class="folds" style="margin-top:0;border-top:0">' + fr('stopwatch', 'Time spent', '2 h 30 min spent of 4 h', 1, timeBody(1).split('<div class="g2"')[0]) + '</div>', 0) + '</div>';
-var E2 = drawer(rhead({ st: 'done' }) + '<div class="rt"><span>' + TITLE + '</span></div>' + rows(1, 4) + '<div class="gapm">Five more rows, the description and its list as on board B</div>' + folds({ time: 1 }).replace('margin: 16px', '').replace('class="folds"', 'class="folds" style="margin-top:0;border-top-style:dashed"') + '<div class="made">Created by Nora, 19.11 09:12 · Finished 26.11 16:40</div>');
-var E = frame(stage(E1 + E2));
+var E2 = drawer(rhead({ st: 'done' }) + '<div class="rt"><span>' + TITLE + '</span></div>' + rows(1, 4) + '<div class="gapm">Five more rows, the description and its list as on board B</div>' + folds({ time: 1 }).replace('class="folds"', 'class="folds" style="margin-top:0;border-top-style:dashed"') + '<div class="made">Created by Nora, 19.11 09:12 · Finished 26.11 16:40</div>');
+var E = frame('<div class="stage">' + E1 + E2 + '</div>');
 
 /* ── F: New task ── */
 function newTask(open) {
@@ -512,9 +519,9 @@ function phone(extra) {
   return '<div class="phone">' + rhead({ back: 1 }) + '<div class="rt"><span>' + TITLE + '</span></div>' + rows() +
     '<div class="glr">Description' + b('Edit', 'ghost sm') + '</div><div class="desc"><p>' + P1 + '</p>' + checklist(2, -1, 1) + progress(2) + '</div>' + folds() + '<div style="height:14px"></div>' + (extra || '') + '</div>';
 }
-var SHEET = '<div class="dimmer"></div><div class="bsheet"><div class="grab"></div>' + cal().replace('class="pop dp"', 'class="dp" style="width:auto;padding:0').replace(' style="display:block"', '').replace('November 2026', 'Due · November 2026').replace(/ib sm/g, 'ib t44') + '</div>';
+var SHEET = '<div class="dimmer"></div><div class="bsheet"><div class="grab"></div>' + cal(1) + '</div>';
 var G = '<div class="narrow-row">' + phone() + phone(SHEET) +
-  '<div class="side-notes"><div><b>The drawer fills the screen.</b> A Back arrow takes Close’s place; the head keeps the number, the status control and the ⋯ menu, each a 44 px target, and stays while the page scrolls.</div><div><b>The label column narrows to 104 px;</b> a long label breaks into two lines and its row grows, a value never leaves its row. Rows and fold rows keep 44 px and 48 px.</div><div><b>A picker opens as a sheet from the bottom edge</b> over the scrim, with 44 px days: the date sheet here, the people list and the menus the same way. A day pressed saves and closes the sheet; the time and “Clear” save too.</div><div><b>The description’s writing box</b> opens over the whole screen with its “Save” and “Cancel” above the keyboard.</div></div></div>';
+  '<div class="side-notes"><div><b>The drawer fills the screen.</b> A Back arrow takes Close’s place; the head keeps the number, the status control (36 px high, pressed in a 44 px area) and the ⋯ menu, a 44 px target like Back, and stays while the page scrolls.</div><div><b>The label column narrows to 104 px;</b> a long label breaks into two lines and its row grows, a value never leaves its row. Rows, checklist items and “Edit” are 44 px high, fold rows 48 px.</div><div><b>A picker opens as a sheet from the bottom edge</b> over the scrim, with 44 px days: the date sheet here, the people list and the menus the same way. A day pressed saves and closes the sheet; the time and “Clear” save too.</div><div><b>The description’s writing box</b> opens over the whole screen with its “Save” and “Cancel” above the keyboard.</div></div></div>';
 
 /* ── H: sizes and keys ── */
 var KEYS = [['Tab', 'Moves through the head’s controls, the title, the value rows, “Edit”, the checklist and the fold rows, in the order drawn.'], ['Enter, Space', 'On a value row: opens its picker. On a fold row: opens or closes it. On a checklist item: ticks it.'], ['↑ ↓', 'Move in a menu or a people list; in the date picker the four arrows move by a day and a week.'], ['Enter', 'In a picker: chooses and saves. A people list stays open for more; a menu and a date close.'], ['Esc', 'Closes the open picker first; pressed again it closes the drawer.'], ['Title', 'Enter or F2 starts the change; Enter saves, Esc restores the old title.'], ['Ctrl+Enter', 'In the description’s writing box: “Save”. Esc there asks nothing when nothing changed.'], ['Focus', 'Goes back to the row once its picker has closed, and to the list’s row when the drawer closes.']];
@@ -522,8 +529,8 @@ var SIZES = [['Drawer width (as today)', '544 px'], ['Side padding', '20 px'], [
 var H = frame('<div class="pad"><div class="sizes"><div class="mwrap" id="mwrap"><div class="zoom" id="zoom">' + rhead().replace('class="rh"', 'class="rh" id="m-head"').replace('class="stc', 'id="m-stc" class="stc') +
   '<div class="rt" id="m-title"><span>Landing page copy</span></div><div class="vrs">' + vr('Responsible people', who('N')).replace('class="vr"', 'class="vr" id="m-row"').replace('class="k"', 'class="k" id="m-k"').replace('class="v"', 'class="v" id="m-v"') + vr('Task priority', prio('high')) + '</div>' +
   '<div class="folds">' + fr('stopwatch', 'Time spent', '2 h 30 min', 0).replace('class="fr"', 'class="fr" id="m-fold"') + '</div></div></div>' +
-  '<div><p class="h3">Keys</p><table class="keys">' + KEYS.map(function (k) { return '<tr><td><span class="kbd">' + k[0] + '</span></td><td>' + k[1] + '</td></tr>'; }).join('') + '</table>' +
-  '<p class="h3">Sizes</p><table class="keys sz">' + SIZES.map(function (k) { return '<tr><td>' + k[0] + '</td><td>' + k[1] + '</td></tr>'; }).join('') + '</table></div></div></div>');
+  '<div><p class="h3">Keys</p><table class="keys">' + KEYS.map(function (k) { return '<tr><td><span class="kbd">' + k[0] + '</span></td><td>' + k[1] + '</td></tr>'; }).join('') + '</table></div>' +
+  '<div class="szs"><p class="h3">Sizes</p><div class="sz2">' + [SIZES.slice(0, 7), SIZES.slice(7)].map(function (part) { return '<table class="keys sz">' + part.map(function (k) { return '<tr><td>' + k[0] + '</td><td>' + k[1] + '</td></tr>'; }).join('') + '</table>'; }).join('') + '</div></div></div></div>');
 
 var frames = {
   A: wrap('A', 'Today', 'The drawer My Tasks opens now: a form of every field with one “Save” at its foot', A, [
@@ -542,7 +549,7 @@ var frames = {
     '<b>Refused:</b> the row takes its old value back and the store’s sentence stands under it in rose until the row is changed again or the drawer closes; nothing else on the page moves.'
   ]),
   D: wrap('D', 'Title and description changed in place', 'Short text saves on Enter; the long text is the one thing on the page saved by a button', D, [
-    '<b>The title</b> keeps its size and place in all three states, so nothing jumps: a faint outline when pointed at, the field’s ring while changed. An empty title is not saved: the field stays with the store’s sentence under it.',
+    '<b>The title</b> keeps its size and place in all three states, so nothing jumps: a faint outline when pointed at, the field’s ring while changed. An empty title is not saved: the old title comes back with the store’s sentence, “A task needs a title.”, under it.',
     '<b>The description</b> opens in the Workspace’s writing box with its row of tools (person, record, emoji, lists, quote, checklist); “Save” and “Cancel” stand at the row’s end, as on a note today.',
     '<b>A tick</b> is not a change of the task: anyone who may tick today may tick here. While it is sent the tick waits; refused, it goes back and the reason is told as today.'
   ]),
