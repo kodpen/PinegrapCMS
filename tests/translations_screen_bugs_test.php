@@ -50,6 +50,20 @@ function test_translations_view_query_keeps_the_view()
 	pg_assert_same('language=en&group=ui', pg_tr_screen_view_query('en', array('page_id' => '5', 'group' => 'ui', 'filter' => 'all')), 'a group drops the page; "all" is the default');
 	pg_assert_same('language=en', pg_tr_screen_view_query('en', array('group' => 'x"y', 'filter' => 'nope', 'page_id' => '-3', 'q' => array('z'))), 'malformed values are left out');
 	pg_assert_same('language=pt-BR', pg_tr_screen_view_query('pt-BR', array()), 'only the language');
+	pg_assert_same('language=en&page_id=4&tab=glossary', pg_tr_screen_view_query('en', array('page_id' => '4', 'tab' => 'glossary')), 'the Glossary tab is kept');
+	pg_assert_same('language=en&tab=activity', pg_tr_screen_view_query('en', array('tab' => 'activity')), 'the Activity tab is kept');
+	pg_assert_same('language=en', pg_tr_screen_view_query('en', array('tab' => 'texts')), '"texts" is the default tab');
+	pg_assert_same('language=en', pg_tr_screen_view_query('en', array('tab' => 'nope')), 'an unknown tab is left out');
+}
+
+function test_translations_screen_share()
+{
+	pg_assert_same(26, pg_tr_screen_share(316, 1204), 'rounded percent');
+	pg_assert_same(0, pg_tr_screen_share(0, 0), 'nothing scanned');
+	pg_assert_same(99, pg_tr_screen_share(999, 1000), 'not 100 while a text is left');
+	pg_assert_same(1, pg_tr_screen_share(1, 1000), 'not 0 once a text is translated');
+	pg_assert_same(100, pg_tr_screen_share(5, 5), 'all translated');
+	pg_assert_same(100, pg_tr_screen_share(7, 5), 'never above 100');
 }
 
 function test_translations_glossary_duplicate()

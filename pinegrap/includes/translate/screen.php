@@ -482,8 +482,11 @@ function pg_tr_screen_view_query($language, $source)
     $filter = $value('filter');
     $filter = in_array($filter, array('pending', 'machine', 'reviewed', 'suspicious', 'blocking'), true) ? $filter : '';
     $search = mb_substr($value('q'), 0, 255);
+    // The tab the form was posted from: "texts" is the screen's default.
+    $tab = $value('tab');
+    $tab = in_array($tab, array('activity', 'glossary'), true) ? $tab : '';
 
-    $params = array('language' => (string) $language, 'page_id' => $page_id, 'group' => $group, 'filter' => $filter, 'q' => $search);
+    $params = array('language' => (string) $language, 'page_id' => $page_id, 'group' => $group, 'filter' => $filter, 'q' => $search, 'tab' => $tab);
     $query = array();
 
     foreach ($params as $key => $param) {
@@ -545,4 +548,30 @@ function pg_tr_screen_target_rows($text)
     }
 
     return max(2, min(12, $rows));
+}
+
+/**
+ * The share of a scope's texts that has a translation, in whole percent, as
+ * the language menu and the rail show it: never 100 while a text is left and
+ * never 0 once one is translated, so a nearly done or a just started language
+ * does not read as finished or untouched.
+ *
+ * @param int $translated
+ * @param int $total
+ * @return int 0 to 100
+ */
+function pg_tr_screen_share($translated, $total)
+{
+    $translated = max(0, (int) $translated);
+    $total = max(0, (int) $total);
+
+    if (($total === 0) || ($translated === 0)) {
+        return 0;
+    }
+
+    if ($translated >= $total) {
+        return 100;
+    }
+
+    return min(99, max(1, (int) round(($translated / $total) * 100)));
 }

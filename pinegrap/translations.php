@@ -7,11 +7,13 @@
  * machine and still has to be read - and the editor that reads and corrects
  * them text by text.
  *
- * The left column lists the pages with their coverage; the right column is
- * the editor for the selected page (or for every text when no page is
- * selected). "Update translations" extracts the texts and sends the pending
- * ones to the language's engine; "Clear translations" deletes the ones of the
- * selection so they are sent again. The browser engine runs here, in this
+ * The head holds the language, the tabs "Texts", "Activity" and "Glossary",
+ * and the two jobs: "Scan for new texts" extracts the texts of the scope,
+ * "Translate pending" extracts them and sends the pending ones to the
+ * language's engine. On "Texts" the rail lists the pages and the other
+ * groups with their coverage, the filter tiles count the scope's texts and
+ * the list is the editor for the selected scope. "Clear translations"
+ * deletes the ones of the selection so they are sent again. The browser engine runs here, in this
  * screen's script (assets/js/translations.js), the server engines in
  * translations_action.php and the scheduled job.
  *
@@ -167,6 +169,9 @@ if (!in_array($filter, array('all', 'pending', 'machine', 'reviewed', 'suspiciou
 }
 
 $search = (isset($_GET['q']) && is_string($_GET['q'])) ? trim($_GET['q']) : '';
+// The tab open on arrival: the texts, the updates that ran, the glossary.
+// Switching tabs happens on the screen; the address follows it.
+$tab = (isset($_GET['tab']) && is_string($_GET['tab']) && in_array($_GET['tab'], array('activity', 'glossary'), true)) ? $_GET['tab'] : 'texts';
 $page_number = isset($_GET['p']) ? max(1, (int) $_GET['p']) : 1;
 $per_page = 100;
 
@@ -235,15 +240,14 @@ if ($selected_page === null) {
     $page_id = 0;
 }
 
-// The Update button says what it scans; the notes that point at it use the
-// same label.
-$update_button_label = ($page_id > 0) ? lang('Update this page') : (($group !== '') ? lang('Update these texts') : lang('Update translations'));
-// By hand nothing goes to an engine: the button only scans and lists.
-if ($engine_key === 'manual') {
-    $update_button_title = ($page_id > 0) ? lang('Scan this page and list its pending texts here') : (($group !== '') ? lang('Scan these texts and list the pending ones here') : lang('Scan every page and list the pending texts here'));
-} else {
-    $update_button_title = ($page_id > 0) ? lang('Scan this page and send its pending texts to the engine') : (($group !== '') ? lang('Scan these texts and send the pending ones to the engine') : lang('Scan every page and send the pending texts to the engine'));
-}
+// The two jobs of the head: "Scan for new texts" only scans and lists,
+// "Translate pending" scans and sends what is pending to the engine. By hand
+// nothing goes to an engine, so only the scan is offered. The notes that
+// point at a job use its label.
+$scan_button_label = lang('Scan for new texts');
+$scan_button_title = ($page_id > 0) ? lang('Scan this page and list its pending texts here') : (($group !== '') ? lang('Scan these texts and list the pending ones here') : lang('Scan every page and list the pending texts here'));
+$update_button_label = ($engine_key === 'manual') ? $scan_button_label : lang('Translate pending');
+$update_button_title = ($page_id > 0) ? lang('Scan this page and send its pending texts to the engine') : (($group !== '') ? lang('Scan these texts and send the pending ones to the engine') : lang('Scan every page and send the pending texts to the engine'));
 
 // Under the reviewed policy a page is indexed in the language only when its
 // own words stand approved: what each page answered the last time it was
@@ -342,6 +346,33 @@ if ($language !== '') {
     }
 }
 
+// The counts of the two tiles the language's figures do not hold: the
+// suspicious texts of the scope, and the ones that keep its pages out of
+// search (only while that tile is shown).
+$suspicious_count = 0;
+$blocking_count = 0;
+
+if ($language !== '') {
+    $tile_where = array('u.string_id > 0');
+
+    if ($owner_where !== '') {
+        $tile_where[] = '(' . $owner_where . ')';
+    }
+
+    $suspicious_count = (int) db_value("SELECT COUNT(DISTINCT t.string_id)
+                                        FROM translation_uses u
+                                        INNER JOIN translations t ON t.string_id = u.string_id AND t.language = '" . e($language) . "'
+                                        WHERE t.suspicious = 1 AND " . implode(' AND ', $tile_where));
+
+    if ($index_watch || ($filter === 'blocking')) {
+        $blocking_count = (($filter === 'blocking') && ($search === '')) ? $total_rows : (int) db_value("SELECT COUNT(DISTINCT s.id)
+                                        FROM translation_uses u
+                                        INNER JOIN translation_strings s ON s.id = u.string_id
+                                        LEFT JOIN translations t ON t.string_id = s.id AND t.language = '" . e($language) . "'
+                                        WHERE " . implode(' AND ', array_merge($tile_where, array(pg_tr_screen_blocking_sql(), pg_tr_screen_blocking_records_sql(pg_tr_item_view_forms(($page_id > 0) ? $page_owners : null))))));
+    }
+}
+
 // ── why the selected page is kept out: read only when asked for (the
 //    "blocking" filter), where each text listed above comes from ──
 
@@ -385,6 +416,9 @@ $glossary = ($language !== '') ? pg_tr_glossary($language) : array();
 $jobs = ($language !== '') ? db_items("SELECT * FROM translation_jobs WHERE language = '" . e($language) . "' ORDER BY id DESC LIMIT 8") : array();
 $jobs = is_array($jobs) ? $jobs : array();
 $open_job = null;
+// The count on the "Activity" tab: the updates still open, and the finished
+// ones that left failed texts.
+$activity_count = ($language !== '') ? (int) db_value("SELECT COUNT(*) FROM translation_jobs WHERE language = '" . e($language) . "' AND (status IN ('queued', 'sent', 'running') OR failed_count > 0)") : 0;
 
 foreach ($jobs as $job) {
     if (in_array($job['status'], array('queued', 'sent', 'running'), true)) {
@@ -441,46 +475,66 @@ $token = (string) ($_SESSION['software']['token'] ?? '');
 // Language switcher: the primary control of the toolbar.
 $output_language_menu = '';
 
+// Each language with the share of the site's texts it has a translation for.
 foreach ($targets as $code => $row) {
-    $output_language_menu .= '<li><a class="menu-item' . (($code === $language) ? ' active" aria-current="page' : '') . '" href="' . h($url(array('language' => $code, 'page_id' => 0, 'p' => 0))) . '">'
-        . '<span class="badge theme-secondary font-monospace me-3">' . h($code) . '</span><span' . $text_lang($code) . '>' . h(pg_tr_language_label($code)) . '</span></a></li>';
+    $code_stats = ($code === $language) ? $site_stats : pg_tr_language_stats($code);
+    $code_share = pg_tr_screen_share($code_stats['translated'], $code_stats['total']);
+
+    $output_language_menu .= '<li><a class="menu-item d-flex align-items-center gap-3' . (($code === $language) ? ' active" aria-current="page' : '') . '" href="' . h($url(array('language' => $code, 'page_id' => 0, 'group' => '', 'p' => 0))) . '">'
+        . '<span class="flex-grow-1"' . $text_lang($code) . '>' . h(pg_tr_language_label($code)) . '</span>'
+        . '<span class="pg-text-meta font-monospace">' . h($code) . '</span>'
+        . '<span class="pg-text-meta pg-tabular pg-tr-share">' . h(lang(array('string' => '{var:1}%', 'vars' => array($code_share)))) . '</span></a></li>';
 }
 
 $output_language_menu .= '<li><hr class="menu-divider"></li>'
     . '<li><a class="menu-item" href="' . h(pg_settings_link('languages', 'pgset-languages')) . '"><i class="bi bi-gear me-3" aria-hidden="true"></i>' . lang('Languages and Translation') . '</a></li>';
 
-// Filter chips.
-$output_chips = '';
+// The filter tiles: the scope's count of each state, the one chosen marked.
+// The four state counts follow a save on the screen (.pg-tr-chip-count).
+$output_tiles = '';
+$tile_specs = array(
+    'all'        => array(lang('All'), $scope_stats['total'], ''),
+    'pending'    => array(lang('Pending'), $scope_stats['pending'], 'pg-tone-gray'),
+    'machine'    => array(lang('Machine'), $scope_stats['machine'], 'pg-tone-amber'),
+    'reviewed'   => array(lang('Reviewed'), $scope_stats['reviewed'], 'pg-tone-teal'),
+    'suspicious' => array(lang('Suspicious'), $suspicious_count, 'pg-tone-rose'),
+    'blocking'   => ($index_watch || ($filter === 'blocking')) ? array(lang('Keeping pages out of search'), $blocking_count, 'blocking') : null,
+);
 
-foreach (array(
-    'all'        => array(lang('All'), $scope_stats['total']),
-    'pending'    => array(lang('Pending'), $scope_stats['pending']),
-    'machine'    => array(lang('Machine'), $scope_stats['machine']),
-    'reviewed'   => array(lang('Reviewed'), $scope_stats['reviewed']),
-    'suspicious' => array(lang('Suspicious'), null),
-    'blocking'   => ($index_watch || ($filter === 'blocking')) ? array(lang('Keeping pages out of search'), null) : null,
-) as $key => $chip) {
-    if ($chip === null) {
+foreach ($tile_specs as $key => $tile_spec) {
+    if ($tile_spec === null) {
         continue;
     }
 
-    $output_chips .= '<a class="chip' . (($key === $filter) ? ' active" aria-current="true' : '') . '" href="' . h($url(array('filter' => $key, 'p' => 0))) . '">' . h($chip[0])
-        . (($chip[1] !== null) ? ' <span class="opacity-75 pg-tr-chip-count" data-state="' . h($key) . '">' . (int) $chip[1] . '</span>' : '') . '</a>';
+    $tile_mark = ($tile_spec[2] === 'blocking') ? '<i class="bi bi-eye-slash" aria-hidden="true"></i>' : (($tile_spec[2] !== '') ? '<span class="pg-tr-dot ' . $tile_spec[2] . '" aria-hidden="true"></span>' : '');
+
+    $output_tiles .= '<a class="pg-card pg-figure pg-tr-tile' . (($key === $filter) ? ' active" aria-current="true' : '') . '" href="' . h($url(array('filter' => $key, 'p' => 0))) . '">'
+        . '<span class="pg-figure-value' . (in_array($key, array('all', 'pending', 'machine', 'reviewed'), true) ? ' pg-tr-chip-count" data-state="' . h($key) : '') . '">' . number_format((int) $tile_spec[1]) . '</span>'
+        . '<span class="pg-figure-label">' . $tile_mark . '<span>' . h($tile_spec[0]) . '</span></span></a>';
 }
 
-// The page list.
+// A row of the rail: its name, its count, an optional mark after the count
+// and the bar of its share. The current one carries aria-current.
+$rail_row = function ($href, $current, $icon, $name, $count, $share, $mark = '', $title = '', $page = false) {
+    return '<a class="pg-tr-rail-row' . ($current ? ' active" aria-current="page' : '') . '" href="' . h($href) . '"' . ($page ? ' data-pg-tr-page="1"' : '') . '>'
+        . (($icon !== '') ? '<i class="bi ' . h($icon) . '" aria-hidden="true"></i>' : '')
+        . '<span class="pg-tr-rail-name"' . (($title !== '') ? ' title="' . h($title) . '"' : '') . '>' . $name . '</span>'
+        . '<span class="pg-tr-rail-count pg-tabular">' . $count . '</span>'
+        . $mark
+        . '<span class="pg-tr-rail-bar" aria-hidden="true"><span style="width: ' . (int) $share . '%"></span></span>'
+        . '</a>';
+};
+
+// The page list. "All texts" is the view with no page and no group: a group
+// chosen is the one current row, and pressing a page or "All texts" leaves
+// the group.
 $output_pages = '';
-// All pages is the view with no page and no group: a group chosen is the
-// one current row, and pressing a page or All pages leaves the group.
-$output_pages .= '<a class="list-group-item list-group-item-action d-flex align-items-center gap-3' . ((($page_id === 0) && ($group === '')) ? ' active" aria-current="page' : '') . '" href="' . h($url(array('page_id' => 0, 'group' => '', 'p' => 0))) . '">'
-    . '<i class="bi bi-collection" aria-hidden="true"></i><span class="flex-grow-1 text-truncate">' . lang('All pages') . '</span>'
-    . '<span class="small opacity-75"><span class="pg-tr-all-done">' . (int) $site_stats['translated'] . '</span>/' . (int) $site_stats['total'] . '</span></a>';
+$output_all_row = $rail_row($url(array('page_id' => 0, 'group' => '', 'p' => 0)), ($page_id === 0) && ($group === ''), 'bi-collection', h(lang('All texts')),
+    '<span class="pg-tr-all-done">' . number_format((int) $site_stats['translated']) . '</span>/' . number_format((int) $site_stats['total']), pg_tr_screen_share($site_stats['translated'], $site_stats['total']));
 
 foreach ($pages as $row) {
     $pid = (int) $row['page_id'];
     $stat = isset($stats[$pid]) ? $stats[$pid] : array('total' => 0, 'translated' => 0, 'reviewed' => 0, 'seen_at' => 0);
-    $coverage = ($stat['total'] > 0) ? (int) round(($stat['translated'] / $stat['total']) * 100) : 0;
-    $bar_class = ($stat['total'] === 0) ? 'bg-secondary' : (($stat['reviewed'] === $stat['total']) ? 'bg-success' : (($coverage === 100) ? 'bg-info' : 'bg-warning'));
     $title = ($row['page_title'] !== '') ? $row['page_title'] : $row['page_name'];
     $output_verdict = '';
 
@@ -506,21 +560,15 @@ foreach ($pages as $row) {
                 $verdict_label = lang('Not checked yet: the page has not been opened in this language since its translations last changed');
         }
 
-        $output_verdict = '<i class="bi ' . $verdict_icon . ' small" title="' . h($verdict_label) . '" aria-hidden="true"></i><span class="visually-hidden">' . h($verdict_label) . '</span>';
+        $output_verdict = '<i class="bi ' . $verdict_icon . ' pg-tr-rail-mark" title="' . h($verdict_label) . '" aria-hidden="true"></i><span class="visually-hidden">' . h($verdict_label) . '</span>';
     }
 
-    $output_pages .= '<a class="list-group-item list-group-item-action' . (($pid === $page_id) ? ' active" aria-current="page' : '') . '" href="' . h($url(array('page_id' => $pid, 'group' => '', 'p' => 0))) . '">'
-        . '<div class="d-flex align-items-center gap-3">'
-        . '<span class="flex-grow-1 text-truncate" title="' . h($title) . '">' . (($row['page_home'] === 'yes') ? '<i class="bi bi-house-door me-1" aria-hidden="true"></i>' : '') . h($row['page_name']) . '</span>'
-        . '<span class="small opacity-75">' . (($stat['total'] > 0) ? (int) $stat['translated'] . '/' . (int) $stat['total'] : lang('Not scanned')) . '</span>'
-        . $output_verdict
-        . '</div>'
-        . '<div class="progress mt-1" style="height: 3px;"><div class="progress-bar ' . $bar_class . '" style="width: ' . $coverage . '%"></div></div>'
-        . '</a>';
+    $output_pages .= $rail_row($url(array('page_id' => $pid, 'group' => '', 'p' => 0)), $pid === $page_id, ($row['page_home'] === 'yes') ? 'bi-house-door' : '', h($row['page_name']),
+        ($stat['total'] > 0) ? (int) $stat['translated'] . '/' . (int) $stat['total'] : h(lang('Not scanned')), pg_tr_screen_share($stat['translated'], $stat['total']), $output_verdict, $title, true);
 }
 
 if (!$pages) {
-    $output_pages .= '<div class="list-group-item fg-secondary small">' . lang('No design page yet. Pages built in the Page Design Studio can be translated.') . '</div>';
+    $output_pages .= '<p class="pg-text-meta px-3 py-2 mb-0">' . lang('No design page yet. Pages built in the Page Design Studio can be translated.') . '</p>';
 }
 
 // The texts that are not on a page: the catalog, the forms and the interface
@@ -537,9 +585,8 @@ if ($language !== '') {
         $group_total = is_array($group_stat) ? (int) $group_stat['total'] : 0;
         $group_done = is_array($group_stat) ? (int) $group_stat['translated'] : 0;
 
-        $output_groups .= '<a class="list-group-item list-group-item-action d-flex align-items-center gap-3' . (($group_key === $group) ? ' active" aria-current="page' : '') . '" href="' . h($url(array('group' => $group_key, 'page_id' => 0, 'p' => 0))) . '">'
-            . '<i class="bi ' . h($group_spec['icon']) . '" aria-hidden="true"></i><span class="flex-grow-1 text-truncate">' . h($group_spec['label']) . '</span>'
-            . '<span class="small opacity-75">' . (($group_total > 0) ? $group_done . '/' . $group_total : (in_array($group_key, array('ui', 'pictures'), true) ? lang('None yet') : lang('Not scanned'))) . '</span></a>';
+        $output_groups .= $rail_row($url(array('group' => $group_key, 'page_id' => 0, 'p' => 0)), $group_key === $group, (string) $group_spec['icon'], h($group_spec['label']),
+            ($group_total > 0) ? number_format($group_done) . '/' . number_format($group_total) : h(in_array($group_key, array('ui', 'pictures'), true) ? lang('None yet') : lang('Not scanned')), pg_tr_screen_share($group_done, $group_total));
     }
 }
 
@@ -616,7 +663,7 @@ if (($language !== '') && !$rows) {
         . (($scope_stats['total'] === 0)
             ? (($group === 'pictures')
                 ? lang('No picture yet. A picture made in the Artifact Canvas whose words are text layers is listed here once a page that shows it is saved in the Visual Page Editor or opened in another language.')
-                : lang(array('string' => 'No text has been scanned yet. Press "{var:1}": the pages are read and their texts are listed here.', 'vars' => h($update_button_label))))
+                : lang(array('string' => 'No text has been scanned yet. Press "{var:1}": the pages are read and their texts are listed here.', 'vars' => h($scan_button_label))))
             : lang('No text matches the filter.'))
         . '</div>';
 }
@@ -710,6 +757,7 @@ foreach ($glossary as $term) {
         . '<input type="hidden" name="action" value="glossary_delete"/>'
         . '<input type="hidden" name="language" value="' . h($language) . '"/>'
         . $view_fields
+        . '<input type="hidden" name="tab" value="glossary"/>'
         . '<input type="hidden" name="id" value="' . (int) $term['id'] . '"/>'
         . get_token_field()
         . '<button type="submit" class="pg-icon-button pg-icon-button-sm fg-danger" aria-label="' . h(lang('Remove')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></button>'
@@ -747,7 +795,7 @@ if ($language_row) {
         $engine_note = '<div class="alert theme-secondary py-3 small mb-5 pg-tr-chrome-note"><i class="bi bi-cpu me-1" aria-hidden="true"></i>' . lang('The browser AI translates on this computer with the browser\'s built-in model, Gemini Nano (Prompt API, a recent desktop Chrome): one text at a time, with where it stands, the glossary and the style note, keeping inline HTML. A text takes a few seconds; the first run downloads the model.') . ' ' . lang('The model does not officially read every language (Turkish, for one): look its translations over before approving them.')
             . '<div class="small mt-3">' . lang('The model\'s state is shown at this browser address:') . ' <code class="user-select-all">chrome://on-device-internals</code></div></div>';
     } elseif ($engine_key === 'manual') {
-        $engine_note = '<div class="alert theme-secondary py-3 small mb-5"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . lang(array('string' => 'This language is translated by hand: "{var:1}" scans the pages and lists the pending texts here.', 'vars' => h($update_button_label))) . '</div>';
+        $engine_note = '<div class="alert theme-secondary py-3 small mb-5"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . lang(array('string' => 'This language is translated by hand: "{var:1}" scans the pages and lists the pending texts here.', 'vars' => h($scan_button_label))) . '</div>';
     } elseif ($engine_key === 'ai') {
         $engine_note = '<div class="alert theme-secondary py-3 small mb-5"><i class="bi bi-stars me-1" aria-hidden="true"></i>' . lang('Pinegrap AI translates on the server through the site\'s own model connection, a few texts at a time with their context, the glossary and the style note. The update runs while this screen is open; the scheduled job finishes what is left.') . '</div>';
     } elseif ($engine_key === 'claude') {
@@ -792,7 +840,7 @@ if ($index_watch && $selected_page) {
 
             $output_index_note .= '</ul>';
         } elseif ($index_state !== 'own_noindex') {
-            $output_index_note .= '<div class="mt-3">' . lang('None of the texts last read from this page is pending. Run "Update this page" so they are read again, then open the page once in this language.') . '</div>';
+            $output_index_note .= '<div class="mt-3">' . h(lang(array('string' => 'None of the texts last read from this page is pending. Run "{var:1}" so they are read again, then open the page once in this language.', 'vars' => array($scan_button_label)))) . '</div>';
         }
 
         $output_index_note .= '<div class="mt-1 opacity-75">' . lang('Counted from the texts last read from this page and from what it places: shared components, menus and, on a record\'s own page, the record it shows. Form fields a widget draws count too when the page is drawn. The records a list shows, products and other texts read from the database never keep a page out: they are drawn in the source language until translated.') . '</div>';
@@ -828,6 +876,7 @@ $config = array(
     'language'   => $language,
     'source'     => $source,
     'engine'     => $engine_key,
+    'engine_ready' => (bool) $engine['ready'],
     // What the browser's language model is told before the texts: the
     // session is made in the click itself, before the first package.
     'ai_instructions' => (($engine_key === 'chrome_ai') || ($open_job && ($open_job['engine'] === 'chrome_ai'))) ? pg_tr_ai_instructions($source, $language, 'item') : '',
@@ -847,6 +896,8 @@ $config = array(
         'scanning_progress' => lang('Scanning the pages… {var} of {var2}'),
         'nothing_pending'   => lang('Every text already has a translation: nothing was sent.'),
         'pending_by_hand'   => lang('{var} text(s) are pending. Translate them below or choose an engine in the toolbar.'),
+        'scanned'           => lang('Scanned: {var} text(s) are pending.'),
+        'scanned_none'      => lang('Scanned: every text has a translation.'),
         'sent'              => lang('{var} text(s) sent to the engine.'),
         'progress'          => lang('{var} of {var2} translated'),
         'finished'          => lang('Finished: {var} translated, {var2} failed. The screen reloads.'),
@@ -890,54 +941,88 @@ echo pg_page_shell(array(
     .pg-tr-inline { font-family: var(--pg-font-mono); font-size: var(--pg-text-2); }
     .pg-tr-target { font-size: var(--pg-text-base); field-sizing: content; min-height: 3.5rem; max-height: 24rem; }
     .pg-tr-row.pg-tr-dirty .pg-tr-save { color: var(--pg-accent); box-shadow: inset 0 0 0 1px var(--pg-accent); }
-    .pg-tr-pages { max-height: calc(100vh - 16rem); overflow-y: auto; }
     .pg-tr-progress { display: none; }
     .pg-tr-progress.show { display: block; }
+    /* The head: the language menu lists each language with its share. */
+    .pg-tr-language-menu { min-width: 18rem; }
+    .pg-tr-share { min-width: 2.5rem; text-align: end; }
+    .pg-tr-automation { padding: 8px 16px; min-height: 46px; border-radius: 14px; }
+    /* The rail beside the main column: one card that stays in place while
+       the list scrolls, and scrolls on its own when it is longer than the
+       window. Under 992 px it stands above the list. */
+    .pg-tr-body { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 20px; align-items: start; }
+    .pg-tr-rail { position: sticky; top: 1rem; max-height: calc(100vh - 2rem); overflow-y: auto; padding: 10px; }
+    .pg-tr-rail-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 14px 8px 4px; color: var(--pg-fg-3); }
+    .pg-tr-rail-row { position: relative; display: flex; align-items: center; gap: 8px; min-height: 42px; padding: 6px 8px 9px; border-radius: 9px; color: var(--pg-fg-body); text-decoration: none; }
+    .pg-tr-rail-row:hover { background: var(--pg-quiet); }
+    .pg-tr-rail-row.active { background: color-mix(in srgb, var(--pg-accent) 10%, transparent); box-shadow: inset 3px 0 0 var(--pg-accent); }
+    .pg-tr-rail-row > .bi { flex: none; color: var(--pg-fg-2); }
+    .pg-tr-rail-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pg-tr-rail-count { flex: none; color: var(--pg-fg-2); font-size: var(--pg-text-meta); }
+    .pg-tr-rail-mark { flex: none; font-size: var(--pg-text-meta); }
+    .pg-tr-rail-bar { position: absolute; left: 8px; right: 8px; bottom: 3px; height: 3px; border-radius: 2px; background: var(--pg-quiet); overflow: hidden; }
+    .pg-tr-rail-bar > span { display: block; height: 100%; background: var(--pg-accent); }
+    /* The filter tiles: six of equal width; the chosen one framed in the accent. */
+    .pg-tr-tiles { --pg-figures: 6; gap: 10px; }
+    .pg-tr-tile { color: var(--pg-fg-body); text-decoration: none; border-radius: 12px; }
+    .pg-tr-tile:hover { box-shadow: inset 0 0 0 1px var(--pg-border-color); }
+    .pg-tr-tile.active { box-shadow: inset 0 0 0 1.5px var(--pg-accent); background: color-mix(in srgb, var(--pg-accent) 6%, transparent); }
+    .pg-tr-dot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--pg-tone); }
+    .pg-tr-tools { padding: 14px 18px; }
+    .pg-tr-search { flex: 0 1 26rem; min-width: 12rem; }
+    @media (max-width: 1199.98px) {
+        .pg-tr-body { grid-template-columns: 240px minmax(0, 1fr); }
+        .pg-tr-tiles { --pg-figures: 3; }
+    }
+    @media (max-width: 991.98px) {
+        .pg-tr-body { grid-template-columns: minmax(0, 1fr); }
+        .pg-tr-rail { position: static; max-height: 20rem; }
+    }
     }</style>
     ' . $liveform_messages . '
     <div id="pg_tr_app" data-config="' . h(encode_json($config)) . '">
-        <div class="pg-toolbar d-flex flex-wrap align-items-center gap-3 mb-5">' . ($targets ? '
+        <div class="pg-toolbar pg-tr-head d-flex flex-wrap align-items-center gap-3 mb-4">' . ($targets ? '
             <div class="pg-menu-wrap">
                 <button class="pg-button pg-button-fill pg-menu-caret no-popover" type="button" data-bs-toggle="menu" aria-expanded="false">
-                    <i class="bi bi-translate me-3" aria-hidden="true"></i><span' . $text_lang($language) . '>' . h(pg_tr_language_label($language)) . '</span> <span class="opacity-75 font-monospace">' . h($language) . '</span>
+                    <i class="bi bi-translate" aria-hidden="true"></i><span' . $text_lang($language) . '>' . h(pg_tr_language_label($language)) . '</span> <span class="opacity-75 font-monospace">' . h($language) . '</span>
                 </button>
-                <ul class="menu">' . $output_language_menu . '</ul>
+                <ul class="menu pg-tr-language-menu">' . $output_language_menu . '</ul>
             </div>
-            <button type="button" class="pg-button pg-button-ghost no-popover" id="pg_tr_update"' . ($engine['ready'] ? '' : ' disabled="disabled"') . ' data-bs-toggle="tooltip" title="' . h($update_button_title) . '">
-                <i class="bi bi-arrow-repeat" aria-hidden="true"></i>' . h($update_button_label) . '
+            <div class="pg-seg" role="tablist" aria-label="' . h(lang('Translations')) . '">
+                <button type="button" class="pg-seg-item' . (($tab === 'texts') ? ' active' : '') . '" role="tab" data-bs-toggle="tab" data-bs-target="#pg_tr_pane_texts" id="pg_tr_tab_texts" aria-controls="pg_tr_pane_texts" aria-selected="' . (($tab === 'texts') ? 'true' : 'false') . '" data-pg-tr-tab="texts">' . lang('Texts') . '</button>
+                <button type="button" class="pg-seg-item' . (($tab === 'activity') ? ' active' : '') . '" role="tab" data-bs-toggle="tab" data-bs-target="#pg_tr_pane_activity" id="pg_tr_tab_activity" aria-controls="pg_tr_pane_activity" aria-selected="' . (($tab === 'activity') ? 'true' : 'false') . '" data-pg-tr-tab="activity">' . lang('Activity') . (($activity_count > 0) ? ' <span class="pg-seg-count">' . $activity_count . '</span>' : '') . '</button>
+                <button type="button" class="pg-seg-item' . (($tab === 'glossary') ? ' active' : '') . '" role="tab" data-bs-toggle="tab" data-bs-target="#pg_tr_pane_glossary" id="pg_tr_tab_glossary" aria-controls="pg_tr_pane_glossary" aria-selected="' . (($tab === 'glossary') ? 'true' : 'false') . '" data-pg-tr-tab="glossary">' . lang('Glossary') . (count($glossary) ? ' <span class="pg-seg-count">' . count($glossary) . '</span>' : '') . '</button>
+            </div>
+            <span class="pg-toolbar-grow"></span>' . (($engine_key !== 'manual') ? '
+            <button type="button" class="pg-button pg-button-fill no-popover" id="pg_tr_update"' . ($engine['ready'] ? '' : ' disabled="disabled"') . ' data-bs-toggle="tooltip" title="' . h($update_button_title) . '">
+                <i class="bi bi-play-fill" aria-hidden="true"></i>' . h($update_button_label) . ' <span class="pg-count pg-tr-pending-count">' . number_format((int) $scope_stats['pending']) . '</span>
+            </button>' : '') . '
+            <button type="button" class="pg-button ' . (($engine_key === 'manual') ? 'pg-button-fill' : 'pg-button-quiet') . ' no-popover" id="pg_tr_scan" data-bs-toggle="tooltip" title="' . h($scan_button_title) . '">
+                <i class="bi bi-arrow-repeat" aria-hidden="true"></i>' . h($scan_button_label) . '
             </button>
-            <label class="visually-hidden" for="pg_tr_engine">' . lang('Translation engine') . '</label>
-            <select class="form-control form-control-sm w-auto rounded-pill no-popover" id="pg_tr_engine" data-bs-toggle="tooltip" title="' . h(lang(array('string' => '{var:1} → {var:2} · engine', 'vars' => array($source, $language)))) . '">' . $output_engine_options . '</select>
-            <button type="button" class="pg-button pg-button-ghost no-popover' . (($review_all_shown > 0) ? '' : ' d-none') . '" id="pg_tr_review_all" data-bs-toggle="tooltip" title="' . h(lang('Mark every machine translation here as reviewed in one go')) . '">
-                <i class="bi bi-check2-all" aria-hidden="true"></i>' . lang('Approve all') . ' <span class="opacity-75 pg-tr-review-all-shown">' . (int) $review_all_shown . '</span>
-            </button>
-            <div class="pg-toolbar-grow pg-chips">' . $output_chips . '</div>
-            <form class="pg-toolbar-search" method="get" action="' . h($self) . '" role="search">
-                <input type="hidden" name="language" value="' . h($language) . '"/>
-                <input type="hidden" name="page_id" value="' . (int) $page_id . '"/>
-                <input type="hidden" name="group" value="' . h($group) . '"/>
-                <input type="hidden" name="filter" value="' . h($filter) . '"/>
-                <label class="form-control form-control-sm form-adorn rounded-pill">
-                    <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
-                    <input type="search" name="q" class="form-ghost" value="' . h($search) . '" placeholder="' . h(lang('Search in the texts')) . '" aria-label="' . h(lang('Search in the texts')) . '" autocomplete="off"/>
-                </label>
-            </form>
             <div class="pg-menu-wrap">
-                <button class="pg-icon-button no-popover" type="button" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false" aria-label="' . h(lang('More')) . '"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
+                <button class="pg-icon-button no-popover" type="button" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false" aria-label="' . h(lang('More')) . '"><i class="bi bi-three-dots" aria-hidden="true"></i></button>
                 <ul class="menu pg-menu-end">
                     <li><a class="menu-item" href="' . h($export_base) . '"><i class="bi bi-download me-3" aria-hidden="true"></i>' . lang('Export CSV') . '</a></li>
                     <li><a class="menu-item" href="' . h($export_base . '&pending=1') . '"><i class="bi bi-download me-3" aria-hidden="true"></i>' . lang('Export pending texts as CSV') . '</a></li>
                     <li>' . pg_list_excel_link($export_base, 'menu-item') . '</li>
                     <li><button type="button" class="menu-item" data-bs-toggle="dialog" data-bs-target="#pg_tr_import"><i class="bi bi-upload me-3" aria-hidden="true"></i>' . lang('Import CSV') . '</button></li>
-                    <li><button type="button" class="menu-item" data-bs-toggle="dialog" data-bs-target="#pg_tr_clear_modal"' . (($clear_all_count > 0) ? '' : ' disabled="disabled"') . '><i class="bi bi-eraser me-3" aria-hidden="true"></i>' . lang('Clear translations') . '</button></li>
+                    <li><hr class="menu-divider"></li>
+                    <li><button type="button" class="menu-item fg-danger" data-bs-toggle="dialog" data-bs-target="#pg_tr_clear_modal"' . (($clear_all_count > 0) ? '' : ' disabled="disabled"') . '><i class="bi bi-eraser me-3" aria-hidden="true"></i>' . lang('Clear translations') . '</button></li>
                     <li><hr class="menu-divider"></li>
                     <li><a class="menu-item" href="' . h(pg_settings_link('languages', 'pgset-languages')) . '"><i class="bi bi-gear me-3" aria-hidden="true"></i>' . lang('Languages and Translation') . '</a></li>
                 </ul>
             </div>' : '
             <a class="pg-button pg-button-fill" href="' . h(pg_settings_link('languages', 'pgset-languages')) . '"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . lang('Add a language') . '</a>
-            <span class="fg-secondary small">' . lang('No target language yet. Add one in Settings > Languages and Translation; the pages of the designs are then served under its address prefix as well.') . '</span>') . '
+            <span class="pg-text-2">' . lang('No target language yet. Add one in Settings > Languages and Translation; the pages of the designs are then served under its address prefix as well.') . '</span>') . '
         </div>
         ' . ($targets ? '
+        <div class="pg-card pg-tr-automation d-flex flex-wrap align-items-center gap-3 mb-4">
+            <i class="bi bi-lightning-charge" aria-hidden="true"></i>
+            <span class="fw-medium">' . lang('Automation') . '</span>
+            <label class="pg-text-2 mb-0" for="pg_tr_engine">' . lang('Translation engine') . '</label>
+            <select class="form-control form-control-sm w-auto rounded-pill no-popover" id="pg_tr_engine" data-bs-toggle="tooltip" title="' . h(lang(array('string' => '{var:1} → {var:2} · engine', 'vars' => array($source, $language)))) . '">' . $output_engine_options . '</select>
+        </div>
         ' . $engine_note . '
         <div class="pg-tr-progress alert theme-info py-3 mb-5" id="pg_tr_progress" role="status">
             <div class="d-flex align-items-center gap-5">
@@ -949,44 +1034,70 @@ echo pg_page_shell(array(
                 <button type="button" class="pg-button pg-button-quiet pg-button-sm pg-tr-cancel">' . lang('Stop') . '</button>
             </div>
         </div>
-        <div class="row g-5">
-            <div class="col-12 lg:col-4 2xl:col-3">
-                <div class="card mb-5">
-                    <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center gap-3">
-                        <h2 class="pg-title-section mb-0">' . lang('Pages') . '</h2>
-                        <span class="pg-text-2"><span class="pg-tr-reviewed-total">' . (int) $site_stats['reviewed'] . '</span> ' . lang('reviewed') . '</span>
-                    </div>
-                    <div class="list-group list-group-flush pg-tr-pages">' . $output_pages . '</div>
-                </div>' . (($output_groups !== '') ? '
-                <div class="card mb-5">
-                    <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Other texts') . '</h2>
-                    <div class="list-group list-group-flush">' . $output_groups . '</div>
-                </div>' : '') . '
-                <div class="card mb-5">
-                    <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Recent updates') . '</h2>
-                    <div class="card-body py-3" id="pg_tr_jobs">' . $output_jobs . '</div>
+        <div class="tab-content">
+        <div class="tab-pane fade' . (($tab === 'texts') ? ' show active' : '') . '" id="pg_tr_pane_texts" role="tabpanel" aria-labelledby="pg_tr_tab_texts">
+        <div class="pg-tr-body">
+            <nav class="pg-card pg-tr-rail" aria-label="' . h(lang('Pages')) . '">
+                <label class="form-control form-control-sm form-adorn rounded-pill mb-3">
+                    <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
+                    <input type="search" class="form-ghost" id="pg_tr_find_page" placeholder="' . h(lang('Find a page')) . '" aria-label="' . h(lang('Find a page')) . '" autocomplete="off"/>
+                </label>
+                ' . $output_all_row . '
+                <div class="pg-tr-rail-head"><h2 class="pg-text-meta fw-medium mb-0">' . lang('Pages') . '</h2><span><span class="pg-tr-reviewed-total">' . (int) $site_stats['reviewed'] . '</span> ' . lang('reviewed') . '</span></div>
+                <div class="pg-tr-rail-pages">' . $output_pages . '</div>
+                <p class="pg-text-meta px-3 py-2 mb-0" id="pg_tr_find_none" hidden>' . lang('No page matches the search.') . '</p>' . (($output_groups !== '') ? '
+                <div class="pg-tr-rail-head"><h2 class="pg-text-meta fw-medium mb-0">' . lang('Other texts') . '</h2></div>
+                ' . $output_groups : '') . '
+            </nav>
+            <div class="pg-tr-main min-w-0">
+                <div class="d-flex flex-wrap align-items-baseline gap-3 mb-3">
+                    <h2 class="pg-title-section mb-0">' . ($selected_page ? h($selected_page['page_name']) : (($group !== '') ? h($owner_groups[$group]['label']) : lang('All texts'))) . '</h2>
+                    <span class="pg-text-2">' . h(lang(array('string' => '{var:1} text(s)', 'vars' => array($total_rows)))) . '</span>' . ($selected_page ? '
+                    <a class="ms-auto pg-text-2" href="' . h(PATH . pg_tr_prefix($language) . '/' . (($selected_page['page_home'] === 'yes') ? '' : encode_url_path($selected_page['page_name']))) . '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> ' . lang('Open the page') . '</a>' : '') . '
                 </div>
-                <div class="card mb-5" id="pg_tr_glossary">
-                    <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center gap-3">
-                        <h2 class="pg-title-section mb-0">' . lang('Glossary') . '</h2>
-                        <button type="button" class="pg-button pg-button-quiet pg-button-sm no-popover pg-tr-term-add" data-bs-toggle="dialog" data-bs-target="#pg_tr_glossary_modal"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . lang('Add a term') . '</button>
+                <nav class="pg-figures pg-tr-tiles" aria-label="' . h(lang('Filter')) . '">' . $output_tiles . '</nav>
+                <div class="pg-card mb-5">
+                    <div class="pg-tr-tools d-flex flex-wrap align-items-center gap-3">
+                        <form class="pg-tr-search" method="get" action="' . h($self) . '" role="search">
+                            <input type="hidden" name="language" value="' . h($language) . '"/>
+                            <input type="hidden" name="page_id" value="' . (int) $page_id . '"/>
+                            <input type="hidden" name="group" value="' . h($group) . '"/>
+                            <input type="hidden" name="filter" value="' . h($filter) . '"/>
+                            <label class="form-control form-control-sm form-adorn rounded-pill">
+                                <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
+                                <input type="search" name="q" class="form-ghost" id="pg_tr_search" value="' . h($search) . '" placeholder="' . h(lang('Search in the texts')) . '" aria-label="' . h(lang('Search in the texts')) . '" aria-keyshortcuts="/" autocomplete="off"/>
+                            </label>
+                        </form>
+                        <span class="pg-toolbar-grow"></span>' . (($picture_queue_count > 0) ? '
+                        <a class="pg-button pg-button-quiet pg-button-sm" href="' . h($url(array('draw' => 1, 'p' => 0))) . '"><i class="bi bi-brush" aria-hidden="true"></i>' . lang('Draw the waiting pictures') . ' <span class="pg-count">' . (int) $picture_queue_count . '</span></a>' : '') . '
+                        <button type="button" class="pg-button pg-button-quiet no-popover' . (($review_all_shown > 0) ? '' : ' d-none') . '" id="pg_tr_review_all" data-bs-toggle="tooltip" title="' . h(lang('Mark every machine translation here as reviewed in one go')) . '">
+                            <i class="bi bi-check2-all" aria-hidden="true"></i>' . lang('Approve all') . ' <span class="pg-count pg-tr-review-all-shown">' . (int) $review_all_shown . '</span>
+                        </button>
                     </div>
-                    <div class="card-body py-3">' . $output_glossary . '</div>
-                </div>
-            </div>
-            <div class="col-12 lg:col-8 2xl:col-9">
-                <div class="card mb-5">
-                    <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center gap-3">
-                        <h2 class="pg-title-section mb-0">' . ($selected_page ? h($selected_page['page_name']) : (($group !== '') ? h($owner_groups[$group]['label']) : lang('All texts'))) . '</h2>
-                        <span class="pg-text-2">' . h(lang(array('string' => '{var:1} text(s)', 'vars' => array($total_rows)))) . ($selected_page ? ' · <a href="' . h(PATH . pg_tr_prefix($language) . '/' . (($selected_page['page_home'] === 'yes') ? '' : encode_url_path($selected_page['page_name']))) . '" target="_blank" rel="noopener">' . lang('Open the page') . ' <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>' : '') . '</span>
-                    </div>
-                    <div class="card-body pt-0">' . (($group === 'ui') ? '<div class="small fg-secondary py-3 border-bottom"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . lang('The texts of the cookie window: the notice, its settings and what each cookie is for. This language has no language file, so the window is translated here; until a text is translated, the English wording is shown. The rest of the software\'s wording is not translated here.') . '</div>' : '')
+                    <div class="card-body pt-0">' . $output_index_note . (($group === 'ui') ? '<div class="small fg-secondary py-3 border-bottom"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . lang('The texts of the cookie window: the notice, its settings and what each cookie is for. This language has no language file, so the window is translated here; until a text is translated, the English wording is shown. The rest of the software\'s wording is not translated here.') . '</div>' : '')
                         . (($group === 'pictures') ? '<div class="small fg-secondary py-3 border-bottom"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . lang('The texts of pictures made in the Artifact Canvas whose words are text layers. A picture is listed once a page that shows it is saved in the Visual Page Editor or opened in another language; a photo or an uploaded picture whose words are in its pixels is not. Once all of a language\'s texts are translated, its picture is drawn by itself: by an open panel, or, with nobody in the panel, by the server where it can. "Draw the waiting pictures" draws them now.') . '</div>' : '')
-                        . ($picture_queue_count ? '<div class="d-flex justify-content-end py-3 border-bottom"><a class="pg-button pg-button-quiet pg-button-sm" href="' . h($url(array('draw' => 1, 'p' => 0))) . '"><i class="bi bi-brush" aria-hidden="true"></i>' . lang('Draw the waiting pictures') . ' <span class="pg-count">' . (int) $picture_queue_count . '</span></a></div>' : '') . $output_index_note . $output_bulk . $output_rows . '
+                        . $output_bulk . $output_rows . '
                         ' . ($output_pagination !== '' ? '<div class="d-flex justify-content-center pt-5">' . $output_pagination . '</div>' : '') . '
                     </div>
                 </div>
             </div>
+        </div>
+        </div>
+        <div class="tab-pane fade' . (($tab === 'activity') ? ' show active' : '') . '" id="pg_tr_pane_activity" role="tabpanel" aria-labelledby="pg_tr_tab_activity">
+            <section class="pg-card pg-tr-pane-card mb-5" aria-labelledby="pg_tr_jobs_title">
+                <h2 class="card-header bg-reset border-0 pg-title-section" id="pg_tr_jobs_title">' . lang('Recent updates') . '</h2>
+                <div class="card-body py-3" id="pg_tr_jobs">' . $output_jobs . '</div>
+            </section>
+        </div>
+        <div class="tab-pane fade' . (($tab === 'glossary') ? ' show active' : '') . '" id="pg_tr_pane_glossary" role="tabpanel" aria-labelledby="pg_tr_tab_glossary">
+            <section class="pg-card pg-tr-pane-card mb-5" id="pg_tr_glossary" aria-labelledby="pg_tr_glossary_title">
+                <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center gap-3">
+                    <h2 class="pg-title-section mb-0" id="pg_tr_glossary_title">' . lang('Glossary') . '</h2>
+                    <button type="button" class="pg-button pg-button-quiet pg-button-sm no-popover pg-tr-term-add" data-bs-toggle="dialog" data-bs-target="#pg_tr_glossary_modal"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . lang('Add a term') . '</button>
+                </div>
+                <div class="card-body py-3">' . $output_glossary . '</div>
+            </section>
+        </div>
         </div>
         <dialog class="dialog" id="pg_tr_import" aria-labelledby="pg_tr_import_title">
                 <form class="d-contents" method="post" action="translations_action.php" enctype="multipart/form-data">
@@ -1072,6 +1183,7 @@ echo pg_page_shell(array(
                     <input type="hidden" name="action" value="glossary_save"/>
                     <input type="hidden" name="language" value="' . h($language) . '"/>
                     ' . $view_fields . '
+                    <input type="hidden" name="tab" value="glossary"/>
                     <input type="hidden" name="id" value="' . ($glossary_back ? (int) $glossary_back['id'] : 0) . '"/>
                     ' . get_token_field() . '
                     <div class="dialog-header">

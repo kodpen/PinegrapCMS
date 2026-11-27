@@ -57,6 +57,6 @@ function test_translations_screen_language_names()
 {
 	$source = translations_screen_language_source();
 
-	pg_assert_contains('<span\' . $text_lang($code) . \'>\' . h(pg_tr_language_label($code)) . \'</span>', $source, 'switcher names in their own language');
+	pg_assert_contains('<span class="flex-grow-1"\' . $text_lang($code) . \'>\' . h(pg_tr_language_label($code)) . \'</span>', $source, 'switcher names in their own language');
 	pg_assert_contains('<span\' . $text_lang($language) . \'>\' . h(pg_tr_language_label($language)) . \'</span>', $source, 'current-language button name in its own language');
 }

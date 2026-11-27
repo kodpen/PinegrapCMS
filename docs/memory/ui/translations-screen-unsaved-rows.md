@@ -11,7 +11,7 @@ It saves the typed text with the new status through `saveRow(row, button, status
 Before, the button marked the stored text and cleared the unsaved mark: the box kept the typed words, the next load brought the old text back, now reviewed. (PR #10372)
 
 ## Does the screen ask before it is left?
-Yes, while any row is unsaved: a `beforeunload` listener in `translations.js` (the browser's own question, no `lang()` key; the panel rule is `unsaved-changes-guard.md`). It covers the filter chips, page links, the language switch, closing the tab and the screen's own reloads after a job or a dialog post.
+Yes, while any row is unsaved: a `beforeunload` listener in `translations.js` (the browser's own question, no `lang()` key; the panel rule is `unsaved-changes-guard.md`). It covers the filter tiles, the rail's links, the language switch, closing the tab and the screen's own reloads after a job or a dialog post.
 
 ## Where is it tested?
 `tests/translations_screen_faults_test.php` (source checks; the clicks need a browser).

@@ -11903,6 +11903,7 @@
     "Transition: {kind} · {time}": "Geçiş: {kind} · {time}",
     "Translate": "Çeviri",
     "Translate on save": "Kaydedince çevir",
+    "Translate pending": "Bekleyenleri çevir",
     "Translated": "Çevrildi",
     "Translated from {var:1}": "Çevrildi (kaynak dil: {var:1})",
     "Translated pages ({var:1})": "Çevrilmiş sayfalar ({var:1})",

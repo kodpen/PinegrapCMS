@@ -146,10 +146,13 @@
 
     // ── the editor rows ──
 
-    // A number drawn on the server, moved by a row's change of state.
+    // A number drawn on the server, moved by a row's change of state. The
+    // server writes thousands with a comma (number_format()); it is read
+    // without and written back with it.
     function bump(el, delta) {
         if (el && delta) {
-            el.textContent = Math.max(0, (parseInt(el.textContent, 10) || 0) + delta);
+            var value = Math.max(0, (parseInt(el.textContent.replace(/[^0-9]/g, ''), 10) || 0) + delta);
+            el.textContent = String(value).replace(/\B(?=(\d{3})+$)/g, ',');
         }
     }
 
@@ -162,9 +165,11 @@
             ['pending', 'machine', 'reviewed'].forEach(function (key) {
                 bump(document.querySelector('.pg-tr-chip-count[data-state="' + key + '"]'), ((after === key) ? 1 : 0) - ((before === key) ? 1 : 0));
             });
+            bump(document.querySelector('.pg-tr-pending-count'), ((after === 'pending') ? 1 : 0) - ((before === 'pending') ? 1 : 0));
             bump(document.querySelector('.pg-tr-all-done'), ((after !== 'pending') ? 1 : 0) - ((before !== 'pending') ? 1 : 0));
             bump(document.querySelector('.pg-tr-reviewed-total'), ((after === 'reviewed') ? 1 : 0) - ((before === 'reviewed') ? 1 : 0));
         }
+        bump(document.querySelector('.pg-tr-chip-count[data-state="suspicious"]'), (flagged ? 1 : 0) - (wasFlagged ? 1 : 0));
         countReviewAll(((after === 'machine') && !flagged ? 1 : 0) - ((before === 'machine') && !wasFlagged ? 1 : 0),
             ((after === 'machine') && flagged ? 1 : 0) - ((before === 'machine') && wasFlagged ? 1 : 0));
         countClear(before, after);
@@ -972,6 +977,119 @@
             });
         });
     }
+
+    // ── "Scan for new texts": the scope is read again, in turns, and what is
+    //    new is listed as pending; nothing goes to an engine (the update
+    //    action with the engine "By hand" opens no job) ──
+
+    var scanButton = document.getElementById('pg_tr_scan');
+
+    if (scanButton) {
+        scanButton.addEventListener('click', function () {
+            if (running || preparing) {
+                return;
+            }
+
+            scanButton.disabled = true;
+
+            if (updateButton) {
+                updateButton.disabled = true;
+            }
+
+            showProgress(text('scanning'), 0, 1);
+
+            var scan = function (from) {
+                return call({ action: 'update', scope: config.scope, engine: 'manual', from: from }).then(function (data) {
+                    if (data.extracting) {
+                        showProgress(text('scanning_progress', data.next, data.total), data.next, data.total);
+                        return scan(data.next);
+                    }
+                    return data;
+                });
+            };
+
+            scan(0).then(function (data) {
+                var message = data.pending ? text('scanned', data.pending) : text('scanned_none');
+
+                hideProgress();
+                toast(message, 'info');
+                afterReload(message, 'info');
+                window.setTimeout(function () { window.location.reload(); }, 800);
+            }).catch(function (error) {
+                hideProgress();
+                toast(error.message, 'error');
+                scanButton.disabled = false;
+
+                if (updateButton && (config.engine_ready !== false)) {
+                    updateButton.disabled = false;
+                }
+            });
+        });
+    }
+
+    // ── the frame: "/" puts the cursor in "Search in the texts", "Find a
+    //    page" narrows the rail's pages as it is typed, and the address
+    //    follows the tab chosen so a reload or a shared link opens it ──
+
+    var searchBox = document.getElementById('pg_tr_search');
+
+    document.addEventListener('keydown', function (event) {
+        var target = event.target;
+
+        if ((event.key !== '/') || event.ctrlKey || event.metaKey || event.altKey || !searchBox || !searchBox.offsetParent) {
+            return;
+        }
+
+        if (target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) {
+            return;
+        }
+
+        event.preventDefault();
+        searchBox.focus();
+        searchBox.select();
+    });
+
+    var findPage = document.getElementById('pg_tr_find_page');
+
+    if (findPage) {
+        var findNone = document.getElementById('pg_tr_find_none');
+
+        findPage.addEventListener('input', function () {
+            var needle = findPage.value.trim().toLocaleLowerCase();
+            var shown = 0;
+
+            Array.prototype.forEach.call(app.querySelectorAll('[data-pg-tr-page]'), function (row) {
+                var name = row.querySelector('.pg-tr-rail-name');
+                var match = (needle === '') || ((name ? ((name.getAttribute('title') || '') + ' ' + name.textContent) : '').toLocaleLowerCase().indexOf(needle) !== -1);
+
+                row.hidden = !match;
+                shown += match ? 1 : 0;
+            });
+
+            if (findNone) {
+                findNone.hidden = (shown > 0) || (needle === '');
+            }
+        });
+    }
+
+    app.addEventListener('click', function (event) {
+        var tab = event.target.closest ? event.target.closest('[data-pg-tr-tab]') : null;
+
+        if (!tab || !window.history || !window.history.replaceState) {
+            return;
+        }
+
+        var address = new URL(window.location.href);
+        var name = tab.getAttribute('data-pg-tr-tab');
+
+        if (name === 'texts') {
+            address.searchParams.delete('tab');
+        } else {
+            address.searchParams.set('tab', name);
+        }
+
+        window.history.replaceState(window.history.state, '', address.toString());
+    });
 
     if (cancelButton) {
         cancelButton.addEventListener('click', function () {
