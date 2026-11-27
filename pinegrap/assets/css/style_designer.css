@@ -9554,6 +9554,10 @@ button.sd-proto-badge-empty:hover, button.sd-proto-badge-empty:focus-visible, bu
     text-align: start; font-size: .78rem; background: var(--sd-accent-soft); color: var(--sd-accent); }
 .sd-phone-line > span:nth-child(2) { flex: 1; }
 .sd-phone-warn { background: var(--sd-warning-soft); color: var(--sd-warning); }
+/* A long sentence with a long button: the button takes its own row under the text. */
+.sd-phone-line-wrap { flex-wrap: wrap; }
+.sd-phone-line-wrap > span:nth-child(2) { flex-basis: calc(100% - 32px); }
+.sd-phone-line-wrap > button { margin-inline-start: 24px; }
 .sd-phone-foot { gap: 8px; }
 .sd-phone-note { font-size: .78rem; color: var(--sd-text-muted); }
 .sd-phone-narrow.sd-phone-dialog { position: fixed; inset: 0; width: 100%; max-width: none; height: 100%; max-height: none; margin: 0; border-radius: 0; }

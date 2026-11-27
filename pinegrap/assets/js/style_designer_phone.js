@@ -132,7 +132,7 @@ StyleDesigner.definePart('phone', function (K) {
                 esc(_sdT('“{var}” has not been saved yet. Save it and it joins the phone\'s page list.', host.page.name || _sdT('New page'))) + '</span></p>';
         }
         if (kind === 'start' || kind === 'open') {
-            return '<p class="sd-phone-line sd-phone-warn"><span class="bi bi-exclamation-triangle" aria-hidden="true"></span><span>' +
+            return '<p class="sd-phone-line sd-phone-warn sd-phone-line-wrap"><span class="bi bi-exclamation-triangle" aria-hidden="true"></span><span>' +
                 esc(kind === 'start'
                     ? _sdT('The phone shows saved drafts, not the changes on this page on the site. Save them as a new version to see them there; the page on the site stays as it is.')
                     : _sdT('The phone shows saved drafts, not the changes on this page on the site. This page has a new version: open it to see that draft on the phone.')) + '</span>' +
@@ -204,7 +204,10 @@ StyleDesigner.definePart('phone', function (K) {
                 '<p class="sd-phone-head">' + esc(_phNarrow() ? _sdT('Point another phone\'s camera here') : _sdT('Point your phone\'s camera here')) + '</p>' +
                 '<p class="sd-phone-sub">' + _sdT('Opens {var} on the site', '<b>' + esc(res.start_page || '') + '</b>') + '</p>' +
                 '<p class="sd-phone-line"><span class="bi bi-info-circle" aria-hidden="true"></span><span>' +
-                esc(_sdT('This design has no draft pages, so the code opens the live page as visitors see it.')) + '</span></p>';
+                esc(_sdT('This design has no draft pages, so the code opens the live page as visitors see it.')) + '</span></p>' +
+                // A live tab's changes are not on the phone either way: they
+                // are offered their new version here too.
+                (/^(start|open)$/.test(_phInfoKind(state.host)) ? _phInfoLine() : '');
             footHtml = _phFoot(true, true);
         }
         body.innerHTML = html;

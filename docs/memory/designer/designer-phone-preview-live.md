@@ -17,6 +17,7 @@ module: prototype_phone
 
 ## How does the window draw it?
 - `_phView()` gives `live` for an answer with `live`, `url` and `qr` (else `failed`). It draws the code, "Point your phone's camera here", "Opens <page> on the site" and one line "This design has no draft pages, so the code opens the live page as visitors see it."
+- A live tab with its own unsaved changes gets the new version's line and button under that line (`designer-new-version-phone-compare.md`); no other save line.
 - Foot: "Copy link" (the address), "Open here" below 768 px; `_phFoot(on, live)` leaves out "End now". `_phTick()` does nothing outside `ready`, so nothing counts down.
 - The core's `_sdPhoneHost()` sends the id of any saved page, draft or on the site; the server takes a draft link's start only from a draft (`pg_proto_phone_plan()` falls back to the first draft).
 

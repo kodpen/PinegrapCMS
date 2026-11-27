@@ -172,7 +172,8 @@ function test_designer_phone_window_draws_the_live_page_with_no_end_or_countdown
 	$branch = ($next === false) ? substr($draw, $at) : substr($draw, $at, $next - $at);
 	pg_assert_contains('opens the live page', $branch, 'the window says the code opens the live page');
 	pg_assert_false(strpos($branch, '_phStartsLine'), 'no countdown');
-	pg_assert_false(strpos($branch, '_phInfoLine'), 'no line about saves');
+	pg_assert_same(1, substr_count($branch, '_phInfoLine'), 'no line about saves but the new version\'s');
+	pg_assert_contains('/^(start|open)$/.test(_phInfoKind(state.host)) ? _phInfoLine()', $branch, 'the info line only for a live tab\'s new version');
 }
 
 function test_designer_phone_window_is_a_part_opened_from_the_preview_menu()
@@ -217,6 +218,7 @@ function test_designer_phone_window_offers_a_new_version_on_a_live_tab_with_chan
 	pg_assert_contains("_sdT('Save as a new version')", $js, 'the button starts a new version');
 	pg_assert_contains("_sdT('Open the new version')", $js, 'or opens the one the page has');
 	pg_assert_contains('pgUI.dialog.hide(state.el)).then(', $js, 'the window closes before the version is started');
+	pg_assert_contains("(/^(start|open)$/.test(_phInfoKind(state.host)) ? _phInfoLine() : '')", $js, 'a design with no draft offers it under the live page\'s code too');
 
 	$core = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$host = substr($core, strpos($core, 'function _sdPhoneHost()'), 1600);
