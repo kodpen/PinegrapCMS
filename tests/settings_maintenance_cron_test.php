@@ -23,6 +23,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/settings/drawer.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/maintenance_cron_list.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/settings/search.php');
 
 function test_settings_maintenance_cron_command()
 {
@@ -112,6 +113,22 @@ function test_settings_maintenance_cron_list_markup()
 	pg_assert_contains('disabled in config.php', $html, 'a job config.php has switched off says so');
 	pg_assert_contains('data-bs-target="#pgset-cron-seo-score-job-guide"', $html, 'How to schedule it opens its drawer');
 	pg_assert_same(false, strpos(pg_maintenance_cron_list_html($rows, true), 'data-pg-cron-switch class="d-none'), 'shown while the master is on');
+}
+
+function test_settings_maintenance_cron_job_names_are_searched()
+{
+	// The settings search reads a card's labels: before the list, each job's
+	// switch had its name as a label, and a job's name found Scheduled jobs.
+	$rows = array(
+		'seo_score_job' => array('name' => 'SEO scores', 'line' => 'Line.', 'schedule' => 'Recommended: once a day', 'on' => true, 'active' => true),
+		'email_campaign_job' => array('name' => 'Email campaigns', 'line' => 'Line.', 'schedule' => 'Recommended: every 5 minutes', 'on' => false, 'active' => false),
+	);
+
+	$html = '<div id="pgset-cron" class="pg-set-card">' . pg_maintenance_cron_list_html($rows, true) . '</div>';
+	$labels = pg_settings_card_labels($html, array('pgset-cron'));
+
+	pg_assert_same(array('SEO scores', 'Email campaigns'), $labels['pgset-cron'], 'every job\'s name, without the config.php note');
+	pg_assert_contains('<label class="pg-field-label mb-0" for="job_dispatch_job_seo_score_job" id="job_dispatch_job_seo_score_job_name">SEO scores</label>', $html, 'the name labels its switch');
 }
 
 function test_settings_maintenance_cron_drawer()
