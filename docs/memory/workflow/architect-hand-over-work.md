@@ -4,7 +4,7 @@ description: Hand-over of the architect session of 2026-11-24 to 26, the work in
 ---
 
 ## Who works now?
-- Owner (2026-11-27, messages 14812, 14844, 15067): k3 works at the usual limits, k2 has ended; with no work left, one short hunt round, then the night ends as in `bug-hunt-areas-6.md`.
+- Owner (2026-11-27, messages 14812, 15067, 15232): k3 works at the usual limits, k2 has ended; with no work left, 15 hunts, then the night ends: `bug-hunt-areas-7.md`.
 
 ## What is still to do with the sheets?
 - No sheet is left to draw; what a sheet holds is in `designer-sheet-rules.md`.
