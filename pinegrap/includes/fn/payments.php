@@ -434,7 +434,9 @@ function pg_payment_input_name($key, $field)
  * A field: name (lowercase, a letter first), type (text, secret, select,
  * switch), label (already translated), help, required (when the driver is
  * the active one), options (select: value => label), default, max_length
- * (text and secret, 1-1000, 255 when not given).
+ * (text and secret, 1-1000, 255 when not given), group (a heading drawn
+ * before the field), unavailable (switch: why it cannot be turned on now; it
+ * is drawn off and stored off).
  *
  * @param mixed $fields what pg_payment_<key>_fields() returned
  * @return array list
@@ -501,6 +503,8 @@ function pg_payment_fields_normalize($fields)
             'options'    => $options,
             'default'    => ($type === 'secret') ? '' : $default,
             'max_length' => min(1000, max(1, $max_length)),
+            'group'      => (isset($field['group']) && is_string($field['group'])) ? trim($field['group']) : '',
+            'unavailable' => (($type === 'switch') && isset($field['unavailable']) && is_string($field['unavailable'])) ? trim($field['unavailable']) : '',
         );
 
         $names[$name] = true;
@@ -683,7 +687,8 @@ function pg_payment_settings_decide($definition, $fields, $post, $stored, $selec
                 break;
 
             case 'switch':
-                $values[$name] = ($raw === '1') ? '1' : '';
+                // A switch that cannot be on now is stored off, whatever came.
+                $values[$name] = (($raw === '1') && empty($field['unavailable'])) ? '1' : '';
 
                 break;
 
@@ -924,7 +929,9 @@ function pg_payment_settings_fields_html($definition, $fields, $settings, $with_
 }
 
 /**
- * A driver's inputs, one per field: a secret is never drawn back.
+ * A driver's inputs, one per field: a secret is never drawn back; a switch
+ * that cannot be on now is drawn off and disabled, its reason in place of its
+ * help.
  *
  * @param string $key
  * @param array  $fields   pg_payment_fields()
@@ -934,19 +941,30 @@ function pg_payment_settings_fields_html($definition, $fields, $settings, $with_
 function pg_payment_settings_inputs_html($key, $fields, $settings)
 {
     $html = '';
+    $group = '';
 
     foreach ($fields as $field) {
         $id = pg_payment_input_name($key, $field['name']);
         $value = isset($settings['values'][$field['name']]) ? $settings['values'][$field['name']] : $field['default'];
-        $help = ($field['help'] !== '') ? '
-                                                                                            <div class="form-text">' . h($field['help']) . '</div>' : '';
+        $unavailable = isset($field['unavailable']) ? $field['unavailable'] : '';
+        $text = ($unavailable !== '') ? $unavailable : $field['help'];
+        $help = ($text !== '') ? '
+                                                                                            <div class="form-text">' . h($text) . '</div>' : '';
+
+        if (isset($field['group']) && ($field['group'] !== '') && ($field['group'] !== $group)) {
+            $group = $field['group'];
+            $html .= '
+                                                                                        <div class="col-12"><h3 class="pg-group-label mb-0">' . h($group) . '</h3></div>';
+        }
 
         switch ($field['type']) {
             case 'switch':
+                $state = ($unavailable !== '') ? ' disabled="disabled"' : (($value === '1') ? ' checked="checked"' : '');
+
                 $html .= '
                                                                                         <div class="col-12">
                                                                                             <div class="d-flex align-items-center gap-5">
-                                                                                                <input type="checkbox" class="pg-switch" value="1"' . (($value === '1') ? ' checked="checked"' : '') . ' id="' . h($id) . '" name="' . h($id) . '"/>
+                                                                                                <input type="checkbox" class="pg-switch" value="1"' . $state . ' id="' . h($id) . '" name="' . h($id) . '"/>
                                                                                                 <label class="pg-text-2" for="' . h($id) . '">' . h($field['label']) . '</label>
                                                                                             </div>' . $help . '
                                                                                         </div>';

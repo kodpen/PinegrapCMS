@@ -3085,6 +3085,7 @@
     "Not now": "Şimdi değil",
     "Not obtained": "Alınmadı",
     "Not offered": "Sunulmuyor",
+    "Not offered while Transaction type is Authorize.": "İşlem türü Yetkilendir iken sunulmaz.",
     "Not on a no-drop ride: the group waits at the top of every climb. Each ride on the Group Rides page says its pace and whether it is a no-drop ride.": "Kimse geride kalmaz sürüşlerinde kalmazsınız: grup her tırmanışın tepesinde bekler. Grup Sürüşleri sayfasındaki her sürüş temposunu ve kimsenin geride kalmayacağı bir sürüş olup olmadığını söyler.",
     "Not on our own listings. On a home we find for you elsewhere, the fee is agreed in writing before the first viewing.": "Kendi ilanlarımızda ödemez. Sizin için başka yerde bulduğumuz bir evde ücret ilk gezmeden önce yazılı olarak kararlaştırılır.",
     "Not on our shelves? We order it for you, usually within three days.": "Raflarımızda yok mu? Sizin için sipariş ederiz; genellikle üç gün içinde gelir.",

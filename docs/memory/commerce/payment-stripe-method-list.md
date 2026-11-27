@@ -16,7 +16,7 @@ module: payments
 
 ## Where are the switches?
 - `connect_apps` row `payment_stripe`, values `method_<type>` = `'1'` or `''` (switch fields of `pg_payment_stripe_fields()`, built by `pg_payment_stripe_method_fields($currency)`); all off by default. `pg_payment_stripe_settings()['methods']` is type => bool.
-- Drawn on Site Settings › Commerce, Payment methods card, under the Stripe gateway, below Offer Link: a heading "Payment methods", one switch a method, help "Currencies: …".
+- Drawn on Site Settings › Commerce, Payment methods card, under the Stripe gateway, below Offer Link: a heading "Payment methods", one switch a method, help "Currencies: …" (+ "Not offered while Transaction type is Authorize." for a method without `hold`).
 - A method that does not take the base currency is drawn off and disabled with "Off: the store's base currency is …". The base currency is set on another screen, so the reason is drawn from `BASE_CURRENCY_CODE`.
 
 ## What did the field layer gain?
