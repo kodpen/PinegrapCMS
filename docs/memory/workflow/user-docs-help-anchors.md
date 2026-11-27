@@ -1,6 +1,6 @@
 ---
 name: user-docs-help-anchors
-description: Help anchors of get_help_url.php on pinegrap.com: none missing since 2026-11-23, the Artifact Canvas anchors waiting for a help button (#11185), two rows corrected, how to recheck
+description: Help anchors of get_help_url.php on pinegrap.com: commerce-cont#markets to write, the Artifact Canvas anchors waiting for a help button (#11185), two rows corrected, how to recheck
 ---
 
 ## What is a missing help anchor?
@@ -8,7 +8,8 @@ description: Help anchors of get_help_url.php on pinegrap.com: none missing sinc
 - The table holds 288 `page#anchor` addresses on 26 pages, each counted once and the ones a list filter opens included. 25 of them were missing on the live pages on 2026-11-10, in English and under `/tr/` alike. `/installation` and `/chat` have no row.
 
 ## Which sections are still to write?
-- None since 2026-11-23: the 27 missing anchors (the 25 of 2026-11-10 plus `calendars#ticket-check-in` and `erp#profitability`) were written in the 2026.11.0 round (`plans/user-docs-2026-11.md`), each section under its anchor.
+- `commerce-cont#markets`: the Markets screen (`view_markets.php`, 11.0.286), new and not written yet.
+- Before it, none since 2026-11-23: the 27 missing anchors (the 25 of 2026-11-10 plus `calendars#ticket-check-in` and `erp#profitability`) were written in the 2026.11.0 round (`plans/user-docs-2026-11.md`), each section under its anchor.
 - `/workspace-cont#flows` and `#workflow-tables` are short sections there, as Flows and Workflow Tables have no page of their own.
 
 ## Which anchors wait for a row?

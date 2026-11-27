@@ -275,6 +275,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_order_charged_currency();  // 11.0.283
 	upgrade_2026_11_0_accounting_sync();         // 11.0.284
 	upgrade_2026_11_0_product_tax_class();       // 11.0.285
+	upgrade_2026_11_0_markets();                 // 11.0.286
 
 }
 
@@ -9713,5 +9714,60 @@ function upgrade_2026_11_0_product_tax_class() {
 	}
 
 	install_note('Products: a product can be marked for the reduced or the zero VAT rate, which Rates by the buyer\'s country charges an EU buyer. Every existing product stays at the standard rate.');
+
+}
+
+
+// 11.0.286 - Markets (includes/fn/markets.php): a set of countries sold to in
+// one currency, with the rule that rounds a converted price. markets holds
+// the name, the currency code, the rounding rule (none: to the smallest unit,
+// whole: whole amounts, end99: a .99 ending), whether it is on and its place
+// in the list; market_countries ties a country to one market, unique on the
+// country so a visitor's country picks one market at most.
+// orders.market_id names the market that priced an order, 0 for none (every
+// order stored before). The tables are created only when missing and the
+// column added in place where the server allows it, so the step runs twice
+// without a change.
+function upgrade_2026_11_0_markets() {
+
+	install_create_table('markets', "CREATE TABLE markets (
+		id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		name          VARCHAR(100) NOT NULL DEFAULT '',
+		currency_code CHAR(3) NOT NULL DEFAULT '',
+		rounding      ENUM('none','whole','end99') NOT NULL DEFAULT 'none',
+		enabled       TINYINT(1) UNSIGNED NOT NULL DEFAULT 0,
+		sort_order    INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_order (sort_order)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('market_countries', "CREATE TABLE market_countries (
+		market_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		country_id INT UNSIGNED NOT NULL DEFAULT 0,
+		UNIQUE KEY uniq_country (country_id),
+		KEY idx_market (market_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	$columns = array(
+		'market_id' => "INT UNSIGNED NOT NULL DEFAULT 0",
+	);
+
+	if (!install_add_columns_instant('orders', $columns)) {
+
+		foreach ($columns as $column => $definition) {
+
+			if (install_pass_spent() && !install_column_exists('orders', $column)) {
+
+				install_pause(lang(array('string' => 'orders: the market is being added; {var:1} follows in the next pass', 'vars' => $column)));
+
+			}
+
+			install_add_column('orders', $column, $definition);
+
+		}
+
+	}
+
+	install_note('Markets: a set of countries can be sold to in its own currency, set up under Commerce > Markets. Nothing changes until a market is made.');
 
 }
