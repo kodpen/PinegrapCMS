@@ -29937,6 +29937,8 @@
             }
 
             lastChange.textContent = (current && current.updated_by) ? t('notes_last_change', current.updated_by.name, current.updated) : '';
+            // The head may cut it short on a narrow pane.
+            lastChange.title = lastChange.textContent;
         }
 
         function payload(force) {
@@ -30269,6 +30271,7 @@
 
         var headNode = null;
         var infoNode = null;
+        var sheetNode = null;
         var headButtons = {};
 
         function placeholder() {
@@ -30307,22 +30310,35 @@
                 headNode.appendChild(noteFaces(current, 5));
             }
 
-            var title = el('input', 'pg-input ws-nb-title');
-            title.type = 'text';
-            title.maxLength = 200;
-            title.placeholder = t('notes_title');
-            // Drawn again after a new note's first save: what was typed in
-            // the meantime stays, rather than the title the note opened with.
-            title.value = (current.titleInput ? current.titleInput.value : current.title) || '';
+            // The title heads the page's column, one large line without a
+            // field's frame. Drawn again after a new note's first save, the
+            // same input stays, so what is being typed keeps its focus.
+            var title = current.titleInput;
+
+            if (!title || !sheetNode.contains(title)) {
+                title = el('input', 'pg-title-screen ws-nb-title');
+                title.type = 'text';
+                title.maxLength = 200;
+                title.placeholder = t('notes_title');
+                title.value = (current.titleInput ? current.titleInput.value : current.title) || '';
+                title.setAttribute('aria-label', t('notes_title'));
+                title.addEventListener('input', changed);
+                current.titleInput = title;
+                sheetNode.insertBefore(title, sheetNode.firstChild);
+            }
+
             title.readOnly = !editable();
-            title.setAttribute('aria-label', t('notes_title'));
-            title.addEventListener('input', changed);
-            current.titleInput = title;
-            headNode.appendChild(title);
+
+            // "Saved" and who changed the note last, on one quiet line.
+            var meta = el('span', 'ws-nb-meta');
 
             status = el('span', 'ws-nb-status');
-            headNode.appendChild(status);
+            meta.appendChild(status);
+            lastChange = el('span', 'ws-nb-last');
+            meta.appendChild(lastChange);
+            headNode.appendChild(meta);
             setStatus(dirty ? 'unsaved' : (current.id && editable() ? 'saved' : ''));
+            drawLastChange();
 
             if (current.access === 'owner' || !current.id) {
                 var share = menuButton(button('pg-button pg-button-ghost pg-button-sm', t('notes_share'), 'bi-send'));
@@ -30372,13 +30388,10 @@
             drawInfo();
         }
 
-        // Who changed it last, where it came from, who can see it.
+        // When it was made, where it came from, who can see it (who changed
+        // it last is in the head, beside "Saved").
         function drawInfo() {
             clear(infoNode);
-
-            lastChange = el('span', 'ws-nb-info-part');
-            infoNode.appendChild(lastChange);
-            drawLastChange();
 
             if (current.id && current.created) {
                 infoNode.appendChild(el('span', 'ws-nb-info-part', t('notes_created', current.created)));
@@ -32289,10 +32302,15 @@
         // The note's row of tools (PGWsEditor.toolbar()): undo and redo, the
         // marks, the cards, tags and assistants, files and emoji. The marks
         // and the steps are the box's own, so they are undone like typing.
+        // One line: what does not fit is offered by More at its end
+        // (workspace_note_page.js).
         function toolbar() {
             var rich = field.rich;
+            var more = menuButton(button('pg-icon-button pg-icon-button-sm', '', 'bi-three-dots', t('notes_more_tools')));
             var tool = function (iconName, label, action) {
                 var node = button('pg-icon-button pg-icon-button-sm', '', iconName, label);
+                // The icon of its line in the More menu.
+                node.setAttribute('data-ws-icon', iconName);
                 node.addEventListener('click', action);
                 return node;
             };
@@ -32321,7 +32339,8 @@
             });
 
             var emoji = tool('bi-emoji-smile', t('notes_emoji'), function (event) {
-                var box = emoji.getBoundingClientRect();
+                // Folded into the More menu, the picker opens under More.
+                var box = (emoji.getClientRects().length ? emoji : more).getBoundingClientRect();
 
                 event.stopPropagation();
                 emojiPicker(box.left, box.bottom + 4, function (picked) { rich.insertText(picked); });
@@ -32339,7 +32358,7 @@
 
             files.push(emoji);
 
-            return window.PGWsEditor.toolbar(rich, [
+            var row = window.PGWsEditor.toolbar(rich, [
                 ['undo', 'redo'],
                 ['bold', 'italic', 'strike', 'highlight'],
                 ['bullets', 'numbers', 'quote'],
@@ -32353,6 +32372,17 @@
                 label: t('tool_bar_note'),
                 insertLabel: t('insert_to_note'),
                 scope: scope
+            });
+
+            return window.PGWsNotePage.fold(row, {
+                more: more,
+                open: function (opener, entries) {
+                    var box = opener.getBoundingClientRect();
+
+                    ctxMenu(box.left, box.bottom + 4, entries.map(function (entry) {
+                        return { icon: entry.icon, label: entry.label, disabled: entry.disabled, action: function () { entry.node.click(); } };
+                    }));
+                }
             });
         }
 
@@ -32387,15 +32417,20 @@
             clear(pane);
             root.classList.add('ws-nb-open');
 
-            var card = el('div', 'card ws-nb-card');
+            // The note as a page: the row of tools across the card, the
+            // title and the text in one column under it (.ws-nb-page, whose
+            // rules draw only this pane).
+            var card = el('div', 'card ws-nb-card ws-nb-page');
             headNode = el('div', 'card-header ws-nb-head');
             infoNode = el('div', 'ws-nb-info d-none');
+            sheetNode = el('div', 'ws-nb-sheet');
 
             var body = el('div', 'card-body ws-nb-body');
 
             card.id = 'ws-nb-note-card';
             card.appendChild(headNode);
             card.appendChild(infoNode);
+            body.appendChild(sheetNode);
             card.appendChild(body);
             pane.appendChild(card);
             drawTabs();
@@ -32405,13 +32440,13 @@
             drawHead();
 
             if (!editable()) {
-                body.appendChild(el('div', 'alert theme-secondary border small py-3', t('notes_read_only')));
+                sheetNode.appendChild(el('div', 'alert theme-secondary border small py-3', t('notes_read_only')));
 
                 var read = el('div', 'ws-msg-body ws-nb-read');
                 setHtml(read, current.html || '');
                 chipMenus(read);
-                body.appendChild(read);
-                body.appendChild(voiceList);
+                sheetNode.appendChild(read);
+                sheetNode.appendChild(voiceList);
                 drawVoices(current.body || '');
                 return;
             }
@@ -32482,27 +32517,27 @@
                 resultsLater();
             });
 
-            body.appendChild(toolbar());
+            body.insertBefore(toolbar(), sheetNode);
 
             voiceRow = el('div', 'ws-nb-voice d-none');
-            body.appendChild(voiceRow);
+            sheetNode.appendChild(voiceRow);
 
             // The scheduled actions written in this note, above its text.
             if (CFG.scheduled) {
                 scheduledStrip = el('div', 'ws-sa-strip');
-                body.appendChild(scheduledStrip);
+                sheetNode.appendChild(scheduledStrip);
                 drawScheduled(current.scheduled || []);
             }
 
             wrap.appendChild(field.rich.node);
-            body.appendChild(wrap);
+            sheetNode.appendChild(wrap);
 
             var claudeLine = el('div', 'ws-nb-claude small fg-secondary d-none');
             claudeLine.appendChild(el('span', 'spinner-border spinner-border-sm me-3'));
             claudeLine.appendChild(el('span', 'ws-nb-claude-words', t('notes_claude_waiting')));
-            body.appendChild(claudeLine);
+            sheetNode.appendChild(claudeLine);
 
-            body.appendChild(voiceList);
+            sheetNode.appendChild(voiceList);
             field.set(current.body || '', current.labels || {});
             drawVoices(field.value());
             showResults();

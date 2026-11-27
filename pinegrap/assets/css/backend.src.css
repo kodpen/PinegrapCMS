@@ -25569,16 +25569,6 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
 .ws-nb-head .ws-nb-faces {
     margin-right: .6rem;
 }
-.ws-nb-head .ws-nb-title {
-    flex: 1 1 12rem;
-    min-width: 0;
-    padding: .25rem;
-    border: 0;
-    background: transparent;
-    font-size: 1.125rem;
-    font-weight: 600;
-    box-shadow: none;
-}
 .ws-nb-status {
     margin-right: .25rem;
     font-size: .75rem;
@@ -25654,6 +25644,87 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
     #ws-root:not(.ws-nb-open) .ws-nb-pane-col {
         display: none;
     }
+}
+/* My Notes' note drawn as a page (drawNote() in workspace.js). The head
+   keeps "Saved" and the last change on one quiet line that is cut short
+   before the buttons wrap. One row of tools spans the card, sticky under the
+   panel's fixed header, and never wraps: the tools that do not fit are
+   folded into its More menu (workspace_note_page.js). The title and the
+   text stand in a column of at most 46rem, written on the card without a
+   field's frame or focus box; the caret marks the focus. Every rule starts
+   at .ws-nb-page, so a channel's note, the highlights and lock panes, the
+   task description and the other writing boxes keep the rules above. */
+.ws-nb-page .ws-nb-meta {
+    flex: 1 1 0;
+    min-width: 5rem;
+    overflow: hidden;
+    font-size: var(--pg-text-meta);
+    color: var(--pg-fg-2);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ws-nb-page .ws-nb-meta .ws-nb-status {
+    margin-right: 0;
+}
+.ws-nb-page .ws-nb-status:not(:empty) + .ws-nb-last:not(:empty)::before {
+    content: "\00B7";
+    margin: 0 .4rem;
+}
+.ws-nb-page .ws-nb-tools {
+    top: var(--pg-navbar-h);
+    flex-wrap: nowrap;
+    align-items: center;
+    margin: calc(-1 * var(--bs-card-spacer-y)) calc(-1 * var(--bs-card-spacer-x)) 1.5rem;
+    padding: .5rem var(--bs-card-spacer-x);
+    overflow: hidden;
+    border-bottom: 1px solid var(--pg-border-color-translucent);
+    background: var(--bs-card-bg);
+}
+.ws-nb-page .ws-nb-tools > * {
+    flex: none;
+}
+.ws-nb-page .ws-nb-more {
+    margin-left: auto;
+}
+.ws-nb-page .ws-nb-folded {
+    display: none;
+}
+.ws-nb-page .ws-nb-sheet {
+    max-width: 46rem;
+    margin-right: auto;
+    margin-left: auto;
+}
+.ws-nb-page .ws-nb-sheet .ws-nb-title {
+    display: block;
+    width: 100%;
+    margin: 0 0 1rem;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--pg-fg-body);
+    box-shadow: none;
+}
+.ws-nb-page .ws-nb-sheet .ws-nb-title::placeholder {
+    color: var(--pg-fg-3);
+}
+.ws-nb-page .ws-nb-sheet .ws-nb-title:focus,
+.ws-nb-page .ws-nb-sheet .ws-nb-title:focus-visible {
+    outline: 0;
+    box-shadow: none;
+}
+.ws-nb-page .ws-rich.ws-rich-field.ws-nb-text {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+.ws-nb-page .ws-rich.ws-rich-field.ws-nb-text:focus,
+.ws-nb-page .ws-rich.ws-rich-field.ws-nb-text:focus-visible {
+    border-color: transparent;
+    outline: 0;
+    box-shadow: none;
 }
 /* A note shared in a channel, as its card in the conversation */
 .ws-nb-msg-card {

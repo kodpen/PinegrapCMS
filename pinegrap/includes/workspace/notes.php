@@ -3719,6 +3719,7 @@ function ws_notes_js_strings()
         'notes_tag'             => lang('Tag a person or a record'),
         'notes_claude'          => lang('Ask Claude'),
         'notes_emoji'           => lang('Emoji'),
+        'notes_more_tools'      => lang('More tools'),
         'notes_card_gone'       => lang('This note is no longer shared here.'),
         'notes_card_open'       => lang('Read the note'),
         'notes_card_edit'       => lang('Edit note'),
