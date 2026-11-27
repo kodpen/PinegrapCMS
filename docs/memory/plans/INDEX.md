@@ -141,5 +141,3 @@
 - website-features.md: Start file of the nine website-side plans (owner 2026-11-16, agent channel messages 5651 and 5667): his words, how each plan is laid out, the plans and the order their steps are given in
 - website-second-set-conditions-per-plan.md: What the architect asked of each of the eight website plans of poll 82 before they were written: newsletter, appointment link, map, customer value, referral, wholesale, event tickets, courses
 - website-second-set-conditions.md: The architect's conditions for the eight website plans of poll 82, set before they were written: tables, no second engine, scheduled work, mail, money, personal data, cache, first steps
-- workspace-areas-modern.md: Owner (2026-11-27, message 14812): the Workspace's own screens (tasks, notes, data, calendars) modernised; the four plans, what the count found, the rules their steps keep, who draws
-- workspace-tasks-modern.md: Plan (owner 2026-11-27, message 14812): My Tasks modernised: tasks gathered by date in one-line rows, a line that adds a task, the task opened to read, a board layout; steps TM1 to TM5

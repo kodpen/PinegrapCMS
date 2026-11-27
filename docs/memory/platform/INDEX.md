@@ -177,6 +177,8 @@
 - office-docx-controls-numbering.md: Word preview: table rows and cells inside content controls and custom XML, and numId 0 taking a paragraph's (or its style's) numbering off (PR #1119), run properties turned off by w:val
 - office-docx-format-look.md: Text colour, highlight and font size on selected .docx text and a paragraph's alignment (office_docx_format.php, DA1): save entry, reader marks and aligns, how each is written
 - office-docx-format.md: Bold, italic and underline on selected text of a .docx paragraph (office_docx_format.php, OD1, PR #11152): the bar, the save entry, runs split and joined, what is kept
+- office-docx-links.md: A link on selected .docx text added, changed or taken off (office_docx_link.php, DA3): the bar's Link button and window, the save's link stretch, hyperlink and relationship written, the marks' address
+- office-docx-overview.md: Start file for the office-docx-* files: the Word document typed on its page in the file window and a channel's preview, by what a person sees, and which file holds each part
 - office-docx-page-keys.md: Keys of a Word document typed on its sheet (OP2, PR #11940): Enter splits, Backspace and Delete join, selections and arrows cross paragraphs, B/I/U across them
 - office-docx-page.md: A Word document drawn as a white sheet and typed where it stands (renderDocument(), OP1, OP2 PR #11940): one typed sheet, the caret followed, what stays; the keys in office-docx-page-keys.md [decision: decisions-made-product-115.md]
 - office-docx-paragraph-kind.md: A .docx paragraph's kind (normal, heading 1-3, bulleted or numbered list) set from the format bar (office_docx_kind.php, OD2): save entry, styles and numbering used or added, refusals
