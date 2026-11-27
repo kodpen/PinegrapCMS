@@ -84,10 +84,11 @@ function test_translations_glossary_duplicate()
 
 function test_translations_target_rows()
 {
-	pg_assert_same(2, pg_tr_screen_target_rows(''), 'empty box');
-	pg_assert_same(2, pg_tr_screen_target_rows('short'), 'one short line');
+	pg_assert_same(1, pg_tr_screen_target_rows(''), 'empty box: one line');
+	pg_assert_same(1, pg_tr_screen_target_rows('short'), 'one short line');
 	pg_assert_same(4, pg_tr_screen_target_rows("a\nb\nc\nd"), 'one row a line');
-	pg_assert_same(3, pg_tr_screen_target_rows(str_repeat('ğ', 150)), 'a long line wraps by characters');
+	pg_assert_same(3, pg_tr_screen_target_rows(str_repeat('ğ', 150)), 'a long line wraps by characters, 50 a row');
+	pg_assert_same(2, pg_tr_screen_target_rows(str_repeat('ğ', 51)), 'one character past a row');
 	pg_assert_same(12, pg_tr_screen_target_rows(str_repeat('x', 3000)), 'capped');
 }
 

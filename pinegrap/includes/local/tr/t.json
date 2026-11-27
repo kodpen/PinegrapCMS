@@ -8568,6 +8568,7 @@
     "The transfer to Puerto Natales and the flight home.": "Puerto Natales'e transfer ve dönüş uçuşu.",
     "The transfer was not saved.": "Virman yapılamadı, hiçbir satır yazılmadı.",
     "The translation has to carry the same inline tags as the source text.": "Çeviri, kaynak metindeki satır içi etiketlerin aynısını taşımalı.",
+    "The translation is the same as the source text.": "Çeviri, kaynak metnin aynısı.",
     "The translation was not accepted.": "Çeviri kabul edilmedi.",
     "The translations of the texts shown here are deleted, so the next \"Update translations\" sends the texts to the engine again. A text that is also used elsewhere loses its translation there too.": "Burada gösterilen metinlerin çevirileri silinir; bir sonraki \"Çevirileri güncelle\" bu metinleri motora yeniden gönderir. Başka yerlerde de kullanılan bir metnin çevirisi oralarda da silinir.",
     "The translations of the texts shown here are deleted, so the next \"{var:1}\" sends the texts to the engine again. A text that is also used elsewhere loses its translation there too.": "Burada gösterilen metinlerin çevirileri silinir; bir sonraki \"{var:1}\" bu metinleri motora yeniden gönderir. Başka yerlerde de kullanılan bir metnin çevirisi oralarda da silinir.",

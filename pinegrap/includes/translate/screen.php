@@ -532,9 +532,10 @@ function pg_tr_glossary_duplicate($rows, $id, $term, $case_sensitive)
 }
 
 /**
- * The rows a translation box opens with: enough for its text, at least 2
- * and at most 12 (the box scrolls past that). Browsers that size a box to
- * its content (field-sizing) grow it as it is typed in as well.
+ * The rows a translation box opens with: enough for its text at about 50
+ * characters a row (the box shares the row with the source), at least 1 and
+ * at most 12 (the box scrolls past that). Browsers that size a box to its
+ * content (field-sizing) grow it as it is typed in as well.
  *
  * @param string $text
  * @return int
@@ -544,10 +545,10 @@ function pg_tr_screen_target_rows($text)
     $rows = 0;
 
     foreach (preg_split('/\r\n?|\n/', (string) $text) as $line) {
-        $rows += max(1, (int) ceil(mb_strlen($line, 'UTF-8') / 70));
+        $rows += max(1, (int) ceil(mb_strlen($line, 'UTF-8') / 50));
     }
 
-    return max(2, min(12, $rows));
+    return max(1, min(12, $rows));
 }
 
 /**
@@ -574,4 +575,197 @@ function pg_tr_screen_share($translated, $total)
     }
 
     return min(99, max(1, (int) round(($translated / $total) * 100)));
+}
+
+/**
+ * Why a translation is flagged suspicious, in the words a row's "Details"
+ * shows: the check (pg_tr_result_check()) stores only the flag, so the
+ * reason is read again from the two texts. An answer that is the source
+ * given back, case and outer spaces aside, is the one; anything else was
+ * flagged for its length.
+ *
+ * @param string $source
+ * @param string $text
+ * @return string
+ */
+function pg_tr_screen_suspicious_reason($source, $text)
+{
+    if (mb_strtolower(trim((string) $text), 'UTF-8') === mb_strtolower(trim((string) $source), 'UTF-8')) {
+        return lang('The translation is the same as the source text.');
+    }
+
+    return lang('The length of the translation is out of proportion to the source text.');
+}
+
+/**
+ * The places a text is used, as a row's "Used in:" lists them: one line a
+ * place, a page's title and description folded into the page, pages first,
+ * then shared components, menus, the catalog, the forms, the pictures and
+ * the cookie window, each by name. A line's scope is the screen's query
+ * that lists that place's texts: a page, or the group it belongs to; a
+ * shared component and a menu have none.
+ *
+ * @param array $uses  rows of translation_uses (owner_type, owner_id)
+ * @param array $names 'owner_type:owner_id' => name (a page's under 'page:ID')
+ * @return array of array(kind, id, label, icon, scope)
+ */
+function pg_tr_screen_use_lines($uses, $names)
+{
+    $order = array('page', 'shared', 'menu', 'product', 'product_group', 'attribute', 'offer', 'form', 'form_records', 'file', 'ui');
+    $icons = array(
+        'page'          => 'bi-file-earmark-text',
+        'shared'        => 'bi-layers',
+        'menu'          => 'bi-list',
+        'product'       => 'bi-bag',
+        'product_group' => 'bi-bag',
+        'attribute'     => 'bi-bag',
+        'offer'         => 'bi-bag',
+        'form'          => 'bi-ui-checks',
+        'form_records'  => 'bi-ui-checks',
+        'file'          => 'bi-image',
+        'ui'            => 'bi-shield-check',
+    );
+    $groups = array('product' => 'catalog', 'product_group' => 'catalog', 'attribute' => 'catalog', 'offer' => 'catalog', 'form' => 'forms', 'form_records' => 'forms', 'file' => 'pictures', 'ui' => 'ui');
+    $names = is_array($names) ? $names : array();
+    $lines = array();
+
+    foreach ((array) $uses as $use) {
+        if (!is_array($use) || !isset($use['owner_type'])) {
+            continue;
+        }
+
+        $kind = ((string) $use['owner_type'] === 'page_seo') ? 'page' : (string) $use['owner_type'];
+        $id = isset($use['owner_id']) ? (int) $use['owner_id'] : 0;
+
+        if (!isset($icons[$kind]) || isset($lines[$kind . ':' . $id])) {
+            continue;
+        }
+
+        $name = isset($names[$kind . ':' . $id]) ? (string) $names[$kind . ':' . $id] : '';
+
+        switch ($kind) {
+            case 'page':
+                $label = $name;
+                break;
+            case 'shared':
+                $label = lang(array('string' => 'Shared component "{var:1}"', 'vars' => array($name)));
+                break;
+            case 'menu':
+                $label = lang(array('string' => 'Menu "{var:1}"', 'vars' => array($name)));
+                break;
+            case 'form_records':
+                $label = lang(array('string' => 'Records of the form "{var:1}"', 'vars' => array($name)));
+                break;
+            case 'ui':
+                $label = lang('Cookie window');
+                break;
+            default:
+                $label = $name;
+        }
+
+        $lines[$kind . ':' . $id] = array(
+            'kind'  => $kind,
+            'id'    => $id,
+            'label' => ($label !== '') ? $label : '#' . $id,
+            'icon'  => $icons[$kind],
+            'scope' => ($kind === 'page') ? array('page_id' => $id) : (isset($groups[$kind]) ? array('group' => $groups[$kind]) : null),
+        );
+    }
+
+    $rank = array_flip($order);
+
+    usort($lines, function ($a, $b) use ($rank) {
+        if ($rank[$a['kind']] !== $rank[$b['kind']]) {
+            return $rank[$a['kind']] - $rank[$b['kind']];
+        }
+
+        $by_name = strcasecmp($a['label'], $b['label']);
+
+        return ($by_name !== 0) ? $by_name : ($a['id'] - $b['id']);
+    });
+
+    return $lines;
+}
+
+/**
+ * What a row's "Details" shows for a text in a language: where it is used
+ * (pg_tr_screen_use_lines(), the first $limit lines and how many more), the
+ * wording it replaced with that wording's translation, and why its
+ * translation is flagged suspicious.
+ *
+ * @param int    $string_id
+ * @param string $language
+ * @param int    $limit
+ * @return array|null array(used, more, earlier, reason); null for an unknown text
+ */
+function pg_tr_screen_details($string_id, $language, $limit = 12)
+{
+    $string_id = (int) $string_id;
+    $string = db_item("SELECT s.id, s.source_text, t.text, t.suspicious
+                       FROM translation_strings s
+                       LEFT JOIN translations t ON t.string_id = s.id AND t.language = '" . e($language) . "'
+                       WHERE s.id = '$string_id' LIMIT 1");
+
+    if (!is_array($string)) {
+        return null;
+    }
+
+    $uses = db_items("SELECT owner_type, owner_id, prev_string_id FROM translation_uses WHERE string_id = '$string_id' ORDER BY owner_type, owner_id, position LIMIT 500");
+    $uses = is_array($uses) ? $uses : array();
+    $ids = array();
+    $previous_id = 0;
+
+    foreach ($uses as $use) {
+        $kind = ((string) $use['owner_type'] === 'page_seo') ? 'page' : (string) $use['owner_type'];
+        $ids[$kind][(int) $use['owner_id']] = true;
+
+        if (($previous_id === 0) && ((int) $use['prev_string_id'] > 0)) {
+            $previous_id = (int) $use['prev_string_id'];
+        }
+    }
+
+    $queries = array(
+        'page'          => 'SELECT page_id AS id, page_name AS name FROM page WHERE page_id IN (%s)',
+        'shared'        => 'SELECT id, name FROM shared_components WHERE id IN (%s)',
+        'menu'          => 'SELECT id, name FROM menus WHERE id IN (%s)',
+        'product'       => 'SELECT id, name FROM products WHERE id IN (%s)',
+        'product_group' => 'SELECT id, name FROM product_groups WHERE id IN (%s)',
+        'attribute'     => 'SELECT id, name FROM product_attributes WHERE id IN (%s)',
+        'offer'         => 'SELECT id, code AS name FROM offers WHERE id IN (%s)',
+        'form'          => 'SELECT page_id AS id, form_name AS name FROM custom_form_pages WHERE page_id IN (%s)',
+        'form_records'  => 'SELECT page_id AS id, form_name AS name FROM custom_form_pages WHERE page_id IN (%s)',
+        'file'          => 'SELECT id, name FROM files WHERE id IN (%s)',
+    );
+    $names = array();
+
+    foreach ($queries as $kind => $sql) {
+        if (empty($ids[$kind])) {
+            continue;
+        }
+
+        foreach ((array) db_items(sprintf($sql, implode(',', array_map('intval', array_keys($ids[$kind]))))) as $row) {
+            $names[$kind . ':' . (int) $row['id']] = strip_tags((string) $row['name']);
+        }
+    }
+
+    $lines = pg_tr_screen_use_lines($uses, $names);
+    $earlier = null;
+
+    if ($previous_id > 0) {
+        $row = db_item("SELECT s.source_text, t.text
+                        FROM translation_strings s
+                        LEFT JOIN translations t ON t.string_id = s.id AND t.language = '" . e($language) . "'
+                        WHERE s.id = '$previous_id' LIMIT 1");
+
+        if (is_array($row)) {
+            $earlier = array('source' => (string) $row['source_text'], 'translation' => (string) $row['text']);
+        }
+    }
+
+    return array(
+        'used'    => array_slice($lines, 0, max(1, (int) $limit)),
+        'more'    => max(0, count($lines) - max(1, (int) $limit)),
+        'earlier' => $earlier,
+        'reason'  => (($string['text'] !== null) && ((int) $string['suspicious'] === 1)) ? pg_tr_screen_suspicious_reason((string) $string['source_text'], (string) $string['text']) : '',
+    );
 }

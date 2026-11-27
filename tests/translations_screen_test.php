@@ -154,3 +154,52 @@ function test_translations_screen_verdict_owners()
 	pg_assert_same(4, count(pg_tr_verdict_owners($owners, array())), 'a list page');
 	pg_assert_same(array(), pg_tr_verdict_owners(null, array(14)), 'nothing given');
 }
+
+// Why a translation is flagged suspicious, as the row's Details says it: the
+// source given back word for word, or a length out of proportion.
+function test_translations_screen_suspicious_reason()
+{
+	$same = lang('The translation is the same as the source text.');
+	$length = lang('The length of the translation is out of proportion to the source text.');
+
+	pg_assert_same($same, pg_tr_screen_suspicious_reason('Ücretsiz kargo', 'Ücretsiz kargo'), 'given back as it was');
+	pg_assert_same($same, pg_tr_screen_suspicious_reason('Evet', ' EVET '), 'case and spaces aside');
+	pg_assert_same($length, pg_tr_screen_suspicious_reason('Evet', 'Yes, of course, we would be glad to help you with that'), 'too long');
+	pg_assert_same($length, pg_tr_screen_suspicious_reason('Siparişler aynı gün kargoya verilir.', 'Yes'), 'too short');
+}
+
+// "Used in:": one line a place, a page's title and description folded into
+// the page, pages first, each with its icon and the scope of the screen
+// that lists its texts (none for a shared component or a menu).
+function test_translations_screen_use_lines()
+{
+	$uses = array(
+		array('owner_type' => 'menu', 'owner_id' => 3),
+		array('owner_type' => 'page_seo', 'owner_id' => 5),
+		array('owner_type' => 'shared', 'owner_id' => 12),
+		array('owner_type' => 'page', 'owner_id' => 5),
+		array('owner_type' => 'product', 'owner_id' => 8),
+		array('owner_type' => 'page', 'owner_id' => 2),
+		array('owner_type' => 'ui', 'owner_id' => 0),
+		array('owner_type' => 'form_records', 'owner_id' => 14),
+		array('owner_type' => 'file', 'owner_id' => 40),
+		'not a row',
+	);
+	$names = array('page:5' => 'Gift baskets', 'page:2' => 'Home', 'menu:3' => 'Main', 'shared:12' => 'Footer', 'product:8' => 'Gift basket', 'form_records:14' => 'Orders', 'file:40' => 'new-year-banner');
+
+	$lines = pg_tr_screen_use_lines($uses, $names);
+
+	pg_assert_same(8, count($lines), 'one line a place');
+	pg_assert_same(array('page', 5, 'Gift baskets'), array($lines[0]['kind'], $lines[0]['id'], $lines[0]['label']), 'pages first, by name; title and description folded into the page');
+	pg_assert_same(array('page', 2, 'Home'), array($lines[1]['kind'], $lines[1]['id'], $lines[1]['label']), 'the next page');
+	pg_assert_same(array('page_id' => 5), $lines[0]['scope'], 'a page opens its own texts');
+	pg_assert_same('bi-file-earmark-text', $lines[0]['icon'], 'a page\'s icon');
+	pg_assert_same(lang(array('string' => 'Shared component "{var:1}"', 'vars' => array('Footer'))), $lines[2]['label'], 'a shared component');
+	pg_assert_same(null, $lines[2]['scope'], 'a shared component has no list of its own');
+	pg_assert_same(lang(array('string' => 'Menu "{var:1}"', 'vars' => array('Main'))), $lines[3]['label'], 'a menu');
+	pg_assert_same(array('group' => 'catalog'), $lines[4]['scope'], 'a product opens the catalog');
+	pg_assert_same(array('group' => 'forms'), $lines[5]['scope'], 'a form\'s records open the forms');
+	pg_assert_same(array('group' => 'pictures'), $lines[6]['scope'], 'a picture opens the Images');
+	pg_assert_same(array('group' => 'ui'), $lines[7]['scope'], 'the cookie window');
+	pg_assert_same(array(), pg_tr_screen_use_lines(null, array()), 'nothing given');
+}
