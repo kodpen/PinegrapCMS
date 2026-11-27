@@ -22,6 +22,6 @@ module: tax_eu_rates
 
 ## What does it not cover?
 - Territories outside the EU VAT area under a member state's code (the Canary Islands, Ceuta, Melilla, Mount Athos) get the state's rate; the shop puts them in a zone (0 if due) to stop it. Their own ISO codes (AX, RE, GP, MQ, GF, YT) are not in the list. Northern Ireland (XI) and Monaco (MC) are not either.
-- A product's reduced or zero class under the list: `product-tax-class.md`. The OSS report is a later step of `plans/tax-automatic.md` (TX5).
+- A product's reduced or zero class under the list: `product-tax-class.md`. The One-Stop Shop Report and the member state each line stores: `tax-oss-report.md`.
 
 Related: docs/memory/commerce/product-tax-rate.md, docs/memory/commerce/eu-vat-checkout.md, docs/memory/commerce/counter-sale-tax-switched-off.md
