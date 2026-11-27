@@ -21,7 +21,7 @@ description: Listings view of marketplace_products.php (#2066): article cards wi
 - One article whose category asks for something opens its answers next.
 
 ## How are attributes answered?
-- A dialog drawn by the screen (`list_form`, which reads the attributes if they are not cached): required first, then "From the variants", then the optional ones folded in `<details>`. Save writes `attributes_json` and clears `last_error`.
+- A dialog drawn by the screen (`list_form`, which reads the attributes if they are not cached): required first, then "From the variants", then the optional ones folded in `<details>`. Save writes `attributes_json` and clears `last_error`. An attribute with values that allows a value of the shop's own is a text box offering them, not a select (`ebay-categories.md`).
 
 ## How is it listed?
 - "List on the marketplace" (card or ticked, where the connector has `create_listings`): each article is checked with `mp_listing_items()` first and refused with its reason, else queued with `mp_listing_enqueue()`; the job lists it.

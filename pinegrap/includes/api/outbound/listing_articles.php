@@ -213,7 +213,8 @@ function mp_articles_category_label($path) {
 /* ------------------------------------------------------------- reads */
 
 // The cached attributes of some categories, keyed by category; a category
-// whose attributes were never read is absent.
+// whose attributes were never read is absent. $provider is the cache's key
+// (mp_category_key()).
 function mp_articles_definitions($provider, $category_ids) {
 
 	$category_ids = array_values(array_unique(array_filter(array_map('strval', (array) $category_ids), 'strlen')));
@@ -245,9 +246,11 @@ function mp_articles_definitions($provider, $category_ids) {
 // lacks and its picture; $group_ids narrows it to those articles.
 function mp_articles_list($account, $group_ids = null) {
 
-	$articles = mp_listing_articles((int) $account['id'], 5000, $group_ids);
+	$key = mp_category_key($account);
 
-	$definitions = mp_articles_definitions($account['provider'], array_map(function ($article) {
+	$articles = mp_listing_articles((int) $account['id'], 5000, $group_ids, $key);
+
+	$definitions = mp_articles_definitions($key, array_map(function ($article) {
 		return (string) $article['remote_category_id'];
 	}, $articles));
 
@@ -276,6 +279,7 @@ function mp_articles_list($account, $group_ids = null) {
 }
 
 // Leaf categories whose path holds every word typed, shortest paths first.
+// $provider is the cache's key (mp_category_key()).
 function mp_articles_category_search($provider, $query, $limit = 40) {
 
 	$words = mp_articles_category_words($query);
@@ -316,7 +320,7 @@ function mp_articles_set_category($account, $group_ids, $category_id) {
 	$category_id = trim((string) $category_id);
 
 	$leaf = ($category_id !== '') ? db_item("SELECT remote_id, is_leaf FROM marketplace_categories
-		WHERE (provider = '" . e($account['provider']) . "') AND (remote_id = '" . e($category_id) . "')") : null;
+		WHERE (provider = '" . e(mp_category_key($account)) . "') AND (remote_id = '" . e($category_id) . "')") : null;
 
 	if (!$leaf) {
 

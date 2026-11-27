@@ -1,0 +1,67 @@
+{
+  "aspects": [
+    {
+      "localizedAspectName": "Marke",
+      "aspectConstraint": {
+        "aspectDataType": "STRING",
+        "itemToAspectCardinality": "SINGLE",
+        "aspectMode": "FREE_TEXT",
+        "aspectRequired": true,
+        "aspectUsage": "RECOMMENDED",
+        "aspectEnabledForVariations": false,
+        "aspectApplicableTo": ["PRODUCT"]
+      },
+      "aspectValues": [
+        {"localizedValue": "Esprit"},
+        {"localizedValue": "Mango"},
+        {"localizedValue": "Esprit"}
+      ]
+    },
+    {
+      "localizedAspectName": "Größe",
+      "aspectConstraint": {
+        "aspectDataType": "STRING",
+        "itemToAspectCardinality": "SINGLE",
+        "aspectMode": "FREE_TEXT",
+        "aspectRequired": true,
+        "aspectUsage": "RECOMMENDED",
+        "aspectEnabledForVariations": true,
+        "aspectApplicableTo": ["ITEM"]
+      },
+      "aspectValues": [
+        {"localizedValue": "S"},
+        {"localizedValue": "M"}
+      ]
+    },
+    {
+      "localizedAspectName": "Abteilung",
+      "aspectConstraint": {
+        "aspectDataType": "STRING",
+        "itemToAspectCardinality": "SINGLE",
+        "aspectMode": "SELECTION_ONLY",
+        "aspectRequired": true,
+        "aspectUsage": "RECOMMENDED",
+        "aspectEnabledForVariations": false,
+        "aspectApplicableTo": ["PRODUCT"]
+      },
+      "aspectValues": [
+        {"localizedValue": "Damen"}
+      ]
+    },
+    {
+      "localizedAspectName": "Material",
+      "aspectConstraint": {
+        "aspectDataType": "STRING",
+        "itemToAspectCardinality": "MULTI",
+        "aspectMode": "FREE_TEXT",
+        "aspectUsage": "OPTIONAL",
+        "aspectEnabledForVariations": true,
+        "aspectApplicableTo": ["PRODUCT"]
+      }
+    },
+    {
+      "localizedAspectName": "",
+      "aspectConstraint": {"aspectMode": "FREE_TEXT"}
+    }
+  ]
+}

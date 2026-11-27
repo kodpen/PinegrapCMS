@@ -49,6 +49,10 @@
 //   label_carrier($name)                  whether they label a parcel of the
 //                                         carrier a package names (a bool)
 //   update_order($account, $lines, $to)   move their order along
+//   category_key($account)                the key its categories are cached
+//                                         under, when it is not the provider
+//                                         (a tree a site); at most 30
+//                                         characters
 //   category_tree($account)               their category tree, flattened
 //   category_attributes($account, $id)    what a category demands, with values
 //   create_listings($account, $items)     open listings, answers a task handle
@@ -455,6 +459,30 @@ function mp_can($provider, $capability) {
 	$connector = mp_connector($provider);
 
 	return (isset($connector[$capability]) && function_exists($connector[$capability]));
+
+}
+
+// The key an account's categories and their attributes are cached under
+// (marketplace_categories.provider, marketplace_category_attributes.provider):
+// the provider, or the connector's own key where the marketplace keeps a tree
+// a site (eBay: "ebay:EBAY_DE").
+function mp_category_key($account) {
+
+	$provider = (string) $account['provider'];
+
+	if (mp_can($provider, 'category_key')) {
+
+		$key = (string) mp_call($provider, 'category_key', array($account));
+
+		if (($key !== '') && (strlen($key) <= 30)) {
+
+			return $key;
+
+		}
+
+	}
+
+	return $provider;
 
 }
 

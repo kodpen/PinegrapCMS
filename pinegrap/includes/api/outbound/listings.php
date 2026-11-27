@@ -38,7 +38,9 @@ require_once(dirname(__FILE__) . '/connectors/base.php');
 // Fetch and store the marketplace's category tree.
 //
 // Cached against the provider rather than the account: two shops on the same
-// marketplace see the same categories, and this is a large download. Rows are
+// marketplace see the same categories, and this is a large download. A
+// marketplace with a tree a site caches under its connector's key
+// (mp_category_key()). Rows are
 // replaced rather than added to, so a category they retired stops being
 // offered.
 function mp_categories_refresh($account) {
@@ -61,6 +63,8 @@ function mp_categories_refresh($account) {
 
 	$rows = (array) $result['data']['categories'];
 
+	$key = mp_category_key($account);
+
 	$now = time();
 
 	foreach ($rows as $row) {
@@ -72,7 +76,7 @@ function mp_categories_refresh($account) {
 		db("INSERT INTO marketplace_categories
 			(provider, remote_id, parent_id, name, path, is_leaf, updated_timestamp)
 			VALUES (
-				'" . e($provider) . "',
+				'" . e($key) . "',
 				'" . e(mb_substr((string)$row['remote_id'], 0, 64)) . "',
 				'" . e(mb_substr((string)$row['parent_id'], 0, 64)) . "',
 				'" . e(mb_substr((string)$row['name'], 0, 255)) . "',
@@ -90,7 +94,7 @@ function mp_categories_refresh($account) {
 
 	// Anything not seen in this pass is gone from their tree.
 	db("DELETE FROM marketplace_categories
-		WHERE (provider = '" . e($provider) . "') AND (updated_timestamp < '" . e($now) . "')");
+		WHERE (provider = '" . e($key) . "') AND (updated_timestamp < '" . e($now) . "')");
 
 	db("UPDATE marketplace_accounts SET categories_fetched = UNIX_TIMESTAMP()
 		WHERE id = '" . e((int)$account['id']) . "'");
@@ -108,12 +112,14 @@ function mp_category_attributes($account, $category_id, $force = false) {
 
 	$provider = (string) $account['provider'];
 
+	$key = mp_category_key($account);
+
 	$category_id = (string) $category_id;
 
 	if (!$force) {
 
 		$cached = (array) db_items("SELECT * FROM marketplace_category_attributes
-			WHERE (provider = '" . e($provider) . "') AND (category_id = '" . e($category_id) . "')
+			WHERE (provider = '" . e($key) . "') AND (category_id = '" . e($category_id) . "')
 			ORDER BY sort_order ASC, id ASC");
 
 		if ($cached) {
@@ -148,7 +154,7 @@ function mp_category_attributes($account, $category_id, $force = false) {
 			(provider, category_id, attribute_id, name, mandatory, is_variant,
 			 custom_allowed, sort_order, values_json, updated_timestamp)
 			VALUES (
-				'" . e($provider) . "',
+				'" . e($key) . "',
 				'" . e($category_id) . "',
 				'" . e(mb_substr((string)$row['attribute_id'], 0, 64)) . "',
 				'" . e(mb_substr((string)$row['name'], 0, 255)) . "',
@@ -167,7 +173,7 @@ function mp_category_attributes($account, $category_id, $force = false) {
 	}
 
 	$stored = (array) db_items("SELECT * FROM marketplace_category_attributes
-		WHERE (provider = '" . e($provider) . "') AND (category_id = '" . e($category_id) . "')
+		WHERE (provider = '" . e($key) . "') AND (category_id = '" . e($category_id) . "')
 		ORDER BY sort_order ASC, id ASC");
 
 	return mp_ok(array('attributes' => mp_category_attributes_decode($stored)));
@@ -236,7 +242,7 @@ function mp_listing_articles($account_id, $limit = 300, $group_ids = null) {
 			AND (marketplace_category_map.account_id = '" . e($account_id) . "')
 		LEFT JOIN marketplace_categories
 			ON  (marketplace_categories.remote_id = marketplace_category_map.remote_category_id)
-			AND (marketplace_categories.provider = (SELECT provider FROM marketplace_accounts WHERE id = '" . e($account_id) . "'))
+			AND (marketplace_categories.provider = " . $category_where . ")
 		WHERE product_groups.id IN (SELECT product_group_id FROM product_groups_attributes_xref)" . $only
 			. pg_catalog_bin_live_sql('products') . "
 		GROUP BY product_groups.id

@@ -766,3 +766,131 @@ function pg_ebay_policy_choices($data, $kind)
 
     return $choices;
 }
+
+/**
+ * The key a site's categories and item specifics are cached under
+ * (marketplace_categories.provider): eBay keeps a category tree a site, and
+ * the sandbox's trees are its own. At most 27 characters, inside the
+ * column's 30. Pure.
+ *
+ * @param string $environment 'production' or 'sandbox'
+ * @param string $site        marketplace id, pg_ebay_sites()
+ * @return string
+ */
+function pg_ebay_category_key($environment, $site)
+{
+    return pg_ebay_provider_key($environment) . ':' . $site;
+}
+
+/**
+ * A getCategoryTree answer flattened into the rows of the category cache:
+ * remote_id, parent_id ('' at the top), name, path ("A > B > C") and
+ * is_leaf, parents before their children. eBay's root node ("Root", id 0)
+ * is not a category and is left out, as is a node without an id. Pure.
+ *
+ * @param mixed $data
+ * @return array
+ */
+function pg_ebay_category_rows($data)
+{
+    $rows = array();
+
+    if (!is_array($data) || !isset($data['rootCategoryNode']) || !is_array($data['rootCategoryNode'])) {
+        return $rows;
+    }
+
+    $root = $data['rootCategoryNode'];
+    $stack = array();
+
+    // A stack rather than recursion, the top level pushed in reverse so the
+    // rows come out in eBay's order.
+    $children = (isset($root['childCategoryTreeNodes']) && is_array($root['childCategoryTreeNodes'])) ? $root['childCategoryTreeNodes'] : array();
+
+    foreach (array_reverse($children) as $child) {
+        $stack[] = array($child, '', '');
+    }
+
+    while ($stack) {
+        list($node, $parent_id, $parent_path) = array_pop($stack);
+
+        $id = (is_array($node) && isset($node['category']['categoryId']) && is_scalar($node['category']['categoryId'])) ? trim((string) $node['category']['categoryId']) : '';
+
+        if (($id === '') || (preg_match('/^[0-9]{1,20}$/', $id) !== 1)) {
+            continue;
+        }
+
+        $name = (isset($node['category']['categoryName']) && is_scalar($node['category']['categoryName'])) ? trim((string) $node['category']['categoryName']) : '';
+        $path = ($parent_path === '') ? $name : ($parent_path . ' > ' . $name);
+        $children = (isset($node['childCategoryTreeNodes']) && is_array($node['childCategoryTreeNodes'])) ? $node['childCategoryTreeNodes'] : array();
+
+        $rows[] = array(
+            'remote_id' => $id,
+            'parent_id' => $parent_id,
+            'name'      => $name,
+            'path'      => $path,
+            'is_leaf'   => (!empty($node['leafCategoryTreeNode']) || !$children) ? 1 : 0,
+        );
+
+        foreach (array_reverse($children) as $child) {
+            $stack[] = array($child, $id, $path);
+        }
+    }
+
+    return $rows;
+}
+
+/**
+ * A getItemAspectsForCategory answer as the attribute rows of the category
+ * cache. eBay's item specifics have no ids: the aspect's name is its id and
+ * each value its own id, and a listing sends them by name. Required is
+ * aspectRequired; free text (aspectMode FREE_TEXT) allows a value of the
+ * shop's own; an aspect enabled for variations is answered by each product's
+ * own option, the article's answer being its fallback. A name longer than
+ * the cache's 64 characters is left out rather than cut, since a cut name
+ * is another aspect. Pure.
+ *
+ * @param mixed $data
+ * @return array attribute_id, name, mandatory, is_variant, custom_allowed, sort_order, values
+ */
+function pg_ebay_aspect_rows($data)
+{
+    $rows = array();
+    $list = (is_array($data) && isset($data['aspects']) && is_array($data['aspects'])) ? $data['aspects'] : array();
+    $seen = array();
+
+    foreach ($list as $aspect) {
+        $name = (is_array($aspect) && isset($aspect['localizedAspectName']) && is_scalar($aspect['localizedAspectName'])) ? trim((string) $aspect['localizedAspectName']) : '';
+
+        if (($name === '') || (mb_strlen($name) > 64) || isset($seen[$name])) {
+            continue;
+        }
+
+        $seen[$name] = true;
+        $constraint = (isset($aspect['aspectConstraint']) && is_array($aspect['aspectConstraint'])) ? $aspect['aspectConstraint'] : array();
+        $values = array();
+        $known = array();
+
+        foreach ((isset($aspect['aspectValues']) && is_array($aspect['aspectValues'])) ? $aspect['aspectValues'] : array() as $value) {
+            $text = (is_array($value) && isset($value['localizedValue']) && is_scalar($value['localizedValue'])) ? trim((string) $value['localizedValue']) : '';
+
+            if (($text === '') || isset($known[$text])) {
+                continue;
+            }
+
+            $known[$text] = true;
+            $values[] = array('id' => $text, 'value' => $text);
+        }
+
+        $rows[] = array(
+            'attribute_id'   => $name,
+            'name'           => $name,
+            'mandatory'      => !empty($constraint['aspectRequired']) ? 1 : 0,
+            'is_variant'     => !empty($constraint['aspectEnabledForVariations']) ? 1 : 0,
+            'custom_allowed' => (isset($constraint['aspectMode']) && ($constraint['aspectMode'] === 'SELECTION_ONLY')) ? 0 : 1,
+            'sort_order'     => count($rows),
+            'values'         => $values,
+        );
+    }
+
+    return $rows;
+}
