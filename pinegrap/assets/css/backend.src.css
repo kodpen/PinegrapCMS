@@ -22672,6 +22672,36 @@ button.ws-file-name {
 .office-doc-format {
   position: relative;
 }
+/* The link window under a document bar's Link button: the address with
+   its help, then Remove link, Cancel and Apply; floats over the page, kept
+   inside the bar's width on a phone. */
+.pg-card.office-link-window {
+  position: absolute;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+  width: min(22rem, calc(100% - 1rem));
+  padding: .75rem;
+  background: var(--pg-surface-float);
+  box-shadow: var(--pg-shadow-float);
+}
+.office-link-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .4rem;
+  margin-top: .25rem;
+}
+.office-link-gap {
+  flex: 1 1 auto;
+}
+/* A link on a document being typed in, drawn as the page draws one and
+   never followed: a click opens the link window. */
+.office-paper .office-link {
+  color: var(--pg-link-color);
+  text-decoration: underline;
+}
 /* The paragraph style choice in a document's format bar. */
 .office-format .office-kind {
   width: auto;

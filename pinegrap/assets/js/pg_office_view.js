@@ -4013,6 +4013,13 @@
             var outer = node;
             var style = lookStyle(lookParts(look));
 
+            // A link is drawn as one, never followed: a click opens the
+            // link window (renderDocument()).
+            if (linkOf(look)) {
+                outer = outer.appendChild(el('span', 'office-link'));
+                outer.title = linkOf(look);
+            }
+
             if (style) {
                 outer = outer.appendChild(document.createElement('span'));
                 outer.setAttribute('style', style);
@@ -4036,8 +4043,13 @@
     var DOC_KINDS = ['normal', 'heading1', 'heading2', 'heading3', 'bullet', 'number'];
 
     // The parts of a character's look beside the bits: what a save calls
-    // each and the key the server's marks give it.
-    var DOC_LOOK_FORMATS = [['color', 'c'], ['highlight', 'h'], ['size', 's']];
+    // each and the key the server's marks give it. A link's address rides
+    // on the look as the colours do (includes/fn/office_docx_link.php).
+    var DOC_LOOK_FORMATS = [['color', 'c'], ['highlight', 'h'], ['size', 's'], ['link', 'l']];
+
+    // The colour a link is given when it is made, as a word processor's
+    // link style draws it.
+    var DOC_LINK_COLOUR = '0563C1';
 
     // Word's highlight colours, each with the colour it is drawn in
     // (pg_office_docx_highlight_names()); the bar offers them in the order
@@ -4070,7 +4082,7 @@
 
             if (value !== undefined && value !== null && value !== '' && value !== false) {
                 parts[format[1]] = value;
-                key += format[1] + value;
+                key += format[1] + value + '\n';
             }
         });
 
@@ -4118,6 +4130,45 @@
         }
 
         return style.join(';');
+    }
+
+    // The address of the link a character's look stands in; '' for none.
+    function linkOf(value) {
+        var look = lookParts(value);
+
+        return (look && typeof look.l === 'string') ? look.l : '';
+    }
+
+    // An address as the link window takes it, written the way a save sends
+    // it: http and https with a host, mailto and tel as they are; an e-mail
+    // address or a phone number given its scheme, a bare web address
+    // https. null when it cannot be a link's (the server checks the same:
+    // pg_office_docx_link_value()).
+    function linkAddress(text) {
+        var value = String(text || '').replace(/^\s+|\s+$/g, '');
+
+        if (/^tel:/i.test(value) || (!/^[a-z][a-z0-9+.\-]*:/i.test(value) && /^\+?[0-9][0-9 ().\-]{3,}$/.test(value))) {
+            value = 'tel:' + value.replace(/^tel:/i, '').replace(/\s+/g, '');
+        } else if (!/^[a-z][a-z0-9+.\-]*:/i.test(value) && /^[^\s@\/:]+@[^\s@\/]+\.[^\s@\/]+$/.test(value)) {
+            value = 'mailto:' + value;
+        } else if (!/^[a-z][a-z0-9+.\-]*:/i.test(value) && /^[^\s\/:@#?]+\.[^\s\/:@#?]+/.test(value)) {
+            value = 'https://' + value;
+        }
+
+        if (/^https?:/i.test(value)) {
+            value = value.replace(/ /g, '%20');
+        }
+
+        if (value.length > 2048 || /[\u0000-\u0020\u007F-\u00A0\u2028\u2029]/.test(value)) {
+            return null;
+        }
+
+        if (/^https?:\/\/([^\/?#@]*@)?[^\/?#@:]+(:[0-9]{1,5})?([\/?#]|$)/i.test(value) || /^mailto:[^@?]+@.+$/i.test(value)
+            || /^tel:\+?[0-9A-Za-z().\-]+$/i.test(value)) {
+            return value;
+        }
+
+        return null;
     }
 
     // A paragraph's alignment in the file, from the ones the server sent
@@ -4183,6 +4234,12 @@
         var middle = after.length - head - tail;
         var near = head > 0 ? bits[head - 1] : (tail > 0 ? bits[before.length - tail] : 0);
         var out = bits.slice(0, head);
+
+        // Text typed right after a link goes on outside it, as the server
+        // writes it into the run after the link.
+        if (head > 0 && linkOf(near) && linkOf(near) !== (tail > 0 ? linkOf(bits[before.length - tail]) : '')) {
+            near = withLook(near, 'l', '');
+        }
 
         for (var count = 0; count < middle; count++) {
             out.push(near || 0);
@@ -4784,13 +4841,21 @@
             notify();
         }
 
-        // Ctrl+B, Ctrl+I and Ctrl+U (Cmd on a Mac) format the selection.
+        // Ctrl+B, Ctrl+I and Ctrl+U (Cmd on a Mac) format the selection;
+        // Ctrl+K opens the link window.
         function formatKey(event) {
             if (!bar || !(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey) {
                 return false;
             }
 
             var index = ['b', 'i', 'u'].indexOf(String(event.key).toLowerCase());
+
+            // Ctrl+K opens the link window.
+            if (String(event.key).toLowerCase() === 'k' && controls.link) {
+                event.preventDefault();
+                openLinkWindow();
+                return true;
+            }
 
             if (index < 0) {
                 return false;
@@ -5314,6 +5379,232 @@
             notify();
         }
 
+        // The text a link is put on, changed or taken off from: the text
+        // selected, else the whole link the caret stands in. With the
+        // address all of it has ('' none, null mixed); null when neither.
+        function linkTarget() {
+            var parts = selectedParts();
+
+            if (!parts && shown.editor && shown.editor.range && shown.editor.range[0] === shown.editor.range[1]) {
+                var position = shown.editor.position;
+                var look = lookOf(position, true);
+                var at = shown.editor.range[0];
+                var address = linkOf(look.want[at]) || (at > 0 ? linkOf(look.want[at - 1]) : '');
+
+                if (address) {
+                    var start = linkOf(look.want[at]) === address ? at : at - 1;
+                    var end = start;
+
+                    while (start > 0 && linkOf(look.want[start - 1]) === address) {
+                        start--;
+                    }
+
+                    while (end < look.want.length && linkOf(look.want[end]) === address) {
+                        end++;
+                    }
+
+                    parts = [{ node: shown.editor.node, position: position, start: start, end: end }];
+                }
+            }
+
+            if (!parts) {
+                return null;
+            }
+
+            var found;
+
+            parts.forEach(function (part) {
+                var look = lookOf(part.position, true);
+
+                for (var index = part.start; index < Math.min(part.end, look.want.length); index++) {
+                    found = (found === undefined || found === linkOf(look.want[index])) ? linkOf(look.want[index]) : null;
+                }
+            });
+
+            return { parts: parts, address: found === undefined ? '' : found };
+        }
+
+        // Puts the text into a link to an address, or takes it out of its
+        // link with ''. Text newly linked takes a link's colour and
+        // underline; text leaving a link loses them when it has exactly
+        // those, as the server takes the link style off it.
+        function applyLink(parts, address) {
+            parts.forEach(function (part) {
+                var look = lookOf(part.position, true);
+
+                for (var index = part.start; index < Math.min(part.end, look.want.length); index++) {
+                    var value = look.want[index];
+                    var set = lookParts(value) || {};
+
+                    if (address && !linkOf(value)) {
+                        value = withLook(value, 'c', DOC_LINK_COLOUR) | 4;
+                    } else if (!address && linkOf(value) && set.c === DOC_LINK_COLOUR && (value & 4)) {
+                        value = withLook(value, 'c', '') & ~4;
+                    }
+
+                    look.want[index] = withLook(value, 'l', address);
+                }
+
+                redraw(part.node);
+            });
+
+            shown.note = '';
+            paper.focus({ preventScroll: true });
+            placeSelection(parts[0].node, parts[0].start, parts[parts.length - 1].end, parts[parts.length - 1].node);
+            follow();
+            drawBar();
+            notify();
+        }
+
+        // The link window under the bar's Link button: the address, Apply,
+        // Cancel and, on a link, Remove link. It acts on the text selected
+        // when it opened, or the link the caret stands in.
+        var linkWindow = null;
+
+        function closeLinkWindow(back) {
+            if (!linkWindow) {
+                return;
+            }
+
+            var target = linkWindow.target;
+
+            document.removeEventListener('mousedown', linkWindow.outside, true);
+            linkWindow.node.remove();
+            linkWindow = null;
+
+            if (back && target) {
+                paper.focus({ preventScroll: true });
+                placeSelection(target.parts[0].node, target.parts[0].start, target.parts[target.parts.length - 1].end, target.parts[target.parts.length - 1].node);
+                follow();
+            }
+
+            drawBar();
+        }
+
+        function openLinkWindow() {
+            closeBarMenu(false);
+            closeLinkWindow(false);
+
+            var target = linkTarget();
+
+            if (!target) {
+                refuse(strings.doc_link_select || '');
+                return;
+            }
+
+            var anchor = controls.link;
+            var node = el('div', 'office-link-window pg-card');
+            var id = 'office-link-' + (++linkWindows);
+            var label = el('label', 'pg-field-label', strings.doc_link_address || '');
+            var input = el('input', 'pg-input pg-input-sm');
+            var help = el('div', 'pg-field-help', strings.doc_link_hint || '');
+            var foot = el('div', 'office-link-foot');
+            var apply = el('button', 'pg-button pg-button-fill pg-button-sm', strings.doc_link_apply || '');
+            var cancel = el('button', 'pg-button pg-button-quiet pg-button-sm', strings.doc_link_cancel || '');
+
+            node.setAttribute('role', 'dialog');
+            node.setAttribute('aria-label', strings.doc_link || '');
+            label.setAttribute('for', id);
+            input.id = id;
+            input.type = 'text';
+            input.setAttribute('inputmode', 'url');
+            input.setAttribute('autocomplete', 'off');
+            input.setAttribute('spellcheck', 'false');
+            input.setAttribute('aria-describedby', id + '-help');
+            input.value = target.address || '';
+            help.id = id + '-help';
+            apply.type = 'button';
+            cancel.type = 'button';
+
+            function done() {
+                var address = linkAddress(input.value);
+
+                if (address === null) {
+                    input.setAttribute('aria-invalid', 'true');
+                    help.className = 'pg-field-error';
+                    help.textContent = strings.doc_link_bad || '';
+                    input.focus();
+                    return;
+                }
+
+                closeLinkWindow(false);
+                oneChange(function () {
+                    applyLink(target.parts, address);
+                });
+            }
+
+            // A link the file holds, to a web address or a bookmark, can be
+            // taken off.
+            if (target.address) {
+                var remove = el('button', 'pg-button pg-button-danger pg-button-sm', strings.doc_link_remove || '');
+
+                remove.type = 'button';
+                remove.addEventListener('click', function () {
+                    closeLinkWindow(false);
+                    oneChange(function () {
+                        applyLink(target.parts, '');
+                    });
+                });
+                foot.appendChild(remove);
+            }
+
+            foot.appendChild(el('span', 'office-link-gap'));
+            foot.appendChild(cancel);
+            foot.appendChild(apply);
+            cancel.addEventListener('click', function () {
+                closeLinkWindow(true);
+            });
+            apply.addEventListener('click', done);
+            input.addEventListener('input', function () {
+                input.removeAttribute('aria-invalid');
+                help.className = 'pg-field-help';
+                help.textContent = strings.doc_link_hint || '';
+            });
+
+            node.addEventListener('keydown', function (event) {
+                event.stopPropagation();
+
+                if (event.key === 'Escape') {
+                    event.preventDefault();
+                    closeLinkWindow(true);
+                } else if (event.key === 'Enter' && event.target === input) {
+                    event.preventDefault();
+                    done();
+                }
+            });
+
+            node.appendChild(label);
+            node.appendChild(input);
+            node.appendChild(help);
+            node.appendChild(foot);
+            bar.appendChild(node);
+            node.style.left = Math.max(0, anchor.offsetLeft) + 'px';
+            node.style.top = (anchor.offsetTop + anchor.offsetHeight + 4) + 'px';
+
+            // Near the right edge (a narrow screen) the window stays in the
+            // view.
+            if (node.offsetLeft + node.offsetWidth > bar.clientWidth) {
+                node.style.left = Math.max(0, bar.clientWidth - node.offsetWidth) + 'px';
+            }
+
+            linkWindow = {
+                node: node,
+                target: target,
+                outside: function (event) {
+                    if (linkWindow && !linkWindow.node.contains(event.target) && event.target !== anchor && !anchor.contains(event.target)) {
+                        closeLinkWindow(false);
+                    }
+                }
+            };
+
+            document.addEventListener('mousedown', linkWindow.outside, true);
+            anchor.setAttribute('aria-expanded', 'true');
+            input.focus({ preventScroll: true });
+            input.select();
+        }
+
+        var linkWindows = 0;
+
         // The colour, highlight or size all the selected text has; '' when
         // it has none, null when it differs. With only a caret, the one of
         // the character before it, which typed text takes (carryMarks()).
@@ -5728,6 +6019,16 @@
                 controls[format[0]].setAttribute('aria-pressed', on ? 'true' : 'false');
                 controls[format[0]].classList.toggle('is-active', on);
             });
+
+            // Link pressed when the text selected, or the caret, is in one.
+            if (controls.link) {
+                var linked = linkTarget();
+                var inLink = !!linked && !!linked.address;
+
+                controls.link.setAttribute('aria-pressed', inLink ? 'true' : 'false');
+                controls.link.classList.toggle('is-active', inLink);
+                controls.link.setAttribute('aria-expanded', linkWindow ? 'true' : 'false');
+            }
 
             // The colours as a bar under their glyph, the size as chosen; a
             // selection of mixed sizes shows none.
@@ -6188,11 +6489,12 @@
             }
         });
 
-        // A link in a paragraph that can be changed is followed with Ctrl or
-        // Cmd held, as in a word processor; a plain click places the caret.
+        // A click on a link in a paragraph that can be changed places the
+        // caret and opens the link window on that link; the address is
+        // never opened from the page.
         doc.addEventListener('click', function (event) {
             var node = paragraphOf(event.target);
-            var link = event.target.closest ? event.target.closest('a[href]') : null;
+            var link = event.target.closest ? event.target.closest('a[href], .office-link') : null;
 
             if (!link || !node || node.classList.contains('office-locked')) {
                 return;
@@ -6200,8 +6502,9 @@
 
             event.preventDefault();
 
-            if (event.ctrlKey || event.metaKey) {
-                window.open(link.href, '_blank', 'noopener,noreferrer');
+            if (controls.link && node.classList.contains('office-typing') && !own(deletes, node.getAttribute('data-p'))) {
+                follow();
+                openLinkWindow();
             }
         });
 
@@ -6620,6 +6923,40 @@
                 controls[item[0]] = { button: button, stripe: stripe };
                 bar.appendChild(button);
             });
+
+            // A link on the selected text, or the one the caret stands in:
+            // the link window (Ctrl+K).
+            (function () {
+                var button = el('button', 'pg-icon-button pg-icon-button-sm');
+                var glyph = el('span', 'bi bi-link-45deg');
+                var label = (strings.doc_link || '') + ' (Ctrl+K)';
+
+                button.type = 'button';
+                button.setAttribute('aria-pressed', 'false');
+                button.setAttribute('aria-haspopup', 'dialog');
+                button.setAttribute('aria-expanded', 'false');
+                button.setAttribute('aria-label', strings.doc_link || '');
+                button.setAttribute('aria-keyshortcuts', 'Control+K');
+                button.title = label;
+                glyph.setAttribute('aria-hidden', 'true');
+                button.appendChild(glyph);
+
+                // A press keeps the selection on the sheet for the window.
+                button.addEventListener('mousedown', function (event) {
+                    event.preventDefault();
+                });
+                button.addEventListener('click', function () {
+                    if (linkWindow) {
+                        closeLinkWindow(true);
+                        return;
+                    }
+
+                    openLinkWindow();
+                });
+
+                controls.link = button;
+                bar.appendChild(button);
+            })();
 
             // The alignment of the paragraphs selected, or of the one open.
             var alignGroup = el('span', 'pg-seg');
@@ -7103,7 +7440,9 @@
             cutLook: cutLook,
             exactBase: exactBase,
             lookOf: lookParts,
-            withLook: withLook
+            withLook: withLook,
+            linkOf: linkOf,
+            linkAddress: linkAddress
         },
         // A paragraph's alignment: the file's, how it is drawn, what a save
         // sends.

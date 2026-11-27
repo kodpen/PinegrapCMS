@@ -120,7 +120,8 @@ JS
 		array('start' => 1, 'end' => 2, 'set' => array('color' => 'DC2626')),
 		array('start' => 0, 'end' => 2, 'set' => array('highlight' => false)),
 		array('start' => 0, 'end' => 2, 'set' => array('size' => false)),
-	), $result['exact'], 'text moved into a new run sends every part');
+		array('start' => 0, 'end' => 2, 'set' => array('link' => false)),
+	), $result['exact'], 'text moved into a new run sends every part, its link too');
 }
 
 // A paragraph's alignment: the file's, the one asked for, and whether a

@@ -1182,6 +1182,7 @@
     "Remove last slide": "Son slaytı kaldır",
     "Remove lesson": "Dersi kaldır",
     "Remove line": "Satırı kaldır",
+    "Remove link": "Bağlantıyı kaldır",
     "Remove link (CSRF token included)": "Kaldır linki (CSRF token dahil)",
     "Remove mailbox": "Posta kutusunu kaldır",
     "Remove marketplace": "Pazaryerini kaldır",

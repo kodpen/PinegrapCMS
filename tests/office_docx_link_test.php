@@ -223,3 +223,106 @@ function test_office_docx_link_save_and_read_back()
 	@unlink($directory . '/office_edit_' . sha1($path) . '.lock');
 	unlink($path);
 }
+
+// Runs a script after the view in Node and answers what it printed as JSON;
+// null when Node cannot run.
+function office_docx_link_test_node($script)
+{
+	if (!function_exists('exec')) {
+		return null;
+	}
+
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		return null;
+	}
+
+	$file = @tempnam(sys_get_temp_dir(), 'pgdl');
+
+	if ($file === false) {
+		return null;
+	}
+
+	file_put_contents($file, "var window = {};\n" . file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_office_view.js')
+		. "\nvar M = window.pgOfficeView.docMarks;\n" . $script);
+	$out = array();
+	@exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	@unlink($file);
+
+	pg_assert_same(0, $code, 'the Node script runs: ' . implode("\n", array_slice($out, 0, 8)));
+
+	return json_decode(implode("\n", $out), true);
+}
+
+// The link window's address: a scheme given to an e-mail address, a phone
+// number and a bare web address; what no link may have refused, as the
+// server refuses it.
+function test_office_docx_link_editor_address()
+{
+	$result = office_docx_link_test_node(<<<'JS'
+var asked = ['https://example.com/a b', 'example.com/fiyat', 'ayse@example.com', '+90 555 111 22 33', 'tel:+90 555 111', 'MAILTO:a@b.co',
+	'javascript:alert(1)', '#Bolum', '', '   ', 'merhaba', 'ftp://example.com', 'https://', 'http://x.co y'];
+console.log(JSON.stringify(asked.map(M.linkAddress)));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('https://example.com/a%20b', 'https://example.com/fiyat', 'mailto:ayse@example.com', 'tel:+905551112233', 'tel:+90555111', 'MAILTO:a@b.co',
+		null, null, null, null, null, null, null, null), $result, 'each address as a save sends it, or refused');
+
+	foreach (array_filter($result) as $address) {
+		pg_assert_same($address, pg_office_docx_link_value($address), 'the server takes it: ' . $address);
+	}
+}
+
+// A link rides on a character's look: sent as a link stretch, taken off as
+// false, and text typed right after a link goes on outside it, inside a
+// link in it.
+function test_office_docx_link_editor_look()
+{
+	$result = office_docx_link_test_node(<<<'JS'
+var out = {};
+var bits = M.expandMarks([[2, 0], [3, 1, {l: 'https://example.com/'}]], 'abcde');
+var link = bits[2];
+out.links = bits.map(M.linkOf);
+out.sent = M.formatRanges([0, 0, 0], [0, M.withLook(0, 'l', 'tel:+90555'), 0]);
+out.off = M.formatRanges([link, link], [M.withLook(link, 'l', ''), link]);
+out.end = M.carryMarks(bits, 'abcde', 'abcdeX').map(M.linkOf);
+out.inside = M.carryMarks(bits, 'abcde', 'abcXde').map(M.linkOf);
+out.endBits = M.carryMarks(bits, 'abcde', 'abcdeX')[5] & 7;
+out.moved = M.formatRanges(M.exactBase([link]), [link]).filter(function (range) { return 'link' in range.set; });
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('', '', 'https://example.com/', 'https://example.com/', 'https://example.com/'), $result['links'], 'the address read from the marks');
+	pg_assert_same(array(array('start' => 1, 'end' => 2, 'set' => array('link' => 'tel:+90555'))), $result['sent'], 'a link put on is sent');
+	pg_assert_same(array(array('start' => 0, 'end' => 1, 'set' => array('link' => false))), $result['off'], 'a link taken off is sent as false');
+	pg_assert_same(array('', '', 'https://example.com/', 'https://example.com/', 'https://example.com/', ''), $result['end'], 'typed after the link: outside it');
+	pg_assert_same(1, $result['endBits'], 'the rest of its look kept');
+	pg_assert_same(array('', '', 'https://example.com/', 'https://example.com/', 'https://example.com/', 'https://example.com/'), $result['inside'], 'typed inside the link: in it');
+	pg_assert_same(array(array('start' => 0, 'end' => 1, 'set' => array('link' => 'https://example.com/'))), $result['moved'], 'text moved into a new run sends its link');
+}
+
+// The bar's Link button, Ctrl+K, the window's parts and a click on a link
+// opening the window, never the address.
+function test_office_docx_link_editor_source()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_office_view.js');
+
+	pg_assert_contains("el('span', 'bi bi-link-45deg')", $source, 'the Link button');
+	pg_assert_contains("=== 'k' && controls.link", $source, 'Ctrl+K opens the window');
+	pg_assert_contains("'pg-button pg-button-danger pg-button-sm', strings.doc_link_remove", $source, 'Remove link');
+	pg_assert_true(strpos($source, 'window.open(link.href') === false, 'a click on a link never opens the address');
+	pg_assert_contains("closest('a[href], .office-link')", $source, 'a click on a link opens the window');
+}

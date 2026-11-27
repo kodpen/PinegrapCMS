@@ -3251,6 +3251,7 @@
     "Write a valid e-mail address for every customer asked.": "Sorulan her müşteri için geçerli bir e-posta adresi yazın.",
     "Write a valid e-mail address, or leave it empty.": "Geçerli bir e-posta adresi yazın ya da boş bırakın.",
     "Write a variable as {{1}}, {{2}} and so on, or add it with Add variable.": "Değişkeni {{1}}, {{2}} biçiminde yazın ya da Değişken ekle ile ekleyin.",
+    "Write a web address starting with http:// or https://, an e-mail address or a phone number.": "http:// ya da https:// ile başlayan bir web adresi, bir e-posta adresi ya da bir telefon numarası yazın.",
     "Write a whole number: -1 for no limit, 0 for no text snippet, or at most {var} characters.": "Bir tam sayı yazın: sınırsız için -1, metin özeti olmaması için 0 ya da en çok {var} karakter.",
     "Write about this episode": "Bu bölüm hakkında yazın",
     "Write about this production": "Bu oyun hakkında yazın",
