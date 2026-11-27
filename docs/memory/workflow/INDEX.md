@@ -16,7 +16,7 @@
 - api-answer-check-run.md: Working rule: who runs tools/check_api_answers.php, when and how: a running site with a database, settings from the environment only, never in CI, findings filed as bug issues
 - architect-asking.md: How a session asks a decision question: search first, one message in the agent channel naming the architect, the PR back to draft, the session ends; screenshot approvals ended 2026-11-20 [decision: here]
 - architect-decision-record.md: An owner's answer stands in the agent channel, quoted by the architect, before the decisions list names it; a decisions entry that names no channel message is held by the merging session [decision: decisions-made-panel-4.md]
-- architect-draws-new-part.md: Working rule (2026-11-21): a part with no model on the Design examples screen is drawn by the architect before its job is given; words alone gave the timeline strip the owner sent back [decision: here]
+- architect-draws-new-part.md: Working rule (2026-11-21): a part with no model on the Design examples screen is drawn by the architect before its job is given; words alone gave the timeline strip the owner sent back [decision: decisions-made-product-118.md]
 - architect-hand-over-work.md: Hand-over of the architect session of 2026-11-24 to 26, the work in flight: who works now, what is left of the sheets, how sheets are made, what is watched [decision: here]
 - architect-hand-over.md: Hand-over note of the architect session of 2026-11-24 to 26, written as the owner moves the architect to another account: what is owed to the owner, what he decided last, what he was asked [decision: here]
 - architect-looks-at-landed-screen.md: The architect opens each landed step of a screen the owner asked for on a sandbox, in the states nobody drew, and writes what differs into the plan; no step waits for the look [decision: here]
@@ -33,7 +33,7 @@
 - bug-hunt-areas-3.md: The areas given to a bug hunt from 2026-11-20 on (the own sheet reader and its importers; Incoming e-mail and Mailboxes at phone width), what each fixed, the issues it opened and what it read clean
 - bug-hunt-areas-4.md: Bug hunt areas beside bug-hunt-areas-3: the fifteen panel screens hunted on 2026-11-19 and the two areas given on 2026-11-20 (prototype comments' guest side, picture text translation's server side)
 - bug-hunt-areas-5.md: Bug hunt areas given on the evening of 2026-11-20: order profit and shipping labels (K3), the bookings' visitor side and stock per location (K2); files, what to look at, what is left alone [decision: here]
-- bug-hunt-areas-6.md: The one round of bug hunts of the night of 2026-11-27 (owner): up to 15 workers a coordinator, work first, the ten designer parts given to k3 and the eight areas given to k2, how the night ends [decision: here]
+- bug-hunt-areas-6.md: The one round of bug hunts of the night of 2026-11-27 (owner): up to 15 workers a coordinator, work first, the ten designer parts given to k3 and the eight areas given to k2, how the night ends [decision: decisions-made-product-118.md]
 - bug-hunt-areas-ad-conversions.md: The bug hunt in the ad conversions (agent channel request 3045, 2026-11-26): what was fixed, what was read clean against the consent rule, what is left
 - bug-hunt-areas-agent-guide.md: The bug hunt in the AI agent guide and the refused calls (built in #10709 to #11236), PR #11805: the faults fixed, what was read clean and what was seen and left [decision: here]
 - bug-hunt-areas-agent-requests.md: The bug hunt in the agents' request queue and wakes (architect, 2026-11-26, request 3016): what was fixed, what was read clean, what is asked and left [decision: here]
@@ -224,6 +224,8 @@
 - decisions-made-product-114.md: Decisions made, product part 114 (2026-11-26 on): all ten kinds of ready content for the Artifact Canvas, the basics first; a settings card and its Connections page hand over in one trip
 - decisions-made-product-115.md: Decisions made, product part 115 (2026-11-26 on): the office editors get all eight abilities, simple formulas included; the phone preview shows the live page's QR code in a design with no draft
 - decisions-made-product-116.md: Decisions made, product part 116 (2026-11-26 on): a live page's new version is prepared in a draft that replaces it ("Save as a new version"); a live page still has no working copy
+- decisions-made-product-117.md: Decisions made, product part 117 (2026-11-27 on): nine features for selling and working outside Turkey enter plans; the European e-invoice does not
+- decisions-made-product-118.md: Decisions made, product part 118 (2026-11-27 on): panel languages start with the mechanism and German; a touched old screen is brought to the look; a new setting sits beside its kin
 - decisions-made-product-12.md: Decisions list, product part 12 (2026-10-31 on): ERP settings cards for role 3, Trendyol address order, old n11 rows data step, phone toolbar, Trendyol Luxe, shipment rules confirmed
 - decisions-made-product-13.md: Decisions list, product part 13 (2026-10-31 on): Site Settings group headings, no notes secret feed, no hint on forgot password, IIS preflight nudge
 - decisions-made-product-14.md: Decisions list, product part 14 (2026-10-31 on): own image editor, nothing alone under a screen's title, no PDF of ours for a purchase invoice, Site Settings regrouped

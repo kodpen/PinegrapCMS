@@ -191,6 +191,13 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-116.md: Where are the rules and the earlier parts?
 - decisions-made-product-116.md: How is a new version of a live page prepared? (owner, 2026-11-26, agent channel poll 244, message 14639)
 - decisions-made-product-116.md: What is the architect's reading, not his words?
+- decisions-made-product-117.md: Where are the rules and the earlier parts?
+- decisions-made-product-117.md: Which features of the world's products does the product get next? (owner, 2026-11-27, agent channel poll 246, message 14833)
+- decisions-made-product-117.md: What was left off the ten, and why?
+- decisions-made-product-118.md: How do the panel's language packs start? (owner, 2026-11-27, agent channel poll 247, message 14843)
+- decisions-made-product-118.md: What does a feature do with an old screen it touches? (owner, 2026-11-27, agent channel message 14844)
+- decisions-made-product-118.md: Where does a new setting go? (owner, 2026-11-27, agent channel message 14844)
+- decisions-made-product-118.md: What else did he say in that message?
 - decisions-made-product-12.md: Where are the rules and the earlier parts?
 - decisions-made-product-12.md: Where does a role-3 user edit the ERP settings cards? (#3828)
 - decisions-made-product-12.md: Trendyol import: which column holds the province? (#3835)
