@@ -202,6 +202,65 @@ function ws_memory_search_query($sql, $params)
 }
 
 /**
+ * Which records of a memory a list or a search reads, as SQL over
+ * ws_channel_memory (alias m): the memory, the live ones unless expired, a
+ * tag and a project. The project is compared by the column's
+ * case-insensitive collation, as ws_memory_projects() counts it. The
+ * narrowing is in the query, before the list's limit. Pure.
+ *
+ * @param int   $channel_id 0 for the general memory
+ * @param array $options    expired (bool: the expired ones too), tag
+ *                          (ws_memory_tag()), project (ws_memory_project())
+ * @param int   $now
+ * @return array sql, params
+ */
+function ws_memory_filter_where($channel_id, $options, $now)
+{
+    $sql = 'm.channel_id = ?';
+    $params = array((int) $channel_id);
+
+    if (empty($options['expired'])) {
+        $sql .= ' AND (m.expires_at = 0 OR m.expires_at > ?)';
+        $params[] = (int) $now;
+    }
+
+    $tag = (string) ($options['tag'] ?? '');
+
+    if ($tag !== '') {
+        $sql .= ' AND FIND_IN_SET(?, m.tags) > 0';
+        $params[] = $tag;
+    }
+
+    $project = (string) ($options['project'] ?? '');
+
+    if ($project !== '') {
+        $sql .= ' AND m.project = ?';
+        $params[] = $project;
+    }
+
+    return array('sql' => $sql, 'params' => $params);
+}
+
+/**
+ * A memory's index narrowed by tag and project: the records the list routes
+ * answer without a search, pinned first and then the newest, 500 at most.
+ *
+ * @param int   $channel_id 0 for the general memory
+ * @param array $options    expired, tag, project (ws_memory_filter_where())
+ * @return array[] ws_channel_memory rows
+ */
+function ws_memory_index_rows($channel_id, $options = array())
+{
+    if (!ws_memory_ready() || (((string) ($options['project'] ?? '') !== '') && !ws_memory_project_ready())) {
+        return array();
+    }
+
+    $filter = ws_memory_filter_where($channel_id, $options, time());
+
+    return ws_memory_search_query('SELECT m.* FROM ws_channel_memory m WHERE ' . $filter['sql'] . ' ORDER BY m.pinned DESC, m.updated_at DESC, m.id DESC LIMIT 500', $filter['params']);
+}
+
+/**
  * One page of a memory's records holding every word, pinned first and then
  * the newest, as ws_memory_rows() orders them.
  *
@@ -220,37 +279,16 @@ function ws_memory_search_page($channel_id, $terms, $options = array())
         return array('rows' => array(), 'more' => false);
     }
 
-    $sql = 'SELECT m.* FROM ws_channel_memory m WHERE m.channel_id = ?';
-    $params = array((int) $channel_id);
-
-    if (empty($options['expired'])) {
-        $sql .= ' AND (m.expires_at = 0 OR m.expires_at > ?)';
-        $params[] = time();
+    if (((string) ($options['project'] ?? '') !== '') && !ws_memory_project_ready()) {
+        return array('rows' => array(), 'more' => false);
     }
 
-    $tag = (string) ($options['tag'] ?? '');
-
-    if ($tag !== '') {
-        $sql .= ' AND FIND_IN_SET(?, m.tags) > 0';
-        $params[] = $tag;
-    }
-
-    $project = (string) ($options['project'] ?? '');
-
-    if ($project !== '') {
-        if (!ws_memory_project_ready()) {
-            return array('rows' => array(), 'more' => false);
-        }
-
-        $sql .= ' AND m.project = ?';
-        $params[] = $project;
-    }
-
+    $filter = ws_memory_filter_where($channel_id, $options, time());
     $offset = max(0, (int) ($options['offset'] ?? 0));
     $limit = max(1, (int) ($options['limit'] ?? WS_MEMORY_SEARCH_PAGE));
 
-    $sql .= ' AND ' . $where['sql'] . ' ORDER BY m.pinned DESC, m.updated_at DESC, m.id DESC LIMIT ' . $offset . ', ' . ($limit + 1);
-    $rows = ws_memory_search_query($sql, array_merge($params, $where['params']));
+    $sql = 'SELECT m.* FROM ws_channel_memory m WHERE ' . $filter['sql'] . ' AND ' . $where['sql'] . ' ORDER BY m.pinned DESC, m.updated_at DESC, m.id DESC LIMIT ' . $offset . ', ' . ($limit + 1);
+    $rows = ws_memory_search_query($sql, array_merge($filter['params'], $where['params']));
     $more = (count($rows) > $limit);
 
     return array('rows' => array_slice($rows, 0, $limit), 'more' => $more);

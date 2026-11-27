@@ -188,3 +188,20 @@ function test_workspace_memory_tab_search_wiring()
 	pg_assert_contains("input.type = 'search';", $script);
 	pg_assert_contains('fields.search = query;', $script, 'the words go to ws_memory_list');
 }
+
+// A list narrowed by project or tag is narrowed in the query, before its
+// 500-row limit: filtered after it, a project of a memory of thousands of
+// records lost every record past the newest 500. The project is compared
+// by the column's case-insensitive collation, as the projects read counts it.
+function test_workspace_memory_filter_where_narrows_in_the_query()
+{
+	$where = ws_memory_filter_where(7, array('tag' => 'api', 'project' => 'Design'), 1000);
+
+	pg_assert_same('m.channel_id = ? AND (m.expires_at = 0 OR m.expires_at > ?) AND FIND_IN_SET(?, m.tags) > 0 AND m.project = ?', $where['sql']);
+	pg_assert_same(array(7, 1000, 'api', 'Design'), $where['params']);
+
+	$all = ws_memory_filter_where(0, array('expired' => true), 1000);
+
+	pg_assert_same('m.channel_id = ?', $all['sql'], 'the expired ones too, no tag, no project');
+	pg_assert_same(array(0), $all['params']);
+}
