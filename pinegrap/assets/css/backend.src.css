@@ -22728,8 +22728,157 @@ button.ws-cal-more {
   flex: 1;
   min-width: 0;
 }
-.ws-mycal-week .ws-cal-day {
-  min-height: 22rem;
+/* My calendar's week (workspace_my_calendar_week.js): the days' heads, a
+   strip of what has no hour, then 24 hours of which 07:00 to 20:00 are in
+   view; a column of hour labels on the left of each row. */
+.ws-mycal-hours {
+  --ws-mycal-hour: 3rem;
+  --ws-mycal-gutter: 3.5rem;
+}
+.ws-mycal-hours-row {
+  display: grid;
+  grid-template-columns: var(--ws-mycal-gutter) repeat(7, minmax(0, 1fr));
+}
+.ws-mycal-hours-head {
+  background: var(--pg-bg-1);
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+}
+.ws-mycal-hours-day {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 6px 4px;
+  cursor: pointer;
+}
+.ws-mycal-hours-day:hover {
+  background: var(--ws-soft);
+}
+.ws-mycal-weekday {
+  color: var(--pg-fg-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-mycal-gutter {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 6px 8px 0 0;
+  border-right: 1px solid var(--pg-border-color-translucent);
+}
+.ws-mycal-strip {
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+}
+.ws-mycal-strip-day {
+  --ws-cal-pad: .4rem;
+  min-width: 0;
+  min-height: 2rem;
+  padding: .3rem var(--ws-cal-pad) .1rem;
+  border-right: 1px solid var(--pg-border-color-translucent);
+}
+.ws-mycal-strip-day:last-child,
+.ws-mycal-hours-col:last-child {
+  border-right: 0;
+}
+.ws-mycal-strip-day.ws-cal-weekend,
+.ws-mycal-hours-col.ws-cal-weekend {
+  background: color-mix(in srgb, var(--pg-fg-emphasis) 2%, transparent);
+}
+.ws-mycal-scroll {
+  height: calc(var(--ws-mycal-hour) * 13);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.ws-mycal-hours-grid {
+  height: calc(var(--ws-mycal-hour) * 24);
+}
+.ws-mycal-hour-labels {
+  position: relative;
+  padding: 0;
+}
+.ws-mycal-hour-label {
+  position: absolute;
+  right: 8px;
+  transform: translateY(-50%);
+}
+.ws-mycal-hours-col {
+  position: relative;
+  min-width: 0;
+  border-right: 1px solid var(--pg-border-color-translucent);
+}
+.ws-mycal-slot {
+  height: calc(100% / 24);
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+}
+.ws-mycal-slot[role="button"] {
+  cursor: pointer;
+}
+.ws-mycal-slot[role="button"]:hover {
+  background: var(--ws-soft);
+}
+.ws-mycal-slot:focus-visible {
+  outline: 2px solid var(--ws-accent);
+  outline-offset: -2px;
+}
+/* An item with a time: the chip of its kind, at its start and as tall as
+   it lasts, its share of the width beside the items it overlaps. */
+.ws-cal-task.ws-mycal-block,
+.ws-cal-event.ws-mycal-block {
+  position: absolute;
+  align-items: flex-start;
+  margin: 0;
+  padding: .1rem .3rem;
+  border: 1px solid var(--pg-bg-body);
+  white-space: normal;
+  overflow: hidden;
+  z-index: 1;
+}
+.ws-cal-task.ws-mycal-block .ws-status-dot {
+  margin-top: .3rem;
+}
+.ws-mycal-block:focus-visible {
+  outline: 2px solid var(--ws-accent);
+  outline-offset: 0;
+  z-index: 2;
+}
+/* The line of now across today's column. */
+.ws-mycal-now {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--pg-danger);
+  pointer-events: none;
+  z-index: 3;
+}
+.ws-mycal-now::before {
+  content: "";
+  position: absolute;
+  left: -4px;
+  top: -3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--pg-danger);
+}
+/* On a phone the week's items keep the month's coloured bars, and an item
+   with a time still opens on a tap rather than the hour under it. */
+@media (max-width: 575.98px) {
+  .ws-mycal-hours {
+    --ws-mycal-gutter: 2.75rem;
+  }
+  .ws-mycal-hours-day {
+    flex-direction: column;
+    gap: 2px;
+  }
+  .ws-cal-task.ws-mycal-block,
+  .ws-cal-event.ws-mycal-block {
+    margin: 0;
+    border-radius: var(--ws-radius-xs);
+    pointer-events: auto;
+  }
 }
 .ws-mycal-list {
   padding: 8px 12px 12px;
