@@ -4,7 +4,7 @@ description: The Google Fonts browser of the designer as the part 'fonts' (D5 pa
 ---
 
 ## What is in the part?
-- `assets/js/style_designer_fonts.js` (bundle `style_designer_fonts.min.js`, part `fonts` in `pg_designer_parts()`): the `#sd-gf-modal` dialog (built on the first open, with its close button, search field and capturing Escape listener), the catalogue list (`renderGfBrowser()`), the detail with the preview and the weights (`openGfPicker()`), Add / Update / Remove.
+- `assets/js/style_designer_fonts.js` (bundle `style_designer_fonts.min.js`, part `fonts` in `pg_designer_parts()`): the `#sd-gf-modal` dialog (built on the first open, with its close button, search field and capturing Escape listener), the catalogue list (`renderGfBrowser()`), the detail with the preview and the weights (`openGfPicker()`), Add / Update / Remove. Update writes the weights only: a font turned off stays off, in its place in the list (#12025).
 - Handed to every editor (`designer_screen.php`); it runs the first time "Add a Google Font" is asked for (the Fonts section's menu, the command palette's `act_add_font`).
 
 ## What does the core keep?

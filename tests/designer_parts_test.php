@@ -567,6 +567,31 @@ function test_designer_fonts_browser_is_a_part()
 	pg_assert_same('always', pg_designer_part_files()['fonts']['when'], 'the screen hands the fonts part over');
 }
 
+// The fonts part's script under Node: a kit with every key the core's has,
+// a fake document, and a host whose list starts with Lato (`added`, writes
+// counted in `writes`); the part's factory in `factory`.
+function designer_fonts_part_js()
+{
+	$keys = array_keys(designer_parts_kit_keys());
+
+	return 'var factory = null; var StyleDesigner = { definePart: function (n, f) { if (n === "fonts") factory = f; } };'
+		. 'var byId = {}; var built = 0; var keydowns = 0;'
+		. 'function el(tag) { var e = { tag: tag, id: "", value: "", dataset: {}, style: {}, classList: { add: function () {}, remove: function () {}, toggle: function () {} },'
+		. ' listeners: {}, children: [], _html: "", isConnected: true, focus: function () {},'
+		. ' addEventListener: function (t, f) { this.listeners[t] = f; }, appendChild: function (c) { this.children.push(c); if (c.id) byId[c.id] = c; return c; },'
+		. ' querySelectorAll: function (s) { return (this.q && this.q[s]) || []; }, querySelector: function (s) { var l = this.querySelectorAll(s); return l.length ? l[0] : (byId[s.replace("#", "")] || null); } };'
+		. ' Object.defineProperty(e, "innerHTML", { get: function () { return this._html; }, set: function (h) { this._html = h; if (this.id === "sd-gf-modal") { built++; ["sd-gf-modal-close", "sd-gf-search", "sd-gf-list", "sd-gf-detail"].forEach(function (id) { var c = el("div"); c.id = id; byId[id] = c; }); } } });'
+		. ' return e; }'
+		. 'var document = { body: el("body"), head: el("head"), createElement: function (t) { return el(t); }, getElementById: function (id) { return byId[id] || null; },'
+		. ' querySelector: function () { return null; }, querySelectorAll: function () { return []; }, addEventListener: function (t) { if (t === "keydown") keydowns++; } };'
+		. 'var setTimeout = function (f) { f(); };'
+		. 'var K = {}; ' . json_encode($keys) . '.forEach(function (k) { K[k] = function () {}; });'
+		. 'K._sdT = function (s) { return s; }; K.esc = function (s) { return String(s); };'
+		. 'var added = [{ family: "Lato", weights: [400], enabled: true }]; var writes = 0;'
+		. 'var host = { added: function () { return added; }, set: function (l) { added = l; writes++; }, catalogue: function () { return ["Inter", "Lato", "Roboto"]; } };'
+		. "\n" . (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_fonts.js') . "\n";
+}
+
 // The fonts part under Node, handed a kit with every key the core's has and
 // a host like the core's: open() builds the modal once and lists the
 // catalogue, marking the fonts already added; picking a font and pressing
@@ -582,23 +607,7 @@ function test_designer_fonts_part_lists_adds_and_removes_through_the_host()
 		return;
 	}
 
-	$keys = array_keys(designer_parts_kit_keys());
-	$js = 'var factory = null; var StyleDesigner = { definePart: function (n, f) { if (n === "fonts") factory = f; } };'
-		. 'var byId = {}; var built = 0; var keydowns = 0;'
-		. 'function el(tag) { var e = { tag: tag, id: "", value: "", dataset: {}, style: {}, classList: { add: function () {}, remove: function () {}, toggle: function () {} },'
-		. ' listeners: {}, children: [], _html: "", isConnected: true, focus: function () {},'
-		. ' addEventListener: function (t, f) { this.listeners[t] = f; }, appendChild: function (c) { this.children.push(c); if (c.id) byId[c.id] = c; return c; },'
-		. ' querySelectorAll: function (s) { return (this.q && this.q[s]) || []; }, querySelector: function (s) { var l = this.querySelectorAll(s); return l.length ? l[0] : (byId[s.replace("#", "")] || null); } };'
-		. ' Object.defineProperty(e, "innerHTML", { get: function () { return this._html; }, set: function (h) { this._html = h; if (this.id === "sd-gf-modal") { built++; ["sd-gf-modal-close", "sd-gf-search", "sd-gf-list", "sd-gf-detail"].forEach(function (id) { var c = el("div"); c.id = id; byId[id] = c; }); } } });'
-		. ' return e; }'
-		. 'var document = { body: el("body"), head: el("head"), createElement: function (t) { return el(t); }, getElementById: function (id) { return byId[id] || null; },'
-		. ' querySelector: function () { return null; }, querySelectorAll: function () { return []; }, addEventListener: function (t) { if (t === "keydown") keydowns++; } };'
-		. 'var setTimeout = function (f) { f(); };'
-		. 'var K = {}; ' . json_encode($keys) . '.forEach(function (k) { K[k] = function () {}; });'
-		. 'K._sdT = function (s) { return s; }; K.esc = function (s) { return String(s); };'
-		. 'var added = [{ family: "Lato", weights: [400], enabled: true }]; var writes = 0;'
-		. 'var host = { added: function () { return added; }, set: function (l) { added = l; writes++; }, catalogue: function () { return ["Inter", "Lato", "Roboto"]; } };'
-		. "\n" . (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_fonts.js') . "\n"
+	$js = designer_fonts_part_js()
 		. 'var api = factory(K); api.open(host); api.open(host);'
 		. 'var list = byId["sd-gf-list"].innerHTML;'
 		. 'console.log(JSON.stringify([Object.keys(api).sort(), built, keydowns, byId["sd-gf-modal"].style.display, (list.match(/data-gf-pick=/g) || []).length, /sd-gf-added-mark[^>]*data-gf-pick="Lato"/.test(list)]));'
@@ -618,6 +627,38 @@ function test_designer_fonts_part_lists_adds_and_removes_through_the_host()
 	pg_assert_same(array(array('open', 'pick'), 1, 1, 'flex', 3, true), json_decode($lines[0] ?? '', true), 'its entry points; the modal built once; the catalogue listed with Lato marked');
 	pg_assert_same(array(1, 2, array(400, 700), true), json_decode($lines[1] ?? '', true), 'Add writes the font with its weights');
 	pg_assert_same(array(2, array('Lato')), json_decode($lines[2] ?? '', true), 'Remove takes it out');
+}
+
+// Update in a font's detail writes its weights and nothing else: a font
+// turned off in the Fonts section stays off and keeps its place in the
+// list. Before, Update put it back at the end, turned on.
+function test_designer_fonts_part_update_keeps_the_font_off_and_in_place()
+{
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		return;
+	}
+
+	$js = designer_fonts_part_js()
+		. 'added = [{ family: "Lato", weights: [400], enabled: false, movedToCss: true }, { family: "Inter", weights: [400], enabled: true, movedToCss: false }];'
+		. 'var api = factory(K); api.open(host);'
+		. 'var det = byId["sd-gf-detail"]; var w300 = { value: "300" }, w700 = { value: "700" }; var add = el("button");'
+		. 'det.q = { "input:checked": [w300, w700], ".sd-gf-det-add": [add], ".sd-gf-det-remove": [], ".sd-gf-det-wt input": [] };'
+		. 'api.pick(host, "Lato"); add.listeners.click();'
+		. 'console.log(JSON.stringify(added));';
+	$file = tempnam(sys_get_temp_dir(), 'sdfonts') . '.js';
+	file_put_contents($file, $js);
+	$lines = array();
+	exec('node ' . escapeshellarg($file) . ' 2>&1', $lines, $code);
+	@unlink($file);
+	pg_assert_same(0, $code, 'the fonts part runs: ' . implode("\n", $lines));
+	pg_assert_same(array(
+		array('family' => 'Lato', 'weights' => array(300, 700), 'enabled' => false, 'movedToCss' => true),
+		array('family' => 'Inter', 'weights' => array(400), 'enabled' => true, 'movedToCss' => false),
+	), json_decode($lines[0] ?? '', true), 'the new weights; off, moved and first as before');
 }
 
 // The Interactions section's rows and fields are a part: the core draws the
