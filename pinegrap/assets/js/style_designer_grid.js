@@ -323,7 +323,7 @@ StyleDesigner.definePart('grid', function (K) {
     // Per grid box (node id): folded by hand, the chosen area, the name
     // being typed, the line left by the last change, a refusal.
     var _fold = {};
-    var _ui = { id: '', sel: '', edit: '', fresh: false, note: '', err: '', key: null };
+    var _ui = { id: '', sel: '', edit: '', fresh: false, note: '', noteKey: '', err: '', key: null };
     var _ov = { timer: 0, box: null, hot: '', host: null, node: null };
 
     function _tint(i) { return 'sd-ga-t' + (i % 6 + 1); }
@@ -410,14 +410,28 @@ StyleDesigner.definePart('grid', function (K) {
             text = w.text;
             moved = w.count;
         }
-        _setNote(st.node.id, note ? note(moved) : '');
+        _setNote(st.node.id, note ? note(moved) : '', text, st.cls);
         host.commit(text, [null]);
     }
 
-    function _setNote(id, text) {
+    // `after`: the User Styles text the change leaves, so the line goes
+    // once the change is taken back (_noteHolds()).
+    function _setNote(id, text, after, cls) {
         _ui.id = id;
         _ui.note = text;
+        _ui.noteKey = after == null ? '' : _noteKey(after, cls);
         _ui.err = '';
+    }
+
+    // The grid box's areas, columns and rows at every size.
+    function _noteKey(text, cls) {
+        return JSON.stringify([A.CSS, G.CSS.columns, G.CSS.rows].map(function (css) { return cls ? Z.read(text, cls, css) : {}; }));
+    }
+
+    // Whether the line left by the last change still tells the box as it
+    // is: an Undo or another change of its tracks or areas ends it.
+    function _noteHolds(st, text) {
+        return !!_ui.note && _ui.id === st.node.id && _ui.noteKey === _noteKey(text, st.cls);
     }
 
     function _remove(host, st, i) {
@@ -447,12 +461,14 @@ StyleDesigner.definePart('grid', function (K) {
     }
 
     // Columns or Rows changed on a grid box with areas of its own at the
-    // size: the areas are cut to the new count in the same step.
+    // size: the areas are cut to the new count in the same step. Only
+    // while both axes have a count: areas on a grid without one are not
+    // drawn, and a count of zero would cut every one away.
     function _writeTracks(host, axis, value) {
         var node = host.nodes.length === 1 ? host.nodes[0] : null;
         var st = node && A ? _gridState(host, node, host.text()) : null;
         var n = A ? A.count(G.parse(value, axis)) : 0;
-        if (!st || !st.own || !st.areas.length || !n || n === (axis === 'columns' ? st.cols : st.rows)) {
+        if (!st || !st.own || !st.areas.length || !n || !st.cols || !st.rows || n === (axis === 'columns' ? st.cols : st.rows)) {
             _write(host, axis, value);
             return;
         }
@@ -466,7 +482,7 @@ StyleDesigner.definePart('grid', function (K) {
         var line = (axis === 'columns' ? _sdT('Columns went from {var:1} to {var:2}.', [was, n]) : _sdT('Rows went from {var:1} to {var:2}.', [was, n]));
         if (f.cut.length) line += ' ' + _sdT('Made smaller: {var}.', q(f.cut));
         if (f.gone.length) line += ' ' + _sdT('Removed: {var}.', q(f.gone));
-        _setNote(node.id, line);
+        _setNote(node.id, line, text, st.cls);
         host.commit(text, [null]);
     }
 
@@ -538,6 +554,7 @@ StyleDesigner.definePart('grid', function (K) {
         var st = _gridState(host, node, text);
         if (!st.ok) { box.innerHTML = ''; return; }
         if (_ui.id !== node.id) { _ui.id = node.id; _ui.sel = ''; _ui.edit = ''; _ui.note = ''; _ui.err = ''; _ui.key = null; }
+        if (_ui.note && !_noteHolds(st, text)) _ui.note = '';
         var off = !st.cols || !st.rows;
         var open = !off && (Object.prototype.hasOwnProperty.call(_fold, node.id) ? !_fold[node.id] : st.areas.length > 0);
         var h = _foldHtml(st, open, off);
@@ -803,14 +820,14 @@ StyleDesigner.definePart('grid', function (K) {
         var x0 = b.left + win.scrollX + parseFloat(cs.borderLeftWidth) + parseFloat(cs.paddingLeft);
         var y0 = b.top + win.scrollY + parseFloat(cs.borderTopWidth) + parseFloat(cs.paddingTop);
         var gx = parseFloat(cs.columnGap) || 0, gy = parseFloat(cs.rowGap) || 0;
-        var edge = function (list, gap, i) { var s = 0; for (var k = 0; k < i && k < list.length; k++) s += list[k] + gap; return s; };
+        // A right-to-left grid starts its columns at the right edge.
+        var rtl = cs.direction === 'rtl';
+        var cw = b.width - parseFloat(cs.borderLeftWidth) - parseFloat(cs.paddingLeft) - parseFloat(cs.borderRightWidth) - parseFloat(cs.paddingRight);
         var h = '';
         _ov.areas.forEach(function (a, i) {
             var t = _OV_TINTS[i % 6], hot = a.name === _ov.hot;
-            var x = x0 + edge(colsW, gx, a.c - 1), y = y0 + edge(rowsH, gy, a.r - 1);
-            var w = edge(colsW, gx, a.c - 1 + a.w) - gx - edge(colsW, gx, a.c - 1);
-            var hh = edge(rowsH, gy, a.r - 1 + a.h) - gy - edge(rowsH, gy, a.r - 1);
-            h += '<div style="position:absolute;left:' + x + 'px;top:' + y + 'px;width:' + Math.max(0, w) + 'px;height:' + Math.max(0, hh) +
+            var at = A.box(a, colsW, rowsH, gx, gy, rtl, cw);
+            h += '<div style="position:absolute;left:' + (x0 + at.x) + 'px;top:' + (y0 + at.y) + 'px;width:' + at.w + 'px;height:' + at.h +
                 'px;border-radius:8px;background:' + t + (hot ? '57' : '33') + ';outline:' + (hot ? '2px solid ' : '1.5px dashed ') + t +
                 ';outline-offset:-1px"><span style="position:absolute;right:6px;top:6px;height:19px;padding:0 7px;border-radius:5px;background:' + t +
                 ';color:#0b1220;font:600 11px/19px system-ui,sans-serif;white-space:nowrap;max-width:calc(100% - 12px);overflow:hidden;text-overflow:ellipsis">' +
@@ -819,6 +836,8 @@ StyleDesigner.definePart('grid', function (K) {
         if (!old) {
             old = doc.createElement('div');
             old.id = 'sd-ga-overlay';
+            // The editor's chrome: a Side by side mirror leaves it out.
+            old.className = 'sd-ga-overlay';
             old.setAttribute('aria-hidden', 'true');
             old.style.cssText = 'position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;z-index:2147483000';
         }
