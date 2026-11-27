@@ -8964,6 +8964,7 @@ function update_custom_themes($content)
 function get_tables() {
 
 	return array(
+		'accounting_sync',
 		'aclfolder',
 		'ad_conversion_events',
 		'ad_regions',
