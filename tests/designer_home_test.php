@@ -418,14 +418,34 @@ function test_designer_listed_style_sql_leaves_out_binned_tree_pages()
 	pg_assert_same("(style.style_layout = 'visual_designer')", pg_designer_listed_style_sql_for(false, array(4)), 'before pages carry trees: made designs only');
 }
 
+// The source of one function of a file under pinegrap/, up to the next one.
+function _test_designer_home_function_body($file, $fn)
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . $file);
+	$body = substr($source, (int) strpos($source, 'function ' . $fn . '('));
+	return substr($body, 0, (int) strpos($body, "\nfunction ", 10));
+}
+
 // The home's list and the design chooser read the one condition.
 function test_designer_list_and_targets_share_the_listed_style_sql()
 {
 	foreach (array('/includes/designer_screen.php' => 'pg_designer_list_designs', '/includes/fn/designer.php' => 'pg_designer_design_targets') as $file => $fn) {
-		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . $file);
-		$body = substr($source, (int) strpos($source, 'function ' . $fn . '('));
-		$body = substr($body, 0, (int) strpos($body, "\nfunction ", 10));
+		$body = _test_designer_home_function_body($file, $fn);
 		pg_assert_contains('pg_designer_listed_style_sql()', $body);
 		pg_assert_false(strpos($body, 'p2.page_tree_json') !== false, $fn . ' builds no condition of its own');
+	}
+}
+
+// The external API's design list (GET /design/designs) and the designs a
+// page can be added to (POST /design/pages) read the same condition, so a
+// classic style whose tree pages are all in the Recycle Bin is neither
+// listed nor taken.
+function test_designer_api_designs_share_the_listed_style_sql()
+{
+	foreach (array('api_design_designs_list', 'api_design_pages_create') as $fn) {
+		$body = _test_designer_home_function_body('/includes/api/resources/design.php', $fn);
+		pg_assert_true(strlen($body) > 0, $fn . ' is found');
+		pg_assert_true(strpos($body, 'pg_designer_listed_style_sql()') !== false, $fn . ' reads the shared condition');
+		pg_assert_false(strpos($body, 'page_tree_json') !== false, $fn . ' builds no condition of its own');
 	}
 }

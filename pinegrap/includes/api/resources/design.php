@@ -266,7 +266,8 @@ function api_design_pages_list($params) {
 }
 
 // The designs a page can be added to: the editor's own, and the older ones
-// whose pages already carry a layout tree (pg_designer_list_designs()).
+// with a page outside the Recycle Bin that carries a layout tree
+// (pg_designer_listed_style_sql(), as pg_designer_list_designs()).
 function api_design_present($row, $counts) {
 
 	$c = isset($counts[(int)$row['style_id']]) ? $counts[(int)$row['style_id']] : array('pages' => 0, 'drafts' => 0, 'home' => 0);
@@ -395,7 +396,9 @@ function api_design_designs_list($params) {
 
 	};
 
-	$where = array("(style.style_layout = 'visual_designer' OR EXISTS (SELECT 1 FROM page p2 WHERE p2.page_style = style.style_id AND p2.page_tree_json IS NOT NULL AND p2.page_tree_json <> ''))");
+	// The styles the Page Design Studio home lists: a classic style only while
+	// one of its tree pages is outside the Recycle Bin.
+	$where = array(pg_designer_listed_style_sql());
 
 	if (isset($params['q']) && $params['q'] !== '') {
 
@@ -655,8 +658,6 @@ function api_design_pages_create($params) {
 
 	$design_id = (int)$params['design_id'];
 
-	$visual = pg_visual_design_style_ids();
-
 	$design = api_row("SELECT style_id, style_name FROM style WHERE style_id = '" . $design_id . "' LIMIT 1");
 
 	if ($design === null) {
@@ -665,7 +666,9 @@ function api_design_pages_create($params) {
 
 	}
 
-	if (!isset($visual[$design_id]) && (int)api_value("SELECT COUNT(*) FROM page WHERE page_style = '" . $design_id . "' AND page_tree_json IS NOT NULL AND page_tree_json <> ''") === 0) {
+	// Only a design GET /design/designs lists: a classic style whose tree
+	// pages are all in the Recycle Bin is not one.
+	if ((int)api_value("SELECT COUNT(*) FROM style WHERE style.style_id = '" . $design_id . "' AND " . pg_designer_listed_style_sql()) === 0) {
 
 		api_fail_validation(lang('The design was not made in the Page Design Studio.'), 'design_id');
 

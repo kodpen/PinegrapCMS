@@ -5924,7 +5924,7 @@ function api_schema() {
 			'returns' => array('list' => 'Design'),
 			'summary' => 'Designs of the Visual Page Editor',
 			'description' => 'The designs a page can be added to (POST /design/pages). pages and drafts count its pages outside the Recycle Bin and those kept off the site; home says whether the home page is one. state: empty, live, draft or mixed. template is the design template it started from. framework is bootstrap5, custom or legacy; colors (primary, secondary) and fonts (body, heading) come from its palette and look. Cursor paged.',
-			'details' => 'state empty: no pages; live: no drafts; draft: every page that can be a draft is one; mixed otherwise. fonts are CSS font-family lists. colors and fonts are null for a design without Bootstrap, fonts null without a look.',
+			'details' => 'Listed: every design made in the Visual Page Editor, even with no page left, and an older style while one of its pages with a layout tree is outside the Recycle Bin (as in the editor\'s own list). state empty: no pages; live: no drafts; draft: every page that can be a draft is one; mixed otherwise. fonts are CSS font-family lists. colors and fonts are null for a design without Bootstrap, fonts null without a look.',
 			'params'  => array(
 				array('name' => 'q',      'in' => 'query', 'type' => 'string', 'max_length' => 190, 'description' => 'Matches the design name.'),
 				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
