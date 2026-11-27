@@ -834,6 +834,33 @@ function pg_launch_journey_step_face($key)
 }
 
 /**
+ * The card's line "Make your site from a description": it opens the New
+ * design window on its "Describe it" start, whose brief takes the card's
+ * purpose as its kind. It is not a step: it is not counted in "N of M" and
+ * has no "Not for this site". Without Pinegrap AI the line is left out
+ * (null), as the start itself is disabled. Pure.
+ *
+ * @param string $problem why "Describe it" cannot be offered
+ *                        (pg_site_brief_problem()), '' when it can
+ * @return array|null name, line, icon, tone, go, url
+ */
+function pg_launch_journey_describe_line($problem)
+{
+    if (!is_string($problem) || $problem !== '') {
+        return null;
+    }
+
+    return array(
+        'name' => lang('Make your site from a description'),
+        'line' => lang('Tell what the business does. Pinegrap AI plans the pages for you to check before anything is made.'),
+        'icon' => 'bi-stars',
+        'tone' => 'violet',
+        'go'   => lang('Start'),
+        'url'  => 'view_system_styles.php?start=describe',
+    );
+}
+
+/**
  * Where a row's "Do it" or "Fix" goes: the step's screen, or the switch the
  * row's reason names (the shop's switch, the bookable services). Pure.
  *
