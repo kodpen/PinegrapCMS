@@ -374,13 +374,16 @@ function _parasut_prefix()
 }
 
 /**
- * Extract a readable error message from a Parasut API response.
+ * Extract a readable error message from a Parasut API response. A refused
+ * integration permission (parasut_integration_permission_refused()) gets the
+ * setting to change after Paraşüt's own text.
  */
 function _parasut_extract_error($result)
 {
     if (isset($result['curl_error'])) {
         return $result['curl_error'];
     }
+    $hint = parasut_integration_permission_refused($result) ? ' ' . parasut_integration_permission_hint() : '';
     $body = $result['body'] ?? [];
     if (!empty($body['errors'])) {
         $msgs = [];
@@ -390,12 +393,90 @@ function _parasut_extract_error($result)
             $detail = is_array($err) ? trim((string) ($err['detail'] ?? '')) : trim((string) $err);
             $msgs[] = (($title !== '') && ($detail !== '') && ($title !== $detail)) ? $title . ': ' . $detail : (($detail !== '') ? $detail : $title);
         }
-        return implode(' | ', $msgs);
+        return implode(' | ', $msgs) . $hint;
     }
     if (!empty($body['error_description'])) {
-        return $body['error_description'];
+        return $body['error_description'] . $hint;
     }
-    return 'HTTP ' . ($result['http_code'] ?? '?');
+    return 'HTTP ' . ($result['http_code'] ?? '?') . $hint;
+}
+
+/**
+ * Whether Paraşüt refused a request because the signed-in user may not use
+ * application integrations in the company: GET /v4/me answers 200 for such
+ * a user, and every company-scoped call 403 "User has no 3rd party
+ * integration permission for company: <id>". Pure.
+ *
+ * @param mixed $result  A request answer (http_code, body, raw)
+ * @return bool
+ */
+function parasut_integration_permission_refused($result)
+{
+    if (!is_array($result) || ((int) ($result['http_code'] ?? 0) !== 403)) {
+        return false;
+    }
+
+    $said = (is_array($result['body'] ?? null) ? (string) json_encode($result['body']) : (string) ($result['body'] ?? ''))
+        . ' ' . (is_scalar($result['raw'] ?? null) ? (string) $result['raw'] : '');
+
+    return stripos($said, '3rd party integration permission') !== false;
+}
+
+/**
+ * The Paraşüt setting a refused integration permission
+ * (parasut_integration_permission_refused()) is fixed with.
+ *
+ * @return string  Plain text, not escaped
+ */
+function parasut_integration_permission_hint()
+{
+    return lang('The Paraşüt user is not allowed to use app integrations. In Paraşüt, open Ayarlar › Kullanıcılar, choose the user who connects, press Düzenle, set Uygulama Entegrasyonları to Yetki Var, then connect again.');
+}
+
+/**
+ * Connect's one company-scoped read, since GET /v4/me answers 200 for a
+ * user whose every company call Paraşüt refuses: the company's contacts,
+ * one card long. Sent once; nothing is retried.
+ *
+ * @param string   $company_id
+ * @param callable $get  function (string $path): the answer of GET <API base> . $path
+ * @return string  The warning when Paraşüt refuses the integration
+ *                 permission, '' otherwise; plain text, not escaped
+ */
+function parasut_integration_permission_warning($company_id, $get)
+{
+    $company_id = trim((string) $company_id);
+
+    if ($company_id === '') {
+        return '';
+    }
+
+    $result = call_user_func($get, '/v4/' . rawurlencode($company_id) . '/contacts?page[size]=1');
+
+    if (!parasut_integration_permission_refused($result)) {
+        return '';
+    }
+
+    return lang(array(
+        'string' => 'Connected, but Paraşüt refuses every request in company {var:1}: {var:2}',
+        'vars' => array($company_id, _parasut_extract_error($result)),
+    ));
+}
+
+/**
+ * parasut_integration_permission_warning() with the token just received:
+ * without the 429 wait and without a renewal, as Paraşüt may switch off a
+ * client that collects many 401/403 answers.
+ *
+ * @param string $company_id
+ * @param string $token
+ * @return string
+ */
+function parasut_integration_permission_check($company_id, $token)
+{
+    return parasut_integration_permission_warning($company_id, function ($path) use ($token) {
+        return _parasut_request('GET', _parasut_v4_base() . $path, null, (string) $token, false, false);
+    });
 }
 
 /**
@@ -1324,7 +1405,8 @@ function parasut_connect_company($posted, $saved, $companies)
  * the authorized user's one company (parasut_connect_company()), the switch
  * is a warning naming both numbers - the default product/service and
  * warehouse ids on the card were set for the company before - and the log
- * line names both numbers too.
+ * line names both numbers too. A permission_warning
+ * (parasut_integration_permission_check()) is a warning as well.
  *
  * @param array $result  A successful parasut_connect_with_code() answer
  * @return array ['notices' => string[], 'warnings' => string[], 'log' => string];
@@ -1361,6 +1443,12 @@ function parasut_connect_report($result)
         ));
     }
 
+    $refused = trim((string) ($result['permission_warning'] ?? ''));
+
+    if ($refused !== '') {
+        $report['warnings'][] = $refused;
+    }
+
     return $report;
 }
 
@@ -1375,6 +1463,8 @@ function parasut_connect_report($result)
  *
  * A code is good for one exchange and a few minutes; a second click with
  * the same code is refused by Paraşüt, which is what the error says.
+ * Once all is saved, one company-scoped read tells whether the user may
+ * use application integrations (parasut_integration_permission_check()).
  *
  * @param string $code           What Paraşüt printed after the sign-in
  * @param string $client_id      As typed on the card (the saved one when empty)
@@ -1383,6 +1473,7 @@ function parasut_connect_report($result)
  * @return array ['success' => bool, 'company_id' => string, 'company_name' => string,
  *                'email' => string, 'owner' => string (the token's owner stamp),
  *                'replaced_company_id' => string (the saved number given up, or ''),
+ *                'permission_warning' => string (on success only, '' when none),
  *                'error' => string]
  */
 function parasut_connect_with_code($code, $client_id = '', $client_secret = '', $company_id = '')
@@ -1477,6 +1568,7 @@ function parasut_connect_with_code($code, $client_id = '', $client_secret = '', 
         'email' => $me['email'],
         'owner' => $owner,
         'replaced_company_id' => $company['replaced'],
+        'permission_warning' => parasut_integration_permission_check($company_id, (string) $data['access_token']),
         'error' => '',
     ];
 }
@@ -1822,7 +1914,9 @@ function parasut_devhub_status($connection, $details)
  * account which companies it may use (GET /v4/me?include=companies), takes
  * the company as a pasted code does (parasut_connect_company(), from the
  * saved number), writes its number into the config row and keeps the
- * e-mail and the company name for the status line.
+ * e-mail and the company name for the status line. /v4/me answers 200
+ * without the integration permission too, so one company-scoped read
+ * follows (parasut_integration_permission_check()).
  *
  * @param int $connection_id
  * @return array ['notices' => list, 'warnings' => list, 'log' => string]
@@ -1879,6 +1973,7 @@ function parasut_devhub_after_connect($connection_id)
         'company_name' => $company_name,
         'email' => $me['email'],
         'replaced_company_id' => $company['replaced'],
+        'permission_warning' => parasut_integration_permission_check($company_id, (string) $token['token']),
     ));
 }
 

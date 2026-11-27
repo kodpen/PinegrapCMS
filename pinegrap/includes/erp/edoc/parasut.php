@@ -222,7 +222,9 @@ function erp_edoc_parasut_ok($result)
 
 /**
  * The server's own words for a refusal (JSON:API errors[].title / detail,
- * the OAuth error_description), or the transport error, or the code.
+ * the OAuth error_description), or the transport error, or the code. A
+ * refused integration permission (parasut_integration_permission_refused())
+ * gets the setting to change after Paraşüt's own text.
  *
  * @param array $result
  * @return string
@@ -237,6 +239,8 @@ function erp_edoc_parasut_error_text($result)
         return (string) $result['error'];
     }
 
+    $hint = (function_exists('parasut_integration_permission_refused') && parasut_integration_permission_refused($result))
+        ? ' ' . parasut_integration_permission_hint() : '';
     $body = is_array($result['body'] ?? null) ? $result['body'] : array();
     $said = array();
 
@@ -256,18 +260,18 @@ function erp_edoc_parasut_error_text($result)
     }
 
     if (!empty($said)) {
-        return implode(' | ', $said);
+        return implode(' | ', $said) . $hint;
     }
 
     if ((string) ($body['error_description'] ?? '') !== '') {
-        return (string) $body['error_description'];
+        return (string) $body['error_description'] . $hint;
     }
 
     if ((string) ($body['error'] ?? '') !== '') {
-        return (string) $body['error'];
+        return (string) $body['error'] . $hint;
     }
 
-    return 'HTTP ' . (int) ($result['http_code'] ?? 0);
+    return 'HTTP ' . (int) ($result['http_code'] ?? 0) . $hint;
 }
 
 /**
