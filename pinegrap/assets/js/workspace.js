@@ -4004,8 +4004,9 @@
 
     // Moves a task to another day (and person), asking first when that
     // clashes with somebody's day. The channel board hands a task to other
-    // people the same way, through ws_task_save (action).
-    function moveTask(move, force, onDone, action) {
+    // people the same way, through ws_task_save (action). notice: a button
+    // on the saved notice (My calendar's Undo).
+    function moveTask(move, force, onDone, action, notice) {
         move.force = force ? 1 : 0;
 
         api(action || 'ws_task_move', move).then(function (result) {
@@ -4017,13 +4018,13 @@
 
                 ask(t('move_despite'), t('move_anyway'), true, warningList(result.check)).then(function (yes) {
                     if (yes) {
-                        moveTask(move, true, onDone, action);
+                        moveTask(move, true, onDone, action, notice);
                     }
                 });
                 return;
             }
 
-            toast(t('task_saved'), 'success');
+            toast(t('task_saved'), 'success', notice);
 
             if (onDone) {
                 onDone();
@@ -9540,6 +9541,8 @@
             // The team (ws_team_members()), for a picker of its own people.
             team: function () { return (BOOT && BOOT.people) || []; },
             calendarLanes: calendarLanes,
+            // A task moved to another day, the clash question asked (My calendar).
+            moveTask: function (move, done, notice) { moveTask(move, false, done, '', notice); },
             pressKeys: pressKeys,
             onContext: onContext,
             // A screen's one-line bar (My calendar).

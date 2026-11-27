@@ -521,6 +521,132 @@ function ws_personal_plan_save($viewer, $data, $plan_id = 0)
 }
 
 /**
+ * A plan moved on My calendar by a drag or "Move to…": its days and times
+ * as the drawer sends them, moved by whole days and, on the week's hours,
+ * to another hour with its minutes and its length kept. A whole-day plan
+ * moves by days alone. Wall-clock arithmetic, so a clock change moves no
+ * time of day. Null when the plan's days or times cannot be read. Pure.
+ *
+ * @param array $plan ws_personal_plan_present(): start, end, start_time,
+ *                    end_time, all_day
+ * @param int   $days whole days on (less than 0: back)
+ * @param int   $hour the new hour of its start, -1 to keep it
+ * @return array|null start, end (Y-m-d), start_time, end_time ("H:i", ''
+ *                    for a whole-day plan)
+ */
+function ws_personal_plan_moved($plan, $days, $hour = -1)
+{
+    $day = function ($value) {
+        return (is_string($value) && preg_match('/^([0-9]{4})-([0-9]{2})-([0-9]{2})$/', $value, $m) && checkdate((int) $m[2], (int) $m[3], (int) $m[1]))
+            ? (int) floor(gmmktime(12, 0, 0, (int) $m[2], (int) $m[3], (int) $m[1]) / 86400) : null;
+    };
+    $minutes = function ($value) {
+        return (is_string($value) && preg_match('/^([01][0-9]|2[0-3]):([0-5][0-9])$/', $value, $m)) ? ((int) $m[1] * 60 + (int) $m[2]) : -1;
+    };
+    $date = function ($number) {
+        return gmdate('Y-m-d', $number * 86400 + 43200);
+    };
+
+    $start = $day($plan['start'] ?? '');
+    $end = $day($plan['end'] ?? '');
+    $hour = (int) $hour;
+
+    if (($start === null) || ($hour > 23)) {
+        return null;
+    }
+
+    $end = ($end === null || $end < $start) ? $start : $end;
+    $days = (int) $days;
+
+    if (!empty($plan['all_day'])) {
+        return array('start' => $date($start + $days), 'end' => $date($end + $days), 'start_time' => '', 'end_time' => '');
+    }
+
+    $from = $minutes($plan['start_time'] ?? '');
+    $until = $minutes($plan['end_time'] ?? '');
+
+    if ($from < 0) {
+        return null;
+    }
+
+    // Minutes from the first day's midnight; no end time is one hour.
+    $length = ($until < 0) ? 60 : max(1, ($end - $start) * 1440 + $until - $from);
+    $first = $start + $days;
+    $from = ($hour >= 0) ? $hour * 60 + ($from % 60) : $from;
+    $stop = $from + $length;
+
+    return array(
+        'start'      => $date($first),
+        'end'        => $date($first + intdiv($stop, 1440)),
+        'start_time' => sprintf('%02d:%02d', intdiv($from, 60), $from % 60),
+        'end_time'   => sprintf('%02d:%02d', intdiv($stop % 1440, 60), $stop % 60),
+    );
+}
+
+/**
+ * Moves a plan of the viewer through its own save (ws_personal_plan_save()),
+ * with everything else it holds sent as the drawer sends it.
+ *
+ * @param array  $viewer
+ * @param int    $plan_id
+ * @param string $day     the time moved, for a repeating plan (Y-m-d)
+ * @param int    $days    whole days on
+ * @param int    $hour    the new hour of its start, -1 to keep it
+ * @param string $mode    one | following for a time of a repeating plan,
+ *                        '' for the whole plan
+ * @return array ok + plan + undo (the move back), or error
+ */
+function ws_personal_plan_move($viewer, $plan_id, $day, $days, $hour, $mode)
+{
+    $user_id = (int) $viewer['id'];
+    $row = ws_personal_plan($user_id, (int) $plan_id);
+
+    if (!$row || !ws_personal_plan_can_edit($user_id, $row)) {
+        return array('error' => lang('This plan cannot be found.'));
+    }
+
+    $mode = in_array($mode, array('one', 'following'), true) ? $mode : '';
+    $time = ($mode !== '' && ws_personal_plan_repeat_ready()) ? ws_personal_plan_at_time($row, (string) $day) : null;
+
+    if (($mode !== '') && !$time) {
+        return array('error' => lang('This time of the plan cannot be found.'));
+    }
+
+    $plan = ws_personal_plan_for_reader($user_id, $time ?: $row, $viewer);
+    $moved = ws_personal_plan_moved($plan, $days, $plan['all_day'] ? -1 : $hour);
+
+    if (!$moved) {
+        return array('error' => lang('Invalid request.'));
+    }
+
+    // A series ending on a day ends as many days later, so it keeps its times.
+    if (($plan['repeat_until'] ?? '') !== '') {
+        $moved['repeat_until'] = date('Y-m-d', strtotime($plan['repeat_until'] . ' 12:00:00 ' . sprintf('%+d', (int) $days) . ' days'));
+    }
+
+    $saved = ws_personal_plan_save($viewer, array_merge($plan, $moved, array(
+        'mode'       => $mode,
+        'time_day'   => $time ? (string) $time['time_day'] : '',
+        'all_day'    => $plan['all_day'] ? 1 : 0,
+        'people'     => ($plan['visibility'] === 'people') ? $plan['people'] : array(),
+    )), (int) $row['id']);
+
+    if (isset($saved['error'])) {
+        return $saved;
+    }
+
+    // The move back: the plan saved, by the same days and to its old hour,
+    // the whole of it (a time changed alone is a plan of its own).
+    $undo = array(
+        'plan_id' => (int) $saved['plan']['id'],
+        'days'    => -(int) $days,
+        'hour'    => (($hour >= 0) && !$plan['all_day']) ? (int) substr($plan['start_time'], 0, 2) : -1,
+    );
+
+    return array('ok' => true, 'plan' => $saved['plan'], 'undo' => $undo);
+}
+
+/**
  * Deletes a plan of the viewer, with its steps, its people and the reminder
  * lines naming it. There is no bin.
  *
@@ -715,6 +841,11 @@ function ws_personal_plans_place($days, $plans, $reader = 0, $names = array())
                 'meeting_url' => '',
                 // A plan opened to the reader by somebody else: whose it is.
                 'owner'       => ((int) ($plan['user_id'] ?? 0) !== (int) $reader) ? (string) ($names[(int) ($plan['user_id'] ?? 0)] ?? '') : '',
+                // The reader's own: theirs to move by a drag or "Move to…".
+                'mine'        => ((int) ($plan['user_id'] ?? 0) === (int) $reader),
+                // The first day of the plan (or of this time of it): a later
+                // day of it moves by days alone.
+                'first'       => date('Y-m-d', (int) $plan['starts_at']),
             );
         }
     }

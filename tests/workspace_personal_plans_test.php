@@ -133,6 +133,7 @@ function test_workspace_personal_plans_place_on_the_days_they_touch()
 		array('id' => 8, 'user_id' => 3, 'title' => 'Mine', 'all_day' => 1, 'starts_at' => strtotime('2026-11-20 00:00'), 'ends_at' => strtotime('2026-11-21 00:00')),
 	), 3, array(8 => 'Ayşe'));
 	pg_assert_same(array('Ayşe', ''), array_column($shared['2026-11-20']['events'], 'owner'), 'another person\'s plan names its owner');
+	pg_assert_same(array(false, true), array_column($shared['2026-11-20']['events'], 'mine'), 'only the reader\'s own plan is theirs to move');
 }
 
 // The guard: the plan tables are read by the module alone, so every read goes

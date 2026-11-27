@@ -5697,6 +5697,7 @@
     "The move": "Taşıma",
     "The move could not be started: data/temp is not writable.": "Taşıma başlatılamadı: data/temp yazılabilir değil.",
     "The move has ended": "Taşıma bitti",
+    "The move is undone.": "Taşıma geri alındı.",
     "The move of booking #{var:1} in your calendar was not kept": "Takviminizdeki randevu #{var:1} taşıması korunmadı",
     "The move of {var:1} in your calendar was not kept": "{var:1} görevinin takviminizdeki taşıması kabul edilmedi",
     "The move stopped: the designer who started it can no longer convert styles.": "Taşıma durdu: onu başlatan tasarımcı artık stil dönüştüremiyor.",

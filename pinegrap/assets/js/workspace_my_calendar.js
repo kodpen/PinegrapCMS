@@ -81,6 +81,13 @@
         };
         var data = null;
         var plans = planKit(h, S, function () { load(); });
+        // Plans and tasks moved by a drag or "Move to…"
+        // (workspace_my_calendar_move.js); the day's menu follows the item's.
+        var mover = window.PGWsMyCalendarMove ? window.PGWsMyCalendarMove.kit(h, s, function () { load(); }, function (date) {
+            var day = data && data.days.filter(function (one) { return one.date === date; })[0];
+
+            return day ? dayMenu(day) : [];
+        }) : null;
 
         function s(key) {
             return Object.prototype.hasOwnProperty.call(S, key) ? S[key] : key;
@@ -318,6 +325,10 @@
                 openTask(task);
             });
 
+            if (mover) {
+                mover.lift(chip, { task: task }, function () { openTask(task); });
+            }
+
             return chip;
         }
 
@@ -371,6 +382,10 @@
             }
 
             item.title = event.title + (event.layer ? ' · ' + event.layer : '') + (event.owner ? ' · ' + s('plan_of').replace('{1}', event.owner) : '');
+
+            if (mover) {
+                mover.lift(item, { plan: event }, function () { openEvent(event); });
+            }
 
             return item;
         }
@@ -495,6 +510,10 @@
                     h.pressKeys(cell, press);
                     cells[day.date] = cell;
                     h.onContext(cell, function () { return dayMenu(day); });
+
+                    if (mover) {
+                        mover.target(cell, day.date, null);
+                    }
                     grid.appendChild(cell);
                 });
             });
@@ -603,21 +622,32 @@
 
             var section = el('section', 'ws-mycal-day' + (day.today ? ' is-today' : ''));
 
+            // The day a line's "Move to…" moves from.
+            section.setAttribute('data-ws-date', day.date);
             section.appendChild(dayHeading(day));
 
+            // A line the reader may move gets the item's menu.
+            function movable(row, item, open) {
+                if (mover) {
+                    mover.menu(row, item, open);
+                }
+
+                return row;
+            }
+
             day.events.forEach(function (event) {
-                section.appendChild(listRow(el('span', 'ws-cal-event-dot ws-kind-' + event.kind), event.title,
+                section.appendChild(movable(listRow(el('span', 'ws-cal-event-dot ws-kind-' + event.kind), event.title,
                     event.plan_id ? (event.owner ? s('plan_of').replace('{1}', event.owner) : s('my_plan')) + (event.repeat && S.repeat_options ? ' · ' + S.repeat_options[event.repeat] : '') + (event.steps_total && window.PGWsRoadmap ? ' · ' + window.PGWsRoadmap.label(event, s) : '') : (event.layer || (event.readonly ? s('own_calendar') : (h.cfg.event_kinds && h.cfg.event_kinds[event.kind]) || '')),
                     event.time || h.t('all_day'),
-                    (event.url || event.plan_id || !event.readonly) ? function () { openEvent(event); } : null));
+                    (event.url || event.plan_id || !event.readonly) ? function () { openEvent(event); } : null), { plan: event }, function () { openEvent(event); }));
             });
 
             spans.concat(day.tasks).forEach(function (task) {
-                section.appendChild(listRow(task.upcoming ? h.icon('bi-arrow-repeat') : el('span', 'ws-status-dot ws-s-' + task.status),
+                section.appendChild(movable(listRow(task.upcoming ? h.icon('bi-arrow-repeat') : el('span', 'ws-status-dot ws-s-' + task.status),
                     (task.upcoming ? '' : task.number + ' · ') + task.title,
                     task.upcoming ? task.repeat : h.statusName(task.status) + (task.span_start ? ' · ' + h.dmy(task.span_start) + ' – ' + h.dmy(task.span_end) : ''),
                     task.time || '', function () { openTask(task); },
-                    (task.open ? '' : ' is-read') + (task.overdue ? ' ws-mycal-late' : '')));
+                    (task.open ? '' : ' is-read') + (task.overdue ? ' ws-mycal-late' : '')), { task: task }, function () { openTask(task); }));
             });
 
             return section;
@@ -680,6 +710,9 @@
                     taskChip: taskChip,
                     dayMenu: dayMenu,
                     openDay: openDay,
+                    // Where a dragged plan or task may be dropped.
+                    target: mover ? mover.target : null,
+                    minuteAt: window.PGWsMyCalendarMove ? window.PGWsMyCalendarMove.minuteAt : null,
                     newPlanLabel: s('new_plan'),
                     // An empty hour: New plan on that day, for that hour.
                     newPlan: data.plans ? function (day, hour) {

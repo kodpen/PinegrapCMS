@@ -493,6 +493,26 @@ function ws_task_move_dates($task, $new_due)
 }
 
 /**
+ * A task's due time moved to another hour of My calendar's week: the hour
+ * given, its minutes kept. '' when the task has no due time or no hour is
+ * given (the time stays as it is). Pure.
+ *
+ * @param string $due_time "H:i" or "H:i:s", or ''
+ * @param int    $hour     0-23
+ * @return string "H:i" or ''
+ */
+function ws_task_moved_time($due_time, $hour)
+{
+    $hour = (int) $hour;
+
+    if (!preg_match('/^([01][0-9]|2[0-3]):([0-5][0-9])/', (string) $due_time, $match) || ($hour < 0) || ($hour > 23)) {
+        return '';
+    }
+
+    return sprintf('%02d:%s', $hour, $match[2]);
+}
+
+/**
  * A date the caller typed, as Y-m-d, or null.
  *
  * @param mixed $value
