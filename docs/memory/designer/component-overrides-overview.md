@@ -26,7 +26,7 @@ module: component_overrides
 - `component-overrides-render.md`: site, canvas, Preview, cache, draw checks, translation. CO2, #11595.
 - `component-overrides-fields.md`: opening a field, the list in the settings. CO3, #11597.
 - `component-overrides-this-place.md`: "This place", the lock, content editors, save checks. CO4, #11663.
-- `component-overrides-variants.md`: variants. CO5, #11687.
+- `component-overrides-variants.md`: variants. CO5, #11687. A place's variant and Rename: `component-overrides-variant-places.md` (#12001).
 - The drawing: `designer-component-overrides-drawing.md`, boards C1 to C7.
 
 ## How is a new kind of field added?

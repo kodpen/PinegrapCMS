@@ -280,3 +280,76 @@ function test_component_overrides_variant_escape_closes_an_open_menu_first()
 	pg_assert_same(array('editing' => true, 'menuGone' => 1), $js['withMenu'], 'an open menu is closed and the variant stays edited');
 	pg_assert_same(array('editing' => false), $js['without'], 'with no menu open Escape ends the editing');
 }
+
+// A renamed variant keeps its former names, so a place that names it by
+// one still draws it; a name a variant has now wins over a former one, and
+// a former name another variant took first, or one that is a current name,
+// is dropped (#12001).
+function component_overrides_renamed_tree()
+{
+	$tree = component_overrides_variants_tree();
+	$tree['props']['_variants'] = array(
+		array('name' => 'Night', 'was' => array(' Dark ', 'Dark', 'night', 'Compact', '', array('x'), 'Old'), 'nodes' => array('sd_b' => array('cssClass' => 'btn text-bg-dark'))),
+		array('name' => 'Compact', 'nodes' => array('root' => array('cssClass' => 'card p-1'))),
+		array('name' => 'Wide', 'was' => array('old', 'Wider'), 'nodes' => array()),
+		array('name' => 'Dusk', 'was' => 'Dark', 'nodes' => array()),
+	);
+	return $tree;
+}
+
+function test_component_overrides_renamed_variant_keeps_its_places()
+{
+	$tree = component_overrides_renamed_tree();
+	$list = pg_co_variants($tree);
+
+	pg_assert_same(array('Dark', 'Old'), $list[0]['was'], 'former names cleaned: trimmed, once, never its own or another variant\'s name');
+	pg_assert_false(array_key_exists('was', $list[1]), 'a variant never renamed keeps no former names');
+	pg_assert_same(array('Wider'), $list[2]['was'], 'a former name another variant holds first is dropped');
+	pg_assert_false(array_key_exists('was', $list[3]), 'not a list: none');
+	pg_assert_same('Night', pg_co_variant($tree, 'Dark')['name'], 'a former name finds the renamed variant');
+	pg_assert_same('Compact', pg_co_variant($tree, 'Compact')['name'], 'a current name wins over a former one');
+	pg_assert_same(null, pg_co_variant($tree, 'dark'), 'a former name matches as a current one does, case and all');
+	pg_assert_same(pg_co_apply_variant($tree, 'Night'), pg_co_apply_variant($tree, 'Dark'), 'a place on the former name draws the variant');
+
+	$placed = pg_co_place_tree($tree, array('_variant' => 'Dark'));
+	pg_assert_same('btn text-bg-dark', $placed['children'][2]['props']['cssClass'], 'the site draws the renamed variant at a place saved with the old name');
+
+	$js = component_overrides_test_node('var tree = ' . json_encode($tree, JSON_UNESCAPED_UNICODE) . ';'
+		. ' out = {list: C.variants(tree), found: [C.variant(tree, "Dark").name, C.variant(tree, "Compact").name, C.variant(tree, "dark")], dark: C.applyVariant(tree, "Dark")};');
+	if ($js === null) {
+		return;
+	}
+	pg_assert_same($list, $js['list'], 'the twin keeps the same former names');
+	pg_assert_same(array('Night', 'Compact', null), $js['found'], 'the twin finds the same variants');
+	pg_assert_same(pg_co_apply_variant($tree, 'Dark'), $js['dark'], 'the twin draws the same tree');
+}
+
+// Rename in the part: the old name is kept as a former name, renaming back
+// takes it off again, a place on the old name shows the variant (no amber
+// line) and its row selects the new name.
+function test_component_overrides_variant_rename_in_the_part()
+{
+	$tree = component_overrides_variants_tree();
+	array_splice($tree['props']['_variants'], 1, 1);
+	$code = "var document = { querySelector: function () { return null; }, addEventListener: function () {}, removeEventListener: function () {} };\n"
+		. "var comp = " . json_encode($tree, JSON_UNESCAPED_UNICODE) . ", depth = 3;\n"
+		. "kit.sharedCache = {7: {tree: comp, name: 'Promo card'}}; kit.selectedNode = comp.children[0]; kit.selectedNodes = [];\n"
+		. "kit._resolveSharedSid = function () { return 7; }; kit.render = function () {}; kit.renderProperties = function () {};\n"
+		. "kit._sdCoWrite = function (sid, fn) { depth++; fn(); };\n"
+		. "kit._sdCoVarCommit = function (sid, d, fn) { fn(); };\n"
+		. "Object.defineProperty(kit, 'undoDepth', { get: function () { return depth; } }); kit.coVar = null;\n"
+		. "var raw = function () { return JSON.parse(JSON.stringify(comp.props._variants[0])); };\n"
+		. "part.renameVariant(7, 'Dark'); part.nameDone(7, 'Night', true);\n"
+		. "var r = part.placeVariantRow({props: {sharedId: 7, _variant: 'Dark'}}, 7, false);\n"
+		. "out = { first: raw(), row: {changed: r.changed, gone: r.gone, picked: r.html.indexOf('value=\"Night\" selected') !== -1} };\n"
+		. "part.renameVariant(7, 'Night'); part.nameDone(7, 'Dark', true); out.back = raw();\n";
+	$js = component_overrides_place_node($code);
+	if ($js === null) {
+		return;
+	}
+	pg_assert_same('Night', $js['first']['name'], 'the variant takes the new name');
+	pg_assert_same(array('Dark'), $js['first']['was'], 'and keeps the old one');
+	pg_assert_same(array('changed' => true, 'gone' => '', 'picked' => true), $js['row'], 'a place on the old name keeps the variant under its new name');
+	pg_assert_same('Dark', $js['back']['name'], 'renamed back');
+	pg_assert_same(array('Night'), $js['back']['was'], 'its name is no former name; the one it left is');
+}

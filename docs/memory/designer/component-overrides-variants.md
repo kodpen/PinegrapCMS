@@ -7,7 +7,7 @@ module: component_overrides
 ## Where is a variant kept?
 - On the component's root, `props._variants`: a list of `{name, nodes}` in the order added; `nodes` maps a node's `_id` to the props it gives that node. A place keeps only the name, `props._variant` on its placing `shared_ref`. No table or column.
 - A variant keeps classes and options only, never content, the reference or a `_…` key (`pg_co_variant_prop_ok()`); values are strings, numbers or switches.
-- Names: trimmed, at most 60 characters, unique in any case, never "Default" (`pg_co_clean_variant_name()`; the part's `nameWhy()`); at most 50 variants.
+- Names: trimmed, at most 60 characters, unique in any case, never "Default" (`pg_co_clean_variant_name()`; the part's `nameWhy()`); at most 50 variants. Rename keeps the old name in `was`, so its places keep it (`component-overrides-variant-places.md`).
 
 ## Which functions are there?
 - `includes/fn/component_overrides.php` and its twin: `pg_co_variants()`, `pg_co_variant()`, `pg_co_variant_changes()`, `pg_co_place_variant()`, `pg_co_apply_variant()` (unknown or empty: the tree as given, JS the same object), `pg_co_variant_nodes()` (what an edit keeps; a removed string or switch as `''` or `false`).
@@ -23,15 +23,14 @@ module: component_overrides
 
 ## Where are variants listed and edited?
 - "Shared Component" section, after "Can change per place": head "Variants", "Default" then the variants with their count, a three-dot menu (Rename, Duplicate, Delete) and "Add a variant". With none and the part not loaded the core prints "Default" and the button (`_sdCoVarsHtml()`), else the part fills it (`fillVariants()`).
-- Keyboard: Up, Down, Enter, F2, Delete (no question: a Result line, Undo focused).
+- Keyboard as the drawing's board C6 (`designer-component-overrides-drawing-variants.md`); Delete asks nothing, a Result line with Undo focused.
 - Choosing a variant starts editing it (`startVariant()`): one undo step, its props put on the component's nodes, the selection moved into the component, `_sdCoVar = {sid, name, base, sig, depth}`, the line over the canvas (`.sd-co-vline`) with "Done", focused. "Done", Escape (not in a field; an open menu closes first) or "Default" ends it (`variantDone()`): the variant keeps what differs, the component's own props go back, and the steps inside become the one start step (`_sdCoVarCommit()`).
 - Undo past the start ends it keeping nothing; Save finishes it first (`_sdCoVarFinish()` in `_flushDirtyShared()`).
 - Adding, removing or moving an element meanwhile is undone (`variantGuard()`) with the amber line; a typed text stays the component's.
 - The Options panel's dot compares with the component's own props while a variant is edited (`_sdCoVarDefaults()` in `markModifiedProps()`).
 
 ## How does a place pick one?
-- "This place" starts with the row "Variant" (a list of "Default" and the variants) when the component has one; not at content level. Another than "Default" carries the dot and counts as a change; its reset returns to "Default". A gone variant: an amber line "The variant … no longer exists" until another is picked or the row is reset.
-- Command palette: "Add a variant" (component of the selection), "Variant: name" per variant for a selected place.
+- By the "Variant" row of "This place": `component-overrides-variant-places.md`.
 
 ## Tests?
 - `tests/component_overrides_variants_test.php` (model, twin, marker, site, save, the part in Node).

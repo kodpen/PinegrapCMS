@@ -709,7 +709,7 @@ StyleDesigner.definePart('overrides', function (K) {
             (opts.mayEdit ? '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-co-edit>' + esc(_sdT('Edit the component')) + '</button>' : '') +
             '</div>';
         holder.innerHTML = h;
-        headSum(holder, changed, values, ref);
+        headSum(holder, changed, values, ref, sid);
         if (opts.focusId) {
             var want = holder.querySelector('[data-co-field="' + opts.focusId + '"]');
             if (want) want.focus();
@@ -796,7 +796,7 @@ StyleDesigner.definePart('overrides', function (K) {
 
     // The section head: the count of changed fields (none at none) and, while
     // closed, the first changed value.
-    function headSum(holder, changed, values, ref) {
+    function headSum(holder, changed, values, ref, sid) {
         var card = holder.closest('[data-sd-card]');
         var hdr = card ? card.querySelector(':scope > .sd-sect-hdr') : null;
         if (!hdr) return;
@@ -804,7 +804,7 @@ StyleDesigner.definePart('overrides', function (K) {
         var sum = null;
         if (changed.length) {
             var first = changed[0], v = values[first.id];
-            var text = first.kind === 'variant' ? CO.placeVariant(ref)
+            var text = first.kind === 'variant' ? (placeVariantName(sid, ref) || CO.placeVariant(ref))
                 : (first.kind === 'shown' ? _sdT('Hidden') : plainOf(first.kind === 'picture' ? (v && v.src) || v : v));
             sum = { count: changed.length, kind: 'value', text: text, swatch: '' };
         }
@@ -878,6 +878,18 @@ StyleDesigner.definePart('overrides', function (K) {
             if (list[i] && CO.cleanVariantName(list[i].name) === name) return i;
         }
         return -1;
+    }
+
+    // A name a variant takes stops being any variant's former name, so a
+    // place on that name follows the variant that has it now, also after
+    // that one is renamed again.
+    function forgetFormer(root, name) {
+        var low = name.toLowerCase();
+        rawVariants(root, false).forEach(function (v) {
+            if (!v || !Array.isArray(v.was)) return;
+            v.was = v.was.filter(function (w) { return CO.cleanVariantName(w).toLowerCase() !== low; });
+            if (!v.was.length) delete v.was;
+        });
     }
 
     // Why a name cannot be used, or '' when it can.
@@ -1067,11 +1079,21 @@ StyleDesigner.definePart('overrides', function (K) {
             if (i === -1) return;
             vstate.focus = name;
             if (K.coVar && K.coVar.sid === sid && K.coVar.name === renaming) K.coVar.name = name;
-            write(sid, function () { rawVariants(root, false)[i].name = name; });
+            // The old name stays a former name: places on other pages keep
+            // it and still draw this variant.
+            write(sid, function () {
+                var v = rawVariants(root, false)[i];
+                forgetFormer(root, name);
+                v.was = (Array.isArray(v.was) ? v.was : []).concat([renaming]);
+                v.name = name;
+            });
             drawLine();
             return;
         }
-        write(sid, function () { rawVariants(root, true).push({ name: name, nodes: {} }); });
+        write(sid, function () {
+            forgetFormer(root, name);
+            rawVariants(root, true).push({ name: name, nodes: {} });
+        });
         startVariant(sid, name);
     }
 
@@ -1288,11 +1310,13 @@ StyleDesigner.definePart('overrides', function (K) {
     // The variant row of "This place": { html, changed, gone }.
     function placeVariantRow(ref, sid, ro) {
         var list = variantsOf(sid);
-        var mine = CO.placeVariant(ref);
-        if (!list.length && !mine) return { html: '', changed: false, gone: '' };
-        var known = list.some(function (v) { return v.name === mine; });
-        var gone = (mine && !known) ? mine : '';
-        var changed = mine !== '';
+        var stored = CO.placeVariant(ref);
+        if (!list.length && !stored) return { html: '', changed: false, gone: '' };
+        // A name kept from before a rename shows the variant's name now.
+        var mine = placeVariantName(sid, ref);
+        var known = mine !== '';
+        var gone = (stored && !known) ? stored : '';
+        var changed = stored !== '';
         var opts = '<option value=""' + (!known ? ' selected' : '') + '>' + esc(_sdT('Default')) + '</option>';
         list.forEach(function (v) {
             opts += '<option value="' + esc(v.name) + '"' + (v.name === mine ? ' selected' : '') + '>' + esc(v.name) + '</option>';
@@ -1305,6 +1329,13 @@ StyleDesigner.definePart('overrides', function (K) {
             '<label class="sd-prop-label' + (changed ? ' sd-prop-modified' : '') + '" for="sd-co-variant">' + esc(_sdT('Variant')) + '</label>' +
             '<div class="sd-prop-control"><select class="form-control form-control-sm" id="sd-co-variant" data-co-variant' + (ro ? ' disabled' : '') + '>' + opts + '</select></div></div>';
         return { html: html, changed: changed, gone: gone };
+    }
+
+    // The name of the variant a place draws now, '' for none or a gone one.
+    function placeVariantName(sid, ref) {
+        var root = compTree(sid), stored = CO.placeVariant(ref);
+        var v = (root && stored) ? CO.variant(root, stored) : null;
+        return v ? v.name : '';
     }
 
     // A place picks a variant ('' is "Default"): one undo step, the page changed.
@@ -1335,6 +1366,8 @@ StyleDesigner.definePart('overrides', function (K) {
         addVariantFor: addVariantFor,
         placeVariant: placeVariant,
         placeVariantRow: placeVariantRow,
+        renameVariant: renameVariant,
+        nameDone: nameDone,
         nameWhy: nameWhy,
         variantDone: variantDone,
         variantGuard: variantGuard,
