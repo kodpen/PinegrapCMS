@@ -2663,6 +2663,37 @@
   overflow-y: auto;
 }
 
+/* Free photos (Openverse): a photo tile with its creator's name under it. */
+
+.pgie-importfiles.pgie-ovtiles {
+  grid-auto-rows: auto;
+}
+
+.pgie .pgie-ovtile {
+  display: flex;
+  flex-direction: column;
+  aspect-ratio: auto;
+}
+
+.pgie-ovtile img {
+  height: 96px;
+  object-fit: cover;
+}
+
+.pgie-ovname {
+  overflow: hidden;
+  padding: 2px 6px;
+  font-size: 11px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pgie-importbox .pgie-ovmore {
+  flex: none;
+  align-self: center;
+}
+
 @media (max-width: 599.98px) {
   .pgie-importmenu {
     right: 0;

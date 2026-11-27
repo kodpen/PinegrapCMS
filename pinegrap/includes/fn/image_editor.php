@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_image_editor_parts()
 {
-    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'langview', 'export', 'vector', 'svg', 'motion', 'tracks', 'sound', 'keyframes', 'render', 'scenes', 'present', 'access', 'record', 'follow', 'fonts', 'textstyles', 'glyph', 'elements', 'tabler', 'starts', 'resize', 'frames', 'unsplash', 'data', 'warp', 'puppet', 'outline', 'builder', 'video', 'clip', 'mix', 'upload', 'phone', 'colors', 'actions', 'menu');
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'langview', 'export', 'vector', 'svg', 'motion', 'tracks', 'sound', 'keyframes', 'render', 'scenes', 'present', 'access', 'record', 'follow', 'fonts', 'textstyles', 'glyph', 'elements', 'tabler', 'starts', 'resize', 'frames', 'unsplash', 'openverse', 'data', 'warp', 'puppet', 'outline', 'builder', 'video', 'clip', 'mix', 'upload', 'phone', 'colors', 'actions', 'menu');
 }
 
 /**
@@ -7771,5 +7771,33 @@ function pg_image_editor_unsplash_config($key)
         'key'     => $key,
         'scripts' => pg_js_bundle_urls('assets/js/pg_editor_bridge.min.js'),
         'texts'   => pg_editor_bridge_texts(),
+    );
+}
+
+// -- Free photos from Openverse (pg_image_editor_openverse.js) --
+
+/**
+ * Import's Free photos (Openverse): the item, the search box, the credit
+ * and licence line of a picture layer's panel, and the refusals. Openverse
+ * needs no key, so the item is offered wherever Import is.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_openverse()
+{
+    return array(
+        'openverseImport'     => lang('Free photos (Openverse)'),
+        'openverseFind'       => lang('Search free photos'),
+        'openverseNote'       => lang('Only photos free of copyright are shown: CC0 and public domain.'),
+        'openverseNone'       => lang('No photos found.'),
+        'openverseError'      => lang('Openverse could not be reached.'),
+        'openverseBusy'       => lang('Openverse is busy. Try again later.'),
+        'openverseMore'       => lang('More photos'),
+        'openverseCredit'     => lang('Photo by {var:1} via Openverse'),
+        'openverseCc0'        => lang('CC0 (no rights reserved)'),
+        'openversePdm'        => lang('Public domain'),
+        'openversePage'       => lang('Original page'),
+        'openverseUnknown'    => lang('an unknown author'),
+        'openversePlaceError' => lang('The photo could not be placed.'),
     );
 }
