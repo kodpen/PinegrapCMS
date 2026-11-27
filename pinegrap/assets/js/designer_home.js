@@ -24,6 +24,76 @@
 (function () {
     'use strict';
 
+    // ── Pure rules (tests/designer_home_js_test.php) ────────────────────
+
+    // A page chip's data-draft after api.php designer/design_publish:
+    // draftIds lists the design's pages still drafts (a draft a prototype
+    // link holds stays one); an answer without the list paints every chip
+    // the way the move went.
+    function chipDraft(pageId, off, draftIds) {
+        if (Array.isArray(draftIds)) {
+            return draftIds.map(String).indexOf(String(pageId)) !== -1 ? '1' : '0';
+        }
+        return off ? '1' : '0';
+    }
+
+    // What the rename box does with what was typed: 'finish' puts the name
+    // back, 'save' sends value. Leaving the box (onBlur) with a name the
+    // server has just refused puts the old name back instead of asking
+    // again and taking the focus back; Enter still tries again.
+    function renameStep(raw, oldName, refused, onBlur) {
+        var value = String(raw == null ? '' : raw).replace(/\s+/g, ' ').trim();
+
+        if ((value === '') || (value === oldName) || (onBlur && refused !== '' && value === refused)) {
+            return { act: 'finish', value: value };
+        }
+        return { act: 'save', value: value };
+    }
+
+    // hidden: the designs in their order, true where the search hides one.
+    // The one after index the search shows, else the one before it; -1
+    // when none shows.
+    function nextShown(hidden, index) {
+        var i;
+
+        for (i = index + 1; i < hidden.length; i++) {
+            if (!hidden[i]) {
+                return i;
+            }
+        }
+        for (i = index - 1; i >= 0; i--) {
+            if (!hidden[i]) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    // The address without its start= parameter, the rest kept as it was.
+    function withoutStart(href) {
+        var hash = '';
+        var at = href.indexOf('#');
+
+        if (at !== -1) {
+            hash = href.slice(at);
+            href = href.slice(0, at);
+        }
+
+        var q = href.indexOf('?');
+
+        if (q === -1) {
+            return href + hash;
+        }
+
+        var rest = href.slice(q + 1).split('&').filter(function (part) {
+            return (part !== '') && (part.split('=')[0] !== 'start');
+        });
+
+        return href.slice(0, q) + (rest.length ? '?' + rest.join('&') : '') + hash;
+    }
+
+    window.PgDesignerHome = { chipDraft: chipDraft, renameStep: renameStep, nextShown: nextShown, withoutStart: withoutStart };
+
     var configElement = document.getElementById('sdh-config');
     var menu = document.getElementById('sdh-menu');
 
@@ -743,7 +813,7 @@
                     var scheduled = (res.scheduled && typeof res.scheduled === 'object') ? res.scheduled : {};
                     card.querySelectorAll('.sdh-page[data-page-id]').forEach(function (chip) {
                         if (chip.dataset.home !== '1') {
-                            chip.dataset.draft = off ? '1' : '0';
+                            chip.dataset.draft = chipDraft(chip.dataset.pageId, off, res.draft_ids);
                             chip.dataset.scheduled = scheduled[chip.dataset.pageId] || '';
                             paintChip(chip);
                         }
@@ -776,6 +846,9 @@
         var input = document.createElement('input');
         var busy = false;
         var closed = false;
+        // The last name the server refused: leaving the box with it puts
+        // the old name back (renameStep()).
+        var refused = '';
 
         input.type = 'text';
         input.className = 'form-control form-control-sm sdh-rename';
@@ -800,14 +873,15 @@
             (link || card).focus({ preventScroll: true });
         }
 
-        function save() {
+        function save(onBlur) {
             if (busy || closed) {
                 return;
             }
 
-            var value = input.value.replace(/\s+/g, ' ').trim();
+            var step = renameStep(input.value, oldName, refused, onBlur);
+            var value = step.value;
 
-            if ((value === '') || (value === oldName)) {
+            if (step.act === 'finish') {
                 finish();
                 return;
             }
@@ -821,6 +895,7 @@
                     input.readOnly = false;
 
                     if (!res || res.status !== 'success') {
+                        refused = value;
                         toast((res && res.message) || say('fail'), 'danger');
                         input.focus();
                         input.select();
@@ -851,7 +926,7 @@
             event.stopPropagation();
             if (event.key === 'Enter') {
                 event.preventDefault();
-                save();
+                save(false);
             } else if (event.key === 'Escape') {
                 event.preventDefault();
                 finish();
@@ -860,7 +935,7 @@
 
         input.addEventListener('blur', function () {
             if (!busy) {
-                save();
+                save(true);
             }
         });
     }
@@ -1434,6 +1509,12 @@
 
         var asked = new URLSearchParams(window.location.search).get('start');
 
+        // The window opens once for ?start=: a reload (the one after deleting
+        // the large design among them) does not open it again.
+        if (asked && window.history && window.history.replaceState) {
+            window.history.replaceState(window.history.state, '', withoutStart(window.location.href));
+        }
+
         if (asked && tabs.some(function (t) { return t.getAttribute('data-start') === asked; })) {
             var show = function () {
                 win.dataset.sdStart = asked;
@@ -1507,14 +1588,21 @@
                             return;
                         }
 
-                        // The keyboard stays on the list: the next design (or
-                        // the one before it) takes the focus the deleted one had.
+                        // The keyboard stays on the list: the next design the
+                        // search shows (or the one before it) takes the focus
+                        // the deleted one had.
                         var column = card.closest('.sdh-tile-col') || card;
-                        var near = column.nextElementSibling || column.previousElementSibling;
+                        var columns = column.parentNode ? Array.prototype.slice.call(column.parentNode.children) : [column];
+                        var near = columns[nextShown(columns.map(function (c) { return c.classList.contains('d-none'); }), columns.indexOf(column))] || null;
                         var nextCard = near ? (near.matches('.sdh-card') ? near : near.querySelector('.sdh-card')) : null;
 
                         column.remove();
                         countDesigns();
+                        // The search's "No design matches" line, once the
+                        // last design it showed is gone.
+                        if (filter && filter.value.trim() !== '') {
+                            filter.dispatchEvent(new Event('input'));
+                        }
                         if (hadFocus && nextCard) {
                             nextCard.focus({ preventScroll: true });
                         }

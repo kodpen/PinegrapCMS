@@ -1179,11 +1179,19 @@ function pg_panel_designer($request, $action)
                         : lang(array('string' => 'Comes off the site {var:1}', 'vars' => array(pg_page_schedule_label($dp_t['unpublish_at']))));
                 }
             }
+            // The pages still drafts after the move, for the chips: a draft a
+            // prototype link holds stays one, and so does a page the move
+            // could not take.
+            $dp_draft_ids = array();
+            foreach ((array)db_items("SELECT page_id, page_folder FROM page WHERE page_style = '$dp_style_id' AND " . pg_page_visual_design_sql() . pg_designer_not_binned_sql()) as $dp_p) {
+                if (pg_page_is_draft($dp_p['page_folder'])) $dp_draft_ids[] = (int)$dp_p['page_id'];
+            }
             respond(array(
                 'status'    => 'success',
                 'message'   => $dp_message,
                 'changed'   => $dp['changed'],
                 'drafts'    => $dp_row['draft_count'],
+                'draft_ids' => $dp_draft_ids,
                 'cell'      => pg_designer_list_status_cell($dp_row),
                 'scheduled' => (object)$dp_scheduled,
             ));
