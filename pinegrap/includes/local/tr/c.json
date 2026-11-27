@@ -4671,6 +4671,8 @@
     "Curly bracket": "Süslü parantez",
     "Currencies": "Para Birimleri",
     "Currencies allowed on documents": "Belgelerde kullanılabilecek para birimleri",
+    "Currencies: {var:1}. Off: the store's base currency is {var:2}.": "Para birimleri: {var:1}. Kapalı: mağazanın ana para birimi {var:2}.",
+    "Currencies: {var:1}. Turn {var:2} on in the Stripe Dashboard first.": "Para birimleri: {var:1}. Önce Stripe Dashboard'da {var:2} yöntemini açın.",
     "Currency": "Para Birimi",
     "Currency ({var:1}) was changed through the API by the application {var:2} (key {var:3}).": "Para birimi ({var:1}) API üzerinden {var:2} uygulaması tarafından değiştirildi (anahtar {var:3}).",
     "Currency ({var:1}) was created through the API by the application {var:2} (key {var:3}).": "Para birimi ({var:1}) API üzerinden {var:2} uygulaması tarafından oluşturuldu (anahtar {var:3}).",
