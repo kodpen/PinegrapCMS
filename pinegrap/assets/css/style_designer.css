@@ -745,8 +745,12 @@
 .sd-panel-bottom.collapsed:not(.sd-docked) .sd-bp-quad-hdr {
     min-height: 0; padding: 0 .4rem;
     background: transparent; border-bottom: 0;
-    font-size: .68rem; color: var(--sd-label);
+    font-size: 12px; color: var(--sd-label);
 }
+/* The Styles part takes the rest of the strip, so the chevron stands at its
+   right end, where the open panel's chevron is. */
+.sd-panel-bottom.collapsed:not(.sd-docked) .sd-bp-quad-tr,
+.sd-panel-bottom.collapsed:not(.sd-docked) .sd-bp-quad-tr .sd-bp-quad-hdr { flex: 1 1 auto; }
 .sd-panel-bottom.collapsed:not(.sd-docked):hover .sd-bp-quad-hdr { color: var(--sd-text); }
 .sd-panel-bottom.collapsed:not(.sd-docked) .sd-bp-quad-bl::before,
 .sd-panel-bottom.collapsed:not(.sd-docked) .sd-bp-quad-tr::before {
@@ -759,7 +763,7 @@
 .sd-panel-bottom.collapsed:not(.sd-docked) .sd-styles-tool,
 .sd-panel-bottom.collapsed:not(.sd-docked) .sd-styles-find,
 .sd-panel-bottom.collapsed:not(.sd-docked) .sd-bp-quad-hdr > .bi:not(.sd-bp-collapse) { display: none; }
-.sd-panel-bottom.collapsed:not(.sd-docked) .sd-bp-collapse { order: -1; padding: 0 .4rem 0 0; }
+.sd-panel-bottom.collapsed:not(.sd-docked) .sd-bp-collapse { margin-left: auto; padding: 0 0 0 .4rem; }
 
 /* ── Vertical resize handle (resizes the bottom panel up/down) ──
    The panel's top edge owns a strip 4px above the line and 5px below it,
@@ -1830,8 +1834,7 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     transition:color .15s, background .15s; display:flex; align-items:center; gap:.25rem;
 }
 .sd-status-btn:hover { color:var(--sd-text); background:rgba(255,255,255,.06); }
-.sd-status-validate { color:#f0ad4e; }
-.sd-status-validate:hover { color:#ffcc70; }
+.sd-status-txt { white-space:nowrap; }
 
 /* Canvas size badge — floats over selected element's bottom-right corner */
 .sd-canvas-size-badge {
@@ -3314,19 +3317,42 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-bp-quad-bl { grid-column: 3; grid-row: 1; }
 .sd-bp-quad-tr { grid-column: 5; grid-row: 1; }
 
+/* A part's head: 30 px, sentence case at 12.5 px like every head of the
+   frame. Its tools never run out of the part: the Styles head drops its
+   words first (.sd-bp-styles-narrow). */
 .sd-bp-quad-hdr {
+    position: relative;
     display: flex; align-items: center; gap: .25rem;
-    padding: .3rem .55rem;
+    padding: 0 .55rem;
     background: #1c1e22;
     border-bottom: 1px solid var(--sd-panel-border);
-    font-size: .65rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .04em;
-    color: var(--sd-text-muted);
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--sd-label);
     -webkit-user-select: none; user-select: none;
     flex-shrink: 0;
-    min-height: 26px;
+    min-height: 30px;
+    white-space: nowrap;
+    overflow: hidden;
+}
+.sd-bp-quad-hdr .sd-attrs-elem-badge { min-width: 0; }
+/* Attributes and Styles with nothing selected: one line at the top. */
+.sd-bp-none {
+    padding: .5rem .65rem;
+    font-size: 11.5px;
+    color: var(--sd-text-muted);
+}
+/* The Styles head under 460 px: "Create" keeps its word, the export is its
+   icon, the search a button that lays the field over the head. */
+.sd-styles-tool-txt { margin-left: .25rem; }
+.sd-styles-find-btn { display: none; }
+.sd-bp-styles-narrow .sd-styles-tool-txt,
+.sd-bp-styles-narrow .sd-styles-find { display: none; }
+.sd-bp-styles-narrow .sd-styles-find-btn { display: inline-flex; }
+.sd-bp-styles-narrow.sd-find-open .sd-styles-find {
+    display: block;
+    position: absolute; top: 4px; left: .55rem; right: 2rem;
+    width: auto; z-index: 2;
 }
 .sd-bp-quad-spacer { flex: 1; }
 .sd-bp-quad-body {
@@ -7472,12 +7498,9 @@ textarea.sd-as-co-input { resize: vertical; min-height: 38px; }
 
 /* ── Selection badge on toolbar (validate) ── */
 .sd-validate-warn {
-    background: rgba(255,193,7,.12) !important;
-    color: #ffc107 !important;
+    background: var(--sd-warning-soft) !important;
+    color: var(--sd-warning) !important;
     border-radius: 4px !important;
-    border: 1px solid rgba(255,193,7,.2) !important;
-    padding: .15rem .4rem !important;
-    font-size: .68rem !important;
 }
 
 /* ── Smoother panel collapse ── */
