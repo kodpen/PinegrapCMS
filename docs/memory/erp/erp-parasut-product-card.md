@@ -9,7 +9,7 @@ description: The Paraşüt product card of a Pinegrap product (parasut_sync_prod
 - A card Paraşüt does not open refuses the invoice; the default product/service takes only lines without a product (erp-parasut-product-card-not-opened.md). A kept card Paraşüt no longer holds is forgotten and opened again (erp-parasut-stale-kept-ids.md).
 
 ## What does the create send? (#1517)
-- `POST products` with `parasut_product_attributes()`: `name` (short description, else the product name), `list_price` (`price` / 100, two decimals), `currency`, `vat_rate` (`tax_rate`; none → 0, a card has no "zone decides"; the line's rate is the rule, bug #11982: erp-parasut-product-card-not-opened.md), `inventory_tracking` (`products.inventory`), and for a tracked product `initial_stock_count`: the stock before the document (erp-parasut-product-card-opening-stock.md).
+- `POST products` with `parasut_product_attributes()`: `name` (short description, else the product name), `list_price` (`price` / 100, two decimals), `currency`, `vat_rate` (the invoice line's rate, else `tax_rate`; none → 0, a card has no "zone decides": erp-parasut-product-card-not-opened.md), `inventory_tracking` (`products.inventory`), and for a tracked product `initial_stock_count`: the stock before the document (erp-parasut-product-card-opening-stock.md).
 - Before #1517 the price went as `unit_price` (a create with it on 2026-10-24 came back without `list_price`) with `product_type`, which v4 products do not have.
 
 ## Which currency is the price in? (#1631)

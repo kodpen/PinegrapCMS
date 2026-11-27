@@ -12,7 +12,7 @@ module: parasut
 
 ## Which decisions bind it?
 - Owner (2026-10-21): VAT and withholding per rate group, as Paraşüt takes them (`erp-vat-per-rate-group.md`).
-- Decided #2440-#2442, not built yet (`plans/erp-parasut-open-work.md`, `workflow/decisions-made-schema.md`): a Payment account pick posting the paid moment; a reused buyer card only gets its empty fields filled; a `sent` e-Fatura whose conversion failed keeps refusing Cancel.
+- Decided #2440-#2442 (`plans/erp-parasut-open-work.md`, `workflow/decisions-made-schema.md`): a Payment account pick posting the paid moment, not built; a reused buyer card only gets its empty fields filled; a `sent` e-Fatura whose conversion failed keeps refusing Cancel.
 - Live rounds (`erp-parasut-staging-company.md`) and open items run only in the owner's local session. Never guess an endpoint (`erp-edoc-driver-layer.md`).
 
 ## What does a person see, and which file holds it?
