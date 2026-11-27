@@ -56,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     validate_token_field();
 
-    pg_request_single_values(array('wt_action', 'wt_table', 'wt_column', 'wt_row', 'wt_share', 'wt_bin', 'revision', 'name', 'description', 'type', 'target', 'level', 'channel', 'value', 'note', 'starter', 'samples', 'message', 'sheet'));
+    pg_request_single_values(array('wt_action', 'wt_table', 'wt_column', 'wt_row', 'wt_share', 'wt_bin', 'revision', 'position', 'after', 'after_id', 'name', 'description', 'type', 'target', 'level', 'channel', 'value', 'note', 'starter', 'samples', 'message', 'sheet'));
 
     $action = (string) ($_POST['wt_action'] ?? '');
     $table = ws_wtable((int) ($_POST['wt_table'] ?? 0));
@@ -222,7 +222,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $column = ws_wtable_column((int) ($table['id'] ?? 0), (int) ($_POST['wt_column'] ?? 0));
             $result = ws_wtable_column_delete($viewer, $table, $column);
             $result['ok'] ? $liveform->add_notice(h(lang('The column was deleted.'))) : $refused($result);
-            $back .= '#ws-wt-columns';
+            // Deleted from its head in the grid: back to the rows.
+            $back .= ($field('target') === 'rows') ? '#ws-wt-rows' : '#ws-wt-columns';
+            break;
+
+        case 'column_move':
+            // Move left or right from the column's head: its new place.
+            $column = ws_wtable_column((int) ($table['id'] ?? 0), (int) ($_POST['wt_column'] ?? 0));
+            $result = ws_wtable_column_move($viewer, $table, $column, array('position' => $field('position')));
+            $result['ok'] ? $liveform->add_notice(h(lang('The column was moved.'))) : $refused($result);
+            $back .= '#ws-wt-rows';
+            break;
+
+        case 'row_move':
+            // Move up or down from the row's menu, or the row dragged by
+            // its handle: its new place, back to the page it was on.
+            $row = ws_wtable_row((int) ($table['id'] ?? 0), (int) ($_POST['wt_row'] ?? 0));
+            $result = ws_wtable_row_move($viewer, $table, $row, array('position' => $field('position')));
+            $result['ok'] ? $liveform->add_notice(h(lang('The row was moved.'))) : $refused($result);
+            $back .= ws_wtable_screen_after_qs((int) $field('after'), (int) $field('after_id')) . ($result['ok'] ? '#ws-wt-row-' . (int) $row['id'] : '#ws-wt-rows');
             break;
 
         case 'row_save':
@@ -1154,19 +1172,36 @@ if (!$table) {
         $shapes[(string) $column_id] = ws_wtable_grid_shape($joined ? (string) ($lookup_targets[(string) $column_id]['type'] ?? '') : $column['type'], $joined ? array() : (array) $column['options']);
     }
 
+    $place = 0;
+
     foreach ($columns as $column_id => $column) {
-        // A heading sorts by its column: up, then down, then the table's order.
+        // A heading opens the column's menu: its sorts, Filter, and for a
+        // writer Rename, Change type, the moves and Delete.
+        $place++;
         $sorted = ((int) $screen_query['sort'] === (int) $column_id) ? (string) $screen_query['dir'] : '';
-        $next = array('' => array('sort' => (string) (int) $column_id), 'asc' => array('sort' => (string) (int) $column_id, 'dir' => 'desc'), 'desc' => array())[$sorted];
-        $sort_params = array_diff_key($query_params, array('sort' => 1, 'dir' => 1)) + $next;
+        $base_params = array_diff_key($query_params, array('sort' => 1, 'dir' => 1));
         $icon = array('' => '', 'asc' => ' <i class="bi bi-sort-up" aria-hidden="true"></i>', 'desc' => ' <i class="bi bi-sort-down" aria-hidden="true"></i>')[$sorted];
+        // A lookup or rollup is worked out after the rows are sorted: it sorts nothing.
+        $sort = ws_wtable_joined_type($column['type']) ? null : array(
+            'asc'  => $table_url . '&' . http_build_query($base_params + array('sort' => (string) (int) $column_id)) . '#ws-wt-rows',
+            'desc' => $table_url . '&' . http_build_query($base_params + array('sort' => (string) (int) $column_id, 'dir' => 'desc')) . '#ws-wt-rows',
+            'now'  => $sorted,
+        );
+        $items = ws_wtable_grid_column_menu_items($column_id, $place, count($columns), $sort, !empty(ws_wtable_where_type_operators($column['type'])),
+            $can_write, $can_write && !empty(ws_wtable_screen_retype_choices($column)), (string) $column['name']);
+        $menu = ws_wtable_grid_menu('ws-wt-col-button', $column['name'] . ' · ' . lang('Column menu'),
+            '<span class="ws-wt-cell">' . h($column['name']) . $icon . '</span><i class="bi bi-chevron-down ws-wt-col-caret" aria-hidden="true"></i>', $items);
 
         $shape = $shapes[(string) $column_id];
         $head .= '<th scope="col" class="ws-wt-c ws-wt-c-' . $shape['width'] . ($shape['end'] ? ' text-end' : '') . '"'
-            . (($sorted !== '') ? ' aria-sort="' . (($sorted === 'asc') ? 'ascending' : 'descending') . '"' : '') . '><div class="ws-wt-cell">'
-            // A lookup or rollup is worked out after the rows are sorted: it sorts nothing.
-            . (ws_wtable_joined_type($column['type']) ? '<span title="' . h($column['name']) . '">' . h($column['name']) . '</span>' : '<a class="fg-reset text-decoration-none" href="' . h($table_url . (empty($sort_params) ? '' : '&' . http_build_query($sort_params))) . '#ws-wt-rows" title="' . h($column['name'] . ' · ' . lang('Sort by this column')) . '">' . h($column['name']) . $icon . '</a>') . '</div></th>';
+            . (($sorted !== '') ? ' aria-sort="' . (($sorted === 'asc') ? 'ascending' : 'descending') . '"' : '') . '>'
+            . (($menu !== '') ? $menu : '<div class="ws-wt-cell" title="' . h($column['name']) . '">' . h($column['name']) . '</div>') . '</th>';
     }
+
+    // A "+" head after the last column opens New column in the Columns drawer.
+    $order_free = !$query_on;
+    $add_head = $can_write ? '<th scope="col" class="ws-wt-add-head"><button type="button" class="pg-icon-button pg-icon-button-sm" data-ws-wt-goto="ws-wt-new-column" data-ws-wt-focus="ws_wt_new_column_name"'
+        . ' title="' . h(lang('New column')) . '" aria-label="' . h(lang('New column')) . '"><i class="bi bi-plus-lg" aria-hidden="true"></i></button></th>' : '';
 
     // The totals line: sum, average, smallest and largest of each number,
     // money and formula column, over the rows shown or every row the query
@@ -1187,7 +1222,7 @@ if (!$table) {
                     : '<td></td>';
             }
 
-            $totals_foot .= '<tr class="small"><th scope="row" class="fw-normal fg-secondary text-end text-nowrap">' . h($label) . '</th>' . $cells . ($can_write ? '<td></td>' : '') . '</tr>';
+            $totals_foot .= '<tr class="small"><th scope="row" class="fw-normal fg-secondary text-end text-nowrap">' . h($label) . '</th>' . $cells . ($can_write ? '<td></td><td></td>' : '') . '</tr>';
         }
 
         $totals_foot = '<tfoot class="ws-wt-totals">' . $totals_foot . '</tfoot>';
@@ -1217,11 +1252,21 @@ if (!$table) {
             // A row's click, or Enter on its number, opens it in the row drawer.
             $open = $table_url . '&row=' . (int) $row['id'] . $page_qs . '#ws-wt-row-form';
             $number = '<a class="ws-wt-open" href="' . h($open) . '" aria-label="' . h(lang(array('string' => 'Row {var:1}', 'vars' => ws_wtable_row_label($row)))) . '">' . $number . '</a>';
-            $tools = ws_wtable_screen_action_button(array('action' => 'row_delete', 'row' => (int) $row['id'], 'revision' => (int) $row['revision']), lang('Delete'), 'bi-trash',
-                ws_wtable_screen_delete_confirm('row', (string) $table['name'], $bin_days, (int) ($link_counts[(int) $row['id']] ?? 0)));
+            // In the table's own order a row is dragged by its handle, or
+            // moved from its menu (workspace_wtable_order.js).
+            if ($order_free) {
+                $number = '<span class="ws-wt-handle" draggable="true" aria-hidden="true" title="' . h(lang('Drag to move the row')) . '"><i class="bi bi-grip-vertical"></i></span>' . $number;
+            }
+
+            $row_label = lang(array('string' => 'Row {var:1}', 'vars' => ws_wtable_row_label($row))) . ' · ' . lang('More actions');
+            $tools = ws_wtable_grid_menu('pg-icon-button pg-icon-button-sm', $row_label, '<i class="bi bi-three-dots" aria-hidden="true"></i>',
+                ws_wtable_grid_row_menu_items($row, (int) $table['row_count'], $order_free,
+                    ws_wtable_screen_delete_confirm('row', (string) $table['name'], $bin_days, (int) ($link_counts[(int) $row['id']] ?? 0))));
         }
 
-        $lines .= '<tr id="ws-wt-row-' . (int) $row['id'] . '"' . ($can_write ? ' data-ws-wt-open="' . h($open) . '" data-ws-wt-row="' . (int) $row['id'] . '" data-ws-wt-revision="' . (int) $row['revision'] . '"' : '') . '><td class="small fg-secondary text-end">' . $number . '</td>' . $line . ($can_write ? '<td class="text-end text-nowrap">' . $tools . '</td>' : '') . '</tr>';
+        $lines .= '<tr id="ws-wt-row-' . (int) $row['id'] . '"' . ($can_write ? ' data-ws-wt-open="' . h($open) . '" data-ws-wt-row="' . (int) $row['id'] . '" data-ws-wt-revision="' . (int) $row['revision'] . '"'
+            . ($order_free ? ' data-ws-wt-position="' . (int) $row['position'] . '"' : '') : '') . '><td class="small fg-secondary text-end">' . $number . '</td>' . $line
+            . ($can_write ? '<td></td><td class="text-end text-nowrap">' . $tools . '</td>' : '') . '</tr>';
     }
 
     $pager = '';
@@ -1242,7 +1287,7 @@ if (!$table) {
         $rows_body = pg_empty_state('bi-table', lang('No row yet'));
     } else {
         $rows_body = ws_wtable_grid_style() . '<div class="ws-wt-grid" role="region" tabindex="0" aria-label="' . h(lang('Rows')) . '"><table class="table table-sm table-hover align-middle mb-0">
-            <thead><tr><th scope="col" class="text-end">#</th>' . $head . ($can_write ? '<th scope="col" aria-label="' . h(lang('Actions')) . '"></th>' : '') . '</tr></thead>
+            <thead><tr><th scope="col" class="text-end">#</th>' . $head . $add_head . ($can_write ? '<th scope="col" aria-label="' . h(lang('Actions')) . '"></th>' : '') . '</tr></thead>
             <tbody>' . $lines . '</tbody>' . $totals_foot . '
         </table></div>' . ((($pager !== '') || ($totals_switch !== '')) ? '<div class="d-flex flex-wrap align-items-center gap-3 mt-3">' . $totals_switch . $pager . '</div>' : '');
 
@@ -1646,7 +1691,7 @@ if (!$table) {
         if ($can_write) {
             $prefix = 'ws_wt_col_' . (int) $column_id;
             $refused_here = $retype_state && ((int) $retype_state['table'] === $id) && ((int) $retype_state['column'] === (int) $column_id);
-            $line = '<details class="py-3 border-bottom"' . ($refused_here ? ' open' : '') . '><summary class="list-unstyled">' . $line . '</summary>
+            $line = '<details class="py-3 border-bottom" id="ws-wt-col-' . (int) $column_id . '"' . ($refused_here ? ' open' : '') . '><summary class="list-unstyled">' . $line . '</summary>
                 <form method="post" action="' . h($self_url) . '" class="disable_shortcut mt-3">
                     ' . get_token_field() . '
                     <input type="hidden" name="wt_action" value="column_update">
@@ -2109,6 +2154,9 @@ $shell . '
         <input type="hidden" name="wt_share" value="">
         <input type="hidden" name="wt_bin" value="">
         <input type="hidden" name="revision" value="">
+        <input type="hidden" name="position" value="">
+        <input type="hidden" name="after" value="' . (int) ($after ?? 0) . '">
+        <input type="hidden" name="after_id" value="' . (int) ($after_id ?? 0) . '">
         <input type="hidden" name="target" value="' . h($table ? '' : (string) ($scope ?? '')) . '">
         <span class="ws-wt-bulk-ids"></span>
     </form>
@@ -2181,6 +2229,46 @@ $shell . '
             }
         });
     }
+
+    // "Filter by this column" in a column menu opens the Filter box with the
+    // column chosen on its empty line and the comparison in focus; it waits
+    // for the click to end, which would close the box.
+    document.addEventListener("click", function (e) {
+        var item = e.target.closest("[data-ws-wt-filter-col]");
+        if (!item || !filterButton || !filterBox) { return; }
+        e.preventDefault();
+        window.setTimeout(function () {
+            filterShow(true, false);
+            var lines = filterBox.querySelectorAll("select[name$=\"[c]\"]");
+            var line = lines.length ? lines[lines.length - 1] : null;
+            if (!line || line.value !== "") { return; }
+            line.value = item.dataset.wsWtFilterCol;
+            line.dispatchEvent(new Event("change", { bubbles: true }));
+            var op = filterBox.querySelector("select[name=\"" + line.name.replace("[c]", "[o]") + "\"]");
+            (op || line).focus();
+        }, 0);
+    });
+
+    // Rename and Change type in a column menu, and the "+" head, open the Columns
+    // drawer at the column, or at New column, with its field in focus.
+    document.addEventListener("click", function (e) {
+        var go = e.target.closest("[data-ws-wt-goto]");
+        var target = go ? document.getElementById(go.dataset.wsWtGoto) : null;
+        var drawer = target ? target.closest("dialog.drawer") : null;
+        if (!drawer || !window.pgUI) { return; }
+        e.preventDefault();
+        if (target.tagName === "DETAILS") { target.open = true; }
+        window.pgUI.ready(function () {
+            window.pgUI.drawer.show(drawer).then(function () {
+                var field = document.getElementById(go.dataset.wsWtFocus || "");
+                target.scrollIntoView({ block: "nearest" });
+                if (field) {
+                    field.focus();
+                    if (field.type === "text") { field.select(); }
+                }
+            });
+        });
+    });
 
     // An address whose hash names a drawer, or something inside one (a
     // column with a refused type change), opens it: a save posted from a
@@ -2270,6 +2358,8 @@ $shell . '
         form.elements.wt_bin.value = button.dataset.bin || "";
         if (button.dataset.table) { form.elements.wt_table.value = button.dataset.table; }
         form.elements.revision.value = button.dataset.revision || "";
+        form.elements.position.value = button.dataset.position || "";
+        if (button.dataset.target) { form.elements.target.value = button.dataset.target; }
         form.submit();
     });
 

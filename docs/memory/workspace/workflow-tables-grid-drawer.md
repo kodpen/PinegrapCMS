@@ -14,7 +14,7 @@ description: A Data table's grid (workspace_wtables.php?id=N, DM2): one-line cel
 - The rules are `ws_wtable_grid_style()`, a `<style>` printed with the grid on this screen only, in `@layer custom` with `--pg-*` tokens: `backend.src.css` was held by open PRs when it was written. Moving them there later changes nothing drawn.
 
 ## How does a row open?
-- A click on a row (`tr[data-ws-wt-open]`, not on its links or buttons, not a click ending a text selection) goes to `?id=N&row=M…#ws-wt-row-form`; on a cell changed in the grid it waits for a second click first (`workflow-tables-grid.md`); the keyboard has the same address on the row's number (`a.ws-wt-open`, "Row N"). The pencil of the row is gone; its Delete stays in the last column.
+- A click on a row (`tr[data-ws-wt-open]`, not on its links or buttons, not a click ending a text selection) goes to `?id=N&row=M…#ws-wt-row-form`; on a cell changed in the grid it waits for a second click first (`workflow-tables-grid.md`); the keyboard has the same address on the row's number (`a.ws-wt-open`, "Row N"). The pencil of the row is gone; its Delete is in the row's "⋯" menu in the last column (`workflow-tables-grid-order.md`).
 - The page opens the drawer the hash names (`openFromHash()`, the bar's drawers' code). A drawer closed takes its hash off the address (`history.replaceState`), so the same link opens it again.
 
 ## What is the row drawer?

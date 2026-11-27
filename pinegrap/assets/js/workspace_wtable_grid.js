@@ -473,7 +473,7 @@
     grid.addEventListener('click', function (e) {
         var row = e.target.closest('tr[data-ws-wt-open]');
 
-        if (!row || e.target.closest('a, button, input, select, textarea, label')) {
+        if (!row || e.target.closest('a, button, input, select, textarea, label, .ws-wt-handle')) {
             return;
         }
 

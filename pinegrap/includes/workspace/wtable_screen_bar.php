@@ -205,6 +205,26 @@ function ws_wtable_screen_bar($bar)
  */
 function ws_wtable_screen_menu($items)
 {
+    $out = ws_wtable_screen_menu_entries($items);
+
+    if ($out === '') {
+        return '';
+    }
+
+    return '<span class="pg-menu-wrap"><button type="button" class="pg-icon-button ws-wt-more" data-bs-toggle="menu" aria-expanded="false" title="' . h(lang('More actions')) . '" aria-label="' . h(lang('More actions')) . '">'
+        . '<i class="bi bi-three-dots" aria-hidden="true"></i></button><ul class="menu pg-menu-end ws-wt-menu">' . $out . '</ul></span>';
+}
+
+/**
+ * The entries of a menu of the table's screen, as ws_wtable_screen_menu()
+ * takes them (an entry marked current is drawn active); '' when no entry
+ * is left but headers and dividers. Pure but for lang().
+ *
+ * @param array $items
+ * @return string HTML, the menu's li elements
+ */
+function ws_wtable_screen_menu_entries($items)
+{
     $out = '';
     $entries = 0;
 
@@ -220,11 +240,11 @@ function ws_wtable_screen_menu($items)
         }
 
         $entries++;
-        $class = 'menu-item' . (!empty($item['danger']) ? ' fg-emphasis-danger' : '');
+        $class = 'menu-item' . (!empty($item['danger']) ? ' fg-emphasis-danger' : '') . (!empty($item['current']) ? ' active' : '');
         $inner = '<i class="bi ' . h((string) $item['icon']) . ' me-3" aria-hidden="true"></i>' . h((string) $item['label']);
 
         if (isset($item['href'])) {
-            $out .= '<li><a class="' . $class . '" href="' . h((string) $item['href']) . '"' . (!empty($item['download']) ? ' download' : '') . '>' . $inner . '</a></li>';
+            $out .= '<li><a class="' . $class . '" href="' . h((string) $item['href']) . '"' . (!empty($item['download']) ? ' download' : '') . (!empty($item['current']) ? ' aria-current="true"' : '') . '>' . $inner . '</a></li>';
         } elseif (isset($item['drawer'])) {
             $out .= '<li><button type="button" class="' . $class . '" data-bs-toggle="drawer" data-bs-target="#' . h((string) $item['drawer']) . '" aria-controls="' . h((string) $item['drawer']) . '">' . $inner . '</button></li>';
         } elseif (isset($item['action'])) {
@@ -241,12 +261,7 @@ function ws_wtable_screen_menu($items)
         }
     }
 
-    if ($entries === 0) {
-        return '';
-    }
-
-    return '<span class="pg-menu-wrap"><button type="button" class="pg-icon-button ws-wt-more" data-bs-toggle="menu" aria-expanded="false" title="' . h(lang('More actions')) . '" aria-label="' . h(lang('More actions')) . '">'
-        . '<i class="bi bi-three-dots" aria-hidden="true"></i></button><ul class="menu pg-menu-end ws-wt-menu">' . $out . '</ul></span>';
+    return ($entries === 0) ? '' : $out;
 }
 
 /**

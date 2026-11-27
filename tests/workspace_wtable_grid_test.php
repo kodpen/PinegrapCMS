@@ -181,3 +181,61 @@ function test_ws_wtable_grid_script_config()
 	), $config['columns']);
 	pg_assert_same(array('none', 'saving', 'saved', 'error', 'keys'), array_keys($config['texts']));
 }
+
+// A column's head menu: the sorts and Filter for every reader, the
+// current sort marked; Rename, Change type, the moves a place allows and
+// Delete for a writer, the moves and Delete posted back to the rows.
+function test_ws_wtable_grid_column_menu_items()
+{
+	$sort = array('asc' => 'u?a', 'desc' => 'u?d', 'now' => 'desc');
+	$reader = ws_wtable_grid_column_menu_items(7, 1, 3, $sort, true, false, true);
+	pg_assert_same(array('Sort ascending', 'Sort descending', 'Filter by this column'), array_column($reader, 'label'));
+	pg_assert_same('u?a', $reader[0]['href']);
+	pg_assert_true(empty($reader[0]['current']));
+	pg_assert_true(!empty($reader[1]['current']));
+	pg_assert_true(strpos($reader[2]['attrs'], 'data-ws-wt-filter-col="7"') !== false);
+
+	$first = ws_wtable_grid_column_menu_items(7, 1, 3, $sort, true, true, true);
+	pg_assert_same(array('Sort ascending', 'Sort descending', 'Filter by this column', 'Rename', 'Change type', 'Move right', 'Delete'), array_values(array_filter(array_column($first, 'label'))));
+	$by = array_column(array_filter($first, function ($item) { return isset($item['label']); }), null, 'label');
+	pg_assert_same(array('column' => 7, 'position' => 2, 'target' => 'rows'), $by['Move right']['data']);
+	pg_assert_same('column_move', $by['Move right']['action']);
+	pg_assert_same('column_delete', $by['Delete']['action']);
+	pg_assert_true(!empty($by['Delete']['danger']));
+	pg_assert_true(strpos($by['Rename']['attrs'], 'data-ws-wt-goto="ws-wt-col-7"') !== false);
+	pg_assert_true(strpos($by['Change type']['attrs'], 'data-ws-wt-focus="ws_wt_col_7_to"') !== false);
+
+	$last = array_column(ws_wtable_grid_column_menu_items(7, 3, 3, null, false, true, false), 'label');
+	pg_assert_same(array('Rename', 'Move left', 'Delete'), array_values(array_filter($last)), 'no sort, no filter, no type change, last');
+
+	pg_assert_same(array(), ws_wtable_grid_column_menu_items(7, 1, 1, null, false, false, false), 'a lookup to a reader');
+}
+
+// A row's menu: Move up and Move down while the table's order is shown and
+// the row is not at that end, then its Delete with the confirm it had.
+function test_ws_wtable_grid_row_menu_items()
+{
+	$row = array('id' => 5, 'position' => 1, 'revision' => 3);
+	$labels = function ($items) { return array_values(array_filter(array_column($items, 'label'))); };
+	pg_assert_same(array('Move down', 'Delete'), $labels(ws_wtable_grid_row_menu_items($row, 4, true, 'Sure?')));
+	pg_assert_same(array('Move up', 'Move down', 'Delete'), $labels(ws_wtable_grid_row_menu_items(array('position' => 2) + $row, 4, true, 'Sure?')));
+	pg_assert_same(array('Move up', 'Delete'), $labels(ws_wtable_grid_row_menu_items(array('position' => 4) + $row, 4, true, 'Sure?')));
+	pg_assert_same(array('Delete'), $labels(ws_wtable_grid_row_menu_items(array('position' => 2) + $row, 4, false, 'Sure?')), 'sorted or filtered');
+
+	$items = array_column(array_filter(ws_wtable_grid_row_menu_items(array('position' => 2) + $row, 4, true, 'Sure?'), function ($item) { return isset($item['label']); }), null, 'label');
+	pg_assert_same(array('row' => 5, 'position' => 1), $items['Move up']['data']);
+	pg_assert_same('row_move', $items['Move up']['action']);
+	pg_assert_same(array('row' => 5, 'revision' => 3), $items['Delete']['data']);
+	pg_assert_same('Sure?', $items['Delete']['confirm']);
+}
+
+// A grid menu: its toggle placed fixed on the page so the grid's box does
+// not cut it, the entries under it; nothing without an entry.
+function test_ws_wtable_grid_menu()
+{
+	$html = ws_wtable_grid_menu('ws-wt-col-button', 'Name', 'Name<i></i>', array(array('label' => 'Rename', 'icon' => 'bi-pencil', 'attrs' => 'data-x="1"')));
+	pg_assert_true(strpos($html, 'data-bs-toggle="menu" data-bs-strategy="fixed"') !== false);
+	pg_assert_true(strpos($html, 'class="ws-wt-col-button"') !== false);
+	pg_assert_true(strpos($html, 'Rename</button></li></ul>') !== false);
+	pg_assert_same('', ws_wtable_grid_menu('x', 'Name', 'Name', array(array('divider' => true))));
+}

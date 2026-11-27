@@ -257,6 +257,126 @@ function ws_wtable_grid_script_config($url, $table_id, $token, $columns)
 }
 
 /**
+ * The entries of a column's head menu (ws_wtable_screen_menu_entries()):
+ * Sort ascending and descending, Filter by this column, then for a writer
+ * Rename and Change type (opening the Columns drawer at the column), Move
+ * left and right as far as the column's place allows, and Delete with the
+ * confirm the Columns drawer asks. Pure but for lang().
+ *
+ * @param int        $column_id
+ * @param int        $place     the column's place, 1-based
+ * @param int        $count     the table's columns
+ * @param array|null $sort      asc, desc (addresses), now ('', asc, desc);
+ *                              null for a column that sorts nothing
+ * @param bool       $filter    the Filter box takes the column
+ * @param bool       $can_write
+ * @param bool       $retype    the column's type may change
+ * @param string     $name      the column's name, for the delete confirm
+ * @return array
+ */
+function ws_wtable_grid_column_menu_items($column_id, $place, $count, $sort, $filter, $can_write, $retype, $name = '')
+{
+    $column_id = (int) $column_id;
+    $reads = array();
+    $writes = array();
+
+    if (is_array($sort)) {
+        $reads[] = array('label' => lang('Sort ascending'), 'icon' => 'bi-sort-up', 'href' => (string) $sort['asc'], 'current' => ((string) $sort['now'] === 'asc'));
+        $reads[] = array('label' => lang('Sort descending'), 'icon' => 'bi-sort-down', 'href' => (string) $sort['desc'], 'current' => ((string) $sort['now'] === 'desc'));
+    }
+
+    if ($filter) {
+        $reads[] = array('label' => lang('Filter by this column'), 'icon' => 'bi-funnel', 'attrs' => 'data-ws-wt-filter-col="' . $column_id . '"');
+    }
+
+    if ($can_write) {
+        $prefix = 'ws_wt_col_' . $column_id;
+        $writes[] = array('label' => lang('Rename'), 'icon' => 'bi-pencil', 'attrs' => 'data-ws-wt-goto="ws-wt-col-' . $column_id . '" data-ws-wt-focus="' . $prefix . '_name"');
+
+        if ($retype) {
+            $writes[] = array('label' => lang('Change type'), 'icon' => 'bi-arrow-left-right', 'attrs' => 'data-ws-wt-goto="ws-wt-col-' . $column_id . '" data-ws-wt-focus="' . $prefix . '_to"');
+        }
+
+        if ((int) $place > 1) {
+            $writes[] = array('label' => lang('Move left'), 'icon' => 'bi-arrow-left', 'action' => 'column_move',
+                'data' => array('column' => $column_id, 'position' => (int) $place - 1, 'target' => 'rows'));
+        }
+
+        if ((int) $place < (int) $count) {
+            $writes[] = array('label' => lang('Move right'), 'icon' => 'bi-arrow-right', 'action' => 'column_move',
+                'data' => array('column' => $column_id, 'position' => (int) $place + 1, 'target' => 'rows'));
+        }
+
+        $writes[] = array('divider' => true);
+        $writes[] = array('label' => lang('Delete'), 'icon' => 'bi-trash', 'danger' => true, 'action' => 'column_delete',
+            'data' => array('column' => $column_id, 'target' => 'rows'),
+            'confirm' => lang(array('string' => 'Delete the column {var:1}? Its cells cannot be brought back.', 'vars' => (string) $name)));
+    }
+
+    return (!empty($reads) && !empty($writes)) ? array_merge($reads, array(array('divider' => true)), $writes) : array_merge($reads, $writes);
+}
+
+/**
+ * The entries of a row's menu: Move up and Move down while the rows stand
+ * in the table's own order (no filter, no sort) and the row is not at that
+ * end of the table, then its Delete. A move posts the row's new place to
+ * ws_wtable_row_move(). Pure but for lang().
+ *
+ * @param array  $row        a row as read (id, position, revision)
+ * @param int    $row_count  the table's rows
+ * @param bool   $order_free the rows are shown in the table's order
+ * @param string $confirm    the delete's confirm
+ * @return array
+ */
+function ws_wtable_grid_row_menu_items($row, $row_count, $order_free, $confirm)
+{
+    $id = (int) $row['id'];
+    $position = (int) $row['position'];
+    $items = array();
+
+    if ($order_free && ($position > 1)) {
+        $items[] = array('label' => lang('Move up'), 'icon' => 'bi-arrow-up', 'action' => 'row_move', 'data' => array('row' => $id, 'position' => $position - 1));
+    }
+
+    if ($order_free && ($position < (int) $row_count)) {
+        $items[] = array('label' => lang('Move down'), 'icon' => 'bi-arrow-down', 'action' => 'row_move', 'data' => array('row' => $id, 'position' => $position + 1));
+    }
+
+    if (!empty($items)) {
+        $items[] = array('divider' => true);
+    }
+
+    $items[] = array('label' => lang('Delete'), 'icon' => 'bi-trash', 'danger' => true, 'action' => 'row_delete',
+        'data' => array('row' => $id, 'revision' => (int) $row['revision']), 'confirm' => (string) $confirm);
+
+    return $items;
+}
+
+/**
+ * A menu of the grid: its toggle and the entries under it, placed fixed on
+ * the page and opened in the body, so that neither the grid's scrolling box
+ * cuts it nor its sticky head and totals rows draw over it. '' when no
+ * entry is left.
+ *
+ * @param string $class the toggle's classes
+ * @param string $label the toggle's name, for its title and screen readers
+ * @param string $inner the toggle's content, HTML
+ * @param array  $items ws_wtable_screen_menu_entries()
+ * @return string HTML
+ */
+function ws_wtable_grid_menu($class, $label, $inner, $items)
+{
+    $entries = ws_wtable_screen_menu_entries($items);
+
+    if ($entries === '') {
+        return '';
+    }
+
+    return '<span class="pg-menu-wrap"><button type="button" class="' . h($class) . '" data-bs-toggle="menu" data-bs-strategy="fixed" data-bs-container="body" aria-expanded="false" title="' . h($label) . '" aria-label="' . h($label) . '">'
+        . $inner . '</button><ul class="menu ws-wt-menu">' . $entries . '</ul></span>';
+}
+
+/**
  * How many rows a text field of the row drawer takes to show its value
  * whole: a line each, a line longer than the drawer's width counted as the
  * lines it wraps to, two at least. Pure.
@@ -313,8 +433,9 @@ function ws_wtable_grid_row_drawer($drawer)
 /**
  * The grid's own rules, printed on the table's screen only: the box that
  * scrolls both ways, the head row and the totals rows held at its edges,
- * the "#" column held at its start, one-line cells in their widths and
- * figures in tabular digits.
+ * the "#" column held at its start, one-line cells in their widths,
+ * figures in tabular digits, the column heads as menu buttons and a row's
+ * drag handle with the line where it would land.
  *
  * @return string HTML
  */
@@ -397,6 +518,39 @@ function ws_wtable_grid_style()
     .ws-wt-grid .ws-wt-cell-note {
         max-width: 24rem;
         white-space: normal;
+    }
+    .ws-wt-col-button {
+        display: inline-flex;
+        align-items: center;
+        gap: .375rem;
+        max-width: 100%;
+        padding: 0;
+        border: 0;
+        background: none;
+        color: inherit;
+        font: inherit;
+        text-align: inherit;
+    }
+    .ws-wt-col-button:focus-visible {
+        outline: 2px solid var(--pg-link-color);
+        outline-offset: 2px;
+    }
+    .ws-wt-col-caret {
+        color: var(--pg-fg-3);
+    }
+    .ws-wt-handle {
+        cursor: grab;
+        color: var(--pg-fg-3);
+        margin-inline-end: .25rem;
+    }
+    .ws-wt-grid tbody tr.ws-wt-dragging {
+        opacity: .5;
+    }
+    .ws-wt-grid tbody tr.ws-wt-drop-before > * {
+        box-shadow: inset 0 2px 0 var(--pg-link-color);
+    }
+    .ws-wt-grid tbody tr.ws-wt-drop-after > * {
+        box-shadow: inset 0 -2px 0 var(--pg-link-color);
     }
 }
 </style>';
