@@ -1,6 +1,6 @@
 ---
 name: help-centre-census
-description: Help centre HC1 census from the code: what content types lack for a knowledge base, what a Workspace mail conversation stores, where a support request comes in today, the proposal and the owner's questions
+description: Help centre HC1 census from the code: what collections lack for a knowledge base, what a Workspace mail conversation stores, where requests come in, the proposal, the owner's questions
 ---
 
 ## What is this census?
