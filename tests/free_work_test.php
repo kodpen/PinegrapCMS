@@ -380,7 +380,12 @@ function test_free_work_git_command_has_no_shell_syntax()
 {
 	$args = array('-C', 'C:\\Users\\Test User\\AppData\\Local\\Temp\\pg-src', 'log', '--format=%s', 'say "hi" 100% !now', '--');
 
-	pg_assert_same('git \'-C\' \'log\'', free_work_git_command(array('-C', 'log'), false));
+	// escapeshellarg() quotes for the shell of the machine the test runs on:
+	// single quotes on Unix, double quotes on Windows.
+	if (DIRECTORY_SEPARATOR === '/') {
+		pg_assert_same('git \'-C\' \'log\'', free_work_git_command(array('-C', 'log'), false));
+	}
+
 	pg_assert_same('git "-C" "C:\\Users\\Test User\\AppData\\Local\\Temp\\pg-src" "log" "--format=%s" "say \\"hi\\" 100% !now" "--"', free_work_git_command($args, true));
 	pg_assert_same('"a\\\\"', free_work_windows_arg('a\\'));
 
