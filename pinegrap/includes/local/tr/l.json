@@ -1487,6 +1487,7 @@
     "Locked Pages": "Kilitli Sayfalar",
     "Locked area": "Kilitli alan",
     "Locked by the site owner: the device limit cannot evict it and the member cannot sign it out.": "Site sahibi tarafından kilitlendi: cihaz sınırı bu oturumu düşüremez, kullanıcı da kapatamaz.",
+    "Locked cells left as they were: {1}.": "Kilitli hücreler olduğu gibi bırakıldı: {1}.",
     "Locked note": "Kilitli not",
     "Locked notes": "Kilitli notlar",
     "Locked on {var:1}.": "{var:1} üzerinde kilitli.",

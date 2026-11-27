@@ -84,6 +84,9 @@
     // The most cells one format change takes (PG_OFFICE_EDIT_MAX_CHANGES).
     var FORMAT_CELLS = 5000;
 
+    // The most characters a cell holds (Excel's limit, the save's).
+    var CELL_CHARACTERS = 32767;
+
     // The colours the format bar offers, by the word that names each. They
     // are written into the file, so they are the same in either theme.
     var TEXT_COLOURS = [['000000', 'black'], ['6B7280', 'grey'], ['DC2626', 'red'], ['EA580C', 'orange'], ['CA8A04', 'yellow'],
@@ -849,6 +852,176 @@
         last.set[key] = value;
 
         return list;
+    }
+
+    // Puts many typed cells of one sheet into the list as listCell() puts
+    // one: `cells` is [{row, column, value}] in the order they are entered.
+    // Each cell's entry made since the last row, column or sheet change is
+    // taken out first; a cell is then put at the end unless the workbook
+    // the list leaves holds its value already. The caller makes it one
+    // change of Undo.
+    function listValues(sheets, list, sheet, cells) {
+        var last = list.length - 1;
+        var wanted = {};
+
+        while (last >= 0 && !listMoves(list[last])) {
+            last--;
+        }
+
+        cells.forEach(function (cell) {
+            wanted[columnName(cell.column) + cell.row] = true;
+        });
+
+        for (var index = list.length - 1; index > last; index--) {
+            if (list[index].cell && list[index].sheet === sheet && own(wanted, list[index].cell)) {
+                list.splice(index, 1);
+            }
+        }
+
+        var under = listBook(sheets, list);
+        var values = under.values[sheet] || {};
+        var byRow = {};
+
+        under.sheets[sheet].rows.forEach(function (row) {
+            byRow[row.n] = row;
+        });
+
+        cells.forEach(function (cell) {
+            var address = columnName(cell.column) + cell.row;
+            var row = own(byRow, cell.row) ? byRow[cell.row] : null;
+            var was = own(values, address) ? values[address] : ((row && cell.column < row.cells.length) ? row.cells[cell.column] : '');
+            var value = String(cell.value).replace(/\r\n?/g, '\n');
+
+            if (value !== was) {
+                list.push({ sheet: sheet, cell: address, value: value });
+            }
+        });
+
+        return list;
+    }
+
+    // The clipboard's tab-separated text as a spreadsheet program writes it
+    // (Excel, LibreOffice, a browser's sheets, this grid): rows end with a
+    // line break, values end with a tab, and a value holding either, or a
+    // quote, is quoted with its quotes doubled. A quote that does not close
+    // a whole value is read as text. The last line break ends the block,
+    // so it adds no row. Rows of arrays of strings; none for no text.
+    function clipRows(text) {
+        text = String(text || '');
+
+        var rows = [];
+        var row = [];
+        var at = 0;
+
+        if (text === '') {
+            return rows;
+        }
+
+        while (at <= text.length) {
+            var value = null;
+            var end = at;
+
+            if (text.charAt(at) === '"') {
+                var spot = at + 1;
+                var quoted = '';
+
+                while (spot < text.length) {
+                    if (text.charAt(spot) === '"') {
+                        if (text.charAt(spot + 1) === '"') {
+                            quoted += '"';
+                            spot += 2;
+                            continue;
+                        }
+
+                        break;
+                    }
+
+                    quoted += text.charAt(spot);
+                    spot++;
+                }
+
+                var after = text.charAt(spot + 1);
+
+                if (spot < text.length && (after === '' || after === '\t' || after === '\n' || after === '\r')) {
+                    value = quoted;
+                    end = spot + 1;
+                }
+            }
+
+            if (value === null) {
+                end = at;
+
+                while (end < text.length && '\t\r\n'.indexOf(text.charAt(end)) === -1) {
+                    end++;
+                }
+
+                value = text.slice(at, end);
+            }
+
+            row.push(value);
+
+            var mark = text.charAt(end);
+
+            if (mark === '\t') {
+                at = end + 1;
+                continue;
+            }
+
+            rows.push(row);
+            row = [];
+
+            if (mark === '') {
+                break;
+            }
+
+            at = end + ((mark === '\r' && text.charAt(end + 1) === '\n') ? 2 : 1);
+
+            // The line break after the last row ends the block.
+            if (at >= text.length) {
+                break;
+            }
+        }
+
+        return rows;
+    }
+
+    // Rows of values as the clipboard's tab-separated text (clipRows()
+    // reads it back), with a spreadsheet program's CRLF between rows.
+    function clipText(rows) {
+        return rows.map(function (row) {
+            return row.map(function (value) {
+                value = String(value);
+
+                return /[\t\r\n"]/.test(value) ? '"' + value.replace(/"/g, '""') + '"' : value;
+            }).join('\t');
+        }).join('\r\n');
+    }
+
+    // Why a block of values may not be pasted from a cell with `rows` drawn
+    // rows and `columns` drawn columns from it on: 'room' when it reaches
+    // past them, 'many' over a save's cells (PG_OFFICE_EDIT_MAX_CHANGES),
+    // 'long' when a value passes a cell's characters; '' when it may.
+    function clipCheck(block, rows, columns) {
+        var wide = 0;
+        var cells = 0;
+        var long = false;
+
+        block.forEach(function (row) {
+            wide = Math.max(wide, row.length);
+            cells += row.length;
+            long = long || row.some(function (value) { return value.length > CELL_CHARACTERS; });
+        });
+
+        if (block.length > rows || wide > columns) {
+            return 'room';
+        }
+
+        return clipCells(cells) || (long ? 'long' : '');
+    }
+
+    // 'many' when more cells change at once than a save takes.
+    function clipCells(count) {
+        return (count > FORMAT_CELLS) ? 'many' : '';
     }
 
     function listCount(list) {
@@ -2134,20 +2307,221 @@
                 rebuild();
             }
 
-            var sheet = workbook.sheets[shown.index];
+            drawCell(td);
+
+            // A leading "=" stays text: no formula is worked out here.
+            shown.note = (value.charAt(0) === '=') ? (strings.formula_text || '') : '';
+
+            notify();
+        }
+
+        // Draws a cell again as the workbook holds it: its value (the
+        // file's shown text when it was not typed), its marks and its look.
+        function drawCell(td) {
+            var position = cellPosition(td);
+            var address = columnName(position.column) + position.row;
+            var value = shownValue(td);
             var typed = own(workbook.values[shown.index], address);
-            var entry = rowOf(sheet, position.row);
+            var entry = rowOf(workbook.sheets[shown.index], position.row);
 
             td.textContent = (!typed && entry && entry.show && own(entry.show, position.column)) ? entry.show[position.column] : value;
             td.classList.toggle('office-edited', typed);
             td.classList.toggle('office-num', isNumber(value));
             td.classList.remove('office-calc');
             paint(td, lookAt(shown.index, position.row, position.column));
+        }
 
-            // A leading "=" stays text: no formula is worked out here.
-            shown.note = (value.charAt(0) === '=') ? (strings.formula_text || '') : '';
+        // The drawn rows of the selection, each a list of its drawn cells,
+        // left to right. A row number the sheet does not draw is no row.
+        function selectionRows(range) {
+            var rows = [];
+            var last = null;
+
+            rangeCells(range, function (td) {
+                if (td.parentNode !== last) {
+                    last = td.parentNode;
+                    rows.push([]);
+                }
+
+                rows[rows.length - 1].push(td);
+            });
+
+            return rows;
+        }
+
+        // Says on the status line why the cells were not changed, or how
+        // many locked cells were left as they were.
+        function clipNote(reason, skipped) {
+            if (reason === 'room') {
+                shown.note = strings.clip_room || '';
+            } else if (reason === 'many') {
+                shown.note = fill(strings.clip_many, FORMAT_CELLS);
+            } else if (reason === 'long') {
+                shown.note = fill(strings.clip_long, CELL_CHARACTERS);
+            } else {
+                shown.note = skipped ? fill(strings.clip_skipped, skipped) : '';
+            }
 
             notify();
+        }
+
+        // Writes many cells of the sheet on show at once, one change of
+        // Undo: `cells` is [{td, value}]; a locked cell is left as it was and
+        // counted with the `skipped` cells the caller left. Refused whole,
+        // with its reason, past a save's cells.
+        function writeCells(cells, skipped) {
+            var open = cells.filter(function (cell) { return !cell.td.classList.contains('office-locked'); });
+            var reason = clipCells(open.length);
+
+            if (!reason && open.length) {
+                var index = shown.index;
+
+                change(function () {
+                    listValues(office.sheets, steps, index, open.map(function (cell) {
+                        var position = cellPosition(cell.td);
+
+                        return { row: position.row, column: position.column, value: cell.value };
+                    }));
+                });
+                rebuild();
+                open.forEach(function (cell) { drawCell(cell.td); });
+            }
+
+            clipNote(reason, reason ? 0 : cells.length - open.length + (skipped || 0));
+        }
+
+        // Ctrl+C: the selected cells as tab-separated text, each as its
+        // editor opens it, so a paste into this grid gives the same values.
+        function copyCells(event) {
+            var range = selectionRange();
+
+            if (!range || shown.editor || !event.clipboardData) {
+                return;
+            }
+
+            event.preventDefault();
+            event.clipboardData.setData('text/plain', clipText(selectionRows(range).map(function (row) {
+                return row.map(shownValue);
+            })));
+        }
+
+        // Ctrl+V: tab-separated text written from the selection's first
+        // cell on, row by drawn row, as typed cells. A block reaching past
+        // the drawn grid, too many cells or too long a value is refused
+        // whole; the block pasted is selected.
+        function pasteCells(event) {
+            var range = selectionRange();
+
+            if (!range || shown.editor || !event.clipboardData || !sheetEditable(shown.index)) {
+                return;
+            }
+
+            var block = clipRows(event.clipboardData.getData('text/plain'));
+
+            event.preventDefault();
+
+            if (!block.length) {
+                return;
+            }
+
+            var start = shown.table.querySelector('tbody tr[data-row="' + range[0] + '"]');
+            var rows = [];
+
+            // The drawn rows from the first selected one down.
+            for (var tr = start; tr; tr = tr.nextElementSibling) {
+                rows.push(tr);
+            }
+
+            var reason = clipCheck(block, rows.length, start ? start.cells.length - 1 - range[1] : 0);
+
+            if (reason) {
+                clipNote(reason, 0);
+                return;
+            }
+
+            var cells = [];
+            var corner = null;
+
+            block.forEach(function (values, place) {
+                values.forEach(function (value, offset) {
+                    var td = rows[place].cells[range[1] + offset + 1];
+
+                    cells.push({ td: td, value: value });
+                    corner = td;
+                });
+            });
+
+            writeCells(cells);
+            select(rows[0].cells[range[1] + 1]);
+
+            if (corner) {
+                select(corner, true);
+            }
+        }
+
+        // Ctrl+D: the selection's first drawn row written into the rows under
+        // it; a selection of one row takes the drawn row above it. A formula
+        // is not copied as its result: its column is left as it was.
+        function fillDown() {
+            var range = selectionRange();
+
+            if (!range || !sheetEditable(shown.index)) {
+                return;
+            }
+
+            var rows = selectionRows(range);
+            var source = rows.shift();
+
+            if (!rows.length && source && source.length) {
+                var above = source[0].parentNode.previousElementSibling;
+
+                rows = [source];
+                source = above ? Array.prototype.slice.call(above.cells, range[1] + 1, range[1] + 1 + rows[0].length) : null;
+            }
+
+            if (!source || !rows.length) {
+                return;
+            }
+
+            var locked = workbook.sheets[shown.index].edit.locked || {};
+            var cells = [];
+
+            rows.forEach(function (row) {
+                row.forEach(function (td, place) {
+                    var from = source[place];
+                    var position = from ? cellPosition(from) : null;
+
+                    if (from && locked[columnName(position.column) + position.row] !== 'formula') {
+                        cells.push({ td: td, value: shownValue(from) });
+                    } else {
+                        cells.push({ td: td, value: null });
+                    }
+                });
+            });
+
+            // A cell under a formula counts as left as it was.
+            var open = cells.filter(function (cell) { return cell.value !== null; });
+
+            writeCells(open, cells.length - open.length);
+        }
+
+        // Delete and Backspace: the selected cells emptied.
+        function clearCells() {
+            var range = selectionRange();
+
+            if (!range || !sheetEditable(shown.index)) {
+                return;
+            }
+
+            var cells = [];
+
+            selectionRows(range).forEach(function (row) {
+                row.forEach(function (td) {
+                    cells.push({ td: td, value: '' });
+                });
+            });
+
+            writeCells(cells);
         }
 
         function closeEditor(save) {
@@ -3420,6 +3794,9 @@
         }
 
         function wireGrid(table) {
+            table.addEventListener('copy', copyCells);
+            table.addEventListener('paste', pasteCells);
+
             // A cell reached with Tab is selected as a click would select it,
             // so the arrows, Enter and typing work on it at once.
             table.addEventListener('focusin', function (event) {
@@ -3527,9 +3904,27 @@
                     return;
                 }
 
-                if ((key === 'Delete' || key === 'Backspace') && sheetEditable(shown.index) && !td.classList.contains('office-locked')) {
+                // Ctrl+C and Ctrl+V are the browser's: its copy and paste
+                // events below. The page's own (the File Manager's copy of
+                // files) must not take them.
+                var letter = String(key).toLowerCase();
+
+                if ((event.ctrlKey || event.metaKey) && !event.altKey && (letter === 'c' || letter === 'v')) {
+                    event.stopPropagation();
+                    return;
+                }
+
+                // Ctrl+D fills the selection's first row down.
+                if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && letter === 'd') {
                     event.preventDefault();
-                    keep(td, '');
+                    event.stopPropagation();
+                    fillDown();
+                    return;
+                }
+
+                if ((key === 'Delete' || key === 'Backspace') && sheetEditable(shown.index)) {
+                    event.preventDefault();
+                    clearCells();
                     return;
                 }
 
@@ -7422,7 +7817,16 @@
             book: listBook,
             edits: listEdits,
             history: listHistory,
-            size: listSize
+            size: listSize,
+            values: listValues
+        },
+        // The grid's clipboard: tab-separated text read and written, the
+        // limits a paste, a fill and a clear are held to.
+        sheetClip: {
+            rows: clipRows,
+            text: clipText,
+            check: clipCheck,
+            cells: clipCells
         },
         // The units a column's width and a row's height are drawn in.
         sheetSizes: {
