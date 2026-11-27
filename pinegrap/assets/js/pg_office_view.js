@@ -1124,6 +1124,10 @@
         var bar = editable ? el('div', 'office-format') : null;
         var controls = {};
 
+        // Undo and Redo of the list: each change made through change()
+        // below is one press (listHistory()).
+        var stepHistory = listHistory(100);
+
         // Per sheet, by its id in the book, how its rows are shown ({sort:
         // {column, down}, filters: {column: {text: true}}}); nothing of it
         // is written to the file. A sheet sorted or filtered is only looked
@@ -1212,16 +1216,13 @@
             return values;
         }
 
-        function formatCount() {
-            return steps.filter(function (step) { return !!step.range; }).length;
-        }
-
         function count() {
             return listCount(listNow());
         }
 
         function notify() {
             drawStatus();
+            drawSteps();
 
             if (options && typeof options.onChange === 'function') {
                 options.onChange(count());
@@ -1472,7 +1473,7 @@
             if ((range[2] - range[0] + 1) * (range[3] - range[1] + 1) > FORMAT_CELLS) {
                 shown.note = strings.format_many || '';
             } else {
-                listFormat(steps, shown.index, range, key, value);
+                change(function () { listFormat(steps, shown.index, range, key, value); });
                 rebuild();
                 shown.note = '';
                 repaint(range);
@@ -1486,37 +1487,6 @@
             }
 
             drawStatus();
-        }
-
-        // Drops the last format range waiting.
-        function cancelFormat() {
-            var at = -1;
-
-            steps.forEach(function (step, index) {
-                if (step.range) {
-                    at = index;
-                }
-            });
-
-            if (at < 0) {
-                return;
-            }
-
-            var dropped = steps.splice(at, 1)[0];
-            var moved = steps.slice(at).some(listMoves);
-
-            rebuild();
-
-            // A range named before a row, column or sheet change names other
-            // cells now: the sheet is drawn again.
-            if (moved) {
-                show(shown.index);
-            } else if (dropped.sheet === shown.index) {
-                repaint(dropped.range);
-            }
-
-            drawBar();
-            notify();
         }
 
         // A button of the bar: look A's icon button, or an item of its
@@ -1542,6 +1512,26 @@
         function buildBar() {
             bar.setAttribute('role', 'toolbar');
             bar.setAttribute('aria-label', strings.format_bar || '');
+
+            // Undo and Redo at the bar's start, on the whole list; shown on
+            // every sheet, the format controls only where cells take one.
+            [['undo', 'bi-arrow-counterclockwise', strings.doc_undo], ['redo', 'bi-arrow-clockwise', strings.doc_redo]].forEach(function (item) {
+                var button = barButton('pg-icon-button pg-icon-button-sm', item[1], item[2] || '');
+
+                button.removeAttribute('aria-pressed');
+                button.disabled = true;
+
+                // A press leaves the focus where it is: in the cell being
+                // typed in, whose value is kept first and undone with it.
+                button.addEventListener('mousedown', function (event) {
+                    event.preventDefault();
+                });
+                button.addEventListener('click', function () {
+                    undoStep(item[0] === 'undo');
+                });
+                controls[item[0]] = button;
+                bar.appendChild(button);
+            });
 
             controls.bold = barButton('pg-icon-button pg-icon-button-sm', 'bi-type-bold', strings.format_bold || '');
             controls.bold.addEventListener('click', function () {
@@ -1616,17 +1606,6 @@
             });
 
             bar.appendChild(number);
-
-            controls.undo = el('button', 'pg-button pg-button-quiet pg-button-sm', strings.format_undo || '');
-            controls.undo.type = 'button';
-            controls.undo.addEventListener('click', function () {
-                cancelFormat();
-
-                if (shown.cell) {
-                    shown.cell.focus({ preventScroll: true });
-                }
-            });
-            bar.appendChild(controls.undo);
         }
 
         // The look of the first selected cell, as the bar shows it.
@@ -1648,7 +1627,13 @@
 
             var offered = !!shown.table && sheetFormattable(shown.index);
 
-            bar.classList.toggle('d-none', !offered);
+            drawSteps();
+
+            Array.prototype.forEach.call(bar.children, function (part) {
+                if (part !== controls.undo && part !== controls.redo) {
+                    part.classList.toggle('d-none', !offered);
+                }
+            });
 
             if (!offered) {
                 return;
@@ -1670,8 +1655,14 @@
             Object.keys(controls.number).forEach(function (kind) {
                 press(controls.number[kind], (look.n || 'general') === kind);
             });
+        }
 
-            controls.undo.classList.toggle('d-none', formatCount() === 0);
+        // The pair greyed while there is nothing to undo or redo.
+        function drawSteps() {
+            if (controls.undo) {
+                controls.undo.disabled = !stepHistory.canUndo();
+                controls.redo.disabled = !stepHistory.canRedo();
+            }
         }
 
         // The cell beside a cell: one row or one column over, if there is one.
@@ -1713,7 +1704,7 @@
             value = String(value).replace(/\r\n?/g, '\n');
 
             if (value !== shownValue(td)) {
-                listValue(steps, position, value);
+                change(function () { listValue(steps, position, value); });
                 rebuild();
             }
 
@@ -1798,6 +1789,14 @@
 
                 var key = event.key;
 
+                // Ctrl+Z and Ctrl+Y undo and redo the typing in the cell
+                // first; with the value as it was, they go to the list.
+                if (historyKey(event) && input.value === before) {
+                    event.preventDefault();
+                    undoStep(historyKey(event) === 'undo');
+                    return;
+                }
+
                 if ((event.ctrlKey || event.metaKey) && (key === 's' || key === 'S')) {
                     event.preventDefault();
                     closeEditor(true);
@@ -1866,38 +1865,60 @@
         // before the line it is sent.
         function choose(axis, at, place) {
             closeEditor(true);
-            steps.push({ op: (place === 'delete') ? 'delete' : 'insert', sheet: shown.index, axis: axis, at: at + ((place === 'after') ? 1 : 0) });
+            change(function () { steps.push({ op: (place === 'delete') ? 'delete' : 'insert', sheet: shown.index, axis: axis, at: at + ((place === 'after') ? 1 : 0) }); });
             rebuild();
             refind(false);
             show(shown.index);
             notify();
         }
 
-        // Drops the last change of the list when it is not a typed cell (a
-        // cell is undone by typing its value again), and draws the workbook
-        // as the list leaves it.
-        function cancelLast() {
-            var last = steps.length ? steps[steps.length - 1] : null;
+        // Changes the list as apply() does, kept as one step for Undo.
+        function change(apply) {
+            stepHistory.change(steps, apply);
+        }
 
-            if (!last || last.cell) {
-                return false;
-            }
+        // Undo (back) or Redo: one change of the list a press. A value
+        // being typed is kept first, so it is the change undone. The sheet
+        // on show stays open, scrolled and selected where it was.
+        function undoStep(back) {
+            closeEditor(true);
 
-            if (last.range) {
-                cancelFormat();
-                return true;
+            var state = back ? stepHistory.undo(steps) : stepHistory.redo(steps);
+
+            if (!state) {
+                return;
             }
 
             var id = (shown.index >= 0) ? workbook.sheets[shown.index].id : null;
+            var at = shown.cell ? cellPosition(shown.cell) : null;
+            var scroll = [pane.scrollTop, pane.scrollLeft];
+            var focused = book.contains(document.activeElement);
 
-            steps.pop();
+            steps = state;
             rebuild();
             refind(false);
             drawTabs();
             openTab(sheetPlace(id, shown.index));
-            notify();
+            pane.scrollTop = scroll[0];
+            pane.scrollLeft = scroll[1];
 
-            return true;
+            var row = (at && shown.table) ? shown.table.querySelector('tr[data-row="' + at.row + '"]') : null;
+
+            if (row && row.cells[at.column + 1]) {
+                select(row.cells[at.column + 1]);
+            }
+
+            // The tabs are drawn again and a greyed button lets go of the
+            // focus: it stays in the workbook, so the next key reaches it.
+            if (focused && !book.contains(document.activeElement)) {
+                var target = shown.cell || tabs.querySelector('.office-tab.active');
+
+                if (target) {
+                    target.focus({ preventScroll: true });
+                }
+            }
+
+            notify();
         }
 
         // Where a sheet of the book stands now, by its id; failing that
@@ -2074,9 +2095,9 @@
         // Puts a sheet change at the end of the list and draws the tabs
         // and the sheet on show as it leaves them; the sheet at `open` (its
         // place after the change) opens.
-        function changeSheets(change, open) {
+        function changeSheets(sheetChange, open) {
             closeEditor(true);
-            steps.push(change);
+            change(function () { steps.push(sheetChange); });
             rebuild();
             refind(false);
             shown.note = '';
@@ -2728,14 +2749,6 @@
                     return;
                 }
 
-                // Escape drops the last change when it is a format, a row, a
-                // column or a sheet change.
-                if (key === 'Escape' && cancelLast()) {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    return;
-                }
-
                 if (key === 'Tab') {
                     var beside = neighbour(td, 0, event.shiftKey ? -1 : 1);
 
@@ -2986,6 +2999,20 @@
         if (bar) {
             buildBar();
             book.appendChild(bar);
+
+            // Ctrl+Z, Ctrl+Y and Ctrl+Shift+Z on the grid, the tabs and the
+            // bar; a field keeps its own (the cell's editor decides above).
+            book.addEventListener('keydown', function (event) {
+                var asked = historyKey(event);
+
+                if (!asked || event.isComposing || /^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName) || event.target.isContentEditable) {
+                    return;
+                }
+
+                event.preventDefault();
+                event.stopPropagation();
+                undoStep(asked === 'undo');
+            });
         }
 
         book.appendChild(pane);
@@ -3014,6 +3041,7 @@
             reset: function () {
                 shown.editor = null;
                 steps = [];
+                stepHistory.clear();
                 rebuild();
                 drawTabs();
                 openTab(Math.min(Math.max(shown.index, 0), workbook.sheets.length - 1));
@@ -3379,6 +3407,46 @@
                 past = [];
                 future = [];
             }
+        };
+    }
+
+    // Undo and Redo of a workbook's list of changes (renderBook()): a state
+    // is a copy of the whole list. change(list, apply) runs apply(), which
+    // changes the list in place, and keeps the list as it was when apply()
+    // altered it (true), so a press puts back one change even where the
+    // list merged it into an entry already there. undo(list) and
+    // redo(list) give a copy of the list to put in its place, or null.
+    function listHistory(limit) {
+        var states = changeList(limit);
+        var copy = function (list) { return JSON.parse(JSON.stringify(list)); };
+
+        return {
+            change: function (list, apply) {
+                var before = JSON.stringify(list);
+
+                apply();
+
+                if (JSON.stringify(list) === before) {
+                    return false;
+                }
+
+                states.record(JSON.parse(before));
+
+                return true;
+            },
+            undo: function (list) {
+                var state = states.undo(copy(list));
+
+                return state ? copy(state) : null;
+            },
+            redo: function (list) {
+                var state = states.redo(copy(list));
+
+                return state ? copy(state) : null;
+            },
+            canUndo: states.canUndo,
+            canRedo: states.canRedo,
+            clear: states.clear
         };
     }
 
@@ -5683,7 +5751,8 @@
             count: listCount,
             look: listLook,
             book: listBook,
-            edits: listEdits
+            edits: listEdits,
+            history: listHistory
         },
         // A document's bold, italic and underline, which read no page: the
         // look the server sent, carried over a changed text, and the

@@ -12,10 +12,10 @@ module: office
 - `pg_office_xlsx_shown_number()` writes number, money and percent with the site's separators (`pg_number_separators()`). Dates were already shown as dates.
 
 ## How are the cells formatted?
-- The bar above an editable grid (`.office-format`, look A: `pg-icon-button` Bold and Italic, a `pg-seg` of three alignments, a `pg-seg` General / Number / Money / Percent / Date, a quiet Undo). Ctrl+B and Ctrl+I in the grid too.
+- The bar above an editable grid (`.office-format`, look A: `pg-icon-button` Bold and Italic, a `pg-seg` of three alignments, a `pg-seg` General / Number / Money / Percent / Date), after the Undo and Redo pair at its start (`office-sheet-undo.md`). Ctrl+B and Ctrl+I in the grid too.
 - It changes the selected cells: one, or the rectangle Shift+click or Shift+arrows make from the first selected cell. Choosing the alignment already on gives back general.
-- Each range waits in the workbook's one list beside the typed cells, in the order they were made (`{op: format, sheet, name, range, set}` in `view.edits()`, `office-sheet-change-list.md`), drawn on the cells at once (but the number text, shown after the save). Any number of ranges; at most 5000 cells a range. Escape in the grid, or the bar's "Undo the format change", drops the last range.
-- The bar is hidden while a row, column or sheet change waits (those are still a save of their own until OF3 of plan office-sheet-steady).
+- Each range waits in the workbook's one list beside the typed cells, in the order they were made (`{op: format, sheet, name, range, set}` in `view.edits()`, `office-sheet-change-list.md`), drawn on the cells at once (but the number text, shown after the save). Any number of ranges; at most 5000 cells a range. Each press of Undo takes back one part chosen, even where it joined a range already waiting.
+- The bar shows over every sheet of an editable workbook; its format controls only on a sheet whose cells take a format (not protected, not sorted or filtered), the Undo and Redo pair always.
 - Not offered on a protected sheet, even one whose protection allows formatting.
 - Money takes the site's base currency (the server's default).
 

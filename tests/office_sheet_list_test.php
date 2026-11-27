@@ -220,3 +220,86 @@ function test_office_sheet_list_strings()
 
 	pg_assert_same('{1} change(s) not saved.', $strings['unsaved'], 'the status line counts the changes');
 }
+
+function test_office_sheet_list_history()
+{
+	$result = office_sheet_list_test_node(<<<'JS'
+var list = [];
+var out = {};
+var h = L.history(100);
+out.empty = [h.canUndo(), h.canRedo()];
+out.first = h.change(list, function () { L.cell(list, 0, 'A1', 'one'); });
+h.change(list, function () { L.format(list, 0, [1, 0, 1, 0], 'bold', true); });
+h.change(list, function () { L.format(list, 0, [1, 0, 1, 0], 'italic', true); });
+out.length = list.length;
+out.none = h.change(list, function () { L.cell(list, 0, 'B9', null); });
+list = h.undo(list);
+out.undone = list[1].set;
+list = h.undo(list);
+out.twice = list.length;
+list = h.redo(list);
+out.redone = list[1].set;
+out.both = [h.canUndo(), h.canRedo()];
+h.change(list, function () { list.push({ op: 'insert', sheet: 0, axis: 'row', at: 2 }); });
+out.dropped = h.canRedo();
+out.back = h.redo(list);
+var all = [];
+while (h.canUndo()) {
+    list = h.undo(list);
+    all.push(list.length);
+}
+out.all = all;
+out.end = h.undo(list);
+var c = L.history(5);
+var kept = [];
+c.change(kept, function () { L.format(kept, 0, [1, 0, 1, 0], 'bold', true); });
+var undone = c.undo(kept);
+kept[0].set.bold = false;
+out.copy = c.redo(undone)[0].set;
+var short = L.history(2);
+var other = [];
+['A1', 'A2', 'A3'].forEach(function (cell) { short.change(other, function () { L.cell(other, 0, cell, 'x'); }); });
+other = short.undo(other);
+other = short.undo(other);
+out.limit = [other.length, short.canUndo()];
+short.clear();
+out.clear = [short.canUndo(), short.canRedo()];
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array(false, false), $result['empty'], 'nothing to undo or redo at the start');
+	pg_assert_true($result['first'], 'a change that alters the list is kept');
+	pg_assert_same(2, $result['length'], 'bold and italic of one range are one entry of the list');
+	pg_assert_false($result['none'], 'a change that leaves the list as it was is not a step');
+	pg_assert_same(array('bold' => true), $result['undone'], 'one press undoes one change: the italic laid on the range, not the range');
+	pg_assert_same(1, $result['twice'], 'the next press undoes the bold, and the range leaves');
+	pg_assert_same(array('bold' => true), $result['redone'], 'Redo gives back what the Undo took');
+	pg_assert_same(array(true, true), $result['both'], 'both ways open in the middle');
+	pg_assert_same(array('bold' => true), $result['copy'], 'a state is kept as a copy: the list changed after the press changes nothing kept');
+	pg_assert_false($result['dropped'], 'a new change drops what could be redone');
+	pg_assert_same(null, $result['back'], 'Redo gives nothing then');
+	pg_assert_same(array(2, 1, 0), $result['all'], 'every change undone in turn, the last made first');
+	pg_assert_same(null, $result['end'], 'Undo gives nothing past the first change');
+	pg_assert_same(array(1, false), $result['limit'], 'only the last states of the limit are kept');
+	pg_assert_same(array(false, false), $result['clear'], 'clear() empties both ways');
+}
+
+function test_office_sheet_list_history_controls()
+{
+	$strings = pg_office_view_strings();
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_office_view.js');
+	$start = strpos($source, 'function renderBook(');
+	$book = substr($source, $start, strpos($source, 'function paragraphTitle(') - $start);
+
+	pg_assert_false(isset($strings['format_undo']), 'the quiet "Undo the format change" leaves the strings');
+	pg_assert_false(strpos($source, 'strings.format_undo') !== false, 'and the view');
+	pg_assert_false(strpos($book, 'cancelLast') !== false || strpos($book, 'cancelFormat') !== false, 'Escape no longer drops a waiting change');
+	pg_assert_true(strpos($book, "['undo', 'bi-arrow-counterclockwise', strings.doc_undo], ['redo', 'bi-arrow-clockwise', strings.doc_redo]") !== false, 'the Undo and Redo pair on the sheet bar');
+	pg_assert_true(strpos($book, 'historyKey(event)') !== false, 'Ctrl+Z, Ctrl+Y and Ctrl+Shift+Z in the grid');
+	pg_assert_true(strpos($book, 'stepHistory.clear()') !== false, 'dropping every change empties the history');
+}

@@ -21,9 +21,9 @@ module: office
 - "{1} change(s) not saved." (`unsaved`): each entry counts one; the recalculation note follows when a cell, a row or a column is among them. A tab is marked changed when any entry touches its sheet.
 
 ## How is a change undone?
-- Escape in the grid drops the list's last change when it is a format, a row, a column or a sheet change; a cell is undone by typing its value again. The bar's "Undo the format change" drops the last range. Undo and Redo of the whole list come with OF4.
+- Undo and Redo of the whole list (OF4): `office-sheet-undo.md`. Escape never drops a waiting change; in the cell being typed it only puts back the value the editor opened with.
 
 ## What was checked?
 - `tests/office_sheet_list_test.php` (Node over the view's source): order, merging, the cell after a row change, `listBook()` (rows, styles, shown texts, values, formats, locks and areas moved, sheets added, renamed, moved, deleted, the sent sheets untouched), the save list with names at each point, the strings gone.
-- OF3 on a sandbox with Playwright, File Manager's New spreadsheet in the file window and a channel's preview (New spreadsheet from the paperclip), at 1440 and 390 px: cells typed, a row inserted above row 2 and typed into, Bold on it, a column inserted left of A and typed into, a sheet added and typed into, the first renamed, the new one moved left; saved and opened again with every value, look and tab in place. A row deleted and a sheet deleted, each dropped again with Escape.
+- OF3 on a sandbox with Playwright, File Manager's New spreadsheet in the file window and a channel's preview (New spreadsheet from the paperclip), at 1440 and 390 px: cells typed, a row inserted above row 2 and typed into, Bold on it, a column inserted left of A and typed into, a sheet added and typed into, the first renamed, the new one moved left; saved and opened again with every value, look and tab in place. A row deleted and a sheet deleted, each dropped again with Escape (before OF4).
 - At 390 px the file window's grid pane is about one row high under the hint line (`.office-pane` flex `min-height: 0`), so pointer clicks were dispatched there; so before OF2 too.

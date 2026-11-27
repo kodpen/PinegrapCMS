@@ -3557,7 +3557,6 @@ function pg_office_view_strings()
         'format_money_kind'   => lang('Money'),
         'format_percent_kind' => lang('Percent'),
         'format_date_kind'    => lang('Date'),
-        'format_undo'       => lang('Undo the format change'),
         'format_hint'       => lang('Shift+click or Shift+arrow keys select more cells; the bar above the sheet changes their format.'),
         'format_many'       => lang('Select at most 5000 cells to change their format.'),
         'locked_formula'    => lang('Worked out by a formula. Change it in a spreadsheet program.'),
