@@ -1,6 +1,6 @@
 ---
 name: office-sheet-undo
-description: Undo and Redo of a workbook's list of changes (pg_office_view.js, OF4): the bar's pair, Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z, what one press takes back, Escape keeping the list
+description: Undo and Redo of a workbook's list of changes (pg_office_view.js, PR #11993): the bar's pair, Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z, what one press takes back, Escape keeping the list
 module: office
 ---
 
@@ -17,7 +17,7 @@ module: office
 
 ## What does a press put back?
 - The list as it was; the grid and the tabs are drawn again from it (`listBook()`), the sheet on show kept open by its id (or the nearest place when it left), its scroll kept, the same cell selected; the focus stays in the workbook.
-- Before OF4 Escape in the grid dropped the last format, row, column or sheet change, and a quiet "Undo the format change" button dropped the last range (string `format_undo`, gone). Now Escape never drops a waiting change: in the cell editor it only puts back the value it opened with.
+- Before PR #11993 Escape in the grid dropped the last format, row, column or sheet change, and a quiet "Undo the format change" button dropped the last range (string `format_undo`, gone). Now Escape never drops a waiting change: in the cell editor it only puts back the value it opened with.
 
 ## What was checked?
 - `tests/office_sheet_list_test.php`: `listHistory()` in Node (one press per part, copies kept, redo dropped, the limit, clear) and the source (the pair, the keys, no Escape drop, reset clears).
