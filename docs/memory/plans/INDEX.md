@@ -10,7 +10,7 @@
 - accounting-sync-census-xero-sale.md: QuickBooks and Xero sync census: what Xero takes for a sale (invoice, payment, credit note, contact, item), tax types, currency, Idempotency-Key, pages not read
 - accounting-sync-census-xero.md: QuickBooks and Xero sync census: Xero's OAuth sign-in and tenant, tokens, granular scopes, Custom Connections closing, pricing tiers, limits, registering an app
 - accounting-sync-census.md: QuickBooks and Xero sync AS1 census: the answer in short, what a failed send shows, the owner's questions; parts on Paraşüt, QuickBooks, Xero, the source and the proposal
-- accounting-sync.md: Plan (owner 2026-11-27, poll 246): sales, customers and payments sent to QuickBooks and Xero; starts with the census step AS1, the build follows the owner's answers
+- accounting-sync.md: Plan (owner 2026-11-27, poll 246): sales, customers and payments sent to Xero, then QuickBooks; the census is done, AS2 (Xero connected) needs no table, the sends wait for poll 250
 - addon-hook-system-census-drivers.md: Add-on hook system AH1 census, commerce drivers: how payment drivers, carrier label drivers and marketplace connectors are found and loaded today, and what an outside driver would need
 - addon-hook-system-census-events.md: Add-on hook system AH1 census, events part: pg_announce(), direct api_webhook_enqueue() and erp_event() doors, the event catalogue, where order, stock and other moments fire
 - addon-hook-system-census-files.md: Add-on hook system AH1 census, files part: what file integrity, backup, System Status, the migration runner and the updater read today, and what each would do with includes/addons/<slug>/
@@ -94,7 +94,7 @@
 - sales-channels-global-census-tiktok.md: Census (2026-11-27): TikTok Shop's Partner API: connecting a shop, a shop cipher per country, products, stock and price, orders and packages, partner registration and reviews
 - sales-channels-global-census-unread.md: Census (2026-11-27): the Amazon, eBay, Etsy and TikTok Shop developer pages that could not be read (missing, refused, behind a sign-in) and the points the pages leave unclear or contradict
 - sales-channels-global-census.md: Census (2026-11-27) for selling on Amazon, eBay, Etsy and TikTok Shop: what the marketplace connector base gives a new marketplace, what n11 and Trendyol each added, where the census's other files are
-- sales-channels-global.md: Plan (owner 2026-11-27, poll 246): products listed and orders taken from Amazon, eBay, Etsy and TikTok Shop; starts with the census step SC1, the build follows the owner's answers
+- sales-channels-global.md: Plan (owner 2026-11-27, poll 246): products listed and orders taken from eBay, then Etsy, Amazon and TikTok Shop; the census is done, eBay's steps SC2 to SC7 need no table and no column
 - settings-scan-findings.md: Faults the 2026-11-21 scan of the Site Settings panes left on SEO, Languages, Channels, Team and Maintenance; a step deletes its lines, the last one the file
 - settings-tidy-census-order.md: Survey of the Site Settings categories, its second part: which categories still look old, their plans, and what is decided for every tidy
 - settings-tidy-census.md: Survey of the Site Settings categories (owner 2026-11-21: tidy every settings screen): the contradictions and scattered settings still open, with the plan that takes each
@@ -114,7 +114,7 @@
 - tax-automatic-census-proposal.md: Automatic tax census proposal: what is stored where, what a shop with hand-set rates keeps, who is told of a rate change and what the shop confirms
 - tax-automatic-census-us.md: Automatic tax census: US sales tax services a checkout driver could call (TaxJar, Avalara AvaTax, Stripe Tax, Quaderno), what each asks, and the free SST rate files
 - tax-automatic-census.md: Automatic tax census (TX1) start file: a line's tax rate at every door, the OSS report, EU rate sources, US sales tax services, the proposal, the owner's questions
-- tax-automatic.md: Plan (owner 2026-11-27, poll 246): automatic tax, the EU's VAT rate by the buyer's country with an OSS report and US sales tax; starts with the census step TX1, the build follows the owner's answers
+- tax-automatic.md: Plan (owner 2026-11-27, poll 246): automatic tax, the EU's VAT rate by the buyer's country, an OSS report, US sales tax; TX2 and TX3 need no column, the rest wait for polls 248 and 249
 - user-docs-2026-11-modules.md: Plan user-docs-2026-11: which 2026.11.0 feature goes on which module page of pinegrap.com (designer, SEO, commerce, ERP, Workspace, API, security), with the memory to write it from
 - user-docs-2026-11-new-pages.md: Plan user-docs-2026-11: the new pinegrap.com documentation pages (/templates, /visual-page-editor-cont, /artifact-canvas), what each holds, and where the other planned pages went instead
 - user-docs-2026-11-pages.md: Plan user-docs-2026-11: which 2026.11.0 feature goes on which existing pinegrap.com page, with the memory to write it from
