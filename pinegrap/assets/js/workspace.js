@@ -19983,9 +19983,10 @@
             self.sendButton = send;
 
             // Beside it, the times the message can wait for instead
-            // (scheduled_messages.php).
+            // (scheduled_messages.php): one split button, Send its main half
+            // and the clock flush on its right (.pg-button-split).
             if (CFG.scheduled_messages && !self.era) {
-                var sendGroup = el('div', 'btn-group ws-send-group');
+                var sendGroup = el('span', 'pg-button-split ws-send-group');
                 var later = menuButton(button('pg-button pg-button-fill pg-button-sm pg-button-split-more ws-send-later', '', 'bi-clock', t('sm_send_later')));
 
                 later.addEventListener('click', function (event) {
