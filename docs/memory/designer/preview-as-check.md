@@ -12,6 +12,7 @@ module: designer
 ## Which cases are drawn?
 - `checkRuns(cases, audience)` (pure, in the part): each case of the page for signed out; where the page has an audience condition also for signed in and for signed out returning (the server takes one visitor). Runs in case order per visitor. The chosen records stay as kept.
 - Each case is asked with `K._sdPvAsAsk(choice)` (`preview_widgets` with that choice, `_sdPvAsApply(payload, given)`), never kept; while a run draws, `_sdPvAs.running` makes the live preview wait (`_sdLive.again`).
+- A live refresh already sent when the run starts does not write its page when it answers during the run (`finish` in `_sdLivePreviewRefresh()` sets `_sdLive.again`); the part's `finish()` redraws the kept choice. Before #11997 such an answer replaced the case's document half way and the case was measured against the ordinary page.
 
 ## How is a case measured?
 - Its document is shown in the Preview's own window (`K._sdPvAsShow()`), each widget's markup between two comments `pg-pva-w:<id>` / `/pg-pva-w`. The part waits for `readyState` complete, the fonts and a frame (at most 8 s), then `measure()` reads it at the window's width.

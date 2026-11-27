@@ -85434,7 +85434,11 @@ const StyleDesigner = (function () {
         var payload = _sdPvAsApply(_sdPreviewWidgetPayload(raw));
         var finish = function (widgetHtml, requested, keep) {
             if (requested) _sdLive.busy--;
-            if (!keep && _sdLivePreviewOpen()) _sdLivePreviewWrite(_sdPreviewDocHtml(widgetHtml, raw));
+            // A refresh sent before "Check all cases" started may answer
+            // during the run: the case being measured stays in the window
+            // and the page is drawn once the run ends.
+            if (!keep && _sdPvAs.running) { _sdLive.again = true; }
+            else if (!keep && _sdLivePreviewOpen()) _sdLivePreviewWrite(_sdPreviewDocHtml(widgetHtml, raw));
             _sdLivePreviewAgain();
         };
         if (!payload) { finish(null); return; }
