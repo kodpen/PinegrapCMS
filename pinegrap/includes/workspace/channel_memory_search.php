@@ -159,7 +159,7 @@ function ws_memory_project_counts($rows)
 
     foreach ((array) $rows as $row) {
         $project = ws_memory_project($row['project'] ?? '');
-        $key = mb_strtolower($project);
+        $key = ws_memory_project_key($project);
 
         if (!isset($projects[$key])) {
             $projects[$key] = array('project' => $project, 'count' => 0);

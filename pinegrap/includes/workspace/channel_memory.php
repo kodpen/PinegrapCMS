@@ -113,6 +113,20 @@ function ws_memory_project($project)
 }
 
 /**
+ * The key projects are folded by (the Memory tab's headings, the projects
+ * read): lower case, a dotted capital I taken as i first, since PHP lower
+ * cases it to i and a combining dot while the column's case-insensitive
+ * collation reads it as i. Pure.
+ *
+ * @param string $project ws_memory_project()
+ * @return string
+ */
+function ws_memory_project_key($project)
+{
+    return mb_strtolower(str_replace("\u{0130}", 'i', (string) $project), 'UTF-8');
+}
+
+/**
  * Whether a record (or a channel given for one) is the general memory:
  * channel_id 0, in no channel. Pure.
  *
@@ -718,7 +732,7 @@ function ws_memory_groups($entries)
 
     foreach ((array) $entries as $entry) {
         $project = ws_memory_project($entry['project'] ?? '');
-        $key = mb_strtolower($project);
+        $key = ws_memory_project_key($project);
 
         if (!isset($groups[$key])) {
             $groups[$key] = array('project' => $project, 'entries' => array());

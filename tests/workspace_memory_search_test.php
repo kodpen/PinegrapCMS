@@ -215,3 +215,23 @@ function test_workspace_memory_search_snippet_phrase_spaces()
 
 	pg_assert_true(mb_strpos($snippet, 'merge train') !== false, 'the snippet is around the phrase');
 }
+
+// A Turkish project written with İ in one record and i in another is one
+// project, as the column's collation and project= read it: PHP lower cases
+// İ to i and a combining dot, so the fold maps İ to i first.
+function test_workspace_memory_project_counts_turkish_dotted_i()
+{
+	$counts = ws_memory_project_counts(array(
+		array('project' => 'İnsan kaynakları', 'count' => 2),
+		array('project' => 'insan kaynakları', 'count' => 1),
+	));
+
+	pg_assert_same(array(array('project' => 'İnsan kaynakları', 'count' => 3)), $counts, 'one project, as first met');
+
+	$groups = ws_memory_groups(array(
+		array('id' => 1, 'project' => 'İK'),
+		array('id' => 2, 'project' => 'ik'),
+	));
+
+	pg_assert_same(1, count($groups), 'the Memory tab draws one heading');
+}
