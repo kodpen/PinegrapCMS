@@ -274,6 +274,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_import_site_builder_kinds(); // 11.0.282
 	upgrade_2026_11_0_order_charged_currency();  // 11.0.283
 	upgrade_2026_11_0_accounting_sync();         // 11.0.284
+	upgrade_2026_11_0_product_tax_class();       // 11.0.285
 
 }
 
@@ -9678,5 +9679,39 @@ function upgrade_2026_11_0_accounting_sync() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Accounting sync: sales, payments and refunds can be queued for the accounting service the site connects.');
+
+}
+
+
+// 11.0.285 - A product's VAT rate class (products.tax_class): standard,
+// reduced or zero. While "Rates by the buyer's country" charges a line its
+// EU member state's rate (includes/fn/tax_eu_rates.php), a reduced product
+// takes that state's reduced rate and a zero one no tax; a tax zone and a
+// product's own rate are not affected. Every product stored today is
+// standard, so no charged rate changes. Added in place where the server
+// allows it, the step runs twice without a change.
+function upgrade_2026_11_0_product_tax_class() {
+
+	$columns = array(
+		'tax_class' => "ENUM('standard','reduced','zero') NOT NULL DEFAULT 'standard'",
+	);
+
+	if (!install_add_columns_instant('products', $columns)) {
+
+		foreach ($columns as $column => $definition) {
+
+			if (install_pass_spent() && !install_column_exists('products', $column)) {
+
+				install_pause(lang(array('string' => 'products: the tax rate class is being added; {var:1} follows in the next pass', 'vars' => $column)));
+
+			}
+
+			install_add_column('products', $column, $definition);
+
+		}
+
+	}
+
+	install_note('Products: a product can be marked for the reduced or the zero VAT rate, which Rates by the buyer\'s country charges an EU buyer. Every existing product stays at the standard rate.');
 
 }

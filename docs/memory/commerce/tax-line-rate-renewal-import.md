@@ -22,7 +22,7 @@ module: tax_eu_rates
 - `pg_eu_vat_rate_notice_run()`, called by the general job (job.php): compares `pg_eu_vat_rates()` with the list it last saw, JSON in `config_text` `tax_eu_rates_seen`, and moves that row with `pg_config_text_claim()`, so of two overlapping runs only one tells.
 - It tells only while the shop is on and "Rates by the buyer's country" is on; the first run, and any run with the switch off, only takes the list in, so turning the switch on later brings no old changes.
 - `pg_eu_vat_rate_changes($seen, $rows)` (pure): every day a row was added, removed or corrected, with the rate before and after on that day where they differ.
-- Told once as: a bell line `tax_rate_change` for role 0 (System module; title holds "EE 22>24 2025-07-01, ..." from `pg_eu_vat_rate_notice_title()`, cut at 256 characters), a queued plain-text mail to every enabled administrator with an address, and a Site Log line.
+- Told once as: a bell line `tax_rate_change` for role 0 (System module; title holds "EE 22>24 2025-07-01, ...", a reduced row as "EE reduced 9>13 2027-01-01", from `pg_eu_vat_rate_notice_title()`, cut at 256 characters), a queued plain-text mail to every enabled administrator with an address, and a Site Log line.
 - Tests: `tests/tax_line_rate_test.php`.
 
 Related: docs/memory/commerce/tax-eu-standard-rate.md, docs/memory/commerce/product-tax-rate.md, docs/memory/commerce/marketplace-order-money.md

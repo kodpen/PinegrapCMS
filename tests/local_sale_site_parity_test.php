@@ -194,7 +194,8 @@ function test_local_sale_site_parity_doors_share_the_rule()
 	$order = (string) file_get_contents($root . '/includes/fn/local_order.php');
 
 	pg_assert_contains("if (ECOMMERCE_TAX == true) {\n        update_order_item_taxes();", $submit, 'the checkout taxes only with the tax on');
-	pg_assert_contains("'rate' => pg_order_line_tax_rate(pg_tax_switched_on(), \$order_item['taxable'], \$order_item['tax_rate'], \$zone_rate),", $ecommerce, 'the checkout\'s rate');
+	pg_assert_contains("'rate' => pg_tax_class_line_rate(pg_tax_switched_on(), \$order_item['taxable'], \$order_item['tax_rate'], \$zone_rate, \$list_country, (string) (\$order_item['tax_class'] ?? 'standard'), \$today),", $ecommerce, 'the checkout\'s rate');
+	pg_assert_contains("return pg_order_line_tax_rate(\$tax_on, \$taxable, \$product_rate, \$zone_rate);", $ecommerce, 'a rate class ends in the same rule');
 	pg_assert_contains('$taxes = pg_order_line_taxes($lines);', $ecommerce, 'the checkout\'s taxes');
 	pg_assert_contains("return pg_order_line_tax_rate(pg_tax_switched_on(), \$item['taxable'] ?? 0, \$item['tax_rate'] ?? null, \$zone_rate);", $sale, 'the counter\'s rate');
 	pg_assert_contains("\$with_rate = pg_tax_switched_on() && pg_schema_has('order_items', 'tax_rate');", $order, 'the rate written only with the tax on');

@@ -1236,6 +1236,12 @@ function pg_pb_common_from_post()
         $common = array_merge($common, pg_product_customs_from_post($_POST));
     }
 
+    // The rate class only where its field was drawn: undrawn, it posts
+    // nothing and the stored class stays.
+    if (pg_product_tax_class_drawn() && isset($_POST['tax_class'])) {
+        $common['tax_class'] = pg_product_tax_class_parse($_POST['tax_class']);
+    }
+
     // Pre-order (products.preorder, preorder_date): turning it on turns the
     // back order on with it, the path that sells before the stock arrives.
     // pg_pb_validate_product_post() refused a pre-order with no usable date.
@@ -5219,6 +5225,21 @@ function pg_pb_render_product_screen($values = array(), $context = array())
         ))
         : lang('Leave empty and the tax zone of the delivery address decides.');
 
+    // The product's rate class (products.tax_class) beside its rate: only
+    // while Rates by the buyer's country charges EU buyers the list's rates,
+    // the one place it is used (pg_tax_class_line_rate()); a shop selling in
+    // one country sees nothing new.
+    $output_tax_class_field = '';
+
+    if (pg_product_tax_class_drawn()) {
+        $output_tax_class_field =
+            '<div class="col-12 pg-field-span-3">
+                <label for="tax_class" class="form-label">' . lang('Rate Class') . '</label>
+                <select name="tax_class" id="tax_class" class="form-control" aria-describedby="tax_class_help">' . pg_product_tax_class_options($v('tax_class', 'standard')) . '</select>
+                <div class="form-text" id="tax_class_help">' . lang('For an EU buyer in no tax zone: Reduced charges the member state\'s lowest reduced rate, Zero no tax. A rate typed here and a tax zone come first.') . '</div>
+            </div>';
+    }
+
     // The merchant's own "was" price (products.compare_at_price). A switch with
     // the amount under it, as the tax rate sits under Taxable: most articles
     // never have one, and switching it off is the plain way to take it away.
@@ -5850,7 +5871,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                         <label for="tax_rate" class="form-label">' . lang('Tax Rate (%)') . '</label>
                                                         <input type="number" min="0" max="100" step="0.001" name="tax_rate" id="tax_rate" class="form-control" placeholder="' . h($output_tax_rate_placeholder) . '" value="' . h($output_tax_rate_value) . '" />
                                                         <div class="form-text">' . $output_tax_rate_help . '</div>
-                                                    </div>',
+                                                    </div>' . $output_tax_class_field,
                                             )) .
                                             $output_compare_at_price .
                                             // Recurring lives here rather than in a card of its own:
