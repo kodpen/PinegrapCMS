@@ -125,7 +125,7 @@ StyleDesigner.definePart('cleanup', function (K) {
         var head = '<div class="sd-cu-head">' +
             '<button type="button" class="sd-cu-fold" data-cu="fold" data-kind="' + l.kind + '" aria-expanded="' + open + '" aria-label="' + esc(_cuTitle(l.kind)) + '"><span class="bi bi-chevron-' + (open ? 'down' : 'right') + '" aria-hidden="true"></span></button>' +
             '<input type="checkbox" class="check m-0" data-cu="all" data-kind="' + l.kind + '" aria-label="' + esc(_sdT('Tick the whole list')) + '"' +
-                (tick === 'all' ? ' checked' : '') + (l.rows.length && !state.busy && !state.removing ? '' : ' disabled') + '>' +
+                (tick === 'all' ? ' checked' : '') + (C.tickable(l) && !state.busy && !state.removing ? '' : ' disabled') + '>' +
             '<span class="bi ' + ICONS[l.kind] + '" aria-hidden="true"></span>' +
             '<span class="sd-cu-title">' + esc(_cuTitle(l.kind)) + '</span><span class="badge theme-secondary">' + l.rows.length + '</span>' +
             (l.bytes != null && l.rows.length ? '<span class="sd-cu-size ms-auto">' + esc(C.size(l.bytes)) + '</span>' : '') +
@@ -179,6 +179,8 @@ StyleDesigner.definePart('cleanup', function (K) {
         d.querySelector('.sd-cu-body').innerHTML = body;
         d.querySelector('.sd-cu-foot').innerHTML = foot;
         d.querySelector('.sd-cu-foot').hidden = !foot;
+        // The window stays open while "Remove" runs (see open()).
+        d.querySelectorAll('[data-bs-dismiss="dialog"]').forEach(function (b) { b.disabled = state.removing; });
         _cuDashes();
     }
 
@@ -400,6 +402,11 @@ StyleDesigner.definePart('cleanup', function (K) {
         state.after = null;
         state.removing = false;
         state.el = _cuBuild();
+        // Files and components are gone on the server before the rules and
+        // variables are put in and saved: closing then would keep those.
+        pgUI.dialog.on(state.el, 'hide', function (e) {
+            if (state.removing) e.preventDefault();
+        });
         pgUI.dialog.on(state.el, 'hidden', function () {
             if (state.el) state.el.remove();
             state.el = null;

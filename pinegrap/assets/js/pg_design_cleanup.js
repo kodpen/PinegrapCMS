@@ -58,11 +58,18 @@ var PgDesignCleanup = (function () {
         return open;
     }
 
-    // A list's head box: 'none', 'some' (drawn as a dash) or 'all'.
+    // How many rows of a list have a box: a row that stayed after "Remove"
+    // (failed) has none.
+    function tickable(list) {
+        return list.rows.filter(function (r) { return !r.failed; }).length;
+    }
+
+    // A list's head box: 'none', 'some' (drawn as a dash) or 'all', over the
+    // rows that have a box.
     function tickState(list, ticked) {
-        var n = list.rows.filter(function (r) { return ticked[r.key]; }).length;
+        var n = list.rows.filter(function (r) { return !r.failed && ticked[r.key]; }).length;
         if (!n) return 'none';
-        return n === list.rows.length ? 'all' : 'some';
+        return n === tickable(list) ? 'all' : 'some';
     }
 
     // What is ticked over all lists: count, bytes and the count per kind.
@@ -148,5 +155,5 @@ var PgDesignCleanup = (function () {
         });
     }
 
-    return { KINDS: KINDS, lists: lists, removal: removal, outcome: outcome, keep: keep, firstOpen: firstOpen, tickState: tickState, ticked: ticked, size: size, view: view };
+    return { KINDS: KINDS, lists: lists, removal: removal, outcome: outcome, keep: keep, firstOpen: firstOpen, tickable: tickable, tickState: tickState, ticked: ticked, size: size, view: view };
 }());

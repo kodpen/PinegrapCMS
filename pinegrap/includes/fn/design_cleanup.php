@@ -43,6 +43,7 @@ function pg_cleanup_state($opts = array())
     return array(
         'used'       => array(),
         'prefixes'   => array(),
+        'suffixes'   => array(),
         'known'      => $known,
         'blocked'    => '',
         'blocked_at' => '',
@@ -85,6 +86,13 @@ function pg_cleanup_class_used($state, $class)
     }
     foreach ($state['prefixes'] as $prefix => $unused) {
         if (strpos($class, (string) $prefix) === 0) {
+            return true;
+        }
+    }
+    // A state made before the suffixes existed has none.
+    foreach (isset($state['suffixes']) ? $state['suffixes'] : array() as $suffix => $unused) {
+        $suffix = (string) $suffix;
+        if (strlen($class) > strlen($suffix) && substr($class, -strlen($suffix)) === $suffix) {
             return true;
         }
     }
@@ -176,8 +184,10 @@ function pg_cleanup_add_class_text(&$state, $value, $source = '')
 }
 
 /**
- * Adds a script: every word of it, and the start of every name it builds
- * ('tone-' + tone, `size-${n}`).
+ * Adds a script: every word of it, the start of every name it builds
+ * ('tone-' + tone, `size-${n}`) and the end of every name it builds after
+ * a value (tone + '-card', `${size}_box`). An end is taken only when it
+ * starts with a dash or an underscore, so a unit (n + 'px') covers nothing.
  *
  * @param array  $state
  * @param string $js
@@ -198,6 +208,27 @@ function pg_cleanup_add_script(&$state, $js, $source = '')
             $state['prefixes'][$prefix] = true;
         }
     }
+    if (preg_match_all('~\+\s*[\'"]([\-_][A-Za-z][A-Za-z0-9_:\-]*)~', $js, $m)) {
+        foreach ($m[1] as $suffix) {
+            $state['suffixes'][$suffix] = true;
+        }
+    }
+    if (preg_match_all('~\}([\-_][A-Za-z][A-Za-z0-9_:\-]*)~', $js, $m)) {
+        foreach ($m[1] as $suffix) {
+            $state['suffixes'][$suffix] = true;
+        }
+    }
+}
+
+/**
+ * Whether an attribute holds a script run on an event (onclick, onload).
+ *
+ * @param string $name
+ * @return bool
+ */
+function pg_cleanup_is_event_attr($name)
+{
+    return (bool) preg_match('~^on[a-z]+$~', strtolower(trim((string) $name)));
 }
 
 /**
@@ -232,6 +263,8 @@ function pg_cleanup_add_markup(&$state, $html, $source = '')
             $value = isset($a[5]) && $a[5] !== '' ? $a[5] : (isset($a[4]) && $a[4] !== '' ? $a[4] : $a[3]);
             if (strtolower($a[1]) === 'class') {
                 pg_cleanup_add_class_text($state, $value, $source);
+            } elseif (pg_cleanup_is_event_attr($a[1])) {
+                pg_cleanup_add_script($state, html_entity_decode($value, ENT_QUOTES, 'UTF-8'), $source);
             } else {
                 pg_cleanup_add_words($state, $value);
             }
@@ -318,6 +351,8 @@ function pg_cleanup_add_tree(&$state, $node, $source = '')
             $value = isset($a['value']) ? (string) $a['value'] : '';
             if (strtolower(trim((string) $a['name'])) === 'class') {
                 pg_cleanup_add_class_text($state, $value, $source);
+            } elseif (pg_cleanup_is_event_attr($a['name'])) {
+                pg_cleanup_add_script($state, $value, $source);
             } else {
                 pg_cleanup_add_words($state, $value);
             }

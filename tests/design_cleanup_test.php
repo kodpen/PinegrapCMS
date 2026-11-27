@@ -204,3 +204,27 @@ function test_design_cleanup_total_bytes()
 	pg_assert_same(2, count($found['rows']), 'both unused');
 	pg_assert_same(12 + 13, $found['bytes'], 'the size it would free');
 }
+
+function test_design_cleanup_script_name_built_before_its_end()
+{
+	$js = "el.classList.add(tone + '-card');\n"
+		. "el.className = `\${size}_box`;\n"
+		. "var w = n + 'px';\n";
+	$state = pg_cleanup_state();
+	pg_cleanup_add_script($state, $js, 'site.js');
+	pg_assert_true(pg_cleanup_class_used($state, 'primary-card'), 'a name whose start is built with +');
+	pg_assert_true(pg_cleanup_class_used($state, 'lg_box'), 'a name whose start is built in a template');
+	pg_assert_true(!pg_cleanup_class_used($state, 'margin-top'), 'a plain unit joined with + names no class');
+	$found = pg_cleanup_unused_rules(".dark-card { a: b; }\n.lonely { a: b; }", $state);
+	pg_assert_same(array('.lonely'), _dc_test_selectors($found['rows']), 'the rule of a built name is not listed');
+}
+
+function test_design_cleanup_event_attribute_counts_as_a_script()
+{
+	$state = pg_cleanup_state();
+	pg_cleanup_add_markup($state, '<button onclick="this.classList.toggle(\'tab-\' + n)">Go</button>');
+	pg_assert_true(pg_cleanup_class_used($state, 'tab-open'), 'a name built in an event attribute');
+	$tree = array('type' => 'button', 'props' => array('_attrs' => array(array('name' => 'onclick', 'value' => "this.classList.add('step-' + i)"))));
+	pg_cleanup_add_tree($state, $tree, 'Page');
+	pg_assert_true(pg_cleanup_class_used($state, 'step-2'), 'a name built in an event attribute of a node');
+}

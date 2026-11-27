@@ -145,3 +145,29 @@ function test_design_cleanup_window_keeps_rows_that_stayed()
 	pg_assert_same(array(array('rules:c', 'changed')), $got['rules'], 'the same rule read again carries the reason');
 	pg_assert_same(array(array('files:7', 'Access denied.')), $got['files'], 'a row read no more stays listed');
 }
+
+function test_design_cleanup_window_head_box_leaves_out_rows_that_stayed()
+{
+	$got = _dc_remove_js('(function () { var C = PgDesignCleanup;'
+		. ' var l = { kind: "files", rows: [{ key: "files:1", failed: "Access denied." }, { key: "files:2" }, { key: "files:3" }] };'
+		. ' var only = { kind: "files", rows: [{ key: "files:1", failed: "Access denied." }] };'
+		. ' return { all: C.tickState(l, { "files:2": true, "files:3": true }), some: C.tickState(l, { "files:2": true }),'
+		. ' none: C.tickState(l, {}), count: C.tickable(l), onlyCount: C.tickable(only), onlyState: C.tickState(only, {}) }; })()');
+	if ($got === null) {
+		return;
+	}
+	pg_assert_same('all', $got['all'], 'every row that can be ticked is ticked, so the head box is ticked and a click unticks');
+	pg_assert_same('some', $got['some']);
+	pg_assert_same('none', $got['none']);
+	pg_assert_same(2, $got['count'], 'a row that stayed has no box');
+	pg_assert_same(0, $got['onlyCount'], 'a list of rows that stayed has nothing to tick');
+	pg_assert_same('none', $got['onlyState']);
+}
+
+function test_design_cleanup_window_stays_open_while_removing()
+{
+	$js = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_cleanup.js');
+	pg_assert_true((bool) preg_match("~pgUI\\.dialog\\.on\\(state\\.el, 'hide', function \\(e\\) \\{\\s*if \\(state\\.removing\\) e\\.preventDefault\\(\\);~", $js),
+		'closing is refused while Remove runs, so the rules and variables it cut are put in and saved');
+	pg_assert_true(strpos($js, "querySelectorAll('[data-bs-dismiss=\"dialog\"]')") !== false, 'the close buttons are turned off while it runs');
+}

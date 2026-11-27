@@ -12,7 +12,8 @@ module: design_cleanup
 - `pg_cleanup_state(array('known' => [...]))`: `known` are classes never counted as unused (the caller passes the framework's own, as a widget or a node setting draws them without naming them).
 - `pg_cleanup_add_tree($state, $tree, $source)`: a page's, shared component's, e-mail design's or system widget default layout's tree. `cssClass` and a `class` entry of `_attrs` are classes; other `_attrs` values, interactions (`_fx`), conditions (`_bindParams`) and component settings count by their words; markup in a prop by its class attributes; prose props (`text`, `alt`, `title`, `_label`, …, `pg_cleanup_prose_keys()`) name no class.
 - `pg_cleanup_add_markup()`: a classic page, an e-mail body, another design's page: class attributes, other attribute values as words, inline scripts as scripts; text between tags does not count.
-- `pg_cleanup_add_script()`: every word of a script; a name built at run time (`'tone-' + t`, `` `size-${n}` ``) covers every class starting with that text.
+- `pg_cleanup_add_script()`: every word of a script; a name built at run time (`'tone-' + t`, `` `size-${n}` ``) covers every class starting with that text, and one built after a value (`tone + '-card'`, `` `${size}_box` ``) every class ending with it (a suffix only when it starts with `-` or `_`, so `n + 'px'` covers nothing). Before the Clean up bug hunt such an end was missed and its rule listed.
+- An event attribute (`onclick`, `onload`, …) in markup or a node's `_attrs` is read as a script (`pg_cleanup_is_event_attr()`).
 - `pg_cleanup_add_classes()`: a setting such as the style's additional body classes.
 
 ## Which cases can it not tell?
