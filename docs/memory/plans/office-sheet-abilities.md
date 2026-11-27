@@ -8,7 +8,7 @@ priority: 6
 - Owner (2026-11-26, agent channel poll 235, message 14401): all eight abilities offered for the two editors (`workflow/decisions-made-product-115.md`). This plan holds three of the workbook's four; the formulas are `plans/office-sheet-formulas.md`.
 
 ## When does it start?
-- After OF4 of `plans/office-sheet-steady.md`: every step uses the change list that plan builds. Until then no step is free: the architect marks lines `free` when OF4 has landed.
+- Every step uses the workbook's list of changes (`platform/office-sheet-change-list.md`), finished with Undo and Redo in PR #11993. No step is free until the architect marks its line `free`.
 
 ## Which steps? (M about 1,000 product lines, S under 400; each waits for the one before it)
 - SA1 (M, `includes/fn/office_format.php`): the format entry also takes underline, strikethrough, a font size (8 to 72 points), borders (none, all sides, outline, bottom) and wrap text, written as today's formats are: new styles beside the old ones. The reader gives them in a cell's look. Tests: each read back, untouched parts byte for byte.
@@ -19,8 +19,8 @@ priority: 6
 - SA6 (S) Close-out: `platform/office-sheet-format.md`, `office-sheet-format-controls.md`, `office-sheet-head-menu.md` and `office-overview.md` corrected, new `platform/office-sheet-sizes.md` and `office-sheet-clipboard.md`; this file deleted.
 
 ## What does every step keep?
-- What `plans/office-sheet-steady.md` keeps: Save a button, no library, no schema, every text through `lang()`, look A.
+- What the steady editor keeps (`platform/office-overview.md`): Save a button, no library, no schema, every text through `lang()`, look A.
 - A file the writer cannot carry safely is refused with its reason, never written damaged (`platform/office-files-scope.md`); the cell locks hold (`platform/office-cell-locks.md`).
 - SA2, SA4 and SA5 are tried in a browser on a sandbox, in the file window and a channel's preview, at 1440 and 390 px: no unit test reaches a drag or the clipboard. The PR says what was tried.
 
-Related: docs/memory/plans/office-sheet-steady.md, docs/memory/plans/office-sheet-formulas.md, docs/memory/platform/office-sheet-format-controls.md
+Related: docs/memory/platform/office-sheet-change-list.md, docs/memory/plans/office-sheet-formulas.md, docs/memory/platform/office-sheet-format-controls.md

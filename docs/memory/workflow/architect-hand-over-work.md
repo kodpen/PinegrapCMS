@@ -20,7 +20,7 @@ description: Hand-over of the architect session of 2026-11-24 to 26, the work in
 ## What is still the architect's own?
 - After MS4 has landed: the merging session's rule for the memory mirror.
 - AC1's census may show that shared component and theme changes need a store, a schema question for the owner.
-- The office editors (owner 2026-11-26, `decisions-made-product-115.md`): the steps of `plans/office-sheet-abilities.md`, `office-sheet-formulas.md` and `office-document-abilities.md` are not free; the architect marks their lines `free` when OF4, SA5 and OP3 have landed, each by a docs PR, and tells k3.
+- The office editors (owner 2026-11-26, `decisions-made-product-115.md`): the steps of `plans/office-sheet-abilities.md`, `office-sheet-formulas.md` and `office-document-abilities.md` are not free; the architect marks their lines `free` when PR #11993, SA5 and OP3 have landed, each by a docs PR, and tells k3.
 - The owner asked for the designer first (`designer-faults-first.md`): an open designer `bug` issue goes ahead of a plan step, with k3.
 - His stutter is the design's size: #11974 landed (five selections in the Store template 1.2 to 0.9 s on a sandbox, 0.12 s in a small design); the rest is bug issue #11987. Poll 245 asks him to try design 838 again.
 - Phone preview: #11966 has landed; #11968 (the live page's QR code, poll 243) is free; another reason his window names gets its own issue.

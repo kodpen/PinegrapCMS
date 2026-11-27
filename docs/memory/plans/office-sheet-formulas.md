@@ -24,7 +24,7 @@ priority: 6
 - SF4 (S) Close-out: `platform/office-files-scope.md`, `office-cell-edits.md`, `office-cell-locks.md` and `office-overview.md` corrected, a new `platform/office-sheet-formulas.md`; this file deleted.
 
 ## What does every step keep?
-- What `plans/office-sheet-steady.md` keeps. Charts, pivot tables and page layout stay never built.
+- What the steady editor keeps (`platform/office-overview.md`): Save a button, no library, no schema, every text through `lang()`, look A. Charts, pivot tables and page layout stay never built.
 - A formula Excel wrote that is simple gives the value Excel stored for it; the tests compare on files Excel and LibreOffice saved.
 - SF3 is tried in a browser on a sandbox at 1440 and 390 px; the PR says what was tried.
 
