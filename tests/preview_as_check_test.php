@@ -203,8 +203,14 @@ function test_preview_as_check_core_hooks()
 	$ask = substr($core, (int) strpos($core, 'function _sdPvAsAsk(c) {'), 1600);
 	pg_assert_contains('_sdPvAsApply(_sdPreviewWidgetPayload(raw), c)', $ask, 'the case\'s choice, not the kept one');
 
-	$live = substr($core, (int) strpos($core, 'function _sdLivePreviewRefresh() {'), 600);
+	$live = substr($core, (int) strpos($core, 'function _sdLivePreviewRefresh() {'), 1200);
 	pg_assert_contains('if (_sdPvAs.running) { _sdLive.again = true; return; }', $live, 'no live redraw under a run');
+
+	// A refresh sent before the run started answers during it: its page is
+	// not written over the case being measured, it is drawn after the run.
+	$finish = substr($live, (int) strpos($live, 'var finish = function'), 700);
+	pg_assert_contains('if (!keep && _sdPvAs.running) { _sdLive.again = true; }', $finish, 'a late live answer waits for the run');
+	pg_assert_contains('else if (!keep && _sdLivePreviewOpen()) _sdLivePreviewWrite(', $finish, 'written only outside a run');
 }
 
 // "Sold out" chooses the product itself, as "Long" does: the "Record"
