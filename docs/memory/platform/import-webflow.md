@@ -5,8 +5,8 @@ module: importers
 ---
 
 ## Where is it?
-- Reader `includes/import/webflow.php`: a collection file goes to the shared collection reader (`import-collection-csv.md`, PR #12134), the products file to `write_product.php`, the redirects file to `write_redirect.php`. It requires `squarespace.php` for its decimal cell and plain-text description helpers.
-- Tests: `tests/import_webflow_test.php` on `tests/fixtures/import/webflow_products.csv` and `webflow_redirects.csv`, built from the columns of Webflow's import template as search text gives them; Webflow's help pages answered 403 (`import-site-builders-census-webflow.md`), so no column is confirmed from a real export.
+- Reader `includes/import/webflow.php` (PR #12153): a collection file goes to the shared collection reader (`import-collection-csv.md`, PR #12134), the products file to `write_product.php`, the redirects file to `write_redirect.php`. It requires `squarespace.php` for its decimal cell and plain-text description helpers.
+- Tests: `tests/import_webflow_test.php` on `tests/fixtures/import/webflow_products.csv` and `webflow_redirects.csv`, built from the columns of Webflow's import template as search text gives them; Webflow's help pages answered 403 (`import-sources.md`), so no column is confirmed from a real export.
 
 ## How is each file told apart?
 - `pg_import_detect_kind()` says `webflow` for a header with `Product Handle` and `Variant Price`; for a two-cell first line `source,target`, or an old path starting with `/` and a path or web address; and for a collection (`Item ID` + `Slug`).
