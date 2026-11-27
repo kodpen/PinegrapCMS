@@ -28,5 +28,9 @@ module: component_overrides
 ## What does the save check?
 - `pg_designer_gate_tree()` runs `pg_co_clean_tree_places()` for every role: valid ids, a text (at most 20,000 characters), a switch or a picture `{src, alt?}`, at most 200. Which field takes a value is checked when drawn (`pg_co_safe_values()`, `component-overrides-render.md`).
 
+## What does "Detach" keep?
+- The place as drawn (`detachShared()`, `_sdDetachPlace()`): the component's tree with the place's variant (`applyVariant`), then its own values (`apply` after `safeValues`), new `_id`s, and none of `_open`, `_openOrder`, `_variants`. A place with values or a variant loads the part `overrides` first; a failed load leaves the place. A variant being edited is kept first (`_sdCoVarFinish()`).
+- Before #12000 Detach copied the component's own tree: the place's values and variant were lost and the page's nodes kept the field marks.
+
 ## Tests?
-- `tests/component_overrides_place_test.php`.
+- `tests/component_overrides_place_test.php`; Duplicate, Paste and Detach in `tests/designer_component_copies_test.php`.
