@@ -249,3 +249,14 @@ function test_settings_maintenance_fold_sales_watch_has_its_own_card()
 		$at = $here;
 	}
 }
+
+function test_settings_maintenance_fold_sales_watch_listed_only_with_the_shop()
+{
+	// The card is drawn only with the shop on (prep.php's $sales_watch_ready):
+	// with it off, no chip or search hit may name a card that is not there.
+	$prep = settings_maintenance_fold_test_source('includes/settings/prep.php');
+	pg_assert_contains("defined('ECOMMERCE') && (ECOMMERCE === true)", $prep, 'the card waits for the shop');
+
+	$source = settings_maintenance_fold_test_source('includes/settings/registry.php');
+	pg_assert_true(preg_match("/if \(!defined\('ECOMMERCE'\) \|\| \(ECOMMERCE !== true\)\) \{\s+unset\(\\\$categories\['maintenance'\]\['sections'\]\['pgset-sales-watch'\], \\\$categories\['maintenance'\]\['keywords'\]\['pgset-sales-watch'\]\);/", $source) === 1, 'left out of the list with the shop off');
+}

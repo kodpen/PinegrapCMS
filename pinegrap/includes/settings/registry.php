@@ -621,6 +621,12 @@ function pg_settings_categories()
         $categories['appearance']['description'] = lang('The panel theme, the dashboard, the rich-text editor and private label branding.');
     }
 
+    // The Sales watch card is drawn only with the shop on; with it off, no
+    // chip or search result points at a card that is not there.
+    if (!defined('ECOMMERCE') || (ECOMMERCE !== true)) {
+        unset($categories['maintenance']['sections']['pgset-sales-watch'], $categories['maintenance']['keywords']['pgset-sales-watch']);
+    }
+
     // Content Approval is drawn and saved for designers and administrators
     // only (pg_content_proposals_may_set()): a Manager's own saves are the
     // ones it holds, so no chip or search result points a Manager at it.
