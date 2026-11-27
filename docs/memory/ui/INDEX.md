@@ -379,6 +379,7 @@
 - image-editor-svg-motion.md: Motion in a saved SVG (AN10): layer groups pgm-n, the numbers M.svgMotion() sends, the @keyframes style the server writes, reduced motion, what reopening keeps [decision: decisions-made-product-15.md]
 - image-editor-svg-sanitize.md: What pg_svg_sanitize() keeps of an SVG, why its style rules are scoped to the root or prefixed to reach use copies, what it refuses
 - image-editor-svg.md: The Artifact Canvas's SVG files: opened as layers on a transparent artboard, saved as SVG through the allowlist sanitizer pg_svg_sanitize()
+- image-editor-tabler.md: Tabler Icons beside Bootstrap Icons in the Artifact Canvas's Sticker tool (AC12): the set switch, the shipped file and its MIT licence, the svg path layer, its colour and stroke width
 - image-editor-text-styles.md: The Artifact Canvas's text styles and font pairs at the top of the Text panel (AC5): the three Add buttons, the twelve pairs file, their sizes, the group a pair makes, the textstyles part
 - image-editor-text.md: The Artifact Canvas's text layers: fields, the one line layout the stage and the save share, typing in place, system and site fonts, resize scaling the letters, the panel
 - image-editor-touch.md: The Artifact Canvas on touch: two-finger twist, 44 px targets, the finger's reach (M.touchReach()), nudge arrows, groups and Attach to, a typed text Animate did not pick [decision: here]
