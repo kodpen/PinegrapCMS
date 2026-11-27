@@ -268,6 +268,7 @@
 - workflow-tables-data-list.md: The Data list (CO6 #8978, CO6b #9192): workflow tables named Data, the list table driver, its scopes, windows, Deleted tables view, the canvases that use a table, the channel seam
 - workflow-tables-export.md: A workflow table downloads as an Excel file (TX1): who may, what each cell becomes, the shared xlsx writer the ERP export also uses
 - workflow-tables-grid-drawer.md: A Data table's grid (workspace_wtables.php?id=N, DM2): one-line cells, widths by type, the box with its head, "#" and totals held in view; the row and New row in one form drawer
+- workflow-tables-grid.md: A Data table's cells changed in the grid (workspace_wtables.php?id=N, DM3): double click, Enter or F2, the row_cell action, refusals under the cell, changed_meanwhile, workspace_wtable_grid.js
 - workflow-tables-import.md: The import route workspace.tables.import (TX2, #8427): a site file or a note's table into a workflow table over the API and MCP, the pairing, the dry run through ws_wtable_import_check(), refusals [decision: decisions-made-workspace-10.md]
 - workflow-tables-later.md: What workflow tables leave for later (T1-T6 done): a "my tables" strip, table versions, the CRM pipeline; exports still to come and the planned bin [decision: decisions-made-product-11.md]
 - workflow-tables-lists.md: The list column of workflow tables (type list, PR #8486): texts or numbers one a line, contains, a count in formulas, a JSON list in flows, screen, import, privacy
@@ -599,6 +600,7 @@
 - workspace-message-seen-by.md: The "Who has seen it" drawer (ws_message_seen_by()): people by last_read_id, agents by their requests (#9366), the two groups, the muted not-woken line, the writer-alone line (#4238) [decision: decisions-made-workspace-23.md]
 - workspace-message-translate.md: Translate in a message's menu (MT1): the browser's own Translator and LanguageDetector, the reader's panel language, the line under the message, what is kept untranslated, nothing sent or saved [decision: decisions-made-workspace-35.md]
 - workspace-module-decisions.md: Binding decisions of the Workspace module (channels, tasks, plan board): rights not roles, private channel audit, chat bubble kept apart, multiple assignees, customer context, API scope ceiling
+- workspace-my-calendar-move.md: My calendar's drag (CM3): which plans and tasks lift, ws_personal_plan_move and ws_task_move with an hour, the repeat question, Undo, "Move to…" on the item's menu
 - workspace-my-calendar-phone.md: My calendar below 576 px (CM2): the month's chosen day listed under the grid, the week one day at a time stepped by the arrows and a swipe, icon views, the short range name in the bar
 - workspace-my-calendar-week.md: My calendar's Week with hours (CM1): the strip of what has no hour, the hour grid 07:00-20:00 in view, what stands where, overlaps sharing the width, the line of now, New plan from an empty hour
 - workspace-my-calendar.md: My calendar (workspace_my_calendar.php, PC2): the Work Calendar opened on the reader alone by month, week and list; what it reads, its gate, its ways in from the E-mails toolbar and the Workspace menu
