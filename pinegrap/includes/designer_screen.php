@@ -838,7 +838,8 @@ function pg_designer_screen_render($ctx)
 
 /**
  * Designs the visual editor can open: every style made by it, plus any
- * style whose pages carry their own tree. Legacy system layouts (interior,
+ * style with a page outside the recycle bin that carries its own tree
+ * (pg_designer_listed_style_sql()). Legacy system layouts (interior,
  * emailer-inline, …) are left out — the editor has nothing to show for them.
  *
  * Returns rows: style_id, style_name, page_count, last_modified_timestamp,
@@ -846,9 +847,6 @@ function pg_designer_screen_render($ctx)
  */
 function pg_designer_list_designs()
 {
-    $own_tree = pg_multi_page_design_ready()
-        ? " OR EXISTS (SELECT 1 FROM page p2 WHERE p2.page_style = style.style_id AND p2.page_tree_json IS NOT NULL AND p2.page_tree_json <> '')"
-        : '';
     $rows = db_items(
         "SELECT style.style_id, style.style_name, style.style_timestamp AS last_modified_timestamp,
                 user.user_username AS last_modified_username, files.name AS theme_name,
@@ -856,7 +854,7 @@ function pg_designer_list_designs()
          FROM style
          LEFT JOIN user ON style.style_user = user.user_id
          LEFT JOIN files ON style.theme_id = files.id
-         WHERE (style.style_layout = 'visual_designer'$own_tree)
+         WHERE " . pg_designer_listed_style_sql() . "
          ORDER BY style.style_timestamp DESC, style.style_name ASC");
     $rows = is_array($rows) ? $rows : array();
     // The framework each design is built on; a design from before the
