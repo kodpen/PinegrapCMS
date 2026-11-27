@@ -323,6 +323,8 @@ function ws_my_calendar($viewer, $view, $anchor = '')
     return array(
         'view'     => $range['view'],
         'label'    => ws_my_calendar_label($range),
+        // The same range in short words, for the bar on a phone.
+        'label_short' => ws_my_calendar_label_short($range),
         'anchor'   => $range['anchor'],
         'from'     => $from,
         'to'       => $to,
@@ -515,6 +517,38 @@ function ws_my_calendar_label($range)
     }
 
     return date('j', $from) . ' ' . ws_calendar_month_label(date('Y-m', $from)) . ' – ' . $to_label;
+}
+
+/**
+ * The range's title short enough for a phone's bar: "Nov 2026" for a month,
+ * "9 – 15 Nov" or "30 Nov – 6 Dec" for a week or a list (no year). Pure.
+ *
+ * @param array $range ws_my_calendar_range()
+ * @return string
+ */
+function ws_my_calendar_label_short($range)
+{
+    $names = array(
+        1 => lang('Jan'), 2 => lang('Feb'), 3 => lang('Mar'), 4 => lang('Apr'),
+        5 => lang('May'), 6 => lang('Jun'), 7 => lang('Jul'), 8 => lang('Aug'),
+        9 => lang('Sep'), 10 => lang('Oct'), 11 => lang('Nov'), 12 => lang('Dec'),
+    );
+
+    if ($range['view'] === 'month') {
+        $time = strtotime($range['month'] . '-01 12:00:00');
+
+        return $names[(int) date('n', $time)] . ' ' . date('Y', $time);
+    }
+
+    $from = strtotime($range['from'] . ' 12:00:00');
+    $to = strtotime($range['to'] . ' 12:00:00');
+    $to_label = date('j', $to) . ' ' . $names[(int) date('n', $to)];
+
+    if (date('Y-m', $from) === date('Y-m', $to)) {
+        return date('j', $from) . ' – ' . $to_label;
+    }
+
+    return date('j', $from) . ' ' . $names[(int) date('n', $from)] . ' – ' . $to_label;
 }
 
 /**
