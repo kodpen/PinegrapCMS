@@ -48,13 +48,16 @@ function pg_test_software_languages_cleanup($dir)
 	rmdir($dir);
 }
 
-// The shipped install offers English and Turkish, with their own names.
+// The shipped install offers English, Turkish and German, with their own names.
 function test_software_languages_shipped()
 {
 	$languages = pg_software_languages();
 
-	pg_assert_same(array('en', 'tr'), array_keys($languages));
+	pg_assert_same(array('en', 'tr', 'de'), array_keys($languages));
 	pg_assert_same('Türkçe', $languages['tr']['name']);
+	pg_assert_same('Deutsch', $languages['de']['name']);
+	pg_assert_same('ltr', $languages['de']['dir']);
+	pg_assert_same(1, $languages['de']['first_day']);
 	pg_assert_same('ltr', $languages['tr']['dir']);
 	pg_assert_same(1, $languages['tr']['first_day']);
 	pg_assert_same(0, $languages['en']['first_day']);
@@ -68,10 +71,10 @@ function test_software_languages_cut_to_wording()
 	pg_assert_false(pg_software_language_offered('tr', $dir));
 	pg_test_software_languages_cleanup($dir);
 
-	$dir = pg_test_software_languages_local(array('tr' => 'a.json', 'de' => 'a.json'));
+	$dir = pg_test_software_languages_local(array('tr' => 'a.json', 'fr' => 'a.json'));
 	pg_assert_same(array('en', 'tr'), array_keys(pg_software_languages($dir)), 'a folder outside the shipped list is not offered');
 	pg_assert_true(pg_software_language_offered('tr', $dir));
-	pg_assert_false(pg_software_language_offered('de', $dir));
+	pg_assert_false(pg_software_language_offered('fr', $dir));
 	pg_test_software_languages_cleanup($dir);
 }
 
@@ -79,7 +82,8 @@ function test_software_languages_offered()
 {
 	pg_assert_true(pg_software_language_offered('en'));
 	pg_assert_true(pg_software_language_offered('tr'));
-	pg_assert_false(pg_software_language_offered('de'), 'storable, not offered');
+	pg_assert_true(pg_software_language_offered('de'));
+	pg_assert_false(pg_software_language_offered('fr'), 'storable, not offered');
 	pg_assert_false(pg_software_language_offered('TR'));
 	pg_assert_false(pg_software_language_offered(''));
 	pg_assert_false(pg_software_language_offered('undefined'));
@@ -91,14 +95,16 @@ function test_software_languages_from_header()
 {
 	pg_assert_same('tr', pg_software_language_from_header('tr-TR,tr;q=0.9,en;q=0.8'));
 	pg_assert_same('en', pg_software_language_from_header('en-US,en;q=0.9'));
-	pg_assert_same('tr', pg_software_language_from_header('de-DE, tr;q=0.5'), 'the first offered tag');
-	pg_assert_same('en', pg_software_language_from_header('de-DE,fr'), 'none offered: English');
+	pg_assert_same('tr', pg_software_language_from_header('fr-FR, tr;q=0.5'), 'the first offered tag');
+	pg_assert_same('de', pg_software_language_from_header('de-DE,de;q=0.9,en;q=0.8'));
+	pg_assert_same('en', pg_software_language_from_header('fr-FR,es'), 'none offered: English');
 	pg_assert_same('en', pg_software_language_from_header(''));
 }
 
 function test_software_languages_first_day()
 {
 	pg_assert_same(1, pg_software_language_first_day('tr'));
+	pg_assert_same(1, pg_software_language_first_day('de'));
 	pg_assert_same(0, pg_software_language_first_day('en'));
 	pg_assert_same(0, pg_software_language_first_day('xx'));
 }
@@ -107,7 +113,7 @@ function test_software_languages_options_html()
 {
 	$html = pg_software_language_options_html('tr');
 
-	pg_assert_same('<option value="en" lang="en">English</option><option value="tr" selected lang="tr">Türkçe</option>', $html);
+	pg_assert_same('<option value="en" lang="en">English</option><option value="tr" selected lang="tr">Türkçe</option><option value="de" lang="de">Deutsch</option>', $html);
 }
 
 // Every offered code can be stored, and the migration step's ENUM is the

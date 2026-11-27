@@ -37,6 +37,7 @@ function pg_software_language_catalog()
     return array(
         'en' => array('name' => 'English', 'dir' => 'ltr', 'first_day' => 0),
         'tr' => array('name' => 'Türkçe', 'dir' => 'ltr', 'first_day' => 1),
+        'de' => array('name' => 'Deutsch', 'dir' => 'ltr', 'first_day' => 1),
     );
 }
 
