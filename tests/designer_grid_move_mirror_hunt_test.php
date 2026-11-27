@@ -117,3 +117,29 @@ JS
 	pg_assert_same(array_fill(0, 10, ''), $r['items'], 'a child holding a keyword is in no area');
 	pg_assert_same(array('', 'header', '', 'spanner'), $r['kept'], 'a name that only starts like a keyword is kept');
 }
+
+// The areas tinted over a grid box on the canvas are the editor's chrome:
+// a Side by side mirror neither copies them nor draws again when they move.
+function test_designer_gmm_hunt_tint_not_in_mirror()
+{
+	$part = designer_gmm_hunt_js('style_designer_grid.js');
+	pg_assert_true(strpos($part, "old.className = 'sd-ga-overlay';") !== false, 'the tint carries its chrome class');
+
+	$r = designer_gmm_hunt_run('', array(), 'require(' . json_encode(PG_FUNCTIONS_DIR . '/assets/js/pg_mirror_schedule.js') . ");\n" . <<<'JS'
+var S = window.PGMirrorSchedule;
+out = {
+	strip: S.CHROME_SELECTOR.split(', ').indexOf('.sd-ga-overlay') !== -1,
+	added: S.matters({ type: 'childList', cls: '', nodes: ['sd-ga-overlay'] }),
+	inside: S.matters({ type: 'childList', cls: 'sd-ga-overlay', nodes: [''] }),
+	page: S.matters({ type: 'childList', cls: '', nodes: ['row'] })
+};
+JS
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_true($r['strip'], 'the mirror takes the tint out of its copy');
+	pg_assert_same(array(false, false, true), array($r['added'], $r['inside'], $r['page']), 'only the page\'s own changes draw the mirror again');
+}

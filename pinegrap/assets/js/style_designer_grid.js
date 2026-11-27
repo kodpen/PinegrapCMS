@@ -819,6 +819,8 @@ StyleDesigner.definePart('grid', function (K) {
         if (!old) {
             old = doc.createElement('div');
             old.id = 'sd-ga-overlay';
+            // The editor's chrome: a Side by side mirror leaves it out.
+            old.className = 'sd-ga-overlay';
             old.setAttribute('aria-hidden', 'true');
             old.style.cssText = 'position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;z-index:2147483000';
         }

@@ -48,8 +48,9 @@
         // The Outline lines and the snap grid drawn over the canvas body.
         'sd-outline-grid', 'sd-grid-overlay'];
     // Elements the editor adds to the canvas around the design: element
-    // toolbars, notes, badges, chips, drop zones, the align guide.
-    var CHROME_CLASSES = ['sd-tb', 'sd-persistent-note', 'sd-issue-badge', 'sd-chip-row', 'sd-dz', 'sd-align-guide'];
+    // toolbars, notes, badges, chips, drop zones, the align guide, the
+    // grid areas tinted over a grid box (the part 'grid').
+    var CHROME_CLASSES = ['sd-tb', 'sd-persistent-note', 'sd-issue-badge', 'sd-chip-row', 'sd-dz', 'sd-align-guide', 'sd-ga-overlay'];
     var CHROME_PARTS = CHROME_CLASSES.map(function (c) { return '.' + c; }).join(', ');
     var CHROME_SELECTOR = 'script, ' + CHROME_PARTS;
     // Attributes that make an element editable or draggable on the canvas.
