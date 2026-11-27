@@ -360,6 +360,13 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         pg_config_text_save('pack_before_label', post_value('pack_before_label') ? '1' : '');
     }
 
+    // Rates by the buyer's country: a config_text row, '1' on, '' (no row)
+    // off; written only when the Store card drew the switch.
+    if (post_value('ecommerce_tax_by_country_card') && pg_schema_has('config_text')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/config_text.php');
+        pg_config_text_save('ecommerce_tax_by_country', post_value('ecommerce_tax_by_country') ? '1' : '');
+    }
+
     // The bonus on refunds given as store credit: a config_text row, '' is
     // none.
     if (array_key_exists('credit_refund_bonus', $_POST)) {

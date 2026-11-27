@@ -363,9 +363,10 @@ function pg_commerce_fold_feeds($store_on, $ready, $on, $built_at, $count, $now,
  * @param string $label      plain text
  * @param string $help       plain text, '' for none
  * @param string $attributes more attributes of the input, already escaped
+ * @param string $after      HTML kept in the switch's cell after its help, '' for none
  * @return string HTML
  */
-function pg_commerce_settings_switch($name, $on, $label, $help = '', $attributes = '')
+function pg_commerce_settings_switch($name, $on, $label, $help = '', $attributes = '', $after = '')
 {
     return '
                     <div class="col-12">
@@ -373,7 +374,7 @@ function pg_commerce_settings_switch($name, $on, $label, $help = '', $attributes
                             <input type="checkbox" class="pg-switch" value="1"' . ($on ? ' checked="checked"' : '') . ' id="' . h($name) . '" name="' . h($name) . '"' . (($help !== '') ? ' aria-describedby="' . h($name) . '_help"' : '') . $attributes . '/>
                             <label class="pg-text-2" for="' . h($name) . '">' . h($label) . '</label>
                         </div>' . (($help !== '') ? '
-                        <p class="pg-field-help pg-text-meta fg-secondary mb-0" id="' . h($name) . '_help">' . h($help) . '</p>' : '') . '
+                        <p class="pg-field-help pg-text-meta fg-secondary mb-0" id="' . h($name) . '_help">' . h($help) . '</p>' : '') . $after . '
                     </div>';
 }
 
@@ -558,7 +559,8 @@ function pg_commerce_settings_reveal($id, $label, $icon, $html)
 /**
  * The pane's script for pg_commerce_settings_reveal(): a click opens or
  * closes the box the button names; typing in the filter of
- * pg_commerce_settings_group_ticks() narrows its list. Delegated to the
+ * pg_commerce_settings_group_ticks() narrows its list; a switch with
+ * data-pg-commerce-shows shows the note it names while on. Delegated to the
  * document, so the pane's markup may be replaced after a save. Pure.
  *
  * @return string
@@ -590,6 +592,17 @@ function pg_commerce_settings_reveal_script()
                     // An inline display: the d-flex of a tick would outweigh d-none.
                     tick.style.display = ((words !== "") && (tick.getAttribute("data-pg-filter-text").indexOf(words) === -1)) ? "none" : "";
                 });
+            });
+
+            // A switch that names a note (data-pg-commerce-shows) shows it
+            // while it is on.
+            document.addEventListener("change", function (event) {
+                var field = event.target;
+                var note = (field && field.getAttribute) ? document.getElementById(field.getAttribute("data-pg-commerce-shows") || "") : null;
+
+                if (note) {
+                    note.hidden = !field.checked;
+                }
             });
 
             document.addEventListener("click", function (event) {

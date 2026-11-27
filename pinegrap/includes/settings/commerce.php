@@ -61,6 +61,27 @@ if (pg_schema_has('order_packs') && pg_schema_has('config_text')) {
         . pg_commerce_settings_switch('pack_before_label', pg_shipment_label_pack_required(), lang('Create a label only after the pack is checked'), lang('Create Label, Create Labels, the automatic label and the API wait until every unit of the address is scanned on the Pack screen.'));
 }
 
+// Rates by the buyer's country (includes/fn/tax_eu_rates.php), a config_text
+// row beside Tax; drawn once the table exists and saved only when drawn
+// (ecommerce_tax_by_country_card). Its note, in the switch's cell, says what
+// the shop takes on and shows while the switch is on.
+$tax_by_country_row = '';
+
+if (pg_schema_has('config_text')) {
+    $tax_by_country_on = pg_tax_by_country_on();
+
+    $tax_by_country_row = pg_commerce_settings_switch(
+        'ecommerce_tax_by_country',
+        $tax_by_country_on,
+        lang("Rates by the buyer's country"),
+        lang("With Tax on, a buyer in the EU whose address is in no tax zone pays the standard VAT rate of their country. A product's own rate and the tax zones come first."),
+        ' data-pg-commerce-shows="ecommerce_tax_by_country_note"',
+        '
+                        <div class="alert theme-warning mt-3 mb-0 py-3 small" id="ecommerce_tax_by_country_note"' . ($tax_by_country_on ? '' : ' hidden') . '>' . lang("Turn this on only if the shop is registered for the EU's one-stop shop (OSS). The rates come from the European Commission's table and change with updates; they are yours to check, and a wrong rate is the shop's liability.") . '</div>
+                        <input type="hidden" name="ecommerce_tax_by_country_card" value="1"/>'
+    );
+}
+
 // The four labels a product may fill in, numbered as the product form shows
 // them.
 $store_custom_fields = '';
@@ -98,6 +119,7 @@ $commerce_parts['store'] = array('html' => '
                     </div>' . pg_commerce_settings_group(lang('Prices and tax'))
                     . pg_commerce_settings_switch('ecommerce_multicurrency', $ecommerce_multicurrency_checked !== '', lang('Multi-currency'), '', ' onclick="show_or_hide_ecommerce_payment_gateway()"')
                     . pg_commerce_settings_switch('ecommerce_tax', $ecommerce_tax_checked !== '', lang('Tax'))
+                    . $tax_by_country_row
                     . pg_commerce_settings_switch('ecommerce_tax_exempt', $ecommerce_tax_exempt_checked !== '', lang('Allow tax-exempt')) . '
                     <div class="pg-f-md">
                         <label for="ecommerce_tax_exempt_label" class="form-label">' . lang('Tax-exempt label') . '</label>

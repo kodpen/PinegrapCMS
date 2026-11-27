@@ -3417,6 +3417,45 @@ function pg_order_line_tax_rate($tax_on, $taxable, $product_rate, $zone_rate)
     return (float) get_effective_tax_rate($product_rate, $zone_rate);
 }
 
+/**
+ * The rate that stands for a buyer address's tax zone at the checkout and the
+ * express order, the $zone_rate pg_order_line_tax_rate() takes: the zone's own
+ * rate while the address is in a zone (0 included); else, while "Rates by the
+ * buyer's country" is on, the standard rate on $date of the EU member state
+ * the address is in (pg_eu_vat_rate()); else false, no tax. The product's own
+ * rate, an untaxable product and the Tax switch then apply as with a zone; an
+ * exempt order never asks. The counter sale keeps its store's zone and does
+ * not come here. Pure.
+ *
+ * @param mixed  $zone_rate  get_tax_rate_for_address(): false in no zone
+ * @param string $country    the address's ISO country code
+ * @param bool   $by_country pg_tax_by_country_on()
+ * @param string $date       Y-m-d, the day the order is taxed
+ * @return mixed the zone's rate as given, a member state's rate (float) or false
+ */
+function pg_tax_buyer_zone_rate($zone_rate, $country, $by_country, $date)
+{
+    if (($zone_rate !== false) || !$by_country) {
+        return $zone_rate;
+    }
+
+    return pg_eu_vat_rate($country, 'standard', $date);
+}
+
+/**
+ * pg_tax_buyer_zone_rate() for a buyer's address, read from the tax zones and
+ * the Commerce switch.
+ *
+ * @param string $country ISO country code
+ * @param string $state   state code
+ * @param string $date    Y-m-d
+ * @return mixed
+ */
+function pg_tax_rate_for_buyer_address($country, $state, $date)
+{
+    return pg_tax_buyer_zone_rate(get_tax_rate_for_address($country, $state), $country, pg_tax_by_country_on(), $date);
+}
+
 
 /**
  * The price a buyer pays for one unit, in minor units: the stored price plus
@@ -4859,8 +4898,9 @@ function update_order_item_taxes($ship_to_addresses = array())
         $clearcommerce = defined('ECOMMERCE_CREDIT_DEBIT_CARD') && ECOMMERCE_CREDIT_DEBIT_CARD
             && defined('ECOMMERCE_PAYMENT_GATEWAY') && (ECOMMERCE_PAYMENT_GATEWAY == 'ClearCommerce');
         $today = date('Y-m-d');
-        // get tax rate for billing address
-        $billing_address_tax_rate = get_tax_rate_for_address($billing_country, $billing_state);
+        // The billing address's zone rate; in no zone, an EU member state's
+        // standard rate while Rates by the buyer's country is on.
+        $billing_address_tax_rate = pg_tax_rate_for_buyer_address($billing_country, $billing_state, $today);
         // get all ship tos
         $query = "SELECT
 
@@ -4893,7 +4933,7 @@ function update_order_item_taxes($ship_to_addresses = array())
                 $ship_to_address = isset($ship_to_addresses[(int) $ship_to['ship_to_id']])
                     ? $ship_to_addresses[(int) $ship_to['ship_to_id']]
                     : array('country' => $ship_to['country'], 'state' => $ship_to['state']);
-                $shipping_address_tax_rate = get_tax_rate_for_address((string) ($ship_to_address['country'] ?? ''), (string) ($ship_to_address['state'] ?? ''));
+                $shipping_address_tax_rate = pg_tax_rate_for_buyer_address((string) ($ship_to_address['country'] ?? ''), (string) ($ship_to_address['state'] ?? ''), $today);
             }
             // get all order items for this ship to
             $query = "SELECT
