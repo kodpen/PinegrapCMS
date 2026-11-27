@@ -1,0 +1,34 @@
+{
+  "responses": [
+    {
+      "statusCode": 200,
+      "sku": "CHAIR-RED",
+      "warnings": []
+    },
+    {
+      "statusCode": 200,
+      "sku": "CHAIR-RED",
+      "offerId": "5005317010",
+      "warnings": []
+    },
+    {
+      "statusCode": 200,
+      "sku": "CHAIR-BLUE",
+      "warnings": []
+    },
+    {
+      "statusCode": 400,
+      "sku": "CHAIR-BLUE",
+      "offerId": "5005317011",
+      "errors": [
+        {
+          "errorId": 25709,
+          "domain": "API_INVENTORY",
+          "category": "REQUEST",
+          "message": "Invalid value for price. The price must be greater than 0.99."
+        }
+      ],
+      "warnings": []
+    }
+  ]
+}

@@ -24,6 +24,11 @@
  * answers the verdicts itself (data['results']) and there is no task to
  * read; listing_status() reads each SKU's offer for its listing id.
  *
+ * Stock and price go in bulk (bulkUpdatePriceQuantity, 25 SKUs a call)
+ * from the queue: push_stock_price() looks up each SKU's offer on the site,
+ * since a price is set on an offer and the map keeps the listing id, and
+ * answers what went through, what eBay refused and what waits.
+ *
  * The eBay functions of their own (sites, scopes, the parsers of these
  * answers) are in includes/fn/ebay.php.
  *
@@ -37,6 +42,12 @@ if (!defined('PG_INIT_LOADED')) {
 	exit;
 }
 
+// Seconds one push_stock_price() call may spend on eBay before the rest of
+// the batch waits for the next pass.
+if (!defined('PG_EBAY_PUSH_BUDGET')) {
+	define('PG_EBAY_PUSH_BUDGET', 20);
+}
+
 function mp_ebay_connector() {
 
 	return array(
@@ -45,7 +56,8 @@ function mp_ebay_connector() {
 		'category_tree'       => 'mp_ebay_category_tree',
 		'category_attributes' => 'mp_ebay_category_attributes',
 		'create_listings'     => 'mp_ebay_create_listings',
-		'listing_status'      => 'mp_ebay_listing_status'
+		'listing_status'      => 'mp_ebay_listing_status',
+		'push_stock_price'    => 'mp_ebay_push_stock_price'
 	);
 
 }
@@ -827,5 +839,261 @@ function mp_ebay_listing_status($account, $codes, $call = null) {
 	}
 
 	return mp_ok(array('listings' => $listings));
+
+}
+
+/* -------------------------------------------------------- stock and price */
+
+// Stock and price of a batch of mapped products (mp_product_row()) on the
+// account's site, as mp_sync_send_batch() asks. eBay answers at once, so
+// there is no task: data['pushed'] names the products that went through,
+// data['refused'] the ones eBay or this side refused (product id => reason,
+// written on the mapping) and data['deferred'] the ones left for the next
+// pass after a fault on eBay's side or past the time budget. A product with
+// nothing to say (untracked stock, no price sent) is in none of them and
+// closes as done.
+//
+// Each SKU's offer is looked up first (one GET a SKU); a SKU with no offer
+// on the site is not listed there and is refused. The price is the row's
+// channel price converted to the site's currency and rounded to the cent,
+// as the listing's. $call, $rate and $budget (seconds) replace eBay, the
+// rate table and PG_EBAY_PUSH_BUDGET in tests.
+function mp_ebay_push_stock_price($account, $rows, $call = null, $rate = null, $budget = null) {
+
+	$rows = array_values((array)$rows);
+
+	$with_price = !empty($account['push_price']);
+
+	$with_stock = !empty($account['push_stock']);
+
+	if (!$rows || (!$with_price && !$with_stock)) {
+
+		return mp_ok(array('task_id' => ''));
+
+	}
+
+	$site = mp_ebay_site($account);
+
+	$sites = pg_ebay_sites();
+
+	$currency = $sites[$site]['currency'];
+
+	$refused = array();
+
+	if ($with_price) {
+
+		$rate = ($rate === null) ? mp_ebay_rate($currency) : $rate;
+
+		if (!is_numeric($rate) || ((float)$rate <= 0)) {
+
+			$no_rate = lang(array(
+				'string' => 'There is no exchange rate from {var:1} to {var:2} yet, so the price on eBay cannot be worked out.',
+				'vars'   => array(defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : '', $currency)
+			));
+
+			foreach ($rows as $row) {
+
+				$refused[(int)$row['product_id']] = $no_rate;
+
+			}
+
+			return mp_ok(array('task_id' => '', 'sent' => 0, 'pushed' => array(), 'refused' => $refused, 'deferred' => array()));
+
+		}
+
+	}
+
+	if ($call === null) {
+
+		$call = mp_ebay_api_call($account);
+
+		if ($call === null) {
+
+			return mp_error((mp_ebay_environment($account) === 'sandbox')
+				? lang('Connect an eBay (sandbox) account on Connections first.')
+				: lang('Connect an eBay account on Connections first.'));
+
+		}
+
+	}
+
+	$deadline = microtime(true) + (($budget === null) ? PG_EBAY_PUSH_BUDGET : (float)$budget);
+
+	$limits = pg_ebay_listing_limits();
+
+	$pushed = array();
+
+	$deferred = array();
+
+	$failure = null;
+
+	foreach (array_chunk($rows, $limits['bulk']) as $chunk) {
+
+		$requests = array();
+
+		$products = array();
+
+		foreach ($chunk as $row) {
+
+			$product_id = (int)$row['product_id'];
+
+			$sku = trim((string)$row['remote_code']);
+
+			if ($failure !== null || microtime(true) >= $deadline) {
+
+				$deferred[] = $product_id;
+
+				continue;
+
+			}
+
+			if ($sku === '') {
+
+				continue;
+
+			}
+
+			$price = '';
+
+			if ($with_price) {
+
+				$price = pg_ebay_offer_price(isset($row['price_major']) ? $row['price_major'] : 0, $rate);
+
+				if ($price === '') {
+
+					$refused[$product_id] = lang(array('string' => '{var:1} has no price.', 'vars' => array($sku)));
+
+					continue;
+
+				}
+
+			}
+
+			$found = call_user_func($call, 'GET', '/sell/inventory/v1/offer?sku=' . rawurlencode($sku) . '&marketplace_id=' . rawurlencode($site));
+
+			if (!$found['ok'] && ((int)$found['status'] !== 404)) {
+
+				if (mp_ebay_retry($found)) {
+
+					$failure = $found;
+
+					$deferred[] = $product_id;
+
+				} else {
+
+					$refused[$product_id] = mp_ebay_call_error($found);
+
+				}
+
+				continue;
+
+			}
+
+			$offer = $found['ok'] ? pg_ebay_offer_of($found['data'], $site) : null;
+
+			if ($offer === null) {
+
+				$refused[$product_id] = lang(array('string' => '{var:1} is not listed on this eBay site yet.', 'vars' => array($sku)));
+
+				continue;
+
+			}
+
+			$request = pg_ebay_bulk_request($row, $offer['offer_id'], $with_stock, $price, $currency);
+
+			if ($request === null) {
+
+				continue;
+
+			}
+
+			$requests[] = $request;
+
+			$products[$sku][] = $product_id;
+
+		}
+
+		if (!$requests) {
+
+			continue;
+
+		}
+
+		$answer = call_user_func($call, 'POST', '/sell/inventory/v1/bulk_update_price_quantity', array('requests' => $requests));
+
+		if (!$answer['ok']) {
+
+			foreach ($products as $ids) {
+
+				foreach ($ids as $product_id) {
+
+					if (mp_ebay_retry($answer)) {
+
+						$deferred[] = $product_id;
+
+					} else {
+
+						$refused[$product_id] = mp_ebay_call_error($answer);
+
+					}
+
+				}
+
+			}
+
+			if (mp_ebay_retry($answer)) {
+
+				$failure = $answer;
+
+			}
+
+			continue;
+
+		}
+
+		$verdicts = pg_ebay_bulk_verdicts($answer['data']);
+
+		foreach ($products as $sku => $ids) {
+
+			$sku = (string)$sku;
+
+			foreach ($ids as $product_id) {
+
+				if (isset($verdicts[$sku]) && ($verdicts[$sku] !== '')) {
+
+					$refused[$product_id] = mb_substr('eBay: ' . $verdicts[$sku], 0, 500);
+
+				} else {
+
+					$pushed[] = $product_id;
+
+				}
+
+			}
+
+		}
+
+	}
+
+	// A rate limit waits a minute, any other fault half of one.
+	$retry_after = ($failure === null) ? 0 : (((int)$failure['status'] === 429) ? 60 : 30);
+
+	// Nothing went through and nothing was refused: the batch failed as a
+	// whole, so its rows count an attempt and back off, a rate limit for a
+	// minute at least.
+	if ($failure !== null && !$pushed && !$refused) {
+
+		return mp_error(mp_ebay_call_error($failure), true, ((int)$failure['status'] === 429) ? array('retry_after' => $retry_after) : array());
+
+	}
+
+	return mp_ok(array(
+		'task_id'     => '',
+		'sent'        => count($pushed),
+		'pushed'      => $pushed,
+		'refused'     => $refused,
+		'deferred'    => array_values(array_unique($deferred)),
+		'retry_after' => $retry_after
+	));
 
 }
