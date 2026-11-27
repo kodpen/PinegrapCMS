@@ -1,0 +1,16 @@
+{
+    "X": "X",
+    "X (mm)": "X (mm)",
+    "X-Dry-Run must be true or false.": "X-Dry-Run muss true oder false sein.",
+    "XML Sitemap": "XML-Sitemap",
+    "Xero gave a token but would not list its organisations: {var:1}": "Xero hat ein Token ausgegeben, listet aber seine Organisationen nicht auf: {var:1}",
+    "Xero gave no id.": "Xero hat keine ID geliefert.",
+    "Xero has to be connected again: {var:1}": "Xero muss erneut verbunden werden: {var:1}",
+    "Xero is not connected to this organisation.": "Xero ist nicht mit dieser Organisation verbunden.",
+    "Xero organisation": "Xero-Organisation",
+    "Xero takes no record of this kind.": "Xero nimmt keinen Datensatz dieser Art an.",
+    "Xero takes no withheld tax and no second tax on a line, so this invoice was not sent.": "Xero nimmt keine Quellensteuer und keine zweite Steuer auf einer Zeile an, daher wurde diese Rechnung nicht gesendet.",
+    "Xero was connected to several organisations. Choose the one the site's sales go to under Connection details.": "Xero wurde mit mehreren Organisationen verbunden. Wählen Sie unter Verbindungsdetails diejenige aus, an die die Verkäufe der Website gehen.",
+    "Xero was connected, but no organisation was allowed. Connect it again and choose the organisation the site's sales go to.": "Xero wurde verbunden, aber keine Organisation wurde zugelassen. Verbinden Sie es erneut und wählen Sie die Organisation aus, an die die Verkäufe der Website gehen.",
+    "Xero's call limit is nearly reached.": "Das Anfragelimit von Xero ist fast erreicht."
+}
