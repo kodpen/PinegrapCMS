@@ -67,7 +67,6 @@
 - office-document-abilities.md: Plan (owner 2026-11-26, poll 235): the document editor's new abilities once it is typed on a page: alignment, text and highlight colour, font size, links, tables, pictures from Files; steps DA1 to DA8
 - office-sheet-abilities.md: Plan (owner 2026-11-26, poll 235): the steady spreadsheet editor's new abilities: more formats, column widths, row heights, a frozen top row, copy, paste, fill down, clear; steps SA1 to SA6
 - office-sheet-formulas.md: Plan (owner 2026-11-26, poll 235): simple formulas in the spreadsheet editor: SUM, AVERAGE, MIN, MAX, COUNT and the four operations, worked out again when a cell changes; steps SF1 to SF4
-- office-sheet-steady.md: Plan (owner 2026-11-26): the spreadsheet editor made steady: every change of a workbook taken at once and saved together, no "save first" refusal, Undo and Redo; steps OF1 to OF5
 - parasut-devhub-connection.md: Plan (2026-11-25): connecting Paraşüt with a client from its Developer Portal (DevHub): the registered redirect address, sign-in at id.parasut.com with PKCE, short tokens; step PD1
 - parasut-devhub-staging.md: Plan (owner 2026-11-26): Paraşüt's test environment (staging) for a Developer Portal client: the choice on Paraşüt's page of Connections, the sign-in host, the mark on the status line; step PS1
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
