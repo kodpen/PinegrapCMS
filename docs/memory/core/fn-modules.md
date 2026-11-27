@@ -229,7 +229,7 @@ description: Generated from the module field of the memory files: each includes/
 - `image_focus`: [[image-focus-control]], [[image-focus-mode]], [[image-focus-overview]], [[image-focus-value]]
 - `image_vary_check`: [[cloudflare-image-vary-rule]]
 - `imap_client`: [[mail-imap-client]]
-- `importers`: [[import-collection-csv]], [[import-framework]], [[import-media]], [[import-records]], [[import-redirects]], [[import-screen]], [[import-shopify]], [[import-squarespace]], [[import-webflow]], [[import-wix]], [[import-woocommerce]]
+- `importers`: [[import-collection-csv]], [[import-framework]], [[import-media]], [[import-records]], [[import-redirects]], [[import-screen]], [[import-shopify]], [[import-sources]], [[import-squarespace]], [[import-webflow]], [[import-wix]], [[import-woocommerce]]
 - `innodb`: [[innodb-conversion-marker]], [[panel-script-number-format]]
 - `key_code_list_edit`: [[list-table-quick-edit-key-codes]]
 - `lang`: [[lang-loader]], [[lang-placeholders]]
