@@ -520,11 +520,84 @@
         return edit.protected ? (strings.sheet_protected || '') : '';
     }
 
-    // A cell format as the controls change it (bold, italic, color, fill,
-    // align, number), laid over a look of the file (pg_office_xlsx_style_looks()).
+    // The font sizes the Size choice offers, in points (the format entry
+    // takes whole points from 8 to 72).
+    var FONT_SIZES = [8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 36, 48, 72];
+
+    // The size the grid's own text stands for: a workbook's default font is
+    // 11 points in Excel and in the product's new spreadsheets, and a look
+    // carries a size only when it is not the default's.
+    var BASE_SIZE = 11;
+
+    // The borders the Borders menu offers, in its order.
+    var BORDERS = [['none', 'bi-border'], ['all', 'bi-border-all'], ['outline', 'bi-border-outer'], ['bottom', 'bi-border-bottom']];
+
+    // The sides of one cell a border chosen for a range sets, as the server
+    // writes them (pg_office_format_border_sides()): side => true for a
+    // line, false for none; a side left out keeps what the cell has. "all"
+    // lines every side of every cell, "none" takes every side off,
+    // "outline" lines the range's outer edges, "bottom" the bottom edge of
+    // its last row. `range` is [first row, first column, last row, last
+    // column].
+    function borderSides(border, range, row, column) {
+        var sides = {};
+
+        if (border === 'all' || border === 'none') {
+            ['left', 'right', 'top', 'bottom'].forEach(function (side) {
+                sides[side] = (border === 'all');
+            });
+
+            return sides;
+        }
+
+        if (border === 'outline') {
+            if (column === range[1]) {
+                sides.left = true;
+            }
+
+            if (column === range[3]) {
+                sides.right = true;
+            }
+
+            if (row === range[0]) {
+                sides.top = true;
+            }
+        }
+
+        if ((border === 'outline' || border === 'bottom') && row === range[2]) {
+            sides.bottom = true;
+        }
+
+        return sides;
+    }
+
+    // A range's format as one of its cells takes it: a border becomes the
+    // sides it sets on that cell (`sides`), the rest stays.
+    function cellSet(set, range, row, column) {
+        if (!own(set, 'border')) {
+            return set;
+        }
+
+        var out = {};
+
+        Object.keys(set).forEach(function (key) {
+            if (key !== 'border') {
+                out[key] = set[key];
+            }
+        });
+
+        out.sides = borderSides(set.border, range, row, column);
+
+        return out;
+    }
+
+    // A cell format as the controls change it (bold, italic, underline,
+    // strike, size, wrap, color, fill, align, number, and a cell's border
+    // `sides`), laid over a look of the file (pg_office_xlsx_style_looks()):
+    // `bd` holds the sides drawn as l, r, t and b in that order.
     function lookWith(look, set) {
         var out = {};
-        var keys = { bold: 'b', italic: 'i', color: 'c', fill: 'bg', align: 'a', number: 'n' };
+        var keys = { bold: 'b', italic: 'i', underline: 'u', strike: 'st', size: 'sz', wrap: 'w', color: 'c', fill: 'bg', align: 'a', number: 'n' };
 
         Object.keys(look || {}).forEach(function (key) {
             out[key] = look[key];
@@ -533,12 +606,32 @@
         Object.keys(set || {}).forEach(function (key) {
             var value = set[key];
 
+            if (key === 'sides') {
+                var drawn = '';
+
+                [['l', 'left'], ['r', 'right'], ['t', 'top'], ['b', 'bottom']].forEach(function (side) {
+                    var on = own(value, side[1]) ? !!value[side[1]] : String(out.bd || '').indexOf(side[0]) !== -1;
+
+                    drawn += on ? side[0] : '';
+                });
+
+                if (drawn) {
+                    out.bd = drawn;
+                } else {
+                    delete out.bd;
+                }
+
+                return;
+            }
+
             if (!own(keys, key)) {
                 return;
             }
 
             if (value === false || value === '' || (key === 'number' && value === 'general')) {
                 delete out[keys[key]];
+            } else if (key === 'size') {
+                out.sz = Number(value);
             } else {
                 out[keys[key]] = (value === true) ? 1 : String(value).replace(/^#/, '');
             }
@@ -550,17 +643,36 @@
     // Draws a cell's look. A colour of the file is drawn on paper, as a
     // spreadsheet draws it: a text colour with no fill on white, a fill with
     // no text colour under black, so that neither is lost in the dark theme.
-    // A changed cell keeps the colours that mark it.
+    // A changed cell keeps the colours that mark it. A size is drawn against
+    // the grid's text as the default's; the border's sides are drawn by the
+    // stylesheet from the cell's office-bd-* classes, black on paper.
     function paint(td, look) {
         var style = td.style;
         var paper = !!(look && (look.c || look.bg)) && !td.classList.contains('office-edited');
+        var lines = [];
 
         look = look || {};
         style.fontWeight = look.b ? 'bold' : '';
         style.fontStyle = look.i ? 'italic' : '';
+        style.textDecorationLine = [look.u ? 'underline' : '', look.st ? 'line-through' : ''].join(' ').trim();
+        style.fontSize = look.sz ? (Math.round(look.sz / BASE_SIZE * 1000) / 1000) + 'em' : '';
+        style.whiteSpace = look.w ? 'pre-wrap' : '';
         style.textAlign = look.a || '';
         style.color = paper ? (look.c ? '#' + look.c : 'black') : '';
         style.backgroundColor = paper ? (look.bg ? '#' + look.bg : 'white') : '';
+
+        ['l', 'r', 't', 'b'].forEach(function (side) {
+            var on = String(look.bd || '').indexOf(side) !== -1;
+
+            td.classList.toggle('office-bd-' + side, on);
+
+            if (on) {
+                lines.push(side);
+            }
+        });
+
+        td.classList.toggle('office-bd', lines.length > 0);
+        td.classList.toggle('office-bd-paper', lines.length > 0 && paper);
     }
 
     // Whether a cell lies in a range [first row, first column, last row,
@@ -849,7 +961,7 @@
                         for (var column = step.range[1]; column <= step.range[3]; column++) {
                             var address = columnName(column) + row;
 
-                            (book.sets[at][address] = book.sets[at][address] || []).push(step.set);
+                            (book.sets[at][address] = book.sets[at][address] || []).push(cellSet(step.set, step.range, row, column));
                         }
                     }
 
@@ -1543,8 +1655,57 @@
                 setFormat('italic', !currentLook().i);
             });
 
+            // Underline and Strikethrough beside them, as toggles of the
+            // first selected cell's state.
+            [['underline', 'bi-type-underline', 'u'], ['strike', 'bi-type-strikethrough', 'st']].forEach(function (item) {
+                controls[item[0]] = barButton('pg-icon-button pg-icon-button-sm', item[1], strings['format_' + item[0]] || '');
+                controls[item[0]].addEventListener('click', function () {
+                    setFormat(item[0], !currentLook()[item[2]]);
+                });
+            });
+
             bar.appendChild(controls.bold);
             bar.appendChild(controls.italic);
+            bar.appendChild(controls.underline);
+            bar.appendChild(controls.strike);
+
+            // The size in points. A cell with no size of its own shows
+            // "Default"; one outside the list shows its own number. Neither
+            // is offered as a choice.
+            var sizeField = el('span', 'pg-input pg-input-sm office-size');
+            var sizeChoice = el('select');
+            var sizeDefault = el('option', '', strings.format_size_default || '');
+            var sizeOther = el('option', '', '');
+
+            sizeChoice.setAttribute('aria-label', strings.format_size || '');
+            sizeChoice.title = strings.format_size || '';
+            sizeDefault.value = '';
+            sizeDefault.disabled = true;
+            sizeChoice.appendChild(sizeDefault);
+
+            FONT_SIZES.forEach(function (size) {
+                var option = el('option', '', String(size));
+
+                option.value = String(size);
+                sizeChoice.appendChild(option);
+            });
+
+            sizeOther.value = 'other';
+            sizeOther.disabled = true;
+            sizeOther.hidden = true;
+            sizeChoice.appendChild(sizeOther);
+
+            sizeChoice.addEventListener('change', function () {
+                var size = parseInt(sizeChoice.value, 10);
+
+                if (size) {
+                    setFormat('size', size);
+                }
+            });
+
+            sizeField.appendChild(sizeChoice);
+            controls.size = { field: sizeField, choice: sizeChoice, other: sizeOther };
+            bar.appendChild(sizeField);
 
             // Text colour and fill: the glyph over a bar in the cell's
             // colour, opening the colours on offer ("None" first).
@@ -1569,6 +1730,22 @@
                 bar.appendChild(button);
             });
 
+            // Borders: the four choices of the format entry in the editor's
+            // menu; the button is pressed while the first selected cell has
+            // a line on any side.
+            controls.border = barButton('pg-icon-button pg-icon-button-sm', 'bi-border-all', strings.format_borders || '');
+            controls.border.setAttribute('aria-haspopup', 'menu');
+            controls.border.addEventListener('click', function () {
+                openMenu(controls.border, BORDERS.map(function (item) {
+                    return {
+                        label: strings['border_' + item[0]] || item[0],
+                        icon: item[1],
+                        run: function () { setFormat('border', item[0]); }
+                    };
+                }), strings.format_borders || '');
+            });
+            bar.appendChild(controls.border);
+
             // Choosing the alignment already chosen gives the cell back its
             // general alignment.
             var align = el('span', 'pg-seg');
@@ -1588,6 +1765,12 @@
             });
 
             bar.appendChild(align);
+
+            controls.wrap = barButton('pg-icon-button pg-icon-button-sm', 'bi-text-wrap', strings.format_wrap || '');
+            controls.wrap.addEventListener('click', function () {
+                setFormat('wrap', !currentLook().w);
+            });
+            bar.appendChild(controls.wrap);
 
             var number = el('span', 'pg-seg');
 
@@ -1643,6 +1826,21 @@
 
             press(controls.bold, !!look.b);
             press(controls.italic, !!look.i);
+            press(controls.underline, !!look.u);
+            press(controls.strike, !!look.st);
+            press(controls.border, !!look.bd);
+            press(controls.wrap, !!look.w);
+
+            // The size: one of the list, "Default", or the cell's own
+            // number outside the list.
+            var size = look.sz ? String(look.sz) : '';
+
+            if (size && FONT_SIZES.indexOf(Number(size)) === -1) {
+                controls.size.other.textContent = size;
+                size = 'other';
+            }
+
+            controls.size.choice.value = size;
 
             // A colour from outside the list shows on the bar as it is.
             controls.color.stripe.style.backgroundColor = look.c ? '#' + look.c : '';
@@ -2730,14 +2928,14 @@
                     return;
                 }
 
-                // Ctrl+B and Ctrl+I, as a spreadsheet takes them.
-                if ((event.ctrlKey || event.metaKey) && !event.altKey && (key === 'b' || key === 'B' || key === 'i' || key === 'I') && sheetFormattable(shown.index)) {
+                // Ctrl+B, Ctrl+I and Ctrl+U, as a spreadsheet takes them.
+                var shortcuts = { b: ['bold', 'b'], i: ['italic', 'i'], u: ['underline', 'u'] };
+                var shortcut = own(shortcuts, String(key).toLowerCase()) ? shortcuts[String(key).toLowerCase()] : null;
+
+                if ((event.ctrlKey || event.metaKey) && !event.altKey && shortcut && sheetFormattable(shown.index)) {
                     event.preventDefault();
                     event.stopPropagation();
-
-                    var bold = (key === 'b' || key === 'B');
-
-                    setFormat(bold ? 'bold' : 'italic', !currentLook()[bold ? 'b' : 'i']);
+                    setFormat(shortcut[0], !currentLook()[shortcut[1]]);
                     return;
                 }
 
@@ -5750,6 +5948,7 @@
             format: listFormat,
             count: listCount,
             look: listLook,
+            sides: borderSides,
             book: listBook,
             edits: listEdits,
             history: listHistory

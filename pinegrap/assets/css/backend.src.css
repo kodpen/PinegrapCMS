@@ -21758,6 +21758,39 @@ button.ws-file-name {
   width: auto;
   max-width: 12rem;
 }
+/* The font size choice in a workbook's format bar. */
+.office-format .office-size {
+  width: auto;
+}
+/* A cell's border: a line along each side drawn, just inside the cell
+   (a cell clips what passes its edge). File content drawn in the text
+   colour of the theme, black on a cell drawn on paper (paint() in
+   pg_office_view.js). */
+.office-sheet td.office-bd {
+  position: relative;
+}
+.office-sheet td.office-bd::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 0 solid var(--pg-fg-emphasis);
+  pointer-events: none;
+}
+.office-sheet td.office-bd-paper::after {
+  color-scheme: light;
+}
+.office-sheet td.office-bd-l::after {
+  border-left-width: 1px;
+}
+.office-sheet td.office-bd-r::after {
+  border-right-width: 1px;
+}
+.office-sheet td.office-bd-t::after {
+  border-top-width: 1px;
+}
+.office-sheet td.office-bd-b::after {
+  border-bottom-width: 1px;
+}
 /* The tools over a workbook's grid: find in the workbook, the sheet's sort
    and filter with Clear, Download as CSV at the end. Wraps on a phone. */
 .office-tools {

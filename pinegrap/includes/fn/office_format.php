@@ -168,6 +168,30 @@ function pg_office_format_money_code($symbol)
 }
 
 /**
+ * The words of the workbook format bar's controls for the entry's own
+ * parts (pg_office_format_request()): underline, strikethrough, the size,
+ * the borders and wrap text. The preview's script gets them with the rest
+ * of its words (pg_office_view_strings()).
+ *
+ * @return array
+ */
+function pg_office_format_view_strings()
+{
+    return array(
+        'format_underline'    => lang('Underline (Ctrl+U)'),
+        'format_strike'       => lang('Strikethrough'),
+        'format_size'         => lang('Font size'),
+        'format_size_default' => lang('Default'),
+        'format_borders'      => lang('Borders'),
+        'border_none'         => lang('No borders'),
+        'border_all'          => lang('All borders'),
+        'border_outline'      => lang('Outside borders'),
+        'border_bottom'       => lang('Bottom border'),
+        'format_wrap'         => lang('Wrap text'),
+    );
+}
+
+/**
  * The sides of one cell a border asked of a range sets: side => true for a
  * thin line, false for none; a side left out keeps what the cell has.
  * "all" lines every side of every cell, "none" takes every side off,
