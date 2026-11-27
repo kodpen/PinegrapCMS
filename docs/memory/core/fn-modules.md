@@ -320,7 +320,7 @@ description: Generated from the module field of the memory files: each includes/
 - `office_docx_kind`: [[office-docx-paragraph-kind]]
 - `office_docx_link`: [[office-docx-links]]
 - `office_docx_paragraphs`: [[office-docx-add-delete]]
-- `office_docx_table`: [[office-docx-tables]]
+- `office_docx_table`: [[office-docx-table-bar]], [[office-docx-tables]]
 - `office_edit`: [[office-save-list]]
 - `office_format`: [[office-sheet-bar-text-borders]], [[office-sheet-format]], [[office-sheet-format-borders]]
 - `office_formula`: [[office-formula-engine]]
