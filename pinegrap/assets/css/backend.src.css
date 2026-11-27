@@ -28100,6 +28100,21 @@ html[data-bs-theme="dark"] .ws-cb-chip.active {
         flex: 0 0 min(292px, 82vw);
     }
 }
+/* My Tasks' Board layout (workspace_my_tasks_board.js): the channel
+   board's columns; on a phone one column a screen, snapped as it scrolls
+   sideways. */
+.ws-mt-board .ws-cb-cols {
+    scroll-snap-type: x mandatory;
+}
+.ws-mt-board .ws-cb-col {
+    scroll-snap-align: start;
+}
+@media (max-width: 767.98px) {
+    .ws-pane-board.ws-mt-board .ws-cb-col,
+    .ws-pane-board.ws-mt-board .ws-cb-col.ws-cb-col-current {
+        flex: 0 0 100%;
+    }
+}
 @media (max-width: 575.98px) {
     .ws-cb-figures {
         display: flex;
