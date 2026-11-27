@@ -1,6 +1,6 @@
 ---
 name: tax-automatic
-description: Plan (owner 2026-11-27, poll 246): automatic tax, the EU's VAT rate by the buyer's country, an OSS report and US sales tax; the census is done, TX2 and TX3 need no column, the rest wait for polls 248 and 249
+description: Plan (owner 2026-11-27, poll 246): automatic tax, the EU's VAT rate by the buyer's country, an OSS report, US sales tax; TX2 and TX3 need no column, the rest wait for polls 248 and 249
 priority: 5
 ---
 
