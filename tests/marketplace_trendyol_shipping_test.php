@@ -199,7 +199,8 @@ function test_marketplace_trendyol_shipping_link_never_sends_their_own_number_ba
 	$ours = trendyol_shipping_test_row(array('id' => 2, 'number' => '123456789012', 'source' => 'panel'));
 
 	pg_assert_same(array('number' => '123456789012',
-		'url' => 'https://www.yurticikargo.com/tr/online-servisler/gonderi-sorgula?code=123456789012'),
+		'url' => 'https://www.yurticikargo.com/tr/online-servisler/gonderi-sorgula?code=123456789012',
+		'carrier' => 'yurtici', 'carrier_name' => 'Yurtiçi Kargo'),
 		mp_sync_shipment_link(array($theirs, $ours), '', 'yurtici'), 'the shop\'s parcel, linked by the site default');
 }
 
@@ -323,7 +324,7 @@ function test_marketplace_trendyol_shipping_job_reads_and_calls_what_it_should()
 	pg_assert_contains("if (\$calls < 2) {", $step);
 	pg_assert_contains("AND (shipping_tracking_numbers.source <> 'marketplace')", $step);
 	pg_assert_contains("\$named = (\$default !== '') ? '' : \"", $step, 'without a default, a shape-only parcel is not read');
-	pg_assert_contains("if (\$since <= 0) {", $step, 'nothing before the account began shipping itself');
+	pg_assert_contains("if ((\$since <= 0) && !\$always) {", $step, 'nothing before the account began shipping itself');
 	$reread = strpos($step, "\$current = isset(\$account['id']) ? mp_account((int)\$account['id']) : null;");
 	$asked = strpos($step, "mp_account_ships_itself(\$account)");
 
@@ -354,6 +355,6 @@ function test_marketplace_trendyol_shipping_link_is_null_without_a_linked_parcel
 	$first_unknown = trendyol_shipping_test_row(array('number' => '55443322', 'source' => 'csv'));
 	$second_known = trendyol_shipping_test_row(array('id' => 2, 'number' => 'K1', 'tracking_url' => 'https://track.example.com/K1'));
 
-	pg_assert_same(array('number' => 'K1', 'url' => 'https://track.example.com/K1'),
+	pg_assert_same(array('number' => 'K1', 'url' => 'https://track.example.com/K1', 'carrier' => '', 'carrier_name' => ''),
 		mp_sync_shipment_link(array($first_unknown, $second_known), 'Standart Teslimat', ''), 'the first parcel that has a link');
 }

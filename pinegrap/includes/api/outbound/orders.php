@@ -1106,7 +1106,8 @@ function mp_order_email_is_personal($email) {
 		'n11.com', 'mail.n11.com', 'pazaryeri.n11.com',
 		'trendyol.com', 'mail.trendyol.com', 'trendyolmail.com',
 		'hepsiburada.com', 'mail.hepsiburada.com',
-		'marketplace.amazon.com', 'marketplace.amazon.com.tr'
+		'marketplace.amazon.com', 'marketplace.amazon.com.tr',
+		'members.ebay.com'
 	);
 
 	foreach ($relays as $relay) {

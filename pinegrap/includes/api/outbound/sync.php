@@ -1666,9 +1666,21 @@ function mp_sync_ship_pending($account) {
 
 	$since = isset($account['credentials']['delivery_since']) ? (int) $account['credentials']['delivery_since'] : 0;
 
-	if ($since <= 0) {
+	// A provider with no carrier of its own (eBay) never named one in a
+	// method code, so every package it imported is the shop's to report.
+	$always = mp_provider_ships_itself((string)$account['provider']);
+
+	if (($since <= 0) && !$always) {
 
 		return;
+
+	}
+
+	$open = array();
+
+	foreach (mp_ship_open_statuses((string)$account['provider']) as $status) {
+
+		$open[] = "'" . e((string)$status) . "'";
 
 	}
 
@@ -1692,10 +1704,10 @@ function mp_sync_ship_pending($account) {
 			WHERE (account_id = '" . e((int)$account['id']) . "')
 			  AND (status = 'imported')
 			  AND (order_id > 0)
-			  AND (remote_status IN ('Created', 'Picking', 'Invoiced'))
+			  AND (remote_status IN (" . implode(', ', $open) . "))
 			  AND (last_error = '')
-			  AND (imported_timestamp >= UNIX_TIMESTAMP() - 2592000)
-			  AND (imported_timestamp >= '" . e($since + 60) . "')
+			  AND (imported_timestamp >= UNIX_TIMESTAMP() - 2592000)" . ($always ? '' : "
+			  AND (imported_timestamp >= '" . e($since + 60) . "')") . "
 			  AND (id > '" . e($after) . "')
 			  AND EXISTS (
 				SELECT 1
@@ -1801,6 +1813,10 @@ function mp_sync_ship_pending($account) {
 
 			$calls--;
 
+			// The parcel itself too, for a marketplace that takes the carrier
+			// and the number rather than the tracking page (eBay).
+			$package['parcel'] = $link;
+
 			$shipped = mp_call($account['provider'], 'ship_package', array($account, $package, $link['url']));
 
 			if ($shipped['ok']) {
@@ -1808,9 +1824,13 @@ function mp_sync_ship_pending($account) {
 				// Shipped here at once, because the marketplace turns the package
 				// Shipped as it accepts the link; the next pull confirms it and
 				// brings the cargo number the marketplace gives it, which is
-				// recorded as a parcel of its own (source marketplace).
+				// recorded as a parcel of its own (source marketplace). The
+				// connector may name its own word for shipped (eBay FULFILLED).
+				$shipped_status = (isset($shipped['data']['remote_status']) && is_string($shipped['data']['remote_status'])
+					&& ($shipped['data']['remote_status'] !== '')) ? $shipped['data']['remote_status'] : 'Shipped';
+
 				db("UPDATE marketplace_order_map
-					SET remote_status = 'Shipped', approved = 1, last_error = '', updated_timestamp = UNIX_TIMESTAMP()
+					SET remote_status = '" . e(mb_substr($shipped_status, 0, 40)) . "', approved = 1, last_error = '', updated_timestamp = UNIX_TIMESTAMP()
 					WHERE id = '" . e($map_id) . "'");
 
 				log_activity(lang(array(
@@ -1818,7 +1838,7 @@ function mp_sync_ship_pending($account) {
 					'vars'   => array((string)$row['remote_order_id'], mp_provider_name($account['provider']), $link['url'])
 				)), 'system');
 
-				mp_order_announce('marketplace.order.shipped', $account, $map_id, 'Shipped', array('tracking_url' => (string)$link['url']));
+				mp_order_announce('marketplace.order.shipped', $account, $map_id, $shipped_status, array('tracking_url' => (string)$link['url']));
 
 				continue;
 
@@ -1870,7 +1890,9 @@ function mp_sync_ship_pending($account) {
 // (mp_order_apply_tracking()); only the shop or its integration writes it
 // (POST /orders/{id}/shipment).
 //
-// Answers array(number, url).
+// Answers array(number, url, carrier, carrier_name): carrier is the key of
+// the shop's carrier list, '' for a carrier typed on the row, whose name is
+// carrier_name.
 function mp_sync_shipment_link($rows, $method, $default) {
 
 	$default = pg_shipping_carrier_text($default);
@@ -1910,7 +1932,8 @@ function mp_sync_shipment_link($rows, $method, $default) {
 
 		}
 
-		return array('number' => $view['number'], 'url' => $view['url']);
+		return array('number' => $view['number'], 'url' => $view['url'],
+			'carrier' => $view['carrier'], 'carrier_name' => $view['carrier_name']);
 
 	}
 

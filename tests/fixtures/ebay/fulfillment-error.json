@@ -1,0 +1,1 @@
+{"errors": [{"errorId": 32100, "domain": "API_FULFILLMENT", "category": "REQUEST", "message": "Invalid shipping carrier code.", "parameters": [{"name": "shippingCarrierCode", "value": "Yurtici Kargo"}]}]}

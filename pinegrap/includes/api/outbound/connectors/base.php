@@ -38,7 +38,11 @@
 //   remove_webhook($account)              remove the one in the credentials
 //   ship_package($account, $package, $tracking_url)
 //                                         tell them the seller shipped it with
-//                                         their own carrier
+//                                         their own carrier; $package['parcel']
+//                                         is the parcel's number, carrier (key),
+//                                         carrier_name and url; may answer
+//                                         data['remote_status'], their word
+//                                         for shipped
 //   request_label($account, $number, $boxes)
 //                                         ask them for the shipping label of the
 //                                         parcel with that cargo number, one per
@@ -164,6 +168,11 @@ function mp_providers() {
 		'ebay' => array(
 			'name'   => 'eBay',
 			'file'   => 'ebay.php',
+			// A seller on eBay ships every order with a carrier of its own
+			// (mp_account_ships_itself()); the statuses of an order not yet
+			// shipped, which mp_sync_ship_pending() reports a parcel for.
+			'ships_itself'  => true,
+			'open_statuses' => array('NOT_STARTED', 'IN_PROGRESS'),
 			'help'   => 'Connect your eBay seller account on Connections first. One account sells on one eBay site: add an account for each further site. Save, then test the connection to read your inventory locations and business policies.',
 			'fields' => array(
 				'environment' => array(
@@ -358,11 +367,39 @@ function mp_provider_keys_by_barcode($provider) {
 }
 
 // Does this account ship with a carrier of its own, rather than the one the
-// marketplace contracts? Read from the account's 'delivery' choice; an account
-// saved before the choice existed, or one that never made it, does not.
+// marketplace contracts? Always, for a provider that has no carrier of its
+// own ('ships_itself', eBay); else read from the account's 'delivery'
+// choice, and an account saved before the choice existed, or one that never
+// made it, does not.
 function mp_account_ships_itself($account) {
 
+	if (isset($account['provider']) && mp_provider_ships_itself((string)$account['provider'])) {
+
+		return true;
+
+	}
+
 	return isset($account['credentials']['delivery']) && $account['credentials']['delivery'] === 'own';
+
+}
+
+function mp_provider_ships_itself($provider) {
+
+	$providers = mp_providers();
+
+	return !empty($providers[$provider]['ships_itself']);
+
+}
+
+// The remote statuses of a package not shipped yet that the shop may report
+// a parcel for (mp_sync_ship_pending()): the provider's 'open_statuses', else
+// Trendyol's words, the provider the report was first built for.
+function mp_ship_open_statuses($provider) {
+
+	$providers = mp_providers();
+
+	return (isset($providers[$provider]['open_statuses']) && is_array($providers[$provider]['open_statuses']))
+		? array_values($providers[$provider]['open_statuses']) : array('Created', 'Picking', 'Invoiced');
 
 }
 
