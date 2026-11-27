@@ -209,7 +209,8 @@
         var open = ctx.search ? true : (closedRead().indexOf(Number(group.id)) === -1);
         var box = kit.el('div', 'ws-nb-group ws-nb-group-shared' + (open ? ' open' : ''));
         var head = kit.el('div', 'ws-nb-group-head');
-        var toggle = kit.el('button', 'ws-nb-group-toggle');
+        // The folder's group label: a click or Enter folds it.
+        var toggle = kit.el('button', 'pg-group-label ws-nb-fold ws-nb-group-toggle');
         var body = kit.el('div', 'ws-nb-group-body');
         var label = kit.el('span', 'ws-nb-group-name');
 
@@ -218,7 +219,7 @@
         toggle.type = 'button';
         toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
         toggle.setAttribute('aria-controls', body.id);
-        toggle.appendChild(kit.icon('bi-chevron-right', 'ws-nb-group-chevron'));
+        toggle.appendChild(kit.icon('bi-chevron-down', 'ws-nb-fold-chevron'));
         toggle.appendChild(dot(kit, group));
         label.appendChild(document.createTextNode(group.name));
 
@@ -227,7 +228,7 @@
         }
 
         toggle.appendChild(label);
-        toggle.appendChild(kit.el('span', 'ws-nb-count', String(ctx.search ? notes.length : group.count)));
+        toggle.appendChild(kit.el('span', 'pg-group-label-count', String(folderCount(ctx, group, notes))));
 
         toggle.addEventListener('click', function () {
             open = !box.classList.contains('open');
@@ -262,24 +263,27 @@
         return box;
     }
 
-    // The Shared with me section: the groups shared with the person as
-    // folders, then the notes shared one by one. ctx: as for
-    // workspace_note_groups.js, with sharedGroups, and notes holding every
-    // listed note; loose: the shared notes in no folder of the person.
+    // A shared folder's count: what a search found in it, else the group's.
+    function folderCount(ctx, group, notes) {
+        return ctx.search ? notes.length : Number(group.count || 0);
+    }
+
+    // The Shared with me section under its group label (ctx.section(),
+    // which folds it, counting every note under it): the groups shared with
+    // the person as folders, then the notes shared one by one, in the order
+    // loose holds them. ctx: as for workspace_note_groups.js, with
+    // sharedGroups, and notes holding every listed note; loose: the shared
+    // notes in no folder of the person.
     function section(ctx, loose, title, emptyText) {
         var kit = ctx.kit;
-        var box = kit.el('div', 'ws-nb-section ws-nb-section-groups');
-        var head = kit.el('div', 'ws-nb-section-title');
         var groups = ctx.sharedGroups || [];
         var known = {};
-        var drawn = 0;
+        var folders = [];
+        var count = 0;
 
         groups.forEach(function (group) { known[group.id] = true; });
 
         var single = loose.filter(function (note) { return !known[Number(note.group_id || 0)]; });
-
-        head.appendChild(kit.el('span', '', title));
-        box.appendChild(head);
 
         groups.forEach(function (group) {
             var notes = folderNotes(ctx.notes, group.id);
@@ -288,23 +292,25 @@
                 return;
             }
 
-            drawn++;
-            box.appendChild(folder(ctx, group, notes));
+            count += folderCount(ctx, group, notes);
+            folders.push(folder(ctx, group, notes));
         });
 
-        if (single.length) {
-            head.appendChild(kit.el('span', 'ws-nb-count', String(single.length)));
-        }
+        var parts = ctx.section('shared', title, count + single.length, 'ws-nb-section-groups');
 
-        if (!single.length && !drawn) {
-            box.appendChild(kit.el('div', 'ws-nb-section-empty', emptyText));
+        folders.forEach(function (node) {
+            parts.body.appendChild(node);
+        });
+
+        if (!single.length && !folders.length) {
+            parts.body.appendChild(kit.el('div', 'ws-nb-section-empty', emptyText));
         }
 
         single.forEach(function (note) {
-            box.appendChild(ctx.drawItem(note));
+            parts.body.appendChild(ctx.drawItem(note));
         });
 
-        return box;
+        return parts.box;
     }
 
     // workspace_notes.php?group=N: the group's folder opened and brought into

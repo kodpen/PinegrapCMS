@@ -1,11 +1,11 @@
 ---
 name: workspace-screen-bar-notes-data
-description: The one-line bar and empty screen of My Notes (startNotes(), "⋯" with Pin to the menu, Import, Export all) and Data (ws_wtable_list_bar(), ws_empty_screen_html())
+description: The one-line bar and empty screen of My Notes (startNotes(), "⋯" with the list's order, Pin to the menu, Import, Export all) and Data (ws_wtable_list_bar(), ws_empty_screen_html())
 ---
 
 ## What does My Notes' bar hold?
 - `startNotes()` in `assets/js/workspace.js`, the rule of `workspace-screen-bar.md`: New note (filled); My highlights and Lock (`PGWsNoteLock.button()`, ghost, via `PGWsKit.lookButton`); the grow slot; the search (`barSearch()`); "⋯" (`pg-icon-button`).
-- "⋯" holds Pin to the menu or Unpin from the menu (once `ws_notes` says `menu.ready`), Import (`CFG.notes_import`), Export all (`CFG.urls.notes_export`); it is hidden while empty. The pin's call, toast and menu row are as before.
+- "⋯" holds Sort by (Last changed, Name, Created; `workspace-notes-list-layout.md`), then Pin to the menu or Unpin from the menu (once `ws_notes` says `menu.ready`), Import (`CFG.notes_import`), Export all (`CFG.urls.notes_export`). It is always shown, since the order is in it. The pin's call, toast and menu row are as before.
 - On a phone My highlights and Lock keep their icons; the word sits in `.ws-bar-label`, hidden from the eye only (`barLabel()`).
 
 ## How is My Notes' empty screen drawn?

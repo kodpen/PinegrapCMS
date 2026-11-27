@@ -29361,7 +29361,8 @@
         var aiKickAt = 0;
 
         // One line: New note, My highlights, Lock; the search; "⋯" for
-        // the rare ones (Pin to the menu, Import, Export all).
+        // the list's order and the rare ones (Pin to the menu, Import,
+        // Export all).
         var frame = el('div', 'ws-bar-frame');
         var bar = el('nav', 'pg-toolbar ws-bar');
         var layout = el('div', 'row g-7 ws-nb');
@@ -29498,11 +29499,13 @@
 
         bar.appendChild(searchGroup);
 
-        // "⋯": Pin to the menu (or Unpin), Import (workspace_notes_import.php:
-        // Markdown and text files, or a zip of them) and Export all (every
-        // note as a zip that opens as a vault in Obsidian and the like).
+        // "⋯": the list's order (Last changed, Name, Created;
+        // workspace_note_list.js), Pin to the menu (or Unpin), Import
+        // (workspace_notes_import.php: Markdown and text files, or a zip of
+        // them) and Export all (every note as a zip that opens as a vault in
+        // Obsidian and the like).
         function barMenuItems() {
-            var items = [];
+            var items = window.PGWsNoteList.menuItems(window.PGWsKit, drawList).concat(['-']);
 
             if (menuPinReady) {
                 items.push({ icon: menuPinned ? 'bi-pin-angle-fill' : 'bi-pin-angle', label: menuPinned ? t('notes_menu_unpin') : t('notes_menu_pin'), action: toggleMenuPin });
@@ -29516,9 +29519,15 @@
                 items.push({ icon: 'bi-box-arrow-up', label: t('notes_export_all'), action: function () { window.location.href = CFG.urls.notes_export + '?all=1'; } });
             }
 
+            // No divider under the order when nothing follows it.
+            if (items[items.length - 1] === '-') {
+                items.pop();
+            }
+
             return items;
         }
 
+        // Always shown: the order is in it.
         var barMore = menuButton(button('pg-icon-button ws-nb-bar-more', '', 'bi-three-dots', t('more')));
 
         barMore.addEventListener('click', function (event) {
@@ -29528,13 +29537,6 @@
             ctxMenu(Math.max(8, box.right - 220), box.bottom + 4, barMenuItems());
         });
 
-        // Shown while it holds something: Import and Export all are known
-        // now, Pin to the menu once the list has said it can be made.
-        function drawBarMore() {
-            barMore.hidden = !barMenuItems().length;
-        }
-
-        drawBarMore();
         bar.appendChild(barMore);
 
         // ── the lists ──
@@ -29590,44 +29592,54 @@
             return items;
         }
 
-        function drawSection(title, notes, emptyText) {
-            var section = el('div', 'ws-nb-section');
-            var head = el('div', 'ws-nb-section-title');
-
-            head.appendChild(el('span', '', title));
-
-            if (notes.length) {
-                head.appendChild(el('span', 'ws-nb-count', String(notes.length)));
-            }
-
-            section.appendChild(head);
-
-            if (!notes.length) {
-                section.appendChild(el('div', 'ws-nb-section-empty', emptyText));
-            }
-
-            notes.forEach(function (note) {
-                section.appendChild(drawItem(note));
-            });
-
-            return section;
+        // A section of the list under its group label, which folds it
+        // (workspace_note_list.js); key names it in the folded store.
+        function noteSection(key, title, count, extraClass) {
+            return window.PGWsNoteList.section(window.PGWsKit, key, title, count, search, extraClass);
         }
 
-        // One note's row in a list or in a group's folder
-        // (workspace_note_groups.js).
+        // The notes in the order picked in "⋯" (workspace_note_list.js).
+        function inOrder(notes) {
+            return window.PGWsNoteList.order(notes, window.PGWsNoteList.orderNow(), CFG.locale);
+        }
+
+        function drawSection(key, title, notes, emptyText) {
+            var parts = noteSection(key, title, notes.length);
+
+            if (!notes.length) {
+                parts.body.appendChild(el('div', 'ws-nb-section-empty', emptyText));
+            }
+
+            inOrder(notes).forEach(function (note) {
+                parts.body.appendChild(drawItem(note));
+            });
+
+            return parts.box;
+        }
+
+        // One note's row (.pg-list-row) in a list or in a group's folder
+        // (workspace_note_groups.js): the icon, the title with the unread
+        // dot, the pin and the lock, the ⋯ shown on hover; the excerpt; the
+        // time and who it is with on the line under it. The open note is
+        // the chosen row.
         function drawItem(note) {
             // What is new is new until the note is opened; the open one
             // is being read.
             var open = current && current.id === note.id;
             var unread = !open && !!note.unread;
-            var item = el('div', 'ws-nb-item' + (open ? ' active' : '') + (unread ? ' ws-nb-item-unread' : ''));
+            var item = el('div', 'pg-list-row ws-nb-item' + (open ? ' is-chosen' : '') + (unread ? ' ws-nb-item-unread' : ''));
+            var tile = el('span', 'pg-icon-tile ' + (note.access === 'owner' ? 'pg-tone-amber' : 'pg-tone-blue'));
+            var main = el('div', 'pg-list-row-main');
 
-            var top = el('div', 'ws-nb-item-head');
-            top.appendChild(icon(note.access === 'owner' ? (note.source ? 'bi-chat-square-quote' : 'bi-journal-text') : 'bi-people'));
-            top.appendChild(el('span', 'ws-nb-item-name', note.name));
+            tile.setAttribute('aria-hidden', 'true');
+            tile.appendChild(icon(note.access === 'owner' ? (note.source ? 'bi-chat-square-quote' : 'bi-journal-text') : 'bi-people'));
+            item.appendChild(tile);
+
+            var top = el('div', 'pg-list-row-head ws-nb-item-head');
+            top.appendChild(el('span', 'pg-list-row-title ws-nb-item-name', note.name));
 
             if (unread) {
-                var dot = el('span', 'ws-nb-item-dot');
+                var dot = el('span', 'pg-unread-dot ws-nb-item-dot');
                 dot.title = t('notes_news');
                 dot.setAttribute('aria-label', t('notes_news'));
                 top.appendChild(dot);
@@ -29649,25 +29661,26 @@
                 top.appendChild(lockMark);
             }
 
-
-            var more = menuButton(button('ws-nb-item-more', '', 'bi-three-dots', t('more')));
+            var quick = el('span', 'pg-list-row-quick');
+            var more = menuButton(button('pg-icon-button', '', 'bi-three-dots', t('more')));
             more.addEventListener('click', function (event) {
                 var box = more.getBoundingClientRect();
 
                 event.stopPropagation();
                 ctxMenu(box.left, box.bottom + 4, noteMenu(note));
             });
-            top.appendChild(more);
-            item.appendChild(top);
+            quick.appendChild(more);
+            top.appendChild(quick);
+            main.appendChild(top);
 
             if (note.excerpt && note.excerpt !== note.name) {
-                item.appendChild(el('div', 'ws-nb-item-excerpt', note.excerpt));
+                main.appendChild(el('div', 'pg-list-row-text ws-nb-item-excerpt', note.excerpt));
             }
 
             // The time sits on the line under the title, so a narrow list
             // column leaves the whole head row to the note's name.
             var meta = el('div', 'ws-nb-item-meta');
-            meta.appendChild(el('span', 'ws-nb-item-time', note.updated));
+            meta.appendChild(el('span', 'pg-list-row-time ws-nb-item-time', note.updated));
 
             if ((note['with'] || []).length || (note['in'] || []).length || note.access !== 'owner') {
                 meta.appendChild(noteFaces(note, 4));
@@ -29688,7 +29701,8 @@
                 meta.appendChild(claudeTag);
             }
 
-            item.appendChild(meta);
+            main.appendChild(meta);
+            item.appendChild(main);
 
             function openThis() {
                 if (!current || current.id !== note.id) {
@@ -29720,8 +29734,9 @@
                 sharedGroups: lists.sharedGroups,
                 notes: lists.mine.concat(lists.shared),
                 // An own note put in a group shared with the person is drawn
-                // in that group's folder under Shared with me.
-                mine: lists.mine.filter(function (note) { return !inShared[Number(note.group_id || 0)]; }),
+                // in that group's folder under Shared with me; the notes in
+                // no folder stand in the order picked in "⋯".
+                mine: inOrder(lists.mine.filter(function (note) { return !inShared[Number(note.group_id || 0)]; })),
                 search: search,
                 people: ((BOOT && BOOT.people) || []).map(function (member) { return member.id; }),
                 channels: BOOT ? (BOOT.channels || []) : [],
@@ -29735,6 +29750,8 @@
                 // A locked group's folder while the lock is closed: the way
                 // to open it (workspace_note_lock.js).
                 lockedBody: lockCtx() ? function () { return lockListButton(); } : null,
+                // A section of the list under its group label.
+                section: noteSection,
                 title: t('notes_mine'),
                 emptyText: search ? t('notes_empty_search') : t('notes_empty'),
                 drawItem: drawItem,
@@ -29905,13 +29922,13 @@
 
             var groups = groupsCtx();
 
-            list.appendChild(groups ? window.PGWsNoteGroups.mine(groups) : drawSection(t('notes_mine'), lists.mine, search ? t('notes_empty_search') : t('notes_empty')));
+            list.appendChild(groups ? window.PGWsNoteGroups.mine(groups) : drawSection('mine', t('notes_mine'), lists.mine, search ? t('notes_empty_search') : t('notes_empty')));
             if (groups && window.PGWsNoteGroupShares) {
                 // Groups shared with the person as folders, then the notes
                 // shared one by one (workspace_note_group_shares.js).
-                list.appendChild(window.PGWsNoteGroupShares.section(groups, window.PGWsNoteGroups.sharedLoose(groups, lists.shared), t('notes_shared'), search ? t('notes_empty_search') : t('notes_empty_shared')));
+                list.appendChild(window.PGWsNoteGroupShares.section(groups, inOrder(window.PGWsNoteGroups.sharedLoose(groups, lists.shared)), t('notes_shared'), search ? t('notes_empty_search') : t('notes_empty_shared')));
             } else {
-                list.appendChild(drawSection(t('notes_shared'), groups ? window.PGWsNoteGroups.sharedLoose(groups, lists.shared) : lists.shared, search ? t('notes_empty_search') : t('notes_empty_shared')));
+                list.appendChild(drawSection('shared', t('notes_shared'), groups ? window.PGWsNoteGroups.sharedLoose(groups, lists.shared) : lists.shared, search ? t('notes_empty_search') : t('notes_empty_shared')));
             }
         }
 
@@ -29925,7 +29942,6 @@
                 if (data.menu) {
                     menuPinned = !!data.menu.pinned;
                     menuPinReady = !!data.menu.ready;
-                    drawBarMore();
                 }
 
                 drawList();

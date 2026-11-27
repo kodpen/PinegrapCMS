@@ -1,0 +1,166 @@
+<?php
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * Tests for My Notes' list order and section labels
+ * (assets/js/workspace_note_list.js): the order picked in the bar's "⋯"
+ * (its pure part run in Node, skipped where Node cannot run), the rows drawn
+ * as .pg-list-row with the chosen one tinted, the sections' group labels,
+ * the text keys, and the script in its bundle.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+if (!defined('PG_TEST_RUNNER')) {
+	exit;
+}
+
+function workspace_note_list_test_source($path)
+{
+	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $path);
+}
+
+// Runs $body against the script in Node and answers what it printed as JSON;
+// null when Node cannot run.
+function workspace_note_list_test_node($body)
+{
+	if (!function_exists('exec')) {
+		return null;
+	}
+
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		return null;
+	}
+
+	$script = "var window = {};\n" . workspace_note_list_test_source('assets/js/workspace_note_list.js') . "\n"
+		. "var L = window.PGWsNoteList;\n"
+		. "function ids(notes) { return notes.map(function (note) { return note.id; }); }\n"
+		. "var notes = [\n"
+		. "  { id: 1, name: 'beta', updated_at: 300, created_at: 10 },\n"
+		. "  { id: 2, name: 'Alpha', updated_at: 100, created_at: 30 },\n"
+		. "  { id: 3, name: 'note 10', updated_at: 200, created_at: 20, pinned: 1 },\n"
+		. "  { id: 4, name: 'note 9', updated_at: 200, created_at: 40 },\n"
+		. "  { id: 5, name: 'alpha', updated_at: 50, created_at: 30 }\n"
+		. "];\n"
+		. 'console.log(JSON.stringify((function () {' . $body . '}())));';
+
+	$file = @tempnam(sys_get_temp_dir(), 'pglist');
+
+	if ($file === false) {
+		return null;
+	}
+
+	file_put_contents($file, $script);
+	$out = array();
+	@exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	@unlink($file);
+
+	pg_assert_same(0, $code, 'the Node script runs: ' . implode("\n", array_slice($out, 0, 8)));
+
+	return json_decode(implode("\n", $out), true);
+}
+
+// Pinned notes first, then the order asked; the higher id breaks a tie, an
+// unknown order is the server's own, and the list handed in is left as it is.
+function test_workspace_note_list_order()
+{
+	$result = workspace_note_list_test_node('
+		var before = ids(notes);
+
+		return {
+			changed: ids(L.order(notes, "changed", "en")),
+			name: ids(L.order(notes, "name", "en")),
+			created: ids(L.order(notes, "created", "en")),
+			unknown: ids(L.order(notes, "size", "en")),
+			none: ids(L.order(notes)),
+			empty: L.order(null, "name", "en"),
+			kept: ids(notes).join() === before.join()
+		};
+	');
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array(3, 1, 4, 2, 5), $result['changed'], 'the newest change first, the pinned note above all');
+	pg_assert_same(array(3, 5, 2, 1, 4), $result['name'], 'by name, case and numbers read as a person reads them; a tie to the higher id');
+	pg_assert_same(array(3, 4, 5, 2, 1), $result['created'], 'the newest note first; a tie to the higher id');
+	pg_assert_same($result['changed'], $result['unknown'], 'an unknown order is the last change');
+	pg_assert_same($result['changed'], $result['none'], 'no order given is the last change');
+	pg_assert_same(array(), $result['empty'], 'no notes, an empty list');
+	pg_assert_true($result['kept'], 'the notes handed in keep their order');
+}
+
+// The row is the look's list row; the open note is the chosen row, tinted
+// with an accent edge, not a filled box.
+function test_workspace_note_list_row_is_a_list_row()
+{
+	$main = workspace_note_list_test_source('assets/js/workspace.js');
+	$css = workspace_note_list_test_source('assets/css/backend.src.css');
+
+	pg_assert_contains("el('div', 'pg-list-row ws-nb-item' + (open ? ' is-chosen' : '')", $main);
+	pg_assert_contains("el('span', 'pg-list-row-quick')", $main, 'the ⋯ sits in the quick actions');
+	pg_assert_contains("el('div', 'pg-list-row-text ws-nb-item-excerpt', note.excerpt)", $main, 'the two-line excerpt');
+	pg_assert_contains("el('span', 'pg-unread-dot ws-nb-item-dot')", $main, 'the unread dot');
+	pg_assert_false(strpos($main, "'ws-nb-item' + (open ? ' active'") !== false, 'no filled box for the open note');
+
+	$chosen = '.ws-nb-list .ws-nb-item.is-chosen {';
+	$at = strpos($css, $chosen);
+
+	pg_assert_true($at !== false, 'the chosen row has its rule');
+
+	$rule = substr($css, $at, (int) strpos($css, '}', (int) $at) - $at);
+
+	pg_assert_contains('var(--pg-tint-select)', $rule, 'tinted with the select strength');
+	pg_assert_contains('box-shadow: inset 2px 0 0 var(--pg-accent);', $rule, 'the accent edge');
+	pg_assert_false(strpos($css, '.ws-nb-item.active') !== false, 'no rule for the old filled box');
+	pg_assert_same(1, substr_count($css, "\n.pg-list-row {"), 'one definition of the list row');
+}
+
+// My notes, Shared with me and the folders stand under group labels that
+// fold; the sections' state is kept in this browser, inside try/catch.
+function test_workspace_note_list_sections_fold()
+{
+	$list = workspace_note_list_test_source('assets/js/workspace_note_list.js');
+
+	pg_assert_contains("kit.el('button', 'pg-group-label ws-nb-fold')", $list);
+	pg_assert_contains("kit.el('span', 'pg-group-label-count', String(count))", $list);
+	pg_assert_contains("toggle.setAttribute('aria-expanded'", $list);
+	pg_assert_contains("var FOLD_KEY = 'pg_ws_notes_folded';", $list);
+	pg_assert_contains("var ORDER_KEY = 'pg_ws_notes_order';", $list);
+	pg_assert_same(4, substr_count($list, 'try {'), 'every read and write of the browser store is guarded');
+
+	foreach (array('assets/js/workspace_note_groups.js', 'assets/js/workspace_note_group_shares.js') as $path) {
+		$source = workspace_note_list_test_source($path);
+
+		pg_assert_contains("kit.el('button', 'pg-group-label ws-nb-fold ws-nb-group-toggle')", $source, $path . ': the folder is a group label');
+		pg_assert_contains('ctx.section(', $source, $path . ': the section folds');
+		pg_assert_false(strpos($source, 'ws-nb-count') !== false, $path . ': no old count');
+	}
+}
+
+// The order's words are Workspace text keys, and the script is bundled
+// before the folders that draw with its section().
+function test_workspace_note_list_in_the_bundle()
+{
+	$notes = workspace_note_list_test_source('includes/workspace/notes.php');
+
+	foreach (array('notes_order', 'notes_order_changed', 'notes_order_name', 'notes_order_created') as $key) {
+		pg_assert_contains("'" . $key . "'", $notes, 'the text key ' . $key);
+	}
+
+	$bundles = pg_js_bundles();
+	$sources = $bundles['assets/js/workspace.min.js'];
+	$at = array_search('assets/js/workspace_note_list.js', $sources, true);
+
+	pg_assert_true($at !== false, 'the list script is bundled');
+	pg_assert_true($at < array_search('assets/js/workspace_note_groups.js', $sources, true), 'before the folders');
+	pg_assert_true($at < array_search('assets/js/workspace.js', $sources, true), 'before workspace.js');
+}

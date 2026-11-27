@@ -10,7 +10,8 @@ description: Shared note groups on the screen (G6) — workspace_note_group_shar
 
 ## Where is the screen code?
 - `assets/js/workspace_note_group_shares.js` (`window.PGWsNoteGroupShares`), bundled after `workspace_note_tabs.js`, before `workspace_replies.js`. It does not touch `workspace_note_groups.js`.
-- Shared with me (`section()`): shared groups as folders (dot, name, "Belongs to …", count; closed ones in `localStorage` `pg_ws_note_groups_shared_closed`), menu Leave the group (`ws_note_group_unshare` share 0); then single shared notes. An own note put in a shared group is drawn in that folder, not in My notes (`groupsCtx().mine` leaves it out).
+- Shared with me (`section()`): shared groups as folders (dot, name, "Belongs to …", count; closed ones in `localStorage` `pg_ws_note_groups_shared_closed`), menu Leave the group (`ws_note_group_unshare` share 0); then single shared notes, in the order picked in the bar's ⋯.
+- The section stands under a group label that folds, its count every note under it (`workspace-notes-list-layout.md`). An own note put in a shared group is drawn in that folder, not in My notes (`groupsCtx().mine` leaves it out).
 - Share dialog (`share()`, owner only): people picker + Can read / Can add notes, or a channel; Who can see it with Stop sharing per share (`ws_note_group_shares`, `ws_note_group_share`, `ws_note_group_unshare`). Reached from the tab row's person-plus button and from `groupsCtx().groupMenuExtra(group)`, which the folder menu of `workspace_note_groups.js` can concat.
 - Tabs (`workspace_note_tabs.js`) get own and shared groups: a people mark for a shared group, no + when `reach` is view, the share button only on own unlocked groups.
 

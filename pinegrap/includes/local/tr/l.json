@@ -166,6 +166,7 @@
     "Last automatic check: {var:1}.": "Son otomatik denetim: {var:1}.",
     "Last backup": "Son yedek",
     "Last change": "Son değişiklik",
+    "Last changed": "Son değişiklik",
     "Last changed by {var:1} · {var:2}": "Son değişiklik: {var:1} · {var:2}",
     "Last changed {var:1}": "En son {var:1} değişti",
     "Last check": "Son denetim",
