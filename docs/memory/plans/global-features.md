@@ -9,10 +9,10 @@ priority: 5
 - They stand at priority 5: behind the designer's faults, the open plans of 6 and the Workspace's own screens.
 
 ## In which order, and where is each plan?
-- First the three that need no table, each as its own plan file, written by the architect after a count of the code:
-  - Local payment methods and pay-later through Stripe.
-  - Importers from Wix, Squarespace and Webflow.
-  - Panel language packs and a right-to-left panel.
+- First the three smallest, each as its own plan file, written by the architect after a count of the code:
+  - Local payment methods and pay-later through Stripe: `plans/payment-local-methods.md`.
+  - Importers from Wix, Squarespace and Webflow: `plans/import-site-builders.md`.
+  - Panel language packs and a right-to-left panel: the setting that holds the panel's language takes only English and Turkish today, so its plan waits for the owner's answer on that column.
 - Then the six that may need a table or a column. Each plan starts with a census step, and each table is asked of the owner on its own:
   - Markets: a price list a country, the charge in the buyer's currency.
   - Automatic tax: the EU's VAT rate by the buyer's country, an OSS report, US sales tax.
