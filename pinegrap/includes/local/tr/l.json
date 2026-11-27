@@ -1110,6 +1110,7 @@
     "Line totals are after the discount and include VAT.": "Satır tutarları indirim düşülmüş ve KDV dahildir.",
     "Line width": "Kalınlık",
     "Line {var:1}": "Satır {var:1}",
+    "Line {var:1} ({var:2})": "Satır {var:1} ({var:2})",
     "Line {var:1} carries a surcharge, which a typed invoice line cannot hold.": "{var:1}. satırda bir artırım var; elle girilen fatura satırı bunu taşıyamaz.",
     "Line {var:1} carries two VAT withholdings; a line can hold one.": "{var:1}. satırda iki KDV tevkifatı var; bir satır tek tevkifat taşıyabilir.",
     "Line {var:1} carries {var:2}, a tax other than VAT. The ERP keeps VAT only, so this invoice has to be entered by hand.": "{var:1}. satırda KDV dışında bir vergi var: {var:2}. ERP yalnız KDV'yi tutar; bu fatura elle girilmeli.",
