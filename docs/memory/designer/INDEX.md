@@ -166,6 +166,7 @@
 - custom-form-url-prefill.md: A designed form control filled from a named page-address parameter (props._cf.url_param, ?post=…): where it is stored, names and value rules, order of sources, option matching, what never takes it
 - custom-style.md: Per-element custom style: a User Styles rule keyed by a pgs- class, pg_custom_style.js, the Styles "This element" card and Attributes css row, Split, where it is off [decision: here]
 - data-binding-to-content.md: Bind data to content elements (span, h1-h6, p, a, img), never structural table tags; tooling, the text slot a binding fills inside markup, and the characters a bound field name keeps.
+- describe-start.md: The "Describe it" start of the New design window (SB2): its row and disabled state, the brief's fields, their checks and the browser twin, where the brief is kept, what "Plan my site" does
 - design-asset-path-placeholders.md: {path} and {software_directory} in a design: filled in a linked CSS/JS row before the page's address check and on the canvas; what is saved keeps them
 - design-asset-records.md: The design's CSS/JS asset rows (style_custom_css / style_custom_js JSON): module scripts, the per-page `pages` list and its tab:/key: references, where they are resolved, the Bootstrap Icons sheet.
 - design-cleanup-finder.md: The clean-up finder (includes/fn/design_cleanup.php): how the classes a design uses are gathered, how a stylesheet's rules are matched, every case it cannot tell and so never lists
@@ -469,7 +470,7 @@
 - designer-gutter-overflow.md: Why wide row gutters (g-5) overflow inside .container on phones, the g-4 g-lg-5 rule, and how to measure responsive overflow of a block.
 - designer-hidden-page-endpoints.md: Editor endpoints asked by page id keep the hidden-page rule of the tab list: page_load, form_fields and notes_fetch refuse a page behind a folder the operator may not know about
 - designer-hide-on-sticky-from.md: Style › Size and display's "Hide on" (Phone, Tablet, Desktop) and "Sticky from" a size (DO3): Bootstrap's d-* and sticky-{size}-top classes, written and read back by pg_size_style.js
-- designer-home-classic-styles.md: Styles the Page Design Studio home and the design chooser list: every visual design; a classic style only while one of its tree pages is outside the Recycle Bin (#12019)
+- designer-home-classic-styles.md: Styles taken as designs by the Page Design Studio home, the design chooser and the External API: every visual design; a classic style only while a tree page of it is outside the Recycle Bin
 - designer-home-colours.md: Page Design Studio home colours (#3267): neutral greys plus the panel's primary token, the previews keep theirs, status as words and a shaped mark, tooltips
 - designer-home-menu.md: The Page Design Studio home's menu on a design or a page chip: how it opens, its rows in groups without icons, its texts
 - designer-home-narrow.md: The New design window below 768 px (a list, then the pane with "All starts") and the Page Design Studio home on a phone (one column, the other designs as a list) [decision: here]

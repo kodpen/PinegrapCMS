@@ -504,7 +504,7 @@
 - trial-merge-check.md: Checking whether a branch or an open PR still merges into development without touching a checkout: git merge-tree --write-tree lists the conflicts; the merged tree's memory index from an export
 - unit-test-database-exit.md: A unit test statement that reaches db() ends the whole tools/test.php run with exit code 0 through output_error(); make it throw with pg_error_throws(true), or keep the tested part free of queries
 - unit-test-runner.md: tools/test.php: what it loads, which errors fail a test, other PHP versions, code behind a database probe, PHP in its own process (Windows quoting, peak memory), JavaScript under Node
-- unit-test-time-limit.md: tools/test.php gives every test the run's own time limit back, because product code sets @set_time_limit(120) and Windows counts it in wall-clock time, which stopped pushes there
+- unit-test-time-limit.md: Time in unit tests: tools/test.php gives each test the run's time limit back (Windows counts set_time_limit in wall-clock time); a speed assertion measures CPU time, not the wall clock
 - user-docs-coverage-content.md: pinegrap.com documentation pages for the panel, settings, files, pages and people (/introduction to /chat): what each page covers and the memory folders and clusters it is written from
 - user-docs-coverage-modules.md: pinegrap.com documentation pages for visitors, SEO, design, languages, commerce, ERP, Workspace, API and security: what each page covers and the memory folders and clusters it is written from
 - user-docs-developers.md: Outside developers of the API (owner 2026-11-26): their pages sit in the documentation on pinegrap.com, no developers subdomain, no staging run by us, no central client registry [decision: here]
