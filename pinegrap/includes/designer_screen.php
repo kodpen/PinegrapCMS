@@ -431,6 +431,9 @@ function pg_designer_screen_render($ctx)
         // is a version's draft names its live page, each live page that has
         // one names its draft.
         'versions'      => pg_page_version_editor_config($tab_page_ids),
+        // Whether "Save as a new version" is offered: the bundle tables are
+        // there (the module refuses before the upgrade).
+        'versionsReady' => pg_page_bundles_ready(),
         // Tab order and groups (2026.4.8): kept in style_tab_layout, written
         // by designer/tab_layout. Without the column the strip is plain.
         'tabLayout'     => array(
@@ -3220,6 +3223,10 @@ function pg_designer_publish_sheet()
                     <div class="dialog-footer flex-wrap gap-2" style="border-color:#30363d;">
                         <p class="small fg-secondary w-100 mb-0 d-none" data-sdp-checking aria-live="polite"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span><span data-sdp-checking-text></span></p>
                         <button type="button" class="btn btn-sm btn-outline theme-secondary d-none" data-sdp-act="page-draft"><span class="bi bi-eye-slash me-2" aria-hidden="true"></span>' . h(lang('Save this page as a draft')) . '</button>
+                        <div class="d-flex flex-column gap-1 d-none" data-sdp-version>
+                            <button type="button" class="pg-button pg-button-sm pg-button-quiet" data-sdp-act="new-version"><i class="bi bi-layers" aria-hidden="true"></i><span data-sdp-version-label>' . h(lang('Save as a new version')) . '</span></button>
+                            <span class="small fg-secondary">' . h(lang('The page on the site stays as it is.')) . '</span>
+                        </div>
                         <button type="button" class="btn btn-sm btn-outline theme-secondary d-none" data-sdp-act="all-draft"><span class="bi bi-cloud-slash me-2" aria-hidden="true"></span>' . h(lang('Take every page of the design off the site')) . '</button>
                         <button type="button" class="btn btn-sm btn-solid theme-primary ms-auto" data-sdp-act="publish"><span class="bi bi-rocket-takeoff me-2" aria-hidden="true"></span>' . h(lang('Publish selected')) . '</button>
                         <button type="button" class="btn btn-sm btn-solid theme-primary ms-auto d-none" data-sdp-act="done">' . h(lang('Done')) . '</button>

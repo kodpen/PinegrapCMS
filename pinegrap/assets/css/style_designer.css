@@ -8565,6 +8565,10 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
    the same pill, outlined in the tab's ink; the time is its title. */
 .sd-tab-sched-badge { padding: 0 .3rem; border-color: currentColor; background: transparent; color: inherit; }
 .sd-tab-sched-badge .bi { font-size: .62rem; }
+/* A live page's new version: the same pill in the accent, its word "New
+   version"; on the narrowest strip its outline is the accent too. */
+.sd-tab-version-badge { background: color-mix(in srgb, var(--sd-accent) 18%, transparent); color: var(--sd-accent); }
+.sd-strip-draftshort .sd-tab.active .sd-tab-version-badge { border-color: var(--sd-accent); }
 #sd-ajax-save.sd-publish-draft { background: #373e47; border-color: #545d68; }
 #sd-ajax-save.sd-publish-draft:hover { background: #444c56; }
 /* The Publish sheet (pg_designer_publish.js): one row per page, its state
