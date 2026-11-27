@@ -5,12 +5,12 @@ module: office_edit
 ---
 
 ## What does one workbook save take?
-- `pg_office_xlsx_save()` takes one ordered `cells` list mixing every kind: cells `{sheet, name, cell, value}`, format ranges (`office-sheet-format.md`), a row or column inserted or deleted (`office-sheet-rows-columns.md`), a sheet added, renamed, deleted or moved (`office-sheets.md`). Same doors as before: `explorer_file_save`, `ws_file_office_save`; no new endpoint, permission or schema.
+- `pg_office_xlsx_save()` takes one ordered `cells` list mixing every kind: cells `{sheet, name, cell, value}`, format ranges (`office-sheet-format.md`), a row or column inserted or deleted (`office-sheet-rows-columns.md`), a sheet added, renamed, deleted or moved (`office-sheets.md`), a column width, row height or frozen top row (`office-sheet-sizes.md`). Same doors as before: `explorer_file_save`, `ws_file_office_save`; no new endpoint, permission or schema.
 - Before PR #11928 a list mixing kinds, or holding two non-cell changes, was refused as `none`.
 
 ## How is the list applied?
 - `pg_office_xlsx_save_steps()` (pure) reads it into steps: cells next to each other in the list are one step (a cell named twice takes the last value), every other change a step of its own, each with its place (`at`, 0-based).
-- Under one lock and one version check, each step is written by its kind's writer (`pg_office_xlsx_save_parts`, `_format_parts`, `_shift_parts`, `_sheets_parts`) with its own refusals, onto the workbook as the step before left it. A position or sheet name in an entry is the workbook's at that point of the list: after a rename the new name, after an insert the moved rows.
+- Under one lock and one version check, each step is written by its kind's writer (`pg_office_xlsx_save_parts`, `_format_parts`, `_shift_parts`, `_sheets_parts`, `_size_parts`) with its own refusals, onto the workbook as the step before left it. A position or sheet name in an entry is the workbook's at that point of the list: after a rename the new name, after an insert the moved rows.
 - One step writes into the file as before. Several are built one after the other in a copy in data/temp (`.work`), which takes the file's place (`pg_office_replace_file()`) only when every step went in.
 - A cell typed into a row the sheet lacks (an inserted row, a new sheet) makes that row (`office-cell-edits.md`).
 
