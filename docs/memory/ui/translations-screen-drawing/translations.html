@@ -1,0 +1,765 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Translations: the screen redrawn (texts, activity, glossary)</title>
+<link rel="stylesheet" href="../../../../pinegrap/assets/fonts/bootstrap-icons/bootstrap-icons.min.css">
+<style>
+@font-face { font-family: "Inter"; src: url("../../../../pinegrap/assets/fonts/inter/InterVariable.woff2") format("woff2"); font-weight: 100 900; }
+/* the sheet's own paper: letters, titles and captions around the boards */
+:root {
+  --bg: #ffffff; --ink: #1a1c1e; --ink2: #5a656c; --rule: rgba(128,128,128,.18); --tint2: rgba(128,128,128,.16); --sheet: #eef0f2;
+}
+[data-theme="dark"] {
+  --bg: #16181b; --ink: #e8eaec; --ink2: #b3bcc2; --rule: rgba(160,160,160,.20); --tint2: rgba(160,160,160,.20); --sheet: #0d0e10;
+}
+/* Look A's tokens (ui/look-sheet/sheet.css, the panel's --pg-*): everything inside a board is drawn with these. */
+:root {
+  --page: #f3f4f8; --surf1: #ffffff; --surf2: #fdfdfe; --line: rgba(15,23,42,.085); --hi: rgba(255,255,255,.9); --hover: rgba(15,23,42,.04); --inset: rgba(15,23,42,.018);
+  --field: #ffffff; --field-line: rgba(15,23,42,.13); --field-shadow: inset 0 1px 2px rgba(15,23,42,.06);
+  --fg: #12151a; --fg2: #58606a; --fg3: #6b7480; --strong: #000000;
+  --a1: #4a88f7; --a2: #2a63e0; --accent: #2f6fed; --on-fill: #ffffff; --a-glow: rgba(47,111,237,.45); --quiet: rgba(15,23,42,.055);
+  --violet: #7150e6; --amber: #b7791f; --teal: #0e9a74; --rose: #d43d6b; --gray: #6b7280;
+  --t1: 17%; --t2: 8%; --tl: 20%; --sk: rgba(15,23,42,.07);
+  --shadow-card: 0 1px 0 var(--hi) inset, 0 10px 28px -18px rgba(15,23,42,.2), 0 1px 2px rgba(15,23,42,.04);
+  --shadow-sheet: 0 1px 0 var(--hi) inset, 0 24px 60px -24px rgba(15,23,42,.22), 0 2px 6px rgba(15,23,42,.04);
+  --shadow-float: 0 1px 0 var(--hi) inset, 0 18px 44px -14px rgba(15,23,42,.3), 0 2px 6px rgba(15,23,42,.06);
+  --pop: #ffffff; --scrim: rgba(22,27,38,.3);
+}
+[data-theme="dark"] {
+  --page: #090a0e; --surf1: #16181e; --surf2: #101217; --line: rgba(255,255,255,.075); --hi: rgba(255,255,255,.06); --hover: rgba(255,255,255,.045); --inset: rgba(255,255,255,.028);
+  --field: rgba(0,0,0,.28); --field-line: rgba(255,255,255,.09); --field-shadow: inset 0 1px 2px rgba(0,0,0,.45);
+  --fg: #eef0f3; --fg2: #a4a9b1; --fg3: #8d949d; --strong: #ffffff;
+  --a1: #8ab8ff; --a2: #5a90f6; --accent: #6aa5ff; --on-fill: #06101f; --a-glow: rgba(90,144,246,.55); --quiet: rgba(255,255,255,.065);
+  --violet: #b19cff; --amber: #f2b84b; --teal: #3fd0a8; --rose: #f58aa0; --gray: #9aa0a8;
+  --t1: 26%; --t2: 11%; --tl: 22%; --sk: rgba(255,255,255,.065);
+  --shadow-card: 0 1px 0 var(--hi) inset, 0 14px 34px -18px rgba(0,0,0,.65);
+  --shadow-sheet: 0 1px 0 var(--hi) inset, 0 30px 80px -20px rgba(0,0,0,.7);
+  --shadow-float: 0 1px 0 var(--hi) inset, 0 18px 44px -12px rgba(0,0,0,.75), 0 0 0 1px rgba(0,0,0,.3);
+  --pop: #1d2027; --scrim: rgba(3,4,7,.6);
+}
+html { --rose-text: color-mix(in srgb, var(--rose) 80%, var(--strong)); --amber-text: color-mix(in srgb, var(--amber) 70%, var(--strong)); --accent-ink: color-mix(in srgb, var(--accent) 82%, var(--strong)); }
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { font-family: "Inter", "DejaVu Sans", system-ui, sans-serif; font-size: 13.5px; line-height: 1.4; color: var(--ink); background: var(--sheet); padding: 28px 16px; width: 1472px; -webkit-font-smoothing: antialiased; }
+.frame-wrap { margin-bottom: 36px; }
+.frame-head { display: flex; align-items: baseline; gap: 12px; margin: 0 4px 12px; }
+.frame-letter { width: 30px; height: 30px; border-radius: 9px; background: var(--ink); color: var(--bg); font-weight: 700; display: inline-flex; align-items: center; justify-content: center; font-size: 15px; flex: none; align-self: center; }
+.frame-title { font-size: 19px; font-weight: 680; letter-spacing: -.01em; white-space: nowrap; }
+.frame-sub { color: var(--ink2); font-size: 13.5px; }
+.frame { background: var(--page); border: 1px solid var(--rule); border-radius: 18px; overflow: hidden; position: relative; }
+.notes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 26px; margin: 14px 6px 0; color: var(--ink2); font-size: 13px; }
+.notes b, .side b { color: var(--ink); font-weight: 620; }
+.notes div, .side div { padding-left: 12px; border-left: 2px solid var(--tint2); }
+.side { display: flex; flex-direction: column; gap: 14px; color: var(--fg2); font-size: 13px; padding-top: 4px; min-width: 0; }
+.side b { color: var(--fg); }
+.sheet-title { font-size: 24px; font-weight: 700; letter-spacing: -.02em; margin: 0 4px 6px; }
+.sheet-sub { color: var(--ink2); margin: 0 4px 28px; max-width: 1100px; }
+
+/* a board's ground and its small captions */
+.pad { padding: 22px; color: var(--fg); font-size: 13.5px; line-height: 1.45; display: flex; flex-direction: column; gap: 22px; }
+.split { display: grid; grid-template-columns: 1026px minmax(0, 1fr); gap: 24px; align-items: start; }
+.cols2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+.rowf { display: flex; gap: 24px; align-items: flex-start; }
+.stack { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.cap { display: flex; align-items: baseline; gap: 8px; margin: 0 2px 8px; font-size: 12.5px; color: var(--fg2); }
+.cap b { color: var(--fg); font-weight: 650; font-size: 13px; white-space: nowrap; }
+.cap i { font-style: normal; flex: none; width: 19px; height: 19px; border-radius: 6px; background: var(--quiet); color: var(--fg2); font-size: 11.5px; font-weight: 650; display: inline-grid; place-items: center; align-self: center; }
+.grow { flex: 1; }
+.lnk { color: var(--accent-ink); white-space: nowrap; }
+.num { font-variant-numeric: tabular-nums; }
+.mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace; }
+
+/* look A parts */
+.b { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 34px; padding: 0 14px; border-radius: 10px; font-size: 13px; font-weight: 550; white-space: nowrap; color: var(--fg); flex: none; }
+.b.fill { color: var(--on-fill); background: linear-gradient(180deg, var(--a1), var(--a2)); box-shadow: inset 0 1px 0 rgba(255,255,255,.38), 0 1px 2px rgba(0,0,0,.25), 0 8px 18px -8px var(--a-glow); }
+.b.quiet { background: var(--quiet); box-shadow: inset 0 0 0 1px var(--line), inset 0 1px 0 var(--hi); }
+.b.ghost { color: var(--fg2); }
+.b.danger { color: var(--rose-text); background: color-mix(in srgb, var(--rose) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rose) 22%, transparent); }
+.b.sm { height: 28px; padding: 0 11px; border-radius: 8px; }
+.b.unsaved { color: var(--accent-ink); background: color-mix(in srgb, var(--accent) 9%, transparent); box-shadow: inset 0 0 0 1px var(--accent); }
+.b.off { opacity: .45; }
+.b em, .seg em { font-style: normal; font-variant-numeric: tabular-nums; font-size: 12px; font-weight: 600; height: 18px; line-height: 18px; padding: 0 6px; border-radius: 9px; background: color-mix(in srgb, currentColor 15%, transparent); }
+.b .cd { font-size: 11.5px; font-weight: 600; height: 18px; line-height: 18px; padding: 0 6px; border-radius: 6px; background: color-mix(in srgb, currentColor 18%, transparent); }
+.b .bi-chevron-down, .in .bi-chevron-down { font-size: 10px; }
+.ib { width: 32px; height: 32px; border-radius: 9px; color: var(--fg2); display: inline-grid; place-items: center; font-size: 15px; flex: none; }
+.ib.sm { width: 28px; height: 28px; font-size: 14px; border-radius: 8px; }
+.ib.on { background: var(--quiet); color: var(--fg); box-shadow: inset 0 0 0 1px var(--line); }
+.ib.bad { color: var(--rose-text); }
+.seg { display: inline-flex; padding: 3px; border-radius: 11px; background: var(--quiet); box-shadow: inset 0 0 0 1px var(--line); flex: none; }
+.seg span { padding: 0 12px; height: 28px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--fg2); white-space: nowrap; }
+.seg span.on { background: var(--surf1); color: var(--fg); box-shadow: 0 1px 2px rgba(15,23,42,.14), 0 0 0 1px var(--line); }
+.seg.sm span { height: 24px; padding: 0 10px; font-size: 12.5px; }
+.lab { display: block; font-size: 13px; font-weight: 550; margin-bottom: 6px; }
+.help { font-size: 12px; color: var(--fg3); margin-top: 6px; }
+.in { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border-radius: 10px; background: var(--field); border: 1px solid var(--field-line); box-shadow: var(--field-shadow); font-size: 14px; white-space: nowrap; min-width: 0; }
+.in.sm { height: 32px; border-radius: 9px; font-size: 13px; }
+.in > i { color: var(--fg3); font-size: 13px; }
+.in .ph { color: var(--fg3); overflow: hidden; text-overflow: ellipsis; }
+.in .end { margin-left: auto; }
+.in.off { opacity: .5; }
+.in.area { height: 60px; align-items: flex-start; padding: 8px 12px; white-space: normal; }
+.kbd { display: inline-block; font-size: 11.5px; font-weight: 550; color: var(--fg2); padding: 2px 6px; border-radius: 6px; background: var(--quiet); box-shadow: inset 0 0 0 1px var(--line); white-space: nowrap; }
+.caret { display: inline-block; width: 1.5px; height: 1.1em; background: var(--accent); vertical-align: -3px; margin-left: 1px; }
+.pill { --c: var(--gray); display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 9px 0 8px; border-radius: 11px; font-size: 12px; font-weight: 550; white-space: nowrap; flex: none; color: color-mix(in srgb, var(--c) 70%, var(--strong)); background: color-mix(in srgb, var(--c) var(--t2), transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) var(--tl), transparent); }
+.pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 18%, transparent); }
+.pill.plain { padding: 0 8px; height: 20px; font-size: 11.5px; } .pill.plain::before { display: none; }
+.t-amber { --c: var(--amber); } .t-teal { --c: var(--teal); } .t-rose { --c: var(--rose); } .t-gray { --c: var(--gray); } .t-violet { --c: var(--violet); } .t-accent { --c: var(--accent); }
+.dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--c); }
+.ck { flex: none; width: 17px; height: 17px; border-radius: 6px; box-shadow: inset 0 0 0 1.5px var(--fg3); display: inline-grid; place-items: center; font-size: 12px; }
+.ck.on { background: linear-gradient(180deg, var(--a1), var(--a2)); box-shadow: none; color: var(--on-fill); }
+.ck.off { opacity: .45; }
+.sw { flex: none; width: 38px; height: 22px; border-radius: 11px; background: color-mix(in srgb, var(--fg3) 40%, transparent); position: relative; box-shadow: inset 0 1px 2px rgba(0,0,0,.25); }
+.sw::after { content: ""; position: absolute; left: 2px; top: 2px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.35); }
+.sw.on { background: linear-gradient(180deg, var(--a1), var(--a2)); } .sw.on::after { left: 18px; }
+.sw.off { opacity: .45; }
+.spin { flex: none; width: 14px; height: 14px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--fg3) 35%, transparent); border-top-color: var(--accent); }
+.bar { display: block; height: 4px; border-radius: 2px; background: var(--quiet); overflow: hidden; } .bar b { display: block; height: 100%; border-radius: 2px; background: var(--accent); }
+.bar.t3 { height: 3px; }
+.pcard { background: linear-gradient(180deg, var(--surf1), var(--surf2)); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow-card); }
+.pop { display: block; background: var(--pop); border-radius: 12px; box-shadow: var(--shadow-float), 0 0 0 1px var(--line); padding: 5px; color: var(--fg); font-weight: 400; }
+.pop.abs { position: absolute; z-index: 6; top: 40px; left: 0; }
+.pop.abs.r { left: auto; right: 0; }
+.pop.abs.up { top: auto; bottom: 40px; }
+.mi { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; border-radius: 8px; font-size: 13.5px; white-space: nowrap; }
+.mi.cur { background: var(--hover); }
+.mi.bad { color: var(--rose-text); } .mi.bad > i:first-child { color: var(--rose-text); }
+.mi > i:first-child { color: var(--fg2); width: 16px; text-align: center; flex: none; }
+.mi .cd { font-size: 11.5px; color: var(--fg2); padding: 1px 6px; border-radius: 6px; background: var(--quiet); }
+.mi .pc { margin-left: auto; width: 40px; text-align: right; color: var(--fg2); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.mi .tg { width: 76px; display: flex; justify-content: flex-end; }
+.mi > .bi-check-lg { color: var(--accent); width: 14px; }
+.mdiv { display: block; height: 1px; background: var(--line); margin: 5px 0; }
+.nt { --c: var(--amber); display: flex; gap: 9px; align-items: baseline; padding: 9px 12px; border-radius: 12px; font-size: 13px; color: var(--fg); background: color-mix(in srgb, var(--c) 9%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 24%, transparent); }
+.nt > i { color: color-mix(in srgb, var(--c) 70%, var(--strong)); font-size: 14px; align-self: flex-start; margin-top: 2px; }
+.nt.gray { --c: var(--gray); color: var(--fg2); }
+.nt ul { margin: 6px 0 4px; padding-left: 18px; } .nt li { padding: 1px 0; } .nt li em { font-style: normal; color: var(--fg3); margin-left: 6px; }
+.nt .q { color: var(--fg2); font-size: 12.5px; margin-top: 4px; }
+
+/* the panel's window at 1440 px: the narrowed menu, the top bar with the page title */
+.scr { position: relative; width: 1440px; display: grid; grid-template-columns: 48px minmax(0, 1fr); grid-template-rows: 50px auto; border-radius: 18px; overflow: hidden; border: 1px solid var(--line); background: var(--page); color: var(--fg); font-size: 13.5px; line-height: 1.45; }
+.tb { grid-column: 1 / 3; display: flex; align-items: center; gap: 14px; padding: 0 16px; border-bottom: 1px solid var(--line); }
+.tb .logo { width: 132px; height: 26px; border-radius: 8px; background: var(--sk); }
+.tb .ttl { font-size: 15px; font-weight: 650; letter-spacing: -.01em; width: 300px; }
+.tb .s { width: 320px; height: 30px; border-radius: 15px; background: var(--sk); }
+.tb .c { width: 28px; height: 28px; border-radius: 50%; background: var(--sk); }
+.tb .u { width: 96px; height: 30px; border-radius: 15px; background: var(--sk); }
+.nav { border-right: 1px solid var(--line); padding: 14px 0; display: grid; gap: 14px; align-content: start; justify-items: center; }
+.nav i { width: 18px; height: 18px; border-radius: 6px; background: var(--sk); }
+.nav i.on { background: color-mix(in srgb, var(--accent) 55%, transparent); box-shadow: 0 0 0 7px var(--quiet); }
+.pg { padding: 16px 22px 24px; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+
+/* 1 the head, 2 the automation line, 3 the progress card */
+.hd { display: flex; align-items: center; gap: 10px; }
+.hdl { position: relative; display: inline-flex; }
+.au { display: flex; align-items: center; gap: 10px; min-height: 46px; padding: 8px 9px 8px 14px; border-radius: 14px; }
+.au > i { font-size: 15px; color: var(--fg2); }
+.au > b { font-weight: 600; margin-right: 4px; }
+.au .q { color: var(--fg2); font-size: 13px; }
+.rc { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; border-radius: 13px; font-size: 12.5px; background: var(--quiet); box-shadow: inset 0 0 0 1px var(--line); white-space: nowrap; }
+.rc span { color: var(--fg2); } .rc b { font-weight: 550; }
+.rc.warn { background: color-mix(in srgb, var(--amber) 11%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--amber) 26%, transparent); }
+.au.warn { background: color-mix(in srgb, var(--amber) 7%, var(--surf1)); border-color: color-mix(in srgb, var(--amber) 28%, transparent); }
+.au.warn > i { color: var(--amber-text); } .au .aw { color: var(--amber-text); font-weight: 550; font-size: 13px; }
+.au .bar { flex: 1; min-width: 60px; }
+
+/* 4 the body: the rail and the main column */
+.body { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 20px; align-items: start; }
+.rl { padding: 10px 8px; }
+.rl > .in { margin: 0 2px 8px; }
+.rl-h { display: flex; align-items: baseline; margin: 12px 10px 4px; font-size: 12px; font-weight: 600; color: var(--fg3); }
+.rl-h span { margin-left: auto; font-weight: 400; }
+.rr { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto 16px; column-gap: 8px; row-gap: 5px; align-items: center; padding: 7px 10px 8px; border-radius: 9px; font-size: 13.5px; }
+.rr.g { grid-template-columns: 16px minmax(0, 1fr) auto; }
+.rr > i { font-size: 13px; color: var(--fg3); text-align: center; }
+.rr > i.warn { color: var(--amber-text); }
+.rr .n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rr.g .n { white-space: normal; line-height: 18px; }
+.rr .c { font-size: 12px; color: var(--fg2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rr .bar { grid-column: 1 / -1; }
+.rr.sel { background: color-mix(in srgb, var(--accent) 10%, transparent); font-weight: 550; }
+.rr.sel::before { content: ""; position: absolute; left: 0; top: 7px; bottom: 7px; width: 3px; border-radius: 2px; background: var(--accent); }
+.main { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.sh { display: flex; align-items: baseline; gap: 10px; min-height: 26px; }
+.sh h2 { margin: 0; font-size: 17px; line-height: 26px; font-weight: 650; letter-spacing: -.015em; }
+.sh .q { color: var(--fg2); font-size: 13px; }
+.tiles { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 10px; }
+.tl { display: flex; flex-direction: column; justify-content: space-between; gap: 3px; min-height: 62px; padding: 8px 14px 10px; border-radius: 12px; background: linear-gradient(180deg, var(--surf1), var(--surf2)); box-shadow: inset 0 0 0 1px var(--line); }
+.tl b { font-size: 20px; line-height: 25px; font-weight: 650; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.tl span { display: flex; gap: 6px; align-items: baseline; font-size: 12px; line-height: 15px; color: var(--fg2); }
+.tl span .dot { position: relative; top: -1px; }
+.tl span > i.bi { font-size: 12px; color: var(--amber-text); }
+.tl.on { box-shadow: inset 0 0 0 1.5px var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surf1)); }
+.tl.on span { color: var(--fg); }
+.lc { position: relative; }
+.tools { display: flex; align-items: center; gap: 10px; padding: 12px 18px 0; }
+.tools .in { flex: 1; max-width: 520px; }
+.selall { display: flex; align-items: center; gap: 0; padding: 12px 18px; font-size: 13px; color: var(--fg2); }
+.selall .ck { margin-right: 27px; }
+.selall .r { margin-left: auto; font-size: 12.5px; color: var(--fg3); }
+.ck.some { background: linear-gradient(180deg, var(--a1), var(--a2)); box-shadow: none; color: var(--on-fill); }
+.lnote { margin: 12px 18px 0; }
+.pgn { display: flex; align-items: center; gap: 4px; padding: 12px 18px; border-top: 1px solid var(--line); font-size: 13px; color: var(--fg2); }
+.pgn .p { min-width: 30px; height: 30px; padding: 0 8px; border-radius: 8px; display: inline-grid; place-items: center; font-variant-numeric: tabular-nums; }
+.pgn .p.on { background: var(--quiet); color: var(--fg); font-weight: 600; box-shadow: inset 0 0 0 1px var(--line); }
+
+/* 5 the row */
+.tr { display: grid; grid-template-columns: 28px minmax(0, 1fr) minmax(0, 1fr) 176px; column-gap: 16px; padding: 14px 18px; border-top: 1px solid var(--line); align-items: start; }
+.tr.picked { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+.tk { display: flex; padding-top: 10px; }
+.src { padding-top: 8px; min-width: 0; }
+.src .s { font-size: 14px; line-height: 21px; overflow-wrap: anywhere; }
+.src .s.clamp { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; }
+.src .s.code { font-size: 13px; color: var(--fg2); }
+.src .sa { display: inline-block; font-size: 12.5px; margin-top: 2px; }
+.ms { display: flex; align-items: center; gap: 6px; margin-top: 6px; min-height: 20px; }
+.hash { font-size: 11.5px; color: var(--fg3); }
+.pill.pic { gap: 5px; color: var(--accent-ink); background: color-mix(in srgb, var(--accent) 10%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 24%, transparent); }
+.tc { min-width: 0; position: relative; }
+.tx { min-height: 39px; padding: 8px 12px; border-radius: 10px; background: var(--field); border: 1px solid var(--field-line); box-shadow: var(--field-shadow); font-size: 14px; line-height: 21px; overflow-wrap: anywhere; }
+.tx .ph { color: var(--fg3); }
+.tx.focus { border-color: var(--accent); box-shadow: var(--field-shadow), 0 0 0 4px color-mix(in srgb, var(--accent) 24%, transparent); }
+.tx.err { border-color: var(--rose); box-shadow: var(--field-shadow), 0 0 0 4px color-mix(in srgb, var(--rose) 16%, transparent); }
+.tx[dir="rtl"] { text-align: right; font-size: 15px; }
+.why { display: flex; gap: 6px; align-items: baseline; color: var(--rose-text); font-size: 12.5px; margin-top: 6px; }
+.stt { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; padding-top: 8px; min-width: 0; }
+.stt .eng { font-size: 12px; color: var(--fg3); padding-left: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.stt .acts { display: flex; align-items: center; gap: 4px; margin-top: 3px; }
+.det { grid-column: 2 / 5; margin-top: 12px; padding: 12px 14px 12px; border-radius: 12px; background: var(--inset); box-shadow: inset 0 0 0 1px var(--line); font-size: 13px; display: grid; grid-template-columns: 124px minmax(0, 1fr); gap: 9px 12px; }
+.det .k { color: var(--fg2); }
+.det .v { display: flex; flex-wrap: wrap; gap: 4px 16px; min-width: 0; }
+.det .v .lnk { display: inline-flex; gap: 6px; align-items: baseline; }
+.det .oldscr { color: var(--fg2); } .det .old s { text-decoration: none; color: var(--fg3); margin: 0 6px; }
+.det .susp { grid-column: 1 / -1; display: flex; gap: 7px; align-items: baseline; color: var(--rose-text); }
+.det .da { grid-column: 1 / -1; display: flex; gap: 8px; padding-top: 3px; }
+
+/* 6 selection */
+.bulk { position: relative; z-index: 3; display: flex; align-items: center; gap: 8px; margin: 0 auto 12px; padding: 9px 9px 9px 16px; width: max-content; max-width: calc(100% - 24px); border-radius: 14px; background: var(--pop); border: 1px solid var(--accent); box-shadow: var(--shadow-float); font-size: 13px; }
+.bulk > b { font-weight: 600; margin-right: 6px; white-space: nowrap; }
+.bulkwrap { position: sticky; bottom: 0; padding-top: 2px; }
+
+/* dialogs and the drawer */
+.dlg { width: 480px; flex: none; display: flex; flex-direction: column; border-radius: 18px; border: 1px solid var(--line); box-shadow: var(--shadow-sheet); background: linear-gradient(180deg, var(--surf1), var(--surf2)); color: var(--fg); }
+.dlg-h { display: flex; align-items: center; gap: 10px; padding: 14px 12px 6px 20px; }
+.dlg-h b { font-size: 16.5px; font-weight: 650; letter-spacing: -.01em; }
+.dlg-b { padding: 8px 20px 18px; display: flex; flex-direction: column; gap: 14px; font-size: 13.5px; }
+.dlg-b p { margin: 0; color: var(--fg2); }
+.dlg-b p.strong { color: var(--fg); font-weight: 550; }
+.dlg-f { display: flex; justify-content: flex-end; align-items: center; gap: 8px; padding: 12px 20px 14px; border-top: 1px solid var(--line); }
+.ckl { display: flex; gap: 10px; align-items: flex-start; }
+.ckl .ck { margin-top: 2px; }
+.ckl small { display: block; font-size: 12px; color: var(--fg3); margin-top: 2px; }
+.swl { display: flex; gap: 12px; align-items: flex-start; }
+.swl > div { flex: 1; min-width: 0; } .swl b { font-weight: 550; font-size: 13px; display: block; } .swl small { display: block; font-size: 12px; color: var(--fg3); margin-top: 2px; }
+.drw { width: 544px; flex: none; display: flex; flex-direction: column; background: linear-gradient(180deg, var(--surf1), var(--surf2)); border: 1px solid var(--line); border-radius: 14px 0 0 14px; box-shadow: var(--shadow-sheet); color: var(--fg); }
+.drw-h { display: flex; align-items: center; gap: 10px; height: 56px; padding: 0 12px 0 20px; border-bottom: 1px solid var(--line); }
+.drw-h b { font-size: 16.5px; font-weight: 650; letter-spacing: -.01em; }
+.drw-b { padding: 16px 20px 18px; display: flex; flex-direction: column; gap: 14px; flex: 1; }
+.drw-f { position: relative; display: flex; align-items: center; gap: 8px; padding: 14px 20px; border-top: 1px solid var(--line); }
+.facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.fact { padding: 10px 12px; border-radius: 12px; background: var(--inset); box-shadow: inset 0 0 0 1px var(--line); }
+.fact small { display: block; font-size: 12px; color: var(--fg2); } .fact b { display: block; margin-top: 2px; font-weight: 650; font-size: 18px; font-variant-numeric: tabular-nums; }
+.fact.bad b { color: var(--rose-text); }
+.kvs { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 7px 12px; font-size: 13px; margin: 0; }
+.kvs dt { color: var(--fg2); } .kvs dd { margin: 0; font-weight: 500; }
+.gl { font-size: 12px; font-weight: 600; color: var(--fg3); margin: 4px 0 -6px; }
+.ft { padding: 10px 0; border-top: 1px solid var(--line); font-size: 13.5px; }
+.ft .s2 { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; line-height: 20px; }
+.ft .rs { display: flex; gap: 12px; align-items: baseline; margin-top: 4px; font-size: 12.5px; color: var(--rose-text); }
+.ft .rs .lnk { margin-left: auto; }
+.splitb { display: inline-flex; position: relative; }
+.splitb .b:first-child { border-radius: 10px 0 0 10px; } .splitb .b:last-child { border-radius: 0 10px 10px 0; padding: 0 10px; margin-left: 1px; }
+
+/* 7, 8 tables */
+.tbl { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.tbl th { text-align: left; font-size: 12px; font-weight: 600; color: var(--fg3); padding: 10px 14px 8px; white-space: nowrap; }
+.tbl td { padding: 10px 14px; border-top: 1px solid var(--line); vertical-align: middle; }
+.tbl th:first-child, .tbl td:first-child { padding-left: 18px; } .tbl th:last-child, .tbl td:last-child { padding-right: 14px; }
+.tbl td.q { color: var(--fg2); } .tbl td.nw { white-space: nowrap; }
+.tbl tr.sel td { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.pr { display: flex; align-items: center; gap: 10px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pr .bar { width: 90px; } .pr .f { color: var(--rose-text); }
+.tbl .ra { display: flex; justify-content: flex-end; gap: 2px; }
+.empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 44px 24px 46px; }
+.empty .ti { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; font-size: 18px; color: var(--gray); background: linear-gradient(140deg, color-mix(in srgb, var(--gray) var(--t1), transparent), color-mix(in srgb, var(--gray) var(--t2), transparent)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gray) var(--tl), transparent); margin-bottom: 6px; }
+.empty b { font-size: 15.5px; font-weight: 620; }
+.empty p { margin: 0 0 10px; color: var(--fg2); max-width: 460px; font-size: 13px; }
+
+/* A: today's screen, drawn at 1440 px and shown at six tenths */
+.oldwrap { position: relative; width: 864px; flex: none; }
+.oldscr { width: 1440px; zoom: .6; }
+.oldscr .otb { display: flex; align-items: center; gap: 10px; }
+.oldscr .ochips { display: flex; gap: 6px; width: 222px; overflow: hidden; flex: none; }
+.oldscr .chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border-radius: 14px; font-size: 12.5px; font-weight: 550; white-space: nowrap; box-shadow: inset 0 0 0 1px var(--field-line); flex: none; }
+.oldscr .chip em { font-style: normal; font-weight: 400; color: var(--fg2); }
+.oldscr .ocols { display: grid; grid-template-columns: 436px minmax(0, 1fr); gap: 18px; align-items: start; }
+.oldscr .ocard { border-radius: 12px; border: 1px solid var(--field-line); background: var(--surf1); }
+.oldscr .oct { display: flex; align-items: center; padding: 14px 20px 10px; font-size: 16px; font-weight: 650; }
+.oldscr .oct span { margin-left: auto; font-size: 12.5px; font-weight: 400; color: var(--fg2); }
+.oldscr .ol { display: flex; align-items: center; gap: 9px; padding: 8px 16px; border-top: 1px solid var(--line); font-size: 14.5px; }
+.oldscr .ol span { margin-left: auto; font-size: 12.5px; color: var(--fg2); }
+.oldscr .ol.sel { background: var(--a1); color: var(--on-fill); } .oldscr .ol.sel span { color: inherit; }
+.oldscr .oj { display: flex; align-items: center; gap: 9px; padding: 6px 20px; font-size: 12.5px; color: var(--fg2); }
+.oldscr .otr { display: grid; grid-template-columns: 24px minmax(0, 1fr) 344px 132px; column-gap: 14px; padding: 16px 0; margin: 0 20px; border-top: 1px solid var(--line); }
+.oldscr .otx { position: relative; height: 56px; padding: 8px 12px; border-radius: 9px; border: 1px solid var(--field-line); background: var(--field); font-size: 14px; }
+.oldscr .otx::after { content: ""; position: absolute; right: 3px; bottom: 3px; width: 8px; height: 8px; border-right: 1.5px solid var(--fg3); border-bottom: 1.5px solid var(--fg3); transform: skew(-45deg); opacity: .7; }
+.oldscr .ost { position: relative; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; align-content: flex-start; }
+.oldscr .tri { position: absolute; left: 82px; top: 0; height: 22px; padding: 0 8px; border-radius: 6px; display: inline-grid; place-items: center; background: var(--rose); color: var(--on-fill); font-size: 12px; }
+.fm { position: absolute; z-index: 4; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 12.5px; font-weight: 700; color: var(--on-fill); background: var(--rose); box-shadow: 0 0 0 4px color-mix(in srgb, var(--rose) 24%, transparent); }
+.fl { display: flex; gap: 10px; align-items: baseline; }
+.fl .fm { position: static; flex: none; width: 20px; height: 20px; font-size: 11.5px; box-shadow: none; align-self: flex-start; }
+.fl > div { padding: 0 !important; border: 0 !important; }
+
+/* C: crops and enlargements */
+.band { display: flex; align-items: baseline; gap: 8px; padding: 7px 18px; font-size: 12.5px; color: var(--fg2); background: var(--inset); border-top: 1px solid var(--line); }
+.band:first-child { border-top: 0; border-radius: 16px 16px 0 0; }
+.band b { color: var(--fg); font-weight: 650; }
+.band i { font-style: normal; flex: none; width: 19px; height: 19px; border-radius: 6px; background: var(--quiet); font-size: 11.5px; font-weight: 650; display: inline-grid; place-items: center; align-self: center; }
+.zoomrow { display: flex; gap: 28px; align-items: flex-start; }
+.zm { zoom: 3; width: 176px; flex: none; padding: 0 0 8px; }
+.zm .stt { padding-top: 0; }
+.zbox { padding: 18px 20px 14px; border-radius: 16px; }
+.crop { position: relative; padding: 16px 18px; border-radius: 16px; }
+
+/* I: narrow widths */
+.scr.w1024 { width: 1024px; }
+.w1024 .pg { padding: 14px 18px 20px; }
+.w1024 .body { grid-template-columns: 240px minmax(0, 1fr); gap: 16px; }
+.w1024 .tr { column-gap: 12px; padding: 14px 14px; }
+.w1024 .tools, .w1024 .selall { padding-left: 14px; padding-right: 14px; }
+.w1024 .selall .ck { margin-right: 23px; }
+.w1024 .tl { padding: 8px 10px 10px; } .w1024 .tiles { gap: 8px; }
+.phone { position: relative; width: 390px; flex: none; border-radius: 26px; border: 1px solid var(--line); overflow: hidden; background: var(--page); color: var(--fg); font-size: 13.5px; line-height: 1.45; display: flex; flex-direction: column; }
+.phone .ptb { display: flex; align-items: center; gap: 6px; height: 50px; padding: 0 6px; border-bottom: 1px solid var(--line); font-size: 16px; font-weight: 650; }
+.phone .pp { padding: 12px 16px 16px; display: flex; flex-direction: column; gap: 10px; }
+.phone .ib { width: 44px; height: 44px; font-size: 18px; }
+.phone .hd .b, .phone .b.wide { height: 44px; }
+.phone .seg { display: flex; } .phone .seg span { flex: 1; height: 38px; }
+.phone .b.wide { width: 100%; }
+.phone .au { min-height: 52px; } .phone .au .b { height: 36px; }
+.phone .scope { justify-content: flex-start; width: 100%; height: 44px; padding: 0 12px; }
+.phone .scope .c { margin-left: auto; font-weight: 400; color: var(--fg2); font-size: 12.5px; }
+.phone .tiles { margin: 0 -16px; padding: 0 16px; grid-auto-columns: 132px; overflow: hidden; }
+.phone .in { height: 44px; }
+.phone .selall { padding: 6px 0; } .phone .selall .ck { margin-right: 12px; } .phone .selall .b { margin-left: auto; height: 36px; }
+.phone .lc { margin: 0 -16px; border-radius: 0; border-left: 0; border-right: 0; }
+.phone .tr { grid-template-columns: 22px minmax(0, 1fr); column-gap: 10px; row-gap: 10px; padding: 14px 16px; }
+.phone .tk { padding-top: 2px; } .phone .src { padding-top: 0; }
+.phone .tc, .phone .stt { grid-column: 1 / -1; }
+.phone .stt { flex-direction: row; flex-wrap: wrap; align-items: center; padding-top: 0; gap: 8px; }
+.phone .stt .acts { margin: 0 0 0 auto; gap: 6px; } .phone .stt .acts .b { height: 40px; padding: 0 14px; } .phone .stt .acts .ib { width: 40px; height: 40px; font-size: 16px; }
+.phone .dimmer { position: absolute; inset: 0; background: var(--scrim); z-index: 5; }
+.bsheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--pop); border-radius: 20px 20px 0 0; box-shadow: var(--shadow-float); padding: 8px 10px 16px; }
+.bsheet .grab { width: 36px; height: 4px; border-radius: 2px; background: var(--field-line); margin: 0 auto 10px; }
+.bsheet .rr { min-height: 44px; padding-top: 9px; }
+.bsheet > .in { margin: 0 4px 8px; }
+.phone .bulkwrap { position: absolute; left: 0; right: 0; bottom: 0; border: 0; padding: 0 12px 12px; z-index: 4; }
+.phone .bulk { width: auto; max-width: none; margin: 0; padding: 6px 4px 6px 14px; gap: 2px; }
+.phone .bulk > b { margin-right: auto; }
+.phone .bulk .hdl .pop { top: auto; bottom: 52px; right: 0; left: auto; }
+
+/* J: measures */
+.mwrap { position: relative; padding: 34px 0 30px 56px; }
+.mk { position: absolute; z-index: 5; color: var(--violet); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.mk.v { border-left: 1.5px solid var(--violet); }
+.mk.v::before, .mk.v::after { content: ""; position: absolute; left: -5px; width: 9px; height: 1.5px; background: var(--violet); } .mk.v::before { top: 0; } .mk.v::after { bottom: 0; }
+.mk.v span { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); text-align: right; }
+.mk.v.rt span { right: auto; left: 8px; }
+.mk.h { border-top: 1.5px solid var(--violet); }
+.mk.h::before, .mk.h::after { content: ""; position: absolute; top: -5px; height: 9px; width: 1.5px; background: var(--violet); } .mk.h::before { left: 0; } .mk.h::after { right: 0; }
+.mk.h span { position: absolute; left: 50%; bottom: 5px; transform: translateX(-50%); }
+.mk.h.dn span { bottom: auto; top: 5px; }
+.mk.h.dn2 span { bottom: auto; top: 21px; }
+.keys { width: 100%; border-collapse: collapse; font-size: 13px; }
+.keys td { padding: 8px 0; border-top: 1px solid var(--line); vertical-align: top; } .keys tr:first-child td { border-top: 0; }
+.keys td:first-child { width: 150px; padding-right: 12px; white-space: nowrap; }
+.keys.sz td:first-child { width: auto; white-space: normal; color: var(--fg2); } .keys.sz td:last-child { text-align: right; font-weight: 550; white-space: nowrap; padding-left: 8px; font-variant-numeric: tabular-nums; }
+.keys.tn td:first-child { width: 110px; } .keys.tn td:last-child { color: var(--fg2); }
+.h3 { font-size: 13px; font-weight: 650; margin: 0 0 6px; }
+.j3 { display: grid; grid-template-columns: 1fr 1fr 1.1fr; gap: 0 36px; align-items: start; }
+</style>
+</head>
+<body>
+<p class="sheet-title">Translations · the screen redrawn</p>
+<p class="sheet-sub">One screen, <b>translations.php</b>, in three tabs: the texts with their source and translation side by side, the updates that ran, the glossary. The engine, its fallback and “Translate on save” are read on one line and changed in one dialog; saving, approving and filtering happen in place, with no reload. Sample pages, texts, people and counts are examples: a small shop translated from Turkish to English. Add <b>?theme=dark</b> to the address for the dark look, <b>?f=A</b> (B to J) for one board.</p>
+<div id="root"></div>
+<script>
+var q = new URLSearchParams(location.search);
+if (q.get('theme') === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+var only = q.get('f');
+
+function ic(n, c) { return '<i class="bi bi-' + n + (c ? ' ' + c : '') + '"></i>'; }
+function b(label, kind, icon, end) { return '<span class="b ' + (kind || '') + '">' + (icon ? ic(icon) : '') + label + (end ? ic(end) : '') + '</span>'; }
+function ib(n, c) { return '<span class="ib' + (c ? ' ' + c : '') + '">' + ic(n) + '</span>'; }
+function pill(text, tone, plain) { return '<span class="pill t-' + (tone || 'gray') + (plain ? ' plain' : '') + '">' + text + '</span>'; }
+function seg(items, on, c) { return '<span class="seg' + (c ? ' ' + c : '') + '">' + items.map(function (t, i) { return '<span' + (i === on ? ' class="on"' : '') + '>' + t[0] + (t[1] ? '<em>' + t[1] + '</em>' : '') + '</span>'; }).join('') + '</span>'; }
+function inp(v, c, ph) { return '<div class="in ' + (c || '') + '">' + (ph ? '<span class="ph">' + v + '</span>' : '<span>' + v + '</span>') + '</div>'; }
+function find(v, c) { return '<div class="in ' + (c || '') + '">' + ic('search') + '<span class="ph">' + v + '</span></div>'; }
+function sel(v, c) { return '<div class="in ' + (c || '') + '"><span>' + v + '</span>' + ic('chevron-down', 'end') + '</div>'; }
+function field(label, control, help) { return '<div><span class="lab">' + label + '</span>' + control + (help ? '<div class="help">' + help + '</div>' : '') + '</div>'; }
+function ckl(label, on, help, c) { return '<div class="ckl"><span class="ck' + (on ? ' on' : '') + (c ? ' ' + c : '') + '">' + (on ? ic('check') : '') + '</span><div>' + label + (help ? '<small>' + help + '</small>' : '') + '</div></div>'; }
+function menu(items, c, style) {
+  return '<span class="pop' + (c ? ' ' + c : '') + '" style="' + (style || '') + '">' + items.map(function (m) { return m === '-' ? '<span class="mdiv"></span>' : '<span class="mi' + (m[2] ? ' ' + m[2] : '') + '">' + ic(m[0]) + m[1] + '</span>'; }).join('') + '</span>';
+}
+function dlg(title, body, foot, w) { return '<div class="dlg"' + (w ? ' style="width:' + w + 'px"' : '') + '><div class="dlg-h"><b>' + title + '</b><span class="grow"></span>' + ib('x-lg') + '</div><div class="dlg-b">' + body + '</div><div class="dlg-f">' + foot + '</div></div>'; }
+function cap(n, title, text) { return '<div class="cap">' + (n ? '<i>' + n + '</i>' : '') + '<b>' + title + '</b>' + (text ? '<span>' + text + '</span>' : '') + '</div>'; }
+function band(n, title, text) { return '<div class="band"><i>' + n + '</i><b>' + title + '</b>' + (text ? '<span>' + text + '</span>' : '') + '</div>'; }
+function side(list) { return '<div class="side">' + list.map(function (n) { return '<div>' + n + '</div>'; }).join('') + '</div>'; }
+function notes(list) { return '<div class="notes">' + list.map(function (n) { return '<div>' + n + '</div>'; }).join('') + '</div>'; }
+function wrap(letter, title, sub, body, list) {
+  return '<div class="frame-wrap" id="f' + letter + '"><div class="frame-head"><span class="frame-letter">' + letter + '</span><span class="frame-title">' + title + '</span><span class="frame-sub">' + sub + '</span></div>' + body + (list ? notes(list) : '') + '</div>';
+}
+function frame(inner) { return '<div class="frame"><div class="pad">' + inner + '</div></div>'; }
+function scr(inner, c) {
+  return '<div class="scr' + (c ? ' ' + c : '') + '"><div class="tb"><span class="logo"></span><span class="ttl">Translations</span><span class="s"></span><span class="grow"></span><span class="c"></span><span class="c"></span><span class="c"></span><span class="u"></span></div>' +
+    '<div class="nav"><i></i><i></i><i></i><i></i><i></i><i></i><i class="on"></i><i></i><i></i><i></i></div><div class="pg">' + inner + '</div></div>';
+}
+
+/* ── the head, the automation line, the progress card ── */
+var LANGS = [['English', 'en', '26%', 0], ['German', 'de', '62%', 0], ['French', 'fr', '41%', 0], ['Arabic', 'ar', '8%', 1]];
+function langMenu(cur) {
+  return '<span class="pop abs" style="width:336px">' + LANGS.map(function (l) {
+    return '<span class="mi' + (l[0] === cur ? ' cur' : '') + '">' + '<i class="bi bi-check-lg" style="color:var(--accent);' + (l[0] === cur ? '' : 'visibility:hidden') + '"></i>' + l[0] + '<span class="cd mono">' + l[1] + '</span><span class="pc">' + l[2] + '</span><span class="tg">' + (l[3] ? pill('Not served', 'gray', 1) : '') + '</span></span>';
+  }).join('') + '<span class="mdiv"></span><span class="mi">' + ic('gear') + 'Languages and Translation</span></span>';
+}
+var MORE = [['download', 'Export CSV'], ['download', 'Export pending texts as CSV'], ['file-earmark-spreadsheet', 'Export to Excel'], ['upload', 'Import CSV'], '-', ['eraser', 'Clear translations', 'bad'], '-', ['gear', 'Languages and Translation']];
+function head(o) {
+  o = o || {};
+  var lang = o.lang || ['English', 'en'];
+  return '<div class="hd"><span class="hdl">' + '<span class="b fill">' + ic('translate') + lang[0] + '<span class="cd mono">' + lang[1] + '</span>' + ic('chevron-down') + '</span>' + (o.menu === 'lang' ? langMenu(lang[0]) : '') + '</span>' +
+    seg([['Texts'], ['Activity', o.act === undefined ? '1' : o.act], ['Glossary', '6']], o.tab || 0) + '<span class="grow"></span>' +
+    (o.manual ? b('Scan for new texts', 'fill', 'arrow-repeat') : b('Translate pending<em>' + (o.pending || '888') + '</em>', 'fill', 'play-fill') + b('Scan for new texts', 'quiet', 'arrow-repeat')) +
+    '<span class="hdl">' + ib('three-dots', o.menu === 'more' ? 'on' : '') + (o.menu === 'more' ? menu(MORE, 'abs r', 'width:268px') : '') + '</span></div>';
+}
+function rc(k, v, c) { return '<span class="rc' + (c ? ' ' + c : '') + '"><span>' + k + ':</span><b>' + v + '</b></span>'; }
+function auto(s) {
+  if (s === 'warn') return '<div class="pcard au warn">' + ic('exclamation-triangle') + '<b>Automation</b>' + rc('Engine', 'Google Cloud Translation', 'warn') + rc('Fallback', 'None') + rc('Translate on save', 'On') + '<span class="aw">Google Cloud Translation is not connected</span><span class="lnk">Connect in Connections</span><span class="grow"></span>' + b('Change', 'quiet sm') + '</div>';
+  if (s === 'hand') return '<div class="pcard au">' + ic('pencil') + '<b>Automation</b>' + rc('Engine', 'By hand') + rc('Translate on save', 'Off') + '<span class="q">Texts are translated here by hand; "Scan for new texts" lists what is new.</span><span class="grow"></span>' + b('Change', 'quiet sm') + '</div>';
+  if (s === 'run') return '<div class="pcard au"><span class="spin"></span><b>Translating "Forms" with Claude…</b><span class="num q">42 of 205</span><span class="bar"><b style="width:20%"></b></span>' + b('Stop', 'quiet sm') + '<span class="lnk" style="margin:0 8px 0 4px">Open in Activity</span></div>';
+  if (s === 'phone') return '<div class="pcard au">' + ic('lightning-charge') + '<b>Automation</b>' + rc('Engine', 'Claude') + '<span class="grow"></span>' + b('Change', 'quiet sm') + '</div>';
+  return '<div class="pcard au">' + ic('lightning-charge') + '<b>Automation</b>' + rc('Engine', 'Claude') + rc('Fallback', 'Google Cloud Translation') + rc('Translate on save', 'On') + '<span class="grow"></span>' + b('Change', 'quiet sm') + '</div>';
+}
+
+/* ── the rail ── */
+var VERDICT = { in: 'search', out: 'eye-slash warn', own: 'slash-circle', wait: 'hourglass' };
+var PAGES = [['Home', 58, 58, 'in'], ['About us', 36, 36, 'in'], ['Services', 15, 64, 'out'], ['Monthly Service Plan', 12, 40, 'out'], ['Gift baskets', 0, 52, 'out'], ['Contact', 22, 22, 'in'], ['Blog', 0, 120, 'own'], ['Frequently asked questions', 0, 48, 'wait']];
+var GROUPS = [['bag', 'Products, product groups and offers', 127, 498], ['ui-checks', 'Forms', 42, 205], ['image', 'Images', 4, 61], ['window', 'Cookie window', 0, 0, 'Not scanned']];
+function fmt(n) { return String(n).replace(/\B(?=(\d{3})+$)/g, ','); }
+function rr(name, done, total, o) {
+  o = o || {};
+  return '<div class="rr' + (o.g ? ' g' : '') + (o.sel ? ' sel' : '') + '"' + (o.id ? ' id="' + o.id + '"' : '') + '>' + (o.g ? ic(o.g) : '') + '<span class="n">' + name + '</span><span class="c">' + (o.word || (fmt(done) + '/' + fmt(total))) + '</span>' + (o.v ? ic(VERDICT[o.v]) : (o.g ? '' : '<i></i>')) + '<span class="bar t3"' + (o.bid ? ' id="' + o.bid + '"' : '') + '><b style="width:' + (total ? Math.round(done / total * 100) : 0) + '%"></b></span></div>';
+}
+function railList(cur, o) {
+  o = o || {};
+  var h = find('Find a page', 'sm') + rr('All texts', o.zero ? 0 : 316, o.zero ? 0 : 1204, { g: 'collection', sel: cur === 'All texts', id: o.id, bid: o.bid, word: o.zero ? '0/0' : '' });
+  h += '<div class="rl-h">Pages<span>' + (o.zero ? '0' : '3') + ' reviewed</span></div>';
+  if (!o.zero) PAGES.slice(0, o.pages || 8).forEach(function (p) { h += rr(p[0], p[1], p[2], { v: p[3], sel: cur === p[0] }); });
+  h += '<div class="rl-h">Other texts</div>';
+  GROUPS.forEach(function (g) { h += rr(g[1], o.zero ? 0 : g[2], o.zero ? 0 : g[3], { g: g[0], sel: cur === g[1], word: o.zero ? (g[1] === 'Images' ? 'None yet' : 'Not scanned') : g[4] }); });
+  return h;
+}
+function rail(cur, o) { return '<div class="pcard rl"' + (o && o.rid ? ' id="' + o.rid + '"' : '') + '>' + railList(cur, o) + '</div>'; }
+
+/* ── the main column ── */
+var TILES = [['All', ''], ['Pending', 'gray'], ['Machine', 'amber'], ['Reviewed', 'teal'], ['Suspicious', 'rose'], ['Keeping pages out of search', 'x']];
+function tiles(counts, on, id) {
+  return '<div class="tiles">' + counts.map(function (c, i) {
+    return '<div class="tl' + (i === on ? ' on' : '') + '"' + (id && i === 0 ? ' id="' + id + '"' : '') + '><b>' + c + '</b><span>' + (TILES[i][1] === 'x' ? ic('eye-slash') : (TILES[i][1] ? '<i class="dot t-' + TILES[i][1] + '"></i>' : '')) + TILES[i][0] + '</span></div>';
+  }).join('') + '</div>';
+}
+function scope(name, count, page) { return '<div class="sh"><h2>' + name + '</h2><span class="q num">' + count + ' texts</span>' + (page ? '<span class="grow"></span><span class="lnk">' + ic('box-arrow-up-right') + ' Open the page</span>' : '') + '</div>'; }
+function tools(approve) { return '<div class="tools">' + find('Search in the texts') + '<span class="grow"></span>' + (approve ? b('Approve all<em>' + approve + '</em>', 'quiet', 'check2-all') : '') + '</div>'; }
+function selall(range, state) { return '<div class="selall"><span class="ck' + (state ? ' some' : '') + '">' + (state ? ic(state === 2 ? 'check' : 'dash') : '') + '</span>Select all on this page<span class="r num">' + range + '</span></div>'; }
+function pager(range, last) { return '<div class="pgn"><span class="num">' + range + '</span><span class="grow"></span><span class="p">' + ic('chevron-left') + '</span><span class="p on">1</span><span class="p">2</span><span class="p">3</span><span class="p">…</span><span class="p">' + last + '</span><span class="p">' + ic('chevron-right') + '</span></div>'; }
+
+/* ── the row ── */
+var STS = { pending: ['Pending', 'gray'], machine: ['Machine', 'amber'], reviewed: ['Reviewed', 'teal'] };
+var PH = 'Not translated yet: the source text is shown on the page.';
+function mark(m) {
+  if (m === 'pic') return '<span class="pill plain pic">' + ic('image') + 'new-year-banner</span>';
+  if (m === 'pic-open') return '<span class="hdl"><span class="pill plain pic" style="box-shadow:inset 0 0 0 1px var(--accent)">' + ic('image') + 'new-year-banner</span><span class="pop abs" style="top:26px;width:216px"><span class="mi cur">' + ic('easel') + 'Edit in Artifact Canvas</span></span></span>';
+  return pill(m, 'gray', 1);
+}
+function detail(d) {
+  var h = '<div class="det"><span class="k">Used in:</span><span class="v">' + d.used.map(function (u) { return '<span class="lnk">' + ic(u[0]) + u[1] + '</span>'; }).join('') + '</span>';
+  if (d.old) h += '<span class="k">Earlier wording:</span><span class="v old"><span>' + d.old[0] + '<s>→</s>' + d.old[1] + '</span></span>';
+  if (d.susp) h += '<span class="susp">' + ic('exclamation-triangle') + d.susp + '</span>';
+  return h + '<span class="da">' + b('Translate again', 'quiet sm', 'arrow-repeat') + b('Keep as in the source and approve', 'quiet sm', 'check2-square') + '</span></div>';
+}
+function row(o) {
+  var st = STS[o.st];
+  var h = '<div class="tr' + (o.tick ? ' picked' : '') + '"' + (o.id ? ' id="' + o.id + '"' : '') + '>';
+  h += '<span class="tk"><span class="ck' + (o.tick ? ' on' : '') + '">' + (o.tick ? ic('check') : '') + '</span></span>';
+  h += '<div class="src"><div class="s' + (o.clamp ? ' clamp' : '') + (o.code ? ' code mono' : '') + '">' + o.src + '</div>' + (o.clamp ? '<span class="lnk sa">Show all</span>' : '') + '<div class="ms">' + (o.marks || []).map(mark).join('') + '<span class="hash mono">' + o.hash + '</span></div></div>';
+  h += '<div class="tc"><div class="tx' + (o.focus ? ' focus' : '') + (o.err ? ' err' : '') + '"' + (o.rtl ? ' dir="rtl" lang="ar"' : '') + '>' + (o.tr ? o.tr + (o.focus ? '<span class="caret"></span>' : '') : '<span class="ph">' + PH + '</span>') + '</div>' + (o.err ? '<div class="why">' + ic('exclamation-circle') + '<span>' + o.err + '</span></div>' : '') + '</div>';
+  h += stt(o);
+  if (o.det) h += detail(o.det);
+  return h + '</div>';
+}
+function stt(o) {
+  var st = STS[o.st];
+  return '<div class="stt"' + (o.sid ? ' id="' + o.sid + '"' : '') + '><span class="pill t-' + st[1] + '">' + st[0] + '</span>' + (o.eng ? '<span class="eng">' + o.eng + '</span>' : '') + (o.susp ? pill('Suspicious', 'rose') : '') +
+    '<span class="acts"><span class="b quiet sm' + (o.unsaved ? ' unsaved' : '') + '">' + ic('check-lg') + 'Save</span>' + (o.st !== 'pending' ? ib(o.st === 'reviewed' ? 'eye-slash' : 'eye', 'sm') : '') + ib(o.det ? 'chevron-up' : 'chevron-down', 'sm' + (o.det ? ' on' : '')) + '</span></div>';
+}
+function ext(o, more) { var r = {}, k; for (k in o) r[k] = o[k]; for (k in more) r[k] = more[k]; return r; }
+var LONG_S = 'Aylık Hizmet Planı ile kahveniz her ayın ilk haftasında kapınıza gelir. Çekirdekleri siparişinizden sonra kavurur, öğütme derecesini demleme yönteminize göre ayarlarız. Planı dilediğiniz zaman duraklatabilir, adresinizi ve teslim gününüzü hesabınızdan değiştirebilirsiniz. İlk kutunuzda bir demleme rehberi ve iki tadımlık paket hediye olarak gelir; beğenmediğiniz kahveyi bir sonraki ay ücretsiz değiştiririz.';
+var LONG_T = 'With the Monthly Service Plan your coffee arrives at your door in the first week of every month. We roast the beans after your order and set the grind for the way you brew. You can pause the plan whenever you like and change your address and delivery day from your account. Your first box brings a brewing guide and two tasting packs as a gift; a coffee you did not like is replaced free of charge the next month.';
+var R = {
+  plan: { src: 'Aylık Hizmet Planı', marks: ['SEO'], hash: 'f3919060', tr: 'Monthly Service Plan', st: 'reviewed', eng: 'By hand' },
+  basket: { src: 'Hediye sepeti', hash: '446ed0ec', tr: 'Gift basket', st: 'machine', eng: 'Claude' },
+  desc: { src: 'El yapımı çikolata, kuru meyve ve taze çekilmiş kahveden oluşan hediye sepeti. Siparişler aynı gün kargoya verilir.', hash: '7276f39d', tr: 'A gift basket of handmade chocolate, dried fruit and freshly ground coffee. Orders are shipped the same day.', st: 'machine', eng: 'Claude' },
+  ship: { src: 'Ücretsiz kargo', hash: 'b609e93c', tr: 'Ücretsiz kargo', st: 'machine', eng: 'Claude', susp: 1 },
+  name: { src: 'Adınız ve soyadınız', hash: '2970ce2f', tr: 'Your full name', st: 'pending', focus: 1, unsaved: 1 },
+  cart: { src: 'Sepete ekle', hash: '3fece1e7', st: 'pending' },
+  html: { src: '&lt;strong&gt;%20 indirim&lt;/strong&gt; yalnızca bu hafta', code: 1, marks: ['HTML'], hash: 'a707d6fe', tr: '&lt;strong&gt;20% off&lt;/strong&gt; this week only', st: 'reviewed', eng: 'Claude' },
+  long: { src: LONG_S, clamp: 1, hash: 'edbecc03', tr: LONG_T, st: 'machine', eng: 'Claude' },
+  contact: { src: 'Bize ulaşın', hash: '693a06ea', st: 'pending' },
+  hello: { src: 'Merhaba {name}, siparişiniz yola çıktı.', hash: 'df302170', tr: 'Hello, your order is on its way.', st: 'pending', unsaved: 1, err: 'The translation must keep the placeholders of the source text.' },
+  yes: { src: 'Evet', hash: '25db18da', tr: 'Yes, of course, we would be glad to help you with that', st: 'machine', eng: 'Google Cloud Translation', susp: 1 }
+};
+var USED = [['file-earmark-text', 'Home'], ['file-earmark-text', 'Gift baskets'], ['layers', 'Footer (shared component)'], ['list', 'Main menu'], ['bag', 'Gift basket (product)'], ['ui-checks', 'Order form']];
+function list(rows, o) {
+  o = o || {};
+  return '<div class="pcard lc">' + (o.tools === false ? '' : tools(o.approve)) + (o.note || '') + selall(o.range || '1–100 of 1,204', o.some) + rows + (o.foot || '') + '</div>';
+}
+
+/* ── A: today ── */
+function oldRow(src, hash, tr, st, eng, o) {
+  o = o || {};
+  return '<div class="otr"><span class="ck' + (o.tick ? ' on' : '') + '" style="margin-top:8px' + (st === 'reviewed' ? ';visibility:hidden' : '') + '">' + (o.tick ? ic('check') : '') + '</span><div style="padding-top:6px;font-size:14.5px">' + src + '<div class="hash mono" style="margin-top:6px;font-size:12px">' + hash + '</div></div>' +
+    '<div class="otx">' + (tr || '<span style="color:var(--fg3)">' + PH + '</span>') + '</div>' +
+    '<div class="ost"' + (o.id ? ' id="' + o.id + '"' : '') + '>' + pill(STS[st][0], STS[st][1]) + (eng ? '<span class="hash">' + eng + '</span>' : '') + (o.tri ? '<span class="tri">' + ic('exclamation-triangle') + '</span>' : '') + '<span style="flex-basis:100%;height:0"></span>' + b('Save', 'quiet sm', 'check-lg') + (st !== 'pending' ? ib(st === 'reviewed' ? 'eye-slash' : 'eye', 'sm') : '') + '</div></div>';
+}
+var JOBS = [['Done', 'teal', 'Forms · 42 texts · yesterday'], ['Failed', 'rose', 'Whole site · 3 days ago'], ['Done', 'teal', 'Home · 58 texts · 6 days ago'], ['Cancelled', 'rose', 'Whole site · 8 days ago'], ['Done', 'teal', 'Contact · 22 texts · 9 days ago'], ['Done', 'teal', 'About us · 36 texts · 9 days ago'], ['Done', 'teal', 'Services · 15 texts · 12 days ago'], ['Done', 'teal', 'Images · 4 texts · 14 days ago']];
+var OLD = '<div class="oldwrap" id="oldwrap"><div class="oldscr">' + scr(
+  '<div class="otb"><span class="b fill">' + ic('translate') + 'English<span class="cd mono">en</span>' + ic('chevron-down') + '</span>' + b('Update translations', 'ghost', 'arrow-repeat') + '<span id="o-eng" style="width:250px;flex:none">' + sel('Claude') + '</span>' + b('Approve all <span style="font-weight:400">214</span>', 'ghost', 'check2-all') +
+    '<span class="ochips" id="o-chips"><span class="chip">All <em>1,204</em></span><span class="chip">Pending <em>888</em></span><span class="chip">Machine <em>214</em></span></span><span style="flex:1;min-width:0">' + find('Search in the texts') + '</span></div>' +
+  '<div id="o-more" style="display:flex;margin:-2px 0 0 4px">' + ib('three-dots-vertical') + '</div><div style="height:1px;background:var(--line)"></div>' +
+  '<div class="nt gray">' + ic('robot') + '<span>Claude’s routine in the Workspace is told there is work: it fetches the texts through the API with their context, the glossary and the style note, and posts the translations back.</span></div>' +
+  '<div class="ocols"><div id="o-left" style="display:grid;gap:14px">' +
+    '<div class="ocard"><div class="oct">Pages<span>3 reviewed</span></div><div class="ol">' + ic('collection') + 'All pages<span>143/440</span></div><div class="ol">' + ic('house-door') + 'Home<span>58/58</span></div><div class="ol">About us<span>36/36</span></div><div class="ol">Services<span>15/64</span></div><div class="ol">Monthly Service Plan<span>12/40</span></div></div>' +
+    '<div class="ocard"><div class="oct">Other texts</div><div class="ol sel">' + ic('bag') + 'Products, product groups and offers<span>127/498</span></div><div class="ol">' + ic('ui-checks') + 'Forms<span>42/205</span></div><div class="ol">' + ic('image') + 'Images<span>4/61</span></div></div>' +
+    '<div class="ocard" style="padding-bottom:10px"><div class="oct">Recent updates</div>' + JOBS.map(function (j) { return '<div class="oj">' + pill(j[0], j[1]) + j[2] + '</div>'; }).join('') + '</div>' +
+    '<div class="ocard" style="padding-bottom:12px"><div class="oct">Glossary<span>' + b('Add a term', 'quiet sm', 'plus-lg') + '</span></div><div class="oj" style="color:var(--fg)"><b style="font-weight:600">Mavi Atölye</b>' + pill('keep as written', 'gray', 1) + '<span class="grow"></span>' + ib('pencil', 'sm') + ib('x-lg', 'sm bad') + '</div><div class="oj" style="color:var(--fg)"><b style="font-weight:600">Hediye sepeti</b>Gift basket<span class="grow"></span>' + ib('pencil', 'sm') + ib('x-lg', 'sm bad') + '</div></div>' +
+  '</div><div class="ocard"><div class="oct">Products, product groups and offers<span>498 texts</span></div><div style="display:flex;align-items:center;gap:10px;padding:0 20px 12px;font-size:13.5px"><span class="ck"></span>Select all on this page' + b('Keep as in the source and approve', 'quiet sm', 'check2-square') + '</div>' +
+    oldRow('Aylık Hizmet Planı', 'f3919060', 'Monthly Service Plan', 'reviewed', 'By hand') + oldRow('Hediye sepeti', '446ed0ec', 'Gift basket', 'machine', 'Claude') + oldRow('Ücretsiz kargo', 'b609e93c', 'Ücretsiz kargo', 'machine', 'Claude', { tri: 1, id: 'o-tri' }) + oldRow('Sepete ekle', '3fece1e7', '', 'pending') + oldRow('Bize ulaşın', '693a06ea', '', 'pending') + oldRow('Adınız ve soyadınız', '2970ce2f', '', 'pending') + oldRow('Yıllık Hizmet Planı', '711cda19', '', 'pending') +
+  '</div></div>') + '</div></div>';
+var FAULTS = ['<b>The filter chips are clipped.</b> “All”, “Pending”, “Machine”, “Reviewed”, “Suspicious” and “Keeping pages out of search” share what is left of the toolbar; at 1440 px the row is cut after the second chip and “More” falls to a line of its own.',
+  '<b>The engine is a select that saves on pick,</b> between two buttons, with its explanation in a note under the toolbar. The fallback engine and “Translate on save” are on another screen.',
+  '<b>Four cards share the left column:</b> “Pages”, “Other texts”, “Recent updates” (the last 8 updates, with nothing to press) and “Glossary”. On a site with many pages the last two are far below the fold.',
+  '<b>A suspicious text’s red triangle</b> sits on top of the engine’s name. A reviewed row has no tick, so it cannot be chosen with the others.',
+  '<b>Every move reloads the screen:</b> a filter, a page, a save of the whole list. The typing in other rows and the place in the list are lost with it.'];
+var A = frame('<div class="rowf">' + OLD + '<div class="side" style="flex:1">' + FAULTS.map(function (f, i) { return '<div class="fl"><span class="fm">' + (i + 1) + '</span><div>' + f + '</div></div>'; }).join('') + '</div></div>');
+
+/* ── B: the screen as it opens ── */
+var B_ROWS = row(R.plan) + row(R.basket) + row(R.desc) + row(R.ship) + row(R.name) + row(R.cart) + row(R.html) + row(R.long) + row(R.contact);
+function screen(o) {
+  return scr(head(o.head) + (o.under || auto()) + '<div class="body">' + rail(o.cur || 'All texts', o.rail) + '<div class="main">' + o.main + '</div></div>', o.cls);
+}
+var B = screen({ main: scope('All texts', '1,204') + tiles(['1,204', '888', '214', '102', '6', '64'], 0) + list(B_ROWS, { approve: '214', foot: pager('1–100 of 1,204', '13') }) });
+
+/* ── C: the row's states ── */
+var R_AR = { src: 'Siparişler aynı gün kargoya verilir.', hash: 'e07f6c9c', tr: 'تُشحن الطلبات في اليوم نفسه.', st: 'reviewed', eng: 'By hand', rtl: 1 };
+var R_DET = ext(R.yes, { det: { used: USED, old: ['Evet, lütfen', 'Yes, please'], susp: 'The length of the translation is out of proportion to the source text.' } });
+var C_STATES = [
+  ['Pending and empty', 'the box says what visitors read meanwhile', R.cart], ['Typed and not saved', '“Save” takes the accent until the text is stored', R.name], ['Machine', 'the engine’s name under the pill; the eye is “Mark as reviewed”', R.basket],
+  ['Reviewed', 'the crossed eye is “Mark as not reviewed”', R.plan], ['Machine and suspicious', '“Suspicious” on a line of its own', R.ship], ['A refused save', 'the reason under the box, the typing kept', R.hello],
+  ['Details open', 'the caret turns; the row grows downward under the source and the translation', R_DET], ['A long source', 'four lines, then “Show all”; the box is as tall as its text', R.long], ['Right to left', 'a translation into Arabic: the box reads from the right', R_AR]
+];
+var C = frame('<div class="split"><div class="pcard">' + C_STATES.map(function (s, i) { return band(i + 1, s[0], s[1]) + row(s[2]); }).join('') + '</div>' + side([
+    '<b>One grid for every row:</b> tick 28 px, source, translation, state 176 px; the source and the translation share what is left equally, so the two texts start on the same line and are read across.',
+    '<b>The source</b> is text, not a field. Under it one quiet line: what the text is (“SEO”, “HTML”, the picture’s chip in Images) and its 8-character hash in mono, as today.',
+    '<b>The translation box</b> grows with its text and has no resize handle. Its placeholder is today’s sentence.',
+    '<b>The state column</b> reads top to bottom: the pill, the engine’s name, “Suspicious” when it applies, then the row’s three actions on one line: “Save”, the eye, the “Details” caret. A pending row has no eye.',
+    '<b>“Details”</b> holds what today is nowhere on the screen (where the text is used, the wording it replaced) and what today is behind the triangle’s tooltip (why it is suspicious), with the row’s own “Translate again” and “Keep as in the source and approve”.',
+    '<b>A refused save</b> prints the server’s own sentence in rose under the box; the sentence drawn is a stand-in. The typing stays and “Save” keeps its accent.',
+    '<b>A save in place:</b> the pill turns to “Reviewed”, the tiles’ and the rail’s counts follow, the cursor moves to the next row’s box. Nothing reloads.'
+  ]) + '</div>' +
+  '<div class="zoomrow"><div>' + cap('', 'The state column, three times enlarged', 'machine and suspicious') + '<div class="pcard zbox"><div class="zm">' + stt(R.ship) + '</div></div></div>' +
+  '<div>' + cap('', 'Typed and not saved', 'the accent on “Save”: its text and a 1 px line') + '<div class="pcard zbox"><div class="zm">' + stt(R.name) + '</div></div></div>' +
+  side(['<b>Pill</b> 22 px high, 12 px text.', '<b>Engine’s name</b> 12 px, quiet; cut with an ellipsis past 176 px.', '<b>Actions</b> 28 px high, 4 px apart: “Save” small, then two 28 px icon buttons.', '<b>Lines</b> 5 px apart; the actions 8 px under the last pill.']) + '</div>');
+
+/* ── D: selection ── */
+var BULK = '<div class="bulkwrap"><div class="bulk"><b>3 selected</b>' + b('Approve', 'quiet sm', 'check2') + b('Translate again', 'quiet sm', 'arrow-repeat') + b('Keep as in the source and approve', 'quiet sm', 'check2-square') + b('Clear', 'ghost sm') + ib('x-lg', 'sm') + '</div></div>';
+var CANCEL = b('Cancel', 'quiet');
+var D = frame('<div class="split">' + list(row(ext(R.basket, { tick: 1 })) + row(ext(R.desc, { tick: 1 })) + row(ext(R.plan, { tick: 1 })) + row(R.cart), { approve: '214', some: 1, foot: BULK }) + side([
+    '<b>Every row has a tick,</b> a reviewed one too: today a reviewed row cannot be chosen. “Select all on this page” ticks the 100 texts shown; with some ticked its box shows a dash.',
+    '<b>The selection bar</b> is the look’s bulk bar: it rises at the foot of the list once a row is ticked and stays at the window’s lower edge while the list scrolls. Its actions are small quiet buttons, “Clear” a ghost one, the × takes the ticks off.',
+    '<b>“Approve”</b> marks the ticked texts as reviewed at once. “Keep as in the source and approve” keeps today’s dialog and wording.',
+    '<b>Today</b> the one action for ticked rows, “Keep as in the source and approve”, stands above the list and reloads the screen.'
+  ]) + '</div>' +
+  '<div class="rowf"><div>' + cap(1, '“Translate again”', 'from the bar or a row’s details') + dlg('Translate again', '<p class="strong">3 text(s) will be sent to Claude again.</p>' + ckl('Replace the reviewed ones as well', 0), CANCEL + b('Translate again', 'fill'), 430) + '</div>' +
+  '<div>' + cap(2, '“Approve all”', 'today’s dialog, unchanged') + dlg('Approve all', '<p>The machine translations of the texts shown here are marked as reviewed, as the engine gave them.</p>' + ckl('Approve the ones flagged suspicious as well', 0, 'An answer that repeats the source text, or whose length is out of proportion to it, is flagged suspicious. <span class="lnk">Show the suspicious ones</span>') + '<p class="strong">208 translation(s) will be marked as reviewed.</p>', CANCEL + b('Approve', 'fill'), 446) + '</div>' +
+  '<div>' + cap(3, '“Clear”', 'asks as “Clear translations” does today') + dlg('Clear translations', '<p>The translations of the 3 selected text(s) are deleted, so the next "Translate pending" sends the texts to the engine again. A text that is also used elsewhere loses its translation there too.</p>' + ckl('Delete the reviewed translations as well', 0), CANCEL + b('Clear translations', 'danger'), 446) + '</div></div>');
+
+/* ── E: the head's parts ── */
+var ENGINES = [['By hand'], ['Google Cloud Translation (not ready)', 'q'], ['Browser (Chrome Translator API)'], ['Browser AI (Gemini Nano)'], ['Pinegrap AI'], ['Claude', 'cur']];
+function autoDlg(kind) {
+  var hand = kind === 'hand';
+  var engine = field('Translation engine', kind === 'open'
+    ? '<div class="hdl" style="display:block"><div class="in" style="border-color:var(--accent)"><span>Claude</span>' + ic('chevron-down', 'end') + '</div><span class="pop abs" style="left:0;right:0">' + ENGINES.map(function (e) { return '<span class="mi' + (e[1] === 'cur' ? ' cur' : '') + '"' + (e[1] === 'q' ? ' style="color:var(--fg3)"' : '') + '>' + e[0] + (e[1] === 'cur' ? '<span class="grow"></span>' + ic('check-lg') : '') + '</span>'; }).join('') + '</span></div>'
+    : sel(hand ? 'By hand' : 'Claude'));
+  return dlg('Automation for English', engine +
+    field('Fallback engine', sel(hand ? 'None' : 'Google Cloud Translation', hand ? 'off' : ''), 'Takes the texts the engine could not translate.') +
+    '<div class="swl"><span class="sw' + (hand ? ' off' : ' on') + '"></span><div><b' + (hand ? ' style="color:var(--fg2)"' : '') + '>Translate on save</b><small>A saved page, form record, product or picture is sent to the engine by itself.</small>' + (hand ? '<small style="color:var(--amber-text)">Off with "By hand": there is no engine to send the texts to.</small>' : '') + '</div></div>' +
+    '<p style="font-size:12.5px">' + ic('clock') + ' Waiting work is picked up every 5 minutes, with nobody on this screen.</p>',
+    '<span class="lnk">Languages and Translation</span><span class="grow"></span>' + CANCEL + b('Save', 'fill'), 440);
+}
+var E = frame('<div class="cols2"><div>' + cap(1, 'The language menu', 'every target language with its code, its share translated and “Not served”') + '<div class="pcard crop" style="height:312px">' + head({ menu: 'lang' }).replace(/<span class="b fill"><i class="bi bi-play-fill">.*$/, '</div>') + '</div></div>' +
+  '<div>' + cap(2, '“More”', 'the exports, the import, “Clear translations”, the settings') + '<div class="pcard crop" style="height:312px"><div class="hd"><span class="grow"></span>' + head({ menu: 'more' }).replace(/^.*?<span class="grow"><\/span>/, '') + '</div></div></div>' +
+  '<div class="stack"><div>' + cap(3, 'The automation line, ready', 'three values to read, one button to change them') + auto() + '</div>' +
+  '<div>' + cap(4, 'The engine is not ready', 'amber, with what is missing and where it is put right') + auto('warn') + '</div>' +
+  '<div>' + cap(5, 'By hand', 'no “Translate pending”: “Scan for new texts” is the head’s filled button') + '<div class="stack" style="gap:12px">' + head({ manual: 1, act: '' }) + auto('hand') + '</div></div>' +
+  '<div>' + cap(6, 'While an update runs', 'the progress card takes the line’s place; the list under it fills in as texts come back') + auto('run') + '</div></div>' +
+  '<div class="rowf"><div>' + cap(7, '“Change” opens the dialog', 'nothing is saved before “Save”') + autoDlg() + '</div><div>' + cap(8, 'The engine list', 'a not-ready engine says so, as today') + autoDlg('open') + '</div><div>' + cap(9, 'With “By hand”', 'the switch is off and greyed, with its reason') + autoDlg('hand') + '</div></div>');
+
+/* ── F: a page chosen, and the Images group ── */
+var WHY = '<div class="nt lnote">' + ic('eye-slash') + '<div>Kept out of search results in English: when the page was last drawn, some of the texts on it had no approved translation.';
+var F_PAGE = '<div class="main">' + scope('Monthly Service Plan', '40', 1) + tiles(['40', '28', '9', '3', '1', '37'], 0) + list(row(R.plan) + row(R.long), { approve: '9', range: '1–40 of 40', note: WHY + ' <span class="lnk">Why?</span></div></div>' }) + '</div>';
+var F_WHY = '<div class="main">' + scope('Monthly Service Plan', '40', 1) + tiles(['40', '28', '9', '3', '1', '37'], 5) + list(row(R.basket) + row(R.cart), { approve: '9', range: '1–37 of 37', note: WHY + '<div style="margin-top:8px">37 text(s) here have no translation, or one that is neither approved nor the same as the source text. They come from:</div><ul><li>This page<em>21</em></li><li>Footer (shared component)<em>9</em></li><li>Main menu<em>5</em></li><li>Order form<em>2</em></li></ul></div></div>' }) + '</div>';
+var IMG_NOTE = '<div class="nt gray lnote">' + ic('info-circle') + '<div>The texts of pictures made in the Artifact Canvas whose words are text layers. A picture is listed once a page that shows it is saved in the Visual Page Editor or opened in another language; a photo or an uploaded picture whose words are in its pixels is not. Once all of a language’s texts are translated, its picture is drawn by itself. "Draw the waiting pictures" draws them now.</div></div>';
+var F_IMG = '<div class="main">' + scope('Images', '61') + tiles(['61', '57', '3', '1', '0', '0'], 0) +
+  '<div class="pcard lc"><div class="tools">' + find('Search in the texts') + '<span class="grow"></span>' + b('Draw the waiting pictures<em>3</em>', 'quiet', 'brush') + b('Approve all<em>3</em>', 'quiet', 'check2-all') + '</div>' + IMG_NOTE + selall('1–61 of 61') +
+  row({ src: 'Yeni yıl hediye sepetleri', marks: ['pic-open'], hash: 'a37062ee', tr: 'New Year gift baskets', st: 'machine', eng: 'Claude' }) + row({ src: 'Hemen sipariş verin', marks: ['pic'], hash: '928f8a47', st: 'pending' }) + '</div></div>';
+var F = frame('<div class="split"><div>' + cap(1, 'A page chosen', 'its name, its count and “Open the page”; the index note above the list') + F_PAGE + '</div>' + side([
+    '<b>The scope head</b> names what the list holds: “All texts”, a page or a group, with its count of texts; a page adds “Open the page”.',
+    '<b>The index note</b> is today’s sentence in today’s four states (in search results, kept out, the page’s own setting, not checked yet). It is drawn only for a page, under the tool line.'
+  ]) + '</div><div class="split"><div>' + cap(2, 'After “Why?”', 'the list is filtered to “Keeping pages out of search” and the note names where the texts come from') + F_WHY + '</div>' + side([
+    '<b>“Why?”</b> chooses the sixth tile and adds “They come from:” with the owners and their counts, as today; today’s closing line on what is counted stays under the list of owners.',
+    '<b>The sixth tile</b> is there only while the language’s search policy is “Reviewed texts only”; the rail’s search icons too.'
+  ]) + '</div><div class="split"><div>' + cap(3, 'The Images group', 'its note, “Draw the waiting pictures” with its count, and a row’s picture chip opened') + F_IMG + '</div>' + side([
+    '<b>“Draw the waiting pictures”</b> stands in the tool line with the number of pictures waiting. The queue view it opens is not redrawn: it stays as it is today.',
+    '<b>A row’s picture chip</b> names the picture; pressed, it offers “Edit in Artifact Canvas”, as today’s chip does.'
+  ]) + '</div>');
+
+/* ── G: Activity ── */
+var RUNS = [
+  ['Running', 'amber', 'Forms', 'Claude', '42 of 205', '', 'Elif Kara', '2 minutes ago', '', 20], ['Sent', 'amber', 'Gift baskets', 'Claude', '0 of 52', '', 'Mert Demir', '2 minutes ago', ''], ['Queued', 'amber', 'Images', 'Claude', '0 of 57', '', 'Elif Kara', '1 minute ago', ''],
+  ['Done', 'teal', 'Services', 'Claude', '15 of 22', '3 failed', 'Elif Kara', 'Yesterday 16:40', '3 min', 0, 1], ['Done', 'teal', 'Home', 'Claude', '58 of 58', '', 'Mert Demir', '2 days ago', '2 min'],
+  ['Failed', 'rose', 'Blog', 'Google Cloud Translation', '0 of 120', '', 'Mert Demir', '3 days ago', '4 s'], ['Cancelled', 'rose', 'Whole site', 'Claude', '46 of 1,204', '', 'Elif Kara', '5 days ago', '3 min']
+];
+var G_TABLE = '<div class="pcard"><table class="tbl"><tr><th style="width:120px">Status</th><th>What</th><th>Engine</th><th>Progress</th><th>By</th><th>Started</th><th style="width:90px">Took</th></tr>' + RUNS.map(function (r) {
+  return '<tr' + (r[10] ? ' class="sel"' : '') + '><td>' + pill(r[0], r[1]) + '</td><td style="font-weight:550">' + r[2] + '</td><td class="q">' + r[3] + '</td><td><span class="pr">' + r[4] + (r[9] ? '<span class="bar"><b style="width:' + r[9] + '%"></b></span>' : '') + (r[5] ? '<span class="f">' + r[5] + '</span>' : '') + '</span></td><td>' + r[6] + '</td><td class="q nw">' + r[7] + '</td><td class="q nw num">' + (r[8] || '—') + '</td></tr>';
+}).join('') + '</table><div class="pgn"><span class="num">1–7 of 7</span></div></div>';
+function failed(src, why) { return '<div class="ft"><div class="s2">' + src + '</div><div class="rs">' + ic('exclamation-circle') + '<span>' + why + '</span><span class="lnk">Open the text</span></div></div>'; }
+function drw(title, st, body, foot) { return '<div class="drw"><div class="drw-h"><b>' + title + '</b>' + pill(st[0], st[1]) + '<span class="grow"></span>' + ib('x-lg') + '</div><div class="drw-b">' + body + '</div><div class="drw-f">' + foot + '</div></div>'; }
+function facts(a, f, s) { return '<div class="facts"><div class="fact"><small>Translated</small><b>' + a + '</b></div><div class="fact' + (f !== '0' ? ' bad' : '') + '"><small>Failed</small><b>' + f + '</b></div><div class="fact"><small>Skipped</small><b>' + s + '</b></div></div>'; }
+var G_DONE = drw('Update of "Services"', ['Done', 'teal'], facts('15', '3', '4') +
+  '<dl class="kvs"><dt>Engine</dt><dd>Claude</dd><dt>Started</dt><dd>Yesterday 16:40 · Elif Kara</dd><dt>Finished</dt><dd>Yesterday 16:43</dd></dl>' +
+  '<div class="nt t-rose" style="--c:var(--rose)">' + ic('exclamation-circle') + '<span>The engine did not answer in time for the last texts.</span></div>' +
+  '<div class="gl">Failed texts</div><div>' + failed(LONG_S, 'The engine returned no translation.') + failed('Merhaba {name}, siparişiniz yola çıktı.', 'The translation must keep the placeholders of the source text.') + failed('Kurumsal siparişlerde logo baskılı kurdele ve kişiye özel not kartı ekleyebiliriz; on kutu ve üzeri için teklif isteyin.', 'The engine returned no translation.') + '</div><div style="height:34px"></div>',
+  '<span class="splitb"><span class="b fill">' + ic('arrow-repeat') + 'Try again with the failed ones</span><span class="b fill">' + ic('chevron-up') + '</span><span class="pop abs up" style="left:0;width:326px"><span class="mi">' + ic('arrow-repeat') + 'Try again with Google Cloud Translation</span></span></span>');
+var G_RUN = drw('Update of "Forms"', ['Running', 'amber'], facts('42', '0', '0') + '<span class="pr">42 of 205<span class="bar" style="flex:1"><b style="width:20%"></b></span></span>' +
+  '<dl class="kvs"><dt>Engine</dt><dd>Claude</dd><dt>Started</dt><dd>2 minutes ago · Elif Kara</dd><dt>Finished</dt><dd style="color:var(--fg3)">Not yet</dd></dl><div class="gl">Failed texts</div><div style="color:var(--fg2);font-size:13px">None so far.</div>', b('Stop', 'quiet'));
+var G = frame('<div class="stack" style="gap:12px">' + head({ tab: 1, act: '4' }) + '<div>' + seg([['All'], ['Running'], ['Failed']], 0, 'sm') + '</div>' + G_TABLE + '</div>' +
+  '<div class="rowf"><div>' + cap(1, 'An update’s drawer', 'a finished update that left failed texts') + G_DONE + '</div><div class="stack" style="width:544px;flex:none">' + '<div>' + cap(2, 'While it runs', 'the figures count up; the foot holds “Stop”') + G_RUN + '</div><div>' + cap(3, 'No update yet') + '<div class="pcard empty">' + '<span class="ti">' + ic('clock-history') + '</span><b>No update has run for this language yet.</b></div></div></div></div>');
+
+/* ── H: Glossary ── */
+var TERMS = [['Mavi Atölye', '', 'Every language', 'The shop’s name'], ['Hediye sepeti', 'Gift basket', 'English', 'Never “hamper”'], ['Aylık Hizmet Planı', 'Monthly Service Plan', 'English', 'A product name: capitals as written'], ['Kargo', 'Shipping', 'English', 'Not “cargo”'], ['Sepet', 'Cart', 'English', 'The shopping cart, not the gift basket', 1], ['Pinegrap', '', 'Every language', '']];
+var H_TABLE = '<div class="pcard"><table class="tbl"><tr><th style="width:260px">Term</th><th style="width:300px">Translation to use</th><th style="width:180px">Language</th><th>Note for the translator</th><th style="width:96px"></th></tr>' + TERMS.map(function (t) {
+  return '<tr><td style="font-weight:550">' + t[0] + (t[4] ? ' ' + pill('Aa', 'gray', 1) : '') + '</td><td>' + (t[1] || pill('Keep as written', 'gray', 1)) + '</td><td class="q">' + t[2] + '</td><td class="q">' + t[3] + '</td><td><span class="ra">' + ib('pencil', 'sm') + ib('x-lg', 'sm bad') + '</span></td></tr>';
+}).join('') + '</table></div>';
+function termDlg(title, term, keep, tr, all, exact, note) {
+  return dlg(title, field('Term', inp(term)) + ckl('Keep as written (a brand, a product name)', keep) + field('Translation to use', inp(tr || '&nbsp;', keep ? 'off' : '')) + ckl('For every language', all) + ckl('Match upper and lower case exactly', exact) + field('Note for the translator', inp(note || '&nbsp;')), CANCEL + b('Save', 'fill'), 440);
+}
+var H = frame('<div class="stack" style="gap:12px">' + head({ tab: 2 }) + '<div class="hd"><span style="width:360px">' + find('Search the glossary') + '</span><span class="grow"></span>' + b('Add a term', 'fill', 'plus-lg') + '</div>' + H_TABLE + '</div>' +
+  '<div class="rowf"><div>' + cap(1, '“Edit the term”', 'today’s dialog and labels') + termDlg('Edit the term', 'Hediye sepeti', 0, 'Gift basket', 0, 0, 'Never “hamper”') + '</div><div>' + cap(2, '“Add a term”, kept as written', 'the translation field is switched off') + termDlg('Add a term', 'Mavi Atölye', 1, '', 1, 1, 'The shop’s name') + '</div>' + side([
+    '<b>The glossary has a tab of its own</b> with a search, where today it is the fourth card of the left column and shows every term in a narrow list.',
+    '<b>One row a term:</b> the term, the translation to use or the pill “Keep as written”, “Every language” or the one language, the note. A term matched with exact case carries today’s “Aa” mark.',
+    '<b>“Add a term”</b> is a filled button at the right of the search. Edit and remove are icon buttons at the row’s end; remove asks today’s question.'
+  ]) + '</div>');
+
+/* ── I: first states and narrow widths ── */
+function phone(inner, extra, style) { return '<div class="phone"' + (style ? ' style="' + style + '"' : '') + '><div class="ptb">' + ib('list') + 'Translations<span class="grow"></span></div><div class="pp">' + inner + '</div>' + (extra || '') + '</div>'; }
+var P_TOP = '<div class="hd"><span class="b fill">' + ic('translate') + 'English<span class="cd mono">en</span>' + ic('chevron-down') + '</span><span class="grow"></span>' + ib('three-dots') + '</div>' + seg([['Texts'], ['Activity', '1'], ['Glossary', '6']], 0) + '<span class="b fill wide">' + ic('play-fill') + 'Translate pending<em>888</em></span>' + auto('phone') +
+  '<span class="b quiet scope">' + ic('collection') + 'All texts<span class="c num">316/1,204</span>' + ic('chevron-down') + '</span>' + tiles(['1,204', '888', '214', '102', '6'], 0) + find('Search in the texts') +
+  '<div class="selall"><span class="ck"></span>Select all on this page' + b('Approve all<em>214</em>', 'quiet sm', 'check2-all') + '</div>';
+var P_BAR = '<div class="bulkwrap"><div class="bulk"><b>3 selected</b>' + ib('check2') + ib('arrow-repeat') + '<span class="hdl">' + ib('three-dots', 'on') + '<span class="pop abs" style="width:290px"><span class="mi">' + ic('check2-square') + 'Keep as in the source and approve</span><span class="mi">' + ic('eraser') + 'Clear</span></span></span>' + ib('x-lg') + '</div></div>';
+var I = frame('<div class="cols2"><div>' + cap(1, 'No target language', 'the whole screen is one empty state') + '<div class="pcard empty" style="min-height:300px;justify-content:center"><span class="ti">' + ic('translate') + '</span><b>No target language yet.</b><p>Add one in Settings &gt; Languages and Translation; the pages of the designs are then served under its address prefix as well.</p>' + b('Add a language', 'fill', 'plus-lg') + '</div></div>' +
+  '<div>' + cap(2, 'Never scanned', 'the rail has its rows, the main column one empty state') + '<div class="body" style="grid-template-columns:300px minmax(0,1fr);gap:16px">' + rail('All texts', { zero: 1 }) + '<div class="pcard empty" style="min-height:300px;justify-content:center"><span class="ti">' + ic('search') + '</span><b>No text has been scanned yet.</b><p></p>' + b('Scan for new texts', 'fill', 'arrow-repeat') + '</div></div></div></div>' +
+  '<div>' + cap(3, 'A language not served', 'a quiet notice under the head, above the automation line') + '<div class="stack" style="gap:12px">' + head({ lang: ['Arabic', 'ar'], act: '', pending: '1,108' }) + '<div class="nt gray">' + ic('eye-slash') + '<span>This language is not served yet: visitors do not see it. <span class="lnk">Languages and Translation</span></span></div>' + auto() + '</div></div>' +
+  '<div class="rowf"><div>' + cap(4, 'At 1024 px', 'the rail narrows to 240 px; the row keeps its grid') +
+    screen({ cls: 'w1024', main: scope('All texts', '1,204') + tiles(['1,204', '888', '214', '102', '6', '64'], 0) + list(row(R.plan) + row(R.desc) + row(R.ship) + row(R.cart), { approve: '214' }) }) + '</div>' + side([
+    '<b>1024 px:</b> the head and the automation line stay one line each. The rail is 240 px; the tiles stay one row of equal width, the long label breaks into lines; the row keeps tick, source, translation and state side by side.',
+    '<b>Under that width</b> the rail leaves the page and becomes the scope button; the row stacks at the phone’s width.'
+  ]) + '</div>' +
+  '<div class="rowf"><div>' + cap(5, 'Phone, 390 px', 'the head in three lines, the scope as a button, tiles that scroll sideways, rows stacked') + phone(P_TOP + '<div class="pcard lc">' + row(R.basket) + row(R.ship) + '</div>') + '</div>' +
+  '<div>' + cap(6, 'The scope button pressed', 'the rail’s list in a sheet from the lower edge') + phone(P_TOP + '<div class="pcard lc">' + row(R.basket) + row(R.ship) + '</div>', '<div class="dimmer"></div><div class="bsheet"><div class="grab"></div>' + railList('All texts', { pages: 4 }) + '</div>') + '</div>' +
+  '<div>' + cap(7, 'Rows ticked', 'the selection bar with icons and “More”') + phone('<div class="selall"><span class="ck some">' + ic('dash') + '</span>Select all on this page</div><div class="pcard lc">' + row(ext(R.basket, { tick: 1 })) + row(ext(R.desc, { tick: 1 })) + row(ext(R.plan, { tick: 1 })) + '</div><div style="height:64px"></div>', P_BAR) + '</div></div>');
+
+/* ── J: sizes, tones and keys ── */
+var KEYS = [['Ctrl+Enter', 'In a translation box: saves the text and moves to the next row’s box.'], ['Alt+↓ · Alt+↑', 'The next and the previous text’s box.'], ['/', 'Puts the cursor in “Search in the texts”.'], ['Tab', 'Through a row in the order drawn: tick, box, “Save”, the eye, “Details”.'], ['Esc', 'Closes the open menu, dialog or drawer, as everywhere in the panel.'], ['Not added', 'Ctrl+Shift+Enter for “save and mark as reviewed”: “Save” already stores the text as reviewed.']];
+var SIZES = [['Rail', '300 px (240 at 1024 px)'], ['Rail to main column', '20 px'], ['Rail row', '42 px, radius 9, bar 3 px'], ['Filter tile', '62 px high, 76 with a two-line label'], ['Tiles', 'six of equal width, 10 px apart, radius 12'], ['Tile count · label', '20 / 25 · 12 / 15 px'], ['Row padding', '14 px above and below, 18 px sides'], ['Tick column', '28 px'], ['Between columns', '16 px'], ['State column', '176 px'], ['Source, translation text', '14 / 21 px'], ['Translation box', '39 px or more, radius 10'], ['Selection bar', '48 px high, radius 14'], ['Automation line', '46 px high, radius 14'], ['Head', 'one line, 34 px buttons']];
+var TONES = [[pill('Pending', 'gray'), 'gray: no translation stored'], [pill('Machine', 'amber'), 'amber: the engine’s answer, not looked at'], [pill('Reviewed', 'teal'), 'teal: saved or approved by a person'], [pill('Suspicious', 'rose'), 'rose: beside the state, never in its place'],
+  ['Chosen tile', 'accent line 1.5 px, accent at 8 %'], ['Selected rail row', 'accent at 10 %, a 3 px accent edge at the left'], ['Unsaved “Save”', 'accent text, accent at 9 %, a 1 px accent line'], ['Refused save, failed', 'rose text; the box takes the field’s rose ring'], ['Engine not ready', 'amber at 7 % on the card, amber text']];
+function table(rows, c) { return '<table class="keys ' + (c || '') + '">' + rows.map(function (k) { return '<tr><td>' + (c ? k[0] : '<span class="kbd">' + k[0] + '</span>') + '</td><td>' + k[1] + '</td></tr>'; }).join('') + '</table>'; }
+var J = frame('<div class="mwrap" id="mwrap" style="padding:34px 104px 8px 4px"><div class="body">' + rail('All texts', { pages: 3, rid: 'm-rail', id: 'm-rr' }) + '<div class="main" id="m-main">' + tiles(['1,204', '888', '214', '102', '6', '64'], 0, 'm-tile') +
+  '<div class="pcard lc" id="m-card">' + selall('1–100 of 1,204', 1) + row(ext(R.basket, { id: 'm-row', sid: 'm-stt', tick: 1 })) + '<div style="height:40px;border-top:1px solid var(--line)"></div>' + BULK.replace('class="bulk"', 'class="bulk" id="m-bulk"') + '</div></div></div></div>' +
+  '<div class="j3"><div><p class="h3">Sizes</p>' + table(SIZES, 'sz') + '</div><div><p class="h3">Tones</p>' + table(TONES, 'tn') + '</div><div><p class="h3">Keys</p>' + table(KEYS) + '</div></div>');
+
+var frames = {
+  A: wrap('A', 'Today', 'The screen as it stands, at 1440 px and six tenths of its size, with its five faults numbered. Labels are today’s, in English.', A, null),
+  B: wrap('B', 'The screen as it opens', '“Texts”, “All texts”, English, engine Claude, in the panel’s window at 1440 px. New against today: three tabs, one automation line, a rail in place of four cards, filter tiles, and a row that reads across.', B, [
+    '<b>Head, one line:</b> the language button, the tabs “Texts”, “Activity” and “Glossary” (the look’s segmented control), then “Translate pending” with the scope’s pending count, “Scan for new texts” and “More”. Today’s “Update translations” did both jobs in one button.',
+    '<b>Rail, 300 px, one card:</b> “Find a page”, “All texts”, the pages with their share, bar and search icon, then “Other texts”. It stays in place while the list scrolls and scrolls on its own when it is longer than the window. “Recent updates” and “Glossary” moved to their tabs.',
+    '<b>Main column:</b> the scope’s name and count, six tiles of equal width that are the filter, “Search in the texts” with “Approve all”, then 100 texts a page. A tile, a rail row, a save and an approval change the list in place; the address keeps the scope and the filter.'
+  ]),
+  C: wrap('C', 'The row', 'The part of its own kind: nine states of one row at its real width, and the state column three times enlarged. New against today: a box that grows, a state column that never overlaps, “Details”, and a reason under a refused save.', C, null),
+  D: wrap('D', 'Selection', 'Three rows ticked, the selection bar at the foot of the list, and the three questions it can ask. New against today: every row can be ticked, and the actions for the ticked rows are in one bar.', D, null),
+  E: wrap('E', 'The head’s parts', 'The two menus open, the automation line in its three states, the progress card that takes its place, and the dialog behind “Change”. New against today: the engine is no longer a select that saves on pick, and the fallback and “Translate on save” are set here too.', E, null),
+  F: wrap('F', 'A page chosen, and the Images group', 'The main column for a page, before and after “Why?”, and for the Images group. The sentences are today’s; new is where they stand and that “Why?” filters without a reload.', F, null),
+  G: wrap('G', '“Activity”', 'The tab that takes the place of the “Recent updates” card: every update of the language in a table, and a drawer for one of them. New against today: who started it, how far it got, which texts failed and why, and a way to send them again.', G, [
+    '<b>The table</b> lists every update of the language, 20 a page, newest first: “Queued”, “Sent” and “Running” amber, “Done” teal, “Failed” and “Cancelled” rose. A row opens its drawer. The tab’s count is the updates still open plus the finished ones that left failed texts: four here.',
+    '<b>The drawer</b> is the look’s, 34rem wide, from the right edge: the figures, the engine, when it started and ended, then the update’s own error text as stored (the sentence drawn is a stand-in). A failed text shows two lines of its source, the reason, and “Open the text”, which goes to its row.',
+    '<b>The foot:</b> “Try again with the failed ones” sends them to the same engine; its caret offers the fallback engine by name. A running update has “Stop” there. A language with no update shows one sentence.'
+  ]),
+  H: wrap('H', '“Glossary”', 'The glossary as a tab: a table with a search, and today’s term dialog. Nothing about a term changes; it only leaves the left column.', H, null),
+  I: wrap('I', 'First states and narrow widths', 'The screen before there is a language or a scan, a language visitors do not see yet, then 1024 px and a 390 px phone. New against today: each first state has one sentence and one button, and the phone has a layout of its own.', I, [
+    '<b>Phone head:</b> the language button and “More” on the first line, the tabs across the second, “Translate pending” full width under them. “Scan for new texts” is the first item of “More” there. The automation line keeps the engine and “Change”.',
+    '<b>Scope and tiles:</b> the rail is a button with the scope’s name, its share and a caret; pressed, it opens the rail’s list in a bottom sheet with 44 px rows. The tiles are one row that scrolls sideways, the next one showing at the edge.',
+    '<b>Rows and selection:</b> a row stacks: tick and source, the box, then the pills and the actions on one line, 40 px high. The selection bar sits at the foot with “Approve” and “Translate again” as icons; “More” holds the rest.'
+  ]),
+  J: wrap('J', 'Sizes, tones and keys', 'The rail, the tiles, one row and the selection bar at their real size with their measures, then the tones and the keys. The keys are new: today the screen has none.', J, null)
+};
+document.getElementById('root').innerHTML = Object.keys(frames).filter(function (k) { return !only || only === k; }).map(function (k) { return frames[k]; }).join('');
+
+/* A: the numbered marks, placed on the drawn parts */
+(function () {
+  var host = document.getElementById('oldwrap');
+  if (!host) return;
+  var o = host.getBoundingClientRect();
+  [['o-chips', 1, 120, -16], ['o-more', 1, 30, 2], ['o-eng', 2, 62, -18], ['o-left', 3, -12, 250], ['o-tri', 4, 84, -6]].forEach(function (m) {
+    var el = document.getElementById(m[0]); if (!el) return;
+    var r = el.getBoundingClientRect(), d = document.createElement('span');
+    d.className = 'fm'; d.textContent = m[1]; d.style.left = (r.left - o.left + m[2]) + 'px'; d.style.top = (r.top - o.top + m[3]) + 'px'; host.appendChild(d);
+  });
+  var five = document.createElement('span'); five.className = 'fm'; five.textContent = 5; five.style.right = '14px'; five.style.top = '66px'; host.appendChild(five);
+})();
+
+/* J: the measure lines, read off the drawn parts */
+(function () {
+  var host = document.getElementById('mwrap');
+  if (!host) return;
+  var o = host.getBoundingClientRect();
+  function box(sel) { var r = document.querySelector(sel).getBoundingClientRect(); return { x: r.left - o.left, y: r.top - o.top, w: r.width, h: r.height }; }
+  function mark(kind, x, y, len, text) { var m = document.createElement('div'); m.className = 'mk ' + kind; m.style.left = x + 'px'; m.style.top = y + 'px'; m.style[kind.charAt(0) === 'v' ? 'height' : 'width'] = len + 'px'; m.innerHTML = '<span>' + text + '</span>'; host.appendChild(m); }
+  var rail = box('#m-rail'), main = box('#m-main'), tile = box('#m-tile'), rw = box('#m-row'), tk = box('#m-row .tk'), src = box('#m-row .src'), tc = box('#m-row .tc'), st = box('#m-stt'), bulk = box('#m-bulk'), rr = box('#m-rr'), card = box('#m-card');
+  var right = main.x + main.w + 14, under = rw.y + rw.h + 12;
+  mark('h', rail.x, 22, rail.w, 'rail ' + Math.round(rail.w));
+  mark('h', rail.x + rail.w, 22, main.x - rail.x - rail.w, Math.round(main.x - rail.x - rail.w));
+  mark('h', tile.x, 22, tile.w, 'tile ' + Math.round(tile.w));
+  mark('v rt', right, tile.y, tile.h, 'tile ' + Math.round(tile.h));
+  mark('v rt', right, rw.y, 14, '14');
+  mark('v rt', right, rw.y + rw.h - 14, 14, '14');
+  mark('v rt', right, bulk.y, bulk.h, 'bar ' + Math.round(bulk.h));
+  mark('h dn', card.x, under, tk.x - card.x, '18');
+  mark('h dn2', tk.x, under, tk.w, 'tick ' + Math.round(tk.w));
+  mark('h dn', src.x, under, src.w, 'source: half of what is left');
+  mark('h dn', src.x + src.w, under, tc.x - src.x - src.w, '16');
+  mark('h dn', tc.x, under, tc.w, 'translation: the other half');
+  mark('h dn', st.x, under, st.w, 'state ' + Math.round(st.w));
+  window.__measures = { rr: rr.h, tile: tile.h, bulk: bulk.h, tx: box('#m-row .tx').h, au: 0 };
+})();
+</script>
+</body>
+</html>
