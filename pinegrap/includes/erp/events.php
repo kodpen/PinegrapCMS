@@ -53,6 +53,14 @@ function erp_event($event, $payload)
         erp_alert_event($event, $payload);
     }
 
+    // A sales invoice, a return invoice, a receipt or their cancellation
+    // waits for the connected accounting service; on the same connection,
+    // so it rolls back with the record too (includes/fn/accounting_sync.php).
+    if (in_array($event, array('erp.invoice.created', 'erp.invoice.cancelled', 'erp.receipt.created', 'erp.receipt.cancelled'), true)) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/accounting_sync.php');
+        pg_accounting_sync_erp_event((string) $event, (array) $payload);
+    }
+
     // The Workspace record and the webhook queue, through the door every
     // announced moment takes (includes/fn/events.php), without its in-process
     // listeners.
