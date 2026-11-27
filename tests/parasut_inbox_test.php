@@ -6,7 +6,8 @@
  * includes/fn/parasut.php): the totals its lists and detail show for a
  * sales invoice or purchase bill, the VKN/TCKN lookup that refuses a
  * malformed or mistyped number before any request, and, read from the
- * source, that the screen prints both.
+ * source, that the screen prints both and translates every status and type
+ * badge Paraşüt sends.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -225,6 +226,83 @@ function test_parasut_inbox_screen_prints_totals_and_refusal()
 	pg_assert_same(2, substr_count($source, "lang('Withholding tax')"), 'the note and the detail');
 	pg_assert_same(2, substr_count($source, 'data-withholding-tax="'), 'both detail buttons');
 	pg_assert_true(strpos($source, "\$vkn_result['refused']") !== false, 'a refused number');
+}
+
+/**
+ * Turkish wording of a key, for the badge maps loaded in Turkish below.
+ *
+ * @param string $text
+ * @return string
+ */
+function parasut_inbox_test_turkish($text)
+{
+	return lang(array('string' => $text, 'language' => 'tr'));
+}
+
+/**
+ * The label a badge map of view_parasut_inbox.php gives a code. The screen
+ * cannot be loaded, so the map function is read out of its source and
+ * loaded under another name, once as written and once with its lang() calls
+ * asking the Turkish wording.
+ *
+ * @param string $function  _parasut_status_info or _parasut_type_info
+ * @param string $code      Paraşüt's code
+ * @param bool   $turkish
+ * @return string
+ */
+function parasut_inbox_test_label($function, $code, $turkish = false)
+{
+	$name = 'parasut_inbox_test' . $function . ($turkish ? '_tr' : '');
+
+	if (!function_exists($name)) {
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_parasut_inbox.php');
+		preg_match('/^function ' . $function . '\(.*?^\}/ms', $source, $match);
+		$code_text = str_replace('function ' . $function . '(', 'function ' . $name . '(', $match[0]);
+
+		if ($turkish) {
+			$code_text = preg_replace('/\blang\(/', 'parasut_inbox_test_turkish(', $code_text);
+		}
+
+		eval($code_text);
+	}
+
+	return $name($code)[1];
+}
+
+// Every payment_status and item_type code Paraşüt's v4 API defines for a
+// sales invoice or a purchase bill reads as its own translated label in a
+// Turkish panel. "unpaid" and "purchase_bill" fell to the English fallback
+// (#11979).
+function test_parasut_inbox_badge_labels_are_translated()
+{
+	$codes = array(
+		'_parasut_status_info' => array('paid', 'overdue', 'unpaid', 'partially_paid'),
+		'_parasut_type_info'   => array('invoice', 'export', 'estimate', 'cancelled', 'recurring_invoice', 'recurring_estimate',
+			'recurring_export', 'refund', 'purchase_bill', 'recurring_purchase_bill'),
+	);
+
+	foreach ($codes as $function => $list) {
+		foreach ($list as $code) {
+			$english = parasut_inbox_test_label($function, $code);
+			$turkish = lang(array('string' => $english, 'language' => 'tr', 'if_known' => true));
+
+			pg_assert_true($turkish !== null, $code . ': a Turkish wording for ' . $english);
+			pg_assert_same($turkish, parasut_inbox_test_label($function, $code, true), $code . ' in Turkish');
+		}
+	}
+
+	pg_assert_same('Unpaid', parasut_inbox_test_label('_parasut_status_info', 'unpaid'));
+	pg_assert_same('Ödenmedi', parasut_inbox_test_label('_parasut_status_info', 'unpaid', true));
+	pg_assert_same('Alış faturası', parasut_inbox_test_label('_parasut_type_info', 'purchase_bill', true));
+
+	// The keys "Export" and "Estimate" read as a download button and a time
+	// estimate: the types carry keys of their own.
+	pg_assert_same('İhracat faturası', parasut_inbox_test_label('_parasut_type_info', 'export', true));
+	pg_assert_same('Satış teklifi', parasut_inbox_test_label('_parasut_type_info', 'estimate', true));
+
+	// A code Paraşüt may add later still reads, as its own words.
+	pg_assert_same('Sent back', parasut_inbox_test_label('_parasut_status_info', 'sent_back', true));
+	pg_assert_same('', parasut_inbox_test_label('_parasut_type_info', '', true), 'no code');
 }
 
 // The detail dialog sets the description with textContent, so it is escaped

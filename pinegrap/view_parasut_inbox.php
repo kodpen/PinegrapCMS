@@ -200,10 +200,13 @@ function _parasut_pagination($current, $total, $tab, $extra_params = []) {
 // ------------------------------------------------------------------
 // Build status badge helper
 // ------------------------------------------------------------------
-// Class and translated label of a Paraşüt payment status code.
+// Class and translated label of a Paraşüt payment status code. Paraşüt's
+// v4 API gives a sales invoice and a purchase bill paid, overdue, unpaid or
+// partially_paid; a code it adds later shows as its own words, untranslated.
 function _parasut_status_info($status) {
     $map = [
         'open'         => ['bg-warning fg-black', lang('Open')],
+        'unpaid'       => ['bg-warning fg-black', lang('Unpaid')],
         'overdue'      => ['bg-danger',             lang('Overdue')],
         'paid'         => ['bg-success',            lang('Paid')],
         'partially_paid' => ['bg-info fg-black',   lang('Partially Paid')],
@@ -221,10 +224,23 @@ function _parasut_status_badge($status) {
 // ------------------------------------------------------------------
 // Build item_type badge helper
 // ------------------------------------------------------------------
-// Class and translated label of a Paraşüt item type code.
+// Class and translated label of a Paraşüt item type code. Paraşüt's v4 API
+// gives a sales invoice invoice, export, estimate, cancelled, refund or a
+// recurring_* code, and a purchase bill purchase_bill, cancelled, refund or
+// recurring_purchase_bill. The keys "Export" and "Estimate" alone already
+// read as a download button and a time estimate on other screens, so those
+// types say what they are.
 function _parasut_type_info($type) {
     $map = [
         'invoice'       => ['bg-primary',           lang('Invoice')],
+        'export'        => ['bg-primary',           lang('Export invoice')],
+        'estimate'      => ['bg-info fg-black',    lang('Sales quote')],
+        'purchase_bill' => ['bg-primary',           lang('Purchase invoice')],
+        'recurring_invoice'       => ['bg-secondary', lang('Repeating invoice')],
+        'recurring_export'        => ['bg-secondary', lang('Repeating export invoice')],
+        'recurring_estimate'      => ['bg-secondary', lang('Repeating sales quote')],
+        'recurring_purchase_bill' => ['bg-secondary', lang('Repeating purchase invoice')],
+        'cancelled'     => ['bg-secondary',         lang('Cancelled')],
         'e_invoice'     => ['bg-success',           lang('E-Invoice')],
         'e_archive'     => ['bg-info fg-black',    lang('E-Archive')],
         'e_smm'         => ['bg-warning fg-black', lang('E-SMM')],
@@ -454,7 +470,7 @@ if ($tab === 'vkn') {
                     <i class="bi bi-check-circle-fill fs-xl fg-success"></i>
                     <div>
                         <div class="fw-semibold">' . lang('Registered for E-Invoice') . '</div>
-                        <div class="small"><strong>VKN/TCKN:</strong> ' . $vkn_val . '</div>
+                        <div class="small"><strong>' . lang('VKN / TCKN') . ':</strong> ' . $vkn_val . '</div>
                         <div class="small"><strong>' . lang('E-Invoice Address') . ':</strong> ' . $addr . '</div>
                     </div>
                 </div>';
