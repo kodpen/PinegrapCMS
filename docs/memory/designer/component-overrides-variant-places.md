@@ -14,5 +14,8 @@ module: component_overrides
 - Rename and "Add a variant" take the new name off every variant's `was` (`forgetFormer()`), so a place on that name follows the variant that has it now. Duplicate copies no former names. Delete removes them with the variant, so its places show the default, as its Result line says.
 - A place keeps its stored name until it picks again; then it writes the name the variant has now.
 
+## Why former names, not renaming the places or a stable id?
+- Architect (2026-11-27): former names, resolved when a place is drawn. Nothing is written to other pages' trees, so their locks, drafts and versions stay theirs; nothing a place stores changes; no migration; every page saved before draws as before. Renaming `_variant` in every page on the component's save would write other pages; a stable variant id would need a migration of the names stored in page trees, which a rename is not worth.
+
 ## Where is it tested?
 - `tests/component_overrides_variants_test.php`: the model and its twin (`test_component_overrides_renamed_variant_keeps_its_places`) and Rename in the part (`test_component_overrides_variant_rename_in_the_part`).
