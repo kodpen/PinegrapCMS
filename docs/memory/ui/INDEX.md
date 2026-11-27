@@ -536,7 +536,7 @@
 - main-menu-communication-icon.md: The Communication row's drawing (row 9): a speech bubble with an arrow out and an arrow in, in the Marketing violet, its hover move; the megaphone it replaced [decision: here]
 - main-menu-design-studio-row.md: Main menu row 21, Page Design Studio: its Other entry holding the old Page Styles and Ads entries in a second-level panel, the gates, how Other's screens mark it, retired slots 16 and 17 [decision: decisions-made-panel-6.md]
 - main-menu-drawer-focus.md: The phone main menu drawer (below lg) is inert while shut, Escape gives focus back to the bar button, focus leaving it shuts it; the symptoms they fixed
-- main-menu-drawer-only.md: A drawer-only screen (output_header()'s menu_drawer, Page Design Studio): the main menu as the phone drawer at every width, opened by the screen's own button (#9712)
+- main-menu-drawer-only.md: A drawer-only screen (output_header()'s menu_drawer, Page Design Studio): the main menu as the phone drawer at every width, opened by the screen's own button (#9712) [decision: here]
 - main-menu-drawer-top-bar.md: Page Design Studio draws no panel top bar: its tools at the head of the main menu's drawer, Go to Site and the account at its foot, a dot on the menu button for an unread notification (FR5) [decision: here]
 - main-menu-entry-gates.md: Main menu entries follow the gate of the screen they open: the screens that had no menu path for some of the people they admit, the entries that led to a refusal, and how both were checked
 - main-menu-icon-cite.md: Places outside the main menu that stand for a menu row (header quick note, Workspace tools dock, dashboard card heads, My Notes empty screen) draw the row's icon at rest with pg_menu_icon_cite() [decision: decisions-made-panel-18.md]
