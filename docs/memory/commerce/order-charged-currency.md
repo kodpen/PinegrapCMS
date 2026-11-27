@@ -1,12 +1,13 @@
 ---
 name: order-charged-currency
 description: orders.charged_currency and charged_rate (11.0.283): an order kept in the currency it is charged in, its rate, the base-unit sums, the marketplace fill, the money function
+module: order_currency
 ---
 
 ## What do the two columns hold?
 - `orders.charged_currency` CHAR(3): the currency every stored amount of the order is in; `''` means the base currency. Every web order is `''` until markets charge another currency.
 - `orders.charged_rate` DECIMAL(18,8): base units one charged unit was worth on the order's day; 0 for a base order and when no rate was known.
-- No second total is stored: `total`, `subtotal`, `tax` and the lines stay as charged. Added by `upgrade_2026_11_0_order_charged_currency()` (11.0.283), PR #PRNUM.
+- No second total is stored: `total`, `subtotal`, `tax` and the lines stay as charged. Added by `upgrade_2026_11_0_order_charged_currency()` (11.0.283), PR #12105.
 - `orders.currency_code` is still what the visitor was shown on a web order; never read it as the charged currency.
 
 ## How does a sum read base units?
