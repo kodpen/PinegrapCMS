@@ -6,7 +6,7 @@ module: office
 
 ## What is it?
 - Office files opened in the File Manager (Quick Look, the file window) and a channel's Preview, read and written by the product's own code, drawn by `assets/js/pg_office_view.js`: the same view and controls in both places.
-- Readers: `includes/fn/office.php` (`pg_office_read()`; .ods and .xls via `sheet-reader.md`). Writers: `office_edit.php` and one module a kind of change (`office_shift`, `office_sheets`, `office_format`, `office_size`, `office_docx_format`, `office_docx_kind`, `office_docx_paragraphs`, `office_docx_link`, `office_new`); the shared xlsx writer `xlsx_write.php`.
+- Readers: `includes/fn/office.php` (`pg_office_read()`; .ods and .xls via `sheet-reader.md`). Writers: `office_edit.php` and one module a kind of change (`office_shift`, `office_sheets`, `office_format`, `office_size`, `office_docx_format`, `office_docx_kind`, `office_docx_paragraphs`, `office_docx_link`, `office_docx_table`, `office_new`); the shared xlsx writer `xlsx_write.php`.
 
 ## Which decisions bind it?
 - Owner (2026-10-19): no library; the readers are the product's own (SheetJS stale with CVEs, its CDN unreachable): `office-files.md`.
