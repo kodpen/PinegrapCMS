@@ -245,11 +245,23 @@ StyleDesigner.definePart('theme', function (K) {
             // variable + cascade rules together. Without this, theme-var
             // edits silently bypass the undo history.
             saveState();
+            // The host keeps it in the User Styles entry (created when missing).
+            H.setUserStyles(_themeVarContent(H.userStyles(), mode, varName, value));
+            // Refresh the canvas iframe so the new variable + cascade rules
+            // take effect immediately. Without this, the save only updates
+            // the hidden form field and the user has to interact with
+            // something else for the iframe to pick up the change.
+            applyAssetsToIframe();
+        }
+
+        // The user-styles content with one theme var written (or removed,
+        // for an empty value).
+        function _themeVarContent(content, mode, varName, value) {
             // A light block in the old form is rewritten on every write, so a
             // value set now never overrides a dark page. A light value lives
             // in one block only: the one its variable belongs to.
             var kind = _themeBlockFor(mode, varName);
-            var content = _themeUpgradeLightSelector(H.userStyles());
+            content = _themeUpgradeLightSelector(content);
             if (kind !== 'dark') content = _themeSetDecl(content, (kind === 'light') ? 'shared' : 'light', varName, '');
             content = _themeSetDecl(content, kind, varName, value);
 
@@ -261,12 +273,20 @@ StyleDesigner.definePart('theme', function (K) {
             if (meta && meta.theme) {
                 content = _writeCascadeBlock(content, varName, value, mode);
             }
-            // The host keeps it in the User Styles entry (created when missing).
+            return content;
+        }
+
+        // "Reset every change in this group": the changed variables of the
+        // mode shown removed as one undo step and one canvas redraw; a group
+        // with nothing changed adds no step.
+        function _resetThemeGroup(grp, mode) {
+            var current = _themeModeDecls(H.userStyles(), mode);
+            var changed = grp.vars.filter(function (v) { return !!current[v.name]; });
+            if (!changed.length) return;
+            saveState();
+            var content = H.userStyles();
+            changed.forEach(function (v) { content = _themeVarContent(content, mode, v.name, ''); });
             H.setUserStyles(content);
-            // Refresh the canvas iframe so the new variable + cascade rules
-            // take effect immediately. Without this, the save only updates
-            // the hidden form field and the user has to interact with
-            // something else for the iframe to pick up the change.
             applyAssetsToIframe();
         }
 
@@ -515,9 +535,8 @@ StyleDesigner.definePart('theme', function (K) {
                         var grp = null;
                         for (var k = 0; k < THEME_VAR_GROUPS.length; k++) if (THEME_VAR_GROUPS[k].id === id) { grp = THEME_VAR_GROUPS[k]; break; }
                         if (!grp) return;
-                        grp.vars.forEach(function (v) { _writeThemeVar(H.mode(), v.name, ''); });
+                        _resetThemeGroup(grp, H.mode());
                         renderThemePanel();
-                        applyAssetsToIframe();
                     }
                 });
             });

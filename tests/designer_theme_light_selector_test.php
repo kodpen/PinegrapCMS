@@ -327,7 +327,7 @@ function test_designer_theme_light_selector_call_sites()
 	$write_end = ($write !== false) ? strpos($part, 'function _findThemeVarMeta(', $write) : false;
 	pg_assert_true(($write !== false) && ($write_end !== false), 'the designer has the theme variable writer');
 	$body = preg_replace('~//[^\n]*~', '', substr($part, $write, $write_end - $write));
-	pg_assert_contains('var content = _themeUpgradeLightSelector(H.userStyles());', $body, 'the old light block is split on write');
+	pg_assert_contains('content = _themeUpgradeLightSelector(content);', $body, 'the old light block is split on write');
 	pg_assert_contains('var kind = _themeBlockFor(mode, varName);', $body);
 	pg_assert_contains("if (kind !== 'dark') content = _themeSetDecl(content, (kind === 'light') ? 'shared' : 'light', varName, '');", $body, 'the value leaves the other light block');
 	pg_assert_contains('content = _themeSetDecl(content, kind, varName, value);', $body, 'the value goes to its own block');
