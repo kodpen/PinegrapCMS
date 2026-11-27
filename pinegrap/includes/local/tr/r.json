@@ -1640,6 +1640,7 @@
     "Request this visit": "Bu ziyareti iste",
     "Request this workshop": "Bu atölyeyi isteyin",
     "Request {var:1}": "Talep {var:1}",
+    "Request {var:1} was made in {var:2}.": "{var:1} talebi {var:2} kutusunda oluşturuldu.",
     "Requested": "Talep edildi",
     "Requested Arrival Date": "İstenen Varış Tarihi",
     "Requested Arrival Date for {var:1}": "{var:1} için İstenen Varış Tarihi",

@@ -1180,6 +1180,21 @@
             }
         }
 
+        // A site chat with the customer's address can be made into a
+        // support request; the server checks the side and the role again.
+        if (state.conversation.canManage && state.conversation.partyEmail) {
+            var requestButton = el('button', 'pg-icon-button pg-icon-button-sm me-2');
+            requestButton.type = 'button';
+            requestButton.title = STR.make_request;
+            requestButton.setAttribute('aria-label', STR.make_request);
+            requestButton.setAttribute('aria-expanded', 'false');
+            requestButton.appendChild(el('i', 'bi bi-envelope-plus'));
+            requestButton.addEventListener('click', function () {
+                toggleRequest(requestButton);
+            });
+            header.appendChild(requestButton);
+        }
+
         if (state.conversation.canManage) {
             // A closed conversation cannot be closed again.
             if (state.conversation.status !== 'closed') {
@@ -1826,6 +1841,121 @@
         } else if (window.confirm(STR.close_confirm)) {
             reallyClose();
         }
+    }
+
+    // "Make a request": a strip under the header with the support boxes
+    // to choose from. The second click of the header button folds it.
+    function toggleRequest(button) {
+        var conversation = state.conversation;
+        var header = button.parentNode;
+        var open = conversation && conversation._request;
+
+        if (open) {
+            open.parentNode.removeChild(open);
+            conversation._request = null;
+            button.setAttribute('aria-expanded', 'false');
+            return;
+        }
+
+        if (!conversation || !header || !header.parentNode) {
+            return;
+        }
+
+        var strip = el('div', 'pg-chat-request');
+        var line = el('div', 'fg-secondary small', STR.request_loading);
+        line.setAttribute('role', 'status');
+        strip.appendChild(line);
+        header.parentNode.insertBefore(strip, header.nextSibling);
+        conversation._request = strip;
+        button.setAttribute('aria-expanded', 'true');
+
+        function fold() {
+            if (strip.parentNode) {
+                strip.parentNode.removeChild(strip);
+            }
+
+            if (state.conversation === conversation) {
+                conversation._request = null;
+            }
+
+            button.setAttribute('aria-expanded', 'false');
+            button.focus();
+        }
+
+        api('chat_request_boxes', { conversation_id: conversation.id }, function (response) {
+            if (conversation._request !== strip) {
+                return;
+            }
+
+            var boxes = (response.status === 'success' && response.data) ? (response.data.boxes || []) : null;
+
+            if (!boxes) {
+                line.textContent = response.message || STR.request_failed;
+                return;
+            }
+
+            if (!boxes.length) {
+                line.textContent = STR.no_support_box;
+                return;
+            }
+
+            strip.textContent = '';
+
+            var selectId = 'pg-chat-request-box-' + conversation.id;
+            var label = el('label', 'pg-field-label mb-0', STR.support_box);
+            label.setAttribute('for', selectId);
+            strip.appendChild(label);
+
+            var select = el('select', 'pg-input pg-input-sm');
+            select.id = selectId;
+            boxes.forEach(function (box) {
+                var option = el('option', '', box.label);
+                option.value = String(box.id);
+                select.appendChild(option);
+            });
+            strip.appendChild(select);
+
+            var help = el('div', 'fg-secondary small', STR.request_help);
+            help.setAttribute('role', 'status');
+            strip.appendChild(help);
+
+            var foot = el('div', 'pg-chat-request-foot');
+            var cancel = el('button', 'pg-button pg-button-quiet pg-button-sm', STR.cancel);
+            cancel.type = 'button';
+            cancel.addEventListener('click', fold);
+            var make = el('button', 'pg-button pg-button-fill pg-button-sm', STR.make_request);
+            make.type = 'button';
+            make.addEventListener('click', function () {
+                // The label stays while the request runs; the button is
+                // disabled only for that time and enabled on every path.
+                make.disabled = true;
+                api('chat_request', { conversation_id: conversation.id, box_id: parseInt(select.value, 10) || 0 }, function (answer) {
+                    make.disabled = false;
+
+                    if (answer.status !== 'success' || !answer.data) {
+                        help.textContent = answer.message || STR.request_failed;
+                        return;
+                    }
+
+                    help.textContent = answer.data.message || '';
+                    make.hidden = true;
+                    select.disabled = true;
+                    cancel.textContent = STR.close;
+                    cancel.focus();
+                }, function () {
+                    make.disabled = false;
+                    help.textContent = STR.request_failed;
+                });
+            });
+            foot.appendChild(cancel);
+            foot.appendChild(make);
+            strip.appendChild(foot);
+            select.focus();
+        }, function () {
+            if (conversation._request === strip) {
+                line.textContent = STR.request_failed;
+            }
+        });
     }
 
     function confirmDelete() {
