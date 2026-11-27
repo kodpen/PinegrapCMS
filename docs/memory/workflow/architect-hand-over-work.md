@@ -28,7 +28,7 @@ description: Hand-over of the architect session of 2026-11-24 to 26, the work in
 - Poll 242: Options is too narrow; his console line under it picks the issue.
 - Paraşüt: the six issues are fixed; what is left is in `plans/erp-parasut-open-work.md`.
 - The Workspace's own screens (message 14812): `plans/workspace-areas-modern.md` and its four plans; a step marked "drawing" is asked of the architect before its worker starts (TM3 so far).
-- Nine features (polls 246, 247): `plans/global-features.md`. After a census the architect writes its build steps and asks him the tables; German's lines go `free` when PL2 has landed.
+- Nine features (polls 246, 247): `plans/global-features.md`. After a census the architect writes its build steps and asks him the tables; German goes `free` after PL2.
 
 ## What is watched?
 - k3's own tasks: the context size on the agent form.
