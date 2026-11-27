@@ -12,7 +12,7 @@ module: maintenance_settings_fold
 ## What does each row say closed?
 - Update channel: Stable or Beta (amber pill), then "backs up before updating" when on.
 - Maintenance mode: Off; "On until 14:00" (the day too when not today) or On, amber pill; a switch past its end time: "Ended at …: visitors see the site", no pill.
-- Scheduled jobs: "Runs every minute · 6 jobs with it" (jobs selected that can run with the general job, none while the master switch is off); "Not scheduled: nothing runs on its own" when the general job never ran, "Stopped: the general job last ran …" past its `stale_after`; both ask for attention.
+- Scheduled jobs: "Runs every minute · 6 jobs with it" (jobs selected that can run with the general job, none while the master switch is off, none config.php switched off: #12036); "Not scheduled: nothing runs on its own" when the general job never ran, "Stopped: the general job last ran …" past its `stale_after`; both ask for attention.
 - Backups: the remote copy's place (or On this server) and the newest backup's time (`pg_backup_newest()`); "No backup yet" or a failed remote copy asks for attention.
 - Storage: "Files on the disk", "In the bucket {name}", "Moving files: 1,240 left" (or Bringing files back, paused); a failed last "Save and test" asks for attention.
 - Operations alerts: "By e-mail to 2 addresses and to devices", e-mail or devices alone, "On the bell only", or Off.
@@ -24,7 +24,7 @@ module: maintenance_settings_fold
 - Built in the plan settings-maintenance-tidy: the fold and the Sales watch card #11876, Scheduled jobs #11891, the other rows opened #11910.
 
 ## Why is the sales watch a card of its own?
-- The survey found it hidden inside Alerts (K2). Its behaviour stays: it stops with Operations alerts (`workflow/decisions-made-product-84.md`). Its fields still hide with that switch; a note and the button Open Operations alerts (`data-pg-set-goto="pgset-alerts"`) show instead.
+- The survey found it hidden inside Alerts (K2). Its behaviour stays: it stops with Operations alerts (`workflow/decisions-made-product-84.md`). It is drawn, and listed in the registry (chips, search), only with the shop on (#12036). Its fields still hide with that switch; a note and the button Open Operations alerts (`data-pg-set-goto="pgset-alerts"`) show instead.
 
 ## What stayed?
 - Every card id, field name and value, `sales_watch_card` and `object_storage_card`, the named Save and test buttons, the save module and the legacy anchors. One Save a pane. The two S3 sets, the `s3` backup type's and the store's, are only drawn alike and stay apart (`platform/object-storage-decisions.md`); neither goes to Connections (`ui/connections-one-place.md`). A secret box stays empty with "Saved".

@@ -293,7 +293,7 @@ function pg_maintenance_cron_list_html($rows, $master_on)
         $items .= '
                 <li class="d-flex flex-wrap align-items-center gap-3 py-3 border-bottom">
                     <div class="flex-grow-1 min-w-0">
-                        <div class="pg-field-label" id="' . h($id . '_name') . '">' . h($row['name']) . $off . '</div>' . (($row['line'] !== '') ? '
+                        <div><label class="pg-field-label mb-0" for="' . h($id) . '" id="' . h($id . '_name') . '">' . h($row['name']) . '</label>' . $off . '</div>' . (($row['line'] !== '') ? '
                         <div class="pg-text-2 fg-secondary">' . h($row['line']) . '</div>' : '') . '
                         <div class="pg-text-meta">' . h($row['schedule']) . '</div>
                     </div>

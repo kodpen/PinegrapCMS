@@ -6,7 +6,7 @@ module: maintenance_cron_list
 
 ## How is the Scheduled jobs row drawn open?
 - Card `pgset-cron`: the group General job with its command on one read-only line (`<code>` + Copy, `pg_copy_button()`), "Every minute", the OS family; the switch "Run the jobs with the general job" (`job_dispatch_enabled`); the group Jobs with one row a job.
-- A row: name, one line of what it does, "Recommended: once a day" (an inline job: "With every run of the general job"), the ghost button "How to schedule it" and the job's switch `job_dispatch_job[<name>]`, hidden with `d-none` while the master is off, never disabled, so the selection stays posted.
+- A row: name (a `<label>` of the job's switch, so the settings search finds the card by a job's name: #12036), one line of what it does, "Recommended: once a day" (an inline job: "With every run of the general job"), the ghost button "How to schedule it" and the job's switch `job_dispatch_job[<name>]`, hidden with `d-none` while the master is off, never disabled, so the selection stays posted.
 - The rows are every `pg_cron_jobs()` entry with `dispatch` true, in the catalogue's order; a job config.php switched off says "disabled in config.php".
 
 ## Where is it built?

@@ -125,7 +125,7 @@ $maintenance_parts['cron'] = array('html' => '
     $maintenance_now,
     (int) $maintenance_cron_jobs['job']['stale_after'],
     ($job_dispatch_enabled == 1),
-    pg_maintenance_fold_cron_count($job_dispatch_selection, $maintenance_cron_jobs)
+    pg_maintenance_fold_cron_count($job_dispatch_selection, $maintenance_cron_jobs, $maintenance_cron_inactive)
 );
 
 foreach ($maintenance_cron_jobs as $maintenance_cron_name => $maintenance_cron_job) {
