@@ -157,3 +157,20 @@ function test_let_page_system_only_in_the_page_content()
 		'in the part before the page content');
 	pg_assert_same(false, pg_ltd_frame_page_system($frame('<main><pregion></pregion></main>')), 'no System region');
 }
+
+// Two pages whose names give the same slug (or none, a name in another
+// script) and the same settings: a page type widget is found again by its
+// layout too, so the second page never takes the first one's layout.
+function test_let_type_widget_found_again_by_its_layout()
+{
+	if (!class_exists('db')) {
+		eval('class db { public static $con; }');
+	}
+	$cfg = json_encode(array('regionType' => 'catalog_detail'));
+	$where = pg_ltd_widget_row_where($cfg, 'design-catalog-detail-widget', 100, '{"type":"root","children":[]}');
+	pg_assert_same(true, strpos($where, "MD5(tree_json) = '" . md5('{"type":"root","children":[]}') . "'") !== false, 'the layout is compared');
+	pg_assert_same(true, strpos($where, "created_at >= '100'") !== false, 'made by this run');
+	pg_assert_same(true, strpos($where, "name = 'design-catalog-detail-widget'") !== false, 'by its name');
+	$region = pg_ltd_widget_row_where($cfg, 'home-menu-widget', 100, null);
+	pg_assert_same(false, strpos($region, 'tree_json'), 'a region widget is found by name and settings, its starter is the same for every region');
+}
