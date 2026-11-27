@@ -5,8 +5,8 @@ description: The workflow tables screen workspace_wtables.php (T1e, #2966): serv
 
 ## Where is the screen, and how is it drawn?
 - `workspace_wtables.php` (root, URL-called): no `?id=` is the Data list (`workflow-tables-data-list.md`); `?id=N` opens one table through `ws_wtable_for()` (not reached → "That table could not be found."). Menu: `ws_nav_groups()` key `wtables` ("Data", `bi-table`) while `ws_wtables_ready()`, every member; `ws_side_screen()` and `pg_active_menu` slot 23 know the file.
-- Server-drawn, no bundle: every change is a form posted with the token (`wt_action`), handled by the store's write function, then `go()` back (PRG) with a liveform notice or the store code worded by `ws_wtable_screen_error_text()`. The store decides who may do what; the screen only hides buttons a person may not use (`ws_wtable_may()`).
-- Bar and drawers: `workflow-tables-screen-bar.md`; grid: `workflow-tables-grid-drawer.md`.
+- Server-drawn: a change is a form posted with the token (`wt_action`), handled by the store's write function, then `go()` back (PRG) with a liveform notice or the store code worded by `ws_wtable_screen_error_text()`. The store decides who may do what; the screen only hides buttons a person may not use (`ws_wtable_may()`).
+- Bar and drawers: `workflow-tables-screen-bar.md`; grid: `workflow-tables-grid-drawer.md`; cells changed in it: `workflow-tables-grid.md`.
 - Deletes (table, column, row, share) post via one hidden form outside the drawers via `.ws-wt-action` buttons with `data-confirm`: no form sits in a table row.
 
 ## How are rows shown and written?
@@ -25,4 +25,4 @@ description: The workflow tables screen workspace_wtables.php (T1e, #2966): serv
 - Run from table: the rows as a draft flow (`workspace-flows-from-table.md`).
 
 ## What is left out?
-- Editing in the grid, column reorder, row move, a record-link picker (typed `kind:id`, shown `kind #id`, not resolved to a name). The bin for deleted tables and rows: `workflow-tables-bin.md`, `workflow-tables-bin-screens.md`.
+- Column reorder, row move, a record-link picker (typed `kind:id`, shown `kind #id`, not resolved to a name). The bin for deleted tables and rows: `workflow-tables-bin.md`, `workflow-tables-bin-screens.md`.

@@ -530,6 +530,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 : array('ok' => false, 'message' => ws_wtable_screen_error_text($result['error'])));
             exit;
 
+        case 'row_cell':
+            // One cell changed in the grid, on the revision its row was
+            // drawn with, answered in JSON with the row's cells as they are
+            // now (a formula or a lookup may follow the cell), also when
+            // somebody changed the row meanwhile.
+            $columns = $table ? ws_wtable_columns((int) $table['id']) : array();
+            $column_id = (int) ($_POST['wt_column'] ?? 0);
+            $row = ws_wtable_row((int) ($table['id'] ?? 0), (int) ($_POST['wt_row'] ?? 0));
+            $change = isset($columns[(string) $column_id]) ? ws_wtable_grid_cell_change($column_id, $columns[(string) $column_id], $field('value'), $field('revision')) : null;
+            $result = ($change && $row) ? ws_wtable_row_update($viewer, $table, $row, $change) : ws_wtable_refusal('not_found', '', 404);
+            $answer = array(
+                'ok'      => (bool) $result['ok'],
+                'error'   => (string) $result['error'],
+                'message' => $result['ok'] ? lang('The cell was saved.') : ws_wtable_grid_cell_refusal_text($result, $column_id),
+            );
+            // Saved, or changed by somebody meanwhile: the row as it is now.
+            $now = ($result['ok'] || ($result['error'] === 'changed_meanwhile')) ? ws_wtable_row((int) $table['id'], (int) $row['id']) : null;
+
+            if ($now) {
+                $read = ws_wtable_joined_fill($viewer, $columns, array(ws_wtable_row_out($now, $columns)));
+                $lookup_targets = ws_wtable_joined_targets($viewer, $columns);
+                $person_ids = ws_wtable_lookup_person_ids($lookup_targets, $read);
+                $shapes = array();
+
+                foreach ($columns as $id => $column) {
+                    if (($column['type'] === 'person') && !empty($read[0]['cells'][$id])) {
+                        $person_ids[] = (int) $read[0]['cells'][$id];
+                    }
+
+                    $joined = ws_wtable_joined_type($column['type']);
+                    $shapes[(string) $id] = ws_wtable_grid_shape($joined ? (string) ($lookup_targets[(string) $id]['type'] ?? '') : $column['type'], $joined ? array() : (array) $column['options']);
+                }
+
+                $people = ws_wtable_people_with_lookups(ws_wtable_people_with_links(empty($person_ids) ? array() : ws_people(array_unique($person_ids)),
+                    ws_wtable_link_texts($viewer, $columns, $read)), $lookup_targets);
+                $answer['revision'] = (int) $read[0]['revision'];
+                $answer['cells'] = (object) ws_wtable_grid_row_cells($columns, $shapes, $read[0], $people, true);
+            }
+
+            header('Content-Type: application/json; charset=utf-8');
+            echo pg_json_encode_answer($answer);
+            exit;
+
         default:
             $back = $self_url;
     }
@@ -622,6 +665,7 @@ if ($table && (($_GET['download'] ?? '') === 'xlsx')) {
 
 $types = ws_wtable_column_types();
 $board_script = '';
+$grid_script = '';
 $list_script = '';
 $levels = ws_wtable_share_levels();
 $access_labels = array('owner' => lang('Yours'), 'edit' => lang('Can edit'), 'view' => lang('Can view'));
@@ -1162,33 +1206,9 @@ if (!$table) {
     $lines = '';
 
     foreach ($page['rows'] as $row) {
-        $line = '';
-
-        foreach ($columns as $column_id => $column) {
-            $value = $row['cells'][$column_id] ?? null;
-            $text = ws_wtable_screen_cell_text($column, $value, $people);
-
-            if (($column['type'] === 'formula') && isset($row['formula_errors'][$column_id])) {
-                $text = (string) $row['formula_errors'][$column_id];
-                $cell = '<span class="fg-danger">#' . h(strtoupper($text)) . '</span>';
-            } elseif (($column['type'] === 'status') && ($text !== '')) {
-                $color = '';
-
-                foreach ((array) ($column['options']['choices'] ?? array()) as $choice) {
-                    if (((string) $choice['key'] === (string) $value) && ((string) ($choice['color'] ?? '') !== '')) {
-                        $color = ' style="background: ' . h($choice['color']) . '; color: #fff;"';
-                    }
-                }
-
-                $cell = '<span class="badge theme-secondary fw-normal"' . $color . '>' . h($text) . '</span>';
-            } else {
-                // One line: the line breaks of a text show as spaces, the
-                // whole text in the title.
-                $cell = h($text);
-            }
-
-            $line .= ws_wtable_grid_cell_html($shapes[(string) $column_id], $cell, $text);
-        }
+        // A writer changes a text, number, money, date, checkbox or status
+        // cell in the grid itself (workspace_wtable_grid.js).
+        $line = implode('', ws_wtable_grid_row_cells($columns, $shapes, $row, $people, $can_write));
 
         $tools = '';
         $number = ws_wtable_row_label($row);
@@ -1201,7 +1221,7 @@ if (!$table) {
                 ws_wtable_screen_delete_confirm('row', (string) $table['name'], $bin_days, (int) ($link_counts[(int) $row['id']] ?? 0)));
         }
 
-        $lines .= '<tr id="ws-wt-row-' . (int) $row['id'] . '"' . ($can_write ? ' data-ws-wt-open="' . h($open) . '"' : '') . '><td class="small fg-secondary text-end">' . $number . '</td>' . $line . ($can_write ? '<td class="text-end text-nowrap">' . $tools . '</td>' : '') . '</tr>';
+        $lines .= '<tr id="ws-wt-row-' . (int) $row['id'] . '"' . ($can_write ? ' data-ws-wt-open="' . h($open) . '" data-ws-wt-row="' . (int) $row['id'] . '" data-ws-wt-revision="' . (int) $row['revision'] . '"' : '') . '><td class="small fg-secondary text-end">' . $number . '</td>' . $line . ($can_write ? '<td class="text-end text-nowrap">' . $tools . '</td>' : '') . '</tr>';
     }
 
     $pager = '';
@@ -1225,6 +1245,13 @@ if (!$table) {
             <thead><tr><th scope="col" class="text-end">#</th>' . $head . ($can_write ? '<th scope="col" aria-label="' . h(lang('Actions')) . '"></th>' : '') . '</tr></thead>
             <tbody>' . $lines . '</tbody>' . $totals_foot . '
         </table></div>' . ((($pager !== '') || ($totals_switch !== '')) ? '<div class="d-flex flex-wrap align-items-center gap-3 mt-3">' . $totals_switch . $pager . '</div>' : '');
+
+        // A writer changes a cell in the grid: the script of this screen
+        // alone, with the columns it turns into fields.
+        if ($can_write) {
+            $grid_script = pg_js_bundle_tags('assets/js/workspace_wtable_grid.min.js') . '
+<script type="application/json" id="ws-wt-grid-config">' . str_replace('</', '<\\/', (string) pg_json_encode_answer(ws_wtable_grid_script_config($self_url, $id, (string) ($_SESSION['software']['token'] ?? ''), $columns))) . '</script>';
+        }
     }
 
     // "Filter" in the bar holds the query bar; what it sets is a tag under
@@ -2207,15 +2234,8 @@ $shell . '
         });
     }
 
-    // A click on a row opens it in the row drawer; the keyboard reaches the
-    // same address on the number of the row. A link or button of the row, or a
-    // click that ends a text selection, keeps its own meaning.
-    document.addEventListener("click", function (e) {
-        var row = e.target.closest("tr[data-ws-wt-open]");
-        if (!row || e.target.closest("a, button, input, select, textarea, label")) { return; }
-        if (window.getSelection && String(window.getSelection()) !== "") { return; }
-        window.location.href = row.dataset.wsWtOpen;
-    });
+    // A click on a row, and a cell changed in the grid, belong to the
+    // script of the grid (assets/js/workspace_wtable_grid.js).
 
     // New row opens the drawer in place when the page holds the form of a new row.
     document.addEventListener("click", function (e) {
@@ -2301,4 +2321,4 @@ $shell . '
     if (type) { type.addEventListener("change", showOptions); showOptions(); }
 
 })();
-</script>' . $board_script . $list_script . output_footer();
+</script>' . $board_script . $grid_script . $list_script . output_footer();

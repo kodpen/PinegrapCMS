@@ -3101,6 +3101,7 @@
     "The cats' favourite: quiet hands, a towel always ready and plenty of time for nervous patients.": "Kedilerin gözdesi: sakin eller, her an hazır bir havlu ve ürkek hastalar için bolca vakit.",
     "The cell to the left less a discount": "Soldaki hücreden indirim düş",
     "The cell to the left plus a percentage (VAT)": "Soldaki hücreye yüzde ekle (KDV)",
+    "The cell was saved.": "Hücre kaydedildi.",
     "The cellar": "Mahzen",
     "The cells are not a JSON object of column ids and values.": "Hücreler, sütun kimlikleri ve değerlerinden oluşan bir JSON nesnesi değil.",
     "The cells of the box {var:1} are not a JSON object of column ids and values.": "{var:1} kutusunun hücreleri, sütun kimlikleri ve değerlerinden oluşan bir JSON nesnesi değil.",
