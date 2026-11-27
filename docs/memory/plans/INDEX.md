@@ -55,6 +55,12 @@
 - erp-parasut-open-work.md: Paraşüt work left after the staging round of 2026-11-27 and its six fixes: what staging could not try, the decisions #2440-#2442, the queue worker, incoming e-invoices; where to start
 - github-channel-connection.md: Plan (owner 2026-11-08): connect GitHub with OAuth from Settings › Connections, the site sets its own webhook on chosen repositories and writes CI, pull request and label lines into a channel
 - global-features.md: Owner (2026-11-27, poll 246): nine features for selling and working outside Turkey; their order, which plan carries each, which start with a census because they may need a table
+- help-centre-census-articles.md: Help centre census: what collections give a knowledge base and lack: categories in order, a search of the articles alone, "Was this helpful?", related articles, an article offered while typing
+- help-centre-census-conversation.md: Help centre census: what a Workspace mail conversation stores (state, holder, times, subject number) and what a support request needs beyond it: number, states, priority, answer time, own page
+- help-centre-census-doors.md: Help centre census: the doors a support request comes in by today (e-mail, WhatsApp and SMS, a site form, Live Chat, My Account, the App Studio template's Support Requests) and where each lands
+- help-centre-census-privacy.md: Help centre census: who reads a support request, and how it leaves with a customer's data (export, erasure, keep period) today and as proposed
+- help-centre-census-proposal.md: Help centre census proposal: a support request is a support-box mail conversation with a priority and a source, every door ends there; the columns and tables to ask one by one, the screens in words
+- help-centre-census.md: Help centre HC1 census from the code: what collections lack for a knowledge base, what a Workspace mail conversation stores, where requests come in, the proposal, the owner's questions
 - help-centre.md: Plan (owner 2026-11-27, poll 246): a knowledge base on the site and support requests followed by the team; starts with the census step HC1, the build follows the owner's answers
 - import-site-builders.md: Plan (owner 2026-11-27, poll 246): importers from Squarespace, Webflow and Wix as new readers of the import framework, each from the files its owner can export; steps IB1 to IB5
 - integrations-census-aggregators.md: Census (2026-11-17) of services where one integration brings many: marketplace integrators, channel and feed tools, cargo and payment aggregators, what each states and whether its API is open
@@ -74,6 +80,13 @@
 - launch-summary-files.md: Plan: the agency summary's customer page shows the steps still open, and a "What we need from you" line can ask for one file or several instead of text; LS1, LS2
 - market-table-stakes.md: Plan (owner 2026-11-17): what the Turkish market's lists expect and the product lacks: a Google XML product feed now (TS1); the price sites, Craftgate and the integrators after 2026.11.0
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer
+- markets-price-lists-census-orders.md: Markets and price lists MK1 census, orders: where an order keeps its currency and rate, and what refunds, reports, the API, the ERP entry, marketplaces and feeds assume about its totals
+- markets-price-lists-census-payments.md: Markets and price lists MK1 census, payment drivers: in which currency each shipped and legacy driver charges today and which currencies each can take, from its own code and notes
+- markets-price-lists-census-prices.md: Markets and price lists MK1 census, prices: where the currencies are set up, where a price is converted for the visitor, and where each kind of price is stored and read
+- markets-price-lists-census-proposal.md: Markets and price lists MK1 census, proposal: the tables and order columns a market and its price list would need, each with its reason, and what a site with one currency keeps
+- markets-price-lists-census-questions.md: Markets and price lists MK1 census, the owner's questions: each table and column of the proposal asked on its own, and the product choices the build waits on, one a line
+- markets-price-lists-census-wholesale.md: Markets and price lists MK1 census, wholesale: how an account's prices are stored and chosen at the store, and whether a market's price list could be laid the same way
+- markets-price-lists-census.md: Markets and price lists MK1 census from the code: where prices are converted, what an order keeps, which currency each driver charges, wholesale's prices, a proposal, the owner's questions
 - markets-price-lists.md: Plan (owner 2026-11-27, poll 246): markets, a price list a country and the charge in the buyer's currency; starts with the census step MK1, the build's steps follow the owner's answers
 - mobile-api-shelved-m8.md: Plan mobile-api-shelved, steps M8a to M8d (owner 2026-11-22, beside the other plans): sort=newest on the remaining lists, several reads in one request, a list of deleted records, a CORS allow-list
 - mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what exists (M1–M7), M8 given out beside the other plans, decisions, how its needs arrive

@@ -19,7 +19,9 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - `addon-hook-*`: 11 files.
 - `artifact-canvas-*`: 7 files.
 - `automation-platforms-*`: 6 files; start at `automation-platforms.md`.
+- `help-centre-*`: 7 files; start at `help-centre.md`.
 - `integrations-census-*`: 12 files; start at `integrations-census.md`.
+- `markets-price-*`: 8 files.
 - `sales-channels-*`: 9 files.
 - `storefront-api-*`: 9 files.
 - `tax-automatic-*`: 7 files; start at `tax-automatic.md`.
