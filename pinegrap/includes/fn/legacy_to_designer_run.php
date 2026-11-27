@@ -943,19 +943,39 @@ function pg_ltd_widget_row($target, $style_name, $user, $since, $config = null, 
 {
     $cfg = json_encode(($config !== null) ? $config : pg_ltd_widget_config($target));
     $base = pg_ltd_widget_name($style_name, $target['kind']);
-    $have = db_item("SELECT id, name FROM shared_components
-                     WHERE system_region_config = '" . e($cfg) . "' AND created_at >= '" . (int)$since . "'
-                       AND (name = '" . e($base) . "' OR name LIKE '" . e(addcslashes($base, '\\%_')) . " [%')
-                     ORDER BY id ASC LIMIT 1");
-    if (is_array($have)) return array('id' => (int)$have['id'], 'name' => (string)$have['name'], 'created' => false);
     $tree_json = pg_designer_tree_encode(($tree !== null) ? $tree : pg_ltd_widget_tree($target['kind']));
     if ($tree_json === '') return null;
+    $have = db_item("SELECT id, name FROM shared_components
+                     WHERE " . pg_ltd_widget_row_where($cfg, $base, $since, ($tree !== null) ? $tree_json : null) . "
+                     ORDER BY id ASC LIMIT 1");
+    if (is_array($have)) return array('id' => (int)$have['id'], 'name' => (string)$have['name'], 'created' => false);
     $name = _sc_unique_name($base);
     $now = time();
     db("INSERT INTO shared_components (name, description, tree_json, system_region_config, category, created_by, created_at, updated_at)
         VALUES ('" . e($name) . "', '', '" . e($tree_json) . "', '" . e($cfg) . "', '', '" . (int)$user['id'] . "', '$now', '$now')");
     $sid = (int)mysqli_insert_id(db::$con);
     return $sid > 0 ? array('id' => $sid, 'name' => $name, 'created' => true) : null;
+}
+
+/**
+ * The WHERE clause finding a widget row this run made before: the same
+ * settings under the widget name (or that name with the server's " [n]"),
+ * made since the run started. A page type's widget carries the page's own
+ * layout: it is compared too, as two pages whose names give the same slug
+ * (or none, a name in another script) and whose settings match would
+ * otherwise share the first page's widget and its layout.
+ *
+ * @param string      $cfg_json   the settings, JSON
+ * @param string      $base       pg_ltd_widget_name()
+ * @param int         $since      the run's start
+ * @param string|null $tree_json  the layout of a page type's widget, null for a region's
+ * @return string
+ */
+function pg_ltd_widget_row_where($cfg_json, $base, $since, $tree_json = null)
+{
+    return "system_region_config = '" . e((string)$cfg_json) . "' AND created_at >= '" . (int)$since . "'
+                       AND (name = '" . e((string)$base) . "' OR name LIKE '" . e(addcslashes((string)$base, '\\%_')) . " [%')"
+        . ($tree_json !== null ? " AND MD5(tree_json) = '" . md5((string)$tree_json) . "'" : '');
 }
 
 /**

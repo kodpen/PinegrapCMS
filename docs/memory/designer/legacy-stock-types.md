@@ -16,7 +16,7 @@ module: layouts
 ## Where do the facts come from?
 - `pg_classic_type_facts($page_ids)` (`layouts.php`): per page of a widget type, `type`, `kind`, `modified` (`page.layout_modified`), `cfg`, `tree`, `held`. `_pg_widget_offers()` builds the editor's offers from the same reader.
 - `pg_ltd_type_target($name, $facts, $hosted)`: `convert`, `held`, or `file` (own layout file that drops pieces or was not read; never on a hosted site). A file the converter takes whole is `convert` with `file` true ([[layout-type-converter]]).
-- `pg_ltd_plan_facts()` gives `types` for the pages still holding their own System region: a tree with an unnamed `system` node (`pg_ltd_tree_has_own_system()`), or no tree and `<system></system>` in the style's code.
+- `pg_ltd_plan_facts()` gives `types` for the pages still holding their own System region: a tree with an unnamed `system` node (`pg_ltd_tree_has_own_system()`), or no tree and a System region the frame tree leaves in the page: the frame split at its page regions with the System region between the first and the last of them (`pg_ltd_frame_page_system()`). Elsewhere it sits in a shared part and the run leaves it.
 
 ## What does the dry run show?
 - Under "Stays code, drawn as on the site": a row per held setting, its pages behind the count, reason "The page type's widget has no setting for it: these pages stay System regions."

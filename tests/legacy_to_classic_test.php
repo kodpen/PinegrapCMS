@@ -81,8 +81,25 @@ function test_ltc_origins_from_runs()
 		array('lines' => array()),
 		array('origins' => array('863' => array(614, 1), '9' => 'x', '-3' => array(1, 0))),
 	);
-	pg_assert_same(array(180 => array(741, true), 863 => array(614, true)), pg_ltc_origins_merge($runs), 'a later run wins');
+	pg_assert_same(array(180 => array(741, true, 0), 863 => array(614, true, 0)), pg_ltc_origins_merge($runs), 'a later run wins');
 	pg_assert_same(array(), pg_ltc_origins_merge(array()));
+}
+
+// A record names the design its run moved the page into: a page sent back
+// and later moved into another design (its classic style opened in the
+// editor, or moved alone) is no longer that run's, and its record is not
+// read for the design it is in now.
+function test_ltc_origin_record_names_its_design()
+{
+	$run = array(
+		'sets' => array(array('styles' => array(741, 742), 'design' => 900), array('styles' => array(608), 'design' => 0)),
+		'origins' => array('180' => array(741, 1), '181' => array(742, 0), '863' => array(608, 0), '7' => array(555, 0)),
+	);
+	pg_assert_same(array(180 => array(741, true, 900), 181 => array(742, false, 900), 863 => array(608, false, 0), 7 => array(555, false, 0)),
+		pg_ltc_origins_merge(array($run)));
+	pg_assert_same(true, pg_ltc_record_applies(array(741, true, 900), 900), 'the run\'s own design');
+	pg_assert_same(false, pg_ltc_record_applies(array(741, true, 900), 950), 'another design: the record is stale');
+	pg_assert_same(true, pg_ltc_record_applies(array(608, false, 0), 950), 'a record whose design is not known still counts');
 }
 
 function test_ltc_refusal()

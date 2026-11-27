@@ -700,7 +700,7 @@ function pg_ltd_plan_facts($s, $converted)
     // of: a page with a tree that still holds it, a page without one when
     // the style's code has it.
     $own_system = array();
-    $style_system = ($s['refusal'] === '') && in_array(array('type' => 'system', 'name' => ''), pg_ltd_style_tags($code)['regions'], true);
+    $style_system = ($s['refusal'] === '') && pg_ltd_frame_page_system($frame['frame']);
     foreach (array('own' => $s['own'], 'folder' => $s['folder']) as $source => $rows) {
         foreach ($rows as $p) {
             $own_regions = 0;
@@ -1078,6 +1078,24 @@ function pg_ltd_stay_targets($tree)
     };
     $walk($tree);
     return $out;
+}
+
+/**
+ * Whether a page given a classic style's frame tree holds its own System
+ * region, as the types step reads it (pg_ltd_tree_has_own_system()): only
+ * when the frame is split at its page regions and the System region sits in
+ * the page content. In a frame with no page region, or in a part before or
+ * after the content, it is drawn by a shared component and stays a region.
+ *
+ * Pure: no query.
+ *
+ * @param array $frame  pg_classic_style_frame()'s 'frame'
+ * @return bool
+ */
+function pg_ltd_frame_page_system($frame)
+{
+    $split = pg_classic_style_frame_split($frame);
+    return $split !== null && pg_ltd_tree_has_own_system(pg_di_root($split['children']));
 }
 
 /**

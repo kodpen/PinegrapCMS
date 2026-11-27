@@ -80,7 +80,8 @@ function pg_ltc_target_style($origin, $own, $folder_id, $folder_styles)
 
 /**
  * The pages the kept runs moved (pg_ltd_state_origin()), a later run's
- * record over an earlier one's: page id => array(style id, from folder).
+ * record over an earlier one's: page id => array(style id, from folder,
+ * the design the run moved it into (its style's set's, 0 when not known)).
  *
  * Pure: no query.
  *
@@ -91,13 +92,36 @@ function pg_ltc_origins_merge($runs)
 {
     $out = array();
     foreach ((array)$runs as $run) {
+        $design_of = array();
+        foreach ((array)($run['sets'] ?? array()) as $set) {
+            foreach ((array)($set['styles'] ?? array()) as $sid) $design_of[(int)$sid] = (int)($set['design'] ?? 0);
+        }
         foreach ((array)($run['origins'] ?? array()) as $page_id => $o) {
             if ((int)$page_id > 0 && is_array($o) && (int)($o[0] ?? 0) > 0) {
-                $out[(int)$page_id] = array((int)$o[0], !empty($o[1]));
+                $out[(int)$page_id] = array((int)$o[0], !empty($o[1]), (int)($design_of[(int)$o[0]] ?? 0));
             }
         }
     }
     return $out;
+}
+
+/**
+ * Whether a kept run's record of a page (pg_ltc_origins_merge()) tells
+ * where the page in this design came from: the run moved it into this
+ * design. A page sent back and later moved into another one (its classic
+ * style opened in the editor, or moved alone) is no longer that run's.
+ * A record whose design is not known still counts.
+ *
+ * Pure: no query.
+ *
+ * @param array $record     array(style id, from folder, design id)
+ * @param int   $design_id  the design the page is in now
+ * @return bool
+ */
+function pg_ltc_record_applies($record, $design_id)
+{
+    $design = (int)($record[2] ?? 0);
+    return $design <= 0 || $design === (int)$design_id;
 }
 
 /**
@@ -208,7 +232,7 @@ function pg_ltc_designs($only = 0)
         foreach ((is_array($rows) ? $rows : array()) as $r) {
             $pid = (int)$r['page_id'];
             $own = false;
-            if (isset($recorded[$pid])) {
+            if (isset($recorded[$pid]) && pg_ltc_record_applies($recorded[$pid], $id)) {
                 list($origin, $from_folder) = $recorded[$pid];
                 $own = !$from_folder;
             } else {
