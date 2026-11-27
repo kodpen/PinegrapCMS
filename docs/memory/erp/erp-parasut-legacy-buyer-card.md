@@ -11,7 +11,8 @@ description: The Paraşüt card the order screen's buttons put an order on: the 
 ## When is a card looked up, and how? (#1543)
 - Only for a number that passes GİB's check digits (`parasut_order_contact_search_number()`, `erp_edoc_tax_number_valid()`), as digits. Not for an empty field, the final consumer's `11111111111`, a mistyped number, or a placeholder that fails the check (`00000000000`, `2222222222`, `12345678901`).
 - A real VKN/TCKN always passes. A placeholder that passes too (`1234567890`, `4444444444`) is looked up like a real number, but strangers type it too, so a card is taken only when it is the buyer's (next answer). The invoice carries no buyer details of its own: another buyer's card would put the e-Arşiv in their name and mail it to them.
-- As the ERP's driver looks (erp-parasut-final-consumer-card.md): `GET contacts?filter[tax_number]=N&sort=-id`, 25 a page, until a card is taken, at most `ERP_EDOC_PARASUT_FIND_PAGES` (20). The first card not archived, carrying exactly the number (digits compared) and the order's name and e-mail (`parasut_order_contact_card_is_buyers()`, case and outer spaces aside, as the driver's final-consumer match) is taken as it is: nothing is PUT, even when the address differs. A repeat buyer with a new name or e-mail gets a new card.
+- As the ERP's driver looks (erp-parasut-final-consumer-card.md): `GET contacts?filter[tax_number]=N&sort=-id`, 25 a page, until a card is taken, at most `ERP_EDOC_PARASUT_FIND_PAGES` (20).
+- The first card not archived, carrying exactly the number (digits compared) and the order's name and e-mail (`parasut_order_contact_card_is_buyers()`, case and outer spaces aside, as the driver's final-consumer match) is taken, its empty fields filled (below). A repeat buyer with a new name or e-mail gets a new card.
 - 404 or no such card: a card is opened. Any other answer refuses ("Paraşüt would not search its contacts: …"); nothing is opened, the order keeps no id, the press can be repeated.
 - The driver's `erp_edoc_parasut_contact_for()` is not called: it opens a missing card with the ERP account's details and logs each call to `erp_edoc_log`.
 
@@ -23,7 +24,7 @@ description: The Paraşüt card the order screen's buttons put an order on: the 
 - No number, the final consumer, a number that fails the check. The ERP's driver takes a final-consumer card only when name, address and e-mail match (#1405); the legacy buttons do not look.
 
 ## Should a reused card be brought up to date?
-- Rule (#2441, the driver and both legacy buttons): only its empty fields are filled; a value it has is never overwritten. Not built: `parasut_order_contact_for()` and `erp_edoc_parasut_contact_for()` take the card as it is (bug #11984).
+- Rule (#2441, the driver and both legacy buttons): only its empty fields are filled; a value it has is never overwritten. Built in #12013: erp-parasut-buyer-card-fill.md.
 
 ## How was it checked live? (demo company, 2026-10-24)
 - Two dev orders; the "TC/VKN field" held a valid number only an archived card carried (not listed). The first order's sync opened card A; E-Shipment on the second reused it, then stopped at "no stock-tracked items". Without a number, then with 11111111111, each sync opened a card of its own. Cleaned up.

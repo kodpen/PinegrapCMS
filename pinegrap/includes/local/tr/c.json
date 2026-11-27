@@ -3674,6 +3674,7 @@
     "Connected with Google": "Google ile bağlı",
     "Connected with an authorization code": "Yetki koduyla bağlandı",
     "Connected with the user name and password": "Kullanıcı adı ve parolayla bağlandı",
+    "Connected, but Paraşüt refuses every request in company {var:1}: {var:2}": "Bağlandı, ancak Paraşüt {var:1} şirketindeki her isteği reddediyor: {var:2}",
     "Connected. The description was loaded with your credentials.": "Bağlandı. Tanım kimlik bilgilerinizle yüklendi.",
     "Connected: {var:1} e-mails in {var:2}.": "Bağlanıldı: {var:2} klasöründe {var:1} e-posta var.",
     "Connected: {var:1}, {var:2}, quality {var:3}. Checked with Meta on {var:4}.": "Bağlı: {var:1}, {var:2}, kalite {var:3}. Meta ile {var:4} tarihinde denetlendi.",

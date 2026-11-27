@@ -23,7 +23,7 @@ description: Paraşüt's customer and supplier cards in ERP › Account sync (ac
 - A short name that mirrored the name follows it; an account that is both goes as a customer; a Turkish number goes as digits. A new card is written with the fields that hold something; the ERP's `PG-<id>` code and e-Invoice answer are not Paraşüt fields.
 
 ## What happens to an invoice of a linked account?
-- `erp_edoc_parasut_contact_for()` reads the linked contact (one GET) and uses it only while it is not archived and still carries the buyer's number (`erp_edoc_parasut_linked_contact_usable()`); otherwise it searches by tax number. A reused card is taken as it is; the rule (only empty fields filled, bug #11984): erp-parasut-legacy-buyer-card.md.
+- `erp_edoc_parasut_contact_for()` reads the linked contact (one GET) and uses it only while it is not archived and still carries the buyer's number (`erp_edoc_parasut_linked_contact_usable()`); otherwise it searches by tax number. A reused card gets only its empty fields filled (#12013): erp-parasut-buyer-card-fill.md.
 - A poll links an account with no card yet to its invoice's contact (`erp_edoc_account_link_from_invoice()`, one more GET).
 - A card the invoice path opens (`erp_edoc_parasut_contact_attributes()`) carries the buyer's postal code (#742).
 

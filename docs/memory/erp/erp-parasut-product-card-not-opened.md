@@ -18,7 +18,7 @@ description: An invoice line whose own Paraşüt card is not opened is refused i
 
 ## Which VAT rate should a new card take?
 - Rule: a card opened for an invoice line takes that line's VAT rate; a caller without a line (E-Shipment) takes the catalog's. An existing card is not updated. The line is the sale and the card's rate a default: a stale catalog rate must not stop an invoice.
-- Today the create sends the catalog's `products.tax_rate`, so an old 18 % product makes Paraşüt refuse the card and with it a 20 % invoice: bug #11982.
+- Built in #12013: `erp_edoc_parasut_line_product()` hands the line's `tax_rate` to `parasut_sync_product()`, and `parasut_product_attributes()` sends it as `vat_rate`; with no line rate the catalog's `products.tax_rate` goes. Before, an old 18 % product made Paraşüt refuse the card and with it a 20 % invoice. Tests: `tests/parasut_product_test.php`.
 
 ## What stays as it was?
 - The 404 resend: a kept card Paraşüt no longer holds is forgotten and opened again (erp-parasut-stale-kept-ids.md); if that create fails, the resend stops with this refusal. A 404 naming the default product/service refuses naming the setting.

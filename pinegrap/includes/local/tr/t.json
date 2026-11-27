@@ -1855,6 +1855,7 @@
     "The Paraşüt connection is set on its page of Connections.": "Paraşüt bağlantısı Bağlantılar'daki kendi sayfasında kurulur.",
     "The Paraşüt secrets could not be stored.": "Paraşüt gizli bilgileri saklanamadı.",
     "The Paraşüt user cannot see company {var:1}. Its companies: {var:2}": "Paraşüt kullanıcısı {var:1} numaralı firmayı göremiyor. Firmaları: {var:2}",
+    "The Paraşüt user is not allowed to use app integrations. In Paraşüt, open Ayarlar › Kullanıcılar, choose the user who connects, press Düzenle, set Uygulama Entegrasyonları to Yetki Var, then connect again.": "Paraşüt kullanıcısının uygulama entegrasyonu yetkisi yok. Paraşüt içinde Ayarlar › Kullanıcılar sayfasını açın, bağlanan kullanıcıyı seçin, Düzenle düğmesine basın, Uygulama Entegrasyonları ayarını Yetki Var yapın ve yeniden bağlanın.",
     "The Path of the Gods above Positano": "Positano'nun üzerinde Tanrıların Yolu",
     "The Pharmacy": "Eczane",
     "The Phone": "Telefon",

@@ -419,7 +419,14 @@ function test_security_scan_round_quarantine_never_goes_through_a_folder_turned_
 
 	file_put_contents($outside . '/shell.php', '<?php echo 1;');
 	@unlink($link);
-	symlink($outside, $link);
+
+	// Windows makes a link only in Developer Mode or for an administrator;
+	// without one there is nothing to test.
+	if (!@symlink($outside, $link)) {
+		_test_scan_round_remove($outside);
+
+		return;
+	}
 
 	pg_assert_true(pg_security_quarantine_move($row, 'quarantine') !== '', 'a file reached through a link is not moved');
 	clearstatcache();

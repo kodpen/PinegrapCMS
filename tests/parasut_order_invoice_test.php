@@ -619,6 +619,34 @@ function test_parasut_create_invoice_looks_before_it_writes_again()
 	pg_assert_true(($checked !== false) && ($answered < $checked), 'a record found or written meets the total check');
 }
 
+// The e-Archive and e-Invoice conversions answer 202 Accepted with a
+// trackable job. Create Invoice takes any 2xx as accepted, as the ERP's
+// driver does (erp_edoc_parasut_ok()), and follows the job, instead of
+// telling the operator the e-document failed with "HTTP 202".
+function test_parasut_create_invoice_takes_a_queued_conversion_as_accepted()
+{
+	$queued = array('http_code' => 202, 'body' => array('data' => array('id' => '7781', 'type' => 'trackable_jobs')), 'raw' => '{"data":{"id":"7781","type":"trackable_jobs"}}');
+
+	pg_assert_true(erp_edoc_parasut_ok($queued), '202 with a trackable job');
+	pg_assert_true(erp_edoc_parasut_ok(array_merge($queued, array('http_code' => 201))), '201');
+	pg_assert_false(erp_edoc_parasut_ok(array('http_code' => 422, 'body' => array('errors' => array(array('title' => 'Geçersiz'))), 'raw' => '{"errors":[{"title":"Geçersiz"}]}')), '422');
+	pg_assert_false(erp_edoc_parasut_ok(array('http_code' => 0, 'curl_error' => 'Operation timed out')), 'no answer');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/parasut.php');
+	$start = strpos($source, 'function _parasut_create_invoice_claimed(');
+	pg_assert_true($start !== false, '_parasut_create_invoice_claimed() is found');
+	$end = strpos($source, "\nfunction ", (int) $start + 1);
+	$body = ($end === false) ? substr($source, (int) $start) : substr($source, (int) $start, $end - (int) $start);
+
+	$posted = strpos($body, "_parasut_request('POST', _parasut_prefix() . '/e_archives', \$doc_body, \$token);");
+	$accepted = strpos($body, 'if (!erp_edoc_parasut_ok($doc_result)) {');
+	$tracked = strpos($body, '$job = _parasut_track_job($job_id, $token);');
+
+	pg_assert_false(strpos($body, "in_array(\$doc_result['http_code'], [200, 201])") !== false, 'not only 200 and 201');
+	pg_assert_true(($posted !== false) && ($accepted !== false) && ($posted < $accepted), 'the conversion\'s answer is judged as the driver judges it');
+	pg_assert_true(($tracked !== false) && ($accepted < $tracked), 'an accepted conversion is followed');
+}
+
 // The order screen draws the invoice's badges from that one helper and
 // offers Create Invoice again on the mark (the press looks for the record).
 // A record's id is told apart from the mark in what the button says; the

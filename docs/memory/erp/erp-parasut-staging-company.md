@@ -8,7 +8,7 @@ module: parasut
 - `POST e_archives` answers 202 with a job, and every job ends `error` with "e-Belge entegrasyonunuz ile ilgili bir hata oluştu, lütfen bizimle iletişime geçin" (2026-11-27). Ask After the Status puts the row back to `created` and says to hand it to GİB again (`erp-parasut-send-failures.md`).
 - So the e-document PDF, the cancel of a sent e-document and GİB's verdict (a 0 % line without an exemption code too) cannot be tested there.
 - Staging has no e-Invoice recipient: every send goes e-Arşiv, and e-Fatura stays untested.
-- The order screen's legacy Create Invoice reads the e_archives 202 as a failure (bug #11978).
+- The order screen's legacy Create Invoice takes that 202 as accepted and follows the job, as the driver does (`erp_edoc_parasut_ok()`, #12013); before, it said "…but e-document failed: HTTP 202". E-Shipment has no conversion step.
 
 ## Which user right does a round need?
 - The Paraşüt user's integration permission: `erp-parasut-devhub-connection.md`. Many 401 or 403 answers can get an OAuth client switched off at Paraşüt: a round stops at the first one and finds the cause before it goes on.

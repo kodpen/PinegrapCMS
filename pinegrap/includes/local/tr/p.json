@@ -464,6 +464,7 @@
     "Paraşüt would not cancel the e-Archive invoice: {var:1}": "Paraşüt e-Arşiv faturasını iptal etmedi: {var:1}",
     "Paraşüt would not convert the invoice into an e-document: {var:1}": "Paraşüt faturayı e-belgeye dönüştürmedi: {var:1}",
     "Paraşüt would not delete the record: {var:1}": "Paraşüt kaydı silmedi: {var:1}",
+    "Paraşüt would not fill the empty fields of the buyer card: {var:1}": "Paraşüt, alıcı kartının boş alanlarını doldurmadı: {var:1}",
     "Paraşüt would not hand over the card: {var:1}": "Paraşüt kartı vermedi: {var:1}",
     "Paraşüt would not list its customers and suppliers: {var:1}": "Paraşüt cari listesini vermedi: {var:1}",
     "Paraşüt would not open a contact for the buyer: {var:1}": "Paraşüt alıcı için cari açmadı: {var:1}",

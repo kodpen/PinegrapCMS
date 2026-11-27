@@ -178,7 +178,7 @@ function test_parasut_default_product_wiring()
 	$line = parasut_default_product_test_source('includes/erp/edoc/parasut.php', 'erp_edoc_parasut_line_product');
 
 	pg_assert_contains("return array('id' => '', 'error' => (string) \$token['error']);", $line);
-	pg_assert_contains("\$sync = parasut_sync_product(\$product_id, (string) \$token['token'], \$taken_out);", $line);
+	pg_assert_contains("\$sync = parasut_sync_product(\$product_id, (string) \$token['token'], \$taken_out, \$line['tax_rate'] ?? null);", $line);
 	pg_assert_contains('return erp_edoc_parasut_line_product_pick($line, $sync, ', $line);
 	pg_assert_false(strpos($line, 'return array(\'id\' => $default') !== false, 'no default returned past the choice');
 }
