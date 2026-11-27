@@ -33,3 +33,44 @@ function test_settings_moved_rows_stock_history_links_the_stock_locations_card()
 	pg_assert_true(strpos($src, "pg_settings_link('commerce', 'pgset-stock-locations')") !== false, 'view_stock_moves.php: Add a stock location opens Ecommerce on Stock locations');
 	pg_assert_false(file_exists(PG_FUNCTIONS_DIR . '/settings.php'), 'there is still no settings.php screen');
 }
+
+function test_settings_moved_rows_texts_name_the_row()
+{
+	$files = array(
+		'edit_erp_invoice.php',
+		'erp_settings.php',
+		'view_order.php',
+		'includes/erp/account_form.php',
+		'includes/erp/notify.php',
+		'includes/erp/order_flow.php',
+	);
+
+	foreach ($files as $file) {
+		$src = settings_moved_rows_source($file);
+
+		pg_assert_false(strpos($src, 'ERP settings card') !== false, $file . ': no text sends the operator to the ERP settings card, which is gone');
+		pg_assert_false(strpos($src, 'on the ERP card of the accounting settings') !== false, $file . ': no text names the ERP card of the accounting settings');
+	}
+
+	$rows = array(
+		'edit_erp_invoice.php' => array('Reminders and notices'),
+		'includes/erp/account_form.php' => array('Reminders and notices', 'Web orders'),
+		'includes/erp/notify.php' => array('Reminders and notices'),
+		'includes/erp/order_flow.php' => array('Sales'),
+		'view_order.php' => array('Sales'),
+	);
+
+	foreach ($rows as $file => $names) {
+		$src = settings_moved_rows_source($file);
+
+		foreach ($names as $name) {
+			pg_assert_true(strpos($src, 'Site Settings › Accounting › ' . $name) !== false, $file . ': the text names Site Settings › Accounting › ' . $name);
+		}
+	}
+
+	// The seller note of ERP Settings names Documents, the row holding the
+	// address the sale was made at.
+	$erp_settings = settings_moved_rows_source('erp_settings.php');
+	pg_assert_true(strpos($erp_settings, "lang('Accounting') . ' &rsaquo; ' . lang('Documents')") !== false, 'erp_settings.php: the place of the sale\'s address ends on Documents');
+	pg_assert_false(strpos($erp_settings, "lang('Accounting') . ' &rsaquo; ' . lang('ERP')") !== false, 'erp_settings.php: no place ends on an ERP card');
+}

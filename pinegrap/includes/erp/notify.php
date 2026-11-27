@@ -557,7 +557,7 @@ function erp_overdue_notify_digest_html($new, $second, $known, $customers = 0, $
         <p style="' . $paragraph . '">' . h(erp_overdue_notify_headline(count($new), count($second), $total)) . '</p>'
         . $output_new . $output_second . $output_known . $output_customers . '
         <p style="' . $paragraph . ' margin-top: 18px;"><a href="' . h(erp_overdue_notify_url()) . '">' . h(lang('Open the overdue list')) . '</a></p>
-        <p style="font-size: 12px; color: #888888;">' . h(lang('This reminder is sent by the ERP module. The threshold and the recipients are set on the ERP settings card.')) . '</p>
+        <p style="font-size: 12px; color: #888888;">' . h(lang('This reminder is sent by the ERP module. The threshold and the recipients are set in Site Settings › Accounting › Reminders and notices.')) . '</p>
     </div>
 </body>
 </html>';

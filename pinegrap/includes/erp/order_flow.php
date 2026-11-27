@@ -219,7 +219,7 @@ function erp_order_flow_state($order_id)
     } elseif (!$billable) {
         $step['state'] = 'blocked';
         $step['disabled_action'] = 'invoice';
-        $step['reason'] = lang('No walk-in sales account is named on the ERP settings card, so this sale cannot be invoiced unless a customer is picked.');
+        $step['reason'] = lang('No walk-in sales account is named in Site Settings › Accounting › Sales, so this sale cannot be invoiced unless a customer is picked.');
     } else {
         $step['action'] = 'invoice';
         $step['reason'] = lang('The invoice takes its figures from the order, with a number from the sales series.');
