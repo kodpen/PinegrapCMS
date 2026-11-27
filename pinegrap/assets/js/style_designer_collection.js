@@ -98,7 +98,9 @@ StyleDesigner.definePart('collection', function (K) {
         (collections || []).forEach(function (c) {
             if (name && String(c.name).toLowerCase() === name.toLowerCase()) out.taken = c;
         });
+        // The locked line shows the Title in the editor's language.
         var seen = { title: true };
+        seen[String(_sdT('Title')).trim().toLowerCase()] = true;
         (state.fields || []).forEach(function (f) {
             var n = String(f.name || '').trim().toLowerCase();
             if (!n) return;

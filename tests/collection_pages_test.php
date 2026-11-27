@@ -227,6 +227,22 @@ function test_collection_pages_part_address_follows_the_name()
 	pg_assert_same('teachers', $res['own'], 'its own address is no clash');
 }
 
+// The locked Title line shows the Title in the editor's language; a field
+// named so would be a second field of that name in the form.
+function test_collection_pages_part_translated_title_is_taken()
+{
+	$res = collection_pages_node(array('_ncCheck'),
+		'_sdT = function (s) { return s === "Title" ? "Başlık" : s; };'
+		. 'console.log(JSON.stringify(_ncCheck({ choice: "new", name: "T", fields: [{ name: " başlık " }] }, [])));');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same('başlık', $res['dup'], 'the Title in the editor\'s language is a field already');
+	pg_assert_same(false, $res['next']);
+}
+
 function test_collection_pages_part_field_defs()
 {
 	$res = collection_pages_node(array('_ncSlug', '_ncKey', '_ncFieldDefs', '_ncListDefs', '_ncShowDef'),
