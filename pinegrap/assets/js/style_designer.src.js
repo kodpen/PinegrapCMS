@@ -20128,6 +20128,7 @@ const StyleDesigner = (function () {
         } else {
             target.children.push(n);
         }
+        if (altCopy) _sdCoCopyFields(n, _targetOwnerSid);
 
         // Auto-balance the column widths
         if (target.type === 'row' && n.type === 'col') {
@@ -34415,6 +34416,7 @@ const StyleDesigner = (function () {
                     if (owner) {
                         var idx = owner.parent.children.indexOf(tgt);
                         owner.parent.children.splice(idx + 1, 0, cloned);
+                        _sdCoCopyFields(cloned, owner.sid);
                         expandAncestors(cloned, tree);
                         lastCloned = cloned;
                         if (owner.sid) _sharedDirty[owner.sid] = true;
@@ -35882,6 +35884,7 @@ const StyleDesigner = (function () {
                     var cl = cloneTree(tgt);
                     (function reId(nd) { nd._id = gid(); if (nd.children) nd.children.forEach(reId); })(cl);
                     owner.parent.children.splice(owner.parent.children.indexOf(tgt) + 1, 0, cl);
+                    _sdCoCopyFields(cl, owner.sid);
                     if (owner.sid) _sharedDirty[owner.sid] = true;
                     lc = cl;
                 });

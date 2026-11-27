@@ -11,7 +11,7 @@ module: component_overrides
 ## What is a field id?
 - `of_` and eight random lower-case letters or digits (`pg_co_new_field_id($taken)`); valid ids are a lower-case letter then up to 39 of `[a-z0-9_]` (`pg_co_valid_field_id()`). Random, never counted, so a field opened after another was closed never takes the closed field's stored values.
 - An id met twice in a tree keeps its first node; a place that hides that node takes the ids of its subtree with it, so a second node draws as the component has it (#11998).
-- A copy never shares ids (`_sdCoCopyFields()` in the core, #11999): Duplicate or Paste inside an ordinary shared component gives each open field of the copy a new id (`_sdCoNewFieldId()`, this form), its label kept; a copy on a page or in a system widget loses `_open`. `_openOrder` and `_variants` never travel with a copy. Before #11999 the copy kept the ids and only the first node took a place's value.
+- A copy never shares ids (`_sdCoCopyFields()` in the core, #11999): Duplicate (Ctrl+D, the canvas and Overview menus), Paste or an Alt+Drag copy inside an ordinary shared component gives each open field of the copy a new id (`_sdCoNewFieldId()`, this form), its label kept; a copy on a page or in a system widget loses `_open`. `_openOrder` and `_variants` never travel with a copy. Before #11999 the copy kept the ids and only the first node took a place's value.
 
 ## Which functions are there?
 - PHP `includes/fn/component_overrides.php`; the twin `assets/js/pg_component_overrides.js` (`window.PGComponentOverrides`), bundled first in the designer part `overrides` (`component-overrides-fields.md`; drawing: `component-overrides-render.md`).

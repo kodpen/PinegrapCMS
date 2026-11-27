@@ -287,3 +287,26 @@ JS
 	)), $res['plain']['shape'], 'the component as it is');
 	pg_assert_same(array(), $res['plain']['marks'], 'without its marks');
 }
+
+// The other copy paths take the same step right after the copy is in its
+// tree: the Duplicate rows of the canvas and Overview menus (inline
+// handlers) and Alt+Drag in handleDrop().
+function test_designer_component_copies_every_copy_path_takes_new_ids()
+{
+	$core = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js'));
+
+	pg_assert_true(strpos($core, "owner.parent.children.splice(idx + 1, 0, cloned);\n                        _sdCoCopyFields(cloned, owner.sid);") !== false,
+		'the canvas menu\'s Duplicate gives the copy its own field ids');
+	pg_assert_true(strpos($core, "owner.parent.children.splice(owner.parent.children.indexOf(tgt) + 1, 0, cl);\n                    _sdCoCopyFields(cl, owner.sid);") !== false,
+		'the Overview menu\'s Duplicate too');
+
+	$at = strpos($core, "\n    function handleDrop(");
+	$end = ($at === false) ? false : strpos($core, "\n    }\n", $at);
+	if (!pg_assert_true($end !== false, 'the core has handleDrop()')) {
+		return;
+	}
+	$fn = substr($core, $at, $end - $at);
+	$put = strpos($fn, 'target.children.push(n);');
+	$copy = strpos($fn, 'if (altCopy) _sdCoCopyFields(n, _targetOwnerSid);');
+	pg_assert_true($put !== false && $copy !== false && $copy > $put, 'an Alt+Drag copy gets its own field ids once it is in place');
+}
