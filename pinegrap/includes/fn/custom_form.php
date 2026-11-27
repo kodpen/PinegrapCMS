@@ -5966,3 +5966,85 @@ function pg_cf_remove_placed_uploads($placed)
         }
     }
 }
+
+/**
+ * Marks the controls set to offer articles as the visitor types
+ * (`_cf.suggest_folder`, "Offer articles from"): a text or search box or a
+ * text area the visitor sees gets data-pg-suggest, the address of
+ * article_suggest.php narrowed to that folder, and autocomplete="off" so the
+ * browser's own list does not cover the suggestions. Returns how many
+ * controls were marked; marking twice changes nothing. Pure.
+ *
+ * @param array  $tree     a custom form widget tree, changed in place
+ * @param string $endpoint the address of article_suggest.php
+ * @return int
+ */
+function pg_cf_mark_article_suggest(array &$tree, $endpoint)
+{
+    $count = 0;
+    $walk = function (array &$n) use (&$walk, &$count, $endpoint) {
+        $tag = (isset($n['type']) && $n['type'] === 'semantic' && isset($n['props']['tag'])) ? strtolower((string) $n['props']['tag']) : '';
+        if ($tag === 'input' || $tag === 'textarea') {
+            $cf = (isset($n['props']['_cf']) && is_array($n['props']['_cf'])) ? $n['props']['_cf'] : array();
+            $folder = (isset($cf['suggest_folder']) && is_scalar($cf['suggest_folder'])) ? (int) $cf['suggest_folder'] : 0;
+            $attrs = _pg_cf_node_attrs($n);
+            $type = ($tag === 'input') ? strtolower(isset($attrs['type']) ? (string) $attrs['type'] : 'text') : '';
+            if ($folder > 0 && empty($cf['office_use_only']) && ($tag === 'textarea' || $type === 'text' || $type === 'search' || $type === '')) {
+                $set = array('data-pg-suggest' => $endpoint . '?folder=' . $folder, 'autocomplete' => 'off');
+                $list = (isset($n['props']['_attrs']) && is_array($n['props']['_attrs'])) ? $n['props']['_attrs'] : array();
+                foreach ($list as $i => $a) {
+                    if (is_array($a) && isset($a['name']) && isset($set[strtolower((string) $a['name'])])) unset($list[$i]);
+                }
+                foreach ($set as $name => $value) $list[] = array('name' => $name, 'value' => $value);
+                $n['props']['_attrs'] = array_values($list);
+                $count++;
+            }
+        }
+        if (!empty($n['children']) && is_array($n['children'])) {
+            foreach ($n['children'] as &$child) {
+                if (is_array($child)) $walk($child);
+            }
+            unset($child);
+        }
+    };
+    $walk($tree);
+    return $count;
+}
+
+/**
+ * The script of the controls pg_cf_mark_article_suggest() marked: a pause in
+ * typing asks article_suggest.php with what was typed (three characters or
+ * more) and lists the articles it offers under the control, each opening in
+ * a new tab so the form keeps what was typed. An answer that came late for
+ * the text is dropped. Emitted once a page.
+ *
+ * @return string
+ */
+function pg_cf_article_suggest_script()
+{
+    static $emitted = false;
+    if ($emitted) return '';
+    $emitted = true;
+    $label = json_encode(lang('These articles may answer your question:'), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE);
+    return '<script>(function(){var L=' . $label . ';'
+         . 'var bind=function(){Array.prototype.forEach.call(document.querySelectorAll("[data-pg-suggest]"),function(c){'
+         . 'if(c.getAttribute("data-pg-suggest-bound"))return;c.setAttribute("data-pg-suggest-bound","1");'
+         . 'var box=document.createElement("div");box.className="pg-cf-suggest mt-2";box.hidden=true;box.setAttribute("aria-live","polite");'
+         . 'c.insertAdjacentElement("afterend",box);var timer=0,last="",seq=0;'
+         . 'var draw=function(rows){box.textContent="";if(!rows.length){box.hidden=true;return;}'
+         . 'var h=document.createElement("div");h.className="small text-body-secondary mb-1";h.textContent=L;box.appendChild(h);'
+         . 'var list=document.createElement("div");list.className="list-group";'
+         . 'rows.forEach(function(r){if(!r||typeof r.url!=="string"||r.url.charAt(0)!=="/")return;'
+         . 'var a=document.createElement("a");a.className="list-group-item list-group-item-action";a.href=r.url;a.target="_blank";a.rel="noopener";'
+         . 'var t=document.createElement("div");t.className="fw-semibold";t.textContent=String(r.title||"");a.appendChild(t);'
+         . 'if(r.excerpt){var e=document.createElement("div");e.className="small text-body-secondary";e.textContent=String(r.excerpt);a.appendChild(e);}'
+         . 'list.appendChild(a);});box.appendChild(list);box.hidden=!list.children.length;};'
+         . 'var ask=function(){var q=c.value.trim();if(q===last)return;last=q;var n=++seq;'
+         . 'if(q.length<3){draw([]);return;}'
+         . 'var x=new XMLHttpRequest();x.open("GET",c.getAttribute("data-pg-suggest")+"&q="+encodeURIComponent(q),true);'
+         . 'x.onload=function(){if(n!==seq||x.status!==200)return;var d=null;try{d=JSON.parse(x.responseText);}catch(e){}'
+         . 'draw(d&&Array.isArray(d.results)?d.results:[]);};x.send();};'
+         . 'c.addEventListener("input",function(){clearTimeout(timer);timer=setTimeout(ask,350);});'
+         . '});};'
+         . 'if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",bind);else bind();})();</script>';
+}
