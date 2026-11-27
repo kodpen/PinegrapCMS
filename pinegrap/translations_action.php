@@ -370,6 +370,36 @@ if (!$translations_is_import && !$translations_is_export) {
             translations_respond(array('status' => 'success', 'state' => $status));
             break;
 
+        // What a row's "Details" shows: where the text is used, the wording
+        // it replaced and why its translation is flagged suspicious. Read
+        // only; each place links to the screen's list of its texts.
+        case 'details':
+            $string_id = isset($request['string_id']) ? (int) $request['string_id'] : 0;
+            $details = (($string_id > 0) && ($language !== '')) ? pg_tr_screen_details($string_id, $language) : null;
+
+            if (!$details) {
+                translations_respond(array('status' => 'error', 'message' => lang('Invalid request.')));
+            }
+
+            $used = array();
+
+            foreach ($details['used'] as $line) {
+                $used[] = array(
+                    'label' => $line['label'],
+                    'icon'  => $line['icon'],
+                    'href'  => $line['scope'] ? 'translations.php?' . http_build_query(array('language' => $language) + $line['scope']) : '',
+                );
+            }
+
+            translations_respond(array(
+                'status'  => 'success',
+                'used'    => $used,
+                'more'    => (int) $details['more'],
+                'earlier' => $details['earlier'],
+                'reason'  => $details['reason'],
+            ));
+            break;
+
         // Every machine translation of the scope reviewed at once; the ones
         // flagged suspicious too when the dialog was ticked.
         case 'review_all':

@@ -84,10 +84,11 @@ function test_translations_glossary_duplicate()
 
 function test_translations_target_rows()
 {
-	pg_assert_same(2, pg_tr_screen_target_rows(''), 'empty box');
-	pg_assert_same(2, pg_tr_screen_target_rows('short'), 'one short line');
+	pg_assert_same(1, pg_tr_screen_target_rows(''), 'empty box: one line');
+	pg_assert_same(1, pg_tr_screen_target_rows('short'), 'one short line');
 	pg_assert_same(4, pg_tr_screen_target_rows("a\nb\nc\nd"), 'one row a line');
-	pg_assert_same(3, pg_tr_screen_target_rows(str_repeat('ğ', 150)), 'a long line wraps by characters');
+	pg_assert_same(3, pg_tr_screen_target_rows(str_repeat('ğ', 150)), 'a long line wraps by characters, 50 a row');
+	pg_assert_same(2, pg_tr_screen_target_rows(str_repeat('ğ', 51)), 'one character past a row');
 	pg_assert_same(12, pg_tr_screen_target_rows(str_repeat('x', 3000)), 'capped');
 }
 
@@ -95,7 +96,30 @@ function test_translations_rows_name_their_source()
 {
 	$source = file_get_contents(dirname(__DIR__) . '/pinegrap/translations.php');
 
-	pg_assert_true(strpos($source, 'id="pg_tr_source_\' . (int) $row[\'id\'] . \'"') !== false, 'the source text has an id');
-	pg_assert_same(2, substr_count($source, 'aria-describedby="pg_tr_source_\' . (int) $row[\'id\'] . \'"'), 'box and Save point at it');
+	pg_assert_true(strpos($source, 'id="pg_tr_source_\' . $row_id . \'"') !== false, 'the source text has an id');
+	pg_assert_same(2, substr_count($source, 'aria-describedby="pg_tr_source_\' . $row_id . \''), 'box and Save point at it');
+	pg_assert_contains('aria-describedby="pg_tr_source_\' . $row_id . \' pg_tr_why_\' . $row_id . \'"', $source, 'the box also points at its refusal');
 	pg_assert_same(3, substr_count($source, '$view_fields') - substr_count($source, '$view_fields .= ') - substr_count($source, '$view_fields = '), 'glossary, delete and import forms carry the view');
+}
+
+// The row (TS2): a refusal under the box, the keys, "Details" read on its
+// first opening from the read-only "details" action.
+function test_translations_row_refusal_keys_and_details()
+{
+	$root = dirname(__DIR__) . '/pinegrap/';
+	$js = file_get_contents($root . 'assets/js/translations.js');
+	$screen = file_get_contents($root . 'translations.php');
+	$action = file_get_contents($root . 'translations_action.php');
+
+	pg_assert_contains("refuse(row, error.message)", $js, 'a refused save is shown under its box');
+	pg_assert_contains("box.setAttribute('aria-invalid', 'true')", $js, 'the box takes the rose ring');
+	pg_assert_contains("saveRow(row, button, 'reviewed', true)", $js, 'Ctrl+Enter saves and moves on');
+	pg_assert_contains("(event.key === 'ArrowDown') || (event.key === 'ArrowUp')", $js, 'Alt+Down and Alt+Up');
+	pg_assert_contains("action: 'details'", $js, 'Details asks the server');
+	pg_assert_contains("action: 'accept_source',\n            string_ids: [parseInt(row.getAttribute('data-string-id'), 10)]", $js, 'a row keeps its own source');
+	pg_assert_contains('aria-controls="pg_tr_details_\' . $row_id . \'"', $screen, 'the caret names its panel');
+	pg_assert_contains('<div class="pg-tr-details" id="pg_tr_details_\' . $row_id . \'" hidden></div>', $screen, 'the panel starts closed and empty');
+	pg_assert_contains("case 'details':", $action, 'the details action');
+	pg_assert_contains("pg_tr_screen_details(\$string_id, \$language)", $action, 'reads the text\'s details');
+	pg_assert_false(strpos($action, "in_array(\$editor_action, array('node', 'save', 'status', 'details')") !== false, 'not offered to a user limited to a page');
 }

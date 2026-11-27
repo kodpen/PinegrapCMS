@@ -55,10 +55,11 @@ function test_translations_screen_names_boxes_and_marks()
 {
 	$source = translations_screen_names_source('translations.php');
 
-	pg_assert_true((bool) preg_match('/<textarea class="form-control pg-tr-target"[^>]*>/', $source, $match), 'translation box found');
+	pg_assert_true((bool) preg_match('/<textarea class="pg-input pg-tr-target"[^>]*>/', $source, $match), 'translation box found');
 	pg_assert_contains("aria-label=\"' . h(lang('Translation')) . '\"", $match[0], 'translation box named');
 
-	// One markup for the shown mark and the hidden copy a save reveals.
-	pg_assert_same(1, preg_match_all('/class="badge theme-danger pg-tr-suspicious/', $source), 'one suspicious mark markup');
-	pg_assert_true((bool) preg_match('/pg-tr-suspicious[^\n]*<span class="visually-hidden">\' \. h\(\$suspicious_text\)/', $source), 'suspicious mark carries text');
+	// One markup for the shown pill and the hidden copy a save reveals: a
+	// rose pill on a line of its own, named by its word.
+	pg_assert_same(1, preg_match_all('/class="pg-pill pg-tone-rose pg-tr-suspicious/', $source), 'one suspicious pill markup');
+	pg_assert_true((bool) preg_match('/pg-tr-suspicious[^\n]*>\' \. lang\(\'Suspicious\'\) \. \'<\/span>/', $source), 'the pill carries its word');
 }

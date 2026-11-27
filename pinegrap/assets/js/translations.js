@@ -228,13 +228,12 @@
         var spacer = row.querySelector('.pg-tr-pick-spacer');
         if ((state === 'reviewed') && pick) {
             spacer = document.createElement('span');
-            spacer.className = 'flex-shrink-0 pg-tr-pick-spacer';
-            spacer.style.width = '1em';
+            spacer.className = 'pg-tr-pick-spacer';
             pick.replaceWith(spacer);
         } else if ((state !== 'reviewed') && !pick && spacer) {
             pick = document.createElement('input');
             pick.type = 'checkbox';
-            pick.className = 'check flex-shrink-0 mt-1 pg-tr-pick';
+            pick.className = 'check pg-tr-pick';
             pick.value = row.getAttribute('data-string-id');
             pick.setAttribute('aria-label', text('select_text'));
             spacer.replaceWith(pick);
@@ -274,8 +273,48 @@
         }
         if (warn) {
             warn.classList.toggle('d-none', !suspicious);
+            if (suspicious) {
+                warn.setAttribute('title', suspiciousReason(row));
+            } else {
+                warn.removeAttribute('title');
+            }
         }
         row.classList.remove('pg-tr-dirty');
+        refuse(row, '');
+        detailsChanged(row);
+    }
+
+    // Why a translation is flagged, as pg_tr_screen_suspicious_reason()
+    // says it: the source given back, or a length out of proportion.
+    function suspiciousReason(row) {
+        var source = row.querySelector('.pg-tr-source');
+        var box = row.querySelector('.pg-tr-target');
+        var same = source && box && (source.textContent.trim().toLowerCase() === box.value.trim().toLowerCase());
+        return same ? text('suspicious_same') : text('suspicious_length');
+    }
+
+    // A refused save: the server's sentence under the box, which takes the
+    // field's rose ring; the typing stays. An empty message takes it away.
+    function refuse(row, message) {
+        var why = row.querySelector('.pg-tr-why');
+        var box = row.querySelector('.pg-tr-target');
+        if (!why || !box) {
+            return;
+        }
+        why.querySelector('.pg-tr-why-text').textContent = message;
+        why.hidden = !message;
+        if (message) {
+            box.setAttribute('aria-invalid', 'true');
+        } else {
+            box.removeAttribute('aria-invalid');
+        }
+    }
+
+    // The translation box of the row after (1) or before (-1) this one.
+    function nearBox(row, step) {
+        var rows = Array.prototype.slice.call(app.querySelectorAll('.pg-tr-row'));
+        var next = rows[rows.indexOf(row) + step];
+        return next ? next.querySelector('.pg-tr-target') : null;
     }
 
     app.addEventListener('input', function (event) {
@@ -300,22 +339,38 @@
         event.returnValue = '';
     });
 
-    // Ctrl+Enter in a box saves it.
+    // In a box: Ctrl+Enter saves it and moves to the next row's box once
+    // stored; Alt+Down and Alt+Up go to the next and the previous box.
     app.addEventListener('keydown', function (event) {
         var target = event.target;
-        if ((event.key === 'Enter') && (event.ctrlKey || event.metaKey) && target.classList && target.classList.contains('pg-tr-target')) {
+        if (!target.classList || !target.classList.contains('pg-tr-target')) {
+            return;
+        }
+        var row = target.closest('.pg-tr-row');
+        if (!row) {
+            return;
+        }
+        if ((event.key === 'Enter') && (event.ctrlKey || event.metaKey)) {
             event.preventDefault();
-            var row = target.closest('.pg-tr-row');
-            var button = row ? row.querySelector('.pg-tr-save') : null;
-            if (button) {
-                button.click();
+            var button = row.querySelector('.pg-tr-save');
+            if (button && !button.disabled) {
+                saveRow(row, button, 'reviewed', true);
+            }
+        } else if (event.altKey && ((event.key === 'ArrowDown') || (event.key === 'ArrowUp'))) {
+            var box = nearBox(row, (event.key === 'ArrowDown') ? 1 : -1);
+            if (box) {
+                event.preventDefault();
+                box.focus();
             }
         }
     });
 
     // Stores a row's box as typed; a status of 'machine' keeps it a draft,
     // anything else stores it reviewed.
-    function saveRow(row, button, status) {
+    // With next, the cursor moves to the next row's box once it is stored.
+    // A refusal is shown under the box; a request that never got an answer
+    // is told in a toast.
+    function saveRow(row, button, status, next) {
         var box = row.querySelector('.pg-tr-target');
         button.disabled = true;
         call({
@@ -327,9 +382,157 @@
             box.value = data.text;
             rowState(row, data.state, data.engine, data.suspicious === 1);
             toast(text('saved'), 'success');
+            var following = next ? nearBox(row, 1) : null;
+            if (following) {
+                following.focus();
+            }
+        }).catch(function (error) {
+            if (error.transient) {
+                toast(error.message, 'error');
+            } else {
+                refuse(row, error.message);
+                box.focus();
+            }
+        }).then(function () {
+            button.disabled = false;
+        });
+    }
+
+    // ── a long source: four lines, then "Show all" ──
+
+    Array.prototype.forEach.call(app.querySelectorAll('.pg-tr-clamp'), function (source) {
+        var more = source.parentNode.querySelector('.pg-tr-show-all');
+        if (more && (source.scrollHeight > source.clientHeight + 1)) {
+            more.classList.remove('d-none');
+        }
+    });
+
+    // ── "Details": where the text is used, the wording it replaced, why
+    //    it is flagged, and the row's own actions; read when first opened ──
+
+    function detailsChanged(row) {
+        var panel = row.querySelector('.pg-tr-details');
+        if (!panel || !panel.hasAttribute('data-loaded')) {
+            return;
+        }
+        panel.removeAttribute('data-loaded');
+        if (!panel.hidden) {
+            loadDetails(row, panel);
+        }
+    }
+
+    function el(tag, className, content) {
+        var node = document.createElement(tag);
+        if (className) {
+            node.className = className;
+        }
+        if (content !== undefined) {
+            node.textContent = content;
+        }
+        return node;
+    }
+
+    function icon(name) {
+        var node = el('i', 'bi ' + name);
+        node.setAttribute('aria-hidden', 'true');
+        return node;
+    }
+
+    function renderDetails(row, panel, data) {
+        var state = row.getAttribute('data-state');
+        panel.textContent = '';
+
+        var used = el('span', 'pg-tr-details-value');
+        (data.used || []).forEach(function (line) {
+            var item = el(line.href ? 'a' : 'span');
+            if (line.href) {
+                item.href = line.href;
+            }
+            item.appendChild(icon(line.icon));
+            item.appendChild(document.createTextNode(line.label));
+            used.appendChild(item);
+        });
+        if (data.more > 0) {
+            used.appendChild(el('span', 'pg-text-meta', text('details_more', data.more)));
+        }
+        if (!used.childNodes.length) {
+            used.appendChild(el('span', 'pg-text-meta', text('details_unused')));
+        }
+        panel.appendChild(el('span', 'pg-tr-details-key', text('details_used')));
+        panel.appendChild(used);
+
+        if (data.earlier) {
+            var earlier = el('span', 'pg-tr-details-value');
+            var pair = el('span');
+            var was = el('span', '', data.earlier.source);
+            was.lang = config.source;
+            pair.appendChild(was);
+            if (data.earlier.translation) {
+                pair.appendChild(el('span', 'pg-tr-details-arrow', '→'));
+                var wasTranslated = el('span', '', data.earlier.translation);
+                wasTranslated.lang = config.language;
+                pair.appendChild(wasTranslated);
+            }
+            earlier.appendChild(pair);
+            panel.appendChild(el('span', 'pg-tr-details-key', text('details_earlier')));
+            panel.appendChild(earlier);
+        }
+
+        if (data.reason) {
+            var reason = el('span', 'pg-tr-details-reason');
+            reason.appendChild(icon('bi-exclamation-triangle'));
+            reason.appendChild(document.createTextNode(data.reason));
+            panel.appendChild(reason);
+        }
+
+        // A reviewed translation is left as it is by "keep as in the source".
+        if (state !== 'reviewed') {
+            var actions = el('span', 'pg-tr-details-actions');
+            var keep = el('button', 'pg-button pg-button-quiet pg-button-sm pg-tr-details-keep');
+            keep.type = 'button';
+            keep.appendChild(icon('bi-check2-square'));
+            keep.appendChild(document.createTextNode(text('keep_source')));
+            actions.appendChild(keep);
+            panel.appendChild(actions);
+        }
+
+        panel.setAttribute('data-loaded', '1');
+    }
+
+    function loadDetails(row, panel) {
+        panel.setAttribute('aria-busy', 'true');
+        return call({
+            action: 'details',
+            string_id: parseInt(row.getAttribute('data-string-id'), 10)
+        }).then(function (data) {
+            renderDetails(row, panel, data);
+        }).catch(function (error) {
+            panel.textContent = '';
+            panel.appendChild(el('span', 'pg-tr-details-reason', error.message));
+        }).then(function () {
+            panel.removeAttribute('aria-busy');
+        });
+    }
+
+    // "Keep as in the source and approve" for one row: the source becomes
+    // its translation, approved, in place.
+    function keepSource(row, button) {
+        button.disabled = true;
+        call({
+            action: 'accept_source',
+            string_ids: [parseInt(row.getAttribute('data-string-id'), 10)]
+        }).then(function (data) {
+            if (data.count > 0) {
+                var source = row.querySelector('.pg-tr-source');
+                row.querySelector('.pg-tr-target').value = source ? source.textContent : '';
+                rowState(row, 'reviewed', 'manual', false);
+                toast(data.message, 'success');
+            } else {
+                toast(data.message, 'error');
+                button.disabled = false;
+            }
         }).catch(function (error) {
             toast(error.message, 'error');
-        }).then(function () {
             button.disabled = false;
         });
     }
@@ -337,6 +540,37 @@
     app.addEventListener('click', function (event) {
         var save = event.target.closest('.pg-tr-save');
         var review = event.target.closest('.pg-tr-review');
+        var toggle = event.target.closest('.pg-tr-details-toggle');
+        var showAll = event.target.closest('.pg-tr-show-all');
+        var keep = event.target.closest('.pg-tr-details-keep');
+
+        if (toggle) {
+            var detailsRow = toggle.closest('.pg-tr-row');
+            var panel = detailsRow.querySelector('.pg-tr-details');
+            var open = toggle.getAttribute('aria-expanded') !== 'true';
+            toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+            panel.hidden = !open;
+            if (open && !panel.hasAttribute('data-loaded')) {
+                loadDetails(detailsRow, panel);
+            }
+            return;
+        }
+
+        if (showAll) {
+            var clamped = showAll.parentNode.querySelector('.pg-tr-source');
+            var all = showAll.getAttribute('aria-expanded') !== 'true';
+            clamped.classList.toggle('pg-tr-clamp', !all);
+            showAll.setAttribute('aria-expanded', all ? 'true' : 'false');
+            showAll.textContent = all ? text('show_less') : text('show_all');
+            return;
+        }
+
+        if (keep) {
+            if (!running) {
+                keepSource(keep.closest('.pg-tr-row'), keep);
+            }
+            return;
+        }
 
         if (save) {
             saveRow(save.closest('.pg-tr-row'), save, 'reviewed');
