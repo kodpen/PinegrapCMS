@@ -258,15 +258,15 @@ function test_ws_wtable_channel_screen()
 	pg_assert_contains('bi-hash', ws_wtable_home_note(array('id' => 4, 'kind' => 'public', 'name' => 'Sales'), 'owner'));
 	pg_assert_contains(h(lang('You manage it')), ws_wtable_home_note(array('id' => 4, 'kind' => 'public', 'name' => 'Sales'), 'owner'));
 
-	$card = ws_wtable_channel_test_code('ws_wtable_home_card');
+	$card = ws_wtable_channel_test_code('ws_wtable_home_drawer');
 
-	foreach (array('get_token_field()', 'name="wt_action" value="table_home"', 'data-ws-confirm="', 'id="ws-wt-home"', 'name="channel"') as $needle) {
+	foreach (array('get_token_field()', 'name="wt_action" value="table_home"', 'data-ws-confirm="', "ws_wtable_screen_drawer('ws-wt-home'", 'name="channel"') as $needle) {
 		pg_assert_contains($needle, $card);
 	}
 
 	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/workspace_wtables.php');
 
-	foreach (array("case 'table_home':", 'ws_wtable_home_set($viewer, $table, $field(\'channel\'))', 'ws_wtable_home_card($viewer, $table, $self_url)', 'ws_wtable_home_note($home, (string) $table[\'access\'])', "'channel', 'value'") as $needle) {
+	foreach (array("case 'table_home':", 'ws_wtable_home_set($viewer, $table, $field(\'channel\'))', 'ws_wtable_home_drawer($viewer, $table, $self_url)', 'ws_wtable_home_note($home, (string) $table[\'access\'])', "'channel', 'value'") as $needle) {
 		pg_assert_contains($needle, $screen);
 	}
 

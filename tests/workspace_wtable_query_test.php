@@ -241,13 +241,13 @@ function test_workspace_wtable_query_total_text()
 
 // The bar: a line per condition and an empty one, the comparisons of each
 // column's type, a list for a status, a picker for a date, a link that
-// takes one condition away and keeps the rest, and the refusal under it.
+// takes one condition away and keeps the rest; Apply and Clear in its foot.
 function test_workspace_wtable_query_screen_bar()
 {
 	$columns = ws_wtable_query_test_columns();
 	$screen = ws_wtable_query_from_get(array('q' => array(array('c' => '5', 'o' => 'eq', 'v' => 'Done'), array('c' => '4', 'o' => 'gte', 'v' => '2026-11-01')), 'sort' => '3', 'dir' => 'desc'));
 	$team = array(array('id' => 12, 'name' => 'Ayşe Kaya'));
-	$html = ws_wtable_screen_query_bar('workspace_wtables.php', 7, $columns, $screen, $team, '', true);
+	$html = ws_wtable_screen_query_bar('workspace_wtables.php', 7, $columns, $screen, $team, true);
 
 	pg_assert_contains('<form method="get" action="workspace_wtables.php#ws-wt-rows"', $html);
 	pg_assert_contains('<input type="hidden" name="id" value="7">', $html);
@@ -265,10 +265,13 @@ function test_workspace_wtable_query_screen_bar()
 	preg_match('/name="q\[0\]\[o\]"[^>]*>(.*?)<\/select>/s', $html, $ops);
 	pg_assert_false(strpos($ops[1], 'value="lt"') !== false);
 
-	$bare = ws_wtable_screen_query_bar('workspace_wtables.php', 7, $columns, ws_wtable_query_from_get(array()), $team, 'Condition 1: no.', false);
+	pg_assert_contains('class="ws-bar-box-body"', $html, 'the box of "Filter"');
+	pg_assert_contains('type="submit" class="pg-button pg-button-fill pg-button-sm"', $html, 'Apply in its foot');
+
+	$bare = ws_wtable_screen_query_bar('workspace_wtables.php', 7, $columns, ws_wtable_query_from_get(array()), $team, false);
 	pg_assert_false(strpos($bare, 'name="join"') !== false);
 	pg_assert_false(strpos($bare, 'name="totals"') !== false);
-	pg_assert_contains('Condition 1: no.', $bare);
+	pg_assert_false(strpos($bare, '>' . lang('Clear') . '<') !== false, 'nothing set, nothing to clear');
 }
 
 // A lookup or rollup column is offered neither as a condition's column nor
@@ -281,7 +284,7 @@ function test_workspace_wtable_query_bar_leaves_joined_columns_out()
 		'9' => array('id' => 9, 'name' => 'Order total', 'type' => 'rollup', 'options' => array()),
 	);
 
-	$html = ws_wtable_screen_query_bar('workspace_wtables.php', 7, $columns, ws_wtable_query_from_get(array()), array(), '', false);
+	$html = ws_wtable_screen_query_bar('workspace_wtables.php', 7, $columns, ws_wtable_query_from_get(array()), array(), false);
 	preg_match('~<select[^>]*name="sort"[^>]*>(.*?)</select>~s', $html, $sort);
 
 	pg_assert_contains('>Name</option>', $sort[1] ?? '');

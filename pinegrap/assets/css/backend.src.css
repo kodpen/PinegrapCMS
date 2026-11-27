@@ -36836,6 +36836,76 @@ textarea.pg-campaign-text {
 }
 
 /* ==========================================================================
+   Look A: a Data table's bar and drawers (workspace_wtables.php?id=N,
+   includes/workspace/wtable_screen_bar.php). The bar is the screen bar
+   above drawn by the server; "Filter" opens its box under the button, the
+   query bar's conditions one under the other. The cards that stood beside
+   the rows open as drawers from "⋯".
+   ========================================================================== */
+@layer custom {
+
+.ws-wt-filter {
+  position: relative;
+}
+.ws-wt-filter-box {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 1020;
+  width: 30rem;
+  max-width: calc(100vw - 32px);
+  box-shadow: var(--ws-shadow);
+}
+.ws-wt-filter-box[hidden] {
+  display: none;
+}
+.ws-wt-query-line {
+  display: grid;
+  gap: 6px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+}
+.ws-wt-query-value {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ws-wt-query-value > :first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ws-wt-query .ws-plan-pair {
+  gap: 6px;
+}
+.ws-wt-drawer {
+  --pg-drawer-width: min(32rem, 100vw);
+}
+.ws-wt-drawer .drawer-header {
+  gap: 12px;
+}
+.ws-wt-menu .menu-item {
+  white-space: nowrap;
+}
+/* A phone: the box spans the bar's frame, under the bar, wherever
+   "Filter" stands on the line. */
+@media (max-width: 575.98px) {
+  .ws-wt-bar-frame {
+    position: relative;
+  }
+  .ws-wt-filter {
+    position: static;
+  }
+  .ws-wt-filter-box {
+    top: 52px;
+    left: 0;
+    width: auto;
+    max-width: none;
+  }
+}
+
+}
+
+/* ==========================================================================
    Look A: variable chips.
    A message's variable as a chip naming what it stands for, in the accent's
    tint (pg_var_chips.js, includes/fn/var_chips.php): in a palette to drag or
