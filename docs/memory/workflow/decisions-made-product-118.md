@@ -6,7 +6,7 @@ description: Decisions made, product part 118 (2026-11-27 on): panel languages s
 ## How do the panel's language packs start? (owner, 2026-11-27, agent channel poll 247, message 14843)
 - Asked after the count: the setting that holds the panel's language, `config.software_language`, takes only English and Turkish, so a further language needs the column's type changed (a schema change, no data lost); 79,407 texts are translated by sessions as machine translation nobody reads line by line, and a text left out shows English; once a language has its files, site pages in that language show the software's own texts in it too; a language per user is not in this work.
 - Owner: "Önce düzenek ve Almanca". Offered beside it and not chosen: five languages at once; Arabic and the right-to-left panel first; wait for now.
-- So: the column becomes a `VARCHAR` by a migration step (his answer is the yes for that MODIFY, and for nothing else in the schema), then German. Arabic with the right-to-left panel and further languages come after German. Plans: `plans/panel-language-packs.md`, `plans/panel-language-german.md`.
+- So: the column's `ENUM` takes further language codes by a migration step (his answer is the yes for that MODIFY, and for nothing else in the schema; a `VARCHAR` does not fit the `config` row, `data/config-table-no-varchar.md`), then German. Arabic with the right-to-left panel and further languages come after German. Plans: `plans/panel-language-packs.md`, `plans/panel-language-german.md`.
 - His decision of 2026-10-09 (`core/software-text-in-site-languages.md`) is not changed: it is about a language with no file.
 
 ## What does a feature do with an old screen it touches? (owner, 2026-11-27, agent channel message 14844)

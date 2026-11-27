@@ -1,25 +1,34 @@
 ---
 name: tax-automatic
-description: Plan (owner 2026-11-27, poll 246): automatic tax, the EU's VAT rate by the buyer's country with an OSS report and US sales tax; starts with the census step TX1, the build follows the owner's answers
+description: Plan (owner 2026-11-27, poll 246): automatic tax, the EU's VAT rate by the buyer's country, an OSS report, US sales tax; TX2 and TX3 need no column, the rest wait for polls 248 and 249
 priority: 5
 ---
 
 ## What is asked?
 - Owner (2026-11-27, poll 246, `workflow/decisions-made-product-117.md`): automatic tax. The list it belongs to and its rules: `plans/global-features.md`.
+- What stands today and what the sources offer: `plans/tax-automatic-census.md` and its parts (TX1).
 
-## What is known today? (read from memory's lists on 2026-11-27, not from the code)
-- A product has a tax rate and tax zones set by hand (`commerce/product-tax-rate.md`); an EU VAT number is checked against VIES and decides the reverse charge (`commerce/eu-vat-check.md`, `eu-vat-checkout.md`).
-- No rate is kept up to date by the product, no report gathers sales by member state, and no tax service is connected.
+## What did the architect settle after the census? (2026-11-27; not the owner's words)
+- The EU's rates are a list in the code, changed with updates; no scheduled read of the Commission's database in this plan.
+- A price stays net with the tax on top, as today. A price that holds its tax is a question of `plans/markets-price-lists.md`.
+- A changed rate applies on its date; the shop's administrators are told when an update brings one. No confirming of each change.
+- The report groups by member state and rate, goods and services apart, whatever scheme the shop files under. The counter sale keeps its store's zone.
+- Asked of the owner: the two columns (poll 248), which US service first (poll 249).
 
-## Which steps? (S under 400 lines; each waits for the one before it)
-- TX1 (S) Census, memory only, written as `plans/tax-automatic-census.md` (more files if 4 KB is passed). It answers from the code, with file and line:
-  - How a line's rate is decided today, at every door (checkout, express order, counter sale, API, subscriptions' renewals), and what is stored on the order.
-  - What an OSS report needs (sales by member state and rate a quarter) and whether stored orders hold it.
-  - Where the EU's standard and reduced rates could come from and how they would be kept current: a list shipped with updates, or an official source read on a schedule. Each source named with its address and terms.
-  - For US sales tax: which tax services have an API a driver could call at checkout, what each asks (an account, a fee, nexus settings), read from their own pages. No query carries the product's name.
-  - A proposal: what is stored where, what a shop that sets its rates by hand keeps, and the questions that are the owner's.
-- The build's steps are written by the architect after the census and the owner's answers; nothing else of this plan is given out before.
+## Which steps? (M about 1,000 product lines, S under 400; each waits for the one before it)
+- TX1 (S) The census: done.
+- TX2 (M) The EU's standard rate by the buyer's country.
+  - A new module `includes/fn/tax_eu_rates.php`: the list (member state, kind, rate, valid from) from the Commission's table named in the census, and a pure `pg_eu_vat_rate($country, $kind, $date)`; tests for every member state and for a dated change.
+  - The switch "Rates by the buyer's country" in Site Settings › Commerce beside "Tax", off at first, stored in `config_text`; turning it on shows what the shop takes on (it is registered for the one-stop shop, the rates are its own to check).
+  - With it on, a line whose address is in the EU and in no tax zone takes that country's standard rate; a product's own rate and a tax zone still win, an exempt order stays at 0. One place decides it, beneath `pg_order_line_tax_rate()`, so the checkout, the express order and the API follow; the counter sale does not.
+  - With it off nothing changes: a test holds today's results.
+- TX3 (S) Renewals and marketplace imports store the line's rate (`order_items.tax_rate`) as the other doors do. An update that changes a row of the list tells the administrators once: country, old and new rate, date (a panel notice and a mail).
+- TX4 (M, owner's: poll 248) The reduced rate: a rate class on the product (standard, reduced, zero) by a migration step, its field on the product form beside the tax rate, and the list's reduced rates used for it.
+- TX5 (M, owner's: poll 248) The one-stop-shop report: the member state a line was taxed in stored on the line by a migration step, and a report a period under Commerce, by member state and rate, in euro at the period's last day, with a CSV; orders before the column are shown apart, by the rule the census names.
+- TX6 (M, owner's: poll 249) US sales tax through the service he chooses: a tax driver beside the payment drivers, the shop's own key on Connections; the answer kept a cart, the order held when the service is down, never taxed 0 silently.
+- TX7 (S) Close-out: the rules into `commerce/`, the census files and this file deleted.
 
-## What does the census keep?
-- No product code and no schema. Tables and outside services are asked of the owner one by one.
-- A wrong rate is the shop's liability: the proposal says who is told when a rate changes and what the shop confirms.
+## What does every step keep?
+- A shop that sets its rates by hand keeps everything; a shop selling in one country sees nothing new.
+- Amounts are integer minor units, rounded with `round()`; no table and no column beyond what the owner said yes to.
+- A wrong rate is the shop's liability: the screen says so where the switch is turned on.

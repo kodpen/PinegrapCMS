@@ -1,22 +1,33 @@
 ---
 name: sales-channels-global
-description: Plan (owner 2026-11-27, poll 246): products listed and orders taken from Amazon, eBay, Etsy and TikTok Shop; starts with the census step SC1, the build follows the owner's answers
+description: Plan (owner 2026-11-27, poll 246): products listed and orders taken from eBay, then Etsy, Amazon and TikTok Shop; the census is done, eBay's steps SC2 to SC7 need no table and no column
 priority: 5
 ---
 
 ## What is asked?
 - Owner (2026-11-27, poll 246, `workflow/decisions-made-product-117.md`): global sales channels. The list it belongs to and its rules: `plans/global-features.md`.
-- For Turkey the same marketplaces were to come through an integrator (`plans/market-table-stakes.md`); his choice of 2026-11-27 is for sellers outside it.
+- What the connector base gives and what each marketplace asks: `plans/sales-channels-global-census.md` and its parts (SC1).
 
-## What is known today? (read from memory's lists on 2026-11-27, not from the code)
-- Connectors for n11, Trendyol and Merchant Center stand on one base (`includes/api/outbound/connectors/`), with listings, category and attribute pairing, price and stock sent and orders taken in (`commerce/marketplace-listings.md`).
+## What did the architect settle after the census? (2026-11-27; not the owner's words)
+- The order is eBay, Etsy, Amazon, TikTok Shop, by what each costs to build and to get approved. Only eBay has steps; the next one's are written when SC7 has landed.
+- Each site registers its own application at the marketplace, as every connected account does; one central application was put off by the owner (`workflow/decisions-made-panel-14.md`).
+- Several countries of one marketplace are one account a country, the country in the account's sealed fields: no column. The category cache is keyed by the connector's own key, which carries the site.
+- A price abroad is the base price converted when sent (`pg_currency_rate()`), until `plans/markets-price-lists.md` gives a price a country.
+- No table and no column for eBay. What a later marketplace needs stored is asked of the owner then.
 
-## Which steps? (S under 400 lines; each waits for the one before it)
-- SC1 (S) Census, memory only, written as `plans/sales-channels-global-census.md` (more files if 4 KB is passed). It answers from the code and from the four marketplaces' own developer pages (no query carries the product's name), with file and line or address:
-  - What the connector base gives a new marketplace and what n11 and Trendyol each had to add; which tables hold listings, pairings and orders, and whether they fit a marketplace with several countries and currencies.
-  - For each of the four: how a seller's shop is connected, what its API asks for a listing, for stock and price, for an order and its shipment, and what registering an application there asks of the owner (review, fees, time).
-  - A proposal: the order of the four by what each costs to build and to get approved, what each needs stored beyond today's tables, and the questions that are the owner's.
-- The build's steps are written by the architect after the census and the owner's answers; nothing else of this plan is given out before.
+## Which steps? (M about 1,000 product lines, S under 400; each waits for the one before it)
+- SC1 (S) The census: done.
+- SC2 (M) eBay connected.
+  - A provider of the connected accounts layer (`includes/connect/providers/ebay.php`): the authorization code flow with the application's RuName, sandbox and production apart, the three sell scopes.
+  - The connector `connectors/ebay.php` with `test_credentials` and the account's fields: the eBay site, the inventory location and the three business policies, read from the account and chosen in selects. Named on Connections and in the settings search like the others.
+  - The account deletion notice eBay asks before production keys: an address that answers the challenge and checks the signature. A notice is recorded and shown to the administrators with that buyer's orders; erasing stays the shop's, with the tool that exists.
+- SC3 (M) Categories and pairing: the site's category tree and a category's required aspects into the cache under the connector's key; a product group paired with a category and its aspects on the screens the other marketplaces use.
+- SC4 (M) Listing: inventory item, offer and publish for a product, an inventory item group for its variants, the "does not apply" text of the site for a missing identifier, the listing's state and its errors read back.
+- SC5 (S) Stock and price sent in bulk through the queue, the price converted to the site's currency and rounded to its minor unit.
+- SC6 (M) Orders read on the schedule (no notice subscription) into `mp_import_order()` in the order's own currency, and a shipment sent back with carrier and tracking number.
+- SC7 (S) Close-out: `commerce/marketplace-ebay.md` and what the base gained; the census files of eBay deleted; the architect told, who writes Etsy's steps.
 
-## What does the census keep?
-- No product code and no schema. Tables are asked of the owner one by one; an application registered at a marketplace is the owner's to make.
+## What does every step keep?
+- n11, Trendyol and Merchant Center work as they do; a base change is an ability a connector may leave out.
+- Built from eBay's documentation with recorded answers as fixtures: no session has a seller account. The first try on eBay's sandbox is the owner's.
+- Money in integer minor units; buyers' data only as far as the order needs.
