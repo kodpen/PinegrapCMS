@@ -40,6 +40,11 @@ define('PG_SECURITY_FILES_STATE', 'security_scan_files');
 // A content check reads at most this much of one file, in chunks.
 define('PG_SECURITY_FILES_READ_MAX', 32 * 1048576);
 
+// One read of a content check. fread() sets aside the whole length before it
+// reads, so a large chunk costs every small picture of the walk that much
+// (1 MB took about 170 microseconds a file in a large, fragmented heap).
+define('PG_SECURITY_FILES_READ_CHUNK', 65536);
+
 /**
  * The rules of the file scan: kind => severity.
  *
@@ -865,7 +870,7 @@ function pg_security_files_read($path, array $reads)
     $read = 0;
 
     while (!feof($handle) && ($read < PG_SECURITY_FILES_READ_MAX)) {
-        $chunk = fread($handle, 1048576);
+        $chunk = fread($handle, PG_SECURITY_FILES_READ_CHUNK);
 
         if (!is_string($chunk) || ($chunk === '')) {
             break;
