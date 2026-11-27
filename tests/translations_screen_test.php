@@ -203,3 +203,26 @@ function test_translations_screen_use_lines()
 	pg_assert_same(array('group' => 'ui'), $lines[7]['scope'], 'the cookie window');
 	pg_assert_same(array(), pg_tr_screen_use_lines(null, array()), 'nothing given');
 }
+
+// A machine write leaves a reviewed translation alone unless forced; a
+// reviewed write and a text with no translation are always written.
+function test_translations_screen_reviewed_kept_status()
+{
+	pg_assert_true(pg_tr_reviewed_kept_status('reviewed', 'machine', false), 'a machine answer keeps off a reviewed one');
+	pg_assert_same(false, pg_tr_reviewed_kept_status('reviewed', 'machine', true), 'forced');
+	pg_assert_same(false, pg_tr_reviewed_kept_status('reviewed', 'reviewed', false), 'a reviewed write');
+	pg_assert_same(false, pg_tr_reviewed_kept_status('machine', 'machine', false), 'a machine one is replaced');
+	pg_assert_same(false, pg_tr_reviewed_kept_status(null, 'machine', false), 'no translation yet');
+}
+
+// "Translate again": the ticked texts split into those sent and the reviewed
+// ones left as they are without the dialog's tick.
+function test_translations_screen_again_split()
+{
+	$statuses = array(4 => 'machine', 7 => 'reviewed', 9 => null, 12 => 'reviewed');
+
+	pg_assert_same(array('send' => array(4, 9), 'kept' => array(7, 12)), pg_tr_screen_again_split(array(4, 7, 9, 12), $statuses, false), 'reviewed ones kept');
+	pg_assert_same(array('send' => array(4, 7, 9, 12), 'kept' => array()), pg_tr_screen_again_split(array(4, 7, 9, 12), $statuses, true), 'replace the reviewed ones as well');
+	pg_assert_same(array('send' => array(4), 'kept' => array()), pg_tr_screen_again_split(array(4, 30), $statuses, false), 'an id with no text is dropped');
+	pg_assert_same(array('send' => array(), 'kept' => array()), pg_tr_screen_again_split(array(), $statuses, false), 'nothing ticked');
+}

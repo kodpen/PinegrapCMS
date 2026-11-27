@@ -419,13 +419,14 @@ function pg_tr_accept_source_text($source, $format)
  * @param string $language
  * @param array  $string_ids
  * @param int    $user_id
- * @return array('written' => int, 'kept' => int, 'changed' => int) kept:
- *         reviewed ones left alone; changed: sources the incoming-text
- *         sanitizer would alter, not written (pg_tr_accept_source_text())
+ * @return array('written' => int, 'kept' => int, 'changed' => int,
+ *         'ids' => array) kept: reviewed ones left alone; changed: sources
+ *         the incoming-text sanitizer would alter, not written
+ *         (pg_tr_accept_source_text()); ids: the texts written
  */
 function pg_tr_accept_source($language, $string_ids, $user_id = 0)
 {
-    $result = array('written' => 0, 'kept' => 0, 'changed' => 0);
+    $result = array('written' => 0, 'kept' => 0, 'changed' => 0, 'ids' => array());
     $string_ids = array_values(array_filter(array_map('intval', (array) $string_ids)));
 
     if (!$string_ids) {
@@ -455,10 +456,183 @@ function pg_tr_accept_source($language, $string_ids, $user_id = 0)
 
         if (pg_tr_save_translation((int) $row['id'], $language, $text, 'manual', 'reviewed', (int) $user_id, 0, true)) {
             $result['written']++;
+            $result['ids'][] = (int) $row['id'];
         }
     }
 
     return $result;
+}
+
+/**
+ * The status of each of the given texts' translation in a language: id =>
+ * machine | reviewed, or null for a text with none. An id that is no text
+ * is left out.
+ *
+ * @param string $language
+ * @param array  $string_ids
+ * @return array
+ */
+function pg_tr_screen_statuses($language, $string_ids)
+{
+    $string_ids = array_values(array_filter(array_map('intval', (array) $string_ids)));
+    $statuses = array();
+
+    if (!$string_ids) {
+        return $statuses;
+    }
+
+    $rows = db_items("SELECT s.id, t.status
+                      FROM translation_strings s
+                      LEFT JOIN translations t ON t.string_id = s.id AND t.language = '" . e($language) . "'
+                      WHERE s.id IN (" . implode(',', $string_ids) . ")");
+
+    foreach ((array) $rows as $row) {
+        $statuses[(int) $row['id']] = ($row['status'] === null) ? null : (string) $row['status'];
+    }
+
+    return $statuses;
+}
+
+/**
+ * "Translate again" of the ticked texts: the ones sent and the reviewed ones
+ * left as they are (pg_tr_reviewed_kept_status(): a reviewed text is
+ * replaced only when the dialog's "Replace the reviewed ones as well" is
+ * ticked). An id missing from $statuses is no text and is dropped.
+ *
+ * @param array $string_ids in the order ticked
+ * @param array $statuses   pg_tr_screen_statuses()
+ * @param bool  $replace_reviewed
+ * @return array('send' => int[], 'kept' => int[])
+ */
+function pg_tr_screen_again_split($string_ids, $statuses, $replace_reviewed)
+{
+    $split = array('send' => array(), 'kept' => array());
+
+    foreach ((array) $string_ids as $id) {
+        $id = (int) $id;
+
+        if (!array_key_exists($id, (array) $statuses)) {
+            continue;
+        }
+
+        $split[pg_tr_reviewed_kept_status($statuses[$id], 'machine', (bool) $replace_reviewed) ? 'kept' : 'send'][] = $id;
+    }
+
+    return $split;
+}
+
+/**
+ * "Approve" of the selection bar: the ticked machine translations marked as
+ * reviewed as they are. A pending text has nothing to approve; a reviewed
+ * one stays. The suspicious flag stays, as with a row's eye button.
+ *
+ * @return int[] the texts marked
+ */
+function pg_tr_screen_approve($language, $string_ids, $user_id = 0)
+{
+    $marked = array();
+
+    foreach (pg_tr_screen_statuses($language, $string_ids) as $id => $status) {
+        if ($status === 'machine') {
+            $marked[] = $id;
+        }
+    }
+
+    if (!$marked) {
+        return $marked;
+    }
+
+    db("UPDATE translations SET status = 'reviewed', updated_by = '" . ((int) $user_id) . "', updated_at = '" . time() . "'
+        WHERE language = '" . e($language) . "' AND status = 'machine' AND string_id IN (" . implode(',', $marked) . ")");
+
+    pg_tr_invalidate_pages($language, 0, false);
+
+    return $marked;
+}
+
+/**
+ * "Clear" of the selection bar: the ticked texts' translations deleted, so
+ * the next update sends them again; the reviewed ones only with
+ * $with_reviewed. A text has one translation wherever it is used.
+ *
+ * @return int[] the texts whose translation was deleted
+ */
+function pg_tr_screen_clear($language, $string_ids, $with_reviewed = false)
+{
+    $cleared = array();
+
+    foreach (pg_tr_screen_statuses($language, $string_ids) as $id => $status) {
+        if (($status === 'machine') || (($status === 'reviewed') && $with_reviewed)) {
+            $cleared[] = $id;
+        }
+    }
+
+    if (!$cleared) {
+        return $cleared;
+    }
+
+    db("DELETE FROM translations WHERE language = '" . e($language) . "' AND string_id IN (" . implode(',', $cleared) . ")"
+        . ($with_reviewed ? '' : " AND status = 'machine'"));
+
+    pg_tr_invalidate_pages($language);
+    pg_picture_tr_translations_removed($language);
+
+    return $cleared;
+}
+
+/**
+ * "Translate again" of the ticked texts: their translations are deleted
+ * (a reviewed one only with $replace_reviewed) and a job of the language's
+ * engine opens with them, as "Translate pending" opens one. A job only
+ * sends texts with no translation (pg_tr_job_skip_translated()), so the
+ * old wording goes first; until the engine answers the page shows the
+ * source text, and a text that fails is pending as any other.
+ *
+ * @param string $language
+ * @param string $scope    the screen's scope, which the job is filed under
+ * @param array  $string_ids
+ * @param bool   $replace_reviewed
+ * @param int    $user_id
+ * @param string $engine   '' = the language's engine
+ * @return array ok, error, engine, pending, sent (ids), kept (ids), and
+ *               pg_tr_job_open()'s job_id, job, finished, queue
+ */
+function pg_tr_screen_translate_again($language, $scope, $string_ids, $replace_reviewed, $user_id = 0, $engine = '')
+{
+    $row = pg_tr_language_row($language);
+    $engine = ($engine !== '') ? $engine : ($row ? (string) $row['engine'] : '');
+    $spec = pg_tr_engine($engine);
+    $result = array('ok' => false, 'error' => '', 'engine' => $engine, 'pending' => 0, 'sent' => array(), 'kept' => array(), 'job_id' => 0, 'job' => null, 'finished' => true);
+
+    if (!$row || !$spec || ($engine === 'import')) {
+        $result['error'] = lang('The engine is not known.');
+        return $result;
+    }
+
+    if ($spec['kind'] === 'panel') {
+        $result['error'] = lang('This language is translated by hand: there is no engine to send the texts to.');
+        return $result;
+    }
+
+    if (!$spec['ready']) {
+        $result['error'] = $spec['reason'];
+        return $result;
+    }
+
+    $split = pg_tr_screen_again_split($string_ids, pg_tr_screen_statuses($language, $string_ids), $replace_reviewed);
+    $result['kept'] = $split['kept'];
+    $result['ok'] = true;
+
+    if (!$split['send']) {
+        return $result;
+    }
+
+    pg_tr_screen_clear($language, $split['send'], (bool) $replace_reviewed);
+
+    $result['sent'] = $split['send'];
+    $result['pending'] = count($split['send']);
+
+    return pg_tr_job_open($language, $engine, $spec, $scope, $split['send'], $user_id) + $result;
 }
 
 /**
