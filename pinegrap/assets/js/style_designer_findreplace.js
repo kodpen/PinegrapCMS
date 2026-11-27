@@ -92,12 +92,21 @@ StyleDesigner.definePart('findreplace', function (K) {
         return found.concat(out);
     }
 
+    // At the content level the save keeps the text of an element outside a
+    // marked area and every word inside one (pg_designer_merge_restricted_tree()):
+    // any other word is not offered, or the canvas would show a change the
+    // save drops. Null at the full level: every word.
+    function mayChange() {
+        if (typeof K._sdAccess !== 'function' || K._sdAccess() !== 'content') return null;
+        return function (node, prop, inArea) { return inArea || prop === 'text'; };
+    }
+
     function plan() {
         var pat = M.pattern(query());
         if (!pat.re) return { error: pat.error, found: [] };
         if (win.scope === 'files') return { error: '', found: filePlan(pat.re), re: pat.re };
         var inputs = pageInputs(win.scope === 'page');
-        return { error: '', found: M.plan(inputs, pat.re, function (it) { return holderOf(it.page); }), re: pat.re };
+        return { error: '', found: M.plan(inputs, pat.re, function (it) { return holderOf(it.page); }, mayChange()), re: pat.re };
     }
 
     function skipText(r) {
@@ -172,7 +181,7 @@ StyleDesigner.definePart('findreplace', function (K) {
         if (!res.re) return;
         var rep = win.el.querySelector('#sd-fr-replace').value;
         var regex = win.el.querySelector('#sd-fr-regex').checked;
-        var total = 0, changed = 0, active = false;
+        var total = 0, changed = 0, active = false, may = mayChange();
         res.found.forEach(function (r) {
             if (r.skip) return;
             if (win.scope === 'files') {
@@ -186,7 +195,7 @@ StyleDesigner.definePart('findreplace', function (K) {
             var p = K._pgPageByKey(r.key);
             if (!p) return;
             stepOn(p);
-            var n = M.treeReplace(K._pgTreeOf(p), res.re, rep, regex);
+            var n = M.treeReplace(K._pgTreeOf(p), res.re, rep, regex, may);
             if (!n) return;
             total += n; changed++;
             if (p.key === K.activeKey) active = true;
