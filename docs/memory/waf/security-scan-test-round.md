@@ -9,7 +9,9 @@ module: security_scan_files
 - Clean install: the git-tracked software tree gives no finding (first run and with an empty baseline); every design template's strings and its JSON give no content finding under the default CSP; template pictures copied as `data/files/store-<name>`; every kept upload type and every refused name after `prepare_file_name()`.
 - Quarantine then Restore leaves content, mode and time as before; Restore never writes over a file that came back.
 - A walk cut every 1, 4, 7 or 50 files and resumed through the stored JSON sees each file once.
-- 10,000 files are walked and scaled to 50,000 (0.7 s measured for 50,000), asserted under a quarter of `SEO_ANALYZE_TIME_BUDGET`; the walk holds no list.
+- 10,000 files are walked and scaled to 50,000, asserted under a quarter of `SEO_ANALYZE_TIME_BUDGET` in the process's own CPU time (`getrusage()`, user plus system), the fastest of up to three walks; the walk holds no list. Wall-clock time stopped two pushes on a busy machine (75 to 90 s, #12080; CPU time since #12089, why in `workflow/unit-test-time-limit.md`).
+- Measured for 50,000 files: 0.7 s on Linux; 6 to 12 s of CPU time on a Windows dev machine, where opening each picture for the PHP tag check is kernel time; 20 to 22 s there while four other test runs went on, when the wall clock read 37 to 55 s.
+- Four full runs reaching the test at the same moment, beside other test runs: the first walk read 33 to 36 s of CPU time (wall clock 69 to 72 s), the second 25 to 26 s, so the test passed on its second walk (the limit is 30 s).
 
 ## Which false alarms became exceptions?
 - `data/layouts/<id>.bak.php`: the 2017.2.2 password pages step's copy of a layout.
