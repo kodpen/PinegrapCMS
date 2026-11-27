@@ -428,7 +428,7 @@
 
         if ((mode === 'replace') || (mode === 'new') || (((mode === 'copy') || (mode === 'url')) && this.doc.artboard)) {
             this.doc.layers.forEach(function (l) {
-                if ((l.type === 'image') && !l.fileId && /^data:image\/(png|jpeg);base64,/.test(l.src || '')) {
+                if (((l.type === 'image') || (l.type === 'frame')) && !l.fileId && /^data:image\/(png|jpeg);base64,/.test(l.src || '')) {
                     list.push({ id: l.id, data: l.src, name: l.fileName || '' });
                 }
             });

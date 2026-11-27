@@ -53,6 +53,11 @@
         return reading;
     }
 
+    // The checked elements read so far (the photo frames take the badges).
+    X.elementList = function () {
+        return elements || [];
+    };
+
     // The unlocked element layers of a list, or none unless every one is.
     function elementLayers(layers) {
         return (layers.length && layers.every(function (l) { return (l.type === 'svg') && l.element && !l.locked && M.elementPaint(l.markup); })) ? layers : [];

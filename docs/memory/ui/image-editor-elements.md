@@ -24,4 +24,4 @@ module: image_editor
 - `assets/js/pg_image_editor_elements.js` (part `elements`, bundled after `glyph`): `elementsSection()`, `elementTiles()`, `addElement(e)`, `paintElements(ids, color, width, live)`, `elementPanel()`. It wraps `Editor.panels.sticker` and `Editor.prototype.svgPanel`; no core edit.
 - Model section `ELEMENTS`; rules under "Element sets" in `pg_image_editor.src.css`; the chips reuse the emoji categories' scrolling row (`pgie-seg pgie-gf-cats`).
 - Tests: `tests/image_editor_elements_test.php` (the check, markup and paint, the placed layer, the shipped file inside its boxes and labelled, the part, a press on an editor).
-- AC10's photo frames add a chip "Frames" here (`plans/artifact-canvas-content-screens.md`).
+- The last chip, "Frames", is the photo frames' (AC10, `image-editor-frames.md`); `X.elementList()` hands them the badges.

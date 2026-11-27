@@ -6523,6 +6523,7 @@
     "The picture could not be fetched; the place stays empty.": "Resim alınamadı; yeri boş kalır.",
     "The picture could not be loaded.": "Resim yüklenemedi.",
     "The picture could not be placed in the box.": "Resim kutuya yerleştirilemedi.",
+    "The picture could not be put in the frame.": "Resim çerçeveye konulamadı.",
     "The picture could not be read, or it is larger than 2 MB.": "Resim okunamadı ya da 2 MB'tan büyük.",
     "The picture could not be read.": "Görsel okunamadı.",
     "The picture could not be read. Choose it again.": "Görsel okunamadı. Yeniden seçin.",

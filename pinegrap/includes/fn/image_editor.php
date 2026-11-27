@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_image_editor_parts()
 {
-    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'langview', 'export', 'vector', 'svg', 'motion', 'tracks', 'sound', 'keyframes', 'render', 'scenes', 'present', 'access', 'record', 'follow', 'fonts', 'textstyles', 'glyph', 'elements', 'starts', 'resize', 'data', 'warp', 'puppet', 'outline', 'builder', 'video', 'clip', 'mix', 'upload', 'phone', 'colors', 'actions', 'menu');
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'langview', 'export', 'vector', 'svg', 'motion', 'tracks', 'sound', 'keyframes', 'render', 'scenes', 'present', 'access', 'record', 'follow', 'fonts', 'textstyles', 'glyph', 'elements', 'starts', 'resize', 'frames', 'data', 'warp', 'puppet', 'outline', 'builder', 'video', 'clip', 'mix', 'upload', 'phone', 'colors', 'actions', 'menu');
 }
 
 /**
@@ -7663,5 +7663,35 @@ function pg_image_editor_strings_resize()
         'resizeSmall'    => lang('Text smaller than {floor} px: {list}'),
         'resizeShow'     => lang('Show'),
         'resizeNoFiles'  => lang('Save this canvas in Files to make other sizes.'),
+    );
+}
+
+// -- Photo frames (pg_image_editor_frames.js) --
+
+/**
+ * The photo frames: the Frames chip among the elements, the shapes' names,
+ * an empty frame's words, a frame's panel and the photo's moving inside it.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_frames()
+{
+    return array(
+        'elementSet_frames' => lang('Frames'),
+        'frameCircle'       => lang('Circle'),
+        'frameRounded'      => lang('Rounded square'),
+        'frameArch'         => lang('Arch'),
+        'frameBlob'         => lang('Blob'),
+        'framePicture'      => lang('Your picture'),
+        'frameNote'         => lang('Drop a picture on the frame, or choose one from Files.'),
+        'frameChoose'       => lang('Choose a picture'),
+        'frameReplace'      => lang('Replace picture'),
+        'frameMove'         => lang('Move the photo'),
+        'frameMoving'       => lang('Drag to move the photo inside its frame. Press Escape or outside the frame to finish.'),
+        'frameDone'         => lang('Done'),
+        'frameZoom'         => lang('Zoom'),
+        'frameRemove'       => lang('Remove picture'),
+        'frameError'        => lang('The picture could not be put in the frame.'),
+        'frameFor'          => lang('Pick a picture to fill the frame.'),
     );
 }
