@@ -305,6 +305,15 @@ StyleDesigner.definePart('code', function (K) {
         _sdCodeSyncMode();
         var doc = _sdCodeDocument();
         var current = ed.getValue();
+        // Typed text the tree does not hold yet (waiting for the pause, or
+        // HTML not finished) stays while the tree prints what it printed
+        // before: a selection change or a panel redraw is no reason to write
+        // over it. The ranges have followed the typing, so only the
+        // selection mark is drawn again.
+        if (_sdCode.dirty && doc.text === _sdCode.text && current !== doc.text) {
+            _sdCodeRevealSelection();
+            return;
+        }
         if (doc.text !== current) {
             _sdCode.busy = true;
             try {
@@ -823,6 +832,9 @@ StyleDesigner.definePart('code', function (K) {
             else { d.from = Math.min(d.from, fromB); d.to = Math.max(d.to, toB); }
         });
         _sdCode.dirty = d;
+        // New typing: a switch that held the view on before no longer
+        // counts as the first of two.
+        _sdCode.leaveAt = 0;
         if (_sdCode.applyTimer) clearTimeout(_sdCode.applyTimer);
         _sdCode.applyTimer = setTimeout(_sdCodeApply, _SD_CODE_APPLY_MS);
     }
@@ -909,7 +921,7 @@ StyleDesigner.definePart('code', function (K) {
 
     function _sdCodeParseElement(node, text) {
         var open = node.getChild('OpenTag') || node.getChild('SelfClosingTag');
-        if (!open) return null;
+        if (!open || _sdCodeHasError(open)) return null;
         var tagNode = open.getChild('TagName');
         if (!tagNode) return null;
         var item = {
@@ -952,6 +964,16 @@ StyleDesigner.definePart('code', function (K) {
         return item;
     }
 
+    // Whether the parser left an error inside a syntax node: an attribute
+    // still being typed (`name=` with no value yet, a quote typed inside a
+    // value) is not read until it is finished, as the lint shows.
+    function _sdCodeHasError(node) {
+        for (var c = node.firstChild; c; c = c.nextSibling) {
+            if (c.type.isError || _sdCodeHasError(c)) return true;
+        }
+        return false;
+    }
+
     function _sdCodeDecode(s) {
         if (s.indexOf('&') === -1) return s;
         var t = document.createElement('textarea');
@@ -973,6 +995,9 @@ StyleDesigner.definePart('code', function (K) {
             if (ct === 'custom_html') return 'outer';
             if (['heading', 'paragraph', 'span', 'text', 'link', 'button'].indexOf(ct) !== -1) return 'inner';
         }
+        // A button prints its label as it is between its tags, its icons
+        // as children; an <input> button's label is its value attribute.
+        if (node.type === 'component' && node.props.componentType === 'btn' && node.props.btnElement !== 'input') return 'inner';
         return 'none';
     }
 
@@ -1075,7 +1100,7 @@ StyleDesigner.definePart('code', function (K) {
 
     function _sdCodeParseElementShallow(node, text) {
         var open = node.getChild('OpenTag');
-        if (!open) return null;
+        if (!open || _sdCodeHasError(open)) return null;
         var item = { kind: 'element', from: node.from, to: node.to, tag: 'body', open: { from: open.from, to: open.to }, attrs: [], children: [], texts: [] };
         var attrs = open.getChildren('Attribute');
         for (var i = 0; i < attrs.length; i++) {
@@ -1115,6 +1140,10 @@ StyleDesigner.definePart('code', function (K) {
         if (sid) _sharedDirty[sid] = true;
     }
 
+    // Parents with no text of their own: words typed straight into them
+    // become a text element, as the converter makes them.
+    var _SD_CODE_SPAN_PARENTS = { root: 1, container: 1, row: 1, col: 1 };
+
     // A parent's children, rebuilt from the elements inside it in the text.
     function _sdCodeReconcileChildren(parent, items, sid, report) {
         var kids = [];
@@ -1128,7 +1157,7 @@ StyleDesigner.definePart('code', function (K) {
         items.forEach(function (it) {
             if (it.kind === 'text') {
                 if (it.raw.trim() === '') return;
-                if (parent.type === 'root' || mixed) kids.push(_sdCodeNewSpan(it.raw));
+                if (mixed || _SD_CODE_SPAN_PARENTS[parent.type]) kids.push(_sdCodeNewSpan(it.raw));
                 return;
             }
             var owner = _sdCodeOwnerOf(it) || _sdCodeOwnerInside(it);
