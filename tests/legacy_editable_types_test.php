@@ -134,3 +134,26 @@ function test_let_wiring()
 	pg_assert_same(true, strpos($run, "@unlink(pg_ltd_starters_path());\n") !== false, 'the starters go when the run ends');
 	pg_assert_same(true, strpos(pg_ltd_convert_script(), 'StyleDesigner.starterTree(') !== false);
 }
+
+// A page given the frame's tree holds its own System region only when the
+// frame is split and the region sits in the page content: in an unsplit
+// frame, or in a part around the content, it is a shared component's and
+// the types step leaves it.
+function test_let_page_system_only_in_the_page_content()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/classic_style_design.php');
+	$frame = function ($body) {
+		return pg_classic_style_frame('<!DOCTYPE html><html><head><title>Site</title></head><body>' . $body . '</body></html>', function ($name) {
+			return array('regionType' => 'common');
+		})['frame'];
+	};
+	pg_assert_same(true, pg_ltd_frame_page_system($frame('<header>Top</header><main><pregion></pregion><system></system><pregion></pregion></main><footer>End</footer>')),
+		'between the page regions');
+	pg_assert_same(false, pg_ltd_frame_page_system($frame('<header>Top</header><main><pregion></pregion><system></system></main><footer>End</footer>')),
+		'after the last page region: in the part after the content');
+	pg_assert_same(false, pg_ltd_frame_page_system($frame('<header>Top</header><main><system></system></main><footer>End</footer>')),
+		'no page region: the frame is one shared component');
+	pg_assert_same(false, pg_ltd_frame_page_system($frame('<header><system></system></header><main><pregion></pregion></main><footer>End</footer>')),
+		'in the part before the page content');
+	pg_assert_same(false, pg_ltd_frame_page_system($frame('<main><pregion></pregion></main>')), 'no System region');
+}
