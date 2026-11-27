@@ -240,7 +240,8 @@ if ($_POST) {
 
 		if ($liveform->check_form_errors() == false) {
 
-			$credentials = mp_settings_credentials_from_post($account['provider']);
+			$credentials = mp_settings_credentials_from_post($account['provider'],
+				isset($account['credentials']['choices']) ? (array)$account['credentials']['choices'] : array());
 
 			// An empty credential field means "leave it alone". The screen
 			// cannot show a secret back, so a blank box is the absence of a new
@@ -345,6 +346,17 @@ if ($_POST) {
 		$result = mp_call($account['provider'], 'test_credentials', array($account));
 
 		if ($result['ok']) {
+
+			// The options of the remote selects (eBay's business policies and
+			// inventory locations), kept with the account for its form.
+			if (isset($result['data']['choices']) && is_array($result['data']['choices'])) {
+
+				db("UPDATE marketplace_accounts SET
+						credentials = '" . e(mp_credentials_encode(mp_account_choices_merge($account['provider'], $account['credentials'], $result['data']['choices']))) . "',
+						updated_timestamp = UNIX_TIMESTAMP()
+					WHERE id = '" . e($account_id) . "'");
+
+			}
 
 			mp_account_outcome($account_id, true);
 
@@ -1752,10 +1764,11 @@ function mp_settings_managed_note($provider) {
 
 }
 
-// The credential fields this provider asks for, read out of the form.
-function mp_settings_credentials_from_post($provider) {
+// The credential fields this provider asks for, read out of the form; a
+// remote select's answer must be among the account's $choices.
+function mp_settings_credentials_from_post($provider, $choices = array()) {
 
-	return mp_provider_credentials($provider, $_POST);
+	return mp_provider_credentials($provider, $_POST, $choices);
 
 }
 
@@ -1779,6 +1792,10 @@ function mp_settings_credential_field($prefix, $field, $meta, $current, $editing
 
 	if (mp_provider_field_is_select($meta)) {
 
+		// A remote select's options are names the seller gave on the
+		// marketplace: drawn as they are, after an empty first option.
+		$remote = mp_provider_field_is_remote($meta);
+
 		$selected = ($current !== '' && isset($meta['options'][$current]))
 			? $current
 			: (isset($meta['default']) ? (string)$meta['default'] : '');
@@ -1786,10 +1803,16 @@ function mp_settings_credential_field($prefix, $field, $meta, $current, $editing
 		$out .= '
 				<select class="form-control' . ($invalid ? ' is-invalid" aria-invalid="true' : '') . '" id="' . h($id) . '" name="' . h($field) . '"' . ($disabled ? ' disabled' : '') . '>';
 
+		if ($remote) {
+
+			$out .= '<option value="">' . h($meta['options'] ? lang('Choose one') : lang('Test the connection to read the choices')) . '</option>';
+
+		}
+
 		foreach ((array)$meta['options'] as $value => $label) {
 
 			$out .= '<option value="' . h((string)$value) . '"' . (((string)$value === $selected) ? ' selected' : '') . '>'
-				. h(lang($label)) . '</option>';
+				. h($remote ? $label : lang($label)) . '</option>';
 
 		}
 
@@ -3062,6 +3085,12 @@ foreach ($providers as $key => $meta) {
 
 	foreach ((isset($meta['fields']) ? $meta['fields'] : array()) as $field => $field_meta) {
 
+		if (mp_provider_field_is_remote($field_meta)) {
+
+			continue;
+
+		}
+
 		$posted = ($is_chosen && ($mp_refused === 'create') && isset($_POST[$field]) && is_scalar($_POST[$field]))
 			? trim((string)$_POST[$field]) : '';
 
@@ -3146,6 +3175,12 @@ if ($selected) {
 	$edit_fields = '';
 
 	foreach ($provider_fields as $field => $meta) {
+
+		if (mp_provider_field_is_remote($meta)) {
+
+			$meta['options'] = isset($selected['credentials']['choices'][$field]) ? (array)$selected['credentials']['choices'][$field] : array();
+
+		}
 
 		$current = isset($selected['credentials'][$field]) ? (string)$selected['credentials'][$field] : '';
 

@@ -87,7 +87,7 @@ function test_connections_google_reviews_registry_row_moved()
 	pg_assert_same('connections.php', $rows['google_reviews']['place'], 'typed on Connections');
 	pg_assert_same('#settings/api/pgset-google-reviews', $rows['google_reviews']['found_at'], 'the list row keeps the card\'s gate');
 	pg_assert_same(array('kind' => 'reader', 'function' => 'pg_grev_configured'), $rows['google_reviews']['state'], 'its state is unchanged');
-	pg_assert_same(86, pg_connections_count(), 'no service was added');
+	pg_assert_same(87, pg_connections_count(), 'no service was added');
 }
 
 function test_connections_google_reviews_card_shows_the_connection()

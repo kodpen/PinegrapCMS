@@ -23,7 +23,7 @@ module: connections_registry
 - The 12 ready-made MCP connectors are rows of group `mcp`, counted apart: `pg_connections_connector_count()`.
 
 ## What is the figure?
-- `pg_connections_count()`: 86 services (Meta CAPI, TikTok Events, GA4 MP, three card gateways, Figma #11558 and Xero added since the census), beside 12 MCP connectors; `tests/connections_registry_test.php` holds it, so a PR adding a service changes it there and here.
+- `pg_connections_count()`: 87 services (Meta CAPI, TikTok Events, GA4 MP, three card gateways, Figma #11558, Xero and eBay added since the census), beside 12 MCP connectors; `tests/connections_registry_test.php` holds it, so a PR adding a service changes both.
 - Architect (2026-11-17, agent channel message 7524): the public figure is the registry's count, kept by a test and never typed in a text.
 
 ## How does it differ from the census's 79? (`plans/integrations-census-today.md`)

@@ -36,7 +36,7 @@ function test_google_cloud_apis_come_from_the_registry()
 		}
 	}
 
-	pg_assert_same(86, pg_connections_count(), 'the figure stays');
+	pg_assert_same(87, pg_connections_count(), 'the figure stays');
 	pg_assert_same(array('a' => array('name' => 'A API', 'features' => array('x', 'y'))),
 		pg_google_cloud_apis(array('x' => array('apis' => array('a' => 'A API')), 'y' => array('apis' => array('a' => 'A API')), 'z' => array())), 'an API once, with every feature');
 }

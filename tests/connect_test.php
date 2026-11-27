@@ -34,9 +34,13 @@ function test_connect_providers_load_with_their_endpoints()
 		// what its sign-in needs instead (tests/signin_test.php).
 		// A provider that is not an OpenID provider (GitHub) names the
 		// fields of its userinfo answer instead and has no issuer to check.
+		// A provider that is not an identity provider at all (eBay) has one
+		// connection per owner, named by its account_label.
 		if (!empty($provider['identity_fields'])) {
 			pg_assert_same(0, strpos($provider['userinfo_url'], 'https://'), $key . ': asks who the account is over https');
 			pg_assert_true(isset($provider['identity_fields']['id']), $key . ': names its id field');
+		} elseif (isset($provider['identity']) && ($provider['identity'] === false) && empty($provider['identity_scopes'])) {
+			pg_assert_true(!empty($provider['account_label']), $key . ': names the one account');
 		} else {
 			if (!isset($provider['accounts']) || ($provider['accounts'] !== false)) {
 				pg_assert_true(in_array('openid', $provider['identity_scopes'], true), $key . ': asks who the account is');

@@ -1,0 +1,20 @@
+{
+  "href": "https://api.ebay.com/sell/account/v1/payment_policy?marketplace_id=EBAY_US",
+  "limit": 20,
+  "offset": 0,
+  "paymentPolicies": [
+    {
+      "categoryTypes": [
+        {
+          "name": "ALL_EXCLUDING_MOTORS_VEHICLES",
+          "default": true
+        }
+      ],
+      "immediatePay": true,
+      "marketplaceId": "EBAY_US",
+      "name": "Immediate payment",
+      "paymentPolicyId": "6196944000"
+    }
+  ],
+  "total": 1
+}

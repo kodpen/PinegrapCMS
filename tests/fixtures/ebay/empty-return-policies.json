@@ -1,0 +1,7 @@
+{
+  "href": "https://api.ebay.com/sell/account/v1/return_policy?marketplace_id=EBAY_DE",
+  "limit": 20,
+  "offset": 0,
+  "returnPolicies": [],
+  "total": 0
+}

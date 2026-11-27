@@ -106,7 +106,7 @@ function test_connections_shipping_services_pages_and_registry()
 	}
 
 	pg_assert_same('#settings/commerce/pgset-shipping', $registry['shipworks']['place'], 'ShipWorks has no keys, so it stays on the card');
-	pg_assert_same(86, pg_connections_count(), 'no service is added');
+	pg_assert_same(87, pg_connections_count(), 'no service is added');
 }
 
 function test_connections_shipping_services_fields_part()

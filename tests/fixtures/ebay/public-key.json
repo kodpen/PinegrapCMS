@@ -1,0 +1,5 @@
+{
+  "algorithm": "ECDSA",
+  "digest": "SHA1",
+  "key": "-----BEGIN PUBLIC KEY-----MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE1RP1C48poGLIyHsGzlyTuQmtk1ur7bkfIWdfX8BKdme7uNnjxGCpMVq+pzehJjYUdBGETsDgpYPTH52sHlQbEA==-----END PUBLIC KEY-----"
+}
