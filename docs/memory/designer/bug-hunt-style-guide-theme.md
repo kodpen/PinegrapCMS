@@ -1,6 +1,6 @@
 ---
 name: bug-hunt-style-guide-theme
-description: The bug hunt of the Style guide and the Themes panel (2026-11-26): the four faults fixed, what was read clean (renamed or deleted names, dark, print)
+description: The bug hunt of the Style guide and the Themes panel (2026-11-26, PR #12009): the four faults fixed, what was read clean (renamed or deleted names, dark, print)
 module: design_style_guide
 ---
 
