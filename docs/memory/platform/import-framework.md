@@ -34,6 +34,6 @@ module: importers
 - The job sweeps `import_items` of imports finished over 30 days ago (5000 a tick) and their source file; the `imports` row stays. Never-started uploads: `import-screen.md`.
 
 ## How is the kind told?
-- `pg_import_detect_kind()` (pure), first 8 KB: RSS with `wordpress.org/export/`; CSV header `handle` + `body (html)`, or name columns + `accepts (email) marketing` → shopify; `id`, `type`, `sku`, `regular price` → woocommerce; squarespace: `import-squarespace.md`; webflow, wix: `import-collection-csv.md`. A kind with no reader file is refused on upload.
+- `pg_import_detect_kind()` (pure), first 8 KB: RSS with `wordpress.org/export/`; CSV header `handle` + `body (html)`, or name columns + `accepts (email) marketing` → shopify; `id`, `type`, `sku`, `regular price` → woocommerce; squarespace, webflow, wix: `import-<kind>.md`. A kind with no reader file is refused on upload.
 
 Tests: `tests/import_framework_test.php`.

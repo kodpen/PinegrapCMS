@@ -9,6 +9,9 @@
  *
  * - A SKU another product holds is not written again: a simple product is
  *   skipped, a variant left out with a note.
+ * - Brand goes to the product's brand, a barcode to its barcode when the
+ *   site uses barcodes; a cost is not kept: a product's cost is worked out
+ *   by Accounting from purchase invoices (erp_product_costs).
  * - Categories become browse product groups under the mapped group, found by
  *   name under their parent first; attributes and their options are found
  *   by name and made when missing.
@@ -136,7 +139,7 @@ function pg_import_write_product($item, $import)
     // One variation left is one product, named as its parent.
     if (($data['type'] === 'variable') && (count($variants) === 1)) {
         $only = $variants[0];
-        $data = array_merge($data, array('sku' => $only['sku'], 'price' => $only['price'], 'compare_at' => $only['compare_at'], 'stock' => $only['stock']));
+        $data = array_merge($data, array('sku' => $only['sku'], 'price' => $only['price'], 'compare_at' => $only['compare_at'], 'stock' => $only['stock'], 'barcode' => (string) ($only['barcode'] ?? '')));
         $images = array_merge(pg_import_product_images($import, $related, $only['images'], $notes), $images);
         $variants = array();
     }
@@ -159,6 +162,7 @@ function pg_import_write_product($item, $import)
         }
 
         pg_import_product_compare_at($id, $data['compare_at']);
+        pg_import_product_barcode($id, (string) ($data['barcode'] ?? ''), $notes);
 
         return array('result' => 'made', 'id' => $id, 'reason' => implode(' ', $notes));
     }
@@ -187,6 +191,7 @@ function pg_import_write_product($item, $import)
 
     foreach ($created['product_ids'] as $index => $product_id) {
         pg_import_product_compare_at($product_id, $variants[$index]['compare_at']);
+        pg_import_product_barcode($product_id, (string) ($variants[$index]['barcode'] ?? ''), $notes);
 
         // A variation switched off in the shop stays off.
         if (empty($variants[$index]['enabled']) && !empty($data['enabled'])) {
@@ -253,7 +258,7 @@ function pg_import_product_row($data, $user_id)
         'name' => (string) $data['sku'], 'short_description' => mb_substr((string) $data['name'], 0, 100),
         'enabled' => !empty($data['enabled']) ? '1' : '0', 'price' => (int) $data['price'],
         'taxable' => '1', 'shippable' => (array_key_exists('shippable', $data) && !$data['shippable']) ? '0' : '1', 'free_shipping' => '0',
-        'title' => '', 'meta_description' => '', 'brand' => '', 'gtin' => '', 'mpn' => '', 'keywords' => (string) $data['keywords'],
+        'title' => '', 'meta_description' => '', 'brand' => mb_substr(trim((string) ($data['brand'] ?? '')), 0, 100), 'gtin' => '', 'mpn' => '', 'keywords' => (string) $data['keywords'],
         'weight' => ($weight !== null) ? $weight : 0, 'length' => 0, 'width' => 0, 'height' => 0,
         'inventory' => $tracked ? '1' : '0', 'inventory_quantity' => $tracked ? (int) $data['stock'] : 0,
         'user' => (int) $user_id, 'full_description' => '', 'meta_keywords' => '', 'notes' => '', 'details' => '',
@@ -480,6 +485,28 @@ function pg_import_product_option($axis, $value, $user_id)
     }
 
     return array('attribute_id' => $attribute_id, 'option_id' => $option_id);
+}
+
+/**
+ * The barcode of a made product, kept where the product screen keeps it
+ * (product_barcodes) when this site uses barcodes; a code that does not fit
+ * the site's barcode type or another product holds is a note.
+ *
+ * @param int      $product_id
+ * @param string   $barcode
+ * @param string[] $notes
+ */
+function pg_import_product_barcode($product_id, $barcode, &$notes)
+{
+    $barcode = trim((string) $barcode);
+
+    if (($barcode === '') || !defined('BARCODE_ENABLED') || !BARCODE_ENABLED) {
+        return;
+    }
+
+    if (pg_assign_product_barcode((int) $product_id, $barcode) === '') {
+        $notes[] = lang(array('string' => 'The barcode {var:1} was not kept: it does not fit this site\'s barcode type or another product holds it.', 'vars' => array($barcode)));
+    }
 }
 
 // The compare-at price of a made product, when the site has the column.

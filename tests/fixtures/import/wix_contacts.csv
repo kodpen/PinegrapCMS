@@ -1,0 +1,4 @@
+First Name,Last Name,Email 1,Phone 1,Company,Position,Address 1 - Street,Address 1 - City,Address 1 - State/Region,Address 1 - Zip,Address 1 - Country,Labels,Email subscriber status,Language,Created At (UTC+0)
+Ayşe,Yılmaz,AYSE@Example.com,+90 555 111 2233,Acme,Buyer,Main St 1,Istanbul,34,34000,TR,"VIP, Newsletter",Subscribed,tr,2025-01-02 10:00
+John,Smith,john@example.com,,,,,,,,,,Unsubscribed,en,2025-02-03 11:00
+,,,+1 555 0100,,,,,,,,Walk-in,Never subscribed,en,2025-03-04 12:00

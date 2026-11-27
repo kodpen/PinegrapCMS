@@ -3,7 +3,7 @@
  * Pinegrap - Enterprise Website Platform
  *
  * The contact writer of the content import framework (includes/fn/
- * importers.php), used by the Shopify customers file.
+ * importers.php), used by the Shopify, Squarespace and Wix contacts files.
  *
  * - An address an existing contact holds is not written again: the item is
  *   skipped and named, the existing contact is left as it is.
@@ -11,6 +11,9 @@
  *   line (source "import") records it, granted or refused, as exported.
  * - Each tag is a contact group, found by name or made; a group filled by
  *   rules is skipped.
+ * - An item carrying its row's cells (data.columns, Wix's contacts file,
+ *   whose headings no page lists) is read with the pairs of the import's
+ *   plan step (contact_<part> => col_<n>).
  * - Undo deletes the contact as the contact list does, unless a user account
  *   or an order points at it since: then it stays and the report names it.
  *
@@ -61,6 +64,71 @@ function pg_import_contact_values($data, $lengths)
     }
 
     return $values;
+}
+
+/**
+ * The pairs of contact part => column the import's plan step chose, from
+ * its contact_<part> rows; unknown parts are dropped. Pure.
+ *
+ * @param array $mapping
+ * @return array<string,string>
+ */
+function pg_import_contact_pairs($mapping)
+{
+    $parts = array_merge(pg_import_contact_columns(), array('opt_in', 'tags'));
+    $pairs = array();
+
+    foreach ((array) $mapping as $name => $column) {
+        $part = (strpos((string) $name, 'contact_') === 0) ? substr((string) $name, 8) : '';
+
+        if (in_array($part, $parts, true) && ((string) $column !== '')) {
+            $pairs[$part] = (string) $column;
+        }
+    }
+
+    return $pairs;
+}
+
+/**
+ * The data of a contact item read from its row's cells with the pairs: the
+ * columns, the address in lower case, the subscription status as opt_in
+ * and the labels as tags (split at semicolons, else commas). A part with no
+ * pair is empty. Pure.
+ *
+ * @param array<string,string> $columns col_<n> => cell
+ * @param array<string,string> $pairs   part => col_<n>
+ * @return array
+ */
+function pg_import_contact_from_columns($columns, $pairs)
+{
+    $cell = function ($part) use ($columns, $pairs) {
+        return isset($pairs[$part]) ? trim((string) ($columns[$pairs[$part]] ?? '')) : '';
+    };
+    $data = array();
+
+    foreach (pg_import_contact_columns() as $column) {
+        $data[$column] = $cell($column);
+    }
+
+    $data['email_address'] = mb_strtolower($data['email_address']);
+    $data['opt_in'] = pg_import_contact_subscribed($cell('opt_in'));
+    $labels = $cell('tags');
+    $data['tags'] = array_values(array_unique(array_filter(array_map('trim', explode((strpos($labels, ';') !== false) ? ';' : ',', $labels)), 'strlen')));
+
+    return $data;
+}
+
+/**
+ * Whether a subscription status cell says the person subscribed: only
+ * "Subscribed" (or yes, true, 1); unsubscribed, never subscribed, not set
+ * and pending are no consent. Pure.
+ *
+ * @param string $cell
+ * @return bool
+ */
+function pg_import_contact_subscribed($cell)
+{
+    return in_array(mb_strtolower(trim((string) $cell)), array('subscribed', 'yes', 'true', '1'), true);
 }
 
 /**
@@ -133,6 +201,12 @@ function pg_import_contact_group($name, $user_id)
 function pg_import_write_contact($item, $import)
 {
     $data = (array) ($item['data'] ?? array());
+
+    if (isset($data['columns']) && is_array($data['columns'])) {
+        $data = pg_import_contact_from_columns($data['columns'], pg_import_contact_pairs((array) ($import['mapping'] ?? array())));
+        $item['data'] = $data;
+    }
+
     $values = pg_import_contact_values($data, pg_import_contact_lengths());
     $user_id = (int) ($import['user_id'] ?? 0);
     $refusal = pg_import_precheck_contact($item);
