@@ -119,7 +119,7 @@ function test_workspace_note_list_row_is_a_list_row()
 	$rule = substr($css, $at, (int) strpos($css, '}', (int) $at) - $at);
 
 	pg_assert_contains('var(--pg-tint-select)', $rule, 'tinted with the select strength');
-	pg_assert_contains('box-shadow: inset 2px 0 0 var(--pg-accent);', $rule, 'the accent edge');
+	pg_assert_contains('box-shadow: inset 3px 0 0 var(--pg-accent);', $rule, 'the 3 px accent edge');
 	pg_assert_false(strpos($css, '.ws-nb-item.active') !== false, 'no rule for the old filled box');
 	pg_assert_same(1, substr_count($css, "\n.pg-list-row {"), 'one definition of the list row');
 }
@@ -163,4 +163,47 @@ function test_workspace_note_list_in_the_bundle()
 	pg_assert_true($at !== false, 'the list script is bundled');
 	pg_assert_true($at < array_search('assets/js/workspace_note_groups.js', $sources, true), 'before the folders');
 	pg_assert_true($at < array_search('assets/js/workspace.js', $sources, true), 'before workspace.js');
+}
+
+// The list is a card of its own with a head (Notes, the count, New group,
+// the order) beside the note's card: 372 px from 1200 px up with 20 px
+// between them, 300 px and 16 px below; the list card sticky with its own
+// scroll; each row with a hairline under it, an unread one with a heavier
+// title.
+function test_workspace_note_list_is_a_card_beside_the_note()
+{
+	$main = workspace_note_list_test_source('assets/js/workspace.js');
+	$groups = workspace_note_list_test_source('assets/js/workspace_note_groups.js');
+	$css = workspace_note_list_test_source('assets/css/backend.src.css');
+
+	pg_assert_contains("el('section', 'pg-card ws-nb-list-card')", $main, 'the list is the look\'s card');
+	pg_assert_contains("el('h2', 'ws-nb-list-title', t('notes_list_head'))", $main, 'the head names it');
+	pg_assert_contains("window.PGWsNoteGroups.addButton(groups)", $main, 'New group stands in the head');
+	pg_assert_contains("'bi-sort-down', t('notes_order')", $main, 'the order stands in the head');
+	pg_assert_contains("el('div', 'card pg-card ws-nb-card ws-nb-page')", $main, 'the note is the look\'s card');
+	pg_assert_false(strpos($main, "'row g-7 ws-nb'") !== false, 'no grid row of columns');
+	pg_assert_false(strpos($groups, 'parts.head.appendChild(add)') !== false, 'New group left the My notes band');
+	pg_assert_contains("'notes_list_head'", workspace_note_list_test_source('includes/workspace/notes.php'), 'the head\'s text key');
+
+	pg_assert_contains("grid-template-columns: 300px minmax(0, 1fr);", $css, '300 px below 1200 px');
+	pg_assert_contains("grid-template-columns: 372px minmax(0, 1fr);\n        gap: 20px;", $css, '372 px and 20 px from 1200 px up');
+	pg_assert_contains("position: sticky;\n        top: calc(var(--pg-navbar-h) + 16px);", $css, 'the list card is sticky');
+	pg_assert_contains("overflow-y: auto;", workspace_note_list_test_rule($css, '.ws-nb-list-card > .ws-nb-list'), 'its body scrolls');
+	pg_assert_contains('min-height: 46px;', workspace_note_list_test_rule($css, '.ws-nb-list-head'), 'the list head is 46 px');
+	pg_assert_contains('min-height: 46px;', workspace_note_list_test_rule($css, '.ws-nb-page > .ws-nb-head'), 'the note head is 46 px');
+	pg_assert_contains('border-bottom: 1px solid', workspace_note_list_test_rule($css, '.ws-nb-item'), 'a hairline under each row');
+	pg_assert_contains('font-weight: var(--pg-weight-title);', workspace_note_list_test_rule($css, '.ws-nb-item-unread .ws-nb-item-name'), 'unread: a heavier title');
+}
+
+// The body of the first rule whose line starts with the selector, indented
+// or not.
+function workspace_note_list_test_rule($css, $selector)
+{
+	$found = preg_match('/\n[ ]*' . preg_quote($selector, '/') . ' \{/', $css, $match, PREG_OFFSET_CAPTURE);
+
+	pg_assert_true($found === 1, 'the rule ' . $selector);
+
+	$at = $found ? (int) $match[0][1] : 0;
+
+	return substr($css, $at, (int) strpos($css, '}', $at) - $at);
 }

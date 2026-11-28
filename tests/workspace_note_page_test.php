@@ -153,7 +153,7 @@ function test_workspace_note_page_scope_is_my_notes_only()
 {
 	$main = workspace_note_page_test_source('assets/js/workspace.js');
 
-	pg_assert_contains("el('div', 'card ws-nb-card ws-nb-page')", $main, 'My Notes draws its note card as a page');
+	pg_assert_contains("el('div', 'card pg-card ws-nb-card ws-nb-page')", $main, 'My Notes draws its note card as a page');
 	pg_assert_same(1, preg_match_all("#'[^'\\n]*ws-nb-page(?![\\w-])[^'\\n]*'#", $main), 'one card in workspace.js carries the scope class');
 	pg_assert_same(1, substr_count($main, 'PGWsNotePage.fold('), 'one row of tools folds');
 	pg_assert_contains("var card = h.el('div', 'card ws-nb-card ws-hl-mine');", workspace_note_page_test_source('assets/js/workspace_highlights.js'));

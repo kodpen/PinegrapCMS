@@ -3651,6 +3651,8 @@ function ws_notes_js_strings()
         'notes_onenote_empty'   => lang('No OneNote notebook was found in your account.'),
         'notes_onenote_more'    => lang('Only the most recently changed pages are listed.'),
         'notes_onenote_fetching' => lang('Fetching the pages from OneNote…'),
+        // The head of the list card (startNotes() in workspace.js).
+        'notes_list_head'       => lang('Notes'),
         'notes_mine'            => lang('My notes'),
         'notes_shared'          => lang('Shared with me'),
         // The list's order in the bar's "⋯" (workspace_note_list.js).

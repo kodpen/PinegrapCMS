@@ -509,6 +509,15 @@
         return box;
     }
 
+    // New group, in the list card's head (startNotes() in workspace.js).
+    function addButton(ctx) {
+        var add = ctx.kit.lookButton('pg-button pg-button-ghost pg-button-sm ws-nb-group-add', ctx.kit.t('notes_group_new'), 'bi-folder-plus');
+
+        add.addEventListener('click', function () { editGroup(ctx, null); });
+
+        return add;
+    }
+
     // The My notes section under its group label (ctx.section(), which
     // folds it) with the person's groups as folders, then their own notes in
     // no group, in the order ctx.mine holds them. ctx: kit (window.PGWsKit),
@@ -527,10 +536,6 @@
 
         // A note whose group the list does not hold is drawn in no group.
         var loose = ctx.mine.filter(function (note) { return !known[Number(note.group_id || 0)]; });
-
-        var add = kit.lookButton('pg-button pg-button-ghost pg-button-sm ws-nb-group-add', kit.t('notes_group_new'), 'bi-folder-plus');
-        add.addEventListener('click', function () { editGroup(ctx, null); });
-        parts.head.appendChild(add);
 
         groups.forEach(function (group) {
             var notes = groupNotes(ctx.notes, group.id);
@@ -641,6 +646,7 @@
 
     window.PGWsNoteGroups = {
         mine: mine,
+        addButton: addButton,
         sharedLoose: sharedLoose,
         menuItems: menuItems,
         placeNew: placeNew,
