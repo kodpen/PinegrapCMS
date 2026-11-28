@@ -428,3 +428,522 @@ function pg_etsy_property_rows($data)
 
     return $rows;
 }
+
+
+/* ---------------------------------------------------------------------------
+   Listings (connectors/etsy.php): draft, pictures, properties, inventory
+   --------------------------------------------------------------------------- */
+
+/**
+ * The longest title Etsy takes.
+ *
+ * @return int
+ */
+function pg_etsy_title_max()
+{
+    return 140;
+}
+
+/**
+ * The most pictures sent to one listing.
+ *
+ * @return int
+ */
+function pg_etsy_image_max()
+{
+    return 10;
+}
+
+/**
+ * The most a single offering of a listing may hold.
+ *
+ * @return int
+ */
+function pg_etsy_quantity_max()
+{
+    return 999;
+}
+
+/**
+ * The price a listing is sent at, in the shop's currency: the shop's price
+ * (price_major) times the rate from the base currency, rounded half away
+ * from zero to the cent. '' when there is no price or no rate. Pure.
+ *
+ * @param float      $price_major
+ * @param float|null $rate
+ * @return string "12.34"
+ */
+function pg_etsy_price($price_major, $rate)
+{
+    if (!is_numeric($price_major) || !is_numeric($rate) || ((float) $rate <= 0)) {
+        return '';
+    }
+
+    // Through the minor unit first, so a price of 19.99 is 1999 before the
+    // rate and never 19.989999… cut short.
+    $cents = round(round((float) $price_major * 100) * (float) $rate);
+
+    if ($cents <= 0) {
+        return '';
+    }
+
+    return number_format($cents / 100, 2, '.', '');
+}
+
+/**
+ * A product's description as the plain text Etsy shows: tags dropped, a
+ * paragraph or line break kept as a new line, entities decoded, runs of
+ * blank lines and spaces folded. Pure.
+ *
+ * @param string $html
+ * @return string
+ */
+function pg_etsy_plain_text($html)
+{
+    $text = preg_replace('~<\s*(br|/p|/div|/li|/h[1-6]|/tr)\b[^>]*>~i', "\n", (string) $html);
+    $text = preg_replace('~<\s*li\b[^>]*>~i', '- ', $text);
+    $text = html_entity_decode(strip_tags($text), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $text = str_replace("\xC2\xA0", ' ', $text);
+    $text = preg_replace('/[ \t]+/u', ' ', $text);
+    $text = preg_replace('/ *\n */u', "\n", $text);
+    $text = preg_replace('/\n{3,}/u', "\n\n", $text);
+
+    return trim((string) $text);
+}
+
+/**
+ * Why Etsy would refuse an item before anything is sent, or ''. Pure but
+ * for lang().
+ *
+ * @param array $item mp_listing_items() item
+ * @return string
+ */
+function pg_etsy_item_problem($item)
+{
+    $code = isset($item['code']) ? (string) $item['code'] : '';
+
+    if ($code === '') {
+        return lang('A product of this article has no product code.');
+    }
+
+    if (empty($item['images'])) {
+        return lang(array('string' => '{var:1} has no picture. Etsy publishes a listing only with one.', 'vars' => array($code)));
+    }
+
+    return '';
+}
+
+/**
+ * Why Etsy would refuse the listing's title, or ''. Pure but for lang().
+ *
+ * @param string $title
+ * @return string
+ */
+function pg_etsy_title_problem($title)
+{
+    if (trim((string) $title) === '') {
+        return lang('The article has no title.');
+    }
+
+    if (mb_strlen((string) $title) > pg_etsy_title_max()) {
+        return lang(array('string' => 'The title is longer than the {var:1} characters Etsy takes.', 'vars' => array(pg_etsy_title_max())));
+    }
+
+    return '';
+}
+
+/**
+ * The listing's title: the article's, else its first product's. Pure.
+ *
+ * @param array $items
+ * @return string
+ */
+function pg_etsy_listing_title($items)
+{
+    $first = reset($items);
+
+    if (!is_array($first)) {
+        return '';
+    }
+
+    $title = isset($first['group_title']) ? trim((string) $first['group_title']) : '';
+
+    if (($title === '') || (count($items) === 1)) {
+        $own = isset($first['title']) ? trim((string) $first['title']) : '';
+        $title = ($own !== '') ? $own : $title;
+    }
+
+    return $title;
+}
+
+/**
+ * The pictures of an article, in the order of its first product's, then
+ * those only its other products have, at most pg_etsy_image_max(). Pure.
+ *
+ * @param array $items
+ * @return array URLs
+ */
+function pg_etsy_listing_images($items)
+{
+    $images = array();
+
+    foreach ((array) $items as $item) {
+        foreach ((isset($item['images']) ? (array) $item['images'] : array()) as $url) {
+            $url = (string) $url;
+
+            if (($url !== '') && !in_array($url, $images, true)) {
+                $images[] = $url;
+            }
+        }
+    }
+
+    return array_slice($images, 0, pg_etsy_image_max());
+}
+
+/**
+ * One attribute of an item as Etsy's property value: property_id,
+ * value_ids, values; null when it carries nothing or its id is not a
+ * number. A value from the category's list is sent by its id with its
+ * text, a value of the shop's own by its text alone. Pure.
+ *
+ * @param array $attribute id, value_id, custom_value, value
+ * @return array|null
+ */
+function pg_etsy_property_value($attribute)
+{
+    $id = isset($attribute['id']) ? trim((string) $attribute['id']) : '';
+
+    if (preg_match('/^[0-9]{1,20}$/', $id) !== 1) {
+        return null;
+    }
+
+    $value_id = isset($attribute['value_id']) ? trim((string) $attribute['value_id']) : '';
+    $text = ($value_id !== '')
+        ? (isset($attribute['value']) ? trim((string) $attribute['value']) : '')
+        : (isset($attribute['custom_value']) ? trim((string) $attribute['custom_value']) : '');
+
+    if (($value_id === '') && ($text === '')) {
+        return null;
+    }
+
+    if (($value_id !== '') && (preg_match('/^[0-9]{1,20}$/', $value_id) !== 1)) {
+        return null;
+    }
+
+    return array(
+        'property_id' => (int) $id,
+        'value_ids'   => ($value_id !== '') ? array((int) $value_id) : array(),
+        'values'      => array(($text !== '') ? $text : $value_id),
+    );
+}
+
+/**
+ * What tells an article's products apart on Etsy: the properties whose
+ * values differ between them, at most two (Etsy's limit), and the ones
+ * every product shares, which are set on the listing. One product has no
+ * variation. Products that differ in nothing, or in more than two
+ * properties, are refused. Pure but for lang().
+ *
+ * @param array $items
+ * @return array ok, error, variations (property ids), shared (property_id => value)
+ */
+function pg_etsy_variations($items)
+{
+    $items = array_values((array) $items);
+    $values = array();
+    $order = array();
+
+    foreach ($items as $index => $item) {
+        foreach ((isset($item['attributes']) ? (array) $item['attributes'] : array()) as $attribute) {
+            $value = pg_etsy_property_value($attribute);
+
+            if ($value === null) {
+                continue;
+            }
+
+            $id = $value['property_id'];
+
+            if (!isset($values[$id])) {
+                $values[$id] = array();
+                $order[] = $id;
+            }
+
+            $values[$id][$index] = $value;
+        }
+    }
+
+    $variations = array();
+    $shared = array();
+
+    foreach ($order as $id) {
+        $keys = array();
+
+        foreach ($items as $index => $item) {
+            $keys[] = isset($values[$id][$index])
+                ? ($values[$id][$index]['value_ids'] ? 'id:' . $values[$id][$index]['value_ids'][0] : 'text:' . mb_strtolower($values[$id][$index]['values'][0]))
+                : '';
+        }
+
+        if (count(array_unique($keys)) > 1) {
+            $variations[] = $id;
+        } else {
+            $first = reset($values[$id]);
+            $shared[$id] = $first;
+        }
+    }
+
+    if (count($items) > 1) {
+        if (!$variations) {
+            return array('ok' => false, 'error' => lang('The products of this article do not differ in any property Etsy knows, so they cannot be one listing\'s options.'), 'variations' => array(), 'shared' => array());
+        }
+
+        if (count($variations) > 2) {
+            return array('ok' => false, 'error' => lang('The products of this article differ in more than two properties. An Etsy listing\'s options vary by two at most.'), 'variations' => array(), 'shared' => array());
+        }
+
+        foreach ($items as $index => $item) {
+            foreach ($variations as $id) {
+                if (!isset($values[$id][$index])) {
+                    return array('ok' => false, 'error' => lang(array('string' => '{var:1} has no value for an option the other products of the article have.', 'vars' => array((string) $item['code']))), 'variations' => array(), 'shared' => array());
+                }
+            }
+        }
+    }
+
+    return array('ok' => true, 'error' => '', 'variations' => $variations, 'shared' => $shared);
+}
+
+/**
+ * The body of updateListingInventory: one product a SKU with its variation
+ * values, one offering each with its price, quantity and processing
+ * profile. Price, quantity and SKU vary on every variation property; an
+ * offering with no stock is sent disabled. Pure.
+ *
+ * @param array  $items      mp_listing_items() items
+ * @param array  $variations property ids (pg_etsy_variations())
+ * @param array  $prices     SKU => "12.34"
+ * @param string $readiness  readiness_state_id
+ * @return array
+ */
+function pg_etsy_inventory_body($items, $variations, $prices, $readiness)
+{
+    $products = array();
+
+    foreach (array_values((array) $items) as $item) {
+        $sku = (string) $item['code'];
+        $own = array();
+
+        foreach ((isset($item['attributes']) ? (array) $item['attributes'] : array()) as $attribute) {
+            $value = pg_etsy_property_value($attribute);
+
+            if (($value !== null) && in_array($value['property_id'], $variations, true)) {
+                $own[$value['property_id']] = $value;
+            }
+        }
+
+        $property_values = array();
+
+        foreach ($variations as $id) {
+            if (isset($own[$id])) {
+                $property_values[] = $own[$id];
+            }
+        }
+
+        $quantity = max(0, min(pg_etsy_quantity_max(), isset($item['quantity']) ? (int) $item['quantity'] : 0));
+        $offering = array(
+            'price'      => (float) $prices[$sku],
+            'quantity'   => $quantity,
+            'is_enabled' => $quantity > 0,
+        );
+
+        if ((string) $readiness !== '') {
+            $offering['readiness_state_id'] = (int) $readiness;
+        }
+
+        $products[] = array(
+            'sku'             => $sku,
+            'property_values' => $property_values,
+            'offerings'       => array($offering),
+        );
+    }
+
+    $on = array_values(array_map('intval', (array) $variations));
+
+    return array(
+        'products'             => $products,
+        'price_on_property'    => $on,
+        'quantity_on_property' => $on,
+        'sku_on_property'      => $on,
+    );
+}
+
+/**
+ * The fields of createDraftListing (and of updateListing, which takes the
+ * same but quantity and price): a physical good of the account's shipping
+ * and processing profiles, who made it and when, in the paired category.
+ * The draft's price and quantity are its first product's; the inventory
+ * sent next sets every product's own. Pure.
+ *
+ * @param array  $items
+ * @param array  $choices shipping_profile, readiness_state, who_made, when_made
+ * @param string $price   "12.34"
+ * @return array
+ */
+function pg_etsy_draft_fields($items, $choices, $price)
+{
+    $items = array_values((array) $items);
+    $first = $items[0];
+    $quantity = 0;
+
+    foreach ($items as $item) {
+        $quantity += max(0, isset($item['quantity']) ? (int) $item['quantity'] : 0);
+    }
+
+    $description = pg_etsy_plain_text(isset($first['description']) ? $first['description'] : '');
+    $title = pg_etsy_listing_title($items);
+
+    return array(
+        'quantity'            => max(1, min(pg_etsy_quantity_max(), $quantity)),
+        'title'               => $title,
+        'description'         => ($description !== '') ? $description : $title,
+        'price'               => (float) $price,
+        'who_made'            => (string) $choices['who_made'],
+        'when_made'           => (string) $choices['when_made'],
+        'taxonomy_id'         => (int) $first['category_id'],
+        'shipping_profile_id' => (int) $choices['shipping_profile'],
+        'readiness_state_id'  => (int) $choices['readiness_state'],
+        'type'                => 'physical',
+    );
+}
+
+/**
+ * A multipart/form-data body of plain fields and one file, as
+ * uploadListingImage takes a picture. Pure.
+ *
+ * @param array  $fields    name => value
+ * @param string $file_name the file's name
+ * @param string $bytes     its content
+ * @param string $mime      its type
+ * @param string $boundary  a token not found in the content
+ * @return array body, content_type
+ */
+function pg_etsy_multipart($fields, $file_name, $bytes, $mime, $boundary)
+{
+    $body = '';
+
+    foreach ((array) $fields as $name => $value) {
+        $body .= '--' . $boundary . "\r\n"
+            . 'Content-Disposition: form-data; name="' . str_replace(array('"', "\r", "\n"), '', (string) $name) . '"' . "\r\n\r\n"
+            . (string) $value . "\r\n";
+    }
+
+    $body .= '--' . $boundary . "\r\n"
+        . 'Content-Disposition: form-data; name="image"; filename="' . str_replace(array('"', "\r", "\n"), '', (string) $file_name) . '"' . "\r\n"
+        . 'Content-Type: ' . (string) $mime . "\r\n\r\n"
+        . (string) $bytes . "\r\n"
+        . '--' . $boundary . "--\r\n";
+
+    return array('body' => $body, 'content_type' => 'multipart/form-data; boundary=' . $boundary);
+}
+
+/**
+ * The type of a picture from its first bytes: JPEG, PNG, GIF or WebP, or ''
+ * for anything Etsy does not take. Pure.
+ *
+ * @param string $bytes
+ * @return string
+ */
+function pg_etsy_image_type($bytes)
+{
+    $bytes = (string) $bytes;
+
+    if (strncmp($bytes, "\xFF\xD8\xFF", 3) === 0) {
+        return 'image/jpeg';
+    }
+
+    if (strncmp($bytes, "\x89PNG\r\n\x1A\n", 8) === 0) {
+        return 'image/png';
+    }
+
+    if ((strncmp($bytes, 'GIF87a', 6) === 0) || (strncmp($bytes, 'GIF89a', 6) === 0)) {
+        return 'image/gif';
+    }
+
+    if ((substr($bytes, 0, 4) === 'RIFF') && (substr($bytes, 8, 4) === 'WEBP')) {
+        return 'image/webp';
+    }
+
+    return '';
+}
+
+/**
+ * The listing id of a createDraftListing or getListing answer, or ''. Pure.
+ *
+ * @param mixed $data
+ * @return string
+ */
+function pg_etsy_listing_id($data)
+{
+    $id = (is_array($data) && isset($data['listing_id']) && is_scalar($data['listing_id'])) ? trim((string) $data['listing_id']) : '';
+
+    return preg_match('/^[1-9][0-9]{0,19}$/D', $id) ? $id : '';
+}
+
+/**
+ * Where a listing stands, read back from getListing after it was set
+ * active: ok when Etsy shows it active, else what Etsy keeps it as. Pure but
+ * for lang().
+ *
+ * @param mixed $data
+ * @return array ok, state, error
+ */
+function pg_etsy_listing_verdict($data)
+{
+    $state = (is_array($data) && isset($data['state']) && is_scalar($data['state'])) ? strtolower(trim((string) $data['state'])) : '';
+
+    if ($state === 'active') {
+        return array('ok' => true, 'state' => $state, 'error' => '');
+    }
+
+    $words = array(
+        'draft'    => lang('a draft'),
+        'inactive' => lang('inactive'),
+        'sold_out' => lang('sold out'),
+        'expired'  => lang('expired'),
+        'removed'  => lang('removed'),
+        'edit'     => lang('being edited'),
+    );
+
+    return array(
+        'ok'    => false,
+        'state' => $state,
+        'error' => lang(array('string' => 'Etsy keeps the listing as {var:1}. Open it in Shop Manager to see what it still needs.', 'vars' => array(isset($words[$state]) ? $words[$state] : (($state !== '') ? $state : '?')))),
+    );
+}
+
+/**
+ * The file name of one of this site's pictures from its address
+ * (mp_listing_images()), or '' when the address is not under $base or names
+ * anything but a plain file name. Pure.
+ *
+ * @param string $url
+ * @param string $base the site's address with its path, ending in "/"
+ * @return string
+ */
+function pg_etsy_image_file_name($url, $base)
+{
+    $url = (string) $url;
+    $base = (string) $base;
+
+    if (($base === '') || (strncmp($url, $base, strlen($base)) !== 0)) {
+        return '';
+    }
+
+    $name = rawurldecode(substr($url, strlen($base)));
+
+    if (($name === '') || ($name !== basename($name)) || ($name[0] === '.') || (strpbrk($name, "\\\0") !== false)) {
+        return '';
+    }
+
+    return $name;
+}
