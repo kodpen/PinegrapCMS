@@ -39,9 +39,14 @@
     var SECTION_TAGS = { section: 1, header: 1, footer: 1, aside: 1 };
 
     // Section slots whose children print as designed (the editor's
-    // _SD_SECTION_KEEPS_CHILDREN); every other bound section is filled by the
-    // server and its children are kept parts.
-    var KEEPS_CHILDREN = { recipient_picker: 1, comment_watchers: 1, form_step_nav: 1, password_rules: 1 };
+    // _SD_SECTION_KEEPS_CHILDREN and _SD_BOOKING_KEEPS_CHILDREN, the test
+    // holds them equal); every other bound section is filled by the server
+    // or a site script and its children are kept parts.
+    var KEEPS_CHILDREN = {
+        recipient_picker: 1, comment_watchers: 1, form_step_nav: 1, password_rules: 1, guest: 1,
+        booking_step_service: 1, booking_step_staff: 1, booking_step_when: 1,
+        booking_step_details: 1, booking_step_done: 1, booking_form: 1
+    };
 
     function propsOf(node) {
         return (node && node.props && typeof node.props === 'object') ? node.props : {};
