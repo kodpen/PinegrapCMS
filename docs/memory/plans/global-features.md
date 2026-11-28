@@ -17,7 +17,7 @@ priority: 5
   - Markets: `plans/markets-price-lists.md`.
   - Automatic tax: `plans/tax-automatic.md`.
   - A whole site from one brief: done, `designer/site-from-brief.md`.
-  - A knowledge base and support requests: `plans/help-centre.md`.
+  - A knowledge base and support requests: done, `workspace/support-requests.md` and `designer/help-centre-collections.md`.
   - QuickBooks and Xero sync: done, `api/accounting-sync-rules.md`.
   - Global sales channels (Amazon, eBay, Etsy, TikTok Shop): `plans/sales-channels-global.md`.
 - A census is memory only; after it the architect writes the build's steps and asks the owner what is his.

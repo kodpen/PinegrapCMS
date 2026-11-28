@@ -8,7 +8,7 @@ description: The resolve-by time of a support-box conversation (help centre HC6)
 - Read by `ws_mail_resolve_hours($box, $kept)` (a plain box answers 0; `$kept` gives the target its form keeps), checked by `ws_mail_resolve_input()`, saved by `ws_mail_box_save_check()` as the first-answer target is (`mail_status.php`, `mail_settings.php`).
 
 ## How is it computed?
-- `ws_mail_resolve_due()`: `first_in_at` + target while the conversation is not closed. Nothing is stored. The architect settled (plan help-centre, 2026-11-27): no "Solved" state, no change of the `status` ENUM, and the clock does not stop while waiting for the customer.
+- `ws_mail_resolve_due()`: `first_in_at` + target while the conversation is not closed. Nothing is stored. The architect settled (2026-11-27, `workspace/support-requests.md`): no "Solved" state, no change of the `status` ENUM, and the clock does not stop while waiting for the customer.
 - An answer does not stop it either; a closed conversation opened again by a new mail keeps its first mail's time, so it may come back already overdue.
 - `ws_mail_resolve_overdue()` is past due; `ws_mail_resolve_html()` draws "Resolve by …" (hourglass icon) or the red badge "Resolve overdue".
 

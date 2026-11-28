@@ -14,7 +14,7 @@ description: Decisions made, schema part 54 (2026-11-27 on): the help centre's p
   - `ws_mail_conversations.source` VARCHAR(10) (mail, whatsapp, sms, form, chat, account) and `source_id` INT (the `forms` or `chat_conversations` row): the list's label and the link back.
   - The table `kb_votes` (id, form_id, record_id, the answer yes or no, created_at) for "Was this helpful?": no address and no IP; a cookie stops a second vote.
 - His yes covers these and nothing else: the resolve-by time stays computed, and a clock that stops while waiting would be a further column, not asked.
-- Steps: HC7 (priority and source) and HC8 (`kb_votes`) of `plans/help-centre.md`.
+- Built by HC7 (priority and source, `workspace/mail-priority-source.md`) and HC8 (`kb_votes`, `designer/kb-votes-helpful.md`).
 - Running sites: a conversation stored before reads as Normal with the source mail; nothing is rewritten.
 
 ## What do markets add to the database? (owner, 2026-11-27, agent channel poll 251, message 14926)

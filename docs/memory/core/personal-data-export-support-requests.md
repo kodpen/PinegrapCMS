@@ -7,7 +7,7 @@ module: privacy_export
 ## What does the section hold?
 - Key `support_requests`, label "Support requests", after `chats` in `pg_privacy_export_sections()` (the file's format, pinned by `tests/privacy_export_test.php`).
 - Read by `_pg_privacy_export_support_requests()` in `includes/fn/privacy_export.php` when `ws_mail_conversations` and `ws_mail_boxes.settings` exist.
-- The architect settled (plan help-centre, 2026-11-27): a request is a conversation of a support box, and a person's requests join the export. Erasure is unchanged: a request stays as mail does (`workflow/decisions-made-workspace-28.md`).
+- The architect settled (2026-11-27, `workspace/support-requests.md`): a request is a conversation of a support box, and a person's requests join the export. Erasure is unchanged: a request stays as mail does (`workflow/decisions-made-workspace-28.md`).
 
 ## Which conversations are the person's?
 - Those of a support box (`ws_mail_box_is_support()`, so `mail_status.php` is required there) whose `customer_email` is one of the person's addresses, or whose `user_id` or `contact_id` is one of theirs. A plain box's conversations are not requests and stay out.
