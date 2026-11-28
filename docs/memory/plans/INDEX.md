@@ -78,13 +78,14 @@
 - person-status-screens.md: Plan person-status, in words: the Status dialog, where a person opens it, the mark beside a name, the person card's line, the composer's line and the line under an agent question
 - person-status.md: Plan (owner 2026-11-28): a person's own status (kind, note, end time) shown beside their name and told to agents in each brief, in ws_profiles.status; steps PS1 to PS4
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
+- sales-channels-global-amazon.md: Plan part (architect 2026-11-28): what was settled for Amazon before its steps AZ1 to AZ8: private application, one account a country, offers before new products, no FBA orders, the 30-day rule
 - sales-channels-global-census-amazon.md: Census (2026-11-27): Amazon's Selling Partner API (SP-API) as its developer pages say it: connecting a seller, listings, stock and price, orders and shipment, registering an application, fees
 - sales-channels-global-census-proposal.md: Census (2026-11-27) proposal for global sales channels: the order of eBay, Etsy, Amazon and TikTok Shop, what each needs stored beyond today's marketplace tables, the owner's questions
 - sales-channels-global-census-tables.md: Census (2026-11-27): the marketplace tables for listings, category pairing and orders, whether they fit a marketplace with several countries and currencies, where OAuth tokens go
 - sales-channels-global-census-tiktok.md: Census (2026-11-27): TikTok Shop's Partner API: connecting a shop, a shop cipher per country, products, stock and price, orders and packages, partner registration and reviews
 - sales-channels-global-census-unread.md: Census (2026-11-27): the Amazon and TikTok Shop developer pages that could not be read (missing, refused, behind a sign-in) and the points the pages leave unclear or contradict
 - sales-channels-global-census.md: Census (2026-11-27) for selling on Amazon, eBay, Etsy and TikTok Shop: what the marketplace connector base gives a new marketplace, what n11 and Trendyol each added, where the census's other files are
-- sales-channels-global.md: Plan (owner 2026-11-27, poll 246): products listed and orders taken from eBay (built), then Etsy, Amazon and TikTok Shop; Etsy's steps ET1 to ET6 need no table and no column
+- sales-channels-global.md: Plan (owner 2026-11-27, poll 246): products listed and orders taken from eBay and Etsy (built), then Amazon and TikTok Shop; Amazon's steps AZ1 to AZ8 need no table and no column
 - settings-scan-findings.md: Faults the 2026-11-21 scan of the Site Settings panes left on SEO, Languages, Channels, Team and Maintenance; a step deletes its lines, the last one the file
 - settings-tidy-census-order.md: Survey of the Site Settings categories, its second part: which categories still look old, their plans, and what is decided for every tidy
 - settings-tidy-census.md: Survey of the Site Settings categories (owner 2026-11-21: tidy every settings screen): the contradictions and scattered settings still open, with the plan that takes each
