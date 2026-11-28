@@ -1918,6 +1918,8 @@ function ws_handle_action($action, $request)
             if ($editing) {
                 $answer['can_replace'] = ws_file_can_replace($viewer, $message, $channel);
                 $answer['can_send'] = true;
+                // A document's Picture button lists this channel's pictures.
+                $answer['channel_id'] = (int) $channel['id'];
             }
 
             // "Save as data" for a sheet: the Data tables' import reads the
