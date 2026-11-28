@@ -559,7 +559,10 @@ function pg_co_variants($tree)
 }
 
 // The variant named $name, or null: a variant's name now first, then a
-// former name of a renamed one (the same case, as a name is matched).
+// former name of a renamed one (the same case), then a variant's name now
+// in any case. The last keeps the places of a rename that changed only the
+// case: its old name cannot stay a former name, and names are unique in
+// any case, so it finds one variant at most.
 function pg_co_variant($tree, $name)
 {
     $name = pg_co_clean_variant_name($name);
@@ -570,6 +573,10 @@ function pg_co_variant($tree, $name)
     }
     foreach ($list as $variant) {
         if (!empty($variant['was']) && in_array($name, $variant['was'], true)) return $variant;
+    }
+    $key = pg_co_variant_key($name);
+    foreach ($list as $variant) {
+        if (pg_co_variant_key($variant['name']) === $key) return $variant;
     }
     return null;
 }

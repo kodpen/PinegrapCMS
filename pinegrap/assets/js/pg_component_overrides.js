@@ -342,13 +342,15 @@
         return out;
     }
 
-    // A variant's name now first, then a former name of a renamed one.
+    // A variant's name now first, then a former name of a renamed one, then
+    // a name now in any case (a rename that changed only the case).
     function variant(tree, name) {
         name = cleanVariantName(name);
         if (name === '') return null;
-        var list = variants(tree), i;
+        var list = variants(tree), i, key = name.toLowerCase();
         for (i = 0; i < list.length; i++) { if (list[i].name === name) return list[i]; }
         for (i = 0; i < list.length; i++) { if (list[i].was && list[i].was.indexOf(name) !== -1) return list[i]; }
+        for (i = 0; i < list.length; i++) { if (list[i].name.toLowerCase() === key) return list[i]; }
         return null;
     }
 

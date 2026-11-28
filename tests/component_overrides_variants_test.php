@@ -353,3 +353,29 @@ function test_component_overrides_variant_rename_in_the_part()
 	pg_assert_same('Dark', $js['back']['name'], 'renamed back');
 	pg_assert_same(array('Night'), $js['back']['was'], 'its name is no former name; the one it left is');
 }
+
+// A rename that changes only the case ("dark" to "Dark") keeps its places:
+// the old name cannot stay a former name (a name now holds it in any case),
+// so a place's name matches a variant's name in any case after the exact
+// name and the former names. Names are unique in any case, so this finds
+// one variant at most.
+function test_component_overrides_case_only_rename_keeps_its_places()
+{
+	$tree = component_overrides_variants_tree();
+	$tree['props']['_variants'] = array(
+		array('name' => 'Dark', 'was' => array('dark'), 'nodes' => array('sd_b' => array('cssClass' => 'btn text-bg-dark'))),
+		array('name' => 'Compact', 'nodes' => array('root' => array('cssClass' => 'card p-1'))),
+	);
+	pg_assert_same('Dark', pg_co_variant($tree, 'dark')['name'], 'a place saved before the case changed finds the variant');
+	pg_assert_same('Compact', pg_co_variant($tree, 'COMPACT')['name'], 'any case');
+	pg_assert_same(null, pg_co_variant($tree, 'Gone'), 'an unknown name still finds none');
+	$placed = pg_co_place_tree($tree, array('_variant' => 'dark'));
+	pg_assert_same('btn text-bg-dark', $placed['children'][2]['props']['cssClass'], 'the site draws the variant');
+
+	$js = component_overrides_test_node('var tree = ' . json_encode($tree, JSON_UNESCAPED_UNICODE) . ';'
+		. ' out = {found: [C.variant(tree, "dark") && C.variant(tree, "dark").name, C.variant(tree, "COMPACT") && C.variant(tree, "COMPACT").name, C.variant(tree, "Gone")]};');
+	if ($js === null) {
+		return;
+	}
+	pg_assert_same(array('Dark', 'Compact', null), $js['found'], 'the twin finds the same variants');
+}
