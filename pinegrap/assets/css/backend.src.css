@@ -23182,6 +23182,60 @@ button.ws-file-name {
 .office-slides-tabs {
   align-self: flex-start;
 }
+/* The tabs with Present and Edit in Artifact Canvas beside them. */
+.office-slides-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+}
+.office-slides-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+/* Present: one slide fitted to the screen on the darkest ground, a close button in the
+   corner; it fills the window where full screen is refused. */
+.office-slides-present {
+  position: fixed;
+  inset: 0;
+  z-index: 19000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bs-gray-900);
+}
+.office-slides-present:focus {
+  outline: 0;
+}
+.office-slides-present-frame {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+.office-slides-present .office-slides-skeleton {
+  background: var(--bs-gray-800);
+  animation: none;
+}
+.office-slides-present .office-slides-failed {
+  background: var(--bs-gray-800);
+  color: var(--bs-gray-300);
+}
+.office-slides-present-close {
+  position: absolute;
+  top: .75rem;
+  right: .75rem;
+  color: var(--bs-gray-050);
+  background: var(--pg-scrim);
+}
+.office-slides-present-close:focus-visible {
+  outline: var(--pg-focus-ring-width) solid var(--bs-gray-050);
+  outline-offset: var(--pg-focus-ring-offset);
+}
 .office-slides-left {
   margin: 0;
 }

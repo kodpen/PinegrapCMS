@@ -10,7 +10,7 @@ description: How far the own Word and Excel code goes: what is edited (simple fo
 - Both: "New spreadsheet" and "New document" (`office-new-files.md`), in the file window and a channel's preview with the same controls.
 
 ## Which files are only shown, or not at all?
-- Shown, never edited in place: .csv and .tsv (changed in the text editor), .ods, .xls (Save a copy as .xlsx), .pptx as a list of slides: `pg_office_kind()`, which every edit asks, gives '' for them.
+- Shown, never edited in place: .csv and .tsv (changed in the text editor), .ods, .xls (Save a copy as .xlsx), .pptx as drawn slides with Present and its text list (`office-pptx-slides-preview.md`): `pg_office_kind()`, which every edit asks, gives '' for them. A .pptx is changed only as canvases made from it by Edit in Artifact Canvas, never written back (`office-pptx-present.md`).
 - .doc, .ppt (binary): no preview or edit. A channel still takes them; it refuses only the macro forms of the new formats (`workspace/workspace-upload-refusals.md`).
 - No library for any of them (SheetJS, docx-preview, mammoth, JSZip, PhpSpreadsheet, PHPWord) and none from a CDN: the readers and writers are the product's own (`office-files.md`). PHPExcel is removed (#10528): importers read through `sheet-reader.md`, the Paraşüt exports are written by the xlsx writer (`erp/parasut-import-sheets.md`).
 

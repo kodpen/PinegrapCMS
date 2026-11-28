@@ -12,11 +12,11 @@ module: office
 - Owner (2026-10-19): no library; the readers are the product's own: `office-files.md`.
 - Owner (2026-11-26, agent channel): the Word editor is typed on a page as in a word processor, with Undo and Redo (`office-docx-page.md`).
 - Owner (2026-11-26, poll 235): all eight abilities for both editors, built (`workflow/decisions-made-product-115.md`); simple formulas by own code, every other formula locked (`office-sheet-formulas.md`). Nothing more is added in place (`office-direction.md`).
-- Owner (2026-11-26, in the architect's window): the workbook editor is steady: every change waits in one list, drawn at once, saved together, with Undo and Redo; no "save first" refusal.
+- Owner (2026-11-26, in the architect's window): the workbook editor is steady: changes wait in one list, drawn at once, saved together, with Undo and Redo.
 - Owner (2026-11-19, poll 156 "Tam kapsam"): PHPExcel goes, previews and editing grow, Export to Excel and a shared import reader across the panel (`workflow/decisions-made-product-79.md`). How far it goes, what is never built and the rules every edit keeps: `office-files-scope.md`.
 
 ## Which parts are there, by what a person sees?
-- Previews, limits, doors and security: `office-files.md`, `office-dom-ceiling.md`, `office-xlsx-cell-values.md`, `office-docx-controls-numbering.md`. View only: `office-csv-preview.md`, `office-ods-preview.md`, `office-xls-preview.md` (Save a copy as .xlsx), `office-pptx-preview.md`.
+- Previews, limits, doors and security: `office-files.md`, `office-dom-ceiling.md`, `office-xlsx-cell-values.md`, `office-docx-controls-numbering.md`. View only: `office-csv-preview.md`, `office-ods-preview.md`, `office-xls-preview.md` (Save a copy as .xlsx); .pptx `office-pptx-preview.md`, `office-pptx-slides-preview.md`, `office-pptx-present.md`.
 - Workbook view tools (sort, filter, find, Download as CSV): `office-sheet-tools.md`.
 - Excel editing: the list of changes `office-sheet-change-list.md`, its save `office-save-list.md`, Undo and Redo `office-sheet-undo.md`; cells `office-cell-edits.md` and their locks `office-cell-locks.md`; simple formulas `office-sheet-formulas.md`; the row and column head menu `office-sheet-head-menu.md` over `office-sheet-rows-columns.md`; the sheet tabs' menu `office-sheet-tabs.md` over `office-sheets.md`.
 - Workbook formats: the bar `office-sheet-format-controls.md`, `office-sheet-bar-text-borders.md` over `office-sheet-format.md`, `office-sheet-format-borders.md`; sizes, Freeze top row `office-sheet-sizes-grid.md` over `office-sheet-sizes.md`; copy, paste, fill down, clear `office-sheet-clipboard.md`.

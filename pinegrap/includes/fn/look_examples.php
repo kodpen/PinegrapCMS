@@ -1106,7 +1106,8 @@ function pg_look_examples_line_row_pattern($p)
  * Slides and Text, the quiet line on what is left out, the strip of
  * numbered thumbs with the chosen one's edge, a hidden slide dimmed, one
  * not drawn yet as a skeleton in its ratio, the slide on the look's ground,
- * the line "2 / 3" with Previous and Next, Speaker notes folded.
+ * the line "2 / 3" with Previous and Next, Speaker notes folded; Present
+ * and Edit in Artifact Canvas beside the tabs.
  *
  * @param string $p the pane's id prefix, already cleaned
  * @return array id, title, classes, html
@@ -1127,11 +1128,13 @@ function pg_look_examples_slides_pattern($p)
     return array(
         'id'      => 'pattern-slides',
         'title'   => lang('Slides'),
-        'classes' => array('.office-slides-view', '.pg-seg', '.pg-seg-item', 'role="tablist"', 'role="tab"', '.office-slides-left', '.office-slides-strip', '.office-slides-thumb', '.is-active', '.office-slides-thumb-hidden', '.office-slides-skeleton', '.office-slides-stage', '.office-slides-nav', '.pg-icon-button', '.office-slides-notes-toggle'),
+        'classes' => array('.office-slides-view', '.office-slides-head', '.office-slides-actions', '.pg-seg', '.pg-seg-item', 'role="tablist"', 'role="tab"', '.office-slides-left', '.office-slides-strip', '.office-slides-thumb', '.is-active', '.office-slides-thumb-hidden', '.office-slides-skeleton', '.office-slides-stage', '.office-slides-nav', '.pg-icon-button', '.office-slides-notes-toggle'),
         'html'    => '<div class="office-view"><div class="office-slides-view">'
-            . '<div class="pg-seg office-slides-tabs" role="tablist" aria-label="' . h(lang('Slides')) . '">'
+            . '<div class="office-slides-head"><div class="pg-seg office-slides-tabs" role="tablist" aria-label="' . h(lang('Slides')) . '">'
             . '<button type="button" class="pg-seg-item active" role="tab" aria-selected="true" id="' . $p . '_look_slides_tab">' . h(lang('Slides')) . '</button>'
             . '<button type="button" class="pg-seg-item" role="tab" aria-selected="false" tabindex="-1">' . h(lang('Text')) . '</button></div>'
+            . '<div class="office-slides-actions"><button type="button" class="pg-button pg-button-sm"><span class="bi bi-play-fill" aria-hidden="true"></span> ' . h(lang('Present')) . '</button>'
+            . '<button type="button" class="pg-button pg-button-quiet pg-button-sm"><span class="bi bi-easel" aria-hidden="true"></span> ' . h(lang('Edit in Artifact Canvas')) . '</button></div></div>'
             . '<div role="tabpanel" aria-labelledby="' . $p . '_look_slides_tab">'
             . '<p class="pg-text-meta office-slides-left">' . h(lang('Shown approximately.') . ' ' . str_replace('{1}', str_replace(array('{1}', '{2}'), array(lang('Charts'), '2'), lang('{1} ({2})')), lang('Not drawn: {1}.')) . ' ' . str_replace('{1}', '3', lang('{1} font(s) replaced.'))) . '</p>'
             . '<div class="office-slides-body"><ol class="office-slides-strip" aria-label="' . h(lang('Slides')) . '">'
@@ -1143,7 +1146,7 @@ function pg_look_examples_slides_pattern($p)
             . '<button type="button" class="pg-icon-button pg-icon-button-sm" aria-label="' . h(lang('Next slide')) . '"><span class="bi bi-chevron-right" aria-hidden="true"></span></button></div>'
             . '<button type="button" class="pg-button pg-button-quiet pg-button-sm office-slides-notes-toggle" aria-expanded="false">' . h(lang('Speaker notes')) . '</button>'
             . '</div></div></div></div></div>'
-            . '<p class="pg-text-meta">' . h(lang('From a presentation\'s preview: Slides opens first, Text is the list of the slides\' text. A strip of thumbs 148 px wide beside the chosen slide, which wears the selected edge; a hidden slide is dimmed, one not drawn yet is a skeleton in its ratio. Below 768 px the strip lies under the slide as one row.')) . '</p>',
+            . '<p class="pg-text-meta">' . h(lang('From a presentation\'s preview: Slides opens first, Text is the list of the slides\' text. A strip of thumbs 148 px wide beside the chosen slide, which wears the selected edge; a hidden slide is dimmed, one not drawn yet is a skeleton in its ratio. Below 768 px the strip lies under the slide as one row. Present shows the slides full screen on black; Edit in Artifact Canvas is there for whoever may add a file to the folder.')) . '</p>',
     );
 }
 

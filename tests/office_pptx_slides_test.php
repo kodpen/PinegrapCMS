@@ -209,3 +209,34 @@ JS
 	pg_assert_same('Slide 3 of 24: Plans', $result['name'], 'the name with the title');
 	pg_assert_same('Slide 3 of 24', $result['bare'], 'without a title');
 }
+
+// Present: a slide fills the screen in its ratio (larger than its own size
+// when the screen is), hidden slides skipped unless all are hidden, the
+// keys that move, Escape that closes.
+function test_office_pptx_slides_present_helpers()
+{
+	$result = office_pptx_slides_node(<<<'JS'
+console.log(JSON.stringify({
+	big: S.presentFit(960, 540, 2560, 1440),
+	tall: S.presentFit(1920, 1080, 1000, 1000),
+	odd: S.presentFit(1920, 1080, 0, 0),
+	order: S.presentOrder([false, true, false]),
+	all: S.presentOrder([true, true]),
+	keys: [S.presentKey('ArrowRight', 0, 3), S.presentKey(' ', 1, 3), S.presentKey('Enter', 2, 3), S.presentKey('PageDown', 2, 3),
+		S.presentKey('ArrowLeft', 0, 3), S.presentKey('Backspace', 2, 3), S.presentKey('Home', 2, 3), S.presentKey('End', 0, 3),
+		S.presentKey('Escape', 1, 3), S.presentKey('a', 1, 3)]
+}));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('w' => 2560, 'h' => 1440), $result['big'], 'a small slide fills a large screen');
+	pg_assert_same(array('w' => 1000, 'h' => 562), $result['tall'], 'fitted to the width, its ratio kept');
+	pg_assert_same(array('w' => 1920, 'h' => 1080), $result['odd'], 'no room measured: its own size');
+	pg_assert_same(array(0, 2), $result['order'], 'a hidden slide is skipped');
+	pg_assert_same(array(0, 1), $result['all'], 'every slide hidden: all are shown');
+	pg_assert_same(array(1, 2, 2, 2, 0, 1, 0, 2, 'close', -1), $result['keys'], 'Present\'s keys, no wrap at either end, Escape closes');
+}

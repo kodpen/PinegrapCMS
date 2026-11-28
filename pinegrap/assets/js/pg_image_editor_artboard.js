@@ -556,6 +556,43 @@
         }, Promise.resolve());
     };
 
+    // A presentation of Files opened here (opts.designFile { url, name },
+    // the preview's Edit in Artifact Canvas): its bytes fetched from its
+    // address and read as the New image dialog's "Open a design file"
+    // reads a file from this computer, its pages chosen in the window.
+    Editor.prototype.designFileOpen = function (file) {
+        var self = this;
+
+        this.showMessage(t('designReading'));
+
+        Promise.all([this.designScript(), fetch(file.url, { credentials: 'same-origin' }).then(function (r) {
+            if (!r.ok) {
+                throw new Error('fetch');
+            }
+
+            return r.blob();
+        })]).then(function (got) {
+            var blob = got[1], f;
+
+            if (self.finished) {
+                return null;
+            }
+
+            try {
+                f = new File([blob], file.name || '', { type: blob.type || '' });
+            } catch (e) {
+                f = blob;
+                f.name = file.name || '';
+            }
+
+            return self.designImport(f, 'new');
+        }).catch(function () {
+            if (!self.finished) {
+                self.showMessage(t('designError'), true);
+            }
+        });
+    };
+
     // Import's "A design file (.pptx)": a page of it as one group.
     Editor.importItems.push(function () {
         var self = this;
@@ -1155,7 +1192,12 @@
 
         if (this.board.ask) {
             this.board.ask = false;
-            this.openNewImage();
+
+            if (this.opts.designFile && this.importApi() && (this.saveMode === 'new')) {
+                this.designFileOpen(this.opts.designFile);
+            } else {
+                this.openNewImage();
+            }
         }
 
         if (this.followBoard()) {

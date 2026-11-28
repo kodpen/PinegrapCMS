@@ -147,7 +147,7 @@ function test_image_editor_send_callers()
 	pg_assert_true(strpos($ws, "api('ws_library_channels'") !== false, 'the channels the person may write in');
 	pg_assert_true(strpos($ws, 'current: channel ? channel.id : 0') !== false, 'its own channel left out');
 	pg_assert_true(preg_match('/function canvasSend\(\) \{\s*if \(!wsSend\) \{ return null; \}/', $fm) === 1, 'File Manager: only with the Workspace on');
-	pg_assert_same(2, substr_count($fm, 'send: canvasSend(),'), 'File Manager: a file and New image');
+	pg_assert_same(3, substr_count($fm, 'send: canvasSend(),'), 'File Manager: a file, New image and a presentation opened in the canvas');
 }
 
 // Every word the menu shows is a translated label.
