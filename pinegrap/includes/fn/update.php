@@ -1435,6 +1435,33 @@ function pg_update_channel()
     return 'stable';
 }
 
+/**
+ * The channels whose releases a site on $site_channel installs, most stable
+ * first: a beta site also takes the stable releases, so a beta tester reaches
+ * the stable release of the version it tested; a stable site takes stable
+ * releases only.
+ *
+ * @param string $site_channel pg_update_channel()
+ * @return array
+ */
+function pg_update_channels_followed($site_channel)
+{
+    return ((string) $site_channel === 'beta') ? array('stable', 'beta') : array('stable');
+}
+
+/**
+ * Whether a site on $site_channel installs a release of $release_channel
+ * (pg_update_channels_followed()).
+ *
+ * @param string $site_channel
+ * @param mixed  $release_channel
+ * @return bool
+ */
+function pg_update_channel_accepts($site_channel, $release_channel)
+{
+    return in_array($release_channel, pg_update_channels_followed($site_channel), true);
+}
+
 function pg_looks_like_zip($bytes)
 {
     if (!is_string($bytes) || strlen($bytes) < 4) {
@@ -2099,18 +2126,25 @@ function pg_vendor_release_read($answer)
  * What a release answer offers this installation, the check step of an
  * update or a repair:
  *
- *   update     a newer version; on beta also another build of the installed
- *              version, when the installation records a build of it (Repair
- *              Software takes a newer version as an update too)
+ *   update     a newer version; or, when the installation records a beta
+ *              build of its version, another build of that version: another
+ *              beta build on the beta channel, or the stable release of the
+ *              version on either channel (Repair Software takes a newer
+ *              version as an update too)
  *   repair     Repair Software and the same version
  *   no_update  a release that is not newer (up_to_date), 404
  *              release_not_found, or 403 access_blocked: an access block, not
  *              a refusal of the installed software
  *   blocked    the release needs a stepping stone first, whatever reason the
  *              server names (blocked_min_from_version)
- *   refuse     a release of another channel (channel_mismatch); an older
+ *   refuse     a release of a channel the site does not follow
+ *              (channel_mismatch, pg_update_channel_accepts()); an older
  *              version for Repair Software (older)
  *   unusable   anything else
+ *
+ * Without a recorded build the same version is never an update: the site may
+ * already run the stable release (installing it deletes the build file), or
+ * a beta whose place beside it the site cannot tell.
  *
  * @param array  $found     pg_vendor_release_read()
  * @param string $installed VERSION
@@ -2119,7 +2153,8 @@ function pg_vendor_release_read($answer)
  * @param string $mode      'update', or 'repair' for Repair Software
  * @return array mode, outcome, reason, release (the flat release of a 200,
  *               else null) and pin: what the later steps of an update or a
- *               repair read, null for any other outcome
+ *               repair read, with the site's channel at the check
+ *               (site_channel), null for any other outcome
  */
 function pg_vendor_release_offer($found, $installed, $build, $channel, $mode)
 {
@@ -2148,7 +2183,7 @@ function pg_vendor_release_offer($found, $installed, $build, $channel, $mode)
         return $decision('blocked', 'blocked_min_from_version');
     }
 
-    if ($release['channel'] !== (string) $channel) {
+    if (!pg_update_channel_accepts((string) $channel, $release['channel'])) {
         return $decision('refuse', 'channel_mismatch');
     }
 
@@ -2161,7 +2196,10 @@ function pg_vendor_release_offer($found, $installed, $build, $channel, $mode)
 
         $outcome = ($compare > 0) ? 'update' : 'repair';
     } else {
-        $other_build = ($compare === 0) && ($channel === 'beta') && ((string) $build !== '') && ($release['build'] !== (string) $build);
+        // The build file only ever names a beta build, so a stable release
+        // (no build) differs from it too: a stable site switched back from
+        // the beta takes the stable release of the version it ran.
+        $other_build = ($compare === 0) && ((string) $build !== '') && ($release['build'] !== (string) $build);
 
         if (($compare <= 0) && !$other_build) {
             return $decision('no_update', 'up_to_date');
@@ -2183,6 +2221,7 @@ function pg_vendor_release_offer($found, $installed, $build, $channel, $mode)
         'sig_key_id'      => $release['sig_key_id'],
         'manifest_url'    => $release['manifest_url'],
         'signature_url'   => $release['signature_url'],
+        'site_channel'    => (string) $channel,
     );
 
     return $result;
@@ -2244,23 +2283,97 @@ function pg_vendor_release_message($decision, $installed)
 }
 
 /**
- * Asks the Kodpen API for this channel's release and decides what it offers
- * (pg_vendor_release_offer()).
+ * Which of the decisions on the channels a site follows the check keeps, as
+ * its key in $decisions (pg_update_channels_followed() order, most stable
+ * first, the site's own channel last):
+ *
+ *   - an unusable answer, the first: a decision taken without one channel's
+ *     answer could keep an older build of the running version for a repair,
+ *     or clear an update another check offered, so the check fails as the
+ *     single request did;
+ *   - of the decisions that pin a release, the highest version; at the same
+ *     version the more stable channel, since a beta of a version is never
+ *     built once its release branch is cut, so the stable release holds
+ *     every beta of its version;
+ *   - with none, a blocked one (the site needs a stepping stone), else the
+ *     decision of the site's own channel.
+ *
+ * @param array $decisions pg_vendor_release_offer() decisions
+ * @return int|string|null the key of the decision kept, null when $decisions
+ *                         is empty
+ */
+function pg_vendor_release_pick($decisions)
+{
+    $best = null;
+    $blocked = null;
+    $last = null;
+
+    foreach ($decisions as $key => $decision) {
+        $last = $key;
+
+        if ($decision['outcome'] === 'unusable') {
+            return $key;
+        }
+
+        if ($decision['pin'] === null) {
+            if (($blocked === null) && ($decision['outcome'] === 'blocked')) {
+                $blocked = $key;
+            }
+
+            continue;
+        }
+
+        if (($best === null) || (version_compare($decision['pin']['version'], $decisions[$best]['pin']['version']) > 0)) {
+            $best = $key;
+        }
+    }
+
+    if ($best !== null) {
+        return $best;
+    }
+
+    return ($blocked !== null) ? $blocked : $last;
+}
+
+/**
+ * Asks the Kodpen API for the release of each channel the site follows
+ * (pg_update_channels_followed(): stable, then the site's own channel last),
+ * decides what each offers (pg_vendor_release_offer()) and keeps one
+ * (pg_vendor_release_pick()). An unusable answer ends the check: the
+ * channels after it are not asked, since that answer is kept anyway.
  *
  * @param string $mode 'update' or 'repair'
- * @return array decision, and errno and error: cURL's, when no answer came
+ * @return array decision, and errno and error: cURL's for the kept answer,
+ *               when no answer came
  */
 function pg_vendor_release_check($mode)
 {
-    $answer = pg_vendor_api_request('GET', pg_vendor_api_url(pg_vendor_release_path(pg_update_channel(), pg_vendor_api_version())));
+    $channel = pg_update_channel();
+    $installed = defined('VERSION') ? (string) VERSION : '';
+    $build = pg_update_build_read()['build'];
+    $checks = array();
 
-    // Another build of the running version only over a recorded beta build
-    // of it (#3204).
-    return array(
-        'decision' => pg_vendor_release_offer(pg_vendor_release_read($answer), defined('VERSION') ? (string) VERSION : '', pg_update_build_read()['build'], pg_update_channel(), $mode),
-        'errno'    => (int) $answer['errno'],
-        'error'    => (string) $answer['error'],
-    );
+    foreach (pg_update_channels_followed($channel) as $asked) {
+        $answer = pg_vendor_api_request('GET', pg_vendor_api_url(pg_vendor_release_path($asked, pg_vendor_api_version())));
+
+        $checks[] = array(
+            'decision' => pg_vendor_release_offer(pg_vendor_release_read($answer), $installed, $build, $channel, $mode),
+            'errno'    => (int) $answer['errno'],
+            'error'    => (string) $answer['error'],
+        );
+
+        if ($checks[count($checks) - 1]['decision']['outcome'] === 'unusable') {
+            break;
+        }
+    }
+
+    $decisions = array();
+
+    foreach ($checks as $check) {
+        $decisions[] = $check['decision'];
+    }
+
+    return $checks[pg_vendor_release_pick($decisions)];
 }
 
 // ----------------------------------------------------------------------------
@@ -2531,12 +2644,18 @@ function pg_vendor_update_steps($pin, $site, $keys, $observed, $from = 'signatur
                 }
 
                 $manifest = $observed['manifest'];
+                // The site still follows the channel it was on at the check,
+                // and that channel takes the pinned release's (a beta site
+                // also installs stable releases). A pin without the site's
+                // channel was made on the release's own channel.
+                $checked_on = isset($pin['site_channel']) ? (string) $pin['site_channel'] : (string) $pin['channel'];
                 $same = is_string($observed['manifest_sha256']) && hash_equals((string) $pin['manifest_sha256'], strtolower($observed['manifest_sha256']))
                     && is_array($manifest)
                     && ($manifest['version'] === $pin['version'])
                     && ($manifest['channel'] === $pin['channel'])
                     && ((isset($manifest['build']) ? (string) $manifest['build'] : '') === (string) $pin['build'])
-                    && ($pin['channel'] === $site['update_channel'])
+                    && ($checked_on === $site['update_channel'])
+                    && pg_update_channel_accepts($site['update_channel'], $pin['channel'])
                     && ((int) $manifest['update']['size'] === (int) $pin['size'])
                     && hash_equals((string) $pin['sha256'], strtolower((string) $manifest['update']['sha256']));
 
@@ -2597,8 +2716,10 @@ function pg_vendor_update_steps($pin, $site, $keys, $observed, $from = 'signatur
                     return $stop('refuse', $step, 'zip_version_mismatch');
                 }
 
+                // Another build of the installed version: another beta build,
+                // or the stable release (no build) over a recorded beta build.
                 $compare = version_compare($inside, (string) $site['installed_version']);
-                $other_build = ($pin['channel'] === 'beta') && ((string) $pin['build'] !== (string) $site['installed_build']);
+                $other_build = ((string) $pin['build'] !== (string) $site['installed_build']);
 
                 // Repair Software installs the same version again.
                 if (($compare < 0) || (($compare === 0) && ($pin['mode'] !== 'repair') && !$other_build)) {
@@ -3041,8 +3162,12 @@ function pg_vendor_update_pin_manifest($pin, $manifest)
 }
 
 /**
- * Whether an installed pin is another build of the running version, whose
- * upgrade steps must run again: config.version then goes back one entry.
+ * Whether the running version's upgrade steps must run again once a pin is
+ * installed (config.version then goes back one entry): another build of the
+ * running version, or Repair Software at the running version. A site with no
+ * build file (a snapshot installed by hand or by an older updater) may run
+ * code whose later steps never ran; its build cannot tell, so a repair always
+ * runs them. The steps ask before they change anything and can run again.
  *
  * @param array  $pin
  * @param string $installed_version VERSION
@@ -3051,14 +3176,18 @@ function pg_vendor_update_pin_manifest($pin, $manifest)
  */
 function pg_vendor_update_rerun($pin, $installed_version, $installed_build)
 {
-    return ((string) $pin['version'] === (string) $installed_version) && ((string) $pin['build'] !== (string) $installed_build);
+    if ((string) $pin['version'] !== (string) $installed_version) {
+        return false;
+    }
+
+    return ((string) $pin['build'] !== (string) $installed_build) || (isset($pin['mode']) && ($pin['mode'] === 'repair'));
 }
 
 /**
  * After the files of a pin are in place: for another build of the running
- * version config.version goes back to the versions.php entry before it, so
- * the upgrade screen runs that version's steps again; then the build file is
- * written, or deleted for a stable package.
+ * version, or a repair at it, config.version goes back to the versions.php
+ * entry before it, so the upgrade screen runs that version's steps again;
+ * then the build file is written, or deleted for a stable package.
  *
  * @param array  $pin
  * @param string $installed_build the build before the files were replaced
@@ -3092,6 +3221,44 @@ function pg_vendor_update_record_build($pin, $installed_build)
     }
 
     return '';
+}
+
+/**
+ * What a finished update or repair leaves behind, written by the replace step
+ * itself: the Site Log line, the notice shown after the upgrade, the update
+ * flag cleared and, for a repair, the System Status and file integrity caches
+ * dropped, so they look at the new files. Once the files are in place the
+ * code is ahead of config.version (a newer version, or the running one set
+ * back an entry to rerun its steps), so validate_user() sends every panel
+ * address to the upgrade screen: a completion address the screen opened next
+ * would never run.
+ *
+ * @param array $pin    the release installed
+ * @param bool  $repair Repair Software rather than an update
+ * @return void
+ */
+function pg_vendor_update_finish($pin, $repair)
+{
+    if ($repair) {
+        $text = lang(array('string' => 'Software repaired with the {var:1} package from the update server.', 'vars' => array((string) $pin['version'])));
+        $notice = lang('Software files repaired.');
+
+        foreach (array('system_status_cache.json', 'hash_reference_state.json') as $cache) {
+            if (file_exists(PG_FUNCTIONS_DIR . '/data/temp/' . $cache)) {
+                @unlink(PG_FUNCTIONS_DIR . '/data/temp/' . $cache);
+            }
+        }
+    } else {
+        $text = lang('Software updated successfully');
+        $notice = $text;
+    }
+
+    log_activity($text);
+
+    db("UPDATE config SET software_update_available = 0");
+
+    $liveform_welcome = new liveform('welcome');
+    $liveform_welcome->add_notice($notice);
 }
 
 /**

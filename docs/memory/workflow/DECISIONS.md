@@ -204,6 +204,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-118.md: What else did he say in that message?
 - decisions-made-product-119.md: Where are the rules and the earlier parts?
 - decisions-made-product-119.md: Is US sales tax built? (owner, 2026-11-27, agent channel poll 249, message 14895)
+- decisions-made-product-119.md: Does a beta site take the stable release of its version, and what does Repair at the running version do? (owner, 2026-11-28)
 - decisions-made-product-12.md: Where are the rules and the earlier parts?
 - decisions-made-product-12.md: Where does a role-3 user edit the ERP settings cards? (#3828)
 - decisions-made-product-12.md: Trendyol import: which column holds the province? (#3835)
@@ -1480,6 +1481,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - platform/short-link-redirects.md: Redirects are short link options (2026.11.0, 11.0.12): answer 0/301/302, * patterns tried only at 404, loop checks on every entry point; names in short-link-names.md.
 - platform/sms-and-iys-rules.md: The lasting rules of SMS and İYS (approved 2026-10-19, built PR #600 to #3846): why İYS, providers, message kinds, consent and İYS rules, marketing SMS, where each part is described, what is left
 - platform/system-status-payment-mode.md: The "Payment Mode" System Status row - a switched-on payment way in test on a live shop, by the set-up card's own rule; when it is drawn, what it names, which saves drop the cache
+- platform/update-beta-builds.md: Beta builds of one version over the Kodpen API (PR #3755): data/update_build.json, when a same-version build is offered (#3204), the re-run after replace, backup/rollback and integrity ref
+- platform/update-channel-stable-beta.md: Update channel (stable/beta): config key, pg_update_channel() for every caller, a beta site also follows stable, download_assistant stays stable, switching, version format.
 - platform/vendor-api-client.md: Kodpen API client base (includes/fn/vendor_api.php, PR #3255): the PG_VENDOR_API_V1 line (platform only), api2 gone (P9), base URL, headers, timeouts, problem reader, canonical site name, vector sums
 - platform/visitor-push-app-mode.md: Visitor notifications' App mode (VP7, N17): its own switch, the manifest's standalone display, the worker's offline page for a lost page load
 - platform/visitor-push-rules.md: Visitor notifications (11.0.227, #9947): the site_push tables, the switch, endpoints and keys taken, the door site_push.php, the secret, consent log, export and erasure
@@ -1488,6 +1491,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - platform/visitor-push.md: Visitor notifications start file: the "Notify me" block, the Features switch, Send a notification; its decisions, which file holds each part, the known gap
 - platform/whatsapp-template-designer.md: WhatsApp template designer, first half (WA8, #9350): whatsapp_template.php, drafts in whatsapp_templates, the draft check, samples column, phone preview and its JS twin, Send myself a test
 - release/released-vs-open-version.md: Released versions are closed, the unreleased one open: where the status is, how the upgrade loop compares, no new number while one is open, schema the open version gave up is taken out
+- release/rerun-upgrade-steps.md: How to re-run an open version's upgrade steps on a dev DB (config.version rollback by SQL, the Repair Software card, from a browser tab or a script) and what the package repair card does.
 - ui/admin-screen-toolbar.md: Panel screen basics (frame, notices, fields, width, icons, help), the one-toolbar principle with view_folders.php as reference, slot order, classes and the pg_screen_toolbar() helper.
 - ui/advanced-filters-panel.md: The Advanced Filters panel's parts (OL2b): 48 px head with the count pill and Close, a body that alone scrolls with a 6 px bar, a foot with Clear and Update, 300 px right column from 1280 px
 - ui/ai-write-decisions.md: Why "Write with AI" is built the way it is (decided 2026-10-19/20): one endpoint, the models, daily cap, brand voice, the panel, labelling and the marks, translation, alt text on the browser's model
@@ -1629,6 +1633,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/settings-revealed-groups.md: Fields a switch opens inside a Site Settings card: no frame, tint or arrow, lined up with the label text, the indent dropped under 576 px; the divider over a nested row's first field and .pg-set-ruled
 - ui/settings-system-tools.md: The System tools screen (system_tools.php): the screens beside Site Settings as cards, the dialog's one row to it, the palette rows; gates from pg_settings_tool_groups()
 - ui/site-editor-picker-frame.md: On a site page in Edit mode the editor's Link and Image dialogs open the picker in a same-origin frame (picker_frame.php) inside a native dialog (#9117); the messages, the rights, what was refused
+- ui/translations-screen-overview.md: The Translations screen (translations.php) as a whole: what it is, the rules of its 2026-11 redraw, its parts by label and which memory file holds each
 - ui/variable-chips.md: Variable chips (WA8b): a message's {{n}} drawn as chips naming what they stand for, the shared pgVarChips editor and pg_var_chip_html(), drag, click, move and remove, what the textarea keeps
 - ui/visitors-clicks-section.md: The Clicks and scrolling section of the Visitors overview (includes/visitors/clicks.php, CM3): the switch-off empty state, the pages list, a page's own view, the device filter, labels as text
 - ui/visitors-screen-look.md: How the Visitors overview is drawn: reference pictures, frames and blocks, one change column, folding lists, quiet dashes, anchors, calm charts, the menu's section links, the traps
@@ -1941,7 +1946,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/workspace-flows-visual-spec.md: The Flows canvas look in numbers (owner, 2026-10-27): lines, type colours and tones, thread sag, icons, run flags, mini window, template motion; all on screen (#4386)
 - workspace/workspace-highlights-not-saved-replies.md: Why message highlights (ws_highlights) and saved replies (ws_saved_replies) stay two features with two tables: what each keeps, where they differ, the owner's question of 2026-11-16
 - workspace/workspace-mcp-servers-card.md: Workspace "MCP servers" card (mcp.php, mcp_catalogue.php): ready-made connectors, adding by address, read-only tools on at first read, the form kept after an error, Pinegrap AI failing
-- workspace/workspace-memory-tab.md: The Memory tab (GM3a, MS3): the general and the channel's part as rows under folding project headings, the search box, a row's columns, Move, the form, ws_memory_list's answer
+- workspace/workspace-memory-form-drawer.md: The Memory tab's New entry / Edit form as a form drawer beside the list (MF1): head, fields, foot, refusals, the ask before closing, the saved row lit, /memory, mount()'s start
+- workspace/workspace-memory-tab.md: The Memory tab (GM3a, MS3): the general and the channel's part as rows under folding project headings, the search box, a row's columns, Move, the form drawer, ws_memory_list's answer
 - workspace/workspace-menu-list.md: The Workspace list in the main menu (#2545, #6281, redrawn #11079-#11141): workspace_side.js draws ws_side_payload(): order, All / Unread, tools dock, who sees what, data, hooks
 - workspace/workspace-menu-tools.md: The tools dock of the Workspace list (#3817, #6281, dock #11101): places (My Tasks first), short names, tones, the count on My Tasks, More as a card, the tour opening hidden places
 - workspace/workspace-menu-unread.md: The Workspace list's All / Unread filter (#11141, board L2): which rows Unread keeps, ws-side-filter, Mark all as read (ws_read_all), "Everything is read", the keys Alt+Up/Down and Alt+Shift+Up/Down

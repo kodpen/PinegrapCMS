@@ -279,6 +279,8 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_order_item_tax_country();  // 11.0.287
 	upgrade_2026_11_0_ws_mail_priority_source(); // 11.0.288
 	upgrade_2026_11_0_kb_votes();                // 11.0.289
+	upgrade_2026_11_0_ws_person_status();        // 11.0.290
+	upgrade_2026_11_0_ws_file_group();           // 11.0.291
 
 }
 
@@ -9875,5 +9877,61 @@ function upgrade_2026_11_0_kb_votes() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Collections: an article\'s page can ask "Was this helpful?", and the record list counts the Yes and No answers.');
+
+}
+
+
+// 11.0.290 - A person's own status (includes/fn/person_status.php): a kind
+// (available, busy, in a meeting, out, sleeping, on leave), a one-line note
+// and an optional end, as JSON (kind, note, until, at) beside quiet_hours
+// and mail_away on the person's Workspace row. No backfill: NULL is no
+// status, and a status past its end reads as none. The column is added only
+// when it is missing, so the step runs twice without a change.
+function upgrade_2026_11_0_ws_person_status() {
+
+	if (!install_table_exists('ws_profiles')) {
+
+		install_skipped(lang(array('string' => '{var:1} does not exist, skipped', 'vars' => 'ws_profiles')));
+
+		return;
+
+	}
+
+	install_add_column('ws_profiles', 'status', 'TEXT NULL');
+
+	install_note('Workspace: a person can set a status (available, busy, out, sleeping and more) with a note and an end time.');
+
+}
+
+
+
+// 11.0.291 - Files sent together in a channel (owner, poll 255): a message
+// carrying a file may belong to a group, read as one message. file_group is
+// the id of the group's first message, the head; the head carries its own
+// id and 0 is a message alone (every stored message, which is never grouped
+// afterwards). The group is read by idx_file_group. Added instantly where
+// the server can, column by column otherwise; both are skipped when there,
+// so the step runs twice without a change.
+function upgrade_2026_11_0_ws_file_group() {
+
+	if (!install_table_exists('ws_messages')) {
+
+		install_skipped('ws_messages does not exist, skipped');
+
+		return;
+
+	}
+
+	$columns = array('file_group' => "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	if (!install_add_columns_instant('ws_messages', $columns)) {
+
+		install_add_column('ws_messages', 'file_group', $columns['file_group']);
+
+	}
+
+	install_add_index('ws_messages', 'idx_file_group', "KEY idx_file_group (file_group)");
+
+	install_note('Workspace: files sent together in a channel can be kept as one group.');
 
 }

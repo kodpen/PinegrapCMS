@@ -823,8 +823,10 @@ function ws_message_send_file($viewer, $channel, $body, $original_name, $data, $
  * @param string       $original_name
  * @param string|false $binary        false when the bytes could not be decoded
  * @param array        $options       as for ws_message_send(), file_id and file_name aside;
- *                                    voice: duration_ms and peaks a recorder measured
- * @return array ok, error, message_id
+ *                                    voice: duration_ms and peaks a recorder measured;
+ *                                    file_group: the message whose group the file joins
+ *                                    (ws_file_group_head()), posted alone when it may not
+ * @return array ok, error, message_id, file_group (the head joined, 0 alone)
  */
 function ws_message_send_file_bytes($viewer, $channel, $body, $original_name, $binary, $options = array())
 {
@@ -848,10 +850,25 @@ function ws_message_send_file_bytes($viewer, $channel, $body, $original_name, $b
         return array('ok' => false, 'error' => $stored['error'], 'message_id' => 0);
     }
 
+    // The group it joins is read before the message is written, so the
+    // count of the group's files leaves the new one out.
+    $app_id = (int) ($options['app_id'] ?? 0);
+    $group_head = ((int) ($options['file_group'] ?? 0) > 0) ? ws_file_group_head(array(
+        'channel_id'  => (int) $channel['id'],
+        'sender_kind' => ($app_id > 0) ? 'app' : 'user',
+        'sender_id'   => ($app_id > 0) ? $app_id : (int) $viewer['id'],
+    ), (int) $options['file_group'], $stored['name']) : 0;
+    unset($options['file_group']);
+
     $result = ws_message_send($viewer, $channel, $body, array_merge($options, array(
         'file_id'   => $stored['file_id'],
         'file_name' => $stored['name'],
     )));
+    $result['file_group'] = 0;
+
+    if ($result['ok'] && ($group_head > 0) && ws_file_group_mark($result['message_id'], $group_head)) {
+        $result['file_group'] = $group_head;
+    }
 
     // Refused after all (the limit reached in between, the row not written):
     // no message, no file.

@@ -140,7 +140,9 @@ function ws_people_select()
             f.timestamp AS image_file_timestamp,
             p.title AS title,
             p.day_minutes AS day_minutes,
-            p.workdays AS workdays
+            p.workdays AS workdays,
+            u.timezone AS timezone" . (ws_person_status_ready() ? ",
+            p.status AS status" : "") . "
         FROM user u
         LEFT JOIN contacts c ON c.id = u.user_contact
         LEFT JOIN files f ON f.id = c.file_id
@@ -164,7 +166,126 @@ function ws_person_brief($row)
         'avatar'   => ws_avatar_url($row),
         'avatar_kind' => ws_avatar_kind($row),
         'presence' => ws_presence($row['online_timestamp'] ?? 0),
+        'status'   => ws_person_status_brief($row),
     ) + ws_avatar_letters($row);
+}
+
+/**
+ * Whether the site has the status column (step 11.0.290); before it no
+ * status is read, drawn or told.
+ *
+ * @return bool
+ */
+function ws_person_status_ready()
+{
+    return function_exists('pg_person_status_decode') && pg_schema_has('ws_profiles', 'status');
+}
+
+/**
+ * A person's time zone by its stored name: their own, else the site's.
+ *
+ * @param string $name user.timezone
+ * @return string
+ */
+function ws_person_status_zone_name($name)
+{
+    $name = (string) $name;
+    $name = (($name !== '') && function_exists('pg_timezone_canonical')) ? (string) pg_timezone_canonical($name) : $name;
+
+    return in_array($name, DateTimeZone::listIdentifiers(), true) ? $name : (string) date_default_timezone_get();
+}
+
+/**
+ * The status on a person's brief: null with none, an ended one, or before
+ * the column exists.
+ *
+ * @param array $row a ws_people_select() row
+ * @return array|null pg_person_status_present()
+ */
+function ws_person_status_brief($row)
+{
+    if (!isset($row['status']) || ((string) $row['status'] === '') || !function_exists('pg_person_status_decode')) {
+        return null;
+    }
+
+    $now = time();
+
+    return pg_person_status_present(pg_person_status_decode($row['status'], $now), $now, ws_person_status_zone_name($row['timezone'] ?? ''));
+}
+
+/**
+ * A person's own status as the screens and the API give it: null with none
+ * set, an ended one, or before the column exists.
+ *
+ * @param int $user_id
+ * @return array|null pg_person_status_present()
+ */
+function ws_person_status_get($user_id)
+{
+    $user_id = (int) $user_id;
+
+    if (($user_id <= 0) || !ws_person_status_ready()) {
+        return null;
+    }
+
+    $row = db_item("SELECT p.status AS status, u.timezone AS timezone
+        FROM user u
+        LEFT JOIN ws_profiles p ON p.user_id = u.user_id
+        WHERE u.user_id = '" . $user_id . "'");
+
+    return is_array($row) ? ws_person_status_brief($row) : null;
+}
+
+/**
+ * Saves the signed-in person's own status (pg_person_status_save_check(): a
+ * team member, their own, a kind, a note of one line, an end); no kind
+ * clears it. An end is counted in the person's zone, and sleeping ends with
+ * their quiet hours. Reached from the panel's own session, the person's team
+ * devices session and their own OAuth connection (POST /workspace/status,
+ * api_person_status.php); never from an application's key.
+ *
+ * @param array $viewer  ws_viewer()
+ * @param array $request kind, note, end, until
+ * @return array ok, value (pg_person_status_present()), error, field
+ */
+function ws_person_status_save($viewer, $request)
+{
+    $check = ws_person_status_save_check($viewer, $request);
+
+    if (!$check['ok']) {
+        return array('ok' => false, 'value' => null, 'error' => $check['error'], 'field' => $check['field']);
+    }
+
+    $json = ($check['value'] === null) ? null : json_encode($check['value']);
+
+    db_q("INSERT INTO ws_profiles (user_id, status, updated_at) VALUES (?, ?, ?)
+        ON DUPLICATE KEY UPDATE status = VALUES(status)", array($check['user_id'], $json, time()));
+
+    return array('ok' => true, 'value' => $check['present'], 'error' => '', 'field' => '');
+}
+
+/**
+ * The check ws_person_status_save() makes, shared with the API's dry run: the
+ * column, the person's own, and the input read in their zone.
+ *
+ * @param array $viewer  ws_viewer()
+ * @param array $request kind, note, end, until, and an optional user_id
+ * @return array ok, user_id, value (stored form), present, error, field
+ */
+function ws_person_status_save_check($viewer, $request)
+{
+    if (!ws_person_status_ready()) {
+        return array('ok' => false, 'user_id' => 0, 'value' => null, 'present' => null, 'error' => lang('The database has not been upgraded yet.'), 'field' => '');
+    }
+
+    $user_id = (int) ($viewer['id'] ?? 0);
+    $zone = ws_person_status_zone_name(($user_id > 0) ? (string) db_value("SELECT timezone FROM user WHERE user_id = '" . $user_id . "'") : '');
+    $quiet = (function_exists('ws_quiet_hours_get') && ($user_id > 0)) ? ws_quiet_hours_get($user_id) : null;
+    $now = time();
+    $check = pg_person_status_save_check($viewer, is_array($request) ? $request : array(), $now, $zone, is_array($quiet) ? $quiet['end'] : null);
+    $check['present'] = $check['ok'] ? pg_person_status_present($check['value'], $now, $zone) : null;
+
+    return $check;
 }
 
 /**

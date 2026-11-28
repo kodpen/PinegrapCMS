@@ -3788,6 +3788,7 @@ function ws_handle_action($action, $request)
             // (ws_voice_queue()).
             $result = ws_message_send_file_bytes($viewer, $channel, $body, $file['name'], $file['binary'], array(
                 'parent_id' => $parent_id,
+                'file_group' => $product_file ? 0 : (int) ($request['group'] ?? 0),
                 'voice'     => array(
                     'duration_ms' => $request['voice_duration_ms'] ?? 0,
                     'peaks'       => $request['voice_peaks'] ?? '',
@@ -3814,7 +3815,7 @@ function ws_handle_action($action, $request)
                 ws_claude_dispatch();
             }
 
-            return ws_action_ok(array('message_id' => $result['message_id'], 'ai' => !empty($asked['ai']) || !empty($asked['models']), 'agent' => !empty($asked['agent'])));
+            return ws_action_ok(array('message_id' => $result['message_id'], 'file_group' => (int) ($result['file_group'] ?? 0), 'ai' => !empty($asked['ai']) || !empty($asked['models']), 'agent' => !empty($asked['agent'])));
 
         // A file of the file manager in a conversation (library.php): the
         // channels the file manager's "Send to a channel" offers, and the
@@ -3830,7 +3831,13 @@ function ws_handle_action($action, $request)
                 return ws_action_error($channel);
             }
 
-            $result = ws_library_send($viewer, $channel, (int) ($request['file_id'] ?? 0), (string) ($request['body'] ?? ''));
+            // group: the message of a file sent before it in the same send,
+            // joined when it may be (ws_file_group_head()), else the file is
+            // posted alone; ws_attach takes it the same way but for a /create
+            // command's file.
+            $result = ws_library_send($viewer, $channel, (int) ($request['file_id'] ?? 0), (string) ($request['body'] ?? ''), array(
+                'file_group' => (int) ($request['group'] ?? 0),
+            ));
 
             if (!$result['ok']) {
                 return ws_action_error($result['error']);
@@ -3848,6 +3855,7 @@ function ws_handle_action($action, $request)
                 'ai'         => !empty($asked['ai']) || !empty($asked['models']),
                 'agent'      => !empty($asked['agent']),
                 'message_id' => $result['message_id'],
+                'file_group' => (int) ($result['file_group'] ?? 0),
                 'channel'    => array('id' => (int) $channel['id'], 'name' => (string) $channel['name']),
                 'url'        => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace.php?channel=' . (int) $channel['id'] . '&message=' . (int) $result['message_id'],
             ));
@@ -4543,6 +4551,14 @@ function ws_handle_action($action, $request)
             $result = ws_quiet_hours_save($viewer, $request);
 
             return $result['ok'] ? ws_action_ok(array('quiet_hours' => $result['value'])) : ws_action_error($result['error'], $result['field']);
+
+        // The person's own status (people.php): their own session only, never
+        // for another person; the API route answers their team devices
+        // session and their own connection (api_person_status.php).
+        case 'ws_person_status_save':
+            $result = ws_person_status_save($viewer, $request);
+
+            return $result['ok'] ? ws_action_ok(array('status' => $result['value'])) : ws_action_error($result['error'], $result['field']);
 
         // Whether Claude may be asked in a channel.
         case 'ws_channel_claude':

@@ -103,28 +103,12 @@ if (defined('VERSION') && VERSION === '2026') {
 }
 // --- END PRE-UPGRADE PREPARATION ---
 
-
-$mode = isset($_GET['mode']) ? ($_GET['mode'] ?? '') : null;
-// User redirect automatically after software update success
-if ($mode === 'autoupgrade') {
-    // The address writes the Site Log and config, so it needs the form token
-    // the redirect below appends.
-    validate_token_field();
-
-    $liveform_welcome = new liveform('welcome');
-
-    log_activity(lang('Software updated successfully'), $_SESSION['sessionusername']);
-
-    // Add notice to liveform
-    $liveform_welcome->add_notice(lang('Software updated successfully'));
-
-    // Update database to mark update as completed
-    db("UPDATE config SET software_update_available = 0");
-
-    // Redirect user to install page
-    header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/install/index.php?automated_upgrade=true');
-    exit();
-}
+// Where the screen goes once the replace step has finished, relative so the
+// scheme the visitor used is kept. An administrator's session runs the
+// upgrade at once on the automated address; for a designer or manager that
+// address answers a bare 403 and counts a failed unlock, while the plain one
+// shows the lock screen an administrator unlocks (pg_require_current_schema()).
+$software_upgrade_url = PATH . SOFTWARE_DIRECTORY . '/install/index.php' . (((int) $user['role'] === 0) ? '?automated_upgrade=true' : '');
 
 require(dirname(__FILE__) . '/software_update_check.php');
 
@@ -263,8 +247,10 @@ pg_page_shell([
                     if (index + 1 < steps.length) {
                         run(index + 1);
                     } else {
+                        // The replace step wrote the Site Log line; the code is
+                        // ahead of the database now, so the upgrade comes next.
                         window.setTimeout(function(){
-                            window.location.replace("?mode=autoupgrade&token=" + encodeURIComponent(software_token));
+                            window.location.replace("' . escape_javascript($software_upgrade_url) . '");
                         }, 3000);
                     }
                 },

@@ -67,6 +67,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_page.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_canvases.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_person_card.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_quiet_hours.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_person_status.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_message_files.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_channel_notes.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_thread_close.php');
@@ -297,6 +298,8 @@ function ws_openapi_objects()
         'WorkspaceCallMember'           => 'ws_api_call_member_schema',
         'WorkspaceQuietHours'           => 'ws_api_quiet_hours_schema',
         'WorkspaceQuietHoursRange'      => 'ws_api_quiet_hours_range_schema',
+        'WorkspacePersonStatus'         => 'ws_api_person_status_schema',
+        'WorkspacePersonStatusValue'    => 'ws_api_person_status_value_schema',
         'WorkspaceChannelKindChange'    => 'ws_api_channel_kind_change_schema',
         'WorkspaceChannelEraWrite'      => 'ws_api_channel_era_write_schema',
         'WorkspaceChange'         => 'ws_api_change_schema',
@@ -3336,6 +3339,9 @@ function ws_api_routes()
     // A person's own quiet hours, set from their team devices session
     // (api_quiet_hours.php).
     $routes = array_merge($routes, ws_quiet_hours_api_routes());
+
+    // A person's own status, from their own callers (api_person_status.php).
+    $routes = array_merge($routes, ws_person_status_api_routes());
 
     // Asking Claude in a channel (api_claude.php), the changes an
     // application proposes (api_proposals.php), workflow tables

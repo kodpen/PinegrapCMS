@@ -6,7 +6,7 @@ description: Last released version (2026.4.10), the open version (2026.11.0, fir
 ## What is released?
 - 2026.4.10: PR #501 (`release/2026.4.10`), merge commit `57cdd1f` (2026-10-16), tag `v2026.4.10`. Earlier: 2026.4.9 PR #238 `1c3703e` (2026-10-13), 2026.4.8 `348b8a2`, 2026.4.7 `8eb2716`, 2026.4.6 `a05c986`.
 - A released version is closed: what its migration brings, its `versions.php` row and its changelog heading never change (a step body may be fixed for sites that have not run it: `released-vs-open-version.md`). The tag never moves: the integrity check and the server package are built from that tag's tree.
-- A site that ran a beta of a version already has its number in `config.version` and never reruns that version's steps, so post-beta fixes self-correct in code (2026.4.9: `pg_tr_render_rules_check()`).
+- A recorded beta build reruns the version's steps under its stable release (`platform/update-beta-builds.md`); another beta site only with Repair Software, so post-beta fixes self-correct in code (2026.4.9: `pg_tr_render_rules_check()`).
 
 ## What is open?
 - 2026.11.0 (opened 2026-10-16), the first year.month.patch number (`version-numbering.md`), with its `versions.php` row and changelog section.

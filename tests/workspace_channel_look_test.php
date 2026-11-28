@@ -334,6 +334,27 @@ function test_workspace_channel_panes_memory_is_rows_under_projects()
 	pg_assert_contains('transform: rotate(90deg);', workspace_channel_look_block($css, '.ws-memory-project[open] .ws-memory-chevron'), 'an open heading turns its chevron');
 }
 
+function test_workspace_channel_panes_memory_form_is_a_drawer_beside_the_list()
+{
+	$memory = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_memory.js');
+	$start = strpos($memory, '        function form(entry, given, general) {');
+	$end = strpos($memory, "\n        }\n", (int) $start);
+
+	pg_assert_true(($start !== false) && ($end !== false), 'the form is found');
+
+	$form = substr($memory, (int) $start, (int) $end - (int) $start);
+
+	pg_assert_false(strpos($form, 'h.clear(root)') !== false, 'opening the form no longer clears the list');
+	pg_assert_false(strpos($form, 'root.appendChild') !== false, 'nothing of the form is drawn in the list\'s place');
+	pg_assert_contains("h.drawer.make('ws-memory-form', entry ? t('mem_edit_title') : t('mem_add'))", $form, 'New entry and Edit open the form drawer');
+	pg_assert_contains("general ? t('mem_general_kept') : t('mem_channel')", $form, 'its head says where the entry is kept');
+	pg_assert_contains("window.pgUI.drawer.on(node, 'hide'", $form, 'closing with changed fields asks first');
+	pg_assert_contains('part.remove(t(\'mem_delete\'))', $form, 'Edit has Delete in the foot');
+	pg_assert_contains('function mount(pane, channel, start) {', $memory, 'the /memory filling is not named fill, which the list\'s fill() would hide');
+	pg_assert_contains("list();\n\n        if (start) {", $memory, 'the list is drawn before /memory opens the drawer');
+	pg_assert_contains('animation: ws-memory-saved', workspace_channel_look_block(workspace_channel_look_css(), '.ws-memory-row.ws-memory-row-saved'), 'a saved row is lit for a moment');
+}
+
 function test_workspace_channel_panes_empty_states_are_dashed_cards()
 {
 	$css = workspace_channel_look_css();
