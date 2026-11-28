@@ -98,6 +98,78 @@ function test_workspace_note_list_order()
 	pg_assert_true($result['kept'], 'the notes handed in keep their order');
 }
 
+// The screen opens on the note the address names, else the one last open
+// while it is listed, else the first of the list as ordered (My notes, then
+// Shared with me); deleting the open note opens the one after it, else the
+// one before it.
+function test_workspace_note_list_note_to_open()
+{
+	$result = workspace_note_list_test_node('
+		var lists = { mine: notes.slice(0, 3), shared: notes.slice(3) };
+
+		return {
+			first: L.firstOpen(lists, 0, 0, "changed", "en"),
+			byName: L.firstOpen(lists, 0, 0, "name", "en"),
+			kept: L.firstOpen(lists, 0, 4, "changed", "en"),
+			keptGone: L.firstOpen(lists, 0, 9, "changed", "en"),
+			wanted: L.firstOpen(lists, 9, 4, "changed", "en"),
+			wantedText: L.firstOpen(lists, "2", 0, "changed", "en"),
+			none: L.firstOpen({ mine: [], shared: [] }, 0, 4, "changed", "en"),
+			noLists: L.firstOpen(null, 0, 0),
+			next: L.nextOpen(lists, 1, "changed", "en"),
+			nextAcross: L.nextOpen(lists, 2, "changed", "en"),
+			nextLast: L.nextOpen(lists, 5, "changed", "en"),
+			nextByName: L.nextOpen(lists, 2, "name", "en"),
+			nextUnknown: L.nextOpen(lists, 9, "changed", "en"),
+			nextNone: L.nextOpen({ mine: [notes[0]], shared: [] }, 1, "changed", "en"),
+			kept5: ids(lists.mine).concat(ids(lists.shared)).join()
+		};
+	');
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(3, $result['first'], 'nothing remembered: the first of the list, the pinned note');
+	pg_assert_same(3, $result['byName'], 'the pinned note heads every order');
+	pg_assert_same(4, $result['kept'], 'the note last open, a shared one');
+	pg_assert_same(3, $result['keptGone'], 'the note last open is gone: the first of the list');
+	pg_assert_same(9, $result['wanted'], 'the address wins over the note last open, listed or not');
+	pg_assert_same(2, $result['wantedText'], 'the address is read as a number');
+	pg_assert_same(0, $result['none'], 'no note: nothing to open');
+	pg_assert_same(0, $result['noLists'], 'no lists: nothing to open');
+	pg_assert_same(2, $result['next'], 'the note after it');
+	pg_assert_same(4, $result['nextAcross'], 'the last of My notes: the first shared one');
+	pg_assert_same(4, $result['nextLast'], 'the last of the list: the one before it');
+	pg_assert_same(1, $result['nextByName'], 'the next in the order picked');
+	pg_assert_same(3, $result['nextUnknown'], 'a note not listed: the first of the list');
+	pg_assert_same(0, $result['nextNone'], 'the only note: none left');
+	pg_assert_same('1,2,3,4,5', $result['kept5'], 'the lists handed in are left as they are');
+}
+
+// No "pick a note" place: the screen opens on a note (wide screens only),
+// the note last open is kept per person, a deleted open note gives way to
+// the next, and with no note one card starts the first.
+function test_workspace_note_list_screen_opens_on_a_note()
+{
+	$main = workspace_note_list_test_source('assets/js/workspace.js');
+	$notes = workspace_note_list_test_source('includes/workspace/notes.php');
+	$css = workspace_note_list_test_source('assets/css/backend.src.css');
+
+	pg_assert_false(strpos($main, 'placeholder()') !== false, 'no empty pane with its own New note');
+	pg_assert_false(strpos($main, 'ws-nb-placeholder') !== false, 'no placeholder class drawn');
+	pg_assert_false(strpos($css, '.ws-nb-placeholder') !== false, 'no placeholder rule');
+	pg_assert_false(strpos($notes, "'notes_pick'") !== false, 'no "pick a note" text');
+	pg_assert_contains("window.matchMedia('(min-width: 1024px)')", $main, 'one card at a time below 1024 px: the list alone');
+	pg_assert_contains("window.PGWsNoteList.firstOpen(lists, 0, window.PGWsNoteList.openRead(CFG.me)", $main, 'the note last open, kept per person');
+	pg_assert_contains("window.PGWsNoteList.openWrite(CFG.me, noteId);", $main, 'an opened note is kept');
+	pg_assert_contains("window.PGWsNoteList.nextOpen(lists, note.id", $main, 'the next note after a delete');
+	pg_assert_contains("title: t('notes_first_title')", $main, 'the first note\'s card');
+	pg_assert_contains("'notes_first_title'     => lang('Write your first note')", $notes);
+	pg_assert_contains("display: none;", workspace_note_list_test_rule($css, '.ws-nb.ws-nb-none > .ws-nb-list-col'), 'no empty list beside the first note\'s card');
+	pg_assert_contains("var OPEN_KEY = 'pg_ws_notes_open_';", workspace_note_list_test_source('assets/js/workspace_note_list.js'));
+}
+
 // The row is the look's list row; the open note is the chosen row, tinted
 // with an accent edge, not a filled box.
 function test_workspace_note_list_row_is_a_list_row()
@@ -135,7 +207,7 @@ function test_workspace_note_list_sections_fold()
 	pg_assert_contains("toggle.setAttribute('aria-expanded'", $list);
 	pg_assert_contains("var FOLD_KEY = 'pg_ws_notes_folded';", $list);
 	pg_assert_contains("var ORDER_KEY = 'pg_ws_notes_order';", $list);
-	pg_assert_same(4, substr_count($list, 'try {'), 'every read and write of the browser store is guarded');
+	pg_assert_same(6, substr_count($list, 'try {'), 'every read and write of the browser store is guarded');
 
 	foreach (array('assets/js/workspace_note_groups.js', 'assets/js/workspace_note_group_shares.js') as $path) {
 		$source = workspace_note_list_test_source($path);

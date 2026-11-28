@@ -2138,6 +2138,7 @@
     "A note from the bakery's Journal.": "Fırının Güncesinden bir not.",
     "A note from your doctor or physiotherapist, if you have one.": "Varsa doktorunuzdan veya fizyoterapistinizden bir not.",
     "A note is at most {var:1} characters.": "Not en fazla {var:1} karakter olabilir.",
+    "A note is yours alone until you share it.": "Bir not, paylaşana kadar yalnızca senindir.",
     "A note shared with you: it is added as a note of your own.": "Sizinle paylaşılmış bir not: kendi notunuz olarak eklenir.",
     "A note to the instructor": "Eğitmene bir not",
     "A note was added in the Workspace, on Claude's proposal.": "Çalışma Alanına Claude'un önerisiyle not eklendi.",

@@ -7,12 +7,15 @@
  * keeps its own order (the newest change first) for what it sends. Each
  * section of the list (My notes, Shared with me) stands under a group label
  * with its count that folds the section; which ones are folded is kept in
- * this browser too.
+ * this browser too. The note last open is kept in this browser, one key per
+ * person, and the screen opens on it (firstOpen()); deleting the open note
+ * opens the next one (nextOpen()).
  *
  * assets/js/workspace.js (startNotes()) asks for the order and the menu's
  * items through window.PGWsNoteList and hands section() to
  * workspace_note_groups.js and workspace_note_group_shares.js, whose folders
- * keep their own folded lists. The pure part (order()) is tested in
+ * keep their own folded lists. The pure parts (order(), firstOpen(),
+ * nextOpen()) are tested in
  * tests/workspace_note_list_test.php.
  *
  * Served minified inside assets/js/workspace.min.js (pg_js_bundles(),
@@ -30,6 +33,8 @@
     // Where the browser keeps the order picked and the folded sections.
     var ORDER_KEY = 'pg_ws_notes_order';
     var FOLD_KEY = 'pg_ws_notes_folded';
+    // The note last open, followed by the person's id.
+    var OPEN_KEY = 'pg_ws_notes_open_';
 
     // The orders the menu offers, each with its text key; the first one is
     // the server's own.
@@ -58,6 +63,75 @@
 
             return diff || (Number(b.id || 0) - Number(a.id || 0));
         });
+    }
+
+    // The notes of both sections as the list shows them: My notes, then
+    // Shared with me, each in the order asked.
+    function listedInOrder(lists, how, locale) {
+        lists = lists || {};
+
+        return order(lists.mine, how, locale).concat(order(lists.shared, how, locale));
+    }
+
+    function listedIndex(notes, noteId) {
+        for (var at = 0; at < notes.length; at++) {
+            if (Number(notes[at].id || 0) === noteId) {
+                return at;
+            }
+        }
+
+        return -1;
+    }
+
+    // The note the screen opens on: the one the address names (wanted), else
+    // the one last open (kept) while it is still listed, else the first of
+    // the list as ordered; 0 when there is none.
+    function firstOpen(lists, wanted, kept, how, locale) {
+        var notes = listedInOrder(lists, how, locale);
+
+        wanted = Number(wanted || 0);
+        kept = Number(kept || 0);
+
+        if (wanted > 0) {
+            return wanted;
+        }
+
+        if ((kept > 0) && (listedIndex(notes, kept) >= 0)) {
+            return kept;
+        }
+
+        return notes.length ? Number(notes[0].id || 0) : 0;
+    }
+
+    // The note to open once noteId leaves the list (deleted, left): the one
+    // after it as ordered, else the one before it; 0 when none is left.
+    function nextOpen(lists, noteId, how, locale) {
+        var notes = listedInOrder(lists, how, locale);
+        var at = listedIndex(notes, Number(noteId || 0));
+
+        if (at < 0) {
+            return notes.length ? Number(notes[0].id || 0) : 0;
+        }
+
+        notes.splice(at, 1);
+
+        return notes.length ? Number(notes[Math.min(at, notes.length - 1)].id || 0) : 0;
+    }
+
+    function openRead(personId) {
+        try {
+            return parseInt(window.localStorage.getItem(OPEN_KEY + personId) || '0', 10) || 0;
+        } catch (error) {
+            return 0;
+        }
+    }
+
+    function openWrite(personId, noteId) {
+        try {
+            window.localStorage.setItem(OPEN_KEY + personId, String(noteId));
+        } catch (error) {
+            // Not kept: the screen opens on the first note next time.
+        }
     }
 
     function orderRead() {
@@ -165,6 +239,10 @@
     window.PGWsNoteList = {
         order: order,
         orderNow: orderRead,
+        firstOpen: firstOpen,
+        nextOpen: nextOpen,
+        openRead: openRead,
+        openWrite: openWrite,
         menuItems: menuItems,
         section: section
     };
