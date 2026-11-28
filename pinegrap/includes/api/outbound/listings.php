@@ -780,7 +780,7 @@ function mp_listing_variant_value($definition, $own) {
 
 			if (mb_strtolower(trim((string)$value['value'])) === mb_strtolower(trim($option['value']))) {
 
-				return array('id' => (string)$definition['attribute_id'], 'value_id' => (string)$value['id'], 'custom_value' => '');
+				return array('id' => (string)$definition['attribute_id'], 'value_id' => (string)$value['id'], 'custom_value' => '', 'value' => (string)$value['value']);
 
 			}
 
@@ -794,7 +794,8 @@ function mp_listing_variant_value($definition, $own) {
 
 // One value, as an id from their list where it matches and as free text where
 // the category allows it. A category that allows neither refuses the SKU, which
-// is better than guessing an id.
+// is better than guessing an id. A value from the list also carries its text
+// ('value'), for a marketplace that asks for both (Etsy's inventory).
 function mp_listing_value($definition, $text) {
 
 	$text = trim((string)$text);
@@ -803,13 +804,13 @@ function mp_listing_value($definition, $text) {
 
 		if ((string)$value['id'] === $text) {
 
-			return array('id' => (string)$definition['attribute_id'], 'value_id' => (string)$value['id'], 'custom_value' => '');
+			return array('id' => (string)$definition['attribute_id'], 'value_id' => (string)$value['id'], 'custom_value' => '', 'value' => (string)$value['value']);
 
 		}
 
 		if (mb_strtolower((string)$value['value']) === mb_strtolower($text)) {
 
-			return array('id' => (string)$definition['attribute_id'], 'value_id' => (string)$value['id'], 'custom_value' => '');
+			return array('id' => (string)$definition['attribute_id'], 'value_id' => (string)$value['id'], 'custom_value' => '', 'value' => (string)$value['value']);
 
 		}
 
