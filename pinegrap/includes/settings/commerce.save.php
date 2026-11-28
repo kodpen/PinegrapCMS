@@ -399,6 +399,11 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             'excluded_group_ids' => $product_feeds_offered
                 ? pg_product_feed_posted_groups(post_value('product_feed_excluded_groups'), array_keys($product_feeds_offered))
                 : $product_feeds_current['excluded_group_ids'],
+            // Only a market the card offered is taken; without markets the
+            // field is not drawn and the stored choice stays.
+            'market_id'          => array_key_exists('product_feed_market_id', $_POST)
+                ? pg_product_feed_posted_market(post_value('product_feed_market_id'), pg_product_feed_market_choices())
+                : $product_feeds_current['market_id'],
             'enabled'            => $product_feeds_enabled,
             'new_address'        => isset($product_feeds_enabled[$product_feeds_new_address]) ? $product_feeds_new_address : '',
             'build'              => (bool) post_value('product_feed_build'),

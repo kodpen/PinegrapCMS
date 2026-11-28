@@ -282,6 +282,7 @@
     "Base Transit Time": "Teslimat Süresi",
     "Base address": "Temel adres",
     "Base currency": "Ana para birimi",
+    "Base currency ({var:1})": "Ana para birimi ({var:1})",
     "Base currency code": "Ana para birimi kodu",
     "Base price": "Taban fiyat",
     "Base size": "Temel boyut",

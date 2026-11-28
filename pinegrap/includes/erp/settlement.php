@@ -320,8 +320,14 @@ function erp_settle($data)
  * reverse it, and so the receipt screens can tell it from money somebody
  * collected.
  *
+ * The amount is in the invoice's currency: the home one, or the currency an
+ * order was charged in, with its rate (currency, exchange_rate,
+ * exchange_rate_date, exchange_rate_source), so the credit and the invoice
+ * convert alike.
+ *
  * @param array $data  invoice_id, account_id, amount (kurus), doc_date,
- *                     description, created_by
+ *                     description, created_by; optional currency,
+ *                     exchange_rate, exchange_rate_date, exchange_rate_source
  * @return bool
  */
 function erp_settle_gift_card($data)
@@ -335,6 +341,16 @@ function erp_settle_gift_card($data)
     }
 
     $doc_date = (string) ($data['doc_date'] ?? date('Y-m-d'));
+    $base = erp_base_currency();
+    $currency = strtoupper(trim((string) ($data['currency'] ?? $base)));
+    $foreign = ($currency !== $base);
+    $exchange_rate = $foreign ? (float) ($data['exchange_rate'] ?? 0) : 1.0;
+
+    if ($foreign && ($exchange_rate <= 0)) {
+        return false;
+    }
+
+    $amount_base = $foreign ? erp_to_base($amount, $exchange_rate) : $amount;
 
     $txn_id = erp_account_post(array(
         'account_id' => $account_id,
@@ -342,12 +358,11 @@ function erp_settle_gift_card($data)
         'kind' => 'collection',
         'direction' => 'credit',
         'amount' => $amount,
-        // The order was priced in the store's base currency, so the credit is
-        // a base movement and its own base value.
-        'currency' => erp_base_currency(),
-        'exchange_rate' => 1,
-        'exchange_rate_source' => 'base',
-        'amount_base' => $amount,
+        'currency' => $currency,
+        'exchange_rate' => $exchange_rate,
+        'exchange_rate_date' => (string) ($data['exchange_rate_date'] ?? $doc_date),
+        'exchange_rate_source' => $foreign ? (string) ($data['exchange_rate_source'] ?? '') : 'base',
+        'amount_base' => $amount_base,
         'doc_type' => 'gift_card',
         'doc_id' => $invoice_id,
         'description' => (string) ($data['description'] ?? ''),
@@ -363,7 +378,7 @@ function erp_settle_gift_card($data)
         'account_txn_id' => $txn_id,
         'account_id' => $account_id,
         'amount' => $amount,
-        'amount_base' => $amount,
+        'amount_base' => $amount_base,
         'doc_date' => $doc_date,
         'created_by' => (int) ($data['created_by'] ?? 0),
     ));
@@ -385,7 +400,8 @@ function erp_unsettle_gift_card($invoice_id, $created_by = 0)
 {
     $invoice_id = (int) $invoice_id;
 
-    $credits = (array) db_items("SELECT id, account_id, doc_date, amount, description
+    $credits = (array) db_items("SELECT id, account_id, doc_date, amount, currency, exchange_rate,
+            exchange_rate_date, exchange_rate_source, amount_base, description
         FROM erp_account_transactions
         WHERE doc_type = 'gift_card' AND doc_id = '" . $invoice_id . "' AND direction = 'credit'");
 
@@ -395,11 +411,14 @@ function erp_unsettle_gift_card($invoice_id, $created_by = 0)
             'doc_date' => date('Y-m-d'),
             'kind' => 'adjustment',
             'direction' => 'debit',
+            // Reversed in the credit's own currency and base value, so the
+            // account returns to where it stood.
             'amount' => (int) $credit['amount'],
-            'currency' => erp_base_currency(),
-            'exchange_rate' => 1,
-            'exchange_rate_source' => 'base',
-            'amount_base' => (int) $credit['amount'],
+            'currency' => (string) $credit['currency'],
+            'exchange_rate' => (float) $credit['exchange_rate'],
+            'exchange_rate_date' => (string) $credit['exchange_rate_date'],
+            'exchange_rate_source' => (string) $credit['exchange_rate_source'],
+            'amount_base' => (int) $credit['amount_base'],
             'doc_type' => 'cancel',
             'doc_id' => $invoice_id,
             'description' => lang(array(
