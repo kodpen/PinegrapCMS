@@ -457,6 +457,7 @@
 - designer-first-tour-drawing.md: The first tour's drawing (DD14), boards T1 to T3 and T7: the first card, the five stops' ring and bubble, a content editor's three stops, the phone's sheet; the sentences
 - designer-first-tour-help-drawing.md: The first tour's drawing (DD14), boards T4 to T6 for step FT3: the Help window's "How do I…" with its ten tasks and three pointers, the "Tips" switch, a first-use tip, an empty page's three starts
 - designer-first-tour-help.md: The designer's Help window ("How do I…", the keyboard shortcuts, "Tips"), a task's three pointers, the first-use tip line any feature asks for, and an empty page's starts (FT3)
+- designer-first-tour-keys.md: The designer's first tour and its "How do I…" pointers: the keys, where the focus goes, what is read out, the Escape the tour keeps for itself
 - designer-first-tour-model.md: The first tour's pure model (window.PGDesignerTour, FT1): stops and their controls per access, Next and Back skipping a missing control, what was seen kept per person in the browser
 - designer-focus-shape-layers-fixes.md: Image focus, Clip shape, curve and background layer rules since the #12015 hunt: canvas width, shape outline, curve keys, Position and Repeat rows, stale focus
 - designer-fonts-part.md: The Google Fonts browser of the designer as the part 'fonts' (D5 part 6): what moved, what the core keeps, the host it works through
@@ -918,6 +919,7 @@
 - record-edit-in-place-server.md: Server of a collection item's fields corrected in place from the designer's Preview (RE1, #11551): controls, rights, approval, changed-meanwhile check, write order, panel actions
 - record-edit-in-place-spots.md: Which bound elements of a page the Preview lets a person correct in place for one collection item, and with which control (RE2, #11583): PGRecordEditSpots, scopes, tokens, properties
 - record-media-field-share-image.md: A form's RSS media upload opens with the record; og:image comes from the form's share image field, then the media field, and skips an upload an anonymous visitor cannot open (#2191, #2174, #2891)
+- record-tree-lists.md: Help centre HC9: list sources "Records that point at the record" (a category tree in one widget) and "Path to the record" (breadcrumbs), what they read and show
 - record-value-page-links.md: A form list or detail link opening another page with the record's values in its address (__page_link + _bindParams.href): shape, pre-pass, escaping, values, Publish, export, editor, code view
 - record-view-counts.md: Views on record pages (form counters, people only, counted after sending) and form lists ordered by views, comments, recent views or newest activity; why not visitor_content_hourly
 - record-view-filters.md: form_item_view filters (opt-in record visibility, e.g. Status = Published): where they apply, fail-closed cases, the e-mail bypass, viewer_filter lists without feed or sitemap (#1194)

@@ -76,6 +76,7 @@
 - bug-hunt-areas-designer-search.md: Bug hunt of the designer's Select similar, Find and Replace, Options search and tree search (2026-11-28, PR #12242): six faults fixed, what was read clean, one small fault left
 - bug-hunt-areas-designer-shared-components.md: Bug hunt of the designer's shared components, server side (area 54, 2026-11-24): four faults fixed in the hunt's PR #11498, two issues, what was read clean [decision: decisions-made-product-109.md]
 - bug-hunt-areas-designer-states.md: The bug hunt in the designer's states, interactions, collection window and Google Fonts browser (agent channel 15408, 2026-11-28): what was fixed, what was read clean, what is left
+- bug-hunt-areas-designer-tour.md: The bug hunt of the designer's first tour (2026-11-28, area of bug-hunt-areas-7.md): the four faults fixed in style_designer_tour.js, what was read clean
 - bug-hunt-areas-document-to-page.md: Bug hunt "Page from a document" (2026-11-26, PR #11769): seven faults fixed (file pick, pictures, words, how much was read), what read clean, the two faults left built in PR #11792
 - bug-hunt-areas-erp-bank-statement-lines.md: The bug hunt in ERP bank statement lines, matching and suggestions (agent channel request 3141, 2026-11-26): what was fixed, what was read clean, what is left
 - bug-hunt-areas-erp-cheques.md: The bug hunt of ERP cheques and promissory notes (2026-11-26, PR #11844): the five faults fixed, the product question asked, what was read clean and what was left [decision: here]
@@ -140,6 +141,7 @@
 - bug-hunt-areas-settings-save.md: The owner's backend sweep of 2026-11-22: every Site Settings pane saved unchanged on the sandbox; what an unchanged save rewrites and why that is no fault; the one fault it found
 - bug-hunt-areas-shipping-rates.md: The bug hunt of shipping rates (area 34, 2026-11-24): zones, base rate bands, free shipping offers, a method for an address it does not serve; three faults fixed, what was read clean
 - bug-hunt-areas-site-forms-builder.md: The bug hunt of building a form in the panel (area 44, 2026-11-24, #11453): the five faults fixed, what was read clean, what was not run
+- bug-hunt-areas-site-imports.md: Bug hunt of the site-builder imports (2026-11-28, IB1 to IB3): Squarespace, Webflow, Wix and collection readers and their writers; what was fixed, what read clean, what was left
 - bug-hunt-areas-site-search.md: Bug hunt of the visitor site search (area 20, 2026-11-24): four faults fixed in the hunt's PR, what was read clean, and the noindex question left as it is
 - bug-hunt-areas-site-themes-and-style-switch.md: The bug hunt in site themes and the style switch (area 51, #11474): activating a theme, copying and deleting a style, what a page keeps when its style goes; what was fixed, read clean and left
 - bug-hunt-areas-stock-locations.md: The bug hunt of stock by location and the barcode stock screens (2026-11-20): the three faults fixed, the two issues opened, what was read clean [decision: decisions-made-product-19.md]

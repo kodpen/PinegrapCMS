@@ -44,6 +44,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - `designer-canvas-*`: 25 files; start at `designer-canvas-overview.md`.
 - `designer-code-*`: 6 files.
 - `designer-content-*`: 6 files.
+- `designer-first-*`: 6 files.
 - `designer-home-*`: 8 files.
 - `designer-interactions-*`: 7 files; start at `designer-interactions.md`.
 - `designer-options-*`: 40 files; start at `designer-options-overview.md`.

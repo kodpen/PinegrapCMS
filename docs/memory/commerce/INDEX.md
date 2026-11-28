@@ -144,6 +144,7 @@
 - etsy-categories.md: Etsy categories and properties on the Listings view: the seller taxonomy under the provider's key (etsy), nested nodes flattened, a leaf's properties as attribute rows, scales named on values
 - etsy-connection.md: Etsy marketplace accounts: the etsy connect provider (PKCE, keystring, no secret on the token request, x-api-key on every call), the connector test, the shop read from the sign-in, five remote selects
 - etsy-listings.md: Etsy listings: one listing an article, draft, pictures uploaded as files, shared properties, inventory with the variants, active and read back; the listing id kept from the verdict; the fee notice
+- etsy-stock-price.md: Etsy stock and price through the queue: inventories read in bulk, one call a listing with its whole products array, price in the shop's currency, paced by limit headers
 - eu-vat-check.md: EU VAT ids checked against VIES: the clean function and patterns per member state, the REST request, answer mapping, a day's cache, the reverse-charge decision; where it is wired [decision: decisions-made-product-19.md, decisions-made-product-26.md]
 - eu-vat-checkout.md: The EU VAT check at checkout: when it runs, what each VIES answer does to tax_exempt and the three orders.vat_* columns, where the customer, the order screen, the API and the ERP invoice show it
 - event-tickets-api.md: Event tickets (TK5): GET /calendars/events/{id}/tickets (orders:read), ticket.checked_in, the product's "Gives tickets" switch, the personal data export's tickets [decision: here]
