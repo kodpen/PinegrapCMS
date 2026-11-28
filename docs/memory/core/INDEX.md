@@ -69,8 +69,10 @@
 - contact-lead-source.md: contacts.lead_source picked from referral_sources on the add/edit contact screens (#3427, decided #3416 3(a)); old free text kept; the same check on the external API (#4043); writers left as they were [decision: decisions-made-product-11.md, decisions-made-workspace-4.md]
 - contact-merge-columns.md: pg_contact_merge_select(), the one SELECT list of both merge screens (#5325); the blank-column fill and the group opt-in rule of both merge branches
 - contact-merge-role.md: Who may merge duplicate contacts: a role above user (3) on both merge paths; view_contacts.php checks it itself (#5124)
+- content-translation-fallback-engine.md: A language's fallback engine (site_languages.fallback_engine) takes the texts an update failed on when it ends: which engines, which texts, once only (TS6)
 - content-translation-html-pieces.md: Translating stored HTML (custom HTML block, product description, form message): how a block is cut into texts so images, form controls, buttons and data-* attributes stay on the translated page
 - content-translation-jobs-duplicates.md: Translation jobs (includes/translate/jobs.php): no second translate-on-save job while one is open, texts translated meanwhile skipped, one run at a time per server job
+- content-translation-owner-save-jobs.md: Translate on save for a product, product group, offer and form (TS6, PR #12228): scopes product:/product_group:/offer:/form:<id>, one item read again, which save paths open a job and which do not
 - content-translation-product-answers.md: How a product's texts reach a page drawn in another language after it is drawn: variant data in the page, get_product refreshes with pg_lang, pg_tr_product_fields()
 - content-translation-record-save-jobs.md: Translate on save for form records: who opens a translation job by saving a record (never a visitor), the records scope, and the save paths that are not hooked [decision: decisions-made-product-38.md]
 - content-translation-result-check.md: pg_tr_result_check(): when a translation of a site text is refused or marked suspicious, and why a brand name the glossary keeps is not suspicious

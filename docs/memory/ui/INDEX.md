@@ -844,6 +844,7 @@
 - translations-screen-frame.md: Translations screen frame (TS1): head with language shares, tabs Texts/Activity/Glossary, Scan for new texts and Translate pending, the rail, the filter tiles, the tool line
 - translations-screen-glossary.md: Translations screen "Glossary" tab (TS5): the table of terms, "Search the glossary", the filled "Add a term", the remove buttons on one form outside the table; the term dialog unchanged
 - translations-screen-noindex-reason.md: Translations screen: a page's search verdict in the page list, its own-noindex state, the "Why?" list of texts keeping it out (blocking filter) and "Keep as in the source and approve" [decision: decisions-made-product-38.md]
+- translations-screen-not-served.md: Translations screen (TS6): a target language with "Served" off is listed with a "Not served" pill and a notice, so it is translated before it goes live; what the store and jobs ask of it
 - translations-screen-overview.md: The Translations screen (translations.php) as a whole: what it is, the redraw under way, its parts by label and which memory file holds each
 - translations-screen-reload-messages.md: Translations screen (translations.php): which messages survive the reload after an update, a scan, a bulk action or the automation dialog, and what the Site Log says for a language translated by hand
 - translations-screen-row.md: Translations screen row (TS2): the grid, the box, the state column with "Suspicious" on its own line, "Details" read on opening, the refusal under the box, Ctrl+Enter and Alt+Up/Down

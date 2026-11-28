@@ -24,7 +24,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - `audit-trail-*`: 9 files.
 - `campaign-profile-*`: 8 files.
 - `code-editor-*`: 6 files.
-- `content-translation-*`: 6 files.
+- `content-translation-*`: 8 files.
 - `email-campaign-*`: 6 files.
 - `picture-text-*`: 18 files; start at `picture-text-overview.md`.
 
