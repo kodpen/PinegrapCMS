@@ -160,3 +160,167 @@ function ws_file_group_mark($message_id, $head_id)
 
     return true;
 }
+
+/**
+ * The message a row stands under: its group's head for a file of a group,
+ * else the row itself. A jump, a pin and a forward land on it. Pure.
+ *
+ * @param array $row a ws_messages row: id, file_group
+ * @return int
+ */
+function ws_file_group_target_id($row)
+{
+    $group = (int) ($row['file_group'] ?? 0);
+
+    return ($group > 0) ? $group : (int) ($row['id'] ?? 0);
+}
+
+/**
+ * Whether a row is a file of a group other than its head: never drawn,
+ * counted or announced as a message of its own. Pure.
+ *
+ * @param array $row a ws_messages row: id, file_group
+ * @return bool
+ */
+function ws_file_group_is_member($row)
+{
+    $group = (int) ($row['file_group'] ?? 0);
+
+    return ($group > 0) && ($group !== (int) ($row['id'] ?? 0));
+}
+
+/**
+ * The groups a set of rows touches, by their heads' ids, in their order.
+ * Pure.
+ *
+ * @param array[] $rows ws_messages rows
+ * @return int[]
+ */
+function ws_file_group_heads_of($rows)
+{
+    $heads = array();
+
+    foreach ((array) $rows as $row) {
+        $group = (int) ($row['file_group'] ?? 0);
+
+        if ($group > 0) {
+            $heads[$group] = $group;
+        }
+    }
+
+    return array_values($heads);
+}
+
+/**
+ * A page's rows with the rows of its groups that the page's edge cut off,
+ * each row once, oldest first. Pure.
+ *
+ * @param array[] $rows  the page's rows
+ * @param array[] $extra the rows of the page's groups, read by the key
+ * @return array[]
+ */
+function ws_file_group_merge($rows, $extra)
+{
+    $by_id = array();
+
+    foreach (array_merge((array) $rows, (array) $extra) as $row) {
+        $id = (int) ($row['id'] ?? 0);
+
+        if (($id > 0) && !isset($by_id[$id])) {
+            $by_id[$id] = $row;
+        }
+    }
+
+    ksort($by_id);
+
+    return array_values($by_id);
+}
+
+/**
+ * The SQL condition that counts a group once, by its head: appended to a
+ * WHERE that counts messages. Empty before the column exists.
+ *
+ * @param string $alias the ws_messages table's alias, or '' for none
+ * @return string
+ */
+function ws_file_group_counted_sql($alias = '')
+{
+    if (!ws_file_group_ready()) {
+        return '';
+    }
+
+    $column = (($alias !== '') ? $alias . '.' : '');
+
+    return " AND (" . $column . "file_group = 0 OR " . $column . "file_group = " . $column . "id)";
+}
+
+/**
+ * Chosen message ids with every file of their groups, in the order chosen,
+ * each group's files in their own order, each id once, at most $max. Pure.
+ *
+ * @param int[] $ids    the ids chosen
+ * @param array $groups head id => the ids of its group, oldest first
+ * @param array $heads  id => its head's id, for the chosen rows of a group
+ * @param int   $max
+ * @return int[]
+ */
+function ws_file_group_expand_ids($ids, $groups, $heads, $max)
+{
+    $out = array();
+
+    foreach ((array) $ids as $id) {
+        $id = (int) $id;
+        $head = (int) ($heads[$id] ?? 0);
+        $taken = (($head > 0) && !empty($groups[$head])) ? array_map('intval', (array) $groups[$head]) : array($id);
+
+        foreach ($taken as $one) {
+            if (($one > 0) && !in_array($one, $out, true)) {
+                $out[] = $one;
+            }
+        }
+    }
+
+    return array_slice($out, 0, max(0, (int) $max));
+}
+
+/**
+ * A page of a channel's messages made whole: a group the page's edge cut is
+ * read by its key, so the screen and the API always get every file of a
+ * group they get any of.
+ *
+ * @param array[] $rows ws_messages rows of one channel, oldest first
+ * @return array[]
+ */
+function ws_file_group_whole($rows)
+{
+    $heads = ws_file_group_heads_of($rows);
+
+    if (empty($heads) || !ws_file_group_ready()) {
+        return $rows;
+    }
+
+    $extra = (array) db_items("SELECT * FROM ws_messages
+        WHERE file_group IN (" . implode(',', array_map('intval', $heads)) . ")
+        ORDER BY id ASC");
+
+    return ws_file_group_merge($rows, $extra);
+}
+
+/**
+ * The ids of a group's messages, the head first, deleted ones left out.
+ *
+ * @param int $head_id
+ * @return int[]
+ */
+function ws_file_group_ids($head_id)
+{
+    $head_id = (int) $head_id;
+
+    if (($head_id <= 0) || !ws_file_group_ready()) {
+        return array();
+    }
+
+    return array_map('intval', (array) db_values("SELECT id FROM ws_messages
+        WHERE file_group = '" . $head_id . "' AND deleted_at = 0
+        ORDER BY id ASC"));
+}
