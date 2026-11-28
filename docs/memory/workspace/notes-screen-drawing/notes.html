@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<title>My Notes: the screen redrawn (list card, note card)</title>
+<link rel="stylesheet" href="../../../../pinegrap/assets/fonts/bootstrap-icons/bootstrap-icons.min.css">
+<link rel="stylesheet" href="../../ui/look-sheet/sheet.css">
+<style>
+@font-face { font-family: "Inter"; src: url("../../../../pinegrap/assets/fonts/inter/InterVariable.woff2") format("woff2"); font-weight: 100 900; }
+/* the sheet’s paper around the boards */
+body { padding: 28px 24px 40px; width: 1548px; font-size: 13.5px; }
+.sheet-title { font-size: 24px; font-weight: 700; letter-spacing: -.02em; margin: 0 4px 6px; }
+.sheet-sub { color: var(--fg2); margin: 0 4px 26px; max-width: 1150px; }
+.frame-wrap { margin-bottom: 38px; }
+.frame-head { display: flex; align-items: center; gap: 12px; margin: 0 4px 12px; }
+.frame-letter { width: 30px; height: 30px; border-radius: 9px; background: var(--fg); color: var(--page); font-weight: 700; display: inline-grid; place-items: center; font-size: 15px; flex: none; }
+.frame-title { font-size: 19px; font-weight: 680; letter-spacing: -.01em; white-space: nowrap; }
+.frame-sub { color: var(--fg2); }
+.frame { background: var(--page); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; padding: 22px 24px 24px; }
+.fnotes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 26px; margin: 14px 6px 0; color: var(--fg2); font-size: 13px; }
+.fnotes b { color: var(--fg); font-weight: 620; }
+.fnotes div { padding-left: 12px; border-left: 2px solid var(--line); }
+.cols { display: flex; gap: 26px; align-items: flex-start; flex-wrap: wrap; }
+.lbl { font-size: 12px; color: var(--fg3); margin: 0 2px 8px; font-weight: 550; }
+
+/* the screen’s one toolbar */
+.bar { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+.bar h1 { margin: 0 6px 0 0; font-size: 22px; font-weight: 650; }
+.bar .cnt { color: var(--fg3); font-size: 13px; margin-right: 8px; }
+.bar .in { width: 260px; height: 34px; font-size: 13px; }
+
+/* the two cards */
+.two { display: grid; grid-template-columns: 372px 1fr; gap: 20px; align-items: start; }
+.two.mid { grid-template-columns: 300px 1fr; gap: 16px; }
+.lcard { overflow: hidden; }
+.lhead { display: flex; align-items: center; gap: 8px; height: 46px; padding: 0 10px 0 16px; border-bottom: 1px solid var(--line); }
+.lhead b { font-size: 13.5px; font-weight: 620; }
+.lhead .n { color: var(--fg3); font-size: 12.5px; }
+.gl { display: flex; align-items: center; gap: 7px; height: 34px; padding: 0 14px; font-size: 12px; font-weight: 600; color: var(--fg2); background: var(--card); border-bottom: 1px solid var(--line); }
+.gl i { font-size: 10px; color: var(--fg3); }
+.gl .n { color: var(--fg3); font-weight: 500; }
+.gl .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); }
+.gl.sub { padding-left: 30px; background: none; }
+.row { display: flex; gap: 12px; padding: 12px 12px 12px 16px; border-bottom: 1px solid var(--line); position: relative; }
+.row:last-child { border-bottom: 0; }
+.row.in-g { padding-left: 30px; }
+.row .m { flex: 1; min-width: 0; }
+.row .t { display: flex; align-items: center; gap: 7px; font-weight: 600; font-size: 13.5px; }
+.row .t span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .t i { font-size: 12px; color: var(--fg3); flex: none; }
+.row .x { color: var(--fg2); font-size: 12.5px; line-height: 1.4; margin-top: 2px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.row .meta { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 12px; color: var(--fg3); white-space: nowrap; overflow: hidden; }
+.row .meta .av { width: 18px; height: 18px; font-size: 8px; }
+.row.on { background: color-mix(in srgb, var(--accent) var(--sel), transparent); box-shadow: inset 3px 0 0 var(--accent); }
+.row.hov { background: var(--hover); }
+.row .q { margin-left: auto; color: var(--fg2); font-size: 15px; flex: none; }
+.udot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; }
+.row.unread .t span { font-weight: 700; }
+.lfoot { padding: 10px 16px; font-size: 12px; color: var(--fg3); border-top: 1px solid var(--line); text-align: center; }
+
+/* the note card */
+.nhead { display: flex; align-items: center; gap: 6px; height: 46px; padding: 0 10px 0 18px; border-bottom: 1px solid var(--line); color: var(--fg2); font-size: 12.5px; }
+.tools { display: flex; align-items: center; gap: 2px; height: 42px; padding: 0 12px; border-bottom: 1px solid var(--line); }
+.tools .sepv { width: 1px; height: 18px; background: var(--line); margin: 0 6px; }
+.npage { max-width: 46rem; margin: 0 auto; padding: 28px 28px 40px; }
+.npage h2 { margin: 0 0 14px; font-size: 26px; font-weight: 680; letter-spacing: -.02em; }
+.npage p { margin: 0 0 12px; font-size: 14.5px; line-height: 1.6; }
+.npage ul { margin: 0 0 12px; padding-left: 20px; font-size: 14.5px; line-height: 1.7; }
+.empty { display: grid; place-items: center; text-align: center; padding: 56px 24px; color: var(--fg2); }
+.empty .tile { width: 44px; height: 44px; border-radius: 14px; font-size: 20px; margin: 0 auto 12px; }
+.empty b { display: block; color: var(--fg); font-size: 15px; margin-bottom: 4px; }
+.empty .btn { margin-top: 14px; }
+
+/* phone */
+.phone { width: 390px; border-radius: 26px; border: 1px solid var(--line); background: var(--page); padding: 14px 12px 16px; box-shadow: var(--shadow-card); }
+.phone .bar h1 { font-size: 19px; }
+.pin { width: 1440px; }
+.mid-w { width: 1024px; }
+</style>
+</head>
+<body>
+<h1 class="sheet-title">My Notes: the screen redrawn</h1>
+<p class="sheet-sub">Today the list and the note stand on one ground with nothing between them, the rows touch, and the note’s place opens empty with a second “New note”: people in tests took the list for one note’s text and pressed “New note” every time. Redrawn: the list is a card of its own with a head and a line between its rows; the note is a second card; the screen opens on a note, never on an empty place.</p>
+<div id="root"></div>
+<script>
+var q = new URLSearchParams(location.search);
+if (q.get('theme') === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+var only = q.get('f');
+function ic(n) { return '<i class="bi bi-' + n + '"></i>'; }
+function btn(l, k, i) { return '<span class="btn ' + (k || 'ghost') + '">' + (i ? ic(i) : '') + l + '</span>'; }
+function ib(n, c) { return '<span class="ib sm' + (c ? ' ' + c : '') + '">' + ic(n) + '</span>'; }
+function row(o) {
+  var marks = (o.unread ? '<span class="udot"></span>' : '') + (o.pin ? ic('pin-angle-fill') : '') + (o.lock ? ic('lock-fill') : '');
+  return '<div class="row' + (o.on ? ' on' : '') + (o.hov ? ' hov' : '') + (o.unread ? ' unread' : '') + (o.g ? ' in-g' : '') + '">'
+    + '<span class="tile ' + (o.shared ? 't-blue' : 't-amber') + '">' + ic(o.shared ? 'people' : 'journal-text') + '</span>'
+    + '<div class="m"><div class="t"><span>' + o.t + '</span>' + marks + (o.on || o.hov ? '<span class="q">' + ic('three-dots') + '</span>' : '') + '</div>'
+    + (o.x ? '<div class="x">' + o.x + '</div>' : '')
+    + '<div class="meta"><span class="num">' + o.d + '</span>' + (o.who ? '<span class="av b">' + o.who + '</span>' : '') + (o.ch ? '<span>' + ic('hash') + ' ' + o.ch + '</span>' : '') + '</div></div></div>';
+}
+var R = {
+  a: { t: 'Launch checklist', x: 'Written up to the price list. Pictures for the three new products are still missing; the texts are in review.', d: 'Today 14:20', on: 1, pin: 1 },
+  b: { t: 'Meeting with the printer', x: 'Paper samples arrive on Thursday. Ask for the matt one in 170 g.', d: 'Yesterday 17:46', unread: 1 },
+  c: { t: 'Untitled note', d: '22 Nov 19:39' },
+  d: { t: 'Hand-over of the support desk', x: 'Open conversations by owner, what waits for a customer, who covers the weekend.', d: '21 Nov 08:12', ch: 'support' },
+  e: { t: 'Price change plan: from the old list to the new one, step by step', d: '16 Nov 15:46', lock: 1 },
+  f: { t: 'The month in figures', x: 'Figures: item · amount / income / costs / collections', d: '4 Nov 00:12', shared: 1, who: 'AK' },
+  g1: { t: 'Autumn catalogue: order of pages', x: 'Cover, new arrivals, the three sets, care page.', d: '19 Nov 11:02', g: 1 },
+  g2: { t: 'Photographer brief', d: '18 Nov 09:30', g: 1 }
+};
+function list(o) {
+  o = o || {};
+  var rows = o.rows || (
+    '<div class="gl">' + ic('chevron-down') + 'My notes <span class="n">17</span></div>'
+    + '<div class="gl sub">' + ic('chevron-down') + '<span class="dot"></span>Catalogue <span class="n">3</span></div>' + row(R.g1) + row(R.g2)
+    + row(R.a) + row(R.b) + row(R.c) + row(R.d) + row(R.e)
+    + '<div class="gl">' + ic('chevron-down') + 'Shared with me <span class="n">4</span></div>' + row(R.f));
+  return '<div class="pcard lcard"><div class="lhead"><b>Notes</b><span class="n">21</span><span class="sp"></span>' + btn('New group', 'ghost sm', 'folder-plus') + ib('sort-down') + '</div>'
+    + rows + (o.foot === false ? '' : '<div class="lfoot">Showing 9 of 21 · Show more</div>') + '</div>';
+}
+function note(o) {
+  o = o || {};
+  return '<div class="pcard"><div class="nhead">' + (o.back ? ib('arrow-left') : '') + '<span class="av">TG</span><span>Saved · changed today 14:20</span><span class="sp"></span>'
+    + (o.narrow ? '' : btn('Share', 'ghost sm', 'person-plus') + btn('History', 'ghost sm', 'clock-history')) + ib('three-dots') + '</div>'
+    + '<div class="tools">' + ib('type-bold') + ib('type-italic') + ib('type-strikethrough') + ib('highlighter') + '<span class="sepv"></span>' + ib('list-ul') + ib('list-ol') + ib('check2-square')
+    + (o.narrow ? '' : '<span class="sepv"></span>' + ib('link-45deg') + ib('table') + ib('code-slash') + ib('image') + ib('mic')) + '<span class="sp"></span>' + btn('More', 'ghost sm', 'three-dots') + '</div>'
+    + '<div class="npage"><h2>Launch checklist</h2><p>Written up to the price list. Pictures for the three new products are still missing; the texts are in review.</p>'
+    + '<ul><li>Price list checked against the supplier’s</li><li>Pictures: three products left</li><li>Mail to the customers on Monday</li></ul>'
+    + (o.narrow ? '' : '<p>The catalogue goes to the printer once the pictures are in. The shop’s banner changes the same morning.</p>') + '</div></div>';
+}
+function bar(o) {
+  o = o || {};
+  return '<div class="bar"><h1>My Notes</h1>' + (o.phone ? '<span class="sp"></span>' + ib('search') + ib('three-dots') + btn('New note', 'fill sm', 'plus-lg')
+    : btn('New note', 'fill', 'plus-lg') + btn('My highlights', 'ghost', 'highlighter') + btn('Lock', 'ghost', 'lock') + '<span class="sp"></span><span class="in">' + ic('search') + '<span class="ph">Search in notes</span><span class="end"><kbd>/</kbd></span></span>' + ib('three-dots')) + '</div>';
+}
+function empty(icon, tone, title, text, b) { return '<div class="empty"><div><span class="tile ' + tone + '">' + ic(icon) + '</span><b>' + title + '</b>' + text + (b ? '<br>' + b : '') + '</div></div>'; }
+
+var boards = [
+ ['A', 'The screen as it opens, 1440 px', 'Two cards on the page: the list at the left, the note at the right, 20 px between them.',
+  '<div class="pin">' + bar() + '<div class="two">' + list() + note() + '</div></div>',
+  ['<b>The list is a card.</b> Its head names it “Notes” with the count; “New group” and the order stand there, no longer loose over the rows.',
+   '<b>A line between two notes.</b> Each row ends with a hairline; a folder and a section are a band across the card. The open note keeps its tint and a 3 px accent edge.',
+   '<b>The screen opens on a note:</b> the one last open, else the newest. “New note” stands once, filled, first in the toolbar.',
+   '<b>The list stays</b> while the note scrolls (sticky under the header, its own scroll inside the card), so the two never read as one text.',
+   '<b>The note card</b> keeps today’s parts: the head with “Saved”, Share, History, ⋯; the one row of tools; title and text in a 46rem column.',
+   '<b>Nothing is taken away:</b> tabs over the note, the lock, My highlights, Import and the order in ⋯ work as today.']],
+ ['B', 'A row in its states', 'The same row recipe; only what is listed changes.',
+  '<div class="cols">'
+  + '<div style="width:372px"><div class="lbl">Plain, hover (⋯ shows), open</div><div class="pcard lcard">' + row(R.c) + row(Object.assign({}, R.d, { hov: 1 })) + row(R.a) + '</div></div>'
+  + '<div style="width:372px"><div class="lbl">Unread, locked, shared with me</div><div class="pcard lcard">' + row(R.b) + row(R.e) + row(R.f) + '</div></div>'
+  + '<div style="width:372px"><div class="lbl">A folder open, and one closed</div><div class="pcard lcard"><div class="gl sub" style="padding-left:14px">' + ic('chevron-down') + '<span class="dot"></span>Catalogue <span class="n">3</span></div>' + row(R.g1) + row(R.g2)
+  + '<div class="gl sub" style="padding-left:14px;border-bottom:0">' + ic('chevron-right') + '<span class="dot" style="background:var(--teal)"></span>Suppliers <span class="n">5</span></div></div></div></div>',
+  ['<b>Row:</b> 12 px above and below, 16 px left; tile 28 px; title 13.5 px at 600, one line; two lines of text; the time first on the last line.',
+   '<b>An unread note</b> has the dot and a heavier title, never a tint: the tint means “open”.',
+   '<b>A folder’s notes</b> are set in by 14 px under its band; a closed folder is its band alone.']],
+ ['C', 'When there is nothing to open', 'The only times the note’s place holds no note.',
+  '<div class="cols">'
+  + '<div style="width:460px"><div class="lbl">No note yet: one card, no empty list beside it</div><div class="pcard">' + empty('journal-plus', 't-amber', 'Write your first note', 'A note is yours alone until you share it.', btn('New note', 'fill', 'plus-lg')) + '</div></div>'
+  + '<div style="width:372px"><div class="lbl">A search that finds nothing: in the list card</div><div class="pcard lcard"><div class="lhead"><b>Notes</b><span class="n">0 of 21</span></div>' + empty('search', '', 'No note matches “invoice”', 'The open note stays where it is.', btn('Clear the search', 'quiet sm')) + '</div></div>'
+  + '<div style="width:460px"><div class="lbl">The lock is closed: the note’s place</div><div class="pcard">' + empty('lock', 't-violet', 'This note is locked', 'Enter your PIN to read it.', btn('Unlock', 'fill', 'unlock')) + '</div></div></div>',
+  ['<b>No “pick a note” place.</b> With notes in the list one of them is open; the old empty pane and its second “New note” go.',
+   '<b>The last note deleted</b> opens the next one in the list; with none left, the first card of this board.',
+   '<b>My highlights and the lock pane</b> are drawn in the note card, as today.']],
+ ['D', '1024 px and the phone', 'Narrower: the list card gives way first.',
+  '<div class="cols"><div class="mid-w"><div class="lbl">1024 px: the list 300 px, 16 px between the cards</div>' + bar() + '<div class="two mid">' + list({ rows: '<div class="gl">' + ic('chevron-down') + 'My notes <span class="n">17</span></div>' + row(R.a) + row(R.b) + row(R.c), foot: false }) + note({ narrow: 1 }) + '</div></div></div>'
+  + '<div class="cols" style="margin-top:26px"><div><div class="lbl">390 px: the list alone</div><div class="phone">' + bar({ phone: 1 }) + list({ rows: '<div class="gl">' + ic('chevron-down') + 'My notes <span class="n">17</span></div>' + row(Object.assign({}, R.a, { on: 0 })) + row(R.b) + row(R.c) + row(R.e), foot: false }) + '</div></div>'
+  + '<div><div class="lbl">390 px: a note, opened by a tap, with Back</div><div class="phone">' + note({ narrow: 1, back: 1 }) + '</div></div></div>',
+  ['<b>Below 992 px</b> one card at a time, as today: the list, then the note with Back in its head. The phone opens on the list, with no note chosen.',
+   '<b>On a phone</b> the search and ⋯ are icon buttons; “New note” stays filled in the bar.',
+   '<b>Sizes:</b> list card 372 px from 1200 px up, 300 px below; cards’ radius 16; the list’s head and the note’s head both 46 px, so their lines meet.']]
+];
+document.getElementById('root').innerHTML = boards.filter(function (b) { return !only || only === b[0]; }).map(function (b) {
+  return '<div class="frame-wrap"><div class="frame-head"><span class="frame-letter">' + b[0] + '</span><span class="frame-title">' + b[1] + '</span><span class="frame-sub">' + b[2] + '</span></div>'
+    + '<div class="frame">' + b[3] + '</div><div class="fnotes">' + b[4].map(function (n) { return '<div>' + n + '</div>'; }).join('') + '</div></div>';
+}).join('');
+</script>
+</body>
+</html>
