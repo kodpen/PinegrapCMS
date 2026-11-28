@@ -844,9 +844,10 @@
 - translations-screen-editor-rows.md: Translations screen (translations.php, translations.js): engine wait, row state and count sync, scoped tiles, glossary duplicates and refused saves, return view, CSV guard, box size
 - translations-screen-frame.md: Translations screen frame (TS1): head with language shares, tabs Texts/Activity/Glossary, Scan for new texts and Translate pending, the rail, the filter tiles, the tool line
 - translations-screen-glossary.md: Translations screen "Glossary" tab (TS5): the table of terms, "Search the glossary", the filled "Add a term", the remove buttons on one form outside the table; the term dialog unchanged
+- translations-screen-narrow.md: Translations screen at 1024 px and on a phone (390 px): the head in three lines, the scope button with the rail's bottom sheet, tiles that scroll sideways, the list's side padding (TS8)
 - translations-screen-noindex-reason.md: Translations screen: a page's search verdict in the page list, its own-noindex state, the "Why?" list of texts keeping it out (blocking filter) and "Keep as in the source and approve" [decision: decisions-made-product-38.md]
 - translations-screen-not-served.md: Translations screen (TS6): a target language with "Served" off is listed with a "Not served" pill and a notice, so it is translated before it goes live; what the store and jobs ask of it
-- translations-screen-overview.md: The Translations screen (translations.php) as a whole: what it is, the redraw under way, its parts by label and which memory file holds each
+- translations-screen-overview.md: The Translations screen (translations.php) as a whole: what it is, the rules of its 2026-11 redraw, its parts by label and which memory file holds each [decision: here]
 - translations-screen-reload-messages.md: Translations screen (translations.php): which messages survive the reload after an update, a scan, a bulk action or the automation dialog, and what the Site Log says for a language translated by hand
 - translations-screen-row.md: Translations screen row (TS2): the grid, the box, the state column with "Suspicious" on its own line, "Details" read on opening, the refusal under the box, Ctrl+Enter and Alt+Up/Down
 - translations-screen-selection.md: Translations screen selection (TS3): a tick on every row, "Select all on this page", the bar with Approve, Translate again, Keep as in the source and approve, Clear, and the "Translate again" dialog
@@ -854,6 +855,7 @@
 - translations-screen-today.md: Census of the Translations screen before its redraw (2026-11-27): its views, every control, a text's states, what runs by itself, what the API reaches, and the faults the redraw answers
 - translations-screen-unsaved-rows.md: Translations screen (translations.js): a row with typed, unsaved text, its Save highlight, the review (eye) button on it and the leave question
 - unsaved-changes-guard.md: Which panel screens ask before being left with unsaved changes (code fields, product, offer and layout editors, settings dialog, Translations), how each knows, submit and Ctrl+S traps
+- update-screens-finish.md: End of the Software Updater and Repair Software: the replace step writes the Site Log line, notice and flag, then the upgrade opens; why mode=autoupgrade / mode=done went
 - update-screens-steps.md: Software Updater, Repair Software and Backup Manager: the step loop with an error path, the status line, Return in Backup Name, labels kept while they work, a failed file copy removes the backup
 - upload-folder-kept.md: Edit Field keeps a deleted or unlisted upload folder selected and marked; the File Manager's folder delete names the upload fields using the folder [decision: decisions-made-files.md, decisions-made-workspace-6.md]
 - upload-keyboard.md: Files and Design Files upload screens from the keyboard: the Choose files button beside the Dropzone area, why outside it, the remove link shown on focus

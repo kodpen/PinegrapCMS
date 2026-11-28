@@ -227,6 +227,7 @@
 - note-media.md: A note line linking only to a file of this site is drawn as the file in the read view (ws_render_body, note_media.php) and as a media card in the writing box (workspace_editor.js)
 - notes-screen-drawing.md: The My Notes screen's redraw (2026-11-28): where its sheet is, what each board A to D shows, the measures, the row's states, and the drawn choices that bind the plan's steps [decision: decisions-made-workspace-53.md]
 - person-card-facts.md: A person's card facts in a channel (person_card.php, PF6a): the ws_person_card action, who may read it, role, title, departments and leads, working day, away days, local time, last seen [decision: here]
+- person-status-rule.md: A person's own status (PS1): ws_profiles.status (11.0.290), the pure rule, ws_person_status_*(), GET/POST /workspace/status as MCP tools, status on the person brief
 - personal-calendar-census-mail.md: PC1 census (2026-11-14): pg_mail_parse() keeps a mail's calendar part as an attachment entry; the Workspace mail ingest drops it today; what PC7 can reuse [decision: here]
 - personal-calendar-census-privacy.md: PC1 census (2026-11-14): export, erasure, account deletion and leaving the team today, and what each does with private plans (architect's answer) [decision: here]
 - personal-calendar-census-readers.md: PC1 census (2026-11-14): every reader of the Work Calendar's rows (ws_events) and of Today, which one asks whose row it is, and what each must do with a person's private plan
@@ -427,6 +428,7 @@
 - workspace-field-names.md: How Workspace drawer and dialog fields get their screen-reader names: formRow(), saLabelled(), ask(), labelTarget()/hasName(), the pickers
 - workspace-file-address-gate.md: Who get_file.php serves a Workspace channel's or note's file to by its address (#11476): readers of the channel or note; staff never by rank; users left to the folder's view right
 - workspace-file-card-preview.md: A channel file's name opens it on the screen (message file card, Files tab), Preview and Download in words, Save as data for a sheet into a Data table of the channel (#11028)
+- workspace-file-groups.md: Files sent together in a channel as one group: ws_messages.file_group (step 11.0.291), ws_file_group_check() rules, how ws_attach and ws_library_attach write a member
 - workspace-file-manager-files.md: A file of the file manager posted into a Workspace channel as a copy (library.php): "Send to a channel" in the file manager, "From the file manager" under the paperclip; who may pick what, refusals
 - workspace-files-object-storage.md: Workspace channel files, note attachments, guest files and ERP documents in the object store: which functions read them, which places still write the file directory, the guard test
 - workspace-flow-ai-drafts.md: Pinegrap AI drafts a flow (propose_flow, read_flow; D8a #2605): catalogue schema and hints, graph or patch, auto layout, the card's window (D8b), a patch opened onto its flow and marked (D8c)
@@ -596,7 +598,8 @@
 - workspace-mcp-servers-card.md: Workspace "MCP servers" card (mcp.php, mcp_catalogue.php): ready-made connectors, adding by address, read-only tools on at first read, the form kept after an error, Pinegrap AI failing [decision: here]
 - workspace-mcp-settings-dialog.md: The MCP servers card in Site Settings (Assistants and agents) and on Workspace Settings: drawers, ws_mcp field and button names, the relay, the sign-in handed over as pg_settings_go()
 - workspace-meeting-link-screen.md: The Workspace screen My meeting link (PR #10147): who sees it, link with Copy and QR, one short address, the meeting address, services with a deposit one marked
-- workspace-memory-tab.md: The Memory tab (GM3a, MS3): the general and the channel's part as rows under folding project headings, the search box, a row's columns, Move, the form, ws_memory_list's answer [decision: decisions-made-workspace-39.md]
+- workspace-memory-form-drawer.md: The Memory tab's New entry / Edit form as a form drawer beside the list (MF1): head, fields, foot, refusals, the ask before closing, the saved row lit, /memory, mount()'s start [decision: here]
+- workspace-memory-tab.md: The Memory tab (GM3a, MS3): the general and the channel's part as rows under folding project headings, the search box, a row's columns, Move, the form drawer, ws_memory_list's answer [decision: decisions-made-workspace-39.md]
 - workspace-mention-picker.md: The @ and # lists of Workspace writing boxes (drawPicker()): which boxes use them, where a list opens (pickerPlace() at the caret, fitPicker() over the composer), the kind chips
 - workspace-menu-list.md: The Workspace list in the main menu (#2545, #6281, redrawn #11079-#11141): workspace_side.js draws ws_side_payload(): order, All / Unread, tools dock, who sees what, data, hooks [decision: decisions-made-workspace-48.md, decisions-made-workspace-5.md, decisions-made-workspace-6.md]
 - workspace-menu-rows.md: The Workspace list's rows (#11079, board L3): 30 px with the channel's 18 px tile, count pills, muted dot, draft pencil, pin and "⋯" on pointing, the join fold, section names [decision: decisions-made-workspace-48.md]

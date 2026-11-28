@@ -298,7 +298,7 @@
 - theme-activation-page-styles.md: What turning a theme file on or off does to the pages' styles: preview_styles rows per theme and device type, written when it goes off (replaced or turned off alone), applied when it comes on
 - update-backup-rollback.md: Backup a software update or repair writes before replacing files (pre-update-*.zip) and the rollback on Repair Software: contents, hash record, effect on files and config.version
 - update-beta-builds.md: Beta builds of one version over the Kodpen API (PR #3755): data/update_build.json, when a same-version build is offered (#3204), the re-run after replace, backup/rollback and integrity ref [decision: decisions-made-product-5.md]
-- update-channel-stable-beta.md: Update channel (stable/beta): config key, pg_update_channel() for every caller and how the Kodpen API sends it, download_assistant stays stable, switching, version format.
+- update-channel-stable-beta.md: Update channel (stable/beta): config key, pg_update_channel() for every caller, a beta site also follows stable, download_assistant stays stable, switching, version format. [decision: decisions-made-product-119.md]
 - update-check-errors.md: How the software update check reports a failed answer (HTTP status, cURL, invalid), the checks-off state, its single Site Log line, and the one "update available" bell row.
 - update-package-extraction.md: How update packages must be downloaded and extracted (pg_extract_archive, pg_looks_like_zip) so a partial install is never reported as success.
 - update-status-tile.md: When the Software Update tile of System Status may say "up to date": only from a recent check the update server answered, never from a failed, old or switched-off one.
