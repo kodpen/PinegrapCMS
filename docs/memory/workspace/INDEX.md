@@ -186,6 +186,7 @@
 - mail-phone-media.md: A customer's WhatsApp picture, video, voice message or document fetched by the general job into the conversation card's files (WA14c, #9480), no new column; what is given up and why
 - mail-phone-reply-files.md: A WhatsApp answer's file and template (WA14b, #9446): Meta's kinds and sizes before the queue, the upload at the send, templates with typed values after the 24 hours, Send again
 - mail-phone-reply.md: Reply by WhatsApp from a Workspace conversation (WA14a #9405, WA14b #9446): text or a file inside the 24 hours, a template after them, the queue row, its outcome, Send again, the drawer
+- mail-priority-source.md: A support request's priority and source on its mail conversation (help centre HC7): columns, filter, pane select, first-answer hours per priority, the source label and its link back
 - mail-prs.md: Which PR built each slice of Workspace e-mail: incoming e-mail G1-G8, the E-mails screen WM1-WM14, a chat's mail tools MT1-MT6, a mailbox's features IB1-IB14, menu pin and dashboard card IM1-IM3 [decision: decisions-made-workspace-29.md]
 - mail-push-endpoint.md: A later push endpoint for Workspace e-mail (G9, POST /workspace/mail/inbound): when it would come, its design, the push transport value that waits for it
 - mail-remind-later.md: Remind me later (IB10): the pane's menu and times, ws_mail_reminders, what leaves the person's list and comes back unread, the wake, inbox kind mail_remind, step 11.0.212 [decision: decisions-made-schema-21.md, decisions-made-workspace-29.md]
