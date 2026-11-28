@@ -2079,6 +2079,17 @@
                         if (save && !save.disabled) {
                             save.click();
                         }
+                    },
+                    // A document's Picture button lists the pictures posted
+                    // in the channel; Upload takes one from the device.
+                    pictures: !data.channel_id ? null : function () {
+                        return api('ws_channel_files', { channel_id: data.channel_id }).then(function (list) {
+                            return (list.messages || []).filter(function (item) {
+                                return item.file && item.file.image && !item.deleted && /\.(png|jpe?g|gif)$/i.test(item.file.name || '');
+                            }).map(function (item) {
+                                return { name: item.file.name, url: item.file.url };
+                            });
+                        });
                     }
                 } : null);
 

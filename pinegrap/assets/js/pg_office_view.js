@@ -5289,6 +5289,47 @@
     // (includes/fn/office_docx_table.php).
     var DOC_TABLE_LIMITS = { rows: 20, columns: 10, widest: 63 };
 
+    // A picture put into a document: one at most 2 MB, those of one save
+    // at most 8 MB together, as the preview shows pictures (the writer's
+    // PG_OFFICE_MAX_IMAGE and PG_OFFICE_MAX_IMAGES).
+    var DOC_PICTURE_LIMITS = { one: 2 * 1024 * 1024, all: 8 * 1024 * 1024 };
+
+    // A picture's kind by its first bytes, as the writer knows it: 'png',
+    // 'jpeg' or 'gif'; '' for anything else.
+    function pictureType(bytes) {
+        var head = Array.prototype.slice.call(bytes || [], 0, 8);
+        var starts = function (list) {
+            return list.every(function (value, index) {
+                return head[index] === value;
+            });
+        };
+
+        if (starts([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])) {
+            return 'png';
+        }
+
+        if (starts([0xFF, 0xD8, 0xFF])) {
+            return 'jpeg';
+        }
+
+        return (starts([0x47, 0x49, 0x46, 0x38]) && (head[4] === 0x37 || head[4] === 0x39) && head[5] === 0x61) ? 'gif' : '';
+    }
+
+    // Why a picture of size bytes and kind type is not taken when those
+    // put in already come to total bytes: a key of the strings, '' when it
+    // is taken.
+    function pictureRefusal(type, size, total) {
+        if (!type) {
+            return 'doc_picture_type';
+        }
+
+        if (size > DOC_PICTURE_LIMITS.one) {
+            return 'doc_picture_large';
+        }
+
+        return (total + size > DOC_PICTURE_LIMITS.all) ? 'doc_picture_room' : '';
+    }
+
     // How many rows the size grid shows once a size of that many rows is
     // pointed at: eight, and one more than the size, up to the largest.
     function pickRows(rows) {
@@ -5607,7 +5648,7 @@
         // The paragraphs and tables added, each its own save entry: those
         // in a new cell go with their table's.
         function topAdded() {
-            return Array.prototype.filter.call(doc.querySelectorAll('.office-added, .office-added-table'), function (node) {
+            return Array.prototype.filter.call(doc.querySelectorAll('.office-added, .office-added-table, .office-added-picture'), function (node) {
                 return !(node.parentNode && node.parentNode.closest && node.parentNode.closest('.office-new-cell'));
             });
         }
@@ -7319,6 +7360,233 @@
             tableChanged(firstIn(table.rows[0].cells[0]));
         }
 
+        // Pictures put in on the page: a .office-added-picture after a
+        // paragraph (after its list, for a list item), named by data-t; its
+        // bytes in base64 and its description wait here for the save.
+        var pictures = {};
+        var pictureWindow = null;
+
+        // Why no picture can go after a paragraph, '' when one can: as a
+        // table, never in a new table, row or column.
+        function pictureSpot(node) {
+            return (node && node.closest('.office-new-cell')) ? (strings.doc_picture_inside || '') : tableRefusal(node);
+        }
+
+        function closePictureWindow(back) {
+            if (!pictureWindow) {
+                return;
+            }
+
+            var target = pictureWindow.target;
+
+            document.removeEventListener('mousedown', pictureWindow.outside, true);
+            pictureWindow.node.remove();
+            pictureWindow = null;
+            controls.picture.setAttribute('aria-expanded', 'false');
+
+            if (back && target && doc.contains(target)) {
+                enter(target, 'end');
+            }
+        }
+
+        // The bar's Picture button: the host's own picker when it has one
+        // (the file window), else a window of the pictures it lists (a
+        // channel's) with Upload. The picture goes after the paragraph open
+        // or picked when it was pressed.
+        function openPicture() {
+            closeBarMenu(false);
+            closeLinkWindow(false);
+            closeTableWindow(false);
+
+            if (pictureWindow) {
+                closePictureWindow(true);
+                return;
+            }
+
+            var target = blockNode();
+            var why = pictureSpot(target);
+
+            if (why) {
+                refuse(why);
+                return;
+            }
+
+            if (typeof (options || {}).pickPicture === 'function') {
+                Promise.resolve(options.pickPicture()).then(function (picked) {
+                    if (picked) {
+                        fetchPicture(target, picked);
+                    } else if (doc.contains(target)) {
+                        enter(target, 'end');
+                    }
+                }, function () {
+                    refuse(strings.doc_picture_failed || '');
+                });
+                return;
+            }
+
+            openPictureWindow(target);
+        }
+
+        function openPictureWindow(target) {
+            var anchor = controls.picture;
+            var node = el('div', 'pg-card office-link-window office-picture-window');
+            var list = el('div', 'office-picture-list', strings.doc_picture_loading || '');
+            var foot = el('div', 'office-link-foot');
+            var upload = el('button', 'pg-button pg-button-sm');
+            var cancel = el('button', 'pg-button pg-button-ghost pg-button-sm', strings.doc_link_cancel || '');
+            var input = el('input', 'd-none');
+
+            node.setAttribute('role', 'dialog');
+            node.setAttribute('aria-label', strings.doc_picture || '');
+            upload.type = 'button';
+            cancel.type = 'button';
+            input.type = 'file';
+            input.accept = 'image/png,image/jpeg,image/gif';
+            upload.appendChild(el('span', 'bi bi-upload'));
+            upload.appendChild(el('span', 'pg-btn-label', strings.doc_picture_upload || ''));
+            upload.firstChild.setAttribute('aria-hidden', 'true');
+            upload.addEventListener('click', function () {
+                input.click();
+            });
+            input.addEventListener('change', function () {
+                var file = input.files && input.files[0];
+
+                if (file) {
+                    closePictureWindow(false);
+                    takePicture(target, file, file.name);
+                }
+            });
+            cancel.addEventListener('click', function () {
+                closePictureWindow(true);
+            });
+            node.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape') {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    closePictureWindow(true);
+                }
+            });
+
+            foot.appendChild(upload);
+            foot.appendChild(el('span', 'office-link-gap'));
+            foot.appendChild(cancel);
+            node.appendChild(el('div', 'office-table-size', strings.doc_picture_choose || ''));
+            node.appendChild(list);
+            node.appendChild(foot);
+            node.appendChild(input);
+            bar.appendChild(node);
+            node.style.left = Math.max(0, Math.min(anchor.offsetLeft, bar.clientWidth - node.offsetWidth)) + 'px';
+            node.style.top = (anchor.offsetTop + anchor.offsetHeight + 4) + 'px';
+
+            pictureWindow = {
+                node: node,
+                target: target,
+                outside: function (event) {
+                    if (pictureWindow && !pictureWindow.node.contains(event.target) && event.target !== anchor && !anchor.contains(event.target)) {
+                        closePictureWindow(false);
+                    }
+                }
+            };
+
+            document.addEventListener('mousedown', pictureWindow.outside, true);
+            anchor.setAttribute('aria-expanded', 'true');
+            upload.focus({ preventScroll: true });
+
+            Promise.resolve(typeof (options || {}).pictures === 'function' ? options.pictures() : []).then(function (items) {
+                if (!pictureWindow || pictureWindow.node !== node) {
+                    return;
+                }
+
+                list.textContent = (items && items.length) ? '' : (strings.doc_picture_none || '');
+
+                (items || []).forEach(function (item) {
+                    var tile = el('button', 'office-picture-tile');
+                    var image = el('img');
+
+                    tile.type = 'button';
+                    tile.title = item.name || '';
+                    tile.setAttribute('aria-label', item.name || '');
+                    image.src = item.url;
+                    image.alt = '';
+                    image.loading = 'lazy';
+                    tile.appendChild(image);
+                    tile.addEventListener('click', function () {
+                        closePictureWindow(false);
+                        fetchPicture(target, item);
+                    });
+                    list.appendChild(tile);
+                });
+            }, function () {
+                list.textContent = strings.doc_picture_failed || '';
+            });
+        }
+
+        // A picture picked by its address ({url, name}) or given ({blob,
+        // name}), read here: only the bytes go into the file.
+        function fetchPicture(target, picked) {
+            (picked.blob ? Promise.resolve(picked.blob) : fetch(picked.url, { credentials: 'same-origin' }).then(function (answer) {
+                return answer.ok ? answer.blob() : Promise.reject(new Error(String(answer.status)));
+            })).then(function (blob) {
+                takePicture(target, blob, picked.name || '');
+            }, function () {
+                refuse(strings.doc_picture_failed || '');
+            });
+        }
+
+        // The picture checked as the writer checks it and drawn after the
+        // paragraph at once, one change of Undo.
+        function takePicture(target, blob, name) {
+            var reader = new FileReader();
+
+            reader.onerror = function () {
+                refuse(strings.doc_picture_failed || '');
+            };
+            reader.onload = function () {
+                var bytes = new Uint8Array(reader.result);
+                var type = pictureType(bytes);
+                var total = Array.prototype.reduce.call(doc.querySelectorAll('.office-added-picture'), function (sum, node) {
+                    return sum + pictures[node.getAttribute('data-t')].size;
+                }, 0);
+                var why = pictureRefusal(type, bytes.length, total) || (doc.contains(target) ? pictureSpot(target) : (strings.doc_pick || ''));
+
+                if (why) {
+                    refuse(fill(strings[why] || why, '2 MB').replace('{2}', '8 MB'));
+                    return;
+                }
+
+                var text = '';
+
+                for (var index = 0; index < bytes.length; index += 0x8000) {
+                    text += String.fromCharCode.apply(null, bytes.subarray(index, index + 0x8000));
+                }
+
+                oneChange(function () {
+                    insertPicture(target, type, window.btoa(text), String(name).replace(/\.[a-z0-9]+$/i, '').replace(/\s+/g, ' ').trim().slice(0, 255), bytes.length);
+                });
+            };
+            reader.readAsArrayBuffer(blob);
+        }
+
+        function insertPicture(node, type, data, name, size) {
+            closeEditor(true);
+
+            var position = node.getAttribute('data-p');
+            var holder = el('div', 'office-added-picture');
+            var image = el('img', 'office-img');
+            var place = (node.tagName === 'LI' && node.parentNode && /^(UL|OL)$/.test(node.parentNode.tagName)) ? node.parentNode : node;
+
+            holder.setAttribute('data-after', isNew(position) ? node.getAttribute('data-after') : position);
+            nameOf(holder, 'data-t', 'g');
+            // It takes the alignment of the paragraph it follows.
+            holder.style.textAlign = window.getComputedStyle(node).textAlign;
+            image.src = 'data:image/' + type + ';base64,' + data;
+            image.alt = name;
+            holder.appendChild(image);
+            pictures[holder.getAttribute('data-t')] = { data: data, name: name, size: size };
+            place.parentNode.insertBefore(holder, place.nextSibling);
+            tableChanged(node, true);
+        }
+
         // The colour, highlight or size all the selected text has; '' when
         // it has none, null when it differs. With only a caret, the one of
         // the character before it, which typed text takes (carryMarks()).
@@ -7482,9 +7750,9 @@
                 state.looks[position] = lookCopy(looks[position]);
             });
 
-            // Paragraphs and tables added, in reading order: a table before
-            // the paragraphs of its cells.
-            Array.prototype.forEach.call(doc.querySelectorAll('.office-added, .office-added-table'), function (node) {
+            // Paragraphs, tables and pictures added, in reading order: a
+            // table before the paragraphs of its cells.
+            Array.prototype.forEach.call(doc.querySelectorAll('.office-added, .office-added-table, .office-added-picture'), function (node) {
                 var key = node.getAttribute('data-p') || node.getAttribute('data-t');
 
                 state.added.push({
@@ -7624,7 +7892,7 @@
                 });
             });
 
-            Array.prototype.forEach.call(doc.querySelectorAll('.office-added, .office-added-table'), function (node) {
+            Array.prototype.forEach.call(doc.querySelectorAll('.office-added, .office-added-table, .office-added-picture'), function (node) {
                 var key = node.getAttribute('data-p');
 
                 node.parentNode.removeChild(node);
@@ -8784,6 +9052,32 @@
                 bar.appendChild(button);
             })();
 
+            // A picture after the paragraph open or picked, from the host's
+            // picker or the pictures it lists.
+            if (typeof (options || {}).pickPicture === 'function' || typeof (options || {}).pictures === 'function') {
+                (function () {
+                    var button = el('button', 'pg-icon-button pg-icon-button-sm');
+                    var glyph = el('span', 'bi bi-image');
+
+                    button.type = 'button';
+                    button.setAttribute('aria-haspopup', 'dialog');
+                    button.setAttribute('aria-expanded', 'false');
+                    button.setAttribute('aria-label', strings.doc_picture || '');
+                    button.title = strings.doc_picture || '';
+                    glyph.setAttribute('aria-hidden', 'true');
+                    button.appendChild(glyph);
+
+                    // A press keeps the caret on the sheet for the picker.
+                    button.addEventListener('mousedown', function (event) {
+                        event.preventDefault();
+                    });
+                    button.addEventListener('click', openPicture);
+
+                    controls.picture = button;
+                    bar.appendChild(button);
+                })();
+            }
+
             // The alignment of the paragraphs selected, or of the one open.
             var alignGroup = el('span', 'pg-seg');
 
@@ -8944,8 +9238,8 @@
                     items.push({ p: position, delete: true });
                 });
 
-                // Paragraphs and tables added, in reading order; a new
-                // table with its rows of cells.
+                // Paragraphs, tables and pictures added, in reading order;
+                // a new table with its rows of cells.
                 topAdded().forEach(function (node) {
                     if (freshTable(node)) {
                         var rows = Array.prototype.map.call(node.rows, function (row) {
@@ -8953,6 +9247,13 @@
                         });
 
                         items.push({ after: Number(node.getAttribute('data-after')), table: { rows: rows.length, columns: rows[0].length, cells: rows } });
+                        return;
+                    }
+
+                    if (node.classList.contains('office-added-picture')) {
+                        var picture = pictures[node.getAttribute('data-t')];
+
+                        items.push({ after: Number(node.getAttribute('data-after')), picture: { data: picture.data, name: picture.name } });
                         return;
                     }
 
@@ -9020,10 +9321,11 @@
             reset: function () {
                 closeEditor(false);
                 closeTableWindow(false);
+                closePictureWindow(false);
 
                 // Added paragraphs, tables, rows and columns go, deleted
                 // ones come back.
-                Array.prototype.forEach.call(doc.querySelectorAll('.office-added, .office-added-table, .office-new-row, .office-new-cell'), function (node) {
+                Array.prototype.forEach.call(doc.querySelectorAll('.office-added, .office-added-table, .office-added-picture, .office-new-row, .office-new-cell'), function (node) {
                     var key = node.getAttribute('data-p');
 
                     if (node.parentNode) {
@@ -9377,6 +9679,12 @@
             tableEntries: tableEntries,
             pickRows: pickRows,
             limits: DOC_TABLE_LIMITS
+        },
+        // A picture's kind by its first bytes and why one is refused.
+        docPicture: {
+            pictureType: pictureType,
+            pictureRefusal: pictureRefusal,
+            limits: DOC_PICTURE_LIMITS
         },
         // A paragraph's text read from its drawing while it is typed in,
         // and a point of that text found in the drawing again.

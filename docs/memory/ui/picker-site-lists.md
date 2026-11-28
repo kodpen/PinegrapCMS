@@ -5,7 +5,7 @@ module: picker, image_editor
 ---
 
 ## What opens the picker in the Artifact Canvas?
-- Import › From the site: kind `canvas_picture` (jpg, jpeg, png, gif, webp, svg); an SVG becomes its own layer, a picture a picture layer (`importPicked()`). The erased area's Picture: `canvas_photo` (no SVG).
+- Import › From the site: kind `canvas_picture` (jpg, jpeg, png, gif, webp, svg); an SVG becomes its own layer, a picture a picture layer (`importPicked()`). The erased area's Picture: `canvas_photo` (no SVG). A Word document's Picture in the file window: `office_picture` (png, jpg, jpeg, gif; `platform/office-docx-picture-bar.md`).
 - Import › Video from the site and a clip's Replace: `canvas_video` (`pg_image_editor_clip_types()`). Add sound: `canvas_sound` (`pg_image_editor_sound_types()`); the picker's Upload stands in for the box's From this computer.
 - All by id (`value` id): a pick becomes `{id, name, url, width, height, size, svg}` (`Editor.pickedFile()`), what the own lists handed on.
 

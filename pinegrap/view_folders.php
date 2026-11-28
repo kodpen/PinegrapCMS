@@ -15064,6 +15064,14 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     options = {
                         editable: true,
                         onSave: function () { saveFileEditor(); },
+                        // A document's Picture button picks from the
+                        // folders with the panel's picker; the view reads
+                        // the picked file's bytes.
+                        pickPicture: !window.pgPicker ? null : function () {
+                            return window.pgPicker.open({ kind: 'office_picture', title: OFFICE_STRINGS.doc_picture }).then(function (item) {
+                                return item ? { url: item.url, name: item.text } : null;
+                            });
+                        },
                         // The unsaved notice steps back when the last change
                         // is undone, as it does for the fields.
                         onChange: function () {

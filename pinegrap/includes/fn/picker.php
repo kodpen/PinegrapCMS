@@ -61,7 +61,8 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/picker_all.php');
  * channel_file is the Workspace writing box's "From the file manager";
  * canvas_picture (SVG too), canvas_photo, canvas_video and canvas_sound are
  * the Design Canvas's From the site lists, by id, in the types the editor
- * draws or plays.
+ * draws or plays; office_picture is a Word document's Picture in the file
+ * window, by id.
  *
  * @return array name => definition
  */
@@ -83,6 +84,9 @@ function pg_picker_kinds()
         'channel_file' => array_merge($file, array('upload' => false, 'channel' => true)),
         'canvas_picture' => array_merge($file, array('types' => array('jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'), 'pictures' => true)),
         'canvas_photo' => array_merge($file, array('types' => array('jpg', 'jpeg', 'png', 'gif', 'webp'), 'pictures' => true)),
+        // A picture put into a Word document from the file window: the
+        // types the document writer takes (office_docx_picture.php).
+        'office_picture' => array_merge($file, array('types' => array('png', 'jpg', 'jpeg', 'gif'), 'pictures' => true)),
         // The designer's "From a document" start (designer_document.php).
         'document' => array_merge($file, array('types' => array('docx', 'md', 'txt'), 'role' => 2)),
         'canvas_video' => array_merge($file, array('types' => function_exists('pg_image_editor_clip_types') ? pg_image_editor_clip_types() : array('mp4', 'm4v', 'webm'))),
