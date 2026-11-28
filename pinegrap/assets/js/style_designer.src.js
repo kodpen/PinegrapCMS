@@ -5430,6 +5430,28 @@ const StyleDesigner = (function () {
         return 'https://fonts.googleapis.com/css2?family=' + encodeURIComponent(name).replace(/%20/g, '+') + ':wght@300;400;500;600;700&display=swap';
     }
 
+    // The stylesheet URLs for one Google font of the design's assets
+    // (family, weights, enabled), in link order. Google answers 400 for a
+    // whole css2 request when the family lacks one of the weights asked, so
+    // the regular face is linked on its own first and the weighted request
+    // beside it: the family still loads and the browser draws a missing
+    // weight from the face it has. Twin: pg_google_font_hrefs() in
+    // includes/fn/designer.php.
+    function _sdGfHrefs(f) {
+        if (!f || f.enabled === false || !f.family || typeof f.family !== 'string') return [];
+        var base = 'https://fonts.googleapis.com/css2?family=' + encodeURIComponent(f.family);
+        var seen = {}, wts = [];
+        (Array.isArray(f.weights) ? f.weights : []).forEach(function (w) {
+            if (!/^\d+$/.test(String(w))) return;
+            w = parseInt(w, 10);
+            if (w >= 1 && w <= 1000 && !seen[w]) { seen[w] = true; wts.push(w); }
+        });
+        wts.sort(function (a, b) { return a - b; });
+        var hrefs = [base + '&display=swap'];
+        if (wts.length && !(wts.length === 1 && wts[0] === 400)) hrefs.push(base + ':wght@' + wts.join(';') + '&display=swap');
+        return hrefs;
+    }
+
     function injectGoogleFonts() {
         if (!canvasDoc) return;
         // Collect all fontFamily values in the current tree
@@ -33381,9 +33403,7 @@ const StyleDesigner = (function () {
         // ── CSS: Google Font links ──
         var gfHrefs = [];
         assets.gfFonts.forEach(function(f) {
-            if (f.enabled === false || !f.family) return;
-            var wts = (f.weights && f.weights.length) ? f.weights.join(';') : '400';
-            gfHrefs.push('https://fonts.googleapis.com/css2?family=' + encodeURIComponent(f.family) + ':wght@' + wts + '&display=swap');
+            gfHrefs = gfHrefs.concat(_sdGfHrefs(f));
         });
         _sdSyncCanvasLinks('pg-gf-', gfHrefs, false);
 
@@ -33591,9 +33611,9 @@ const StyleDesigner = (function () {
             if (!ownIcons) head.push(row('link', [['rel', 'stylesheet'], ['href', _sdIconsUrl()]]));
         }
         assets.gfFonts.forEach(function (f) {
-            if (f.enabled === false || !f.family) return;
-            var wts = (f.weights && f.weights.length) ? f.weights.join(';') : '400';
-            head.push(row('link', [['rel', 'stylesheet'], ['href', 'https://fonts.googleapis.com/css2?family=' + encodeURIComponent(f.family) + ':wght@' + wts + '&display=swap']]));
+            _sdGfHrefs(f).forEach(function (href) {
+                head.push(row('link', [['rel', 'stylesheet'], ['href', href]]));
+            });
         });
         var inlineNames = [], userStyles = false;
         cssRows.forEach(function (f) {
@@ -79826,9 +79846,9 @@ const StyleDesigner = (function () {
         // Google Fonts
         var _pvFontLinks = '';
         _pvAssets.gfFonts.forEach(function(f) {
-            if (f.enabled === false || !f.family) return;
-            var wts = (f.weights && f.weights.length) ? f.weights.join(';') : '400';
-            _pvFontLinks += '    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=' + encodeURIComponent(f.family) + ':wght@' + wts + '&display=swap">\n';
+            _sdGfHrefs(f).forEach(function (href) {
+                _pvFontLinks += '    <link rel="stylesheet" href="' + href + '">\n';
+            });
         });
         // External CSS links
         var _pvExtCss = '';
