@@ -20289,10 +20289,10 @@ a.ws-chip-message:hover,
     grid-row: 1;
   }
 }
-/* An empty channel pane (Tasks, Decisions, Files, Summary, Board, Memory)
-   shows its empty state in a dashed card. Other screens' .ws-empty (Today,
-   My tasks, the kit's panels) keep their own look. */
-.ws-pane:is(.ws-pane-tasks, .ws-pane-decisions, .ws-pane-files, .ws-pane-summary, .ws-pane-board, .ws-pane-memory) .ws-empty {
+/* An empty channel pane (Tasks, Decisions, Files, Notes, Summary, Board,
+   Memory) shows its empty state in a dashed card. Other screens' .ws-empty
+   (Today, My tasks, the kit's panels) keep their own look. */
+.ws-pane:is(.ws-pane-tasks, .ws-pane-decisions, .ws-pane-files, .ws-pane-notes, .ws-pane-summary, .ws-pane-board, .ws-pane-memory) .ws-empty {
   border: 1px dashed var(--pg-border-color);
   border-radius: .875rem;
   background: var(--pg-card-bg);
@@ -22401,9 +22401,17 @@ button.ws-file-name {
   gap: .75rem;
 }
 /* The Notes tab (PGWsChannelNotes.tab()): its bar, then the Files tab's
-   rows with the note icon in place of the extension. */
+   rows with the note icon in place of the extension. The bar and the list
+   stand apart by the Files tab's gap, and the search and Write a note by
+   the toolbar's own. */
+.ws-pane-notes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ws-space-3, .75rem);
+}
 .ws-pane-notes .ws-cn-bar {
   flex-wrap: nowrap;
+  gap: var(--ws-space-3, .75rem);
 }
 .ws-pane-notes .ws-cn-bar .ws-bar-search {
   min-width: 0;

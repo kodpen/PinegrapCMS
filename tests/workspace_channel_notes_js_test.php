@@ -338,7 +338,7 @@ console.log(JSON.stringify({
 	deleter: rowItems({ can_delete: true }, true),
 	reader: rowItems({ can_delete: false }, true),
 	noExport: rowItems({ can_delete: false }, false),
-	meta: rowMeta({ changed_by: "@mehmet", updated: "5 min" }, t),
+	meta: rowMeta({ changed_by: "Changed by @mehmet", updated: "5 min" }, t),
 	metaTime: rowMeta({ changed_by: "", updated: "5 min" }, t)
 }));');
 
@@ -350,7 +350,8 @@ console.log(JSON.stringify({
 	pg_assert_same(array('open', 'versions', 'copy', 'export', 'delete'), $result['deleter'], 'Open, Versions, Copy to my notes, Export, Delete for who may delete');
 	pg_assert_same(array('open', 'versions', 'copy', 'export'), $result['reader'], 'no Delete for anybody else');
 	pg_assert_same(array('open', 'versions', 'copy'), $result['noExport'], 'no Export where the screen has no export address');
-	pg_assert_same('cn_changed_by(@mehmet) · 5 min', $result['meta'], '"Changed by <name> · <time>"');
+	pg_assert_same('Changed by @mehmet · 5 min', $result['meta'], 'the server\'s "Changed by <name>" printed once, then the time');
+	pg_assert_true(strpos($result['meta'], 'cn_changed_by') === false, 'the label is not wrapped in the label again');
 	pg_assert_same('5 min', $result['metaTime'], 'nobody named: the time alone');
 }
 
@@ -368,7 +369,7 @@ function test_workspace_channel_notes_js_tab_wiring()
 	pg_assert_contains("['notes', counts.notes, 'cn_tab_count']", $workspace, 'its mark counts the notes');
 	pg_assert_contains("'owned'        => ws_note_channel_of(\$note) > 0,", $notes, 'the card map says a note is the channel\'s');
 
-	foreach (array('cn_written_by', 'cn_changed_by', 'cn_tab', 'cn_tab_count', 'cn_search', 'cn_open', 'cn_none', 'cn_none_found', 'cn_older', 'cn_delete_confirm') as $key) {
+	foreach (array('cn_written_by', 'cn_tab', 'cn_tab_count', 'cn_search', 'cn_open', 'cn_none', 'cn_none_found', 'cn_older', 'cn_delete_confirm') as $key) {
 		pg_assert_contains("'" . $key . "'", $notes, 'the string ' . $key . ' is sent to the screen');
 	}
 }

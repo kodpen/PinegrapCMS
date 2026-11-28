@@ -3761,7 +3761,6 @@ function ws_notes_js_strings()
         'cn_put_back_done'      => lang('The version was put back.'),
         // A channel's own notes: the card's foot and the Notes tab.
         'cn_written_by'         => ws_js_template('Written by {var:1}', 1),
-        'cn_changed_by'         => ws_js_template('Changed by {var:1}', 1),
         'cn_tab'                => lang('Notes'),
         'cn_tab_count'          => ws_js_template('{var:1} notes', 1),
         'cn_search'             => lang('Search the titles'),
