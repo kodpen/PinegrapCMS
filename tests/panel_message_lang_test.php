@@ -29,7 +29,7 @@ function test_panel_message_lang_software_update_steps()
 
 	// The step is validated before the switch, so these two never reach a screen.
 	pg_assert_same(array('Invalid step.', 'Crashed.'), $matches[1], 'software.php: bare English step messages');
-	pg_assert_contains("lang(array('string' => 'Error while get files from the update server.{var:1}', 'vars' => array(pg_curl_tls_hint(\$curl_errno, true))))", $source);
+	pg_assert_false(strpos($source, 'pg_curl_run(') !== false, 'software.php: the package comes only through pg_vendor_update_download()');
 
 	$source = panel_message_lang_source('includes/fn/update.php');
 	pg_assert_true(!preg_match("/\\\$failure\\['message'\\] = (?!lang\\()/", $source), 'update.php: an extraction failure message outside lang()');

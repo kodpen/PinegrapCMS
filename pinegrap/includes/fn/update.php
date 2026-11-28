@@ -445,23 +445,6 @@ function pg_curl_run($method, $url, $options = array())
 }
 
 /**
- * The pg_curl_run() options of a licence server request ($data is the JSON
- * body): the explicit Content-Length both licence checks always sent, 10 s
- * timeouts, a fresh connection, $follow https redirects at most.
- */
-function pg_license_request_options($data, $follow)
-{
-    return array(
-        'body'            => $data,
-        'headers'         => array('Content-Type: application/json', 'Content-Length: ' . strlen($data)),
-        'timeout'         => 10,
-        'connect_timeout' => 10,
-        'forbid_reuse'    => true,
-        'follow'          => (int) $follow,
-    );
-}
-
-/**
  * The pg_curl_run() options of migration.php's request to the source site's
  * API ($data is the JSON body): the explicit Content-Length it always sent,
  * 60 s, a fresh connection, no redirect. The operator types the source
@@ -1452,29 +1435,6 @@ function pg_update_channel()
     return 'stable';
 }
 
-/**
- * The REQUEST value the update server answers a version question with.
- *
- * Beta builds are published under their own key so that a stable site never
- * sees them: asking for latest_version is asking "what should everyone be
- * running", and that has to keep meaning exactly that.
- */
-function pg_update_request_key()
-{
-    return (pg_update_channel() === 'beta') ? 'latest_beta_version' : 'latest_version';
-}
-
-/**
- * The package file for this channel, used both as the name to download from
- * the update server and as the name it is written under while it is unpacked.
- * The two must not drift apart: the replace step opens the file the download
- * step wrote.
- */
-function pg_update_package_file()
-{
-    return (pg_update_channel() === 'beta') ? 'pinegrap_software_update_beta.zip' : 'pinegrap_software_update.zip';
-}
-
 function pg_looks_like_zip($bytes)
 {
     if (!is_string($bytes) || strlen($bytes) < 4) {
@@ -1758,24 +1718,14 @@ function pg_extract_archive($archive_path, $destination)
 /**
  * The version the update server offers this installation's channel.
  *
- * With PG_VENDOR_API_V1 on, the Kodpen API is asked
- * (pg_vendor_release_check()) and the answer also has 'decision', what the
- * release offers in $mode (pg_vendor_release_offer()); an unusable answer is
- * curl_error when no answer came, else invalid_response.
- *
- * Only with the switch off is the old api2 server asked
- * (pg_update_request_key()): the installation's details posted as JSON, a
- * verified certificate (pg_curl_tls()), the proxy when there is one, and this
- * installation's User-Agent - sent with none, a request looks like an
- * anonymous client to the update server's firewall and is rejected.
+ * The Kodpen API is asked (pg_vendor_release_check()) and the answer also
+ * has 'decision', what the release offers in $mode
+ * (pg_vendor_release_offer()).
  *
  * 'error' is '' on success, or:
  *   curl_missing      cURL is not installed
- *   curl_error        the server could not be reached ('curl_errno',
- *                     'curl_error')
- *   http_error        the server answered with a status outside 2xx
- *                     ('http_status')
- *   invalid_response  the answer named no version
+ *   curl_error        no answer came ('curl_errno', 'curl_error')
+ *   invalid_response  the answer could not be used
  *
  * @param string $mode 'update', or 'repair' for Repair Software
  * @return array('ok' => bool, 'version' => string, 'error' => string,
@@ -1798,78 +1748,19 @@ function pg_update_server_version($mode = 'update')
         return $result;
     }
 
-    if (PG_VENDOR_API_V1 === true) {
-        $check = pg_vendor_release_check($mode);
+    $check = pg_vendor_release_check($mode);
 
-        $result['decision'] = $check['decision'];
-        $result['curl_errno'] = $check['errno'];
-        $result['curl_error'] = $check['error'];
+    $result['decision'] = $check['decision'];
+    $result['curl_errno'] = $check['errno'];
+    $result['curl_error'] = $check['error'];
 
-        if ($check['decision']['outcome'] === 'unusable') {
-            $result['error'] = ($check['errno'] !== 0) ? 'curl_error' : 'invalid_response';
-            return $result;
-        }
-
-        $result['ok'] = true;
-        $result['version'] = is_array($check['decision']['release']) ? $check['decision']['release']['version'] : '';
-
-        return $result;
-    }
-
-    $request = array();
-    $request['hostname'] = HOSTNAME_SETTING;
-    $request['url'] = URL_SCHEME . HOSTNAME_SETTING . PATH;
-    $request['version'] = VERSION;
-    $request['edition'] = EDITION;
-    $request['uname'] = function_exists('php_uname') ? php_uname() : PHP_OS; // disable_functions on some hosts
-    $request['os'] = PHP_OS;
-    $request['web_server'] = $_SERVER['SERVER_SOFTWARE'];
-    $request['php_version'] = phpversion();
-    $request['mysql_version'] = db("SELECT VERSION()");
-    $request['installer'] = INSTALLER;
-    $request['private_label'] = PRIVATE_LABEL;
-    $data = encode_json($request);
-    // Beta sites ask their own question; see pg_update_channel().
-    $REQUEST = pg_update_request_key();
-
-    // Verify the certificate. See pg_curl_tls() for why this matters most
-    // on the update and licence channel.
-    $answer = pg_curl_run('POST', 'https://www.kodpen.com/api2?REQUEST=' . $REQUEST, array(
-        'body'            => $data,
-        'headers'         => array(
-            'Content-Type: application/json',
-            'Content-Length: ' . strlen($data)
-        ),
-        'timeout'         => 10,
-        'connect_timeout' => 10,
-        'forbid_reuse'    => true,
-    ));
-    $result['curl_errno'] = $answer['errno'];
-    $result['curl_error'] = $answer['error'];
-
-    if ($answer['errno'] !== 0) {
-        $result['error'] = 'curl_error';
-        return $result;
-    }
-
-    // An error page (a 500 with an HTML or text body) is the server's
-    // failure, not an answer to read.
-    $result['http_status'] = (int) $answer['status'];
-
-    if (!$answer['ok']) {
-        $result['error'] = 'http_error';
-        return $result;
-    }
-
-    $response = decode_json($answer['body']);
-
-    if (!is_array($response) || !isset($response['version'])) {
-        $result['error'] = 'invalid_response';
+    if ($check['decision']['outcome'] === 'unusable') {
+        $result['error'] = ($check['errno'] !== 0) ? 'curl_error' : 'invalid_response';
         return $result;
     }
 
     $result['ok'] = true;
-    $result['version'] = trim((string) $response['version']);
+    $result['version'] = is_array($check['decision']['release']) ? $check['decision']['release']['version'] : '';
 
     return $result;
 }
@@ -2061,109 +1952,22 @@ function pg_update_check_error_text($details)
 }
 
 /**
- * Whether the software may be repaired with the package the update server
- * offers, and what to tell the person who asked.
+ * Why Repair Software is refused while update checks are off in
+ * data/config.php (SOFTWARE_UPDATE_CHECK false): the repair talks to the same
+ * server the operator chose not to ask. A release that is missing or older
+ * than this installation is refused by pg_vendor_release_offer().
  *
- * The repair downloads the channel's current package and writes it over the
- * software, so it is refused when:
- *   - update checks are off in data/config.php (SOFTWARE_UPDATE_CHECK false):
- *     the repair talks to the same server the operator chose not to ask;
- *   - the server names no version;
- *   - the server's version is older than this installation: writing it over
- *     newer files would take the code back below the database's schema.
- * The same version repairs in place; a newer one also updates, and the
- * upgrade screen that follows applies its schema steps.
- *
- * No database or network access.
- *
- * @param string $server_version  what the update server offers ('' if none)
- * @param string $installed       VERSION
- * @param bool   $checks_enabled  false when SOFTWARE_UPDATE_CHECK is false
- * @return array('ok' => bool, 'message' => string, 'newer' => bool)
+ * @return string
  */
-function pg_update_repair_decision($server_version, $installed, $checks_enabled)
+function pg_update_repair_checks_off_message()
 {
-    $server_version = trim((string) $server_version);
-    $installed = (string) $installed;
-
-    if (!$checks_enabled) {
-        return array(
-            'ok' => false,
-            'message' => lang('Software update checks are turned off in data/config.php (SOFTWARE_UPDATE_CHECK), and the repair uses the same server. Turn them on to repair.'),
-            'newer' => false,
-        );
-    }
-
-    if (preg_match('/^\d+(\.\d+)*$/', $server_version) !== 1) {
-        return array(
-            'ok' => false,
-            'message' => lang('The update server did not offer a version for this channel, so the software cannot be repaired now.'),
-            'newer' => false,
-        );
-    }
-
-    if (version_compare($server_version, $installed, '<')) {
-        return array(
-            'ok' => false,
-            'message' => lang(array(
-                'string' => 'The update server offers {var:1}, which is older than this installation ({var:2}). The software cannot be repaired until the server carries this version or a newer one.',
-                'vars' => array($server_version, $installed),
-            )),
-            'newer' => false,
-        );
-    }
-
-    if (version_compare($server_version, $installed, '>')) {
-        return array(
-            'ok' => true,
-            'message' => lang(array(
-                'string' => 'The server has {var:1}; the files will be replaced with it and the site updated. Downloading...',
-                'vars' => array($server_version),
-            )),
-            'newer' => true,
-        );
-    }
-
-    return array(
-        'ok' => true,
-        'message' => lang(array('string' => 'Downloading {var:1}...', 'vars' => array($server_version))),
-        'newer' => false,
-    );
-}
-
-/**
- * Whether the version the update server offers is newer than the installed
- * one: numerically, part by part, whatever the number of parts. A version of
- * fewer than three parts (the 2026 release) once made the three-part
- * comparison read a part that is not there and warn. Anything that is not
- * digits and dots (an empty answer, an error page, a list) offers nothing.
- *
- * No database or network access.
- *
- * @param mixed  $server_version what the update server offers
- * @param string $installed      VERSION
- * @return bool
- */
-function pg_update_version_newer($server_version, $installed)
-{
-    if (!is_scalar($server_version)) {
-        return false;
-    }
-
-    $server_version = trim((string) $server_version);
-
-    if (preg_match('/^\d+(\.\d+)*$/', $server_version) !== 1) {
-        return false;
-    }
-
-    return version_compare($server_version, trim((string) $installed), '>');
+    return lang('Software update checks are turned off in data/config.php (SOFTWARE_UPDATE_CHECK), and the repair uses the same server. Turn them on to repair.');
 }
 
 // ----------------------------------------------------------------------------
 // The Kodpen API's release check (GET /releases/latest)
 // ----------------------------------------------------------------------------
-// Asked instead of api2 once PG_VENDOR_API_V1 is on (includes/fn/vendor_api.php);
-// the cases come from tests/fixtures/vendor_api/update_steps.json.
+// The cases come from tests/fixtures/vendor_api/update_steps.json.
 
 /**
  * The path of GET /releases/latest for a channel, with from when the

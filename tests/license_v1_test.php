@@ -77,7 +77,7 @@ function test_license_v1_map_reads_nothing_but_an_answer()
 
 	pg_assert_same($blank, pg_license_map_v1(array()), 'no answer at all');
 	pg_assert_same($blank, pg_license_map_v1(array('ok' => false, 'status' => 0, 'body' => '', 'errno' => 0,
-		'error' => 'The Kodpen API client is switched off.', 'content_type' => '')), 'a call refused before cURL');
+		'error' => 'The site name cannot be sent to the Kodpen API.', 'content_type' => '')), 'a call refused before cURL');
 
 	// A schema-valid body cut short by the transfer is no answer.
 	$body = '{"license":{"status":"active","valid_until":"2027-01-01","type":"premium","sites":{"used":1,"total":1}}}';

@@ -259,18 +259,41 @@ function test_output_license_card_asks_again_after_the_old_server()
 	pg_assert_contains('check_license_again=1', $old, 'Check License');
 }
 
-// With the switch on, a state without source 'v1' is asked again at once;
-// the old server's call stays as it was behind the switch.
+// The licence check asks only the Kodpen API: a state without source 'v1'
+// is asked again at once, and no file under pinegrap/ calls the api2 server
+// or reads the switch any more (the root download_assistant.php keeps its
+// api2 call).
 function test_output_license_check_v1_branch_behind_the_switch()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/output.php');
 
-	pg_assert_contains("\$license_v1 = defined('PG_VENDOR_API_V1') && (PG_VENDOR_API_V1 === true);", $source, 'read from the switch');
-	pg_assert_contains("if (\$license_v1 && ((\$_SESSION['software']['settings']['license']['source'] ?? '') !== 'v1')) {", $source, 'an old state is asked again');
+	pg_assert_contains("if ((\$_SESSION['software']['settings']['license']['source'] ?? '') !== 'v1') {", $source, 'an old state is asked again');
 	pg_assert_contains("pg_vendor_api_request('POST', pg_vendor_api_url('/licenses/verify'),", $source, 'the v1 call');
 	pg_assert_contains('$decoded = pg_license_map_v1($answer);', $source, 'read by the mapping');
 	pg_assert_contains('if (pg_license_key_valid($license_key)) {', $source, 'a key outside the alphabet is not sent');
-	pg_assert_contains("'https://www.kodpen.com/api2?", $source, 'the old server while the switch is off');
+	pg_assert_false(strpos($source, '$license_v1') !== false, 'no switch read in the licence check');
+
+	$found = array();
+	$files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(PG_FUNCTIONS_DIR, FilesystemIterator::SKIP_DOTS));
+
+	foreach ($files as $file) {
+		if (substr($file->getFilename(), -4) !== '.php') {
+			continue;
+		}
+
+		$text = (string) file_get_contents($file->getPathname());
+
+		if ((strpos($text, 'kodpen.com/api2') !== false) || preg_match('/PG_VENDOR_API_V1\s*[!=]==|defined\(\'PG_VENDOR_API_V1\'\)/', $text)) {
+			$found[] = substr($file->getPathname(), strlen(PG_FUNCTIONS_DIR) + 1);
+		}
+	}
+
+	sort($found);
+	pg_assert_same(array(), $found, 'no api2 call and no switch read in pinegrap/');
+
+	foreach (array('pg_license_request_options', 'pg_update_request_key', 'pg_update_package_file', 'pg_update_version_newer', 'pg_update_repair_decision') as $function) {
+		pg_assert_false(function_exists($function), $function . ' is gone');
+	}
 }
 
 function test_output_page_fact_page_encodes_the_name_and_names_a_missing_page()
