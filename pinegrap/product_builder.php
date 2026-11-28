@@ -7508,16 +7508,6 @@ function pg_pb_validate_product_post($user, $product_id = 0)
         output_error(lang(array('string' => '{var:1} is too large.', 'vars' => array(lang('Extra Shipping Cost')))) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
     }
 
-    // A fixed price by market that is not an amount is refused before
-    // anything is written, naming the market.
-    if (pg_market_prices_ready()) {
-        $market_prices_read = pg_market_prices_posted($_POST, pg_market_list());
-
-        if ($market_prices_read['refused']) {
-            output_error(lang(array('string' => 'The price for {var:1} is not an amount.', 'vars' => array(h(implode(', ', $market_prices_read['refused']))))) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
-        }
-    }
-
     // A "was" price the column cannot hold is refused before anything is
     // written: the session is not strict, and MySQL would store the top of
     // the column instead without a word.
@@ -7653,6 +7643,16 @@ function pg_pb_validate_product_post($user, $product_id = 0)
 
         if (!$stock_check['ok']) {
             output_error(lang('Enter an inventory quantity.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+        }
+    }
+
+    // A fixed price by market that is not an amount is refused before
+    // anything is written, naming the market.
+    if (pg_market_prices_ready()) {
+        $market_prices_read = pg_market_prices_posted($_POST, pg_market_list());
+
+        if ($market_prices_read['refused']) {
+            output_error(lang(array('string' => 'The price for {var:1} is not an amount.', 'vars' => array(h(implode(', ', $market_prices_read['refused']))))) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
         }
     }
 }
