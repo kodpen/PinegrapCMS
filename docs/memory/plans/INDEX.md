@@ -78,6 +78,8 @@
 - panel-language-packs.md: Plan (owner 2026-11-27, poll 247): the panel in further languages, first the mechanism (one list of languages, the column's type, the checks, the pack tool); German follows in its own plan
 - parasut-devhub-connection.md: Plan (2026-11-25): connecting Paraşüt with a client from its Developer Portal (DevHub): the registered redirect address, sign-in at id.parasut.com with PKCE, short tokens; step PD1
 - parasut-devhub-staging.md: Plan (owner 2026-11-26): Paraşüt's test environment (staging) for a Developer Portal client: the choice on Paraşüt's page of Connections, the sign-in host, the mark on the status line; step PS1
+- person-status-screens.md: Plan person-status, in words: the Status dialog, where a person opens it, the mark beside a name, the person card's line, the composer's line and the line under an agent question
+- person-status.md: Plan (owner 2026-11-28): a person's own status (kind, note, end time) shown beside their name and told to agents in each brief, in ws_profiles.status; steps PS1 to PS4
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
 - sales-channels-global-census-amazon.md: Census (2026-11-27): Amazon's Selling Partner API (SP-API) as its developer pages say it: connecting a seller, listings, stock and price, orders and shipment, registering an application, fees
 - sales-channels-global-census-etsy.md: Census (2026-11-27): Etsy's Open API v3: connecting a shop with PKCE, listings with uploaded images, stock and price, receipts and shipment, limits for sellers in Turkey, registering

@@ -380,6 +380,7 @@
 - decisions-made-schema-54.md: Decisions made, schema part 54 (2026-11-27 on): the help centre's priority, source and kb_votes; the markets' tables and an order's charged currency; one table for the accounting sync
 - decisions-made-schema-55.md: Decisions made, schema part 55 (2026-11-27 on): automatic tax gets a rate class on the product and the country a line was taxed in on the order line
 - decisions-made-schema-56.md: Decisions made, schema part 56 (2026-11-28 on): files sent together in a channel become one group by the column ws_messages.file_group and its key (poll 255)
+- decisions-made-schema-57.md: Decisions made, schema part 57 (2026-11-28 on): a person's own status (available, busy, out, sleeping) that agents read, kept in the column ws_profiles.status
 - decisions-made-schema-6.md: Decisions list, schema part 6 (2026-10-30 midday on): district and plate_code, iys_sms_status, form_fields.rules, the marketplace auto-invoice switch, erp_quote_links, erp_quote_templates
 - decisions-made-schema-7.md: Decisions list, schema part 7 (2026-10-31 on): SMS campaign tables; image versions table in principle; ws_file_edits.redacted for a redacted Workspace replace
 - decisions-made-schema-8.md: Decisions list, schema part 8 (2026-11-02 on): tables and columns of the 2026-11 feature plans (#5032-#5042) and the Assistant card summary columns (#5014, #5227)
