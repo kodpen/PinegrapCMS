@@ -103,8 +103,10 @@ function test_support_requests_number()
 
 function test_support_requests_account_view_and_section()
 {
+	// The answer at 2023-11-15 12:00 UTC: date() formats in the runner's
+	// timezone, and noon falls on the same date from UTC-11 to UTC+11.
 	$rows = array(
-		array('id' => 7, 'subject' => 'Broken <b>mug</b>', 'status' => 'waiting', 'created_at' => 1700000000, 'last_out_at' => 1700086400, 'last_in_at' => 1700000000),
+		array('id' => 7, 'subject' => 'Broken <b>mug</b>', 'status' => 'waiting', 'created_at' => 1700000000, 'last_out_at' => 1700049600, 'last_in_at' => 1700000000),
 		array('id' => 8, 'subject' => '', 'status' => 'open', 'created_at' => 1700100000, 'last_out_at' => 0, 'last_in_at' => 1700100000),
 	);
 	$view = pg_support_request_account_view($rows, support_requests_test_key(), 'https://shop.test/pinegrap/support_request.php', 'Y-m-d');
