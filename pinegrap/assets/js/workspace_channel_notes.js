@@ -186,13 +186,16 @@
         return (current === 'notes') || (!!counts && (counts.notes > 0));
     }
 
-    // A row's meta line: who changed it last and when. Pure.
+    // A row's meta line: who changed it last and when. The server's
+    // changed_by already carries its label ("Changed by @name",
+    // ws_note_changed_by_words()), so it is printed as it comes, never
+    // wrapped in the label again. Pure.
     function rowMeta(note, t) {
         if (!note || !note.changed_by) {
             return note && note.updated ? note.updated : '';
         }
 
-        return t('cn_changed_by', note.changed_by) + (note.updated ? ' · ' + note.updated : '');
+        return note.changed_by + (note.updated ? ' · ' + note.updated : '');
     }
 
     // A Bootstrap 6 dialog with a header, a body and a footer, added to the

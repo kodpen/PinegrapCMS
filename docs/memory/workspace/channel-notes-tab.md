@@ -11,7 +11,11 @@ description: A channel's Notes tab (PGWsChannelNotes.tab()), the panel action ws
 - A bar (`pg-toolbar ws-pane-toolbar ws-cn-bar`): a search box over the titles ("Search the titles"), "Write a note" at its end for who may post.
 - The Files tab's rows (`ws-file-list`, `ws-file-row`): the note icon and title, "Changed by <name> · <time>", a ⋯ menu; the row opens the note (`openNoteView`). Newest change first, 50 a page, "Older notes" for the next.
 - Row menu: Open, Versions (the card's drawer), Copy to my notes (`channel-note-owned.md`), Export ("Download as Markdown", `workspace_notes_export.php?note=`), Delete (`can_delete`: the writer and the channel's managers, `ws_note_channel_may_delete()`).
-- Empty: "No notes have been written here yet." / "No note has that in its title."
+- Empty: "No notes have been written here yet." / "No note has that in its title.", in the channel panes' dashed card.
+- Spacing: the pane is a flex column with the Files tab's gap (`--ws-space-3`) between the bar and the list; the bar keeps the same gap between the search and "Write a note". Before PR #<this>, the bar, the list and the button touched.
+
+## Why is "Changed by" printed only once?
+- The server's `changed_by` already carries its label: `ws_note_changed_by_words()` returns `lang('Changed by {var:1}')` with the name. `rowMeta()` prints it as it comes; wrapping it in a label again showed "Değiştiren: Değiştiren: @name" (and "Changed by Changed by" in English) until PR #<this>. No `cn_changed_by` string is sent to the screen any more.
 
 ## What reads the list?
 - `ws_note_channel_page_rows($channel_id, $options)`: `owner_channel_id` = the channel, title search, `updated_at DESC, id DESC`, the notes list's cursor position in group 0. `ws_note_channel_page()` presents them with the channel's access (`edit` for who may post, else `view`) and `can_delete`.
