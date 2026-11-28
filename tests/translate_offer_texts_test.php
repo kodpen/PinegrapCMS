@@ -41,7 +41,7 @@ function test_translate_offer_wiring()
 	pg_assert_true(in_array('offer', $groups['catalog']['types'], true), 'the catalog group carries offers');
 	$content = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/translate/content.php');
 	pg_assert_contains("pg_tr_store_owner_type('offer', \$by_owner, 'content')", $content);
-	pg_assert_contains("FROM offers WHERE status = 'enabled' ORDER BY id", $content);
+	pg_assert_contains("FROM offers WHERE status = 'enabled'\"", $content);
 	$context = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/translate/context.php');
 	pg_assert_contains("'offer'         => array(\"SELECT id, code AS label FROM offers WHERE id IN (%s)\", lang('Offer')),", $context);
 	pg_assert_same(2, substr_count($context, "'attribute' => array(), 'offer' => array(),"), 'owners and names know the type');

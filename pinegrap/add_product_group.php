@@ -253,6 +253,11 @@ $liveform->remove_form();
     
     log_activity( lang(array('string'=>'product group ({var:1}) was created','vars'=>array($_POST['name']) )) , $_SESSION['sessionusername']);
 
+    // Translate on save: the new group's texts go to the engine.
+    if (function_exists('pg_tr_owner_auto_saved')) {
+        pg_tr_owner_auto_saved('product_group', (int) $product_group_id, (int) $user['id']);
+    }
+
     // Back to the Catalog Manager, which shows the notice as a toast.
     $notice_liveform = new liveform('view_product_groups');
     $notice_liveform->add_notice(lang(array('string' => 'The product group, {var:1}, was added.', 'vars' => $_POST['name'])));

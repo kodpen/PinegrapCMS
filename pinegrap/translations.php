@@ -61,16 +61,26 @@ $text_lang = function ($code) {
     return ' lang="' . h($code) . '"' . ((isset($known[$code]) && ($known[$code][5] === 1)) ? ' dir="rtl"' : '');
 };
 
-foreach (pg_tr_languages() as $code => $row) {
+// Every target language, the ones not served as well: a language is
+// translated here before it goes live (Site Settings > Languages and
+// Translation turns "Served" on).
+$served_first = '';
+
+foreach (pg_tr_languages(false) as $code => $row) {
     if ($code !== $source) {
         $targets[$code] = $row;
+
+        if (($served_first === '') && ((int) $row['enabled'] === 1)) {
+            $served_first = (string) $code;
+        }
     }
 }
 
 $language = (isset($_GET['language']) && is_string($_GET['language'])) ? trim($_GET['language']) : '';
 
+// With no language asked for, the first one served opens.
 if (!isset($targets[$language])) {
-    $language = $targets ? (string) key($targets) : '';
+    $language = ($served_first !== '') ? $served_first : ($targets ? (string) key($targets) : '');
 }
 
 $page_id = (isset($_GET['page_id']) && is_string($_GET['page_id'])) ? (int) $_GET['page_id'] : 0;
@@ -217,6 +227,7 @@ if ($language !== '') {
 $stats = ($language !== '') ? pg_tr_page_stats($language) : array();
 $site_stats = ($language !== '') ? pg_tr_language_stats($language) : array('total' => 0, 'translated' => 0, 'reviewed' => 0, 'machine' => 0, 'pending' => 0);
 $language_row = ($language !== '') ? $targets[$language] : null;
+$language_served = $language_row && ((int) $language_row['enabled'] === 1);
 $engines = pg_tr_engines();
 $engine_key = $language_row ? (string) $language_row['engine'] : 'manual';
 $engine = isset($engines[$engine_key]) ? $engines[$engine_key] : $engines['manual'];
@@ -496,7 +507,9 @@ foreach ($targets as $code => $row) {
     $output_language_menu .= '<li><a class="menu-item d-flex align-items-center gap-3' . (($code === $language) ? ' active" aria-current="page' : '') . '" href="' . h($url(array('language' => $code, 'page_id' => 0, 'group' => '', 'p' => 0))) . '">'
         . '<span class="flex-grow-1"' . $text_lang($code) . '>' . h(pg_tr_language_label($code)) . '</span>'
         . '<span class="pg-text-meta font-monospace">' . h($code) . '</span>'
-        . '<span class="pg-text-meta pg-tabular pg-tr-share">' . h(lang(array('string' => '{var:1}%', 'vars' => array($code_share)))) . '</span></a></li>';
+        . '<span class="pg-text-meta pg-tabular pg-tr-share">' . h(lang(array('string' => '{var:1}%', 'vars' => array($code_share)))) . '</span>'
+        . (((int) $row['enabled'] === 1) ? '' : '<span class="pg-pill pg-tone-gray text-nowrap">' . lang('Not served') . '</span>')
+        . '</a></li>';
 }
 
 $output_language_menu .= '<li><hr class="menu-divider"></li>'
@@ -1208,6 +1221,7 @@ echo pg_page_shell(array(
             <span class="pg-text-2">' . lang('No target language yet. Add one in Settings > Languages and Translation; the pages of the designs are then served under its address prefix as well.') . '</span>') . '
         </div>
         ' . ($targets ? '
+        ' . (($language_row && !$language_served) ? '<div class="alert theme-secondary py-3 px-5 small mb-4" id="pg_tr_not_served"><i class="bi bi-eye-slash me-2" aria-hidden="true"></i>' . lang('This language is not served yet: visitors do not see it.') . ' <a href="' . h(pg_settings_link('languages', 'pgset-languages')) . '">' . lang('Languages and Translation') . '</a></div>' : '') . '
         ' . $output_automation . '
         <div class="pg-card pg-tr-progress" id="pg_tr_progress" role="status">
             <span class="spinner-border spinner-border-sm flex-shrink-0" aria-hidden="true"></span>
@@ -1236,7 +1250,7 @@ echo pg_page_shell(array(
             <div class="pg-tr-main min-w-0">
                 <div class="d-flex flex-wrap align-items-baseline gap-3 mb-3">
                     <h2 class="pg-title-section mb-0">' . ($selected_page ? h($selected_page['page_name']) : (($group !== '') ? h($owner_groups[$group]['label']) : lang('All texts'))) . '</h2>
-                    <span class="pg-text-2">' . h(lang(array('string' => '{var:1} text(s)', 'vars' => array($total_rows)))) . '</span>' . ($selected_page ? '
+                    <span class="pg-text-2">' . h(lang(array('string' => '{var:1} text(s)', 'vars' => array($total_rows)))) . '</span>' . (($selected_page && $language_served) ? '
                     <a class="ms-auto pg-text-2" href="' . h(PATH . pg_tr_prefix($language) . '/' . (($selected_page['page_home'] === 'yes') ? '' : encode_url_path($selected_page['page_name']))) . '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> ' . lang('Open the page') . '</a>' : '') . '
                 </div>
                 <nav class="pg-figures pg-tr-tiles" aria-label="' . h(lang('Filter')) . '">' . $output_tiles . '</nav>
@@ -1411,12 +1425,12 @@ echo pg_page_shell(array(
                         <div class="form-field mb-5">
                             <label class="form-label pg-field-label" for="pg_tr_auto_fallback">' . lang('Fallback engine') . '</label>
                             <select class="pg-input" id="pg_tr_auto_fallback">' . $output_fallback_options . '</select>
-                            <p class="pg-field-help mb-0">' . lang('Offered when the texts the engine could not translate are sent again.') . '</p>
+                            <p class="pg-field-help mb-0">' . lang('Takes the texts the engine could not translate when an update ends. A browser engine takes them only from "Try again with the failed ones".') . '</p>
                         </div>' . ($auto_update_known ? '
                         <div class="pg-card-inner mb-5"><div class="pg-card-inner-row">
                             <div class="flex-grow-1 min-w-0">
                                 <label class="pg-list-row-title d-block" for="pg_tr_auto_save">' . lang('Translate on save') . '</label>
-                                <div class="pg-text-meta">' . lang('A saved page, form record or picture is sent to the engine by itself.') . '</div>
+                                <div class="pg-text-meta">' . lang('A saved page, form, form record, product, product group, offer or picture is sent to the engine by itself.') . '</div>
                                 <div class="pg-text-meta pg-tr-automation-reason pg-tr-auto-save-off"' . (($engine_key === 'manual') ? '' : ' hidden') . '>' . lang('Off with "By hand": there is no engine to send the texts to.') . '</div>
                             </div>
                             <input type="checkbox" class="pg-switch" id="pg_tr_auto_save"' . ($auto_update_on ? ' checked="checked"' : '') . (($engine_key === 'manual') ? ' disabled="disabled"' : '') . '/>

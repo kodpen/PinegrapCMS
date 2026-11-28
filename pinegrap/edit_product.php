@@ -175,6 +175,11 @@ if ($_POST) {
 
     pg_audit_record('update', 'products', $product_id, $audit_before);
 
+    // Translate on save: the product's new texts go to the engine.
+    if (function_exists('pg_tr_owner_auto_saved')) {
+        pg_tr_owner_auto_saved('product', $product_id, (int) $user['id']);
+    }
+
     log_activity(
         lang(array('string' => 'product ({var:1}) was updated', 'vars' => array($result['name']))),
         $_SESSION['sessionusername']);

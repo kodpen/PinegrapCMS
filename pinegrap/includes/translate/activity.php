@@ -129,6 +129,16 @@ function pg_tr_activity_scope_label($scope, $groups, $page_names)
         return (string) $groups['pictures']['label'];
     }
 
+    // One catalog item or form, opened by its save
+    // (pg_tr_owner_auto_saved()).
+    if (preg_match('/^(product|product_group|offer):\d+$/', $scope) && isset($groups['catalog'])) {
+        return (string) $groups['catalog']['label'];
+    }
+
+    if (preg_match('/^form:\d+$/', $scope) && isset($groups['forms'])) {
+        return (string) $groups['forms']['label'];
+    }
+
     // A page no longer among the translatable ones, or a scope not known.
     return lang('One page');
 }

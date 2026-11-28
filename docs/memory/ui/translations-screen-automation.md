@@ -11,7 +11,8 @@ module: translate
 - A browser engine: as ready, its note under the line as before (`.pg-tr-chrome-note`, with the browser pages; the script adds the model's fallback line there).
 
 ## What does the dialog save?
-- "Change" opens `#pg_tr_automation_modal` "Automation for <language>": "Translation engine" (a not-ready one says "(not ready)"), the engine's note under it, "Fallback engine" ("-None-", never "By hand" or the engine itself), "Translate on save" as a switch row, the five-minute line (only for a server or queue engine), "Languages and Translation", Cancel, Save.
+- "Change" opens `#pg_tr_automation_modal` "Automation for <language>": "Translation engine" (a not-ready one says "(not ready)"), the engine's note under it, "Fallback engine" ("-None-", never "By hand" or the engine itself; what it takes: `core/content-translation-fallback-engine.md`), "Translate on save" as a switch row, the five-minute line (only for a server or queue engine), "Languages and Translation", Cancel, Save.
+- The switch's line: "A saved page, form, form record, product, product group, offer or picture is sent to the engine by itself."
 - Nothing is saved before "Save". The `automation` action checks the values with `pg_tr_automation_values()` (`includes/translate/activity.php`), the rules of the settings card (`includes/settings/languages.save.php`), and writes `site_languages.engine`, `fallback_engine` and `auto_update` in one UPDATE; the screen reloads with a message.
 - With "By hand" the switch is off and disabled with 'Off with "By hand": there is no engine to send the texts to.', and `auto_update` is written 0.
 - Before TS4 (#12193) a select in a card line saved the engine on its pick (`action=engine`, now gone) and the fallback and Translate on save were set only on the settings card, which still writes the same columns.

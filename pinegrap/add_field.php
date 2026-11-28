@@ -380,6 +380,11 @@ if (!$_POST) {
     pg_field_form_layout_warning($liveform, $page_type, $_POST['page_id'] ?? '');
     
     log_activity(lang(array('string'=>'{var:1} field ({var:2}) on {var:3} ({var:4}) was created','vars'=>array($form_type_name,$_POST['name'],$form_type_name,$form_name))), $_SESSION['sessionusername']);
+
+    // Translate on save: a page form's new field goes to the engine.
+    if (function_exists('pg_tr_owner_auto_saved') && ((int) ($_POST['page_id'] ?? 0) > 0)) {
+        pg_tr_owner_auto_saved('form', (int) $_POST['page_id'], (int) $user['id']);
+    }
     
     $liveform->add_notice(pg_field_form_saved_notice(lang('The field has been created.'), $invalid_email_address, $invalid_trigger));
 

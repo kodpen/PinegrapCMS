@@ -758,6 +758,11 @@ function api_products_create($params) {
 
 	$row = api_row(api_product_select() . " WHERE products.id = '" . $id . "' LIMIT 1");
 
+	// Translate on save: its new texts go to the engine.
+	if (function_exists('pg_tr_owner_auto_saved')) {
+		pg_tr_owner_auto_saved('product', (int)$id, (int)$app['owner']['id']);
+	}
+
 	pg_announce('product.created', array('id' => $id, 'name' => $row['name']), array('listeners' => false));
 
 	api_ok(api_product_present($row, api_product_extras(array($id))), 201);
@@ -1533,6 +1538,11 @@ function api_products_update($params) {
 	)), $app['owner']['username']);
 
 	$row = api_row(api_product_select() . " WHERE products.id = '" . $id . "' LIMIT 1");
+
+	// Translate on save: its new texts go to the engine.
+	if (function_exists('pg_tr_owner_auto_saved')) {
+		pg_tr_owner_auto_saved('product', (int)$id, (int)$app['owner']['id']);
+	}
 
 	pg_announce('product.updated', array('id' => $id, 'name' => $row['name']), array('listeners' => false));
 

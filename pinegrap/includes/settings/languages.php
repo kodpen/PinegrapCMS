@@ -190,7 +190,7 @@ $output_translation_languages = '
                         <div class="d-flex flex-column gap-5">' . $output_translation_rows . '
                         </div>
                         <div class="form-text">' . lang('A served language is reachable under its address prefix (for example /en/about).') . '</div>' . ($translation_auto_column ? '
-                        <div class="form-text" id="tr_auto_hint">' . lang('When a page is saved, its new and changed texts are sent to this language\'s engine (Pinegrap AI, Claude or Google) on their own. The browser engine and translation by hand need the Translations screen.') . '</div>' : '') . ($output_translation_rows_have_language ? '
+                        <div class="form-text" id="tr_auto_hint">' . lang('When a page, form, product, product group or offer is saved, its new and changed texts are sent to this language\'s engine (Pinegrap AI, Claude or Google) on their own. The browser engine and translation by hand need the Translations screen.') . '</div>' : '') . ($output_translation_rows_have_language ? '
                         <div class="form-text" id="tr_remove_hint">' . lang('Removing a language deletes its translations, its update history and its own glossary terms as well. Turn "Served" off instead to take it off the site for a while.') . '</div>' : '') . '
                     </div>
                     <div class="col-12">

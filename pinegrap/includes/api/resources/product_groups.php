@@ -576,6 +576,11 @@ function api_product_groups_update($params) {
 		'vars'   => array($existing['name'], $app['name'], $app['api_key'])
 	)), $app['owner']['username']);
 
+	// Translate on save: its new texts go to the engine.
+	if (function_exists('pg_tr_owner_auto_saved')) {
+		pg_tr_owner_auto_saved('product_group', (int)$id, (int)$app['owner']['id']);
+	}
+
 	pg_announce('product_group.updated', array('id' => $id, 'name' => $existing['name']), array('listeners' => false));
 
 	$row = api_row(api_product_group_select() . " WHERE id = '" . $id . "' LIMIT 1");
@@ -769,6 +774,11 @@ function api_product_groups_create($params) {
 		'string' => 'Product group ({var:1}) was added through the API by the application {var:2} (key {var:3}).',
 		'vars'   => array($name, $app['name'], $app['api_key'])
 	)), $app['owner']['username']);
+
+	// Translate on save: its new texts go to the engine.
+	if (function_exists('pg_tr_owner_auto_saved')) {
+		pg_tr_owner_auto_saved('product_group', (int)$id, (int)$app['owner']['id']);
+	}
 
 	$row = api_row(api_product_group_select() . " WHERE id = '" . $id . "' LIMIT 1");
 

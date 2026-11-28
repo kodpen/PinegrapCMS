@@ -484,6 +484,47 @@ function pg_tr_auto_update_page($page_id, $user_id = 0)
 }
 
 /**
+ * After a product, product group, offer or form was saved in the panel or
+ * through the API: each language set to translate on save whose engine is
+ * ready gets a job for that item's pending texts, opened the way a page
+ * save opens one (pg_tr_auto_update(): only that item is read again, no
+ * engine is called here, an open job of the same scope is not opened
+ * twice). A disabled product or offer has nothing to translate.
+ *
+ * @param string $owner_type product | product_group | offer | form
+ * @param int    $owner_id   the item's id; a form's page id
+ * @param int    $user_id
+ * @return int jobs opened
+ */
+function pg_tr_owner_auto_saved($owner_type, $owner_id, $user_id = 0)
+{
+    $owner_id = (int) $owner_id;
+
+    if (!pg_tr_ready() || ($owner_id <= 0) || !in_array($owner_type, array('product', 'product_group', 'offer', 'form'), true)) {
+        return 0;
+    }
+
+    $auto = pg_tr_auto_languages();
+
+    if (!$auto) {
+        return 0;
+    }
+
+    pg_tr_load();
+
+    // With no engine ready the item is not even read again.
+    foreach ($auto as $code => $row) {
+        $spec = pg_tr_engine((string) $row['engine']);
+
+        if (!$spec || empty($spec['ready'])) {
+            unset($auto[$code]);
+        }
+    }
+
+    return $auto ? pg_tr_auto_update($auto, $owner_type . ':' . $owner_id, $user_id) : 0;
+}
+
+/**
  * The target languages set to translate on save whose engine works without
  * the Translations screen (Pinegrap AI, Claude, Google).
  *

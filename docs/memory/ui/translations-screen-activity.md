@@ -11,7 +11,8 @@ module: translate
 - None: "No update has been run for this language yet." (filtered: "No update matches this filter.").
 
 ## What does an update cover?
-- `pg_tr_activity_scope_label()`: `all` "All pages"; `group:<key>` the group's label; `page:<id>` the page's name; `records:<id>` Forms; `file:<id>` Images; a page gone or a scope not known "One page". Before #851 (PR #1028) every scope but `all` read "One page".
+- `pg_tr_activity_scope_label()`: `all` "All pages"; `group:<key>` the group's label; `page:<id>` the page's name; `records:<id>` and `form:<id>` Forms; `product:`, `product_group:` and `offer:<id>` the catalog group's label; `file:<id>` Images; a page gone or a scope not known "One page".
+- An update ended with failed texts may be followed by one on the fallback engine, opened by itself (`core/content-translation-fallback-engine.md`). Before #851 (PR #1028) every scope but `all` read "One page".
 
 ## What does the drawer show?
 - A row (or its name button) opens `#pg_tr_job_drawer` (34rem): 'Update of "<scope>"' and the status pill; Translated, Failed, Skipped figures; a bar while open; Engine, Started (date · person), Finished or "Not yet"; the update's own `error` as text (before PR #3087 it was a hover title only); "Failed texts".

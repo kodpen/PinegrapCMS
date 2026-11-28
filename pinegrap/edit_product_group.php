@@ -918,6 +918,11 @@ if (!$_POST) {
         
         log_activity(lang(array('string' => '{var:1} ({var:2}) was modified', 'vars' => array(lang('product group'), $_POST['name']))), $_SESSION['sessionusername']);
         $product_group_notice = lang('The product group has been saved.');
+
+        // Translate on save: the group's new texts go to the engine.
+        if (function_exists('pg_tr_owner_auto_saved')) {
+            pg_tr_owner_auto_saved('product_group', (int) $_POST['id'], (int) $user['id']);
+        }
     }
 
     // Back to send_to when one is given, else to the Catalog Manager.
