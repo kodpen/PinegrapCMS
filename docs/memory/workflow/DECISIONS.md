@@ -1040,6 +1040,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-51.md: Where is the work?
 - decisions-made-workspace-52.md: Where are the rules and the earlier parts?
 - decisions-made-workspace-52.md: Is an agent's answer that does not name the asking agent refused? (owner, 2026-11-26, agent channel poll 226, message 14090)
+- decisions-made-workspace-53.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-53.md: How are the note list and the note told apart in My Notes? (owner, 2026-11-28, channel message 15435)
 - decisions-made-workspace-6.md: Where are the rules and the earlier parts?
 - decisions-made-workspace-6.md: What does a change made in the person's own calendar do to the Workspace task? (#4490)
 - decisions-made-workspace-6.md: Why does the pinned My Notes row open the Workspace list? (#4889)
