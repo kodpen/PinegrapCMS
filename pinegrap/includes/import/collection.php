@@ -279,6 +279,30 @@ function pg_import_collection_time($cell)
 }
 
 /**
+ * The day a date cell names (Y-m-d), '' when it is empty or unreadable. The
+ * day is read in the cell's own time zone: Webflow and Wix write a date
+ * field as midnight UTC, which in the site's zone west of UTC is the day
+ * before. Pure.
+ *
+ * @param string $cell
+ * @return string
+ */
+function pg_import_collection_date($cell)
+{
+    $cell = trim(preg_replace('/\s*\([^)]*\)\s*$/', '', (string) $cell));
+
+    if (($cell === '') || (strtotime($cell) === false)) {
+        return '';
+    }
+
+    try {
+        return (new DateTime($cell))->format('Y-m-d');
+    } catch (Exception $exception) {
+        return '';
+    }
+}
+
+/**
  * A cell with Wix's media addresses (wix:image://v1/<id>/<name>#…) turned
  * into the public addresses the media fetch can read. Pure.
  *

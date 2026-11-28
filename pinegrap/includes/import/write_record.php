@@ -411,10 +411,13 @@ function pg_import_record_column_rows($cell, $field, $prepared)
             $notes[] = lang(array('string' => '{var:1} is not an e-mail address: {var:2}', 'vars' => array($name, $cell)));
         }
     } elseif (in_array($type, array('date', 'date and time'), true)) {
+        // A date keeps the day the cell names; a date and time is shown in
+        // the site's zone.
         $time = pg_import_collection_time($cell);
+        $value = ($type === 'date') ? pg_import_collection_date($cell) : (($time > 0) ? date('Y-m-d H:i', $time) : '');
 
-        if ($time > 0) {
-            $add(date(($type === 'date') ? 'Y-m-d' : 'Y-m-d H:i', $time), $type);
+        if ($value !== '') {
+            $add($value, $type);
         } else {
             $notes[] = lang(array('string' => '{var:1} is not a date: {var:2}', 'vars' => array($name, $cell)));
         }

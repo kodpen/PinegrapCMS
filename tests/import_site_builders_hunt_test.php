@@ -35,3 +35,28 @@ function test_import_site_builders_price_cells_read_as_the_product_import()
 	pg_assert_same(null, pg_import_wix_cents('soon'), 'words');
 	pg_assert_contains('soon', pg_import_webflow_money(array('variant price' => 'soon'))['refused'], 'a word is still refused');
 }
+
+function test_import_site_builders_date_field_keeps_the_day_written()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/import/write_record.php');
+
+	$zone = date_default_timezone_get();
+	date_default_timezone_set('America/New_York');
+
+	$date = function ($cell, $type = 'date') {
+		$rows = pg_import_record_column_rows($cell, array('type' => $type, 'name' => 'Day'), array())['rows'];
+
+		return $rows ? $rows[0]['data'] : '';
+	};
+
+	// Midnight UTC is the evening before in New York: a date field took
+	// that day.
+	pg_assert_same('2024-03-15', $date('Fri Mar 15 2024 00:00:00 GMT+0000 (Coordinated Universal Time)'), 'Webflow date');
+	pg_assert_same('2024-03-15', $date('2024-03-15T00:00:00Z'), 'Wix date');
+	pg_assert_same('2024-03-15', $date('2024-03-15'), 'a date without a zone');
+	pg_assert_same('2024-03-14 20:00', $date('2024-03-15T00:00:00Z', 'date and time'), 'a date and time is still shown in the site zone');
+	pg_assert_same('', $date('not a date'), 'unreadable');
+	pg_assert_same('', pg_import_collection_date('(Coordinated Universal Time)'), 'only a zone name');
+
+	date_default_timezone_set($zone);
+}
