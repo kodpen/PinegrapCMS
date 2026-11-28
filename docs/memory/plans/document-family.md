@@ -1,6 +1,6 @@
 ---
 name: document-family
-description: Plan (owner 2026-11-28, poll 256): own types in the centre, Office files the bridge: the .pptx preview drawn as slides by the canvas's renderer, then one window head; steps DF1 to DF4
+description: Plan (owner 2026-11-28, poll 256): own types in the centre, Office files the bridge: the .pptx preview drawn as slides by the canvas's renderer; the window head is `document-head.md`; steps DF1 to DF4
 priority: 6
 ---
 
@@ -24,7 +24,7 @@ priority: 6
 - DF1 (S) Measure: on dev, a Canva deck and a corporate PowerPoint of 20 slides or more: seconds to the first slide and to all of them by the server's draw and by the browser's painter (the editor's load counted), on a first and a second opening, and what each leaves out. Written as `platform/office-pptx-slides-measure.md`, naming the way DF2 takes. Over 3 seconds to the first slide both ways: the architect is asked before DF2.
 - DF2 (M) The preview as `document-family-pptx-preview.md` says: the tabs Slides and Text, the strip, the slide, the left-out line, in Quick Look, the file window and a channel's Preview.
 - DF3 (S) Full screen and the door: "Present" steps through the slides full screen (arrow keys, Esc); "Edit in Artifact Canvas" opens the file through the `design_file` action; `office-pptx-preview.md`, `office-files-scope.md` and `office-overview.md` corrected.
-- DF4 (S) Census of heads: what the windows of a note, a table, the canvas, a Word file, an Excel file and Quick Look hold in their heads today (name, save state, undo, share, download, the ⋯ menu), in which order and by which code, as `document-family-census-heads.md`. The architect draws the shared head from it and adds its steps here. It does not wait for DF1 to DF3.
+- DF4 (S) Census of heads: what the windows of a note, a table, the canvas, a Word file, an Excel file and Quick Look hold in their heads today (name, save state, undo, share, download, the ⋯ menu), in which order and by which code, as `document-family-census-heads.md`. The shared head drawn from it and its steps: `plans/document-head.md`.
 
 ## What waits until after the launch?
 - A Word file opened as a Note, a Note saved as a Word file, a canvas saved as a .pptx, one "New" menu, the family's name (`platform/office-direction.md`).
