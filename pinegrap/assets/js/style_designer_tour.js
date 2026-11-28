@@ -300,6 +300,9 @@ StyleDesigner.definePart('tour', function (K) {
 
     function showCard() {
         var content = access() === 'content';
+        // A narrow window has no palette on the screen: the tour skips its
+        // stop, and the card promises the four the tour will show.
+        var fewer = !content && M.shown(M.stops('full'), has).length < 5;
         var card = document.createElement('div');
         card.className = 'sd-tour-card' + (phone() ? ' is-sheet' : '') + (reduced() ? '' : ' is-fading');
         card.setAttribute('role', 'region');
@@ -308,7 +311,7 @@ StyleDesigner.definePart('tour', function (K) {
             '<span class="sd-tour-card-ic bi bi-signpost-2" aria-hidden="true"></span>' +
             '<div class="sd-tour-card-body">' +
                 '<div class="sd-tour-card-title" role="status">' + esc(_sdT('New here? A one-minute tour')) + '</div>' +
-                '<div class="sd-tour-card-line">' + esc(content ? _sdT('Three stops on what you can change.') : _sdT('Five stops on the real buttons.')) + '</div>' +
+                '<div class="sd-tour-card-line">' + esc(content ? _sdT('Three stops on what you can change.') : (fewer ? _sdT('Four stops on the real buttons.') : _sdT('Five stops on the real buttons.'))) + '</div>' +
                 '<div class="sd-tour-btns">' +
                     '<button type="button" class="sd-btn sd-btn-primary" data-sd-tour="start">' + esc(_sdT('Start')) + '</button>' +
                     '<button type="button" class="sd-btn" data-sd-tour="later">' + esc(_sdT('Not now')) + '</button>' +

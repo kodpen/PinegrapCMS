@@ -443,3 +443,23 @@ JS
 	pg_assert_true($res['menu'], 'Escape for an open menu goes on to the menu');
 	pg_assert_true($res['tour'], 'Escape that ends the tour stops there');
 }
+
+// The card says how many stops the tour will show: four when the palette
+// is not on the screen (a narrow window), not the five of a wide one.
+function test_designer_tour_part_card_counts_the_stops_shown()
+{
+	$res = designer_tour_part_node(<<<'JS'
+ctl('#sd-components', null);
+part.offer();
+tick(10);
+var c = listeners.filter(function (l) { return l.type === 'click' && l.target.classList && l.target.classList.contains('sd-tour-card'); })[0];
+out = { html: c ? c.target.html : '' };
+JS
+	);
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_true(strpos($res['html'], 'Four stops on the real buttons.') !== false, 'the card promises the four stops shown: ' . $res['html']);
+}
