@@ -731,6 +731,7 @@
 - import-lazy-images.md: Designer import/paste of lazy-loaded images: which source an image node keeps (data-src, srcset, picture, noscript) instead of the placeholder GIF in src.
 - import-zip-url-resolution.md: How the Import ZIP File screen resolves relative references (url_to_absolute.php), the PCRE2 failure that left imported pages with broken images/CSS/JS, and the resolver's rules
 - inline-drop-links-buttons.md: Designer drops: links and buttons go back into headings and paragraphs, never into a link or button; a label holds one control; a palette block is judged by what it holds.
+- kb-votes-helpful.md: "Was this helpful?" on a collection record's page (help centre HC8): the kb_votes table, the Yes and No button actions, kb_vote.php, the cookie, the two counts on the record list
 - language-switcher-component.md: The Language Switcher Button component (COMPONENTS.language_switcher, 2026.4.7): a placeholder in the saved body, drawn per request after the language pass; the pattern for request-bound output.
 - layout-code-tab.md: A classic page's custom layout (data/layouts/<id>.php) as a code tab of the visual designer: who may edit it, the layout_code endpoint, regenerate, unmodified on save, Ctrl+G, hosted sites
 - layout-convert-widget-gap.md: What the layout converter does with a piece a page type's layout has and its widget lacks (LE10b to LE10d): a state, a carried setting, a page link, a second form or list; the guest button [decision: here]

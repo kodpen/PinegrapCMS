@@ -234,6 +234,7 @@ description: Generated from the module field of the memory files: each includes/
 - `imap_client`: [[mail-imap-client]]
 - `importers`: [[import-collection-csv]], [[import-framework]], [[import-media]], [[import-records]], [[import-redirects]], [[import-screen]], [[import-shopify]], [[import-sources]], [[import-squarespace]], [[import-webflow]], [[import-wix]], [[import-woocommerce]]
 - `innodb`: [[innodb-conversion-marker]], [[panel-script-number-format]]
+- `kb_votes`: [[kb-votes-helpful]]
 - `key_code_list_edit`: [[list-table-quick-edit-key-codes]]
 - `lang`: [[lang-loader]], [[lang-placeholders]]
 - `lang_files`: [[lang-file-writes]], [[lang-files]]
