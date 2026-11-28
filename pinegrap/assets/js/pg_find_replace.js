@@ -75,6 +75,10 @@
                 re = new RegExp(search, flags);
             } else {
                 var body = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                // Any case: the four Turkish i letters alike, as the tree and
+                // Options searches fold them ("istanbul" finds "İstanbul");
+                // the language's own case folding keeps İ and ı apart.
+                if (!q.caseSensitive) body = body.replace(/[iIİı]/g, '[iIİı]');
                 if (q.wholeWord) body = '(?<!' + WORD + ')' + body + '(?!' + WORD + ')';
                 re = new RegExp(body, flags + 'u');
             }

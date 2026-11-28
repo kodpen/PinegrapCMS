@@ -276,3 +276,26 @@ function test_find_replace_whole_word_with_a_regular_expression()
 	pg_assert_same('', $res['loose'], 'an escape the Unicode mode refuses still compiles');
 	pg_assert_same(1, $res['ln'], 'and keeps to whole words');
 }
+
+// Any case reads the Turkish dotted and dotless i as the other searches
+// do: "istanbul" finds "İstanbul", "ılık" finds "ILIK"; case sensitive
+// keeps them apart.
+function test_find_replace_turkish_i_in_any_case()
+{
+	$res = find_replace_test_node(
+		'var a = F.pattern({ search: "istanbul" }).re, b = F.pattern({ search: "ılık" }).re,'
+		. ' c = F.pattern({ search: "İade", wholeWord: true }).re, s = F.pattern({ search: "istanbul", caseSensitive: true }).re;'
+		. 'out = { a: F.count("İstanbul, ISTANBUL, istanbul", a), b: F.count("ILIK ılık", b), c: F.count("iade İADE iadeler", c),'
+		. ' s: F.count("İstanbul istanbul", s), r: F.replace("İstanbul", a, "Ankara", false).text };'
+	);
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(3, $res['a'], '"istanbul" finds the capital İ too');
+	pg_assert_same(2, $res['b'], '"ılık" finds the capitals');
+	pg_assert_same(2, $res['c'], 'a whole word typed with İ');
+	pg_assert_same(1, $res['s'], 'case sensitive keeps them apart');
+	pg_assert_same('Ankara', $res['r'], 'and replaces it');
+}
