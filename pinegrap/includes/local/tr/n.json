@@ -2969,6 +2969,7 @@
     "Not a buyer": "Alıcı değil",
     "Not a colour. Write a hex value such as #94A3B8.": "Renk değil. #94A3B8 gibi bir onaltılık değer yazın.",
     "Not a core field. The submitted value is not stored unless it is bound to a contact column.": "Çekirdek alan değil. Bir rehber sütununa bağlanmadıkça gönderilen değer saklanmaz.",
+    "Not a formula worked out here. Allowed: numbers, cells of this sheet (A1, A1:B9), + - * /, brackets and {1}.": "Burada hesaplanan bir formül değil. İzin verilenler: sayılar, bu sayfanın hücreleri (A1, A1:B9), + - * /, parantezler ve {1}.",
     "Not a member yet": "Henüz üye değilim",
     "Not a member yet? Joining is free, and your card opens every branch.": "Henüz üye değil misiniz? Üyelik ücretsiz, kartınız her şubede geçerli.",
     "Not a member yet? One membership opens every course and the library; see the pricing page.": "Henüz üye değil misiniz? Tek üyelik tüm kursları ve kütüphaneyi açar; fiyatlandırma sayfasına bakın.",

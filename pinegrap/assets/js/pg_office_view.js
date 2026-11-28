@@ -57,6 +57,38 @@
 (function () {
     'use strict';
 
+    // The formula twin (assets/js/pg_office_formula.js) sits beside this
+    // file and is fetched with the same stamp on first use, so every screen
+    // that loads the view gets it without a tag of its own.
+    var formulaScript = (typeof document !== 'undefined' && document.currentScript && document.currentScript.src)
+        ? document.currentScript.src.replace(/pg_office_view\.js(?=$|[?#])/, 'pg_office_formula.js') : '';
+    var formulaWaiting = [];
+
+    // Calls done() once the twin is there, or could not be fetched.
+    function withFormulas(done) {
+        if (window.pgOfficeFormula || !formulaScript || typeof document === 'undefined') {
+            done();
+            return;
+        }
+
+        formulaWaiting.push(done);
+
+        if (formulaWaiting.length > 1) {
+            return;
+        }
+
+        var script = document.createElement('script');
+
+        script.src = formulaScript;
+        script.onload = script.onerror = function () {
+            var list = formulaWaiting;
+
+            formulaWaiting = [];
+            list.forEach(function (call) { call(); });
+        };
+        document.head.appendChild(script);
+    }
+
     function el(tag, className, text) {
         var node = document.createElement(tag);
 
@@ -510,6 +542,70 @@
         return '';
     }
 
+    // The formula the file holds in a cell the grid may change (a simple
+    // one, which the save works out again), as stored: English names, no
+    // "=". '' for a cell without one, or one locked.
+    function fileFormulaOf(sheet, address) {
+        var edit = sheet && sheet.edit;
+
+        if (!edit || !edit.formulas || !own(edit.formulas, address) || (edit.locked && own(edit.locked, address))) {
+            return '';
+        }
+
+        return String(edit.formulas[address]);
+    }
+
+    // A cell's text as a formula reads it, as the save stores it: a number
+    // (a typed one with a dot or a lone comma, no leading zero, 15 digits
+    // at most), TRUE/FALSE and an error code as the file shows them, else
+    // text; null for empty.
+    function sheetValue(text, typed) {
+        text = String(text);
+
+        if (text === '') {
+            return null;
+        }
+
+        if (!typed && (text === 'TRUE' || text === 'FALSE')) {
+            return text === 'TRUE';
+        }
+
+        if (!typed && /^#(?:DIV\/0!|VALUE!|REF!|NAME\?|N\/A|NUM!|NULL!)$/.test(text)) {
+            return { error: text };
+        }
+
+        var plain = typed ? text.trim().replace(/^([+-]?\d*),(\d+)$/, '$1.$2') : text;
+
+        if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(plain)) {
+            return text;
+        }
+
+        if (typed && (/^[+-]?0\d/.test(plain) || plain.replace(/[eE].*$/, '').replace(/\D/g, '').length > 15)) {
+            return text;
+        }
+
+        var number = parseFloat(plain);
+
+        return isFinite(number) ? number : text;
+    }
+
+    // A worked-out value as the cell shows it.
+    function resultText(value, formula) {
+        if (value !== null && typeof value === 'object') {
+            return String(value.error);
+        }
+
+        if (typeof value === 'boolean') {
+            return value ? 'TRUE' : 'FALSE';
+        }
+
+        if (typeof value === 'number') {
+            return formula ? formula.numberText(value) : String(value);
+        }
+
+        return String(value);
+    }
+
     // What a sheet that offers no cell says about itself.
     function sheetNote(edit, strings) {
         if (!edit) {
@@ -889,7 +985,8 @@
         cells.forEach(function (cell) {
             var address = columnName(cell.column) + cell.row;
             var row = own(byRow, cell.row) ? byRow[cell.row] : null;
-            var was = own(values, address) ? values[address] : ((row && cell.column < row.cells.length) ? row.cells[cell.column] : '');
+            var formula = own(values, address) ? '' : fileFormulaOf(under.sheets[sheet], address);
+            var was = own(values, address) ? values[address] : (formula ? '=' + formula : ((row && cell.column < row.cells.length) ? row.cells[cell.column] : ''));
             var value = String(cell.value).replace(/\r\n?/g, '\n');
 
             if (value !== was) {
@@ -1202,6 +1299,16 @@
         if (edit) {
             edit.locked = shiftKeys(edit.locked, axis, op, at);
             edit.formulas = shiftKeys(edit.formulas, axis, op, at);
+
+            // The save moves the references inside the file's formulas;
+            // the texts here are the file's, so after a move they stay
+            // locked and are not worked out here.
+            Object.keys(edit.formulas).forEach(function (address) {
+                if (!own(edit.locked, address)) {
+                    edit.locked[address] = 'formula';
+                }
+            });
+            edit.shifted = true;
             edit.ranges = (edit.ranges || []).map(function (range) { return shiftRange(range, axis, op, at); }).filter(Boolean);
             out.edit = edit;
         }
@@ -1517,6 +1624,7 @@
             for (var column = 0; column < width; column++) {
                 var value = (column < row.cells.length) ? row.cells[column] : '';
                 var td = el('td');
+                var drawn = null;
 
                 if (state) {
                     var address = columnName(column) + row.n;
@@ -1531,14 +1639,23 @@
                         td.classList.add('office-locked');
                         td.setAttribute('aria-readonly', 'true');
                         td.title = lockTitle(lock, strings, (sheet.edit && sheet.edit.formulas) ? sheet.edit.formulas[address] : '');
+                    } else if (state.formula) {
+                        // An open formula: its text on the title, and the
+                        // value worked out here when a change reaches it.
+                        drawn = state.formula(row.n, column);
+
+                        if (drawn) {
+                            td.title = drawn.title;
+                        }
                     }
 
                     td.tabIndex = -1;
                 }
 
                 var edited = td.classList.contains('office-edited');
+                var live = !!drawn && drawn.text !== null;
 
-                td.textContent = (!edited && row.show && own(row.show, column)) ? row.show[column] : value;
+                td.textContent = live ? drawn.text : ((!edited && row.show && own(row.show, column)) ? row.show[column] : value);
 
                 var look = (looks && row.s && own(row.s, column)) ? looks[row.s[column]] : null;
 
@@ -1559,13 +1676,13 @@
                 }
 
                 // Numbers sit to the right, as the sheet shows them.
-                if (isNumber(value)) {
+                if (live ? drawn.num : isNumber(value)) {
                     td.classList.add('office-num');
                 }
 
                 // A formula whose result was not stored: worked out by the
                 // spreadsheet program that opens the file.
-                if (value === '' && row.calc && row.calc.indexOf(column) !== -1) {
+                if (live ? drawn.calc : (value === '' && row.calc && row.calc.indexOf(column) !== -1)) {
                     td.classList.add('office-calc');
 
                     if (!td.title) {
@@ -1668,6 +1785,292 @@
             workbook = listBook(office.sheets, steps);
         }
 
+        // Simple formulas (assets/js/pg_office_formula.js): typed with the
+        // English names or those of the panel's language, worked out here
+        // when a change reaches them; the save works them out again.
+        var formulaLanguage = String(strings.formula_language || 'en');
+        var liveMemo = { book: null, index: -1, out: {} };
+
+        // The most formulas of a sheet worked out here, as the save's
+        // PG_OFFICE_EDIT_MAX_FORMULAS.
+        var LIVE_FORMULAS = 5000;
+
+        function formulaApi() {
+            return window.pgOfficeFormula || null;
+        }
+
+        // A typed text that starts with "=" but is not a simple formula.
+        function refusedFormula(value) {
+            var api = formulaApi();
+
+            return !!api && String(value).charAt(0) === '=' && api.parse(value, formulaLanguage) === null;
+        }
+
+        function refusedNote() {
+            var api = formulaApi();
+            var names = api ? api.names(formulaLanguage) : {};
+
+            return fill(strings.formula_refused, Object.keys(names).map(function (name) { return names[name]; }).join(', '));
+        }
+
+        // The tree of a cell's formula, typed or the file's; null for none.
+        function formulaTree(index, address) {
+            var api = formulaApi();
+            var values = workbook.values[index] || {};
+
+            if (!api) {
+                return null;
+            }
+
+            if (own(values, address)) {
+                return (String(values[address]).charAt(0) === '=') ? api.parse(values[address], formulaLanguage) : null;
+            }
+
+            var formula = fileFormulaOf(workbook.sheets[index], address);
+
+            return formula ? api.parse(formula, 'en') : null;
+        }
+
+        // Whether a cell holds a formula, typed or the file's (locked too).
+        function isFormulaCell(index, address) {
+            var values = workbook.values[index] || {};
+            var edit = workbook.sheets[index].edit || {};
+
+            if (own(values, address)) {
+                return formulaTree(index, address) !== null;
+            }
+
+            return !!(edit.formulas && own(edit.formulas, address));
+        }
+
+        // The formulas of a sheet that a waiting change reaches, worked out
+        // from the cells as they stand: address => value, null when it is
+        // not known here (a cell read is a date, another formula's
+        // stripped result, past the rows shown, or the sheet moved lines).
+        // A formula typed is always among them; others keep the file's
+        // result as drawn.
+        function liveResults(index) {
+            var api = formulaApi();
+
+            if (liveMemo.book === workbook && liveMemo.index === index) {
+                return liveMemo.out;
+            }
+
+            var sheet = workbook.sheets[index];
+            var typed = workbook.values[index] || {};
+            var edit = sheet.edit || {};
+            var formulas = {};
+            var values = {};
+            var unknown = {};
+            var seeds = [];
+            var out = {};
+            var last = sheet.rows.length ? sheet.rows[sheet.rows.length - 1].n : 0;
+            var width = sheet.wide || 0;
+
+            function put(map, row, column, value) {
+                (map[row] = map[row] || {})[column] = value;
+            }
+
+            liveMemo = { book: workbook, index: index, out: out };
+
+            if (!api || !Object.keys(typed).length) {
+                return out;
+            }
+
+            sheet.rows.forEach(function (row) {
+                width = Math.max(width, row.cells.length);
+                row.cells.forEach(function (value, column) {
+                    var address = columnName(column) + row.n;
+
+                    if (own(typed, address) || (edit.formulas && own(edit.formulas, address)) || (edit.locked && edit.locked[address] === 'formula')) {
+                        return;
+                    }
+
+                    var look = lookAt(index, row.n, column);
+                    var found = sheetValue(value, false);
+
+                    if (look && look.n === 'date' && typeof found !== 'number' && found !== null) {
+                        put(unknown, row.n, column, true);
+                    } else if (found !== null) {
+                        put(values, row.n, column, found);
+                    }
+                });
+            });
+
+            // The file's formulas: a simple one is worked out again, any
+            // other loses its result on the save.
+            Object.keys(edit.formulas || {}).concat(Object.keys(edit.locked || {})).forEach(function (address) {
+                var parts = /^([A-Z]+)(\d+)$/.exec(address);
+
+                if (!parts || own(typed, address) || own(formulas, address)) {
+                    return;
+                }
+
+                var row = parseInt(parts[2], 10);
+                var column = columnIndex(parts[1]);
+                var formula = fileFormulaOf(sheet, address);
+                var tree = formula ? api.parse(formula, 'en') : null;
+
+                if (tree) {
+                    formulas[address] = [row, column, tree];
+                } else if (edit.locked && edit.locked[address] === 'formula') {
+                    put(unknown, row, column, true);
+                } else if (edit.formulas && own(edit.formulas, address)) {
+                    put(unknown, row, column, true);
+                }
+            });
+
+            Object.keys(typed).forEach(function (address) {
+                var parts = /^([A-Z]+)(\d+)$/.exec(address);
+
+                if (!parts) {
+                    return;
+                }
+
+                var row = parseInt(parts[2], 10);
+                var column = columnIndex(parts[1]);
+                var value = String(typed[address]);
+                var tree = (value.charAt(0) === '=') ? api.parse(value, formulaLanguage) : null;
+
+                seeds.push([row, column]);
+
+                if (tree) {
+                    formulas[address] = [row, column, tree];
+                    out[address] = null;
+                } else if (value !== '') {
+                    put(values, row, column, sheetValue(value, true));
+                }
+            });
+
+            if (edit.shifted || Object.keys(formulas).length > LIVE_FORMULAS) {
+                return out;
+            }
+
+            // A formula reading past the rows the preview holds is not
+            // known here.
+            Object.keys(formulas).forEach(function (address) {
+                if (sheet.truncated && api.cells(formulas[address][2]).some(function (area) { return area[2] > last || area[3] >= width; })) {
+                    put(unknown, formulas[address][0], formulas[address][1], true);
+                    delete formulas[address];
+                }
+            });
+
+            // The formulas a change reaches, through other formulas too:
+            // each cell reached is looked for once in the formulas left.
+            var reached = {};
+            var waiting = Object.keys(formulas).filter(function (address) { return !own(out, address); }).map(function (address) {
+                return { address: address, areas: api.cells(formulas[address][2]) };
+            });
+
+            Object.keys(out).forEach(function (address) { reached[address] = true; });
+
+            for (var next = 0; next < seeds.length && waiting.length; next++) {
+                var seed = seeds[next];
+
+                waiting = waiting.filter(function (item) {
+                    var hit = item.areas.some(function (area) {
+                        return seed[0] >= area[0] && seed[0] <= area[2] && seed[1] >= area[1] && seed[1] <= area[3];
+                    });
+
+                    if (hit) {
+                        reached[item.address] = true;
+                        seeds.push([formulas[item.address][0], formulas[item.address][1]]);
+                    }
+
+                    return !hit;
+                });
+            }
+
+            var results = api.results(formulas, values, unknown);
+
+            Object.keys(reached).forEach(function (address) {
+                out[address] = (own(results, address) && results[address] !== undefined) ? results[address] : null;
+            });
+
+            return out;
+        }
+
+        // How the grid draws an open formula cell: {title, text} with
+        // text null for the file's result as drawn, else the value worked
+        // out here ('' while unknown, calc), num for a number. null for a
+        // cell without a formula.
+        function formulaDraw(index, row, column) {
+            var api = formulaApi();
+            var address = columnName(column) + row;
+            var values = workbook.values[index] || {};
+            var typed = own(values, address);
+            var formula = typed ? '' : fileFormulaOf(workbook.sheets[index], address);
+            var tree = formulaTree(index, address);
+
+            if (!api || (!tree && !formula)) {
+                return null;
+            }
+
+            var title = fill(strings.locked_formula_is, '=' + (tree ? api.text(tree, formulaLanguage) : formula));
+            var live = liveResults(index);
+
+            if (!own(live, address)) {
+                return { title: title, text: null };
+            }
+
+            var value = live[address];
+
+            if (value === null) {
+                return { title: title, text: '', num: false, calc: true };
+            }
+
+            return { title: title, text: resultText(value, api), num: typeof value === 'number', calc: false };
+        }
+
+        // The text a cell's editor opens with: the value typed, the file's
+        // formula with "=" and the language's names, or the file's value.
+        function editText(td) {
+            var position = cellPosition(td);
+            var address = columnName(position.column) + position.row;
+            var values = workbook.values[shown.index];
+
+            if (own(values, address)) {
+                return values[address];
+            }
+
+            var formula = fileFormulaOf(workbook.sheets[shown.index], address);
+
+            if (formula) {
+                var api = formulaApi();
+                var tree = api ? api.parse(formula, 'en') : null;
+
+                return '=' + (tree ? api.text(tree, formulaLanguage) : formula);
+            }
+
+            return original(workbook.sheets[shown.index], position.row, position.column);
+        }
+
+        // Draws again every formula cell of the sheet on show, after a
+        // change that may reach them.
+        function drawResults() {
+            if (!shown.table) {
+                return;
+            }
+
+            var edit = workbook.sheets[shown.index].edit || {};
+            var values = workbook.values[shown.index] || {};
+            var byRow = {};
+
+            Array.prototype.forEach.call(shown.table.tBodies[0] ? shown.table.tBodies[0].rows : [], function (tr) {
+                byRow[tr.getAttribute('data-row')] = tr;
+            });
+
+            Object.keys(edit.formulas || {}).concat(Object.keys(values)).forEach(function (address) {
+                var parts = /^([A-Z]+)(\d+)$/.exec(address);
+                var tr = parts ? byRow[parts[2]] : null;
+                var td = tr ? tr.cells[columnIndex(parts[1]) + 1] : null;
+
+                if (td && !td.classList.contains('office-locked') && (!shown.editor || shown.editor.td !== td)) {
+                    drawCell(td);
+                }
+            });
+        }
+
         // Puts a value typed into a cell of the open sheet into the list:
         // the change made since the last row, column or sheet change is
         // taken out, and the new one put at the end unless the cell holds
@@ -1679,7 +2082,18 @@
 
             var under = listBook(office.sheets, list);
             var values = under.values[shown.index];
+            var formula = own(values, address) ? '' : fileFormulaOf(under.sheets[shown.index], address);
             var was = own(values, address) ? values[address] : original(under.sheets[shown.index], position.row, position.column);
+
+            // A cell with the file's formula holds that formula: the same
+            // formula typed again, in any language's names, is no change.
+            if (formula) {
+                var api = formulaApi();
+                var tree = (api && value.charAt(0) === '=') ? api.parse(value, formulaLanguage) : null;
+                var stored = api ? api.parse(formula, 'en') : null;
+
+                was = (tree && stored && api.text(tree) === api.text(stored)) ? value : '=' + formula;
+            }
 
             if (value !== was) {
                 listCell(list, shown.index, address, value);
@@ -1699,7 +2113,7 @@
 
             var value = String(editor.input.value).replace(/\r\n?/g, '\n');
 
-            if (value === shownValue(editor.td)) {
+            if (value === editText(editor.td) || refusedFormula(value)) {
                 return steps;
             }
 
@@ -2302,15 +2716,19 @@
 
             value = String(value).replace(/\r\n?/g, '\n');
 
-            if (value !== shownValue(td)) {
+            // A leading "=" that is not a simple formula is refused: the
+            // cell keeps what it held, the status line says what is allowed.
+            var refused = value !== editText(td) && refusedFormula(value);
+
+            if (!refused && value !== editText(td)) {
                 change(function () { listValue(steps, position, value); });
                 rebuild();
             }
 
             drawCell(td);
+            drawResults();
 
-            // A leading "=" stays text: no formula is worked out here.
-            shown.note = (value.charAt(0) === '=') ? (strings.formula_text || '') : '';
+            shown.note = refused ? refusedNote() : '';
 
             notify();
         }
@@ -2323,11 +2741,19 @@
             var value = shownValue(td);
             var typed = own(workbook.values[shown.index], address);
             var entry = rowOf(workbook.sheets[shown.index], position.row);
+            var drawn = formulaDraw(shown.index, position.row, position.column);
+            var live = !!drawn && drawn.text !== null;
+            var calc = live ? drawn.calc : (!typed && value === '' && !!entry && !!entry.calc && entry.calc.indexOf(position.column) !== -1);
 
-            td.textContent = (!typed && entry && entry.show && own(entry.show, position.column)) ? entry.show[position.column] : value;
+            td.textContent = live ? drawn.text : ((!typed && entry && entry.show && own(entry.show, position.column)) ? entry.show[position.column] : value);
             td.classList.toggle('office-edited', typed);
-            td.classList.toggle('office-num', isNumber(value));
-            td.classList.remove('office-calc');
+            td.classList.toggle('office-num', live ? drawn.num : isNumber(value));
+            td.classList.toggle('office-calc', calc);
+
+            if (!td.classList.contains('office-locked')) {
+                td.title = drawn ? drawn.title : (calc ? (strings.calc || '') : '');
+            }
+
             paint(td, lookAt(shown.index, position.row, position.column));
         }
 
@@ -2385,6 +2811,7 @@
                 });
                 rebuild();
                 open.forEach(function (cell) { drawCell(cell.td); });
+                drawResults();
             }
 
             clipNote(reason, reason ? 0 : cells.length - open.length + (skipped || 0));
@@ -2400,8 +2827,14 @@
             }
 
             event.preventDefault();
+            // A formula is copied as the value it shows, as its text would
+            // read other cells where it is pasted.
             event.clipboardData.setData('text/plain', clipText(selectionRows(range).map(function (row) {
-                return row.map(shownValue);
+                return row.map(function (td) {
+                    var position = cellPosition(td);
+
+                    return isFormulaCell(shown.index, columnName(position.column) + position.row) ? td.textContent : shownValue(td);
+                });
             })));
         }
 
@@ -2483,7 +2916,6 @@
                 return;
             }
 
-            var locked = workbook.sheets[shown.index].edit.locked || {};
             var cells = [];
 
             rows.forEach(function (row) {
@@ -2491,7 +2923,7 @@
                     var from = source[place];
                     var position = from ? cellPosition(from) : null;
 
-                    if (from && locked[columnName(position.column) + position.row] !== 'formula') {
+                    if (from && !isFormulaCell(shown.index, columnName(position.column) + position.row)) {
                         cells.push({ td: td, value: shownValue(from) });
                     } else {
                         cells.push({ td: td, value: null });
@@ -2551,7 +2983,7 @@
             closeEditor(true);
             select(td);
 
-            var before = shownValue(td);
+            var before = editText(td);
             var input = el('textarea', 'office-editor');
 
             input.value = (replacement !== undefined) ? replacement : before;
@@ -2623,6 +3055,14 @@
 
                 if (key === 'Enter' || key === 'Tab') {
                     event.preventDefault();
+
+                    // Not a simple formula: the editor stays open on it.
+                    if (input.value !== before && refusedFormula(input.value)) {
+                        shown.note = refusedNote();
+                        notify();
+                        return;
+                    }
+
                     closeEditor(true);
 
                     var next = (key === 'Enter') ? neighbour(td, event.shiftKey ? -1 : 1, 0) : neighbour(td, 0, event.shiftKey ? -1 : 1);
@@ -3964,7 +4404,8 @@
                     changes: workbook.values[index],
                     heads: sheetShiftable(index),
                     added: sheet.added,
-                    look: function (row, column, look) { return listLook(look, workbook.sets[index][columnName(column) + row]); }
+                    look: function (row, column, look) { return listLook(look, workbook.sets[index][columnName(column) + row]); },
+                    formula: function (row, column) { return formulaDraw(index, row, column); }
                 } : null, looks, { order: orderOf(index), sort: viewOf(index).sort, filters: viewOf(index).filters });
                 pane.appendChild(shown.table);
                 wireHeads(shown.table, !offered);
@@ -4192,6 +4633,17 @@
 
         if (current !== null) {
             openTab(current);
+        }
+
+        // The formula twin, fetched on first use: the sheet is drawn again
+        // with its formulas' titles once it is there, unless a cell was
+        // chosen or changed in the meantime.
+        if (editable && !window.pgOfficeFormula) {
+            withFormulas(function () {
+                if (window.pgOfficeFormula && book.isConnected && shown.index >= 0 && !shown.cell && !shown.editor && !steps.length) {
+                    show(shown.index);
+                }
+            });
         }
 
         return {
