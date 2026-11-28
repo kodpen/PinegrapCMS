@@ -1,6 +1,6 @@
 ---
 name: workspace-memory-tab
-description: The Memory tab (GM3a, MS3): the general and the channel's part as rows under folding project headings, the search box, a row's columns, Move, the form, ws_memory_list's answer
+description: The Memory tab (GM3a, MS3): the general and the channel's part as rows under folding project headings, the search box, a row's columns, Move, the form drawer, ws_memory_list's answer
 ---
 
 ## Why does it look like this?
@@ -24,7 +24,7 @@ description: The Memory tab (GM3a, MS3): the general and the channel's part as r
 - `.ws-memory-row`, a grid: pin mark, name (Expired pill; the row at 75% opacity), the first line (one line; the whole text as its title), tags as `pg-pill`, the change date (author, changer and expiry in its title), then `pg-icon-button`s: Move to the general memory (`ws_memory_move`, asks first), Edit, Delete. Below a 40rem pane (`container-type` on `.ws-memory`) tags and date go under the name.
 
 ## What does the form hold?
-- From the kit's form parts (`h.form`): Title, Project (a datalist of the projects already listed), Text, Tags, Expires on, the Pinned switch, Cancel and Save. A general record is written with `general=1`. `/memory` without a text opens it for the channel. No `btn btn-` is left in the file (check_look baseline lowered).
+- It opens in a form drawer beside the list: `workspace-memory-form-drawer.md`.
 
 ## How is it tested?
 - `tests/workspace_channel_memory_test.php` (`first_line`, `groups`, the parts' wiring), `tests/workspace_memory_search_test.php` (`ws_memory_panel_line()`, the search's wiring), `tests/workspace_channel_look_test.php` (`test_workspace_channel_panes_memory_is_rows_under_projects`).

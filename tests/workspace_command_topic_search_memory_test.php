@@ -195,7 +195,7 @@ function test_workspace_command_memory_writes_as_new_entry()
 	pg_assert_contains('window.PGWsMemory.mount(pane, channel, self.memoryFill || null);', $js, 'the Memory tab opens with the fill');
 
 	$memory = workspace_command_tsm_test_js('workspace_memory.js');
-	pg_assert_contains("form(null, fill, false);", $memory, 'New entry opens filled');
+	pg_assert_contains("form(null, start, false);", $memory, 'New entry opens filled');
 	pg_assert_contains("var title = part.input('text', entry ? entry.title : (given.title || ''));", $memory);
-	pg_assert_contains("var text = part.textarea(entry ? entry.text : (given.text || ''), 6);", $memory);
+	pg_assert_contains("var text = part.textarea(entry ? entry.text : (given.text || ''), 8);", $memory);
 }
