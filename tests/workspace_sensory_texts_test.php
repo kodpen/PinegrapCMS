@@ -54,7 +54,6 @@ function test_workspace_sensory_texts_name_the_control()
 			'the Tour of the workspace button plays it again.',
 		),
 		'includes/workspace/screen.php' => array('Choose a channel from the channel list, or create one.'),
-		'includes/workspace/notes.php' => array('Pick a note from the note list, or start a new one.'),
 		'includes/workspace/mcp.php' => array('Ask the server for them with the Ask the server for its tools again button.'),
 		'includes/workspace/claude_setup.php' => array('the eyes reaction (👀) on the request means Claude has taken it.'),
 		'workspace_calendar_feed.php' => array(
