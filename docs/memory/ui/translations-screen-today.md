@@ -22,9 +22,9 @@ description: Census of the Translations screen before its redraw (2026-11-27): i
 - An update: "Queued", "Sent", "Running", "Done", "Failed", "Cancelled"; its texts `waiting`, `done`, `failed`, `skipped`, each failed one with its reason in `translation_job_items.error`.
 
 ## What runs by itself?
-- "Translate on save" (a language's `auto_update`; Pinegrap AI, Claude and Google only): `pg_tr_auto_update()` is called for a saved page, form record and Artifact Canvas picture; not for a product or a form.
+- "Translate on save" (a language's `auto_update`; Pinegrap AI, Claude and Google only): `pg_tr_auto_update()` is called for a saved page, form record and Artifact Canvas picture; not for a product or a form (till TS6).
 - `translation_job.php` every 300 s (`pg_tr_jobs_run_due()`): works Google and Pinegrap AI updates, requeues a quiet Claude one, fails one untouched for a day, draws waiting pictures. The browser engines need the open screen.
-- `site_languages.fallback_engine` is stored and offered, and read by no update.
+- `site_languages.fallback_engine` is stored and offered, read by no update (till TS6).
 
 ## What does the API reach? (`includes/translate/api.php`)
 - Languages, strings (groups `catalog` and `forms` only), a page, write, refresh (scan only), status, the glossary read and saved; each also an MCP tool.
@@ -35,6 +35,6 @@ description: Census of the Translations screen before its redraw (2026-11-27): i
 - "Update …" scans and sends under one name; the engine select beside it changes a site setting on its pick.
 - An update cannot be opened or tried again, and its failed texts' reasons are shown nowhere.
 - The suspicious triangle covers the engine's name; the only action on ticked rows is "Keep as in the source and approve".
-- A language with "Served" off is not offered, so it cannot be prepared here before it goes live.
+- A language with "Served" off is not offered, so it cannot be prepared before it goes live (till TS6).
 
 Related: docs/memory/ui/look-translations-screen.md, docs/memory/ui/translations-screen-editor-rows.md

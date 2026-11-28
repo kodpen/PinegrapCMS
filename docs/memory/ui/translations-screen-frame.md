@@ -4,7 +4,7 @@ description: Translations screen frame (TS1): head with language shares, tabs Te
 ---
 
 ## What does the head hold?
-- The language button (fill) whose menu lists each target language with its code and the share of the site's texts it has a translation for (`pg_tr_screen_share()`: never 100 while a text is left, never 0 once one is translated).
+- The language button (fill) whose menu lists each target language, "Served" or not (`translations-screen-not-served.md`), with its code and the share of the site's texts it has a translation for (`pg_tr_screen_share()`: never 100 while a text is left, never 0 once one is translated).
 - The tabs "Texts", "Activity", "Glossary" (`pg-seg`, Bootstrap tabs on the screen). `tab=activity|glossary` in the address opens one; the script rewrites the address when a tab is chosen; a glossary form posts `tab=glossary`, so `pg_tr_screen_view_query()` brings its answer back there.
 - "Activity" counts the language's updates still open and those that left failed texts; "Glossary" counts its terms.
 - "Translate pending" (fill, `#pg_tr_update`) with the scope's pending count, then "Scan for new texts" (quiet, `#pg_tr_scan`), then "More" (`bi-three-dots`) with today's items, "Clear translations" in danger ink.
