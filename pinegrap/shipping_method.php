@@ -277,7 +277,7 @@ if ($liveform->check_form_errors() == false) {
             $shipping_cost = $shipping_cost + $shipping_cost_for_item;
             
             // update shipping cost column for order item record
-            $shipping_cost_for_item_per_unit = round($shipping_cost_for_item / $quantity);
+            $shipping_cost_for_item_per_unit = round(pg_market_cart_amount($shipping_cost_for_item) / $quantity);
             $query = "UPDATE order_items SET shipping = ? WHERE id = ?";
             $result = db_q($query, array((string) $shipping_cost_for_item_per_unit, (string) $order_items[$key]['id'])) or output_error('Query failed.');
         }
@@ -286,6 +286,8 @@ if ($liveform->check_form_errors() == false) {
     // prepare for checking for shipping discounts
     // we must do this here, because the order preview screen does not apply offers to cart
     // we don't use the apply_offers_to_cart function here for performance reasons
+    // The rates are in base; the cart's shipping is in its currency.
+    $shipping_cost = pg_market_cart_amount($shipping_cost);
     $original_shipping_cost = 0;
     $offer = array();
     

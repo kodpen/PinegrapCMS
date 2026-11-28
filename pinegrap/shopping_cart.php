@@ -152,12 +152,9 @@ if (!empty($_POST['quick_add'])) {
                             // read the amount as typed (1.250,00 / 1,250.00 / 1250,5)
                             $donation_amount = pg_parse_amount($_POST['quick_add_amount']);
                             
-                            // convert donation amount into USD
-                            // Suppressing error for PHP 7.1+ support
-                            $donation_amount = @($donation_amount / VISITOR_CURRENCY_EXCHANGE_RATE);
-                        
-                            // convert dollars into cents for database storage
-                            $donation_amount = round($donation_amount * 100);
+                            // Minor units: the cart's own currency in a market's cart, else
+                            // the visitor's display currency divided back into base.
+                            $donation_amount = pg_market_cart_typed_minor($donation_amount);
                             
                             // if donation entered is greater than zero, then add donation to cart
                             if ($donation_amount > 0) {
@@ -293,12 +290,9 @@ foreach ($order_items as $order_item) {
         // read the amount as typed (1.250,00 / 1,250.00 / 1250,5)
         $donation_amount = pg_parse_amount($_POST['donations'][$order_item['id']]);
         
-        // convert donation amount into USD
-        // Suppressing error for PHP 7.1+ support
-        $donation_amount = @($donation_amount / VISITOR_CURRENCY_EXCHANGE_RATE);
-        
-        // convert dollars into cents for database storage
-        $donation_amount = round($donation_amount * 100);
+        // Minor units: the cart's own currency in a market's cart, else
+        // the visitor's display currency divided back into base.
+        $donation_amount = pg_market_cart_typed_minor($donation_amount);
         
         // if donation is less than or equal to 0, then remove order item from order
         if ($donation_amount <= 0) {

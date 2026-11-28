@@ -99,6 +99,8 @@ function pg_order_form_posted_quantity($raw)
 }
 function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add_name, $calendar_event_id = 0, $recurrence_number = 0)
 {
+    // The order follows the visitor's market before its first line is priced.
+    pg_market_cart_sync();
     // Check if product exists and is enabled and get product info.
     $query = "SELECT
             id,
@@ -207,7 +209,8 @@ function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add
             $price = $donation_amount;
             // else this product is not a donation product, so use price of product for price of order item
         } else {
-            $price = $product['price'];
+            // In a market's cart the line is in the market's currency.
+            $price = pg_market_cart_price($product['price']);
         }
         $add_watcher = '';
         // If this product submits a form and add watcher info is in the session,
@@ -617,7 +620,7 @@ function apply_offer_gift_to_cart($offer_id, $offer_action_id, $ship_to_id = 0)
     if (!$order_id) {
         return false;
     }
-    $action = db_item("SELECT
+    $action = pg_market_cart_offer_row(db_item("SELECT
 
             offer_actions.add_product_product_id,
 
@@ -637,7 +640,7 @@ function apply_offer_gift_to_cart($offer_id, $offer_action_id, $ship_to_id = 0)
 
         LEFT JOIN products ON offer_actions.add_product_product_id = products.id
 
-        WHERE offer_actions.id = '" . e($offer_action_id) . "'");
+        WHERE offer_actions.id = '" . e($offer_action_id) . "'"));
     // The action no longer adds anything, or the product is gone.
     if (!$action || !$action['add_product_product_id'] || !$action['add_product_quantity'] || ($action['product_name'] === NULL)) {
         return true;
@@ -707,7 +710,7 @@ function apply_offer_gift_to_cart($offer_id, $offer_action_id, $ship_to_id = 0)
         $paid_unit_price = (int) $paid_order_item['price'];
         if (($paid_order_item['discounted_by_offer'] == 1)
             && (($paid_order_item['line_offer_action_type'] == 'add product') || (pg_offer_action_target(array('discount_product_target' => $paid_order_item['line_offer_action_target'])) == 'cheapest'))) {
-            $member_prices = pg_erp_member_prices();
+            $member_prices = pg_market_cart_member_prices(pg_erp_member_prices());
             $paid_unit_price = isset($member_prices[(int) $action['add_product_product_id']]) ? (int) $member_prices[(int) $action['add_product_product_id']]['price'] : (int) $action['product_price'];
         }
         $line_price = pg_offer_gift_line_unit_price($paid_order_item['price'], $paid_order_item['quantity'], $paid_unit_price, $discounted_price, $action['add_product_quantity']);
@@ -2207,6 +2210,8 @@ function pg_order_charged_discount($discount, $subtotal)
 // if product no longer exists or is disabled and also updating order item prices.
 function update_order_item_prices()
 {
+    // The order follows the visitor's market; its lines are priced in it.
+    pg_market_cart_sync();
     // get all order items for this order
     $query = "SELECT
 
@@ -2242,9 +2247,11 @@ function update_order_item_prices()
         if (($order_items[$key]['product_id']) && ($order_items[$key]['product_enabled'] == 1)) {
             // if order item was not modified by a special offer and order item is not a donation, update order item price
             if (($order_items[$key]['offer_id'] == 0) && ($order_items[$key]['product_selection_type'] != 'donation')) {
+                // A member's agreed price is in base and spent at the
+                // cart's rate; a list price is converted as the market rounds.
                 $price = isset($member_prices[(int) $order_items[$key]['product_id']])
-                    ? $member_prices[(int) $order_items[$key]['product_id']]['price']
-                    : $order_items[$key]['product_price'];
+                    ? pg_market_cart_amount($member_prices[(int) $order_items[$key]['product_id']]['price'])
+                    : pg_market_cart_price($order_items[$key]['product_price']);
                 $query = "UPDATE order_items
 
                          SET price = ?
@@ -5885,7 +5892,8 @@ function pg_offer_tiers($offer_id)
             return ($b['min'] == $a['min']) ? 0 : (($b['min'] < $a['min']) ? -1 : 1);
         });
     }
-    return $tiers;
+    // The rungs are compared with the cart's subtotal, in its currency.
+    return pg_market_cart_tiers_for(pg_market_cart(), $tiers);
 }
 
 // The percentage the cart has earned, or 0 when the offer has no ladder or the
@@ -6093,7 +6101,8 @@ function validate_offer($offer_id, $ship_to_id = 0, $subtotal = '')
     if (mysqli_num_rows($result) == 0) {
         return false;
     }
-    $row = mysqli_fetch_assoc($result);
+    // The required subtotal in the cart's currency.
+    $row = pg_market_cart_offer_row(mysqli_fetch_assoc($result));
     $scope = $row['scope'];
     // Conditions that live outside the offer_rules row are checked before
     // anything else: an offer with no rule at all is otherwise valid for
@@ -6577,12 +6586,12 @@ function apply_offers_to_cart()
     $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error(lang('Query failed.'));
     $order_items = array();
     while ($row = mysqli_fetch_assoc($result)) {
-        $order_items[] = $row;
+        $order_items[] = pg_market_cart_offer_row($row);
     }
     // The signed-in member's agreed prices (pg_erp_member_prices()): an item
     // stripped of its offer goes back to that member's price, and an offer
     // below only takes an item it makes cheaper still.
-    $member_prices = pg_erp_member_prices();
+    $member_prices = pg_market_cart_member_prices(pg_erp_member_prices());
     // loop through the order items that are discounted by offers in order to remove discount
     foreach ($order_items as $order_item) {
         // if a product was found for this order item, then remove discount
@@ -6690,7 +6699,7 @@ function apply_offers_to_cart()
     $result = db_q($query, array((string) $offer_code)) or output_error(lang('Query failed.'));
     $offers = array();
     while ($row = mysqli_fetch_assoc($result)) {
-        $offers[] = $row;
+        $offers[] = pg_market_cart_offer_row($row);
     }
     // prepare to get best offers (including non-competing offers and competing offers that are the best offer)
     // competing offers are offers that share the same code but where only the best offer will be applied
@@ -6768,6 +6777,7 @@ function apply_offers_to_cart()
     $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error(lang('Query failed.'));
     $ship_tos = array();
     while ($row = mysqli_fetch_assoc($result)) {
+        $row = pg_market_cart_offer_row($row);
         // if this ship to has not been added yet, then add it
         if (isset($ship_tos[$row['ship_to_id']]) == false) {
             $ship_tos[$row['ship_to_id']] = array();
@@ -6831,7 +6841,7 @@ function apply_offers_to_cart()
 
             WHERE offers_offer_actions_xref.offer_id = ?";
         $result = db_q($query, array((string) $offer['id'])) or output_error(lang('Query failed.'));
-        $offers[$key]['offer_actions'] = mysqli_fetch_items($result);
+        $offers[$key]['offer_actions'] = array_map('pg_market_cart_offer_row', mysqli_fetch_items($result));
     }
     $discounted_order_items = array();
     // get subtotal
@@ -7011,7 +7021,7 @@ function apply_offers_to_cart()
     $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error(lang('Query failed.'));
     $order_items = array();
     while ($row = mysqli_fetch_assoc($result)) {
-        $order_items[] = $row;
+        $order_items[] = pg_market_cart_offer_row($row);
     }
     // create array that will keep track of offers and actions that have added products
     $offers_and_offer_actions = array();
@@ -7489,7 +7499,7 @@ function get_best_offer_id($offer_code, $scope = '')
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     $offers = array();
     while ($row = mysqli_fetch_assoc($result)) {
-        $offers[] = $row;
+        $offers[] = pg_market_cart_offer_row($row);
     }
     // if there is one offer, it is the best offer, so return id
     if (count($offers) == 1) {
@@ -7535,6 +7545,7 @@ function get_best_offer_id($offer_code, $scope = '')
     $result = db_q($query, array((string) $cart_order_id)) or output_error(lang('Query failed.'));
     $ship_tos = array();
     while ($row = mysqli_fetch_assoc($result)) {
+        $row = pg_market_cart_offer_row($row);
         // if this ship to has not been added yet, then add it
         if (isset($ship_tos[$row['ship_to_id']]) == false) {
             $ship_tos[$row['ship_to_id']] = array();
@@ -7605,12 +7616,12 @@ function get_best_offer_id($offer_code, $scope = '')
         $result = db_q($query, array((string) $offer['id'])) or output_error(lang('Query failed.'));
         $offer_actions = array();
         while ($row = mysqli_fetch_assoc($result)) {
-            $offer_actions[] = $row;
+            $offer_actions[] = pg_market_cart_offer_row($row);
         }
         $discounted_order_items = array();
         // The member's agreed prices count as in apply_offers_to_cart(): an
         // offer is worth only what it takes off below them.
-        $member_prices = pg_erp_member_prices();
+        $member_prices = pg_market_cart_member_prices(pg_erp_member_prices());
         // get subtotal
         // we need the subtotal because we need to keep track of how the subtotal is changed as order items are discounted
         // in order for us to determine if offers are valid
@@ -8118,7 +8129,7 @@ function add_pending_offers($liveform, $redirect = true)
                 }
                 // if there are no errors so far, continue
                 if ($liveform->check_form_errors() == false) {
-                    $offer_action = mysqli_fetch_assoc($result);
+                    $offer_action = pg_market_cart_offer_row(mysqli_fetch_assoc($result));
                     // Only the multi-recipient branch below resolves a recipient; every other
                     // path inserts the item without one.
                     $ship_to_id = 0;

@@ -405,10 +405,23 @@ function pg_order_display_begin($order_id)
         return $before;
     }
 
-    $code = pg_order_currency_code(db_value("SELECT charged_currency FROM orders WHERE id = '" . (int) $order_id . "' LIMIT 1"));
+    $market = pg_schema_has('orders', 'market_id');
+    $row = db_item("SELECT charged_currency" . ($market ? ", market_id" : "") . " FROM orders WHERE id = '" . (int) $order_id . "' LIMIT 1");
+    $code = pg_order_currency_code(isset($row['charged_currency']) ? $row['charged_currency'] : '');
     $base = defined('BASE_CURRENCY_CODE') ? (string) BASE_CURRENCY_CODE : '';
 
     if (($code === '') || ($code === pg_order_currency_code($base))) {
+        // A market's order in the base currency is priced and rounded
+        // already: printed as it is, never rounded again by the market.
+        if (!empty($row['market_id'])) {
+            pg_order_display(array(
+                'code'   => pg_order_currency_code($base),
+                'symbol' => defined('BASE_CURRENCY_SYMBOL') ? (string) BASE_CURRENCY_SYMBOL : '',
+                'suffix' => '',
+                'rate'   => 1.0,
+            ));
+        }
+
         return $before;
     }
 

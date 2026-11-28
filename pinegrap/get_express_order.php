@@ -17,6 +17,15 @@
  */
 
 function get_express_order($properties) {
+    // A cart in a market prints its amounts as they are, in its currency.
+    $display = pg_market_cart_display_begin();
+    $output = get_express_order_content($properties);
+    pg_order_display_end($display);
+
+    return $output;
+}
+
+function get_express_order_content($properties) {
 
     $page_id = $properties['page_id'];
     $editable = $properties['editable'];
@@ -507,13 +516,15 @@ function get_express_order($properties) {
         // If there are shippable items, then prepare data that will allow us to dynamically
         // update shipping and total when a method is selected.
         if ($shippable_items) {
+            // A cart in a market is printed as it is, in its own currency.
+            $js_currency = pg_visitor_currency_parts();
             $system .=
                 '<script>
                     software.base_currency_symbol = \'' . escape_javascript(BASE_CURRENCY_SYMBOL) . '\';
                     software.base_currency_code = \'' . escape_javascript(BASE_CURRENCY_CODE) . '\';
-                    software.visitor_currency_symbol = \'' . escape_javascript(VISITOR_CURRENCY_SYMBOL) . '\';
-                    software.visitor_currency_exchange_rate = \'' . escape_javascript(VISITOR_CURRENCY_EXCHANGE_RATE) . '\';
-                    software.visitor_currency_code_for_output = \'' . escape_javascript(VISITOR_CURRENCY_CODE_FOR_OUTPUT) . '\';
+                    software.visitor_currency_symbol = \'' . escape_javascript($js_currency['symbol']) . '\';
+                    software.visitor_currency_exchange_rate = \'' . escape_javascript((pg_order_display() !== null) ? '1' : VISITOR_CURRENCY_EXCHANGE_RATE) . '\';
+                    software.visitor_currency_code_for_output = \'' . escape_javascript($js_currency['suffix']) . '\';
                 </script>';
         }
 
@@ -1341,7 +1352,8 @@ function get_express_order($properties) {
                     
                     // if order item is a donation
                     if ($selection_type == 'donation') {
-                        $output_donation_amount_text_box = VISITOR_CURRENCY_SYMBOL . '<input type="text" name="donations[' . $order_item_id . ']" value="' . pg_format_input_amount(get_currency_amount($total_price, VISITOR_CURRENCY_EXCHANGE_RATE)) . '" size="5" class="software_input_text" style="text-align: right" />' . h(VISITOR_CURRENCY_CODE_FOR_OUTPUT);
+                        $donation_currency = pg_visitor_currency_parts();
+                        $output_donation_amount_text_box = $donation_currency['symbol'] . '<input type="text" name="donations[' . $order_item_id . ']" value="' . pg_format_input_amount(pg_visitor_amount($total_price)) . '" size="5" class="software_input_text" style="text-align: right" />' . h($donation_currency['suffix']);
                     }
                     
                     // Destructive action link; see the same line in
@@ -5070,7 +5082,7 @@ function get_express_order($properties) {
                         // appear blank if html 5 number type field is used.
                         $form->set(
                             'donations[' . $item['id'] . ']',
-                            number_format(get_currency_amount($item['amount'], VISITOR_CURRENCY_EXCHANGE_RATE), 2, '.', ''));
+                            number_format(pg_visitor_amount($item['amount']), 2, '.', ''));
                     }
 
                     $item['amount_info'] = prepare_price_for_output($item['amount'] * 100, false, $discounted_price = '', 'html');

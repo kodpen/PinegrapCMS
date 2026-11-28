@@ -143,11 +143,9 @@ if ((isset($_POST['submit_update_cart']) || $checkout) && $oid > 0) {
         // visitor types; the site language settles "1.250" vs "1,250".
         $amount = pg_parse_amount($raw);
 
-        $rate = (defined('VISITOR_CURRENCY_EXCHANGE_RATE') && (float)VISITOR_CURRENCY_EXCHANGE_RATE > 0)
-            ? (float)VISITOR_CURRENCY_EXCHANGE_RATE : 1.0;
-        // round(), never (int): a percentage-converted amount lands on a
-        // fractional cent and truncating drifts a kuruş off the displayed value.
-        $cents = (int)round(($amount / $rate) * 100);
+        // The cart's own currency in a market's cart, else the visitor's
+        // display currency divided back into base, rounded (never cut).
+        $cents = pg_market_cart_typed_minor($amount);
 
         if ($cents <= 0) {
             if (function_exists('remove_order_item')) {
@@ -608,9 +606,7 @@ if (!empty($_POST['quick_add']) && $oid > 0 && function_exists('add_order_item')
                 case 'donation':
                     // Same locale-tolerant parse the donation rows use.
                     $qa_amount = pg_parse_amount(isset($_POST['quick_add_amount']) ? $_POST['quick_add_amount'] : '');
-                    $qa_rate = (defined('VISITOR_CURRENCY_EXCHANGE_RATE') && (float)VISITOR_CURRENCY_EXCHANGE_RATE > 0)
-                        ? (float)VISITOR_CURRENCY_EXCHANGE_RATE : 1.0;
-                    $qa_cents = (int)round(((float)$qa_amount / $qa_rate) * 100);
+                    $qa_cents = pg_market_cart_typed_minor($qa_amount);
                     if ($qa_cents > 0) {
                         add_order_item($qa_pid, 1, $qa_cents, $qa_ship_to, $qa_add_name);
                         $qa_added = true;
