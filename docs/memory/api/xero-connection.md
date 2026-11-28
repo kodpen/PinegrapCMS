@@ -33,4 +33,4 @@ module: xero, xero_page
 - Revokes the token at Xero (`revoke_client_auth`), deletes the connection and the `xero` service entry (`xero_forget()`).
 
 ## What was not tried live?
-- No call was made to a real Xero organisation; the shapes come from Xero's OpenAPI files (`plans/accounting-sync-census-xero.md`).
+- No call was made to a real Xero organisation; the shapes come from Xero's OpenAPI files (`xero-service-facts.md`).
