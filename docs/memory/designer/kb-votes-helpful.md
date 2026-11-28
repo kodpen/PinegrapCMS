@@ -27,4 +27,4 @@ module: kb_votes
 ## Tests?
 - `tests/kb_votes_test.php`. The step, the endpoint, the list and the page against a database and in a browser were not run in the cloud session (PR #12230).
 
-Related: docs/memory/plans/help-centre.md, docs/memory/designer/search-results-folder-and-article-suggest.md
+Related: docs/memory/designer/help-centre-collections.md, docs/memory/designer/search-results-folder-and-article-suggest.md

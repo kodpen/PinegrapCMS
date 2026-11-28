@@ -24,4 +24,4 @@ module: widgets_lists_tree
 - No order by an "Order" number field: rows stand in record order, or A to Z / Z to A by title.
 - Tests: `tests/widget_lists_tree_test.php` (rows, children, path). The reads against a database and the designer in a browser were not run in the cloud session.
 
-Related: docs/memory/plans/help-centre.md, docs/memory/designer/widget-lists.md, docs/memory/designer/collection-lists.md
+Related: docs/memory/designer/help-centre-collections.md, docs/memory/designer/widget-lists.md, docs/memory/designer/collection-lists.md

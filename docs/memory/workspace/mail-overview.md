@@ -4,8 +4,8 @@ description: Workspace e-mail as a whole: mailboxes, the card or a box's room, t
 ---
 
 ## What is it?
-- Mail to a Workspace mailbox (`ws_mail_boxes`) becomes a conversation: a card in the box's channel, or in its own room when it is kept in no channel. The team reads it on the Incoming e-mail screen or in the channel and answers, forwards or writes new mail from the box's address through the mail queue.
-- Built as slices G1-G8 (incoming e-mail, #2444), steps WM1-WM14 (the E-mails screen, owner 2026-11-10 and 2026-11-11, #8604, #8765) and MT1-MT6 (a person's chat reads, drafts and sends, owner 2026-11-14, `workflow/decisions-made-workspace-26.md`).
+- Mail to a Workspace mailbox becomes a conversation: a card in the box's channel, or in its own room. The team reads it on the Incoming e-mail screen or in the channel and answers, forwards or writes new mail from the box's address through the mail queue.
+- Built as slices G1-G8 (#2444), steps WM1-WM14 (the E-mails screen, owner 2026-11-10 and 2026-11-11, #8604, #8765) and MT1-MT6 (a person's chat reads, drafts and sends, owner 2026-11-14, `workflow/decisions-made-workspace-26.md`).
 
 ## Which decisions bind it?
 - The name rule, IMAP, the eleven answers, what the screen is and what is left: `mail-decisions.md`. The records: `workflow/decisions-made-product-10.md`, `decisions-made-workspace-13.md`, `-17.md`, `-21.md` (the list moves into the messages area, MA10), `-27.md` (a mailbox's features, IB1-IB8).
@@ -16,6 +16,7 @@ description: Workspace e-mail as a whole: mailboxes, the card or a box's room, t
 - The Incoming e-mail screen (views, filters, the row, the menu): `mail-list.md`, pinned to a person's main menu `ui/main-menu-mail-row.md`, a card on the new dashboard `ui/dashboard-v2-mail-card.md`; the reading pane and unread marks: `mail-screen-pane.md`, `mail-html-preview.md`, the channel's pill `mail-pane-channel-pill.md`; Remind me later and if no answer comes: `mail-remind-later.md`, `mail-no-answer.md`.
 - Sending: `mail-send.md`, `mail-send-outcome.md`, `core/mail-queue-outcome.md`, `mail-email-fields.md`, `mail-sent-and-bounces.md`; a box's Sent folder read back: `mail-sent-folder.md`; New e-mail: `mail-compose.md`, its address suggestions `mail-suggest.md`; a person's own signature: `mail-own-signature.md`; Send later and Undo send: `mail-send-later.md`, `mail-undo-send.md`; Forward as e-mail: `mail-forward.md`; Reply by e-mail: `mail-reply.md`.
 - Status, holder, first-answer time, automatic answer: `mail-status.md`; incoming mail rules: `mail-rules.md`; "I am away" and its stand-in: `mail-away.md`; who is told and the event: `mail-notices-and-event.md`; Pinegrap AI's suggestion: `mail-triage.md`; the API and MCP: `mail-api.md`, one mail read `mail-api-reading.md`, drafts `mail-drafts.md` and their pill `mail-drafts-app-pill.md`, sending `mail-send-scope.md`, HTML and files `mail-api-html-files.md`.
+- Support requests, priority, resolve-by: `support-requests.md`.
 - Tables: `mail-tables.md`, `mail-tables-sending.md`.
 
 ## Where is each part?
