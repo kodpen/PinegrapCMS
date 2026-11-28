@@ -61,9 +61,10 @@ function ws_mail_transport_kind($box_transport)
  *                     waiting | closed | all; open in Incoming, else all by
  *                     default), holder (all | me | none), overdue (1), box
  *                     (a mailbox id), transport (email | whatsapp | sms,
- *                     '' for every kind), q (the search), before (the cursor)
+ *                     '' for every kind), priority (1..4, '' for every
+ *                     priority), q (the search), before (the cursor)
  * @return array view, status, holder, overdue (bool), box (int), transport,
- *               q, before (null or [time, id])
+ *               priority (int, 0 for every), q, before (null or [time, id])
  */
 function ws_mail_list_filters($query)
 {
@@ -83,6 +84,7 @@ function ws_mail_list_filters($query)
         'overdue' => !empty($query['overdue']) && ((string) $query['overdue'] === '1'),
         'box'     => (is_scalar($query['box'] ?? null) && ctype_digit((string) $query['box'])) ? (int) $query['box'] : 0,
         'transport' => $word('transport', array_keys(ws_mail_transport_labels()), ''),
+        'priority' => function_exists('ws_mail_priority_filter') ? ws_mail_priority_filter($query['priority'] ?? '') : 0,
         'q'       => $search,
         'before'  => ws_mail_list_cursor($query['before'] ?? ''),
     );
@@ -119,6 +121,7 @@ function ws_mail_list_query($filters, $change = array())
         'overdue' => $filters['overdue'] ? '1' : '',
         'box'     => ($filters['box'] > 0) ? (string) $filters['box'] : '',
         'transport' => (string) ($filters['transport'] ?? ''),
+        'priority' => ((int) ($filters['priority'] ?? 0) > 0) ? (string) (int) $filters['priority'] : '',
         'q'       => $filters['q'],
     );
 
@@ -189,6 +192,11 @@ function ws_mail_list_where($filters, $viewer_id, $channel_ids, $charset = '', $
 
     if ((int) ($filters['box'] ?? 0) > 0) {
         $where[] = "box_id = '" . (int) $filters['box'] . "'";
+    }
+
+    // One priority: only a support box's conversations have one.
+    if ((int) ($filters['priority'] ?? 0) > 0) {
+        $where[] = "priority = '" . (int) $filters['priority'] . "'" . (($support !== '') ? ' AND ' . $support : '');
     }
 
     // One transport: a number's box by its own, e-mail every other box.
@@ -383,6 +391,12 @@ function ws_mail_list_visible($viewer)
 function ws_mail_list($viewer, $filters, $now, $page = WS_MAIL_LIST_PAGE)
 {
     $page = max(1, min(WS_MAIL_LIST_PAGE, (int) $page));
+
+    // Before the upgrade added the column there is no priority to narrow by.
+    if (!function_exists('ws_mail_priority_ready') || !ws_mail_priority_ready()) {
+        $filters['priority'] = 0;
+    }
+
     $charset = function_exists('pg_list_search_connection_charset') ? pg_list_search_connection_charset() : '';
     // Drafts lists kept drafts, not conversations (mail_drafts_screen.php).
     $where = (($filters['view'] ?? '') === 'drafts') ? ''
@@ -401,8 +415,8 @@ function ws_mail_list($viewer, $filters, $now, $page = WS_MAIL_LIST_PAGE)
 
     foreach ((array) db_items("SELECT id, name, settings, transport FROM ws_mail_boxes") as $box) {
         $boxes[(int) $box['id']] = array('name' => (string) $box['name'], 'hours' => ws_mail_first_reply_hours($box),
-            'resolve_hours' => ws_mail_resolve_hours($box), 'support' => ws_mail_box_is_support($box),
-            'transport' => ws_mail_transport_kind($box['transport']));
+            'priority_hours' => ws_mail_priority_hours($box), 'resolve_hours' => ws_mail_resolve_hours($box),
+            'support' => ws_mail_box_is_support($box), 'transport' => ws_mail_transport_kind($box['transport']));
     }
 
     $out = array();
@@ -416,8 +430,10 @@ function ws_mail_list($viewer, $filters, $now, $page = WS_MAIL_LIST_PAGE)
         }
 
         $seen = $row;
-        $box = $boxes[(int) $row['box_id']] ?? array('name' => '', 'hours' => 0, 'resolve_hours' => 0, 'support' => true, 'transport' => 'email');
-        $overdue = ws_mail_first_reply_overdue($row, $box['hours'], $now);
+        $box = $boxes[(int) $row['box_id']] ?? array('name' => '', 'hours' => 0, 'priority_hours' => array(), 'resolve_hours' => 0, 'support' => true, 'transport' => 'email');
+        // The first-answer target of the conversation's priority (mail_priority.php).
+        $hours = ws_mail_priority_reply_hours($box['hours'], $box['priority_hours'], $row);
+        $overdue = ws_mail_first_reply_overdue($row, $hours, $now);
 
         if ($filters['overdue'] && !$overdue) {
             continue;
@@ -430,7 +446,7 @@ function ws_mail_list($viewer, $filters, $now, $page = WS_MAIL_LIST_PAGE)
             // The room of a mailbox kept in no channel is no channel to name.
             'channel_name'      => ($channel && !ws_channel_is_mailbox($channel)) ? (string) $channel['name'] : '',
             'assignee_name'     => ((int) $row['assignee_id'] > 0) ? ws_person_name((int) $row['assignee_id']) : '',
-            'first_reply_hours' => $box['hours'],
+            'first_reply_hours' => $hours,
             'resolve_hours'     => $box['resolve_hours'],
             'overdue'           => $overdue,
             'support'           => $box['support'],
@@ -593,12 +609,14 @@ function ws_mail_list_rows_html($rows, $filters, $now, $open = 0)
             . ((string) ($row['snippet'] ?? '') !== '' ? '<span class="ws-mail-snippet">' . h((string) $row['snippet']) . '</span>' : '')
             . '<span class="ws-mail-row-meta">'
             . ws_mail_list_transport_badge_html($transport)
+            . (function_exists('ws_mail_source_html') ? ws_mail_source_html($row) : '')
             . (($unsent === 'failed') ? '<span class="badge theme-danger">' . h(lang('Not sent')) . '</span>' : '')
             . (($unsent === 'waiting') ? '<span class="badge theme-secondary">' . h(lang('Waiting to be sent')) . '</span>' : '')
             . (($unsent === 'later') ? '<span class="badge theme-info">' . h(lang('Sends later')) . '</span>' : '')
             . ((!empty($row['no_answer']) && function_exists('ws_mail_no_answer_badge_html')) ? ws_mail_no_answer_badge_html() : '')
             . (((string) $row['box_name'] !== '') ? '<span>' . h((string) $row['box_name']) . '</span>' : '')
             . (((string) $row['channel_name'] !== '') ? '<span>' . h('#' . (string) $row['channel_name']) . '</span>' : '')
+            . ((($row['support'] ?? true) && function_exists('ws_mail_priority_html')) ? ws_mail_priority_html($row) : '')
             . (($row['support'] ?? true) ? '<span>' . ws_mail_status_html($row, (string) $row['assignee_name'], (int) $row['first_reply_hours'], $now, (int) ($row['resolve_hours'] ?? 0)) . '</span>' : '')
             . '</span></a>';
     }
@@ -722,7 +740,7 @@ function ws_mail_list_filters_html($filters, $boxes = array(), $can_send = false
 
     $statuses = ws_mail_statuses() + array('all' => lang('All'));
     $holders = array('all' => lang('Anybody'), 'me' => lang('Held by me'), 'none' => lang('Held by nobody'));
-    $keep = array('view', 'status', 'holder', 'overdue', 'box', 'transport', 'q');
+    $keep = array('view', 'status', 'holder', 'overdue', 'box', 'transport', 'priority', 'q');
 
     $overdue = '<a class="btn btn-sm btn-text theme-secondary' . ($filters['overdue'] ? ' active' : '') . '" aria-pressed="' . ($filters['overdue'] ? 'true' : 'false') . '"'
         . ' href="messages_mail.php?' . h(ws_mail_list_query($filters, array('overdue' => $filters['overdue'] ? '' : '1'))) . '"><i class="bi bi-alarm me-1" aria-hidden="true"></i>' . h(lang('First answer overdue')) . '</a>';
@@ -731,6 +749,12 @@ function ws_mail_list_filters_html($filters, $boxes = array(), $can_send = false
         pg_filter_select('status', $statuses, $filters['status'], array('label' => lang('Status'), 'icon' => 'inbox', 'keep' => $keep)),
         pg_filter_select('holder', $holders, $filters['holder'], array('label' => lang('Held by'), 'icon' => 'person', 'keep' => $keep)),
     ) : array();
+
+    // The priority beside the status and holder, once its column is there.
+    if ($support && function_exists('ws_mail_priority_ready') && ws_mail_priority_ready()) {
+        $search[] = pg_filter_select('priority', array('' => lang('Any priority')) + ws_mail_priorities(), ((int) ($filters['priority'] ?? 0) > 0) ? (string) (int) $filters['priority'] : '',
+            array('label' => lang('Priority'), 'icon' => 'flag', 'keep' => $keep));
+    }
 
     if (count($boxes) > 1) {
         $search[] = pg_filter_select('box', array('' => lang('All mailboxes')) + $boxes, ($filters['box'] > 0) ? (string) $filters['box'] : '',
@@ -751,7 +775,7 @@ function ws_mail_list_filters_html($filters, $boxes = array(), $can_send = false
     // The search keeps every other word; a new search starts at page one.
     $hidden = '';
 
-    foreach (array('view', 'status', 'holder', 'overdue', 'box', 'transport') as $key) {
+    foreach (array('view', 'status', 'holder', 'overdue', 'box', 'transport', 'priority') as $key) {
         if (isset($_GET[$key]) && is_scalar($_GET[$key]) && ((string) $_GET[$key] !== '')) {
             $hidden .= '<input type="hidden" name="' . h($key) . '" value="' . h((string) $_GET[$key]) . '">';
         }

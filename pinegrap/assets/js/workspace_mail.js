@@ -1200,7 +1200,7 @@
                 // The E-mails screen says the change was kept and asks its
                 // list again; a channel's card is only drawn again.
                 if (view.changed) {
-                    view.changed(data.status ? 'state_saved' : 'holder_saved');
+                    view.changed(data.status ? 'state_saved' : (data.priority ? 'priority_saved' : 'holder_saved'));
                 }
 
                 view.sync();
@@ -1249,6 +1249,21 @@
 
         row.appendChild(status);
         row.appendChild(hold);
+
+        // The priority, on the Incoming e-mail screen's pane only: the
+        // server sends it there once its column is there.
+        if (current.priority) {
+            var priority = h.select([1, 2, 3, 4].map(function (key) {
+                return [String(key), t('mail_priority_' + key)];
+            }), String(current.priority));
+
+            priority.classList.add.apply(priority.classList, tight);
+            priority.setAttribute('aria-label', t('mail_priority'));
+            priority.addEventListener('change', function () {
+                change({ priority: priority.value }, priority);
+            });
+            row.appendChild(priority);
+        }
     }
 
     // Under Pinegrap AI's suggestion: its reply draft, opened in the drawer.
@@ -2131,7 +2146,7 @@
         }
 
         root.addEventListener('click', function (event) {
-            var target = event.target.closest('[data-ws-mail-more], [data-ws-mail-read-all], [data-ws-mail-check], [data-ws-mail-row], [data-ws-mail-new], [data-ws-mail-my-settings], [data-ws-mail-menu-pin], [data-ws-mail-unblock], [data-ws-mail-forward], [data-ws-mail-calendar], [data-ws-mail-close], [data-ws-mail-draft-open], [data-ws-mail-draft-remove]');
+            var target = event.target.closest('[data-ws-mail-more], [data-ws-mail-read-all], [data-ws-mail-check], [data-ws-mail-row], [data-ws-mail-new], [data-ws-mail-my-settings], [data-ws-mail-menu-pin], [data-ws-mail-unblock], [data-ws-mail-forward], [data-ws-mail-calendar], [data-ws-mail-close], [data-ws-mail-draft-open], [data-ws-mail-draft-remove], [data-ws-mail-source-chat]');
 
             // A new tab or window keeps the link's own way.
             if (!target || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) {
@@ -2142,6 +2157,11 @@
 
             if (target.hasAttribute('data-ws-mail-draft-open') || target.hasAttribute('data-ws-mail-draft-remove')) {
                 draftAction(target);
+            } else if (target.hasAttribute('data-ws-mail-source-chat')) {
+                // The live chat a request was made of, in the panel's chat window.
+                if (typeof window.pgChatOpenConversation === 'function') {
+                    window.pgChatOpenConversation(parseInt(target.getAttribute('data-ws-mail-source-chat'), 10));
+                }
             } else if (target.hasAttribute('data-ws-mail-check')) {
                 check(target);
             } else if (target.hasAttribute('data-ws-mail-unblock')) {

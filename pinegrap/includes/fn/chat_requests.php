@@ -285,7 +285,8 @@ function pg_chat_request_make($conversation_id, $box_id)
     }
 
     try {
-        $result = ws_mail_ingest($raw, $box, array('tie' => $tie));
+        // The request's list label leads back to the chat.
+        $result = ws_mail_ingest($raw, $box, array('tie' => $tie, 'source' => 'chat', 'source_id' => (int) $chat['id']));
     } catch (Throwable $error) {
         $result = array('status' => 'refused', 'reason' => 'error', 'conversation_id' => 0, 'item_id' => 0);
     }

@@ -592,6 +592,9 @@ function pg_support_form_request($page_id, $form_id)
     try {
         $result = ws_mail_ingest($raw, $box, array(
             'tie' => pg_support_form_tie($address, (int) $record['user_id'], (string) ($user['user_email'] ?? ''), (int) $record['contact_id'], (string) ($contact['email_address'] ?? '')),
+            // The request's list label leads back to the record.
+            'source' => 'form',
+            'source_id' => $form_id,
         ));
     } catch (Throwable $error) {
         $result = array('status' => 'refused', 'reason' => 'error', 'conversation_id' => 0);

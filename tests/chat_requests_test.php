@@ -104,6 +104,6 @@ function test_chat_requests_wiring()
 	pg_assert_contains("api('chat_request',", $js);
 
 	$module = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/chat_requests.php');
-	pg_assert_contains('ws_mail_ingest($raw, $box, array(\'tie\' => $tie))', $module);
+	pg_assert_contains('ws_mail_ingest($raw, $box, array(\'tie\' => $tie, \'source\' => \'chat\', \'source_id\' => (int) $chat[\'id\']))', $module);
 	pg_assert_contains('pg_support_form_box_offered($box)', $module);
 }
