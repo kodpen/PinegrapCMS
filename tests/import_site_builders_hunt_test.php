@@ -60,3 +60,19 @@ function test_import_site_builders_date_field_keeps_the_day_written()
 
 	date_default_timezone_set($zone);
 }
+
+function test_import_site_builders_wix_surcharge_below_the_product_price()
+{
+	$product = array('price' => '40', 'discountmode' => '', 'discountvalue' => '');
+
+	// A variant cheaper than the product carries a negative surcharge: the
+	// variant was refused as "not an amount".
+	$money = pg_import_wix_money($product, array('price' => '', 'surcharge' => '-5'), true);
+	pg_assert_same('', $money['refused'], 'not refused');
+	pg_assert_same(3500, $money['price'], 'the product price less five');
+	pg_assert_same(null, $money['compare_at'], 'no struck-through price');
+
+	pg_assert_same(4500, pg_import_wix_money($product, array('price' => '', 'surcharge' => '5'), true)['price'], 'a surcharge still adds');
+	pg_assert_same(0, pg_import_wix_money($product, array('price' => '', 'surcharge' => '-50'), true)['price'], 'never below zero');
+	pg_assert_contains('-x', pg_import_wix_money($product, array('price' => '', 'surcharge' => '-x'), true)['refused'], 'a word is still refused');
+}

@@ -692,7 +692,8 @@ function pg_import_wix_product($rows, $line)
  * A variant's price and compare-at price in minor units. The current
  * layout: its own price and strikethrough price, else the product's, the
  * strikethrough price above the price the compare-at. The previous one: the product's price plus
- * the variant's surcharge (or the variant's own price), less the product's
+ * the variant's surcharge, which a cheaper variant has below zero (or the
+ * variant's own price), never below zero, less the product's
  * discount, the price before the discount the compare-at. 'refused' names
  * a cell that is not an amount. Pure but for the price reader's file.
  *
@@ -719,7 +720,13 @@ function pg_import_wix_money($product, $row, $previous)
             continue;
         }
 
-        $cents[$part] = pg_import_wix_cents($cell);
+        // A variant cheaper than its product has a negative surcharge.
+        $minus = ($part === 'surcharge') && (strncmp($cell, '-', 1) === 0);
+        $cents[$part] = pg_import_wix_cents($minus ? substr($cell, 1) : $cell);
+
+        if ($minus && ($cents[$part] !== null)) {
+            $cents[$part] = -$cents[$part];
+        }
 
         if ($cents[$part] === null) {
             $money['refused'] = lang(array('string' => 'The price {var:1} is not an amount.', 'vars' => array($cell)));
@@ -733,7 +740,7 @@ function pg_import_wix_money($product, $row, $previous)
     }
 
     if ($previous) {
-        $full = $cents['price'] + (int) $cents['surcharge'];
+        $full = max(0, $cents['price'] + (int) $cents['surcharge']);
         $money['price'] = pg_import_wix_discounted($full, (string) ($product['discountmode'] ?? ''), (string) ($product['discountvalue'] ?? ''));
         $money['compare_at'] = ($money['price'] < $full) ? $full : null;
 
