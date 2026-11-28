@@ -370,7 +370,7 @@ description: Generated from the module field of the memory files: each includes/
 - `price_history`: [[widget-currency-symbol-once]]
 - `privacy`: [[consent-log-and-audit-trail]], [[privacy-erase-store-credit]], [[sms-consent-box]]
 - `privacy_centre`: [[privacy-centre]], [[privacy-centre-screen]], [[privacy-rules-card]]
-- `privacy_export`: [[personal-data-export]]
+- `privacy_export`: [[personal-data-export]], [[personal-data-export-support-requests]]
 - `privacy_inventory`: [[privacy-inventory]]
 - `privacy_request_form`: [[privacy-request-form]]
 - `privacy_request_link`: [[privacy-request-export-link]]

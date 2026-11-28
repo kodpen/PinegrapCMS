@@ -191,6 +191,7 @@
 - mail-remind-later.md: Remind me later (IB10): the pane's menu and times, ws_mail_reminders, what leaves the person's list and comes back unread, the wake, inbox kind mail_remind, step 11.0.212 [decision: decisions-made-schema-21.md, decisions-made-workspace-29.md]
 - mail-reply-offer.md: Reply by e-mail for a mailbox that cannot send (#10083): drawn disabled with its reason on the card and in the E-mails pane, one test ws_mail_reply_blocked() shared with the send's check
 - mail-reply.md: Answering a Workspace e-mail by e-mail (WM7): the queued answer, Cc, Bcc, files, Reply to all, the drawer, route, headers and subject, the API's answer sent at once
+- mail-resolve-by.md: The resolve-by time of a support-box conversation (help centre HC6): the box's "Resolve within (hours)", how due and overdue are computed, where the Incoming e-mail screen shows it, what it leaves out
 - mail-room.md: A mailbox kept in no channel (WM13, #8985): its room of kind mailbox, the box form's Kept in, who reads and answers, where the room never shows, the inventory test [decision: decisions-made-workspace-17.md]
 - mail-routing.md: Routing incoming Workspace e-mail (G6, mail_route.php): box routes by address or +tag to a channel, recipients read, the known customer's line in their channels
 - mail-rules.md: A support box's incoming mail rules (IB11): one condition and one action, kept in the box's settings JSON, run at ingest on a new conversation, the list and Add rule on the Mailboxes card [decision: decisions-made-workspace-29.md]
