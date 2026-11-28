@@ -330,7 +330,7 @@ description: Generated from the module field of the memory files: each includes/
 - `office_format`: [[office-sheet-bar-text-borders]], [[office-sheet-format]], [[office-sheet-format-borders]]
 - `office_formula`: [[office-formula-engine]]
 - `office_new`: [[office-new-files]]
-- `office_pptx_canvas`: [[office-pptx-canvas-mapper]]
+- `office_pptx_canvas`: [[office-pptx-canvas-mapper]], [[office-pptx-slides-measure]]
 - `office_pptx_design`: [[office-pptx-design-reader]]
 - `office_sheets`: [[office-sheets]]
 - `office_shift`: [[office-sheet-rows-columns]]
