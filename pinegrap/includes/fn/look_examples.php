@@ -1226,12 +1226,24 @@ function pg_look_examples_menu_icon_pattern()
             . $tile . '<span class="pg-text-meta">' . h($row[2]) . '</span></span>';
     }
 
+    // A row at rest beside the open row: the open one's tile is filled with
+    // the tone and the row takes the quiet fill, as in the menu.
+    $open = '';
+
+    foreach (array('', ' pg-look-mi-open') as $state) {
+        $open .= '<span class="pg-look-mi-row' . $state . '">'
+            . pg_menu_icon_tile(pg_menu_icon('products', '', ''), 'ecommerce')
+            . '<span>' . h(lang('Products')) . '</span></span>';
+    }
+
     return array(
         'id'      => 'pattern-menu-icon',
         'title'   => lang('Menu row icon'),
-        'classes' => array('.pg-look-mi', '.pg-look-mi-item', '.pg-mi', '.pg-mi-tile', '.pg-mi-f', '.pg-mi-h', '.pg-mi-date'),
+        'classes' => array('.pg-look-mi', '.pg-look-mi-item', '.pg-look-mi-row', '.pg-look-mi-open', '.pg-mi', '.pg-mi-tile', '.pg-mi-f', '.pg-mi-h', '.pg-mi-date'),
         'html'    => '<div class="pg-look-line pg-look-mi">' . $items . '</div>'
-            . '<p class="pg-text-meta">' . h(lang('From the main menu: one line drawing on a tile in the colour of the row\'s category. Pointing at a row or focusing it plays its icon\'s one move, half a second; nothing loops but a live part, the running flow\'s dot. With less motion asked for, nothing moves.')) . '</p>',
+            . '<div class="pg-look-line pg-look-mi">' . $open . '</div>'
+            . '<p class="pg-text-meta">' . h(lang('From the main menu: one line drawing on a tile in the colour of the row\'s category. Pointing at a row or focusing it plays its icon\'s one move, half a second; nothing loops but a live part, the running flow\'s dot. With less motion asked for, nothing moves.')) . '</p>'
+            . '<p class="pg-text-meta">' . h(lang('The open row, second beside a row at rest: its tile filled with the colour and the drawing white (the menu\'s ground in the dark theme), the row a quiet grey fill with dark words. A panel\'s current entry is drawn the same way; pointing never fills a tile.')) . '</p>',
     );
 }
 
