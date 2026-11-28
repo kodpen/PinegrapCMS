@@ -73,7 +73,9 @@
 - bug-hunt-areas-designer-activity.md: Bug hunt of the designer's History "Activity" tab and its audit lines (2026-11-26, PR #11762): three faults fixed, what was read clean [decision: here]
 - bug-hunt-areas-designer-home.md: Bug hunt of the Page Design Studio home and the New design window (2026-11-27): the four faults fixed, the one written as an issue, what was read clean
 - bug-hunt-areas-designer-import.md: The bug hunt of the designer's HTML, ZIP and paste importers on the server (hunt 55, 2026-11-24, #11501): the seven faults fixed, what was read clean, what was not run
+- bug-hunt-areas-designer-search.md: Bug hunt of the designer's Select similar, Find and Replace, Options search and tree search (2026-11-28, PR #12242): six faults fixed, what was read clean, one small fault left
 - bug-hunt-areas-designer-shared-components.md: Bug hunt of the designer's shared components, server side (area 54, 2026-11-24): four faults fixed in the hunt's PR #11498, two issues, what was read clean [decision: decisions-made-product-109.md]
+- bug-hunt-areas-designer-states.md: The bug hunt in the designer's states, interactions, collection window and Google Fonts browser (agent channel 15408, 2026-11-28): what was fixed, what was read clean, what is left
 - bug-hunt-areas-document-to-page.md: Bug hunt "Page from a document" (2026-11-26, PR #11769): seven faults fixed (file pick, pictures, words, how much was read), what read clean, the two faults left built in PR #11792
 - bug-hunt-areas-erp-bank-statement-lines.md: The bug hunt in ERP bank statement lines, matching and suggestions (agent channel request 3141, 2026-11-26): what was fixed, what was read clean, what is left
 - bug-hunt-areas-erp-cheques.md: The bug hunt of ERP cheques and promissory notes (2026-11-26, PR #11844): the five faults fixed, the product question asked, what was read clean and what was left [decision: here]
@@ -108,6 +110,7 @@
 - bug-hunt-areas-oauth-connected-accounts.md: The bug hunt of OAuth and connected accounts (2026-11-24, area 42): the two faults fixed, what was read clean
 - bug-hunt-areas-ops-alerts-once.md: The bug hunt of staff alerts told once (2026-11-24, #11358): pg_ops_alert() and the bell lines on it; the five faults fixed, what was read clean, what was not there yet [decision: here]
 - bug-hunt-areas-order-legal-documents.md: The bug hunt of the order's legal documents (pre-information form, distance sales contract, KVKK copy; #10663, 2026-11-20): the three faults fixed, the issue opened, what was read clean [decision: here]
+- bug-hunt-areas-overrides.md: Bug hunt of "Can change per place" (2026-11-28, PR #12241): the three faults fixed in style_designer_overrides.js and component_overrides.php, and what was read clean
 - bug-hunt-areas-page-versions-publish.md: The bug hunt of page drafts, scheduled publishing and revisions (2026-11-24, hunt 35): the three faults fixed, the finding left as an issue, what was read clean
 - bug-hunt-areas-parasut-devhub-connect.md: The bug hunt in Paraşüt through a Developer Portal client (agent channel request 3016, 2026-11-26, #11741): the faults fixed, what was read clean and what was left
 - bug-hunt-areas-payment-gateways-callbacks.md: Bug hunt of the payment gateways' return and notify endpoints (area 49, 2026-11-24): repeated messages, a message before the return, amounts; what it fixed and read clean

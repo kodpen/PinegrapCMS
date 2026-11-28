@@ -185,7 +185,8 @@
 - key-code-import.md: Key code CSV import and export (import_key_codes.php, view_key_codes.php): a code already there is updated, not re-added; BOM, separator, dates, yes/no cells, formula guard, offer's own code
 - kvkk-notice-switch.md: The KVKK notice's own switch (Show the KVKK notice, config_text ecommerce_kvkk_enabled, step 11.0.271): checkout and sign-up follow it, apart from Legal documents [decision: here]
 - market-cart.md: The cart in its market's currency (MK6): the order row's market, currency and rate; lines, offers, shipping, donations converted; cart pages printed as they are; the rate sealed at submit
-- market-payment-methods.md: A market's order at the checkout (MK7): Stripe charges and refunds it in its own currency; the methods such an order is offered (capability order_currency)
+- market-payment-gateways.md: How PayPal Checkout, PayTR and iyzico charge and refund a market's order in its own currency (MK8): the order settings, the webhook amount, iyzico's protected currency left out of such an order
+- market-payment-methods.md: A market's order at the checkout (MK7, MK8): Stripe, PayPal, PayTR, iyzico in its own currency; the methods it is offered (order_currency, each driver's list)
 - market-site-prices.md: The visitor's market on the site (MK5): chosen by country or the country list, its currency and rounding in every printed price, the currency picker hidden, the page cache kept per country
 - marketplace-api-and-events.md: GET /products/{id}/marketplaces (manager role only, never credentials) and the marketplace.order.imported, .cancelled and .shipped webhook events: where each is announced and what it carries (#1667)
 - marketplace-bulk-matching.md: Bulk matching of marketplace products to the shop's (marketplace_products.php, #1880): remote catalogue table, paged read, suggestion scores, sure rule, what a match writes
