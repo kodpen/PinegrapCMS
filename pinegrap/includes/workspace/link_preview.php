@@ -570,6 +570,37 @@ function ws_link_preview_due()
 }
 
 /**
+ * The query that closes the rows waiting over a day with no card. It reads
+ * nothing, so it stamps no read_at: the hourly cap counts read_at of the last
+ * hour, and a closed backlog would otherwise hold every read for an hour.
+ * Pure.
+ *
+ * @param int $now
+ * @return string
+ */
+function ws_link_preview_expire_sql($now)
+{
+    return "UPDATE ws_link_previews SET state = 'none'
+        WHERE state = 'waiting' AND created_at < '" . ((int) $now - WS_LINK_PREVIEW_WAIT_MAX) . "'";
+}
+
+/**
+ * The query that claims a row for one read: still waiting, not claimed, and
+ * still for the address the pass read. A message edited to another address
+ * in between has a new waiting row, which is left to the next pass. Pure.
+ *
+ * @param int    $message_id
+ * @param string $url the address the pass read with the row
+ * @param int    $now
+ * @return string
+ */
+function ws_link_preview_claim_sql($message_id, $url, $now)
+{
+    return "UPDATE ws_link_previews SET read_at = '" . (int) $now . "'
+        WHERE message_id = '" . (int) $message_id . "' AND state = 'waiting' AND read_at = 0 AND url = '" . e((string) $url) . "'";
+}
+
+/**
  * One pass of the general job: rows waiting over a day are closed, then a
  * few of the oldest are read, under the hourly cap. Each row is claimed
  * first (read_at set while still waiting), so two overlapping runs never
@@ -586,8 +617,7 @@ function ws_link_preview_run($limit = WS_LINK_PREVIEW_BATCH)
 
     $now = time();
 
-    db("UPDATE ws_link_previews SET state = 'none', read_at = '" . $now . "'
-        WHERE state = 'waiting' AND created_at < '" . ($now - WS_LINK_PREVIEW_WAIT_MAX) . "'");
+    db(ws_link_preview_expire_sql($now));
 
     $room = WS_LINK_PREVIEW_HOURLY - (int) db_value("SELECT COUNT(*) FROM ws_link_previews WHERE read_at > '" . ($now - 3600) . "'");
     $limit = min((int) $limit, $room);
@@ -608,7 +638,7 @@ function ws_link_preview_run($limit = WS_LINK_PREVIEW_BATCH)
 
         $id = (int) $row['message_id'];
 
-        db("UPDATE ws_link_previews SET read_at = '" . time() . "' WHERE message_id = '" . $id . "' AND state = 'waiting' AND read_at = 0");
+        db(ws_link_preview_claim_sql($id, (string) $row['url'], time()));
 
         if ((int) mysqli_affected_rows(db::$con) !== 1) {
             continue;

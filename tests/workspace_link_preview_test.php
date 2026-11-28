@@ -245,3 +245,26 @@ function test_workspace_link_preview_idn_host()
 	pg_assert_false(ws_link_preview_url_allowed('http://yazıcı.local/'), 'a local name stays refused');
 	pg_assert_false(ws_link_preview_url_allowed('http://bilgisayar/'), 'a dotless name stays refused');
 }
+
+function test_workspace_link_preview_expiry_is_no_read()
+{
+	// Closing rows that waited over a day reads nothing: they must not count
+	// in the hourly cap, which counts read_at of the last hour.
+	$sql = ws_link_preview_expire_sql(1000000);
+
+	pg_assert_true(strpos($sql, "SET state = 'none'") !== false, 'the rows are closed');
+	pg_assert_true(strpos($sql, "created_at < '" . (1000000 - WS_LINK_PREVIEW_WAIT_MAX) . "'") !== false, 'only rows waiting over a day');
+	pg_assert_false(strpos($sql, 'read_at') !== false, 'no read time is stamped');
+}
+
+function test_workspace_link_preview_claim_pins_the_address()
+{
+	// A message edited to another address between the pass's read of its
+	// rows and the claim has a new row: the claim must not take it for the
+	// old address, or the new one is never read.
+	$sql = ws_link_preview_claim_sql(42, "https://example.com/a'b", 1000000);
+
+	pg_assert_true(strpos($sql, "message_id = '42'") !== false, 'the row');
+	pg_assert_true(strpos($sql, "AND state = 'waiting' AND read_at = 0") !== false, 'only an unclaimed waiting row');
+	pg_assert_true(strpos($sql, "AND url = '" . e("https://example.com/a'b") . "'") !== false, 'only for the address the pass read');
+}
