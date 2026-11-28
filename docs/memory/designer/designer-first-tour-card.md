@@ -22,10 +22,10 @@ module: output
 - Every 0.4 s while it runs, and on resize, it looks whether the control moved (redrawn only when its box changed), went away (the next stop) or a dialog opened (ring and bubble hidden till it closes). When another stop's control comes or goes (a narrower window, a panel closed) the count, dots, Back and Done are drawn again.
 - Only the part of a control in sight is ringed; one below the fold of its list is scrolled into view once at its stop (`visible()`, `designer-first-tour-model.md`).
 - A "How do I…" pointer whose pressed control goes away (the press opened something over it) waits for the next pointer's control, up to 1.35 s, instead of skipping it or closing the task.
-- Next, Back, Skip, Done; the right and left arrows inside the bubble; Escape unless a dialog, an open menu (the Preview menu at "see") or a typed field takes it (`escapes()`). Skip, Done and Escape write the access's tour as seen. Focus goes to Next (or Done) at each stop and back to where it was at the end; a hidden live line reads "Tour, 3 of 5." and the sentence.
+- Its keys, focus and Escape: `designer-first-tour-keys.md`.
 
 ## What changes under 576 px?
-- The card and the bubble are a sheet across the foot; the bubble stands under the page bar when the ringed control's middle is in the window's lower half. The palette and Options are not on screen, so the model skips "add" and "shape" falls back to the canvas: the count follows.
+- The card and the bubble are a sheet across the foot; the bubble stands under the page bar when the ringed control's middle is in the window's lower half. The palette and Options are not on screen, so the model skips "add" and "shape" falls back to the canvas: the count follows. The card then says "Four stops on the real buttons.".
 
 ## How is it started again?
 - "Take the tour" in the command palette (`act_tour`, shown when the part is handed) and as the first row of the Help window's "How do I…" (`designer-first-tour-help.md`).
