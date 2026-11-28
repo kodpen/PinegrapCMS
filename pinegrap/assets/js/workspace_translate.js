@@ -276,6 +276,22 @@
     }
 
     /**
+     * The body of the message as it is drawn now: the one given while it is
+     * on screen, else the one a redraw put in its place (a sync or a
+     * reaction while the translation ran), else the one given.
+     */
+    function live(body, id) {
+        if (!body || body.isConnected !== false) {
+            return body;
+        }
+
+        var doc = (typeof document !== 'undefined') ? document : null;
+        var drawn = doc ? doc.querySelector('[data-ws-message="' + id + '"] .ws-msg-main > .ws-msg-body') : null;
+
+        return drawn || body;
+    }
+
+    /**
      * Translates a drawn message into the reader's panel language and shows
      * it in the message's place.
      */
@@ -310,27 +326,27 @@
             var source = language(best.detectedLanguage);
 
             if (!source || (source === 'und')) {
-                say(body, h, h.t('tr_unknown'));
+                say(live(body, message.id), h, h.t('tr_unknown'));
                 return null;
             }
 
             if (source === target) {
-                say(body, h, h.t('tr_same', languageName(target, target)));
+                say(live(body, message.id), h, h.t('tr_same', languageName(target, target)));
                 return null;
             }
 
             return Promise.resolve(window.Translator.availability({ sourceLanguage: source, targetLanguage: target })).then(function (state) {
                 if (state === 'unavailable') {
-                    say(body, h, h.t('tr_unavailable', languageName(source, target)));
+                    say(live(body, message.id), h, h.t('tr_unavailable', languageName(source, target)));
                     return null;
                 }
 
                 if (state !== 'available') {
-                    say(body, h, h.t('tr_preparing'));
+                    say(live(body, message.id), h, h.t('tr_preparing'));
                 }
 
                 return getTranslator(source, target, function (percent) {
-                    say(body, h, h.t('tr_preparing_percent', percent));
+                    say(live(body, message.id), h, h.t('tr_preparing_percent', percent));
                 }).then(function (translator) {
                     return Promise.all(nodes.map(function (node) {
                         var list = pieces(node.nodeValue);
@@ -343,12 +359,12 @@
                     }));
                 }).then(function () {
                     kept[message.id] = { html: message.html, translated: copy.innerHTML, source: source, target: target, original: false };
-                    show(message, body, h);
+                    show(message, live(body, message.id), h);
                     return true;
                 });
             });
         }).then(null, function () {
-            say(body, h, h.t('tr_failed'));
+            say(live(body, message.id), h, h.t('tr_failed'));
         });
     }
 
@@ -362,7 +378,7 @@
         }
     }
 
-    var api = { pieces: pieces, join: join, wanted: wanted, language: language, supported: supported, translate: translate, apply: apply };
+    var api = { pieces: pieces, join: join, wanted: wanted, language: language, supported: supported, live: live, translate: translate, apply: apply };
 
     if (typeof window !== 'undefined') {
         window.PGWsTranslate = api;
