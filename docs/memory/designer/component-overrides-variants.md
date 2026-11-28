@@ -7,7 +7,7 @@ module: component_overrides
 ## Where is a variant kept?
 - On the component's root, `props._variants`: a list of `{name, nodes}` in the order added; `nodes` maps a node's `_id` to the props it gives that node. A place keeps only the name, `props._variant` on its placing `shared_ref`. No table or column.
 - A variant keeps classes and options only, never content, the reference or a `_…` key (`pg_co_variant_prop_ok()`); values are strings, numbers or switches.
-- Names: trimmed, at most 60 characters, unique in any case, never "Default" (`pg_co_clean_variant_name()`; the part's `nameWhy()`); at most 50 variants. Rename keeps the old name in `was`, so its places keep it (`component-overrides-variant-places.md`).
+- Names: trimmed, at most 60 characters, unique in any case, never "Default" in English or the editor's language (`pg_co_clean_variant_name()`; the part's `nameWhy()`); at most 50 variants. Duplicate shortens the original name so that "… copy 2" fits the 60 characters (before PR #12241 a long name hung the editor). Rename keeps the old name in `was`, so its places keep it (`component-overrides-variant-places.md`).
 
 ## Which functions are there?
 - `includes/fn/component_overrides.php` and its twin: `pg_co_variants()`, `pg_co_variant()`, `pg_co_variant_changes()`, `pg_co_place_variant()`, `pg_co_apply_variant()` (unknown or empty: the tree as given, JS the same object), `pg_co_variant_nodes()` (what an edit keeps; a removed string or switch as `''` or `false`).

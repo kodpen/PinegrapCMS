@@ -72,11 +72,13 @@ function test_component_overrides_place_content_editor_save()
 }
 
 // Runs the part in Node with a stub kit; `out` decoded, null without Node.
-function component_overrides_place_node($code)
+// `$kit` runs after the stub kit is made and before the part takes it.
+function component_overrides_place_node($code, $kit = '')
 {
 	$pre = "var StyleDesigner = { definePart: function (n, f) { part = f(kit); } }, part = null;\n"
 		. "var kit = { _sdT: function (k, v) { return v === undefined ? k : k.replace('{var}', v); }, esc: function (s) { return String(s); },\n"
 		. " getNodeLabel: function (n) { return n._id; }, sharedCache: {} };\n"
+		. $kit . "\n"
 		. file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_overrides.js') . "\n";
 	if (!function_exists('exec')) {
 		return null;

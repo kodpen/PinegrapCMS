@@ -10,7 +10,8 @@ module: component_overrides
 
 ## What does Rename do to the places that use a variant? (#12001, PR #12030)
 - The places live in other pages' trees, which a rename does not write, so the variant keeps its old name in `was` (a list on its `_variants` entry) and `pg_co_variant()` / `variant()` answer to it: a place saved with the old name keeps drawing the variant on the site, the canvas and Preview, and "This place" selects it under its new name. Before, every such place fell back to the default with the amber "no longer exists" line.
-- A name a variant has now wins over a former one (exact case, as a name is matched). `pg_co_variants()` drops a former name that is a variant's name now (any case) or that an earlier variant keeps; at most 20 per variant; a variant never renamed has no `was`.
+- A name a variant has now wins over a former one (exact case), then a former name (exact case), then a name now in any case: a rename that changes only the case ("dark" to "Dark") keeps its places, since its old name cannot stay a former name.
+- Names are unique in any case, so the any-case match finds one variant at most. Before PR #12241 the places of a case-only rename fell back to the default. `pg_co_variants()` drops a former name that is a variant's name now (any case) or that an earlier variant keeps; at most 20 per variant; a variant never renamed has no `was`.
 - Rename and "Add a variant" take the new name off every variant's `was` (`forgetFormer()`), so a place on that name follows the variant that has it now. Duplicate copies no former names. Delete removes them with the variant, so its places show the default, as its Result line says.
 - A place keeps its stored name until it picks again; then it writes the name the variant has now.
 

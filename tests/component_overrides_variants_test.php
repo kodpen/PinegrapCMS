@@ -353,3 +353,72 @@ function test_component_overrides_variant_rename_in_the_part()
 	pg_assert_same('Dark', $js['back']['name'], 'renamed back');
 	pg_assert_same(array('Night'), $js['back']['was'], 'its name is no former name; the one it left is');
 }
+
+// A rename that changes only the case ("dark" to "Dark") keeps its places:
+// the old name cannot stay a former name (a name now holds it in any case),
+// so a place's name matches a variant's name in any case after the exact
+// name and the former names. Names are unique in any case, so this finds
+// one variant at most.
+function test_component_overrides_case_only_rename_keeps_its_places()
+{
+	$tree = component_overrides_variants_tree();
+	$tree['props']['_variants'] = array(
+		array('name' => 'Dark', 'was' => array('dark'), 'nodes' => array('sd_b' => array('cssClass' => 'btn text-bg-dark'))),
+		array('name' => 'Compact', 'nodes' => array('root' => array('cssClass' => 'card p-1'))),
+	);
+	pg_assert_same('Dark', pg_co_variant($tree, 'dark')['name'], 'a place saved before the case changed finds the variant');
+	pg_assert_same('Compact', pg_co_variant($tree, 'COMPACT')['name'], 'any case');
+	pg_assert_same(null, pg_co_variant($tree, 'Gone'), 'an unknown name still finds none');
+	$placed = pg_co_place_tree($tree, array('_variant' => 'dark'));
+	pg_assert_same('btn text-bg-dark', $placed['children'][2]['props']['cssClass'], 'the site draws the variant');
+
+	$js = component_overrides_test_node('var tree = ' . json_encode($tree, JSON_UNESCAPED_UNICODE) . ';'
+		. ' out = {found: [C.variant(tree, "dark") && C.variant(tree, "dark").name, C.variant(tree, "COMPACT") && C.variant(tree, "COMPACT").name, C.variant(tree, "Gone")]};');
+	if ($js === null) {
+		return;
+	}
+	pg_assert_same(array('Dark', 'Compact', null), $js['found'], 'the twin finds the same variants');
+}
+
+// Duplicate of a variant whose name is near the 60-character limit: the
+// copy's name was cut back to one already taken and the search for a free
+// name never ended, so the editor hung. The name is shortened instead.
+function test_component_overrides_duplicate_of_a_long_named_variant()
+{
+	$tree = component_overrides_variants_tree();
+	$long = str_repeat('a', 60);
+	$tree['props']['_variants'] = array(array('name' => $long, 'nodes' => array('root' => array('cssClass' => 'card p-1'))));
+	$code = "var document = { querySelector: function () { return null; }, addEventListener: function () {}, removeEventListener: function () {} };\n"
+		. "var comp = " . json_encode($tree, JSON_UNESCAPED_UNICODE) . ";\n"
+		. "kit.sharedCache = {7: {tree: comp, name: 'Promo card'}}; kit.render = function () {}; kit.renderProperties = function () {};\n"
+		. "kit._sdCoWrite = function (sid, fn) { fn(); }; kit.coVar = null;\n"
+		. "part.duplicateVariant(7, '" . $long . "'); part.duplicateVariant(7, '" . $long . "');\n"
+		. "out = comp.props._variants.map(function (v) { return v.name; });\n";
+	$kit = "var calls = 0, tr = kit._sdT; kit._sdT = function (k, v) { if (++calls > 5000) throw new Error('no free name found'); return tr(k, v); };";
+	$js = component_overrides_place_node($code, $kit);
+	if ($js === null) {
+		return;
+	}
+	pg_assert_same(3, count($js), 'two copies are added');
+	pg_assert_same(3, count(array_unique(array_map('strtolower', $js))), 'each with a name of its own');
+	foreach ($js as $name) {
+		pg_assert_true(mb_strlen($name, 'UTF-8') <= 60, 'a name within the limit: ' . $name);
+	}
+}
+
+// "Default" is the list's own first row in every language: the part
+// refused it only in the language of the editor, so a variant named
+// "Default" in a translated editor read as a second default elsewhere.
+function test_component_overrides_default_refused_in_every_language()
+{
+	$tree = component_overrides_variants_tree();
+	$code = "var document = { querySelector: function () { return null; }, addEventListener: function () {}, removeEventListener: function () {} };\n"
+		. "kit.sharedCache = {7: {tree: " . json_encode($tree, JSON_UNESCAPED_UNICODE) . ", name: 'Promo card'}};\n"
+		. "out = [part.nameWhy(7, 'Default', ''), part.nameWhy(7, 'varsayılan', ''), part.nameWhy(7, 'Large', '')];\n";
+	$kit = "var tr = kit._sdT; kit._sdT = function (k, v) { return k === 'Default' ? 'Varsayılan' : (k === 'This name is taken.' ? 'Bu ad alınmış.' : tr(k, v)); };";
+	$js = component_overrides_place_node($code, $kit);
+	if ($js === null) {
+		return;
+	}
+	pg_assert_same(array('Bu ad alınmış.', 'Bu ad alınmış.', ''), $js, 'the English and the translated name are both refused');
+}

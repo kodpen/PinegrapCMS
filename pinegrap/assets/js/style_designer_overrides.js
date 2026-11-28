@@ -896,7 +896,8 @@ StyleDesigner.definePart('overrides', function (K) {
     function nameWhy(sid, name, except) {
         if (name === '') return _sdT('This name is taken.');
         var low = name.toLowerCase();
-        if (low === _sdT('Default').toLowerCase()) return _sdT('This name is taken.');
+        // "Default" is the list's first row in every language.
+        if (low === 'default' || low === _sdT('Default').toLowerCase()) return _sdT('This name is taken.');
         var taken = variantsOf(sid).some(function (v) { return v.name !== except && v.name.toLowerCase() === low; });
         return taken ? _sdT('This name is taken.') : '';
     }
@@ -1108,9 +1109,17 @@ StyleDesigner.definePart('overrides', function (K) {
         var root = compTree(sid);
         var i = root ? rawIndex(root, name) : -1;
         if (i === -1) return;
-        var copy = _sdT('{var} copy', name), n = 2;
-        while (nameWhy(sid, CO.cleanVariantName(copy), '')) copy = _sdT('{var} copy', name) + ' ' + (n++);
-        copy = CO.cleanVariantName(copy);
+        // The original name is shortened so that the copy's word and number
+        // fit in a name's 60 characters: cut by the limit, the copy took a
+        // name already taken and the search never ended.
+        var base = Array.from(name), copy, n = 1;
+        for (;;) {
+            copy = _sdT('{var} copy', base.join('').trim()) + (n > 1 ? ' ' + n : '');
+            if (Array.from(copy).length > 60 && base.length > 1) { base.pop(); continue; }
+            copy = CO.cleanVariantName(copy);
+            if (!nameWhy(sid, copy, '')) break;
+            n++;
+        }
         vstate.focus = copy;
         write(sid, function () {
             var v = CO.variant(root, name);
@@ -1367,6 +1376,7 @@ StyleDesigner.definePart('overrides', function (K) {
         placeVariant: placeVariant,
         placeVariantRow: placeVariantRow,
         renameVariant: renameVariant,
+        duplicateVariant: duplicateVariant,
         nameDone: nameDone,
         nameWhy: nameWhy,
         variantDone: variantDone,
