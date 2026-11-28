@@ -18,7 +18,7 @@ module: image_editor
 - Owner, 2026-11-16 and -20 (`decisions-made-product-69.md`, `-80.md`): Follow, groups, Attach to (`image-editor-follow.md`, `-groups.md`, `-attach.md`).
 
 ## Who does what, the browser or the server?
-- The browser does all interaction and preview and draws the overlay (shapes, text, stickers, frames, inserted pictures) at output size into a transparent PNG, and the colour step on a host without Imagick.
+- The browser does all interaction and preview and draws the overlay at output size into a transparent PNG, and the colour step on a host without Imagick.
 - The server works on the original's pixels: the browser sends the recipe and the overlay, never the result, so a 48 MP photo is edited on a preview and rendered at full size (`platform/image-editor-save.md`). Preview and engine read the same colour matrix and gamma, held by a test (`image-editor-adjust.md`).
 - The editor never has the server rasterise SVG (GD cannot; Imagick often lacks it): an SVG is kept as sanitized markup (`image-editor-svg-sanitize.md`, `image-editor-svg.md`). An agent's canvas is the exception (`platform/image-server-draw.md`).
 
@@ -28,4 +28,4 @@ module: image_editor
 - The document refuses inline pixel data and a size over 1 MB; an inserted picture is its own `files` row referenced by id (`image-editor-versions.md`).
 
 ## Where is each part?
-- A tool's files and hooks: `image-editor-parts.md`; core, loader, labels: `image-editor-modal.md`; keys: `image-editor-keys.md`, `image-editor-access.md`, touch: `image-editor-touch.md`; the Page Design Studio's button: `designer/image-editor-tool.md`; a .pptx opened: `image-editor-design-file.md`.
+- A tool's files and hooks: `image-editor-parts.md`; core, loader, labels: `image-editor-modal.md`; keys: `image-editor-keys.md`, `image-editor-access.md`, touch: `image-editor-touch.md`; the Page Design Studio's button: `designer/image-editor-tool.md`; a .pptx opened: `image-editor-design-file.md`; ready content: `image-editor-content.md`.
