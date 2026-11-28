@@ -4519,6 +4519,15 @@ function output_menu($properties = false)
             $menu_items[10]['title'] = 'Orders';
             $menu_items[10]['context'] = true;
             $menu_items[10]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_orders.php\'' . $output_parent_target . ' data-pg-menu-label=\'' . h(lang('Orders')) . '\' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-bag-check bi-me-2\'>' . lang('All Orders') . '</a>';
+            // The row's count is the orders All Orders' quick filter "To ship"
+            // keeps, over every period: the entry under All Orders opens that
+            // list, so the opened panel shows what the count is about.
+            $orders_to_ship = pg_order_to_ship_menu_count();
+            $menu_items[10]['badge'] = $orders_to_ship['count'];
+            $menu_items[10]['badge_title'] = lang(array('string' => '{var:1} order(s) to ship', 'vars' => $menu_items[10]['badge']));
+            if ($menu_items[10]['badge'] > 0) {
+                $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . h(pg_order_to_ship_menu_url($orders_to_ship['oldest'], time())) . '\'' . $output_parent_target . ' data-pg-menu-label=\'' . h(lang('To ship')) . '\' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-box-seam bi-me-2 pg-menu-has-badge\'>' . lang('To ship') . pg_menu_count_badge($menu_items[10]['badge'], $menu_items[10]['badge_title']) . '</a>';
+            }
             $menu_items[10]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
             $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_orders.php?status=incomplete\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-basket bi-me-2\'>' . lang('Shopping Carts') . '</a>';
             $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_orders.php?type=online\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-cart bi-me-2\'>' . lang('All Online Orders') . '</a>';

@@ -19,4 +19,9 @@ module: order_list
 - Kept as `quick` in the screen's session (`?quick=to_ship`; `?quick=` is All), as the status select is. Its condition is added to `$sql_type`, so the list, the strip, Summary and the exports follow it.
 - The counts are of the period and the other filters without the quick one (`$orders_quick_base_sql`, one query, `pg_order_list_quick_counts_sql()`).
 
+## Where else is "To ship" counted?
+- The main menu's Orders row (MB3): a red count of the orders "To ship" keeps over every period and filter, hover "{var:1} order(s) to ship", and a "To ship" entry under All Orders while the count is above zero.
+- `pg_order_to_ship_menu_count()` runs `pg_order_to_ship_menu_sql()` (the same `pg_order_list_quick_sql('to_ship', …)`, never a copy) once a page and keeps it in the session for 60 seconds: it reads every complete order.
+- The entry opens `pg_order_to_ship_menu_url()`: `view_orders.php?reset=true&quick=to_ship`, plus a start date on the oldest order to ship when that is older than the default month, so the list shows what the menu counted.
+
 Related: docs/memory/commerce/orders-list-columns.md, docs/memory/commerce/orders-list-figure-strip.md, docs/memory/commerce/order-screen-head.md
