@@ -140,7 +140,7 @@
 - kiosk-mode.md: kiosk.php: what its query string sets in the session, how logout restarts it (token and kiosk mode required, visitor cookies cleared), and why the text parameters must be strings
 - language-address-prefix.md: A target language's address prefix (/en/, /pt-br/): lower case everywhere, fallback to the lower-cased code, collision check in the languages save, router matching
 - language-redirect-matching.md: How the automatic language redirect reads a browser language tag: regions, Chinese script before region, aliases
-- license-check.md: The panel's licence check (license_check(), includes/fn/output.php): when it asks, the Kodpen API branch (PR #4381, PG_VENDOR_API_V1 on), the card, the key field
+- license-check.md: The panel's licence check (license_check(), includes/fn/output.php): when it asks, the Kodpen API call (PR #4381, the only one since P9), the card, the key field
 - link-resolve-js-twin.md: The link resolver's browser twin (assets/js/pg_link_resolve.js, window.PGLinkResolve): what it mirrors, how parity is tested, what it cannot mirror
 - link-resolve-letter-case.md: The link resolver (SEO broken links, prototype viewer) matches page, file, short link, product, group and record names without letter case, as the router's database lookup does (#4976)
 - list-excel-export-limits.md: When Export to Excel sends the CSV instead (memory, 1,048,575 rows) and the text it cleans (UTF-8, 32,767 characters); the bug hunt of #10619
@@ -292,7 +292,7 @@
 - theme-activation-page-styles.md: What turning a theme file on or off does to the pages' styles: preview_styles rows per theme and device type, written when it goes off (replaced or turned off alone), applied when it comes on
 - update-backup-rollback.md: Backup a software update or repair writes before replacing files (pre-update-*.zip) and the rollback on Repair Software: contents, hash record, effect on files and config.version
 - update-beta-builds.md: Beta builds of one version over the Kodpen API (PR #3755): data/update_build.json, when a same-version build is offered (#3204), the re-run after replace, backup/rollback and integrity ref [decision: decisions-made-product-5.md]
-- update-channel-stable-beta.md: Update channel (stable/beta): config key, pg_update_channel() for every caller and how the Kodpen API path sends it, the api2-only helpers, download_assistant stays stable, switching, version format.
+- update-channel-stable-beta.md: Update channel (stable/beta): config key, pg_update_channel() for every caller and how the Kodpen API sends it, download_assistant stays stable, switching, version format.
 - update-check-errors.md: How the software update check reports a failed answer (HTTP status, cURL, invalid), the checks-off state, its single Site Log line, and the one "update available" bell row.
 - update-package-extraction.md: How update packages must be downloaded and extracted (pg_extract_archive, pg_looks_like_zip) so a partial install is never reported as success.
 - update-status-tile.md: When the Software Update tile of System Status may say "up to date": only from a recent check the update server answered, never from a failed, old or switched-off one.
@@ -301,10 +301,11 @@
 - upload-drop-area-sizes.md: Upload File and Upload Design Files write the drop-area sizes and the too-big refusal in the panel's units and decimal mark, not Dropzone's
 - upload-limits-and-empty-post.md: Why an empty $_POST is an error (post_max_size), pg_post_body_discarded(), pg_upload_limits() three ceilings, batching uploads, checking $_FILES error codes, the import screens' refusal helpers.
 - upload-refusal-answers.md: Upload Design Files and Upload File answer a Dropzone refusal in JSON with a 4xx status and show it in a role=alert line; per-file upload error codes on design uploads
-- vendor-api-client.md: Kodpen API client base (includes/fn/vendor_api.php, PR #3255): the PG_VENDOR_API_V1 switch line (on), base and PG_VENDOR_API_URL, headers, timeouts, problem reader, canonical site name, vector sums [decision: decisions-made-product-45.md]
+- vendor-api-client.md: Kodpen API client base (includes/fn/vendor_api.php, PR #3255): the PG_VENDOR_API_V1 line (platform only), api2 gone (P9), base URL, headers, timeouts, problem reader, canonical site name, vector sums [decision: decisions-made-product-45.md, decisions-made-product-5.md]
+- vendor-api-decisions.md: The Kodpen vendor API client's lasting decisions (licence binding, key format, signed packages, beta tags) and what is still to do before the 2026.11.0 release; the plan ended with P9 [decision: decisions-made-product-5.md]
 - vendor-api-release-keys.md: The two release keys a signed update is verified with (PR #10348, plan step P5c): ids kp-2026a and kp-2026b, where they live, their fingerprints, how one is retired, the test
-- vendor-api-update-download.md: Download, backup and replace of a signed update (PR #3632, PG_VENDOR_API_V1 on): pg_vendor_update_steps(), fetch order, package file, refusals, security log, manifest shape [decision: decisions-made-product-45.md]
-- vendor-api-update.md: The Kodpen API's release check (GET /releases/latest, PR #3282, PG_VENDOR_API_V1 on): how an answer is read, what it offers, the pin the later steps read, flag and notification, screen texts [decision: decisions-made-product-5.md]
+- vendor-api-update-download.md: Download, backup and replace of a signed update (PR #3632): pg_vendor_update_steps(), fetch order, package file, refusals, security log, manifest shape [decision: decisions-made-product-45.md]
+- vendor-api-update.md: The Kodpen API's release check (GET /releases/latest, PR #3282): how an answer is read, what it offers, the pin the later steps read, flag and notification, screen texts [decision: decisions-made-product-5.md]
 - visitor-push-app-mode.md: Visitor notifications' App mode (VP7, N17): its own switch, the manifest's standalone display, the worker's offline page for a lost page load [decision: here]
 - visitor-push-block.md: Visitor notifications on the site (VP3, #10288): the Features switch, the "Notify me" block, its script pg_site_push.js, the worker site_push_sw.php, where the secret is kept for other forms
 - visitor-push-order.md: Visitor notifications for an order (kind 3, VP6, VP6b): the button "Notify me on this device", the door's order action, who may follow, shipped and delivered sent once, text and link

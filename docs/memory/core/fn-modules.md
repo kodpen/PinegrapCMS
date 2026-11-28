@@ -294,6 +294,7 @@ description: Generated from the module field of the memory files: each includes/
 - `maintenance_settings_fold`: [[settings-maintenance]]
 - `maintenance_settings_open`: [[settings-maintenance-open-rows]]
 - `markdown`: [[markdown-component]]
+- `market_cart`: [[market-cart]]
 - `marketplace_pricing`: [[marketplace-channel-price]]
 - `marketplace_pricing_settings`: [[marketplace-pricing-tab]]
 - `marketplace_repricer`: [[marketplace-repricer-robot]]
