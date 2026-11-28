@@ -79,6 +79,8 @@
                 // Options searches fold them ("istanbul" finds "İstanbul");
                 // the language's own case folding keeps İ and ı apart.
                 if (!q.caseSensitive) body = body.replace(/[iIİı]/g, '[iIİı]');
+                // A typed space finds a no-break space (a text's &nbsp;).
+                body = body.replace(/ /g, '[ \\u00a0]');
                 if (q.wholeWord) body = '(?<!' + WORD + ')' + body + '(?!' + WORD + ')';
                 re = new RegExp(body, flags + 'u');
             }

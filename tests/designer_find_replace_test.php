@@ -299,3 +299,25 @@ function test_find_replace_turkish_i_in_any_case()
 	pg_assert_same(1, $res['s'], 'case sensitive keeps them apart');
 	pg_assert_same('Ankara', $res['r'], 'and replaces it');
 }
+
+// A typed space finds a no-break space, as the tree search and the
+// browser's find read it: "our team" finds "our&nbsp;team", and the
+// replacement's own spaces go in as typed.
+function test_find_replace_space_finds_a_no_break_space()
+{
+	$res = find_replace_test_node(
+		'var T = n("r", "root", {}, [n("p", "content", { contentType: "paragraph", text: "our&nbsp;team" }), n("b", "component", { btnText: "our team" })]);'
+		. 'var re = F.pattern({ search: "our team" }).re, c = F.treeCount(T, re), r = F.treeReplace(T, re, "the crew", false);'
+		. 'out = { c: c, r: r, p: T.children[0].props.text, b: T.children[1].props.btnText, rx: F.count("a b", F.pattern({ search: "a b", regex: true }).re) };'
+	);
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(2, $res['c'], 'the entity and the sign both found');
+	pg_assert_same(2, $res['r'], 'and replaced');
+	pg_assert_same('the crew', $res['p'], 'the text');
+	pg_assert_same('the crew', $res['b'], 'the button');
+	pg_assert_same(0, $res['rx'], 'a regular expression reads a space as typed');
+}
