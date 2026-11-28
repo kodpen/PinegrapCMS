@@ -30,6 +30,12 @@
  * converted to the shop's currency, paced by the limits Etsy's answers
  * name (pg_etsy_pace()).
  *
+ * pull_orders() reads the paid receipts modified since the last pull
+ * (getShopReceipts) into packages in the receipt's currency; a receipt
+ * without an address, as an application made in Turkey gets them, is
+ * imported with a notice saying so. ship_package() reports a parcel the shop
+ * recorded with its tracking code and carrier (createReceiptShipment).
+ *
  * Every call carries the application's x-api-key header
  * (pg_etsy_app_headers()). The Etsy functions of their own (scopes, the
  * provider, the parsers of these answers) are in includes/fn/etsy.php.
@@ -60,7 +66,10 @@ function mp_etsy_connector() {
 		'category_attributes' => 'mp_etsy_category_attributes',
 		'create_listings'     => 'mp_etsy_create_listings',
 		'listing_fee'         => 'mp_etsy_listing_fee',
-		'push_stock_price'    => 'mp_etsy_push_stock_price'
+		'push_stock_price'    => 'mp_etsy_push_stock_price',
+		'pull_orders'         => 'mp_etsy_pull_orders',
+		'order_stage'         => 'mp_etsy_order_stage',
+		'ship_package'        => 'mp_etsy_ship_package'
 	);
 
 }
@@ -1063,5 +1072,166 @@ function mp_etsy_push_stock_price($account, $rows, $call = null, $rate = null, $
 		'deferred'    => array_values(array_unique($deferred)),
 		'retry_after' => $retry_after
 	));
+
+}
+
+/* ---------------------------------------------------------------- orders */
+
+// The shop an account's orders are read from, or '' before it was chosen.
+function mp_etsy_account_shop($account) {
+
+	$shop = isset($account['credentials']['shop']) ? trim((string)$account['credentials']['shop']) : '';
+
+	return (preg_match('/^[0-9]{1,20}$/', $shop) === 1) ? $shop : '';
+
+}
+
+// The paid receipts modified since $since, as packages
+// (pg_etsy_receipt_package()).
+//
+// One window a pass (pg_etsy_order_window()), read in pages of 100 by
+// offset. The cursor moves to the window's end only once every page was
+// read: data['read_to'] is that end, data['complete'] says the window was
+// read through. A fault on a page answers the packages read so far with the
+// cursor kept, so they are imported and the window is asked for again; fifty
+// pages are the most a pass reads.
+//
+// $call and $now replace Etsy and the clock in tests.
+function mp_etsy_pull_orders($account, $since, $call = null, $now = null) {
+
+	$shop_id = mp_etsy_account_shop($account);
+
+	if ($shop_id === '') {
+
+		return mp_error(lang('Choose the Etsy account\'s shop first: test the connection, then pick it.'));
+
+	}
+
+	$call = ($call === null) ? mp_etsy_api_call() : $call;
+
+	if (!is_callable($call)) {
+
+		return mp_error(lang('Connect an Etsy account on Connections first.'));
+
+	}
+
+	$now = ($now === null) ? time() : (int)$now;
+
+	list($start, $end) = pg_etsy_order_window($since, $now);
+
+	$size = pg_etsy_receipts_page();
+
+	$notice = lang('Etsy gives this application no address. Report its shipment on Etsy.');
+
+	$packages = array();
+
+	for ($page = 0; $page < 50; $page++) {
+
+		$answer = call_user_func($call, 'GET', pg_etsy_receipts_path($shop_id, $start, $end, $page * $size));
+
+		if (!$answer['ok']) {
+
+			return mp_error(pg_etsy_error_text($answer), pg_etsy_retry($answer),
+				array('packages' => $packages, 'complete' => false));
+
+		}
+
+		$receipts = (isset($answer['data']['results']) && is_array($answer['data']['results'])) ? $answer['data']['results'] : array();
+
+		foreach ($receipts as $receipt) {
+
+			$package = is_array($receipt) ? pg_etsy_receipt_package($receipt, $notice) : null;
+
+			if ($package !== null) {
+
+				$packages[] = $package;
+
+			}
+
+		}
+
+		$count = isset($answer['data']['count']) ? (int)$answer['data']['count'] : 0;
+
+		if ((count($receipts) < $size) || (($page + 1) * $size >= $count)) {
+
+			return mp_ok(array('packages' => $packages, 'complete' => true, 'read_to' => $end));
+
+		}
+
+	}
+
+	return mp_ok(array('packages' => $packages, 'complete' => false));
+
+}
+
+// Where a receipt stands, from the word it is kept under
+// (pg_etsy_receipt_status()). A refund leaves the order as it is: the goods
+// may have been sent, and the shop handles a return on its order screen.
+function mp_etsy_order_stage($remote_status) {
+
+	switch ((string)$remote_status) {
+
+		case 'canceled':
+			return 'cancelled';
+
+		case 'completed':
+			return 'shipped';
+
+	}
+
+	return 'open';
+
+}
+
+// Tell Etsy the receipt was shipped, under the parcel's tracking code and
+// carrier (createReceiptShipment), as mp_sync_ship_pending() reports a
+// parcel the shop recorded. The parcel is $package['parcel'],
+// mp_sync_shipment_link()'s answer; Etsy takes no tracking page. Answers
+// data['remote_status'] completed, the word the next pull brings. Etsy keeps
+// the call from some applications (one made in Turkey): its refusal is kept
+// on the package, which is then shipped on Etsy. $call replaces Etsy in
+// tests.
+function mp_etsy_ship_package($account, $package, $tracking_url, $call = null) {
+
+	$parcel = (isset($package['parcel']) && is_array($package['parcel'])) ? $package['parcel'] : array();
+
+	$fields = pg_etsy_shipment_fields(isset($parcel['number']) ? $parcel['number'] : '',
+		pg_etsy_carrier_name(isset($parcel['carrier']) ? $parcel['carrier'] : '', isset($parcel['carrier_name']) ? $parcel['carrier_name'] : ''));
+
+	if ($fields === null) {
+
+		return mp_error(lang('Etsy needs the parcel\'s carrier and tracking code. Choose the carrier on the order screen.'));
+
+	}
+
+	$shop_id = mp_etsy_account_shop($account);
+
+	if ($shop_id === '') {
+
+		return mp_error(lang('Choose the Etsy account\'s shop first: test the connection, then pick it.'));
+
+	}
+
+	$call = ($call === null) ? mp_etsy_api_call() : $call;
+
+	if (!is_callable($call)) {
+
+		return mp_error(lang('Connect an Etsy account on Connections first.'), true);
+
+	}
+
+	$answer = call_user_func($call, 'POST', '/shops/' . $shop_id . '/receipts/'
+		. rawurlencode((string)$package['remote_package_id']) . '/tracking', array(
+			'headers' => array('Content-Type: application/x-www-form-urlencoded'),
+			'body'    => http_build_query($fields, '', '&')
+		));
+
+	if (!$answer['ok']) {
+
+		return mp_error(pg_etsy_error_text($answer), pg_etsy_retry($answer));
+
+	}
+
+	return mp_ok(array('shipped' => true, 'remote_status' => 'completed'));
 
 }
