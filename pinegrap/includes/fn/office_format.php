@@ -170,7 +170,8 @@ function pg_office_format_money_code($symbol)
 /**
  * The words of the workbook format bar's controls for the entry's own
  * parts (pg_office_format_request()): underline, strikethrough, the size,
- * the borders and wrap text. The preview's script gets them with the rest
+ * the borders and wrap text, and the formula words of the grid (the panel's
+ * language, why a text is refused). The preview's script gets them with the rest
  * of its words (pg_office_view_strings()).
  *
  * @return array
@@ -188,6 +189,11 @@ function pg_office_format_view_strings()
         'border_outline'      => lang('Outside borders'),
         'border_bottom'       => lang('Bottom border'),
         'format_wrap'         => lang('Wrap text'),
+        // Simple formulas typed into the grid (assets/js/pg_office_formula.js):
+        // the panel's language for the function names, and why a text
+        // starting with "=" is refused, {1} the function names.
+        'formula_language'    => (string) lang(array('info' => true)),
+        'formula_refused'     => lang('Not a formula worked out here. Allowed: numbers, cells of this sheet (A1, A1:B9), + - * /, brackets and {1}.'),
     );
 }
 
