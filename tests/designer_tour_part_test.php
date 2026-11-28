@@ -410,3 +410,36 @@ JS
 	pg_assert_true($res['kept'], 'the focus stays on the bubble after the redraw');
 }
 
+// Escape that ends the tour or puts the card away is the tour's alone: it
+// does not go on to the editor, which would also clear the selection or
+// close the Prototype view with the same press. Escape meant for an open
+// menu is left to it.
+function test_designer_tour_part_escape_does_not_reach_the_editor()
+{
+	$res = designer_tour_part_node(<<<'JS'
+part.offer();
+tick(10);
+var cardKey = key('Escape');
+var cardGone = !card();
+part.start();
+tick(10);
+menuOpen = true;
+var menuKey = key('Escape');
+menuOpen = false;
+var tourKey = key('Escape');
+out = {
+    cardGone: cardGone, card: cardKey.stopped && cardKey.defaultPrevented,
+    menu: !menuKey.stopped && !menuKey.defaultPrevented,
+    tour: tourKey.stopped && tourKey.defaultPrevented && bubble() === ''
+};
+JS
+	);
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_true($res['cardGone'] && $res['card'], 'Escape that puts the card away stops there');
+	pg_assert_true($res['menu'], 'Escape for an open menu goes on to the menu');
+	pg_assert_true($res['tour'], 'Escape that ends the tour stops there');
+}

@@ -330,8 +330,16 @@ StyleDesigner.definePart('tour', function (K) {
         }
     }
 
+    // The Escape the card or the tour takes is theirs alone: the editor's
+    // own Escape (clear the selection, close the Prototype view) would
+    // otherwise run on the same press.
+    function ownEscape(e) {
+        e.preventDefault();
+        if (e.stopPropagation) e.stopPropagation();
+    }
+
     function onCardKey(e) {
-        if (e.key === 'Escape' && escapeIsOurs()) closeCard();
+        if (e.key === 'Escape' && escapeIsOurs()) { ownEscape(e); closeCard(); }
     }
 
     function onCardResize() {
@@ -468,7 +476,7 @@ StyleDesigner.definePart('tour', function (K) {
     }
 
     function onTourKey(e) {
-        if (e.key === 'Escape' && S.tour && escapeIsOurs()) finish();
+        if (e.key === 'Escape' && S.tour && escapeIsOurs()) { ownEscape(e); finish(); }
     }
 
     function go(dir) {
