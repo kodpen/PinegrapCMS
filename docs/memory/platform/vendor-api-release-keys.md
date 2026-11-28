@@ -13,7 +13,7 @@ description: The two release keys a signed update is verified with (PR #10348, p
 
 ## What are their fingerprints?
 - SHA-256 of the PEM text with its final newline: `kp-2026a` `9bf2cc54b9f9082e31b53473ad7a83c70828b12d22990b48a8170ff07973f260`, `kp-2026b` `045efb2b879b7d7937e03cabbaee9677299b6f2924d8bf20a1e88da40c0f46ea`.
-- Production's keys must have the same fingerprints before the release (`plans/kodpen-vendor-api-client.md`).
+- Production's keys must have the same fingerprints before the release (`vendor-api-decisions.md`).
 
 ## Tests?
 - `tests/vendor_update_steps_test.php` `test_vendor_update_release_keys`: the two ids, each an id the release check reads; EC on prime256v1; the fingerprints above, so an edit to a key fails. Test signing pairs are made at test time, never committed.

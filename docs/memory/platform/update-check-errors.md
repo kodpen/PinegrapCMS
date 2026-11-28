@@ -8,15 +8,13 @@ description: How the software update check reports a failed answer (HTTP status,
 - `software_update_check()` writes the one Site Log line of a failed check; `software_update.php` only shows it (`mark_error('update', …)` on the Updates and maintenance pane). Before #6013 the screen logged the same event a second time, and the function called a manual check "daily".
 
 ## How is an error page told apart from a bad answer?
-- `pg_curl_run()` returns `status` and `ok` (2xx). Both the api2 path of `software_update_check()` and `pg_update_server_version()` (the update/Repair `check` step) read `ok`: a non-2xx answer is `http_error` with `http_status`, the message names "HTTP 500". Before, a 500 page was decoded as JSON and reported as an invalid response with no status anywhere.
-- The `check` step answers `The update server answered with HTTP {var:1}.`
+- Since P9 (#12212) only the Kodpen API is asked: `pg_vendor_release_read()` reads the status and problem code, and an answer it cannot use is `invalid_response` (`curl_error` when none came). `http_error` with `http_status` was the api2 path's; `pg_update_check_error_text()` keeps its sentence.
 
 ## What happens with SOFTWARE_UPDATE_CHECK false?
-- `software_update_check()` returns the `checks_off` error before any request, on both the api2 and the Kodpen API path; the manual "Check for Updates" screen says checks are off in data/config.php instead of "There is no update available." Repair Software refuses the same way (`pg_update_repair_decision()`).
-- Before, the api2 path still posted the site's details to kodpen.com and then showed "no update".
-- The update steps' `check` (`pg_panel_software_update()`, `includes/panel/software.php`) asks nothing either: on the Kodpen API path (on since #8653) it answers "There is no update available.", on the api2 path the `checks_off` sentence; before #6991 api2 posted to kodpen.com and then warned on an undefined `$software_update_available`.
+- `software_update_check()` returns the `checks_off` error before any request; the manual "Check for Updates" screen says checks are off in data/config.php instead of "There is no update available." Repair Software refuses with `pg_update_repair_checks_off_message()`.
+- The update steps' `check` (`pg_panel_software_update()`, `includes/panel/software.php`) asks nothing either and answers "There is no update available." Before #6991 the old api2 path posted to kodpen.com first.
 
 ## How many "update available" bell rows does a check leave?
-- At most one, settled by `pg_update_notice_set($offered)` (`includes/fn/update.php`) on both paths (`vendor-api-update.md`): while an update is offered the newest row stays with its read marks and only extras go; one is written only when none is there; an answer offering nothing, or a failed check, takes them all. Rows go through `pg_notification_delete()`, so their read marks go too. The plan is pure: `pg_update_notice_plan()`.
+- At most one, settled by `pg_update_notice_set($offered)` (`includes/fn/update.php`, `vendor-api-update.md`): while an update is offered the newest row stays with its read marks and only extras go; one is written only when none is there; an answer offering nothing, or a failed check, takes them all. Rows go through `pg_notification_delete()`, so their read marks go too. The plan is pure: `pg_update_notice_plan()`.
 - Before #11438 each answer deleted the row and wrote a new one, so every check and every opening of the Software Updater made it unread again for everyone.
 - Before #6121 every check, and every opening of `software_update.php`, added another row while an update waited, and an answer offering nothing left the old one. Test: `tests/software_update_check_notification_test.php`.

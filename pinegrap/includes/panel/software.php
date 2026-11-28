@@ -429,94 +429,30 @@ function pg_panel_software_update($request, $action)
             // message of an error answer in its log box and offers a retry.
             if ($repair) {
                 // Refused while update checks are off (the repair asks the
-                // same server), with pg_update_repair_decision()'s text. A
-                // server that offers no release or an older version refuses
-                // further down: pg_vendor_release_offer() on the Kodpen API
-                // path, pg_update_repair_decision() on the api2 one.
+                // same server). A server that offers no release or an older
+                // version refuses further down (pg_vendor_release_offer()).
                 $checks_enabled = !(defined('SOFTWARE_UPDATE_CHECK') && (SOFTWARE_UPDATE_CHECK === false));
 
                 if (!$checks_enabled) {
-                    $decision = pg_update_repair_decision('', VERSION, false);
                     respond(array(
                         'status' => 'error',
-                        'message' => $decision['message']
+                        'message' => pg_update_repair_checks_off_message()
                     ));
                 }
             }
 
-            // The Kodpen API while PG_VENDOR_API_V1 is on
-            // (includes/fn/vendor_api.php): the release is pinned in the
-            // session for the steps after this one, which read nothing else,
-            // or the answer's own reason ends the update here. With update
-            // checks off in data/config.php nothing is asked.
-            if (PG_VENDOR_API_V1 === true) {
-                if (!$repair && defined('SOFTWARE_UPDATE_CHECK') && (SOFTWARE_UPDATE_CHECK != true)) {
-                    respond(array(
-                        'status' => 'error',
-                        'message' => lang('There is no update available.')
-                    ));
-                }
-
-                $server = pg_update_server_version($repair ? 'repair' : 'update');
-
-                if ($server['error'] === 'curl_missing') {
-                    respond(array(
-                        'status' => 'error',
-                        'message' => lang('Software update check could not communicate with the software update server, because cURL is not installed, so it is not known if there is a software update available.')
-                    ));
-                }
-
-                if ($server['error'] === 'curl_error') {
-                    log_activity(pg_update_check_error_text($server));
-                    respond(array(
-                        'status' => 'error',
-                        'message' => lang('No access to the update server.') . pg_curl_tls_hint($server['curl_errno'], true)
-                    ));
-                }
-
-                if ($server['error'] !== '') {
-                    log_activity(pg_update_check_error_text($server));
-                    respond(array(
-                        'status' => 'error',
-                        'message' => lang('No response from the update server.')
-                    ));
-                }
-
-                $decision = $server['decision'];
-
-                if ($decision['pin'] === null) {
-                    respond(array(
-                        'status' => 'error',
-                        'message' => pg_vendor_release_message($decision, VERSION)
-                    ));
-                }
-
-                // The download is written under a name of its own in
-                // data/temp/, one per check.
-                $_SESSION['software']['update'] = $decision['pin'] + array('package_file' => 'vendor_update_' . bin2hex(random_bytes(8)) . '.zip');
-
-                if ($repair) {
-                    // software_repair.php?mode=done names the version in the
-                    // activity log.
-                    $_SESSION['software']['repair']['version'] = $decision['pin']['version'];
-                }
-
-                respond(array(
-                    'status' => 'success',
-                    'message' => pg_vendor_release_message($decision, VERSION)
-                ));
-            }
-
-            // With update checks off in data/config.php the server is not
-            // asked, as on the Kodpen API path above and in the daily check.
+            // The Kodpen API (includes/fn/vendor_api.php): the release is
+            // pinned in the session for the steps after this one, which read
+            // nothing else, or the answer's own reason ends the update here.
+            // With update checks off in data/config.php nothing is asked.
             if (!$repair && defined('SOFTWARE_UPDATE_CHECK') && (SOFTWARE_UPDATE_CHECK != true)) {
                 respond(array(
                     'status' => 'error',
-                    'message' => pg_update_check_error_text(array('error' => 'checks_off'))
+                    'message' => lang('There is no update available.')
                 ));
             }
 
-            $server = pg_update_server_version();
+            $server = pg_update_server_version($repair ? 'repair' : 'update');
 
             if ($server['error'] === 'curl_missing') {
                 respond(array(
@@ -527,73 +463,43 @@ function pg_panel_software_update($request, $action)
 
             if ($server['error'] === 'curl_error') {
                 log_activity(pg_update_check_error_text($server));
-                //return error json output
-                $response = array(
-                    'status' => 'error',
-                    'message' => lang('No access to the update server.')
-                );
-                echo encode_json($response);
-                exit();
-            }
-
-            // An error page (HTTP 500 and the like) names its status.
-            if ($server['error'] === 'http_error') {
-                log_activity(pg_update_check_error_text($server));
                 respond(array(
                     'status' => 'error',
-                    'message' => lang(array('string' => 'The update server answered with HTTP {var:1}.', 'vars' => array($server['http_status'])))
+                    'message' => lang('No access to the update server.') . pg_curl_tls_hint($server['curl_errno'], true)
                 ));
             }
 
-            if ($server['error'] === 'invalid_response') {
+            if ($server['error'] !== '') {
                 log_activity(pg_update_check_error_text($server));
-                //return error json output
-                $response = array(
+                respond(array(
                     'status' => 'error',
                     'message' => lang('No response from the update server.')
-                );
-                echo encode_json($response);
-                exit();
-
-            }
-
-            if ($repair) {
-                $decision = pg_update_repair_decision($server['version'], VERSION, true);
-
-                if ($decision['ok']) {
-                    // software_repair.php?mode=done names the version in the
-                    // activity log.
-                    $_SESSION['software']['repair']['version'] = $server['version'];
-                }
-
-                respond(array(
-                    'status' => $decision['ok'] ? 'success' : 'error',
-                    'message' => $decision['message']
                 ));
             }
 
-            // Numerically, part by part, and without a warning when either
-            // version has fewer than three parts (pg_update_version_newer()).
-            $software_update_available = pg_update_version_newer($server['version'], VERSION) ? 1 : 0;
+            $decision = $server['decision'];
 
-            //there is no software
-            if ($software_update_available == 0) {
-                //return error json output
-                $response = array(
+            if ($decision['pin'] === null) {
+                respond(array(
                     'status' => 'error',
-                    'message' => lang('There is no update available.')
-                );
-                echo encode_json($response);
-                exit();
+                    'message' => pg_vendor_release_message($decision, VERSION)
+                ));
             }
-            //there is software update so we can go step 2:Download the update file.
-            //return success json output
-            $response = array(
+
+            // The download is written under a name of its own in
+            // data/temp/, one per check.
+            $_SESSION['software']['update'] = $decision['pin'] + array('package_file' => 'vendor_update_' . bin2hex(random_bytes(8)) . '.zip');
+
+            if ($repair) {
+                // software_repair.php?mode=done names the version in the
+                // activity log.
+                $_SESSION['software']['repair']['version'] = $decision['pin']['version'];
+            }
+
+            respond(array(
                 'status' => 'success',
-                'message' => lang('Downloading...')
-            );
-            echo encode_json($response);
-            exit();
+                'message' => pg_vendor_release_message($decision, VERSION)
+            ));
 
             break;
         case 'download':
@@ -601,152 +507,31 @@ function pg_panel_software_update($request, $action)
             // its package, each checked before the next is fetched
             // (pg_vendor_update_download()). Any failure deletes the package
             // and forgets the pin; the operator starts again from a check.
-            if (PG_VENDOR_API_V1 === true) {
-                $pin = pg_panel_software_update_pin();
-                $download = pg_vendor_update_download($pin);
+            $pin = pg_panel_software_update_pin();
+            $download = pg_vendor_update_download($pin);
 
-                if (!$download['ok']) {
-                    pg_vendor_update_forget();
+            if (!$download['ok']) {
+                pg_vendor_update_forget();
 
-                    if ($download['log'] !== '') {
-                        log_activity($download['log']);
-                    }
-
-                    respond(array(
-                        'status' => 'error',
-                        'message' => $download['message']
-                    ));
+                if ($download['log'] !== '') {
+                    log_activity($download['log']);
                 }
 
-                // The verified manifest's git_ref, for the build file the
-                // replace step writes.
-                $_SESSION['software']['update'] = $download['pin'];
-
                 respond(array(
-                    'status' => 'success',
-                    'message' => lang('Files overwriting...')
+                    'status' => 'error',
+                    'message' => $download['message']
                 ));
             }
 
-            //Step 2: download update file from curl
-            // The package of this installation's channel. The name is asked for
-            // once and reused below, so the file the replace step opens is the
-            // file this step wrote.
-            $update_package = pg_update_package_file();
+            // The verified manifest's git_ref, for the build file the
+            // replace step writes.
+            $_SESSION['software']['update'] = $download['pin'];
 
-            // pg_curl_run() sends this installation's User-Agent, goes through
-            // PROXY_ADDRESS when set and applies pg_curl_tls(), so the package
-            // download honours CURL_CA_BUNDLE and ALLOW_INSECURE_UPDATE_TLS
-            // like the version check before it. 15 s to connect, 120 s for
-            // the whole archive.
-            $answer = pg_curl_run('GET', 'https://www.kodpen.com/' . $update_package, array(
-                'timeout'         => 120,
-                'connect_timeout' => 15,
-            ));
-            // status is 0 only when no HTTP answer came (cURL failed or is
-            // missing); the checks below read false as that case.
-            $raw = ($answer['status'] > 0) ? $answer['body'] : false;
-            $curl_errno = $answer['errno'];
-            $curl_error = $answer['error'];
-            $http_status = $answer['status'];
-            $expected_bytes = $answer['content_length'];
-
-            // A non-200 body is still a successful transfer as far as cURL
-            // is concerned. Without this check a 403 from the update
-            // server's own firewall, or a 404 page, gets written to disk
-            // as pinegrap_software_update.zip and fails three steps later
-            // as an unexplained archive error.
-            if ($raw !== false && $http_status !== 200) {
-                log_activity(lang(array('string' => 'software update download returned HTTP {var:1} instead of the update package.', 'vars' => array($http_status))));
-
-                $response = array(
-                    'status' => 'error',
-                    'message' => lang(array('string' => 'The update server returned HTTP {var:1} instead of the update package.', 'vars' => array($http_status)))
-                );
-                echo encode_json($response);
-                exit();
-            }
-
-            // A transfer cut short mid-stream is not an error to cURL
-            // either; compare against the length the server promised.
-            if ($raw !== false && $expected_bytes > 0 && strlen($raw) < $expected_bytes) {
-                log_activity(lang(array('string' => 'software update download was truncated: {var:1} of {var:2} bytes.', 'vars' => array(strlen($raw), $expected_bytes))));
-
-                $response = array(
-                    'status' => 'error',
-                    'message' => lang(array('string' => 'The download was cut short ({var:1} of {var:2} bytes). Please try again.', 'vars' => array(strlen($raw), $expected_bytes)))
-                );
-                echo encode_json($response);
-                exit();
-            }
-
-            if ($raw !== false && !pg_looks_like_zip($raw)) {
-                log_activity(lang('software update download was not a zip archive.'));
-
-                $response = array(
-                    'status' => 'error',
-                    'message' => lang('What was downloaded is not a zip archive. A proxy or firewall may have replaced the response.')
-                );
-                echo encode_json($response);
-                exit();
-            }
-
-            if ($raw === false) {
-                // there is an error about download so notice user and log activiy
-                log_activity(
-                    lang(array('string' => 'software update download could not reach the software update server; try again later. cURL Error Number: {var:1}. cURL Error Message: {var:2}.', 'vars' => array($curl_errno, $curl_error)))
-                );
-                //return error json output
-                $response = array(
-                    'status' => 'error',
-                    'message' => lang(array('string' => 'Error while get files from the update server.{var:1}', 'vars' => array(pg_curl_tls_hint($curl_errno, true))))
-                );
-                echo encode_json($response);
-                exit();
-            }
-
-            // Zip file name
-            $filename = $update_package;
-            if (file_exists($filename)) {
-                unlink($filename);
-            }
-
-            // 'x' fails when the file still exists, and the unlink above
-            // can fail on permissions. Writing through an unchecked handle
-            // emitted a warning and carried on as if it had worked.
-            $fp = @fopen($filename, 'wb');
-
-            if ($fp === false) {
-                $response = array(
-                    'status' => 'error',
-                    'message' => lang('Could not create the update file. Check write permission for the software directory.')
-                );
-                echo encode_json($response);
-                exit();
-            }
-
-            $written = fwrite($fp, $raw);
-            fclose($fp);
-
-            // A short write means a full disk. Left unchecked it produced a
-            // truncated archive that extracted partially.
-            if ($written === false || $written < strlen($raw)) {
-                @unlink($filename);
-
-                $response = array(
-                    'status' => 'error',
-                    'message' => lang('The update file could not be written completely. The disk may be full.')
-                );
-                echo encode_json($response);
-                exit();
-            }
-            //zip file download success we can go step 3: replace the software files
-            $response = array(
+            respond(array(
                 'status' => 'success',
                 'message' => lang('Files overwriting...')
-            );
-            echo encode_json($response);
-            exit();
+            ));
+
             break;
 
         case 'backup':
@@ -765,17 +550,13 @@ function pg_panel_software_update($request, $action)
                 ));
             }
 
-            // The verified package of the pin once the Kodpen API is on.
-            $update_package = (PG_VENDOR_API_V1 === true)
-                ? pg_vendor_update_package_path(pg_panel_software_update_pin()['package_file'])
-                : PG_FUNCTIONS_DIR . '/' . pg_update_package_file();
+            // The verified package of the pin.
+            $update_package = pg_vendor_update_package_path(pg_panel_software_update_pin()['package_file']);
 
             $update_backup = pg_update_backup_create($update_package);
 
             if (!$update_backup['ok']) {
-                if (PG_VENDOR_API_V1 === true) {
-                    pg_vendor_update_forget();
-                }
+                pg_vendor_update_forget();
 
                 log_activity(lang(array('string' => 'The backup before the software update could not be written: {var:1}', 'vars' => array($update_backup['error']))), $_SESSION['sessionusername']);
 
@@ -803,35 +584,28 @@ function pg_panel_software_update($request, $action)
         case 'replace':
             //Step 4: replace files.
             define('_PATH', PG_FUNCTIONS_DIR);
-            // Zip file name — the channel's package, the same name the download step used.
-            $filename = pg_update_package_file();
-
-            $pin = array();
-            $installed_build = '';
-
             // The pin's package, checked again right before extraction: the
             // size, sha256 and in-ZIP version the download step accepted.
-            if (PG_VENDOR_API_V1 === true) {
-                $pin = pg_panel_software_update_pin();
-                $recheck = pg_vendor_update_recheck($pin);
+            $pin = pg_panel_software_update_pin();
+            $recheck = pg_vendor_update_recheck($pin);
 
-                if ($recheck['outcome'] !== 'extract') {
-                    pg_vendor_update_forget();
-                    log_activity(pg_vendor_update_security_event($recheck['reason'])
-                        ? lang(array('string' => 'software update {var:1} refused as a security event at the replace step: {var:2}.', 'vars' => array($pin['version'], $recheck['reason'])))
-                        : lang(array('string' => 'software update {var:1} refused at the replace step: {var:2}.', 'vars' => array($pin['version'], $recheck['reason']))));
+            if ($recheck['outcome'] !== 'extract') {
+                pg_vendor_update_forget();
+                log_activity(pg_vendor_update_security_event($recheck['reason'])
+                    ? lang(array('string' => 'software update {var:1} refused as a security event at the replace step: {var:2}.', 'vars' => array($pin['version'], $recheck['reason'])))
+                    : lang(array('string' => 'software update {var:1} refused at the replace step: {var:2}.', 'vars' => array($pin['version'], $recheck['reason']))));
 
-                    respond(array(
-                        'status' => 'error',
-                        'message' => pg_vendor_update_refusal_message($recheck['reason'])
-                    ));
-                }
-
-                $filename = pg_vendor_update_package_path($pin['package_file']);
-
-                // Read before the new files can change what counts.
-                $installed_build = pg_update_build_read()['build'];
+                respond(array(
+                    'status' => 'error',
+                    'message' => pg_vendor_update_refusal_message($recheck['reason'])
+                ));
             }
+
+            $filename = pg_vendor_update_package_path($pin['package_file']);
+
+            // Read before the new files can change what counts.
+            $installed_build = pg_update_build_read()['build'];
+
             // Unzip path
             $path = _PATH . "/../";
 
@@ -864,11 +638,7 @@ function pg_panel_software_update($request, $action)
                 exit();
             }
 
-            if (PG_VENDOR_API_V1 === true) {
-                pg_vendor_update_forget();
-            } else {
-                unlink($filename);
-            }
+            pg_vendor_update_forget();
 
             // The bytecode cache still holds the OLD files; dropped here, not
             // left to its own timestamp check (pg_update_clear_opcache()
@@ -884,16 +654,14 @@ function pg_panel_software_update($request, $action)
 
             // Another build of the running version runs its upgrade steps
             // again; the build file then names what is installed.
-            if (PG_VENDOR_API_V1 === true) {
-                $build_error = pg_vendor_update_record_build($pin, $installed_build);
+            $build_error = pg_vendor_update_record_build($pin, $installed_build);
 
-                if ($build_error !== '') {
-                    log_activity(lang(array('string' => 'software update {var:1}: {var:2}', 'vars' => array($pin['version'], $build_error))));
-                    respond(array(
-                        'status' => 'error',
-                        'message' => $build_error
-                    ));
-                }
+            if ($build_error !== '') {
+                log_activity(lang(array('string' => 'software update {var:1}: {var:2}', 'vars' => array($pin['version'], $build_error))));
+                respond(array(
+                    'status' => 'error',
+                    'message' => $build_error
+                ));
             }
 
             $query = "DELETE FROM notifications WHERE action = 'software_update'";

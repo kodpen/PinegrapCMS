@@ -1,19 +1,20 @@
 ---
 name: vendor-api-client
-description: Kodpen API client base (includes/fn/vendor_api.php, PR #3255): the PG_VENDOR_API_V1 switch line (on), base and PG_VENDOR_API_URL, headers, timeouts, problem reader, canonical site name, vector sums
+description: Kodpen API client base (includes/fn/vendor_api.php, PR #3255): the PG_VENDOR_API_V1 line (platform only), api2 gone (P9), base URL, headers, timeouts, problem reader, canonical site name, vector sums
 module: vendor_api
 ---
 
 ## What is it?
-- What every call to `api.kodpen.com/v1` is built from; the licence check and the update put their v1 branches on it (`plans/kodpen-vendor-api-client.md`). Loaded by `functions.php`.
+- What every call to `api.kodpen.com/v1` is built from; licence check and update are built on it; the plan's decisions: `vendor-api-decisions.md`. Loaded by `functions.php`.
 
 ## What does the switch do?
-- `define('PG_VENDOR_API_V1', true);` alone on its line, on since #8653 (2026-11-11): licence check and update ask only `api.kodpen.com/v1`. The hosting platform reads the file as text (`/^[ \t]*define\('PG_VENDOR_API_V1', true\);[ \t]*\r?$/m`), so the on form is on that line only (comments too), the off form nowhere; `vendor_api_test.php` pins it.
-- The line stays after the api2 branches go (plan step P9): the platform reads it.
-- `false` is only the way back until P9: `pg_vendor_api_request()` refuses before cURL (errno 0) and api2 answers as before.
+- `define('PG_VENDOR_API_V1', true);` alone on its line, on since #8653 (2026-11-11). The hosting platform reads the file as text (`/^[ \t]*define\('PG_VENDOR_API_V1', true\);[ \t]*\r?$/m`), so the on form is on that line only (comments too), the off form nowhere; `vendor_api_test.php` pins it.
+- No code reads the constant since P9 (#12212); the line stays for the platform. No way back to api2.
 
-## Does an api2 call send a key?
-- No, since #4395: api2 answers the same without the fixed `API` key, so the api2 branches of the update check (`includes/fn/update.php`, `software_update_check.php`) and the licence check (`includes/fn/output.php`) ask `api2?REQUEST=…` (not reached while on). `vendor_api_test.php` pins no `api2?API=` in `pinegrap/`; the root `download_assistant.php` keeps its key.
+## Is the api2 server still asked?
+- Not from `pinegrap/` since P9 (#12212): licence check, update check and steps, Repair ask only v1; what went: `vendor-api-decisions.md`.
+- Owner (2026-11-28): the api2 branches go now, in 2026.11.0. In the owner's words: "api2 dalları kalkabilir artık yazılım yeni api üzerinden haberleşecek, api.kodpen.com devrede".
+- The root `download_assistant.php` keeps its api2 call and key for good (#3205). `output_test.php` pins no `kodpen.com/api2` and no switch read under `pinegrap/`.
 
 ## Where does a call go?
 - `pg_vendor_api_base()`: `https://api.kodpen.com/v1`, or `PG_VENDOR_API_URL` (`data/config.php`, a test server): https, host, optional port and path, ending in `/v1`, no user, query or blank. Any other value gives '' and no call, never production. `pg_vendor_api_url($path)` appends the path.
@@ -33,4 +34,4 @@ module: vendor_api
 
 ## Which vectors and tests?
 - sha256 of `tests/fixtures/vendor_api/`: `licence_mapping.json` 82bf0e49…, `site_host.json` c6f8e9ca…, `update_steps.json` 4116b706…; `vendor_api_test.php` pins them in full.
-- `tests/vendor_api_test.php` (on-form pin, refusals before cURL); the cap and sink in `curl_run_test.php` (`curl-run-wrapper.md`).
+- `tests/vendor_api_test.php` (on-form pin, refusals before cURL: no address, no site name); the cap and sink in `curl_run_test.php` (`curl-run-wrapper.md`).

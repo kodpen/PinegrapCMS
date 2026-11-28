@@ -1,10 +1,10 @@
 ---
 name: vendor-api-update-download
-description: Download, backup and replace of a signed update (PR #3632, PG_VENDOR_API_V1 on): pg_vendor_update_steps(), fetch order, package file, refusals, security log, manifest shape
+description: Download, backup and replace of a signed update (PR #3632): pg_vendor_update_steps(), fetch order, package file, refusals, security log, manifest shape
 ---
 
 ## What runs after the check step?
-- `includes/panel/software.php` `download`, `backup`, `replace` read only `$_SESSION['software']['update']` (`pg_panel_software_update_pin()`; none: "Start the update again"). Switched off (the way back until plan step P9) they run api2's fixed package.
+- `includes/panel/software.php` `download`, `backup`, `replace` read only `$_SESSION['software']['update']` (`pg_panel_software_update_pin()`; none: "Start the update again"). The api2 fixed-ZIP download went in P9 (#12212).
 - `pg_vendor_update_download($pin)` (`includes/fn/update.php`; on success its `pin` is the session pin plus the verified manifest's `git_ref`, `pg_vendor_update_pin_manifest()`) runs the pure `pg_vendor_update_steps($pin, $site, $keys, $observed, $from)` after each fetch: signature, manifest, download, package, zip_magic, zip_version (`update_steps.json`). A step whose observation is missing answers `pending`, so nothing is fetched before the checks ahead of it pass: manifest and signature addresses (`pg_vendor_update_url_ok()`: https, the base's host and effective port, no user info, backslash, blank or control byte), OpenSSL present and a known key id come before any fetch; the package URL before the package.
 - Manifest cap 64 KB, signature 4 KB, package capped at the pinned size into `data/temp/<package_file>` opened with `x`. A non-200 manifest or signature counts as no signature (`signature_invalid`).
 - `pg_vendor_update_verify()`: blanks stripped, strict base64, `openssl_verify(..., OPENSSL_ALGO_SHA256)`; only `=== 1` passes.

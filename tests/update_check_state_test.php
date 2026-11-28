@@ -78,23 +78,19 @@ function test_update_check_state_current()
 	pg_assert_same('current', pg_update_check_state(false, true, $now - 60, $now - 55, $now), 'answered after the stamp');
 }
 
-// Both paths of software_update_check() record an answer right after they
-// store the flag, and only there.
+// software_update_check() records an answer right after it stores the
+// flag, and only there.
 function test_update_check_records_the_answer_on_both_paths()
 {
 	$source = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/software_update_check.php');
 
-	pg_assert_same(2, substr_count($source, 'pg_update_check_answered();'), 'one record per path');
+	pg_assert_same(1, substr_count($source, 'pg_update_check_answered();'), 'one record');
 
-	foreach (array(
-		"db(\"UPDATE config SET software_update_available = '\" . (\$flag ? 1 : 0) . \"'\");",
-		"db(\"UPDATE config SET software_update_available = '\" . \$software_update_available . \"'\");",
-	) as $write) {
-		$at = strpos($source, $write);
-		pg_assert_true($at !== false, 'flag write found');
-		$next = strpos($source, 'pg_update_check_answered();', (int) $at);
-		pg_assert_true(($next !== false) && ($next - $at < 200), 'answer recorded right after the flag write');
-	}
+	$write = "db(\"UPDATE config SET software_update_available = '\" . (\$flag ? 1 : 0) . \"'\");";
+	$at = strpos($source, $write);
+	pg_assert_true($at !== false, 'flag write found');
+	$next = strpos($source, 'pg_update_check_answered();', (int) $at);
+	pg_assert_true(($next !== false) && ($next - $at < 200), 'answer recorded right after the flag write');
 }
 
 function test_update_tile_reads_the_state()

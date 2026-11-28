@@ -41,10 +41,10 @@ $maintenance_parts['channel'] = array('html' => '
             </div>
             <div class="card-body">
                 <div class="row gy-5">' . pg_maintenance_settings_seg(lang('Update channel'), 'software_update_channel', array('stable' => lang('Stable'), 'beta' => lang('Beta')), $software_update_channel, lang('Beta gets new versions earlier, for a test site; switching back keeps a beta until a stable release passes it.'))
-                    . ((defined('PG_VENDOR_API_V1') && (PG_VENDOR_API_V1 === true)) ? '
+                    . '
                     <div class="col-12">
                         <p class="pg-text-meta fg-secondary mb-0">' . lang('License and update checks send Kodpen this site\'s Hostname, the server\'s IP address and the versions of the software, PHP, the database and the web server.') . '</p>
-                    </div>' : '')
+                    </div>'
                     . ($update_backup_ready ? pg_maintenance_settings_switch('update_backup', (bool) $update_backup, lang('Back up before updating'), lang('The files an update replaces and the database go to data/backups first; the three newest are kept.')) : '') . '
                 </div>
             </div>

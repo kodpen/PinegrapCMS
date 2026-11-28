@@ -2,18 +2,16 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * The Kodpen API client (api.kodpen.com/v1): the switch that turns it on,
- * the address every call starts from, the headers and timeouts every call
+ * The Kodpen API client (api.kodpen.com/v1): the switch line the hosting
+ * platform reads, the address every call starts from, the headers and timeouts every call
  * carries, the reader of an application/problem+json answer and the
  * canonical site name the licence server binds a licence's site rights to:
  * what the licence check (license_check(), includes/fn/output.php) and the
  * software update (includes/fn/update.php) build their calls to it from.
  *
- * PG_VENDOR_API_V1 is on: the licence check and the software update ask
- * this API and no other server. Set to false it is only the way back to the
- * www.kodpen.com/api2 server while the api2 branches of those two are still
- * in the code: pg_vendor_api_request() then refuses before cURL runs and
- * they ask api2 as before.
+ * The licence check and the software update ask this API and no other
+ * server. No code reads PG_VENDOR_API_V1 any more; its line stays for the
+ * hosting platform, which reads it as text.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -25,10 +23,10 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
-// The switch. Its line keeps exactly this form, alone on the line: the
+// The switch line. It keeps exactly this form, alone on the line: the
 // hosting platform reads this file as text to tell which server a site asks,
-// and tests/vendor_api_test.php holds the line to it. The line stays even
-// once no code reads the constant, because the platform still reads the line.
+// and tests/vendor_api_test.php holds the line to it. No code reads the
+// constant; the line stays because the platform reads it.
 define('PG_VENDOR_API_V1', true);
 
 /**
@@ -243,10 +241,9 @@ function pg_vendor_api_options($site, $env, $options)
 
 /**
  * One call to the Kodpen API through pg_curl_run(), with
- * pg_vendor_api_options(). Nothing is called while PG_VENDOR_API_V1 is off,
- * without an address ($url '', see pg_vendor_api_url()), or, with
- * site_required, when the site name cannot be sent (the licence check binds
- * the licence to it): the answer is then pg_curl_run()'s shape with the
+ * pg_vendor_api_options(). Nothing is called without an address ($url '',
+ * see pg_vendor_api_url()), or, with site_required, when the site name cannot
+ * be sent (the licence check binds the licence to it): the answer is then pg_curl_run()'s shape with the
  * reason in error and errno 0.
  *
  * @param string $method
@@ -260,9 +257,7 @@ function pg_vendor_api_request($method, $url, $options = array())
     $site = pg_vendor_api_site_value(defined('HOSTNAME_SETTING') ? HOSTNAME_SETTING : '');
     $refused = '';
 
-    if (PG_VENDOR_API_V1 !== true) {
-        $refused = 'The Kodpen API client is switched off.';
-    } elseif ((string) $url === '') {
+    if ((string) $url === '') {
         $refused = 'There is no Kodpen API address: PG_VENDOR_API_URL is not an https address ending in /v1.';
     } elseif (!empty($options['site_required']) && ($site === '')) {
         $refused = 'The site name cannot be sent to the Kodpen API.';

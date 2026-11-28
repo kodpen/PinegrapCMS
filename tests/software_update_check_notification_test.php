@@ -16,14 +16,14 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
-// The part of the check that reads a version answer of the update server,
-// from the decoded response up to the config write.
+// The part of the check that reads the Kodpen API's answer, from its
+// decision up to the config write.
 function software_update_check_answer_branch()
 {
 	$source = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/software_update_check.php');
-	$start = strpos($source, "\$details['response'] = \$response;");
+	$start = strpos($source, "\$decision = \$server['decision'];");
 	pg_assert_true($start !== false, 'answer branch found');
-	$end = strpos($source, "db(\"UPDATE config SET software_update_available = '\" . \$software_update_available . \"'\");", (int) $start);
+	$end = strpos($source, "db(\"UPDATE config SET software_update_available = '\" . (\$flag ? 1 : 0) . \"'\");", (int) $start);
 	pg_assert_true($end !== false, 'answer branch ends with the config write');
 
 	return substr($source, (int) $start, (int) $end - (int) $start);
@@ -33,12 +33,12 @@ function test_software_update_check_settles_one_notification()
 {
 	$branch = software_update_check_answer_branch();
 
-	pg_assert_contains('pg_update_notice_set($software_update_available === 1);', $branch, 'the answer settles the notification');
+	pg_assert_contains('pg_update_notice_set($flag);', $branch, 'the answer settles the notification');
 	pg_assert_false(strpos($branch, 'create_notification(') !== false, 'no row written beside the kept one');
 	pg_assert_false(strpos($branch, 'DELETE FROM notifications') !== false, 'the kept row is not deleted first');
 
 	$source = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/software_update_check.php');
-	pg_assert_contains('pg_update_notice_set($flag);', $source, 'the Kodpen API path too');
+	pg_assert_false(strpos($source, 'users_messages_xref') !== false, 'no api2 message feed');
 	pg_assert_false(strpos($source, "db(\"DELETE FROM notifications WHERE action = 'software_update'\");") !== false, 'rows go with their read marks');
 }
 

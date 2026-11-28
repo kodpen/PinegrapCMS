@@ -168,10 +168,9 @@ $general_parts['server'] = array('html' => '
     </div>') + pg_general_fold_site($hostname);
 
 // ── Software ──
-// With the Kodpen API on, the licence binds to the Hostname: a name only this
-// machine or its network knows still spends a site right, and no valid name
-// fails every check.
-$license_site_warning = (defined('PG_VENDOR_API_V1') && (PG_VENDOR_API_V1 === true) && (SUBSCRIPTION_KEY !== ''))
+// The licence binds to the Hostname: a name only this machine or its network
+// knows still spends a site right, and no valid name fails every check.
+$license_site_warning = (SUBSCRIPTION_KEY !== '')
     ? pg_license_site_warning(HOSTNAME_SETTING)
     : '';
 $license_site_warning_html = '';
