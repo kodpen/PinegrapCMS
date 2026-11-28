@@ -448,7 +448,9 @@ function pg_support_request_reply($conversation, $box, $text)
     $raw = pg_support_request_reply_raw($conversation, $box, $text, 'pg-request-' . (int) $conversation['id'] . '-' . bin2hex(random_bytes(8)) . '@' . $host, time());
 
     try {
-        $result = ws_mail_ingest($raw, $box);
+        // An answer joins its request by the tag; one that opens a new
+        // conversation instead shows it came from My Account.
+        $result = ws_mail_ingest($raw, $box, array('source' => 'account'));
     } catch (Throwable $error) {
         $result = array('status' => 'refused', 'reason' => 'error');
     }

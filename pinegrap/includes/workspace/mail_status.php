@@ -258,8 +258,8 @@ function ws_mail_conversation_closed_event($conversation, $fields, $viewer_id)
  *
  * @param array $viewer
  * @param int   $conversation_id
- * @param array $changes status, assign (each optional)
- * @return array ok, error (no_access | status | assignee | nothing), conversation, channel, fields
+ * @param array $changes status, assign, priority (each optional)
+ * @return array ok, error (no_access | status | assignee | priority | nothing), conversation, channel, fields
  */
 function ws_mail_conversation_check($viewer, $conversation_id, $changes)
 {
@@ -288,6 +288,11 @@ function ws_mail_conversation_check($viewer, $conversation_id, $changes)
         $changes['assign'] = (string) ws_mail_away_stand_in((int) $assign, $channel);
     }
 
+    // The priority is kept only once its column is there (mail_priority.php).
+    if (!function_exists('ws_mail_priority_ready') || !ws_mail_priority_ready()) {
+        unset($changes['priority']);
+    }
+
     $changed = ws_mail_conversation_changes($conversation, $changes, (int) $viewer['id'], time());
 
     if (!$changed['ok']) {
@@ -301,7 +306,7 @@ function ws_mail_conversation_check($viewer, $conversation_id, $changes)
  * The columns a conversation change writes. Pure.
  *
  * @param array $conversation
- * @param array $changes   status, assign
+ * @param array $changes   status, assign, priority (1..4)
  * @param int   $viewer_id
  * @param int   $now
  * @return array ok, error, fields (column => value)
@@ -340,6 +345,16 @@ function ws_mail_conversation_changes($conversation, $changes, $viewer_id, $now)
         $set['assignee_id'] = 0;
     }
 
+    if (isset($changes['priority']) && function_exists('ws_mail_priority_change')) {
+        $priority = ws_mail_priority_change($conversation, $changes['priority']);
+
+        if (!$priority['ok']) {
+            return array('ok' => false, 'error' => $priority['error'], 'fields' => array());
+        }
+
+        $set += $priority['fields'];
+    }
+
     if (!$set) {
         return array('ok' => false, 'error' => 'nothing', 'fields' => array());
     }
@@ -361,6 +376,7 @@ function ws_mail_conversation_error_text($error)
         'no_access' => lang('You cannot write in this conversation\'s channel.'),
         'status'    => lang('That status is not known.'),
         'assignee'  => lang('That person cannot write in this conversation\'s channel.'),
+        'priority'  => lang('That priority is not known.'),
         'nothing'   => lang('Nothing was changed.'),
     );
 
@@ -380,10 +396,15 @@ function ws_mail_status_js_strings()
         'mail_nobody'  => lang('Nobody'),
         'mail_me'      => lang('Me'),
         'mail_other'   => lang('Somebody else'),
+        'mail_priority' => lang('Priority'),
     );
 
     foreach (ws_mail_statuses() as $key => $label) {
         $strings['mail_status_' . $key] = $label;
+    }
+
+    foreach (function_exists('ws_mail_priorities') ? ws_mail_priorities() : array() as $key => $label) {
+        $strings['mail_priority_' . $key] = $label;
     }
 
     return $strings;

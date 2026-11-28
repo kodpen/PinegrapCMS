@@ -1004,11 +1004,20 @@ function ws_mail_box_save_check($viewer, $box, $post)
         return $fail($resolve['error'], 'resolve_hours');
     }
 
+    // The first answer's hours per priority (mail_priority.php), kept as
+    // the target is while the box is a plain one.
+    $by_priority = $support ? ws_mail_priority_hours_input($post) : array('ok' => true, 'error' => '', 'field' => '', 'hours' => ws_mail_priority_hours($box, true));
+
+    if (!$by_priority['ok']) {
+        return $fail($by_priority['error'], $by_priority['field']);
+    }
+
     $settings = ws_mail_box_settings($box);
     $settings['routes'] = $routes['routes'];
     $settings['support'] = $support;
     $settings['first_reply_hours'] = $first['hours'];
     $settings['resolve_hours'] = $resolve['hours'];
+    $settings['priority_hours'] = array_filter($by_priority['hours']);
     $settings = ws_mail_triage_input($post, $settings, ws_mail_triage_ai_ready());
 
     // Where the mail is kept and who reads a box kept in no channel. A box
@@ -1346,6 +1355,7 @@ function ws_mail_box_form_parts($box, $channels, $ai_ready, $rooms_only, $prefix
                     <div class="row g-5">
                     ' . ws_mail_first_reply_field($prefix, $box) . '
                     ' . ws_mail_resolve_field($prefix, $box) . '
+                    ' . ws_mail_priority_hours_fields($prefix, $box) . '
                     ' . ws_mail_auto_reply_fields($prefix, $box) . '
                     </div>
                 </div>

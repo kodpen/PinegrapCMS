@@ -3550,7 +3550,7 @@ function ws_handle_action($action, $request)
                 'forward' => ws_mail_forward_fill($source),
             ));
 
-        // A conversation's status or holder (mail_status.php).
+        // A conversation's status, holder or priority (mail_status.php).
         case 'ws_mail_conversation':
             if (!function_exists('ws_mail_conversation_set') || !ws_mail_ready()) {
                 return ws_action_error(lang('The database has not been upgraded yet.'));
@@ -3559,6 +3559,7 @@ function ws_handle_action($action, $request)
             $result = ws_mail_conversation_set($viewer, (int) ($request['conversation_id'] ?? 0), array(
                 'status' => is_scalar($request['status'] ?? '') ? (string) ($request['status'] ?? '') : '',
                 'assign' => is_scalar($request['assign'] ?? '') ? (string) ($request['assign'] ?? '') : '',
+                'priority' => is_scalar($request['priority'] ?? '') ? (string) ($request['priority'] ?? '') : '',
             ));
 
             if (!$result['ok']) {

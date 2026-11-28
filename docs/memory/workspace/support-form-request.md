@@ -16,6 +16,7 @@ module: support_forms
 - `pg_support_form_request()` is called by `pg_cf_form_mails_send()` beside the WhatsApp message: not while a fee is owed, once the record is paid.
 - It builds a plain-text mail from the record (`pg_support_form_mail_raw()`): From the address field's answer, To the box, the subject, one line per answered field and the reference code; Message-ID `pg-form-<forms.id>@<host>`, so a second run is a duplicate. No Auto-Submitted header, so the loop gate takes it.
 - `ws_mail_ingest($raw, $box, ['tie' => …])` makes the conversation as for any mail: route, rules, card, notices, `workspace.mail.received`, the automatic answer with `[#T<id>]` in its subject. The customer's reply to that answer threads back by the tag (`ws_mail_find_conversation()`).
+- `source` form and `source_id` the record: the Incoming e-mail list's Form label and the pane's link back (`mail-priority-source.md`).
 - `tie` (`pg_support_form_tie()`): the record's user and contact, each only when its address equals the request's. Without `tie` the intake ties a mail only when the box's server vouched for it.
 - Quiet when off, the box gone or no longer a support box, or the answer is no address. A refusal of the intake (held, loop, no channel, an error) writes an activity-log line "submitted form (…) opened no support request".
 

@@ -570,7 +570,7 @@ function ws_api_mail_conversation_answer($conversation, $text_max = 0)
     $unread = ws_api_mail_unread_map((int) ws_api_viewer()['id'], array((int) $conversation['id']));
     $conversation['transport'] = ws_api_mail_box_transports()[(int) $conversation['box_id']] ?? '';
 
-    return ws_api_mail_conversation_present($conversation, (int) (ws_api_mail_box_hours()[(int) $conversation['box_id']] ?? 0), time(), $items,
+    return ws_api_mail_conversation_present($conversation, ws_mail_conversation_reply_hours($conversation, (int) (ws_api_mail_box_hours()[(int) $conversation['box_id']] ?? 0)), time(), $items,
         $unread[(int) $conversation['id']] ?? null, ws_api_mail_files_map(array_column($items, 'id')), $text_max);
 }
 
@@ -759,7 +759,7 @@ function ws_api_mail_conversations_list($params)
 
     foreach ($rows as $row) {
         $row['transport'] = $transports[(int) $row['box_id']] ?? '';
-        $out[] = ws_api_mail_conversation_present($row, (int) ($hours[(int) $row['box_id']] ?? 0), $now, null, $unread[(int) $row['id']] ?? null);
+        $out[] = ws_api_mail_conversation_present($row, ws_mail_conversation_reply_hours($row, (int) ($hours[(int) $row['box_id']] ?? 0)), $now, null, $unread[(int) $row['id']] ?? null);
     }
 
     api_ok_list($out, $limit, $next);

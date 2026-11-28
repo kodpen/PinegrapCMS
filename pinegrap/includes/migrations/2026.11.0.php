@@ -277,6 +277,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_product_tax_class();       // 11.0.285
 	upgrade_2026_11_0_markets();                 // 11.0.286
 	upgrade_2026_11_0_order_item_tax_country();  // 11.0.287
+	upgrade_2026_11_0_ws_mail_priority_source(); // 11.0.288
 
 }
 
@@ -9807,5 +9808,45 @@ function upgrade_2026_11_0_order_item_tax_country() {
 	}
 
 	install_note('Orders: each order line now keeps the EU member state it was taxed in, for the One-Stop Shop Report under Commerce. Lines of earlier orders are shown apart there.');
+
+}
+
+
+// 11.0.288 - A support request's priority and where it came from, on its
+// conversation (includes/workspace/mail_priority.php).
+// ws_mail_conversations.priority: 1 Low, 2 Normal, 3 High, 4 Urgent, set on
+// the Incoming e-mail screen; a box may give each priority its own answer
+// hours. source names the door the conversation came in by (mail, whatsapp,
+// sms, form, chat, account) and source_id the forms or chat_conversations row
+// for the list's label and its link back. Every conversation stored before
+// reads as Normal with the source mail; no row is rewritten. Added in place
+// where the server allows it, the step runs twice without a change.
+function upgrade_2026_11_0_ws_mail_priority_source() {
+
+	if (!install_table_exists('ws_mail_conversations')) {
+
+		install_skipped(lang(array('string' => '{var:1} does not exist, skipped', 'vars' => 'ws_mail_conversations')));
+
+		return;
+
+	}
+
+	$columns = array(
+		'priority'  => "TINYINT UNSIGNED NOT NULL DEFAULT 2",
+		'source'    => "VARCHAR(10) NOT NULL DEFAULT 'mail'",
+		'source_id' => "INT UNSIGNED NOT NULL DEFAULT 0",
+	);
+
+	if (!install_add_columns_instant('ws_mail_conversations', $columns)) {
+
+		foreach ($columns as $column => $definition) {
+
+			install_add_column('ws_mail_conversations', $column, $definition);
+
+		}
+
+	}
+
+	install_note('Workspace: a support request can be given a priority on the Incoming e-mail screen, and shows whether a form, a live chat or My Account opened it.');
 
 }

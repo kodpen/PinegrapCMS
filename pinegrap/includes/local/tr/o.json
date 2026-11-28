@@ -1954,6 +1954,7 @@
     "Opened by the ski patrol": "Kayak devriyesi açar",
     "Opened for inspection: reading only.": "Denetim için açıldı: yalnızca okunur.",
     "Opened for the customer who sent the form “{var:1}”.": "“{var:1}” formunu gönderen müşteri için açıldı.",
+    "Opened from": "Açıldığı yer",
     "Opened from a post, this holds its address. To report a comment, paste the link its Share button copies instead.": "Bir gönderiden açıldığında burada onun adresi yer alır. Bir yorumu şikâyet etmek için bunun yerine yorumun Paylaş düğmesinin kopyaladığı bağlantıyı yapıştırın.",
     "Opened from a topic, this holds the topic's address. To report a reply, paste the link its Share button copies instead.": "Bir konudan açıldığında burada konunun adresi bulunur. Bir yanıtı şikâyet etmek için bunun yerine yanıtın Paylaş düğmesinin kopyaladığı bağlantıyı yapıştırın.",
     "Opened from incoming e-invoice {var:1}.": "{var:1} numaralı gelen e-faturadan açıldı.",

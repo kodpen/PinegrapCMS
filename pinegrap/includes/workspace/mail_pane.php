@@ -306,6 +306,7 @@ function ws_mail_pane_html($pane, $base, $tools = '', $channels = true)
         . (($pane['box_name'] !== '') ? ' · ' . h($pane['box_name']) : '') . '</div>'
         . ($room ? '' : '<div class="mt-1">' . ws_mail_pane_channel_pill((string) $pane['channel']['name'], $url) . '</div>')
         . ws_mail_pane_resolve_html($pane)
+        . ws_mail_pane_source_html($pane, $base)
         . ((!empty($pane['no_answer']) && function_exists('ws_mail_no_answer_badge_html')) ? '<div class="mt-1">' . ws_mail_no_answer_badge_html() . '</div>' : '')
         . '<div class="ws-mail-pane-tools">' . ($room ? '' : '<a class="pg-button pg-button-ghost pg-button-sm" href="' . h($url) . '"><i class="bi bi-hash" aria-hidden="true"></i>' . h(lang('Open in channel')) . '</a>') . $tools . '</div>'
         . '</header>';
@@ -336,6 +337,21 @@ function ws_mail_pane_resolve_html($pane)
         ? ws_mail_resolve_html($pane['conversation'], (int) ($pane['resolve_hours'] ?? 0), time()) : '';
 
     return ($word !== '') ? '<div class="mt-1 small">' . $word . '</div>' : '';
+}
+
+/**
+ * Where the conversation came from, in the pane's head: a form record or a
+ * chat it leads back to, or My Account; nothing for a mail, WhatsApp or SMS.
+ *
+ * @param array  $pane ws_mail_pane()
+ * @param string $base the panel's address, ending in /
+ * @return string HTML
+ */
+function ws_mail_pane_source_html($pane, $base)
+{
+    $label = function_exists('ws_mail_source_html') ? ws_mail_source_html($pane['conversation'], $base, true) : '';
+
+    return ($label !== '') ? '<div class="mt-1 small">' . h(lang('Opened from')) . $label . '</div>' : '';
 }
 
 /**
@@ -565,13 +581,21 @@ function ws_mail_pane_tools($pane, $viewer)
         }
     }
 
+    $state = $pane['can_post'] ? ws_mail_state_offer(array('conversation' => $conversation, 'support' => ws_mail_box_is_support($box)), (int) $conversation['id'], (int) $viewer['id']) : null;
+
+    // The pane's Priority select beside the status and holder, once the
+    // column is there (mail_priority.php); a channel's card has none.
+    if (is_array($state) && function_exists('ws_mail_priority_ready') && ws_mail_priority_ready()) {
+        $state['priority'] = ws_mail_priority_of($conversation);
+    }
+
     return array(
         'reply'      => $pane['can_post'] ? (int) $conversation['id'] : 0,
         // Why the box cannot send now: Reply is drawn disabled with it.
         'reply_off'  => $pane['can_post'] ? ws_mail_reply_off($box, (string) $conversation['customer_email'], ws_mail_reply_site_domain()) : '',
         'to'         => (string) $conversation['customer_email'],
         'channel_id' => (int) $pane['channel']['id'],
-        'state'      => $pane['can_post'] ? ws_mail_state_offer(array('conversation' => $conversation, 'support' => ws_mail_box_is_support($box)), (int) $conversation['id'], (int) $viewer['id']) : null,
+        'state'      => $state,
         'members'    => $members,
         'others'     => $others,
         // Remind me later, for whoever reads it (mail_remind.php).
@@ -600,5 +624,6 @@ function ws_mail_screen_js_strings()
         'not_found'  => lang('This conversation cannot be opened.'),
         'state_saved'  => lang('The conversation\'s status was saved.'),
         'holder_saved' => lang('The conversation\'s holder was saved.'),
+        'priority_saved' => lang('The conversation\'s priority was saved.'),
     );
 }
