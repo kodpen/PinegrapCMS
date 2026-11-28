@@ -27,6 +27,8 @@ StyleDesigner.definePart('fonts', function (K) {
     var H = null;
     var gfModalEl = null;
     var _gfOpenFamily = null;
+    // What had the focus when the browser opened: closing gives it back.
+    var _gfReturnFocus = null;
 
     // The modal is built the first time the browser opens, with its close
     // button, its search field and the Escape key.
@@ -36,9 +38,9 @@ StyleDesigner.definePart('fonts', function (K) {
         gfModalEl.id = 'sd-gf-modal';
         gfModalEl.style.display = 'none';
         gfModalEl.innerHTML =
-            '<div class="sd-gf-modal-dialog">' +
+            '<div class="sd-gf-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="sd-gf-modal-title">' +
                 '<div class="sd-gf-modal-hdr">' +
-                    '<span class="bi bi-fonts me-3"></span><span class="sd-gf-modal-title">Google Fonts</span>' +
+                    '<span class="bi bi-fonts me-3"></span><span class="sd-gf-modal-title" id="sd-gf-modal-title">Google Fonts</span>' +
                     '<button id="sd-gf-modal-close" class="sd-gf-modal-close" type="button" aria-label="' + esc(_sdT('Close')) + '"><span class="bi bi-x-lg" aria-hidden="true"></span></button>' +
                 '</div>' +
                 '<div class="sd-gf-modal-body">' +
@@ -64,6 +66,7 @@ StyleDesigner.definePart('fonts', function (K) {
 
     function openGfModal() {
         buildGfModal();
+        if (gfModalEl.style.display === 'none') _gfReturnFocus = document.activeElement;
         gfModalEl.style.display = 'flex';
         renderGfBrowser('');
         setTimeout(function() { var s = document.getElementById('sd-gf-search'); if (s) { s.value = ''; s.focus(); } }, 50);
@@ -74,6 +77,9 @@ StyleDesigner.definePart('fonts', function (K) {
         var det = document.getElementById('sd-gf-detail');
         if (det) det.innerHTML = '<div class="sd-gf-detail-empty"><span class="bi bi-arrow-left"></span> ' + esc(_sdT('Pick a font from the list')) + '</div>';
         _gfOpenFamily = null;
+        var back = _gfReturnFocus;
+        _gfReturnFocus = null;
+        if (back && back.isConnected !== false && typeof back.focus === 'function') back.focus();
     }
 
     function renderGfBrowser(query) {

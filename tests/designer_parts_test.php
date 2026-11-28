@@ -721,6 +721,34 @@ function test_designer_fonts_part_list_works_from_the_keyboard()
 	pg_assert_same(array(3, 'function', false, true, 1), json_decode($lines[0] ?? '', true), 'each row a focusable button; Enter opens its detail, another key does nothing');
 }
 
+// The browser is a dialog for assistive technology, named by its title, and
+// closing it gives the focus back to what opened it. Before, the focus was
+// left on the hidden dialog and a keyboard user started again from the top
+// of the editor.
+function test_designer_fonts_part_close_gives_the_focus_back()
+{
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		return;
+	}
+
+	$js = designer_fonts_part_js()
+		. 'var opener = el("button"), focused = 0; opener.focus = function () { focused++; }; document.activeElement = opener;'
+		. 'var api = factory(K); api.open(host); document.activeElement = byId["sd-gf-search"];'
+		. 'var html = byId["sd-gf-modal"].innerHTML; byId["sd-gf-modal-close"].listeners.click();'
+		. 'console.log(JSON.stringify([/role="dialog" aria-modal="true" aria-labelledby="sd-gf-modal-title"/.test(html), /id="sd-gf-modal-title"/.test(html), byId["sd-gf-modal"].style.display, focused]));';
+	$file = tempnam(sys_get_temp_dir(), 'sdfonts') . '.js';
+	file_put_contents($file, $js);
+	$lines = array();
+	exec('node ' . escapeshellarg($file) . ' 2>&1', $lines, $code);
+	@unlink($file);
+	pg_assert_same(0, $code, 'the fonts part runs: ' . implode("\n", $lines));
+	pg_assert_same(array(true, true, 'none', 1), json_decode($lines[0] ?? '', true), 'a named modal dialog; Close hides it and focuses its opener');
+}
+
 // The Interactions section's rows and fields are a part: the core draws the
 // section (its header and an empty body) and keeps what the page and the
 // canvas need at open (_sdFxSpec(), _sdFxNormalize(), _sdFxAttrs(),
