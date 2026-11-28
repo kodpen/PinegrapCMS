@@ -358,7 +358,7 @@ description: Generated from the module field of the memory files: each includes/
 - `panel_screens`: [[agent-guide-panel]]
 - `parasut`: [[connections-accounting-page]], [[erp-parasut-buyer-card-fill]], [[erp-parasut-devhub-connection]], [[erp-parasut-devhub-staging]], [[erp-parasut-legacy-buyer-number]], [[erp-parasut-legacy-press-claim]], [[erp-parasut-legacy-token-401]], [[erp-parasut-overview]], [[erp-parasut-staging-company]]
 - `parasut_sheet`: [[parasut-import-sheets]]
-- `payments`: [[card-brand-switches]], [[connections-payment-gateways-page]], [[connections-payment-services-page]], [[gateway-masked-keys]], [[order-refunded-amount-writes]], [[payment-driver-paytr-installments]], [[payment-gateway-secrets]], [[payment-return-after-message]], [[payment-stripe-blik-deferred]], [[payment-stripe-later-result]], [[payment-stripe-local-methods]], [[payment-stripe-method-list]], [[payment-stripe-method-named]]
+- `payments`: [[card-brand-switches]], [[connections-payment-gateways-page]], [[connections-payment-services-page]], [[gateway-masked-keys]], [[market-payment-methods]], [[order-refunded-amount-writes]], [[payment-driver-paytr-installments]], [[payment-gateway-secrets]], [[payment-return-after-message]], [[payment-stripe-blik-deferred]], [[payment-stripe-later-result]], [[payment-stripe-local-methods]], [[payment-stripe-method-list]], [[payment-stripe-method-named]]
 - `pdf_merge`: [[shipment-label-bulk]]
 - `pick_pack`: [[bug-hunt-areas-pick-pack]], [[pick-pack-rules]]
 - `pick_waves`: [[pick-pack-waves]]
