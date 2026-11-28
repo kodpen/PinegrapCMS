@@ -52733,6 +52733,8 @@ const StyleDesigner = (function () {
             }
             if (region === 'form_item_view') {
                 aOpts.push(['ai_summarize',        _sdT('Summarize with the browser\'s AI (form_item_view)')]);
+                aOpts.push(['kb_vote_yes',         _sdT('Was this helpful? Yes (form_item_view)')]);
+                aOpts.push(['kb_vote_no',          _sdT('Was this helpful? No (form_item_view)')]);
             }
             // A link sends nothing, so only a button is offered the send
             // action; a link that already carries it still lists it, so it

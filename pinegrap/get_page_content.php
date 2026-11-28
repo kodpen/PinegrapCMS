@@ -752,6 +752,14 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             $content = pg_ai_summary_inject($content);
         }
 
+        // ── Was this helpful? ───────────────────────────────────────────────────────
+        // A form item view's Yes or No button (data-pg-kb-vote) brings the
+        // script that shows them and sends the answer (pg_kb_vote_inject()),
+        // checked once everything is drawn in. Not in an e-mail.
+        if (!$email && strpos($content, 'data-pg-kb-vote=') !== false && function_exists('pg_kb_vote_inject')) {
+            $content = pg_kb_vote_inject($content);
+        }
+
         // ── Favourite hearts ────────────────────────────────────────────────────────
         // A catalog widget's heart (data-pg-wishlist) brings the script that
         // fills it from the visitor's list and saves to it (pg_wishlist_inject()),

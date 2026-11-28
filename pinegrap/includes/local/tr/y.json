@@ -728,6 +728,7 @@
     "Your agent here": "Buradaki danışmanınız",
     "Your answer": "Yanıtınız",
     "Your answer (a number)": "Cevabınız (sayı)",
+    "Your answer could not be saved. Please try again later.": "Yanıtınız kaydedilemedi. Lütfen daha sonra yeniden deneyin.",
     "Your answer could not be sent. Please try again later, or answer our e-mail.": "Yanıtınız gönderilemedi. Lütfen daha sonra yeniden deneyin ya da e-postamızı yanıtlayın.",
     "Your answer goes to {var:1} and cannot be changed afterwards. This link works until {var:2}.": "Yanıtınız {var:1} adlı kişiye iletilir ve sonradan değiştirilemez. Bu bağlantı {var:2} tarihine kadar geçerli.",
     "Your answer is longer than {var:1} characters.": "Yanıtınız {var:1} karakterden uzun.",

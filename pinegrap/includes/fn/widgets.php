@@ -3717,12 +3717,18 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
     $refs = pg_coll_ref_bindings($tree_decoded);
     // The tree as designed, for the no-record layout below.
     $tree_designed = $tree_decoded;
+    // "Was this helpful?" answers a collection's record on its page; in an
+    // e-mail, or on another form, its buttons stay hidden (kb_votes.php).
+    $_fiv_render_ctx = pg_sw_render_context();
+    $kb_vote_open    = empty($_fiv_render_ctx['email']) && pg_kb_vote_form_open($custom_form_page_id);
     // The record template (loop_area) and the surround, drawn from a tree.
-    $draw = function ($tree) {
+    $draw = function ($tree) use ($kb_vote_open) {
         // Visibility flag has_new_account, known once the record is read.
         _pg_sw_mark_visibility($tree);
         // The in-browser summary's button and box.
         _pg_sw_apply_ai_summary_bindings($tree);
+        // The Yes and No buttons of "Was this helpful?".
+        _pg_sw_apply_kb_vote_bindings($tree, $kb_vote_open);
         $split = _split_widget_tree($tree);
         if ($split['loop_children'] === null) {
             return array(trim(_render_tree_node($tree, 0, 0)), '', $split);
