@@ -910,6 +910,80 @@ function pg_order_list_quick_counts_sql($base_sql, $today, $paid_known, $status_
 }
 
 /**
+ * The query behind the main menu's Orders count: the orders the quick filter
+ * "To ship" keeps over every period and every other filter, with the order
+ * date of the oldest of them (n, oldest).
+ *
+ * @param string $today        Y-m-d
+ * @param bool   $paid_known   whether orders.paid_at exists
+ * @param bool   $status_ready whether the parcel status column exists
+ * @return string
+ */
+function pg_order_to_ship_menu_sql($today, $paid_known, $status_ready)
+{
+    return "SELECT COUNT(*) AS n, MIN(orders.order_date) AS oldest
+        FROM orders
+        WHERE " . pg_order_list_quick_sql('to_ship', $today, $paid_known, $status_ready);
+}
+
+/**
+ * Where the Orders panel's "To ship" entry leads: All Orders afresh
+ * (reset=true drops a status, type or search left in the screen's session)
+ * on the quick filter, its period started on the oldest order to ship when
+ * that is older than the list's default month, so the list shows every
+ * order the menu counted.
+ *
+ * @param int $oldest the order date (Unix time) of the oldest order to ship;
+ *                    0 when none
+ * @param int $now    Unix time
+ * @return string a URL relative to the panel's directory
+ */
+function pg_order_to_ship_menu_url($oldest, $now)
+{
+    $url = 'view_orders.php?reset=true&quick=to_ship';
+    $oldest = (int) $oldest;
+    $default = pg_list_period_default((int) $now);
+
+    if (($oldest > 0) && (date('Y-m-d', $oldest) < $default['start_year'] . '-' . $default['start_month'] . '-' . $default['start_day'])) {
+        $url .= '&start_month=' . date('m', $oldest) . '&start_day=' . date('d', $oldest) . '&start_year=' . date('Y', $oldest);
+    }
+
+    return $url;
+}
+
+/**
+ * The main menu's Orders count: the orders to ship and the date of the
+ * oldest, read once a page and kept in the session for a minute, since the
+ * count reads every complete order and the menu is drawn on every panel page.
+ *
+ * @return array array('count' => int, 'oldest' => int Unix time or 0)
+ */
+function pg_order_to_ship_menu_count()
+{
+    static $result = null;
+
+    if ($result !== null) {
+        return $result;
+    }
+
+    $kept = $_SESSION['software']['menu_counts']['to_ship'] ?? null;
+
+    if (is_array($kept) && (($kept['at'] ?? 0) > (time() - 60)) && (($kept['at'] ?? 0) <= time())) {
+        $result = array('count' => (int) ($kept['count'] ?? 0), 'oldest' => (int) ($kept['oldest'] ?? 0));
+        return $result;
+    }
+
+    $row = db_item(pg_order_to_ship_menu_sql(date('Y-m-d'), pg_schema_has('orders', 'paid_at'), pg_shipment_rows_ready()));
+    $result = array('count' => (int) ($row['n'] ?? 0), 'oldest' => (int) ($row['oldest'] ?? 0));
+
+    if (isset($_SESSION)) {
+        $_SESSION['software']['menu_counts']['to_ship'] = $result + array('at' => time());
+    }
+
+    return $result;
+}
+
+/**
  * The quick filters as a segmented control of links, each with its count.
  *
  * @param string $current a code of pg_order_list_quick_filters()

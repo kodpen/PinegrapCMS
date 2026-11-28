@@ -136,13 +136,13 @@ function _order_list_quick_by_sql(array $orders, $today, $status_ready)
 	}
 
 	$db = new PDO('sqlite::memory:');
-	$db->exec('CREATE TABLE orders (id INTEGER PRIMARY KEY, status TEXT, payment_method TEXT, transaction_id TEXT, paid_at INT, total INT)');
+	$db->exec('CREATE TABLE orders (id INTEGER PRIMARY KEY, status TEXT, payment_method TEXT, transaction_id TEXT, paid_at INT, total INT, order_date INT)');
 	$db->exec('CREATE TABLE order_items (id INTEGER PRIMARY KEY, order_id INT, ship_to_id INT, quantity INT, shipped_quantity INT, show_shipped_quantity INT)');
 	$db->exec('CREATE TABLE ship_tos (id INTEGER PRIMARY KEY, ship_date TEXT, delivery_date TEXT)');
 	$db->exec('CREATE TABLE shipping_tracking_numbers (id INTEGER PRIMARY KEY, order_id INT, ship_to_id INT, number TEXT, status TEXT)');
 
 	foreach ($orders as $id => $order) {
-		$db->prepare('INSERT INTO orders VALUES (?, ?, ?, ?, ?, ?)')->execute(array($id, $order['status'], $order['payment_method'], $order['transaction_id'], $order['paid_at'], $order['total']));
+		$db->prepare('INSERT INTO orders VALUES (?, ?, ?, ?, ?, ?, ?)')->execute(array($id, $order['status'], $order['payment_method'], $order['transaction_id'], $order['paid_at'], $order['total'], 1000 + $id));
 
 		foreach ($order['addresses'] as $ship_to_id => $address) {
 			$db->prepare('INSERT INTO ship_tos VALUES (?, ?, ?)')->execute(array($ship_to_id, $address['ship_date'], $address['delivery_date']));
@@ -188,6 +188,17 @@ function _order_list_quick_by_sql(array $orders, $today, $status_ready)
 		}
 		pg_assert_same($n, (int) ($row['n_' . $code] ?? -1), 'the count of ' . $code . ' is its filter\'s');
 	}
+
+	// The main menu's Orders count is the To ship filter's, over every order,
+	// with the order date of the oldest of them.
+	$to_ship = array_keys(array_filter($kept, function ($codes) {
+		return in_array('to_ship', $codes, true);
+	}));
+	$menu = $db->query(pg_order_to_ship_menu_sql($today, true, $status_ready));
+	pg_assert_true($menu !== false, 'the menu count query runs');
+	$menu_row = $menu ? $menu->fetch(PDO::FETCH_ASSOC) : array();
+	pg_assert_same(count($to_ship), (int) ($menu_row['n'] ?? -1), 'the menu counts the orders to ship');
+	pg_assert_same($to_ship ? 1000 + min($to_ship) : 0, (int) ($menu_row['oldest'] ?? -1), 'the oldest order to ship');
 
 	return $kept;
 }
@@ -287,4 +298,25 @@ function test_order_list_screen_wires_the_quick_filters()
 	pg_assert_contains('$sql_type .= \' AND \' . $sql_quick;', $screen, 'every query of the list narrowed by it');
 	pg_assert_contains('pg_order_list_change_html($filter_totals_minor,', $screen, 'the total\'s change');
 	pg_assert_contains('pg_order_list_change_html((int) $number_of_results,', $screen, 'the count\'s change');
+}
+
+// The menu's "To ship" entry opens All Orders afresh on the filter; its
+// period reaches back to the oldest order to ship only past the default month.
+function test_order_to_ship_menu_url()
+{
+	$now = mktime(12, 0, 0, 11, 28, 2026);
+	pg_assert_same('view_orders.php?reset=true&quick=to_ship', pg_order_to_ship_menu_url(0, $now), 'nothing to ship');
+	pg_assert_same('view_orders.php?reset=true&quick=to_ship', pg_order_to_ship_menu_url(mktime(9, 0, 0, 11, 20, 2026), $now), 'inside the default month');
+	pg_assert_same('view_orders.php?reset=true&quick=to_ship&start_month=03&start_day=05&start_year=2025', pg_order_to_ship_menu_url(mktime(9, 0, 0, 3, 5, 2025), $now), 'older than the default month');
+	$start = $now - 2678400;
+	pg_assert_same('view_orders.php?reset=true&quick=to_ship', pg_order_to_ship_menu_url($start, $now), 'on the default first day');
+}
+
+// The Orders row reads its count from the To ship rule and offers the entry.
+function test_order_to_ship_menu_is_wired()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/output.php');
+	pg_assert_contains("\$orders_to_ship = pg_order_to_ship_menu_count();", $source, 'the Orders row reads the count');
+	pg_assert_contains("pg_order_to_ship_menu_url(\$orders_to_ship['oldest'], time())", $source, 'the entry opens the filtered list');
+	pg_assert_contains("'{var:1} order(s) to ship'", $source, 'the hover sentence');
 }
