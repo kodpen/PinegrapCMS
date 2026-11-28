@@ -113,3 +113,22 @@ function test_workspace_message_translate_wiring()
 	$bundles = pg_js_bundles();
 	pg_assert_true(in_array('assets/js/workspace_translate.js', $bundles['assets/js/workspace.min.js'], true), 'in the Workspace bundle');
 }
+
+function test_workspace_message_translate_letters_of_every_script()
+{
+	// A letter of any script is something to translate: Georgian, Khmer,
+	// Ethiopic, Vietnamese letters of Latin Extended Additional, Greek
+	// Extended. Signs and digits alone stay nothing.
+	$cases = array('გამარჯობა', 'សួស្តី', 'ሰላም', 'Ḁ ỹ', 'ἀ', '१२३ — 45%');
+	$answer = workspace_message_translate_test_run($cases);
+
+	if ($answer === null) {
+		return;
+	}
+
+	foreach (array(0, 1, 2, 3, 4) as $i) {
+		pg_assert_same(array($cases[$i]), $answer[$i]['wanted'], 'translated: ' . $cases[$i]);
+	}
+
+	pg_assert_same(array(), $answer[5]['wanted'], 'digits and signs only');
+}

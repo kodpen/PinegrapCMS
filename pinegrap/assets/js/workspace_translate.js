@@ -34,8 +34,16 @@
     var KEEP = /<[@#][^<>\s]+>|`[^`\n]+`|\b(?:https?:\/\/|www\.)[^\s<>]+|[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
 
     // A letter of any script: a piece without one (numbers, signs, spaces)
-    // has nothing to translate.
-    var LETTER = /[A-Za-zÀ-ɏͰ-ϿЀ-ӿ԰-֏֐-׿؀-ۿऀ-෿฀-໿ᄀ-ᇿ぀-ヿ㄰-㆏㐀-鿿가-힯]/;
+    // has nothing to translate. The Unicode letter class is built at run
+    // time, as a literal of it would stop an older browser from parsing the
+    // bundle; such a browser has no translator, and keeps the ranges.
+    var LETTER = (function () {
+        try {
+            return new RegExp('\\p{L}', 'u');
+        } catch (error) {
+            return /[A-Za-zÀ-ɏͰ-ϿЀ-ӿ԰-֏֐-׿؀-ۿऀ-෿฀-໿ᄀ-ᇿ぀-ヿ㄰-㆏㐀-鿿가-힯]/;
+        }
+    })();
 
     // Elements whose text is never translated: links and record chips,
     // code, the message's own small controls.
