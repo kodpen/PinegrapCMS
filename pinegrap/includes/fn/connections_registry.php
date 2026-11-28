@@ -435,6 +435,7 @@ function pg_connections_transfer_fields()
         'n11' => array('TR', $order),
         'trendyol' => array('TR', $order),
         'ebay' => array('US', $order),
+        'etsy' => array('US', $order),
         'merchant_center' => array('US', $none),
         'openai_feed' => array('US', $none),
 
@@ -616,6 +617,9 @@ function pg_connections_registry()
         'ebay' => array('name' => 'eBay', 'group' => 'marketplaces', 'place' => 'marketplace_settings.php', 'uses' => 'Listings, stock, prices and orders',
             'state' => array('kind' => 'marketplace', 'key' => 'ebay'),
             'covers' => array('marketplace' => array('ebay'), 'connect' => array('ebay', 'ebay_sandbox'), 'purpose' => array('ebay'))),
+        'etsy' => array('name' => 'Etsy', 'group' => 'marketplaces', 'place' => 'marketplace_settings.php', 'uses' => 'Listings, stock, prices and orders',
+            'state' => array('kind' => 'marketplace', 'key' => 'etsy'),
+            'covers' => array('marketplace' => array('etsy'), 'connect' => array('etsy'), 'purpose' => array('etsy'))),
         // Merchant Center's account is chosen on its page; the Product Feeds
         // card shows the connection.
         'merchant_center' => array('name' => 'Google Merchant Center', 'group' => 'marketplaces', 'place' => 'connections.php', 'found_at' => '#settings/commerce/pgset-feeds', 'uses' => 'The product feed and each product\'s push',

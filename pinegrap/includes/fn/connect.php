@@ -1289,6 +1289,26 @@ function pg_connect_forget_user($user_id)
    --------------------------------------------------------------------------- */
 
 /**
+ * The header lines a provider wants on every request of an application,
+ * its token requests included ('app_headers': the name of a function given
+ * the application, Etsy's x-api-key). Pure but for that function.
+ *
+ * @param array      $provider
+ * @param array|null $app
+ * @return array
+ */
+function pg_connect_app_headers($provider, $app)
+{
+    if (empty($provider['app_headers']) || !is_string($provider['app_headers']) || !function_exists($provider['app_headers'])) {
+        return array();
+    }
+
+    $headers = call_user_func($provider['app_headers'], $app);
+
+    return is_array($headers) ? array_values($headers) : array();
+}
+
+/**
  * A request to a provider's token endpoint.
  *
  * @param array $provider
@@ -1312,10 +1332,14 @@ function pg_connect_token_request($provider, $app, $params)
         }
     }
 
+    $headers = array_merge($headers, pg_connect_app_headers($provider, $app));
+
     $params['client_id'] = $app['client_id'];
 
-    // A public client sends its id and the PKCE verifier, nothing more.
-    if (!pg_connect_app_public($app)) {
+    // A public client sends its id and the PKCE verifier, nothing more; so
+    // does a provider whose token endpoint takes no secret ('client_auth'
+    // 'none', Etsy), whose secret goes only in its 'app_headers'.
+    if (!pg_connect_app_public($app) && !(isset($provider['client_auth']) && ($provider['client_auth'] === 'none'))) {
         if (isset($provider['client_auth']) && ($provider['client_auth'] === 'basic')) {
             $headers[] = 'Authorization: Basic ' . base64_encode(rawurlencode($app['client_id']) . ':' . rawurlencode($app['client_secret']));
         } else {

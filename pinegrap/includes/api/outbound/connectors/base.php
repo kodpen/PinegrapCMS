@@ -193,6 +193,23 @@ function mp_providers() {
 				'return_policy'      => array('label' => 'Return policy',      'type' => 'select', 'remote' => true, 'options' => array())
 			)
 		),
+		// The seller signs in on Connections (the etsy provider of connected
+		// accounts); an account is one shop, read from the sign-in, and holds
+		// no key of its own. Etsy gives an application made in Turkey no
+		// buyer address and no shipment call: such a shop still lists and
+		// takes its orders, without the address.
+		'etsy' => array(
+			'name'   => 'Etsy',
+			'file'   => 'etsy.php',
+			'help'   => 'Connect your Etsy shop on Connections first. Save, then test the connection to read your shop, its shipping and processing profiles. Etsy gives an app made in Turkey no buyer addresses and no shipment reports: such a shop gets its listings, stock, prices and orders, without the address.',
+			'fields' => array(
+				'shop'             => array('label' => 'Etsy shop',          'type' => 'select', 'remote' => true, 'options' => array()),
+				'shipping_profile' => array('label' => 'Shipping profile',   'type' => 'select', 'remote' => true, 'options' => array()),
+				'readiness_state'  => array('label' => 'Processing profile', 'type' => 'select', 'remote' => true, 'options' => array()),
+				'who_made'         => array('label' => 'Who made it',        'type' => 'select', 'remote' => true, 'options' => array()),
+				'when_made'        => array('label' => 'When it was made',   'type' => 'select', 'remote' => true, 'options' => array())
+			)
+		),
 		// Managed: no fields of its own. Its page of Connections writes and
 		// deletes its account row (includes/fn/merchant_center_push.php); this
 		// screen lists it and never offers it under "add account".
