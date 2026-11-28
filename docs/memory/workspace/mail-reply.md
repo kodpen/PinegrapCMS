@@ -26,7 +26,7 @@ description: Answering a Workspace e-mail by e-mail (WM7): the queued answer, Cc
 
 ## Which headers and subject?
 - Message-ID `pg.c<conversation>.<16 hex>@<pg_mail_hostname()>` (the box's domain without one). In-Reply-To the newest incoming mail, References its references plus it, the last 20.
-- Subject `Re: ` unless it starts with an answer prefix (Re, AW, SV, VS, Ynt, Antw, R), plus ` [#T<id>]` unless the tag is there (`ws_mail_find_conversation()`).
+- Subject `Re: ` unless it starts with an answer prefix (Re, AW, SV, VS, Ynt, Antw, R), plus ` [#T<id>]` unless the tag is there (`ws_mail_find_conversation()`); past 255 characters the text is cut, never the tag.
 - `email()`'s fields and the site's mark: `mail-email-fields.md`.
 
 ## What is kept?

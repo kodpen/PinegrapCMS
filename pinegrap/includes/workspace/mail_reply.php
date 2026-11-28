@@ -49,7 +49,9 @@ function ws_mail_reply_message_id($conversation_id, $random, $host)
 
 /**
  * The subject of an answer: "Re: " unless the subject already answers
- * something, and the conversation's tag unless it already carries one.
+ * something, and the conversation's tag unless it already carries one. A
+ * subject too long for the column gives way to the tag, which is all that
+ * threads back an answer without threading headers (support_request.php).
  *
  * @param string $subject
  * @param int    $conversation_id
@@ -63,8 +65,11 @@ function ws_mail_reply_subject($subject, $conversation_id)
         $subject = trim('Re: ' . $subject);
     }
 
-    if (ws_mail_subject_tag($subject) !== (int) $conversation_id) {
-        $subject .= ' [#T' . (int) $conversation_id . ']';
+    $tag = '[#T' . (int) $conversation_id . ']';
+
+    if ((ws_mail_subject_tag($subject) !== (int) $conversation_id) || (mb_strlen($subject) > 255)) {
+        $subject = trim(preg_replace('/\s+/u', ' ', str_replace($tag, '', $subject)));
+        $subject = rtrim(mb_substr($subject, 0, 255 - mb_strlen($tag) - 1)) . ' ' . $tag;
     }
 
     return mb_substr(rtrim($subject), 0, 255);
