@@ -213,3 +213,21 @@ function test_workspace_link_preview_api_wiring()
 	pg_assert_true(strpos($api, "'WorkspaceMessageLinkPreview' => 'ws_api_message_link_preview_schema'") !== false, 'the object is named');
 	pg_assert_true(strpos($resources, 'ws_link_preview_card_rows_map($ids)') !== false, 'a page reads its cards in one query');
 }
+
+function test_workspace_link_preview_fields_charset_alias()
+{
+	// The charset is named only in the Content-Type header, by a name that is
+	// an alias of mbstring's (Shift_JIS for SJIS, gbk for CP936, big5 for
+	// BIG-5, cp1252 for Windows-1252).
+	foreach (array(
+		array('SJIS', 'Shift_JIS', '日本語のページ'),
+		array('CP936', 'gbk', '中文页面'),
+		array('BIG-5', 'big5', '中文頁面'),
+		array('Windows-1252', 'cp1252', 'Café “quoted”'),
+	) as $case) {
+		$body = mb_convert_encoding('<html><head><title>' . $case[2] . '</title></head></html>', $case[0], 'UTF-8');
+		pg_assert_same($case[2], ws_link_preview_fields($body, 'https://example.com/', 'text/html; charset=' . $case[1])['title'], 'a page in ' . $case[1]);
+	}
+
+	pg_assert_same('Plain', ws_link_preview_fields('<title>Plain</title>', 'https://example.com/', 'text/html; charset=no-such-charset')['title'], 'an unknown charset is read as it is');
+}

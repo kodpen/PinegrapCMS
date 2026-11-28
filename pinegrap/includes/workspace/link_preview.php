@@ -220,6 +220,35 @@ function ws_link_preview_cut($text, $max)
 }
 
 /**
+ * A page's charset as mbstring takes it, its aliases included (Shift_JIS,
+ * gbk, big5, cp1252), 'UTF-8' for UTF-8, or '' for one mbstring does not
+ * know (PHP 8 throws on such a name, PHP 7 warns and answers false).
+ *
+ * @param string $name as the page or its Content-Type header says it
+ * @return string
+ */
+function ws_link_preview_charset($name)
+{
+    $name = trim((string) $name);
+
+    if ($name === '') {
+        return '';
+    }
+
+    if (in_array(strtolower($name), array('utf-8', 'utf8'), true)) {
+        return 'UTF-8';
+    }
+
+    try {
+        $known = (@mb_convert_encoding('a', 'UTF-8', $name) !== false);
+    } catch (\Throwable $error) {
+        $known = false;
+    }
+
+    return $known ? $name : '';
+}
+
+/**
  * The card's fields from what a page says about itself: title (og:title,
  * twitter:title, else <title>), description (og:description, description,
  * twitter:description) and site name (og:site_name, else the host without
@@ -241,7 +270,9 @@ function ws_link_preview_fields($html, $url, $content_type = '')
         $charset = $match[1];
     }
 
-    if (($charset !== '') && (strtolower($charset) !== 'utf-8') && in_array(strtolower($charset), array_map('strtolower', mb_list_encodings()), true)) {
+    $charset = ws_link_preview_charset($charset);
+
+    if (($charset !== '') && ($charset !== 'UTF-8')) {
         $html = (string) @mb_convert_encoding($html, 'UTF-8', $charset);
         // The page's own declaration would make the reader decode it again.
         $html = (string) preg_replace('/(<meta[^>]+charset\s*=\s*["\']?)[a-z0-9_.:-]+/i', '${1}utf-8', $html);
