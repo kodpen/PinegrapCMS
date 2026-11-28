@@ -93,6 +93,7 @@
 - bug-hunt-areas-form-submissions.md: The bug hunt of site form submissions (area 18, 2026-11-24): the three faults fixed, what was read clean, what was not run
 - bug-hunt-areas-gift-cards-store-credit.md: The bug hunt of gift cards and store credit (area 52, 2026-11-24): partial redemption, the cancelled credit refund's gift card part, the cancel refund line; what was read clean
 - bug-hunt-areas-grid-move-mirror.md: The bug hunt of the designer's grid, move and mirror parts (#12021): the seven faults it fixed, the one it opened as an issue, what it read clean
+- bug-hunt-areas-help-centre.md: Bug hunt of the help centre (HC1–HC9, architect 2026-11-28): faults fixed, what was read clean, what was left [decision: here]
 - bug-hunt-areas-image-pipeline.md: The bug hunt of the image pipeline (2026-11-24, #11449): the two faults fixed, the finding left for a decision, what was read clean
 - bug-hunt-areas-invoices-pdf-documents.md: The bug hunt of order documents made as PDF or print pages (area 38, #11434, 2026-11-24): four faults fixed, what was read clean, what was left
 - bug-hunt-areas-launch-journey.md: The bug hunt of the site set-up journey (SJ1a to SJ5, 2026.11.0): the facts reader, the set-up card, "Go live", First week and Start here, the agency summary [decision: here]
@@ -105,11 +106,13 @@
 - bug-hunt-areas-marketplace-repricer.md: The bug hunt in the marketplace repricer RP1 to RP5 (architect, 2026-11-26, request 3034): what was fixed, what was read clean, what is left [decision: here]
 - bug-hunt-areas-member-accounts.md: Bug hunt area 21, member accounts (2026-11-24): sign-up, sign-in, reset, e-mail change, blocked and deleted members; the four faults fixed, what read clean, what was left
 - bug-hunt-areas-menus-navigation.md: The bug hunt of site menus and navigation (2026-11-24, hunt 36): the faults fixed, what was left for a decision, what was read clean
+- bug-hunt-areas-message-link-preview-translate.md: The bug hunt in a Workspace message's link preview and Translate (2026-11-28): what was fixed, what was read clean, what is left
 - bug-hunt-areas-migration-steps-11.md: Bug hunt of the 2026.11.0 migration steps (area 13, #11376): no fault; run twice, cut off at 57 points, paused, upgraded from a real 2026.4.10 install, tables of schema-46 to -49 matched
 - bug-hunt-areas-multi-language-pages.md: Bug hunt 32, multi-language pages (#11423): the language lost on a payment's return and in the form sender's subject, what was read clean, what needs an order language column
 - bug-hunt-areas-my-library.md: Bug hunt of the designer's My library (2026-11-26): an item saved, inserted as a copy, managed, exported and imported as a file; what was fixed, what read clean, what was left [decision: here]
 - bug-hunt-areas-notifications-bell.md: The bug hunt of the panel's bell and the mails it sends (2026-11-24, #11438): the seven faults fixed, what was read clean, what was judged decided [decision: here]
 - bug-hunt-areas-oauth-connected-accounts.md: The bug hunt of OAuth and connected accounts (2026-11-24, area 42): the two faults fixed, what was read clean
+- bug-hunt-areas-office-docx-edit.md: Bug hunt of Word documents edited in place, server side (DA1-DA7, 2026-11-28): what was fixed, what read clean, what was left [decision: here]
 - bug-hunt-areas-ops-alerts-once.md: The bug hunt of staff alerts told once (2026-11-24, #11358): pg_ops_alert() and the bell lines on it; the five faults fixed, what was read clean, what was not there yet [decision: here]
 - bug-hunt-areas-order-legal-documents.md: The bug hunt of the order's legal documents (pre-information form, distance sales contract, KVKK copy; #10663, 2026-11-20): the three faults fixed, the issue opened, what was read clean [decision: here]
 - bug-hunt-areas-overrides.md: Bug hunt of "Can change per place" (2026-11-28, PR #12241): the three faults fixed in style_designer_overrides.js and component_overrides.php, and what was read clean
