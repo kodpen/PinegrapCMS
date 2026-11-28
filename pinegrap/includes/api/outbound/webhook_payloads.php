@@ -480,8 +480,8 @@ function api_webhook_event_payloads() {
 
 }
 
-// The modules' events, each from its module's own file: the ERP's and the
-// Workspace's (the flows and the incoming mail merged on their own announce
+// The modules' events, each from its module's own file: the ERP's, the
+// translation's and the Workspace's (the flows and the incoming mail merged on their own announce
 // the Workspace's names). Merged
 // whether or not the module is on: GET /webhooks/events lists only the events
 // api_webhook_events() names, which a switched-off module does not add, and a
@@ -490,8 +490,9 @@ function api_webhook_module_event_payloads() {
 
 	require_once(dirname(__FILE__) . '/../../erp/webhook_payloads.php');
 	require_once(dirname(__FILE__) . '/../../workspace/webhook_payloads.php');
+	require_once(dirname(__FILE__) . '/../../translate/webhook_payloads.php');
 
-	return erp_webhook_event_payloads() + ws_webhook_event_payloads();
+	return erp_webhook_event_payloads() + ws_webhook_event_payloads() + translate_webhook_event_payloads();
 
 }
 

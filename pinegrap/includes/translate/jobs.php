@@ -261,10 +261,12 @@ function pg_tr_job_close_if_complete($job_id)
 
     db("UPDATE translation_jobs SET status = '$status', finished_at = '" . time() . "' WHERE id = '$job_id' AND status IN ('queued', 'sent', 'running')");
 
-    // Only the call that closed the job hands its failed texts on, so two
-    // runs finishing together open one fallback update, not two.
-    if ((mysqli_affected_rows(db::$con) > 0) && ((int) $job['failed_count'] > 0)) {
-        pg_tr_job_fallback($job_id);
+    // Only the call that closed the job hands its failed texts on and
+    // announces the end, so two runs finishing together open one fallback
+    // update, not two, and announce once.
+    if (mysqli_affected_rows(db::$con) > 0) {
+        $fallback_id = ((int) $job['failed_count'] > 0) ? pg_tr_job_fallback($job_id) : 0;
+        pg_tr_job_announce_finished($job_id, $fallback_id);
     }
 
     return $status;
@@ -351,7 +353,7 @@ function pg_tr_job_fail($job_id, $error)
 
     // The texts the engine never reached go to the fallback engine.
     if (mysqli_affected_rows(db::$con) > 0) {
-        pg_tr_job_fallback($job_id);
+        pg_tr_job_announce_finished($job_id, pg_tr_job_fallback($job_id));
     }
 }
 
@@ -364,6 +366,40 @@ function pg_tr_job_cancel($job_id)
 
     db("UPDATE translation_job_items SET status = 'skipped' WHERE job_id = '$job_id' AND status = 'waiting'");
     db("UPDATE translation_jobs SET status = 'cancelled', finished_at = '" . time() . "' WHERE id = '$job_id' AND status IN ('queued', 'sent', 'running')");
+
+    if (mysqli_affected_rows(db::$con) > 0) {
+        pg_tr_job_announce_finished($job_id, 0);
+    }
+}
+
+/**
+ * Announces an update that has just ended - done, failed or cancelled - as
+ * translation.update_finished, read back after the move so the counts are
+ * the final ones. Called once, by the move that closed it.
+ *
+ * @param int $job_id
+ * @param int $fallback_id the update opened for its failed texts, 0 for none
+ */
+function pg_tr_job_announce_finished($job_id, $fallback_id)
+{
+    $job = pg_tr_job_get($job_id);
+
+    if (!$job || !function_exists('pg_announce')) {
+        return;
+    }
+
+    pg_announce('translation.update_finished', array(
+        'id'                 => (int) $job['id'],
+        'language'           => (string) $job['language'],
+        'scope'              => (string) $job['scope'],
+        'engine'             => (string) $job['engine'],
+        'status'             => (string) $job['status'],
+        'total'              => (int) $job['total'],
+        'translated'         => (int) $job['done_count'],
+        'failed'             => (int) $job['failed_count'],
+        'error'              => (string) $job['error'],
+        'fallback_update_id' => ((int) $fallback_id > 0) ? (int) $fallback_id : null,
+    ));
 }
 
 /**

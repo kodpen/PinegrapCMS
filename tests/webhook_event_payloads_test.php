@@ -33,6 +33,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/api/resources/users.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/webhook_payloads.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/api.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/translate/api.php');
 foreach (array('tasks', 'flow_run_events', 'messages', 'app_commands', 'groups', 'wtable_shares', 'mail_status') as $webhook_payloads_test_file) {
 	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/' . $webhook_payloads_test_file . '.php');
 }
@@ -41,7 +42,7 @@ foreach (array('tasks', 'flow_run_events', 'messages', 'app_commands', 'groups',
 // module is switched on in this run.
 function webhook_payloads_test_catalogue()
 {
-	return api_webhook_core_events() + erp_webhook_events() + ws_webhook_events();
+	return api_webhook_core_events() + erp_webhook_events() + ws_webhook_events() + translate_webhook_events();
 }
 
 // The events that must have their fields and sample: every one.
