@@ -3523,6 +3523,12 @@ function pg_account_menu($user, $options = array())
     // ── The account's own places ────────────────────────────────────────
     // The account page is found only when the link is followed: the lookup
     // can scan every designed page's tree (my_account_link.php).
+    // The person's own status, above My Account: a team member's only
+    // (includes/workspace/person_status_screen.php).
+    if (function_exists('ws_person_status_menu_row')) {
+        $output .= ws_person_status_menu_row($workspace, (int) $user['id'], $software_url, $parent_target);
+    }
+
     $output .= $row($software_url . '/my_account_link.php', 'bi-person', lang('My Account'), $parent_target);
 
     // Connected applications (connected_apps.php), offered while the site has

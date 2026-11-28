@@ -2630,6 +2630,7 @@
     "Set a password": "Parola belirle",
     "Set a period under Visitor Tracking for \"Clean up visitor records now\" to have something to remove.": "«Ziyaretçi kayıtlarını şimdi temizle»nin kaldıracak bir şeyi olması için Ziyaretçi Takibi altında bir süre belirleyin.",
     "Set a quantity to zero to leave that line out; a line below zero left at zero comes back with the goods in proportion. Returning everything gives back exactly what the invoice charged, to the kurus.": "Bir kalemi dışarıda bırakmak için miktarı sıfır yapın; sıfırın altındaki bir satır sıfırda bırakılırsa mallarla orantılı olarak geri gelir. Tamamını iade etmek, faturanın tahsil ettiğini kuruşu kuruşuna geri verir.",
+    "Set a status": "Durum belirle",
     "Set aside": "Kenara ayır",
     "Set aside by {var:1}": "{var:1} tarafından bir kenara bırakıldı",
     "Set automatically when the first invoice is created.": "İlk fatura oluşturulduğunda otomatik ayarlanır.",

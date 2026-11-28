@@ -1032,7 +1032,7 @@ function ws_screen_config($viewer, $mode, $extra = array())
 
     // The search box of every screen (palette.php) and a channel's board
     // (channel_board.php).
-    $strings = array_merge($strings, ws_palette_js_strings(), ws_channel_board_js_strings(), ws_memory_js_strings(), ws_channel_agents_js_strings(), ws_channel_activity_js_strings(), ws_conversation_timeline_js_strings(), ws_agent_card_js_strings(), ws_agent_feedback_js_strings(), ws_person_card_js_strings(), ws_message_ref_js_strings());
+    $strings = array_merge($strings, ws_palette_js_strings(), ws_channel_board_js_strings(), ws_memory_js_strings(), ws_channel_agents_js_strings(), ws_channel_activity_js_strings(), ws_conversation_timeline_js_strings(), ws_agent_card_js_strings(), ws_agent_feedback_js_strings(), ws_person_card_js_strings(), ws_person_status_js_strings(), ws_message_ref_js_strings());
     // The time spent on tasks and the tasks they wait for
     // (assets/js/workspace_task_time.js, workspace_task_links.js).
     $strings = array_merge($strings, ws_task_time_js_strings(), ws_task_links_js_strings());
@@ -1190,6 +1190,9 @@ function ws_screen_config($viewer, $mode, $extra = array())
         'task_links'   => ws_task_links_ready(),
         // The person's own quiet hours, set in a channel's Notifications (notify.php).
         'quiet_hours'  => (!empty($viewer['member']) && function_exists('ws_quiet_hours_ready') && ws_quiet_hours_ready()) ? array('ready' => true, 'value' => ws_quiet_hours_get((int) $viewer['id'])) : array('ready' => false),
+        // The person's own status and the marks beside names
+        // (person_status_screen.php): null for a guest or before the column.
+        'person_status' => ws_person_status_js_config($viewer),
         'delegation'   => ws_delegation_js_config(),
         'guests'       => function_exists('ws_guests_js_config') ? ws_guests_js_config($viewer) : array('can_host' => false, 'durations' => array()),
         'forwards'     => ws_forwards_ready() ? array('max' => WS_FORWARD_MAX) : null,
