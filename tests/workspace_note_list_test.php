@@ -263,7 +263,10 @@ function test_workspace_note_list_is_a_card_beside_the_note()
 	pg_assert_contains("overflow-y: auto;", workspace_note_list_test_rule($css, '.ws-nb-list-card > .ws-nb-list'), 'its body scrolls');
 	pg_assert_contains('min-height: 46px;', workspace_note_list_test_rule($css, '.ws-nb-list-head'), 'the list head is 46 px');
 	pg_assert_contains('min-height: 46px;', workspace_note_list_test_rule($css, '.ws-nb-page > .ws-nb-head'), 'the note head is 46 px');
-	pg_assert_contains('border-bottom: 1px solid', workspace_note_list_test_rule($css, '.ws-nb-item'), 'a hairline under each row');
+	$row = workspace_note_list_test_rule($css, '.ws-nb-list .ws-nb-item');
+	pg_assert_contains('border-bottom: 1px solid', $row, 'a hairline under each row');
+	pg_assert_contains("padding: 12px;\n    padding-inline-start: 16px;", $row, 'the row padded 12 px, 16 px at its start');
+	pg_assert_contains('border-radius: 0;', $row, 'the row square in the card');
 	pg_assert_contains('font-weight: var(--pg-weight-title);', workspace_note_list_test_rule($css, '.ws-nb-item-unread .ws-nb-item-name'), 'unread: a heavier title');
 }
 

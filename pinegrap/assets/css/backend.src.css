@@ -26898,8 +26898,9 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
 }
 /* A note's row is a .pg-list-row (workspace.js, drawItem()) with a hairline
    under it, square in the card: the open note is the chosen row, a faint
-   accent tint with a 3 px accent edge at its start; its ⋯ stays shown. */
-.ws-nb-item {
+   accent tint with a 3 px accent edge at its start; its ⋯ stays shown.
+   Scoped to the list so it outweighs .pg-list-row, defined later. */
+.ws-nb-list .ws-nb-item {
     padding: 12px;
     padding-inline-start: 16px;
     border-bottom: 1px solid var(--pg-border-color-translucent);
