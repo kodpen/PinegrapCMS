@@ -21,7 +21,7 @@ description: The bug hunt in the designer's states, interactions, collection win
 - Fonts: Update keeps a turned-off font off and in place; the catalogue is the shipped list, so names are not escaped.
 
 ## What is left?
-- A Google font saved with a weight the family lacks loses its whole stylesheet on the site, the canvas and Preview: the browser offers 100 to 900 for every family and the links ask for the ticked weights in one request. Needs the weights each family has, or a fallback link on the site: a `bug` issue.
+- A Google font saved with a weight the family lacks loses its whole stylesheet on the site, the canvas and Preview: the browser offers 100 to 900 for every family and the links ask for the ticked weights in one request. Needs the weights each family has, or a fallback link on the site: issue #12243.
 - In the collection window, pressing a field's bin or kind button while another, empty line holds the focus removes the empty line and redraws before the click ends, so the click is lost and must be repeated.
 - A failed collection list reads "The site has no collection yet." in "One that is there".
 
