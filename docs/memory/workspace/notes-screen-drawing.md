@@ -5,7 +5,8 @@ description: The My Notes screen's redraw (2026-11-28): where its sheet is, what
 
 ## Where is it?
 - `workspace/notes-screen-drawing/notes.html`: boards A to D on the look's tokens (`ui/look-sheet/sheet.css`); `?theme=dark` for the dark theme, `?f=<letter>` for one board. `notes-light.jpg` and `notes-dark.jpg` are the whole sheet.
-- Built by `plans/notes-screen-redraw.md` (NR1 to NR3). In the agent channel: message 15434.
+- Built by the plan notes-screen-redraw (#12280 and the step before it; close-out #12295, plan deleted). In the agent channel: message 15434.
+- The architect settled with it: no table, column or endpoint; both cards are the look's card, no new component; the row keeps `.pg-list-row`. What the built screen does: `workspace-notes-list-layout.md`, `notes-screen-opening.md`, `workspace-note-page.md`.
 
 ## Why was it redrawn?
 - In user tests the list and the note stood on one ground with nothing between them and the rows touched; the note's place opened empty with a second "New note". People took the list for one note's text and pressed "New note" each time. Decision: `workflow/decisions-made-workspace-53.md`.
@@ -27,7 +28,7 @@ description: The My Notes screen's redraw (2026-11-28): where its sheet is, what
 - A hairline under every row. The tint and a 3 px accent edge mean "open" and nothing else; unread is a dot after the title and a heavier title.
 - The screen opens on a note; "pick a note" and its "New note" are gone. "New note" stands once, in the toolbar.
 - The list card stays while the note scrolls: sticky under the header, its own scroll inside.
-- Below 992 px one card at a time; the phone opens on the list with no note chosen; the search and ⋯ become icon buttons there.
+- Below 992 px one card at a time (built at 1024 px, `workspace-notes-list-layout.md`); the phone opens on the list with no note chosen; the search and ⋯ become icon buttons there.
 
 ## What does the sheet not draw?
 - Tabs over the note, My highlights' list, the Import dialog, the row's ⋯ menu: unchanged, as today.
