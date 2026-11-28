@@ -22,7 +22,7 @@ description: Hand-over of the architect session of 2026-11-24 to 26, the work in
 - AC1's census may show that shared component and theme changes need a store, a schema question for the owner.
 - The office editors (`decisions-made-product-115.md`): the document's ability plan is free; the formulas have landed (`platform/office-sheet-formulas.md`).
 - The owner asked for the designer first (`designer-faults-first.md`): an open designer `bug` issue goes ahead of a plan step, with k3.
-- The Translations screen (message 15186): `plans/translations-screen-modern.md`; a step needing a stored value comes back here.
+- The Translations screen (message 15186), redrawn: a change needing a stored value comes back here (`ui/translations-screen-overview.md`).
 - Plan `designer-new-version` (poll 244): a step needing a table or column comes back here.
 - Poll 242: Options is too narrow; his console line picks the issue.
 - Paraşüt: the six issues are fixed; what is left is in `plans/erp-parasut-open-work.md`.

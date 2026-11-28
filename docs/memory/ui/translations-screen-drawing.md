@@ -5,7 +5,7 @@ description: The Translations screen's redraw (2026-11-27): where its sheet is, 
 
 ## Where is it?
 - `ui/translations-screen-drawing/translations.html`: boards A to J on the look's tokens; `?theme=dark` for the dark theme, `?f=<letter>` for one board. `translations-light.jpg` and `translations-dark.jpg` are the whole sheet.
-- Built by `plans/translations-screen-modern.md` (TS1 to TS8). The sheet wins over the plan's words; what the sheet leaves open is the step's own call, in the look.
+- Built in steps TS1 to TS8 (rules: `translations-screen-overview.md`). The sheet wins over the plan's words; what the sheet leaves open is the step's own call, in the look.
 
 ## What does each board show?
 - A: today's screen, its five faults numbered (`translations-screen-today.md`).
