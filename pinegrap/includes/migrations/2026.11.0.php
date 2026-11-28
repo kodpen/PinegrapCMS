@@ -279,6 +279,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_order_item_tax_country();  // 11.0.287
 	upgrade_2026_11_0_ws_mail_priority_source(); // 11.0.288
 	upgrade_2026_11_0_kb_votes();                // 11.0.289
+	upgrade_2026_11_0_market_prices();           // 11.0.290
 
 }
 
@@ -9875,5 +9876,26 @@ function upgrade_2026_11_0_kb_votes() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Collections: an article\'s page can ask "Was this helpful?", and the record list counts the Yes and No answers.');
+
+}
+
+
+// 11.0.290 - A product's fixed price in a market (includes/fn/market_prices.php):
+// one row per product and market, price in integer minor units of the
+// market's currency. A product with no row in a market is sold there at the
+// base price converted at the day's rate and rounded by the market's rule.
+// Deleting a market or a product drops its rows in code. The table is created
+// only when it is missing, so the step runs twice without a change.
+function upgrade_2026_11_0_market_prices() {
+
+	install_create_table('market_prices', "CREATE TABLE market_prices (
+		market_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		product_id INT UNSIGNED NOT NULL DEFAULT 0,
+		price      INT NOT NULL DEFAULT 0,
+		PRIMARY KEY (market_id, product_id),
+		KEY idx_product (product_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Markets: a product can have a fixed price in a market, set on the product form under "Prices by market" or by the product import.');
 
 }
