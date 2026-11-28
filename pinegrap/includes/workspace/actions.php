@@ -3787,8 +3787,12 @@ function ws_handle_action($action, $request)
             // sender's browser wrote, cleaned before they are kept
             // (ws_voice_queue()).
             $result = ws_message_send_file_bytes($viewer, $channel, $body, $file['name'], $file['binary'], array(
-                'parent_id' => $parent_id,
-                'voice'     => array(
+                'parent_id'  => $parent_id,
+                // The message of a file sent before it in the same send:
+                // its group is joined when it may be, else the file is
+                // posted alone. A /create command's file is never grouped.
+                'file_group' => $product_file ? 0 : (int) ($request['group'] ?? 0),
+                'voice'      => array(
                     'duration_ms' => $request['voice_duration_ms'] ?? 0,
                     'peaks'       => $request['voice_peaks'] ?? '',
                     'transcript'  => $request['voice_transcript'] ?? '',
@@ -3814,7 +3818,7 @@ function ws_handle_action($action, $request)
                 ws_claude_dispatch();
             }
 
-            return ws_action_ok(array('message_id' => $result['message_id'], 'ai' => !empty($asked['ai']) || !empty($asked['models']), 'agent' => !empty($asked['agent'])));
+            return ws_action_ok(array('message_id' => $result['message_id'], 'file_group' => (int) ($result['file_group'] ?? 0), 'ai' => !empty($asked['ai']) || !empty($asked['models']), 'agent' => !empty($asked['agent'])));
 
         // A file of the file manager in a conversation (library.php): the
         // channels the file manager's "Send to a channel" offers, and the
@@ -3830,7 +3834,10 @@ function ws_handle_action($action, $request)
                 return ws_action_error($channel);
             }
 
-            $result = ws_library_send($viewer, $channel, (int) ($request['file_id'] ?? 0), (string) ($request['body'] ?? ''));
+            // group: as ws_attach's.
+            $result = ws_library_send($viewer, $channel, (int) ($request['file_id'] ?? 0), (string) ($request['body'] ?? ''), array(
+                'file_group' => (int) ($request['group'] ?? 0),
+            ));
 
             if (!$result['ok']) {
                 return ws_action_error($result['error']);
@@ -3848,6 +3855,7 @@ function ws_handle_action($action, $request)
                 'ai'         => !empty($asked['ai']) || !empty($asked['models']),
                 'agent'      => !empty($asked['agent']),
                 'message_id' => $result['message_id'],
+                'file_group' => (int) ($result['file_group'] ?? 0),
                 'channel'    => array('id' => (int) $channel['id'], 'name' => (string) $channel['name']),
                 'url'        => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace.php?channel=' . (int) $channel['id'] . '&message=' . (int) $result['message_id'],
             ));
