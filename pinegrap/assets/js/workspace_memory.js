@@ -4,9 +4,10 @@
  * Workspace - a channel's memory on the channel screen: its entries (a
  * title, a project, a text, tags, pinned, an expiry, who wrote and changed
  * it) as rows under folding project headings, in an agent channel after the
- * general memory the agent channels share, and the form that adds, changes,
- * moves and deletes them. A channel with an agent shows it
- * as its Memory tab; any other channel opens it from the channel settings.
+ * general memory the agent channels share, and the form drawer beside them
+ * that adds, changes and deletes them; a row moves and deletes too. A
+ * channel with an agent shows it as its Memory tab; any other channel opens
+ * it from the channel settings.
  * Agents see the index of the same entries in every brief
  * (includes/workspace/channel_memory.php).
  *
@@ -46,10 +47,11 @@
      * @param {HTMLElement} pane
      * @param {object}      channel the channel as the screen holds it (id),
      *                              or {general: true} for the general memory
-     * @param {object}      [fill]  opens New entry with these (title, text),
-     *                              as /memory without a text asks
+     * @param {object}      [start] opens New entry with these (title, text),
+     *                              as /memory without a text asks; not named
+     *                              fill, which the list's fill() would hide
      */
-    function mount(pane, channel, fill) {
+    function mount(pane, channel, start) {
         var h = window.PGWsKit;
 
         if (!h || !pane || !channel) {
@@ -82,6 +84,7 @@
 
         function rowNode(entry, info) {
             var row = el('div', 'ws-memory-row' + (entry.expired ? ' ws-memory-expired' : ''));
+            row.setAttribute('data-ws-memory-id', String(entry.id));
             var pin = el('span', 'ws-memory-pin');
 
             if (entry.pinned) {
@@ -238,7 +241,7 @@
 
         // The parts, filled from ws_memory_list with the words searched;
         // an answer overtaken by a newer search is dropped.
-        function fill(results) {
+        function fill(results, drawn) {
             var fields = target(!!channel.general);
             var mine = ++asked;
 
@@ -273,11 +276,16 @@
                 parts.forEach(function (info) {
                     results.appendChild(partNode(info, parts.length === 1, !!data.search));
                 });
+
+                if (drawn) {
+                    drawn();
+                }
             }).catch(h.fail);
         }
 
-        // The search box over both parts, then the parts.
-        function list() {
+        // The search box over both parts, then the parts; drawn runs once
+        // they are on the page.
+        function list(drawn) {
             var bar = el('div', 'pg-toolbar ws-pane-toolbar ws-memory-bar');
             var search = el('label', 'pg-input pg-input-sm ws-bar-search');
             var input = el('input', '');
@@ -301,18 +309,78 @@
                 }
             }, 300));
 
-            fill(results);
+            fill(results, typeof drawn === 'function' ? drawn : null);
         }
 
+        // The rows' tint once a save has listed them again: the saved row
+        // is scrolled into view and its ground lit for a moment.
+        function showSaved(id) {
+            var row = root.querySelector('.ws-memory-row[data-ws-memory-id="' + id + '"]');
+
+            if (!row) {
+                return;
+            }
+
+            var box = row.closest('details');
+
+            if (box && !box.open) {
+                box.open = true;
+            }
+
+            row.scrollIntoView({ block: 'nearest' });
+            row.classList.remove('ws-memory-row-saved');
+            void row.offsetWidth;
+            row.classList.add('ws-memory-row-saved');
+        }
+
+        // New entry and Edit: the look's form drawer from the right, so the
+        // list, its search words and its folds stay behind it. A refused
+        // field is said under that field and the drawer stays open; closing
+        // it with changed fields asks first.
         function form(entry, given, general) {
-            h.clear(root);
+            var old = document.getElementById('ws-memory-form');
+
+            if (old) {
+                old.remove();
+            }
+
             given = given || {};
 
-            root.appendChild(el('h3', 'ws-memory-part-title pg-title-status', general ? t('mem_general') : t('mem_channel')));
+            var node = h.drawer.make('ws-memory-form', entry ? t('mem_edit_title') : t('mem_add'));
+            var head = node.querySelector('.drawer-header');
+            var heading = node.querySelector('.drawer-title');
+            var words = el('div', 'flex-grow-1 min-w-0');
+            var body = node.querySelector('.drawer-body');
+            var foot = node.querySelector('.drawer-footer');
+            var errors = {};
+            // Set once the drawer may close without asking: saved, deleted,
+            // or the changes given up.
+            var leaving = false;
+
+            node.style.width = 'min(46rem, 100vw)';
+            heading.id = 'ws-memory-form-title';
+            node.setAttribute('aria-labelledby', heading.id);
+            head.classList.add('gap-3', 'p-5');
+            words.appendChild(heading);
+            words.appendChild(el('p', 'pg-text-meta mb-0 mt-1', general ? t('mem_general_kept') : t('mem_channel')));
+            head.insertBefore(words, head.firstChild);
+            body.classList.add('p-5');
+            foot.classList.remove('d-none');
+
+            // A field with the line its refusal is said in.
+            function add(label, control, help, key) {
+                var field = part.field(label, control, help);
+                var error = part.error('');
+
+                error.setAttribute('role', 'alert');
+                field.appendChild(error);
+                errors[key] = error;
+                body.appendChild(field);
+            }
 
             var title = part.input('text', entry ? entry.title : (given.title || ''));
             title.maxLength = 150;
-            root.appendChild(part.field(t('mem_title'), title));
+            add(t('mem_title'), title, '', 'title');
 
             var project = part.input('text', entry ? entry.project : '');
             var known = el('datalist');
@@ -324,41 +392,85 @@
             });
             project.maxLength = 80;
             project.setAttribute('list', known.id);
-            root.appendChild(part.field(t('mem_project'), project, t('mem_project_help')));
-            root.appendChild(known);
+            add(t('mem_project'), project, t('mem_project_help'), 'project');
+            body.appendChild(known);
 
-            var text = part.textarea(entry ? entry.text : (given.text || ''), 6);
+            var text = part.textarea(entry ? entry.text : (given.text || ''), 8);
             text.maxLength = 4000;
-            root.appendChild(part.field(t('mem_text'), text));
+            add(t('mem_text'), text, '', 'text');
+
+            // The text box grows with what is typed, never below its 8 rows.
+            function grow() {
+                text.style.height = '';
+
+                if (text.scrollHeight > text.clientHeight) {
+                    text.style.height = (text.scrollHeight + text.offsetHeight - text.clientHeight) + 'px';
+                }
+            }
+
+            text.addEventListener('input', grow);
 
             var tags = part.input('text', entry ? entry.tags.join(', ') : '');
             tags.maxLength = 400;
-            root.appendChild(part.field(t('mem_tags'), tags, t('mem_tags_help')));
+            add(t('mem_tags'), tags, t('mem_tags_help'), 'tags');
 
             var expires = part.input('date', (entry && entry.expires_at) ? day(entry.expires_at) : '');
-            root.appendChild(part.field(t('mem_expires'), expires, t('mem_expires_help')));
+            add(t('mem_expires'), expires, t('mem_expires_help'), 'expires_at');
 
             var pinned = part.switchRow(t('mem_pinned'), !!(entry && entry.pinned));
-            root.appendChild(pinned.row);
+            body.appendChild(pinned.row);
 
+            // A refusal no field owns.
             var error = part.error('');
             error.setAttribute('role', 'alert');
-            root.appendChild(error);
+            body.appendChild(error);
 
-            var actions = el('div', 'd-flex gap-3 justify-content-end');
-            var back = h.button('pg-button pg-button-ghost pg-button-sm', t('mem_cancel'));
-            back.addEventListener('click', list);
-            actions.appendChild(back);
+            function values() {
+                return [title.value, project.value, text.value, tags.value, expires.value, pinned.input.checked ? 1 : 0].join('\u0000');
+            }
+
+            var start = values();
+
+            function close(then) {
+                leaving = true;
+                h.drawer.hide(node, then);
+            }
+
+            if (entry) {
+                var remove = part.remove(t('mem_delete'));
+                remove.addEventListener('click', function () {
+                    h.ask(t('mem_delete_ask'), t('mem_delete'), true).then(function (yes) {
+                        if (!yes) {
+                            return;
+                        }
+
+                        remove.disabled = true;
+                        h.api('ws_memory_delete', { id: entry.id }).then(function () {
+                            close(list);
+                        }).catch(function (problem) {
+                            remove.disabled = false;
+                            h.fail(problem);
+                        });
+                    });
+                });
+                foot.appendChild(remove);
+            }
+
+            var back = h.button('pg-button pg-button-quiet pg-button-sm', t('mem_cancel'));
+            back.addEventListener('click', function () { h.drawer.hide(node); });
+            foot.appendChild(back);
 
             var save = part.save(t('mem_save'));
-            actions.appendChild(save);
-            root.appendChild(actions);
+            foot.appendChild(save);
 
             save.addEventListener('click', function () {
                 var fields = target(general);
 
                 save.disabled = true;
                 error.classList.add('d-none');
+                Object.keys(errors).forEach(function (key) {
+                    errors[key].classList.add('d-none');
+                });
 
                 fields.id = entry ? entry.id : 0;
                 fields.title = title.value;
@@ -368,23 +480,56 @@
                 fields.expires = expires.value;
                 fields.pinned = pinned.input.checked ? 1 : 0;
 
-                h.api('ws_memory_save', fields).then(function () {
+                h.api('ws_memory_save', fields).then(function (data) {
+                    var id = (data && data.entry) ? data.entry.id : (entry ? entry.id : 0);
+
                     h.toast(t('mem_saved'));
-                    list();
+                    close(function () {
+                        list(function () { showSaved(id); });
+                    });
                 }).catch(function (problem) {
+                    var line = (problem && problem.field && errors[problem.field]) ? errors[problem.field] : error;
+
                     save.disabled = false;
-                    error.textContent = (problem && problem.message) ? problem.message : String(problem || '');
-                    error.classList.remove('d-none');
+                    line.textContent = (problem && problem.message) ? problem.message : String(problem || '');
+                    line.classList.remove('d-none');
                 });
             });
 
-            setTimeout(function () { title.focus(); }, 50);
+            // Esc, the cross or Cancel with changed fields asks first.
+            window.pgUI.drawer.on(node, 'hide', function (event) {
+                if (leaving || (values() === start)) {
+                    return;
+                }
+
+                event.preventDefault();
+                h.ask(t('mem_unsaved'), t('mem_discard'), true).then(function (yes) {
+                    if (yes) {
+                        close();
+                    }
+                });
+            });
+
+            window.pgUI.drawer.on(node, 'hidden', function () {
+                node.remove();
+
+                // Opened over the General memory drawer, which stays open.
+                if (document.querySelector('dialog.drawer[open]')) {
+                    document.body.classList.add('ws-drawer-open');
+                }
+            });
+
+            h.drawer.show(node);
+            setTimeout(function () {
+                grow();
+                title.focus();
+            }, 50);
         }
 
-        if (fill) {
-            form(null, fill, false);
-        } else {
-            list();
+        list();
+
+        if (start) {
+            form(null, start, false);
         }
     }
 

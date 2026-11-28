@@ -20211,6 +20211,20 @@ a.ws-chip-message:hover,
 .ws-memory-expired {
   opacity: .75;
 }
+/* A row just saved in the form drawer, lit for a moment once listed again. */
+@keyframes ws-memory-saved {
+  0%, 35% { background: color-mix(in srgb, var(--pg-primary) 14%, transparent); }
+  100% { background: transparent; }
+}
+.ws-memory-row.ws-memory-row-saved {
+  animation: ws-memory-saved 2.4s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ws-memory-row.ws-memory-row-saved {
+    animation: none;
+    background: color-mix(in srgb, var(--pg-primary) 10%, transparent);
+  }
+}
 .ws-memory-name {
   font-weight: var(--pg-weight-strong);
   overflow-wrap: anywhere;
