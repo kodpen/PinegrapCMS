@@ -15,6 +15,7 @@ module: office_docx_picture, picker
 
 ## How does the page hold it?
 - A `div.office-added-picture` (data-after: the file paragraph it follows; data-t a name) holding the picture as a data address at its own size up to the text width (`.office-img`), aligned as the paragraph it follows. Bytes and description (the file name without its extension) wait in `pictures` by name.
+- Each goes straight after its paragraph, as at the caret: a second picture after the same paragraph stands before the first, on the page and in the file alike.
 - One change of Undo; captured, restored and reset with the added paragraphs and tables. It is not typed in; Undo takes it out.
 
 ## What does a save send?
@@ -22,5 +23,7 @@ module: office_docx_picture, picker
 
 ## What was checked?
 - `tests/office_docx_picture_bar_test.php`: `pictureType()` and `pictureRefusal()` in Node, the limits against the writer's, the picker kind, the strings and the hosts' wiring.
+- Sandbox, Chromium, 1440 and 390 px. File Manager → New document: Picture opened the picker on `office_picture`, Upload stored a PNG and picked it, drawn at once, Undo and Redo, Save; the file held `word/media/image1.png`, a 320 × 160 px extent and the file name as description.
+- Sandbox, a channel's New document preview: the window listed the channel's PNG, a tile and an Upload each put one in, Esc closed it, Save replaced the file with both pictures in the page's order. Not opened in Word; a refused file (not PNG, JPEG or GIF, over 2 MB) tried only in the unit test.
 
 Related: docs/memory/platform/office-docx-pictures.md, docs/memory/platform/office-docx-table-bar.md
