@@ -3754,7 +3754,7 @@ function pg_office_view_strings()
         'doc_deleted'       => lang('This paragraph is deleted when you save. Press the delete button again to keep it.'),
         'doc_cells'         => lang('Paragraphs in different table cells are not joined.'),
         'doc_shut'          => lang('No paragraph can be added after this one here: it is in a content control, a text box, a merged cell or a tracked change.'),
-        'keep_picture'      => lang('This paragraph holds a picture, so it is not deleted here.'),
+        'keep_picture'      => lang('This paragraph holds a drawing, a text box or an embedded object, so it is not deleted here.'),
         'keep_section'      => lang('This paragraph ends a section of the document, which holds its page layout, so it is not deleted here.'),
         'keep_cell'         => lang('This is the last paragraph of a table cell, which cannot be left without one, so it is not deleted.'),
         'keep_last'         => lang('This is the last paragraph of the document, so it is not deleted. Its text can be emptied.'),

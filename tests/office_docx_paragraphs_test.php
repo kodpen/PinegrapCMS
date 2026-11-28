@@ -207,13 +207,13 @@ function test_office_docx_paragraphs_refusals()
 	$directory = sys_get_temp_dir();
 
 	$cases = array(
-		array(array(array('p' => 4, 'delete' => true)), 'delete_picture', '5', 'picture'),
+		array(array(array('p' => 4, 'delete' => true)), 'delete_picture', '5', 'a drawing, a text box'),
 		array(array(array('p' => 6, 'delete' => true)), 'delete_cell', '7', 'last paragraph of a table cell'),
 		array(array(array('p' => 5, 'delete' => true), array('p' => 6, 'delete' => true)), 'delete_cell', '7', 'last paragraph of a table cell'),
 		array(array(array('p' => 7, 'delete' => true)), 'delete_section', '8', 'ends a section'),
 		array(array(array('p' => 8, 'delete' => true)), 'delete_bookmark', '9', 'bookmark'),
 		array(array(array('p' => 10, 'delete' => true)), 'delete_last', '11', 'last paragraph of the document'),
-		array(array(array('p' => 3, 'text' => 'yeni'), array('p' => 4, 'delete' => true)), 'delete_picture', '5', 'picture'),
+		array(array(array('p' => 3, 'text' => 'yeni'), array('p' => 4, 'delete' => true)), 'delete_picture', '5', 'a drawing, a text box'),
 		array(array(array('after' => 40, 'text' => 'x')), 'missing', '41', 'not in the file'),
 		array(array(array('after' => 'iki', 'text' => 'x')), 'none', '', ''),
 		array(array(array('after' => 1, 'kind' => 'heading9')), 'none', '', ''),

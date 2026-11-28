@@ -379,6 +379,7 @@
     "Paragraph of text beneath the heading to explain the heading.": "Başlığın altında başlığı anlatan bir paragraf.",
     "Paragraph style": "Paragraf stili",
     "Paragraph {var:1} ends a section of the document, which holds its page layout, so it is not deleted here.": "{var:1}. paragraf belgenin sayfa düzenini taşıyan bir bölümünü bitiriyor, bu yüzden burada silinmez.",
+    "Paragraph {var:1} holds a drawing, a text box or an embedded object, so it is not deleted here.": "{var:1}. paragraf bir çizim, metin kutusu ya da gömülü nesne içerdiği için burada silinmez.",
     "Paragraph {var:1} holds a picture, so it is not deleted here.": "{var:1}. paragrafta resim var, bu yüzden burada silinmez.",
     "Paragraph {var:1} holds more than text and cannot be changed here.": "{var:1}. paragrafta metinden fazlası var; burada değiştirilemez.",
     "Paragraph {var:1} holds one end of a bookmark that reaches into other paragraphs, so it is not deleted here.": "{var:1}. paragraf, başka paragraflara uzanan bir yer işaretinin bir ucunu taşıyor, bu yüzden burada silinmez.",
