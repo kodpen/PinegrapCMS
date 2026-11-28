@@ -81,7 +81,6 @@ function ws_js_strings()
         'tasks_views'            => lang('Which tasks'),
         'tasks_found_none'       => lang('No task matches the filters or the search.'),
         'tasks_none_title'       => lang('No tasks'),
-        'notes_none_title'       => lang('No notes yet'),
         'board_none_title'       => lang('Nobody on the board'),
         'board_found_none'       => lang('Nobody in this department is on the board.'),
         'board_span'             => lang('How many days'),

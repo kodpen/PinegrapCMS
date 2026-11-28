@@ -30042,7 +30042,7 @@
                 field = null;
                 remember(0);
                 drawList();
-                placeholder();
+                showList();
             });
 
             return back;
@@ -30180,9 +30180,16 @@
                 return;
             }
 
-            // Before the first note: the empty screen over the lists.
-            if (none) {
-                list.appendChild(emptyScreen({ tone: 'amber', icon: 'bi-journal-text', menuIcon: 'notes', title: t('notes_none_title'), text: t('notes_intro'), action: { label: t('notes_new'), icon: 'bi-plus-lg', onClick: function () { startNew(); } } }));
+            // The first note came (written here, or shared from elsewhere):
+            // the list card is back, and on a wide screen the note opens.
+            if (layout.classList.contains('ws-nb-none') && (!none || current)) {
+                layout.classList.remove('ws-nb-none');
+
+                if (!current) {
+                    clear(pane);
+                    root.classList.remove('ws-nb-open');
+                    openFirst();
+                }
             }
 
             list.appendChild(groups ? window.PGWsNoteGroups.mine(groups) : drawSection('mine', t('notes_mine'), lists.mine, search ? t('notes_empty_search') : t('notes_empty')));
@@ -30220,6 +30227,10 @@
         }
 
         function remember(noteId) {
+            if (noteId) {
+                window.PGWsNoteList.openWrite(CFG.me, noteId);
+            }
+
             if (window.history && window.history.replaceState) {
                 window.history.replaceState(null, '', CFG.urls.notes + (noteId ? '?note=' + noteId : ''));
             }
@@ -30582,18 +30593,40 @@
         var sheetNode = null;
         var headButtons = {};
 
-        function placeholder() {
+        // No note open: below 1024 px the list shows alone; with no note at
+        // all (and no search), one card in the screen's place starts the
+        // first, with no empty list beside it.
+        function showList() {
+            var nothing = !lists.mine.length && !lists.shared.length && !search;
+
             clear(pane);
+            layout.classList.toggle('ws-nb-none', nothing);
+            root.classList.toggle('ws-nb-open', nothing);
 
-            var box = el('div', 'ws-nb-placeholder');
-            box.appendChild(icon('bi-journal-richtext'));
-            box.appendChild(el('div', '', t('notes_pick')));
+            if (nothing) {
+                var card = el('div', 'card pg-card ws-nb-card ws-nb-first');
 
-            var start = button('pg-button pg-button-quiet pg-button-sm', t('notes_new'), 'bi-plus-lg');
-            start.addEventListener('click', function () { startNew(); });
-            box.appendChild(start);
-            pane.appendChild(box);
-            root.classList.remove('ws-nb-open');
+                card.appendChild(emptyScreen({ tone: 'amber', icon: 'bi-journal-plus', menuIcon: 'notes', title: t('notes_first_title'), text: t('notes_first_text'), action: { label: t('notes_new'), icon: 'bi-plus-lg', onClick: function () { startNew(); } } }));
+                pane.appendChild(card);
+            }
+        }
+
+        // One card at a time below 1024 px (the stylesheet's .ws-nb): there
+        // the screen opens on the list, no note chosen.
+        function wide() {
+            return !window.matchMedia || window.matchMedia('(min-width: 1024px)').matches;
+        }
+
+        // The screen opens on a note: the one last open in this browser,
+        // else the first of the list (workspace_note_list.js).
+        function openFirst() {
+            var noteId = window.PGWsNoteList.firstOpen(lists, 0, window.PGWsNoteList.openRead(CFG.me), window.PGWsNoteList.orderNow(), CFG.locale);
+
+            if (!noteId) {
+                showList();
+            } else if (wide()) {
+                openNote(noteId, true);
+            }
         }
 
         function drawHead() {
@@ -30610,7 +30643,7 @@
                 field = null;
                 remember(0);
                 drawList();
-                placeholder();
+                showList();
             });
             headNode.appendChild(back);
 
@@ -33183,17 +33216,30 @@
             });
         }
 
+        // A note deleted or left goes from the list; when it was the open
+        // one the next note in the list opens (on a wide screen), else the
+        // list or the first note's card shows.
         function forget(note) {
+            var wasOpen = !!(current && current.id === note.id);
+            var next = wasOpen ? window.PGWsNoteList.nextOpen(lists, note.id, window.PGWsNoteList.orderNow(), CFG.locale) : 0;
+
             ['mine', 'shared'].forEach(function (key) {
                 lists[key] = lists[key].filter(function (item) { return item.id !== note.id; });
             });
 
-            if (current && current.id === note.id) {
+            if (wasOpen) {
                 current = null;
                 field = null;
                 dirty = false;
                 remember(0);
-                placeholder();
+
+                if (next && wide()) {
+                    drawList();
+                    openNote(next, true);
+                    return;
+                }
+
+                showList();
             }
 
             drawList();
@@ -33229,8 +33275,6 @@
 
         // ── start ──
 
-        placeholder();
-
         // The person's lock, then its time-out (workspace_note_lock.js).
         if (lockCtx()) {
             window.PGWsNoteLock.load(lockCtx()).then(function () {
@@ -33248,6 +33292,8 @@
                 window.PGWsNoteGroupShares.openGroup(groupsCtx(), wantedGroup, openNote);
             } else if (query['new']) {
                 startNew();
+            } else {
+                openFirst();
             }
         });
 

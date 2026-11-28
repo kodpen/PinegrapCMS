@@ -27058,18 +27058,13 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
     color: var(--pg-fg-2);
     white-space: nowrap;
 }
-.ws-nb-placeholder {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: .5rem;
-    padding: 3rem 1rem;
-    color: var(--pg-fg-2);
-    text-align: center;
+/* No note yet: one card in the screen's place, no empty list beside it
+   (showList() in workspace.js). */
+.ws-nb.ws-nb-none {
+    grid-template-columns: minmax(0, 1fr);
 }
-.ws-nb-placeholder > .bi {
-    font-size: 2rem;
-    opacity: .6;
+.ws-nb.ws-nb-none > .ws-nb-list-col {
+    display: none;
 }
 .ws-nb-card {
     position: relative;
