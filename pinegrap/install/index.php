@@ -9111,6 +9111,7 @@ function get_tables() {
 		'gift_cards',
 		'import_items',
 		'imports',
+		'kb_votes',
 		'key_codes',
 		'launch_summary_lines',
 		'lead_browsers',

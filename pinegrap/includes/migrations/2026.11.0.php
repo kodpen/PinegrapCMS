@@ -278,6 +278,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_markets();                 // 11.0.286
 	upgrade_2026_11_0_order_item_tax_country();  // 11.0.287
 	upgrade_2026_11_0_ws_mail_priority_source(); // 11.0.288
+	upgrade_2026_11_0_kb_votes();                // 11.0.289
 
 }
 
@@ -9848,5 +9849,31 @@ function upgrade_2026_11_0_ws_mail_priority_source() {
 	}
 
 	install_note('Workspace: a support request can be given a priority on the Incoming e-mail screen, and shows whether a form, a live chat or My Account opened it.');
+
+}
+
+
+// 11.0.289 - "Was this helpful?" on a collection record's page
+// (includes/fn/kb_votes.php): one row per Yes or No a visitor gives a
+// record, an article of a help centre. form_id is the record's form
+// (custom_form_pages.page_id), record_id its forms.id; answer is 1 for Yes
+// and 0 for No. No address, IP or user is kept: a cookie stops a second
+// vote. The record list counts the two answers per record, hence the key on
+// record_id. The table is created only when it is missing, so the step runs
+// twice without a change.
+function upgrade_2026_11_0_kb_votes() {
+
+	install_create_table('kb_votes', "CREATE TABLE kb_votes (
+		id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		form_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		record_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		answer     TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		created_at INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_record (record_id, answer),
+		KEY idx_form (form_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Collections: an article\'s page can ask "Was this helpful?", and the record list counts the Yes and No answers.');
 
 }
