@@ -320,6 +320,8 @@
 - image-editor-clip-over.md: Layers over a video (V6, #8733): a layer's own end on the timeline (anim.out.at), picture in picture with corners and border (M.clipFrame()), drawn the same on the stage and in a save
 - image-editor-clip-timeline.md: Editing clips on the tracks (V3): one row per source cut, trim, split, move, snapping, ripple, the length following the clips but never cutting another layer's motion (V3b) [decision: decisions-made-product-42.md]
 - image-editor-clip.md: The video layer (V2): type video, source in and out, start, speed, the frame at the playhead, its sound, Import of videos, the clip panel, video_files and video_upload
+- image-editor-content-sources.md: The Artifact Canvas's ready content: each source and licence (own, OFL, MIT, Unsplash, CC0), what Canva and others give, what was left out (illustrations, AI, Canva) [decision: decisions-made-product-114.md]
+- image-editor-content.md: The Artifact Canvas's ready content (AC4 to AC13): Site colours, text styles, Elements, Start from a design, Resize, frames, Unsplash, Tabler, Openverse; the rules and files [decision: decisions-made-product-114.md]
 - image-editor-crop.md: The Artifact Canvas's crop tool: geometry in the document, the rotated space, cover scale, crop mode with its undo and Cancel, ratios, handles, turns and flips, shape, output size, keys
 - image-editor-data-column-gone.md: A data layer whose table lost a column, or every column (#11353): what the layer's panel and the Data picker show
 - image-editor-data-layer.md: The Artifact Canvas's data layer (DV1a, #10752): a Workspace table as a chart or a plain table, the description it holds, its check, grouping, the marks the browser draws, the shared fixture
