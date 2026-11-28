@@ -896,7 +896,8 @@ StyleDesigner.definePart('overrides', function (K) {
     function nameWhy(sid, name, except) {
         if (name === '') return _sdT('This name is taken.');
         var low = name.toLowerCase();
-        if (low === _sdT('Default').toLowerCase()) return _sdT('This name is taken.');
+        // "Default" is the list's first row in every language.
+        if (low === 'default' || low === _sdT('Default').toLowerCase()) return _sdT('This name is taken.');
         var taken = variantsOf(sid).some(function (v) { return v.name !== except && v.name.toLowerCase() === low; });
         return taken ? _sdT('This name is taken.') : '';
     }

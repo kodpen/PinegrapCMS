@@ -406,3 +406,19 @@ function test_component_overrides_duplicate_of_a_long_named_variant()
 	}
 }
 
+// "Default" is the list's own first row in every language: the part
+// refused it only in the language of the editor, so a variant named
+// "Default" in a translated editor read as a second default elsewhere.
+function test_component_overrides_default_refused_in_every_language()
+{
+	$tree = component_overrides_variants_tree();
+	$code = "var document = { querySelector: function () { return null; }, addEventListener: function () {}, removeEventListener: function () {} };\n"
+		. "kit.sharedCache = {7: {tree: " . json_encode($tree, JSON_UNESCAPED_UNICODE) . ", name: 'Promo card'}};\n"
+		. "out = [part.nameWhy(7, 'Default', ''), part.nameWhy(7, 'varsayılan', ''), part.nameWhy(7, 'Large', '')];\n";
+	$kit = "var tr = kit._sdT; kit._sdT = function (k, v) { return k === 'Default' ? 'Varsayılan' : (k === 'This name is taken.' ? 'Bu ad alınmış.' : tr(k, v)); };";
+	$js = component_overrides_place_node($code, $kit);
+	if ($js === null) {
+		return;
+	}
+	pg_assert_same(array('Bu ad alınmış.', 'Bu ad alınmış.', ''), $js, 'the English and the translated name are both refused');
+}
