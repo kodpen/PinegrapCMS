@@ -215,6 +215,30 @@ function test_document_paragraphs_docx_limit_in_a_control()
 	pg_assert_same(50, $doc['read']['percent'], 'half of the document read');
 }
 
+// The limit met at a table: the table is left out whole and the share is
+// counted up to it.
+function test_document_paragraphs_docx_limit_at_a_table()
+{
+	if (!document_paragraphs_test_loaded() || !pg_office_ready()) {
+		pg_assert_true(true, 'no zip extension here: the reader is not run');
+		return;
+	}
+
+	$long = str_repeat('Uzun bir satır. ', 25000);
+	$cell = '<w:tc>' . document_paragraphs_test_p('', document_paragraphs_test_r($long)) . '</w:tc>';
+	$body = document_paragraphs_test_p('', document_paragraphs_test_r($long))
+		. '<w:tbl><w:tr>' . $cell . '</w:tr></w:tbl>'
+		. document_paragraphs_test_p('', document_paragraphs_test_r('Son'));
+	$path = document_paragraphs_test_docx($body);
+	$doc = pg_document_paragraphs($path, 'table.docx');
+	unlink($path);
+
+	pg_assert_true($doc['ok'], 'read');
+	pg_assert_same('paragraphs', $doc['cut'], 'the character limit met at the table');
+	pg_assert_same(1, count($doc['paragraphs']), 'the table left out whole');
+	pg_assert_same(33, $doc['read']['percent'], 'one of three blocks read');
+}
+
 // A .md or .txt comes back as UTF-8 text, which the browser's reader turns
 // into paragraphs as it does a paste; past the size limit at a line's end.
 function test_document_paragraphs_text_files()

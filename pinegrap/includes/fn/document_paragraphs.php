@@ -192,8 +192,8 @@ function pg_document_docx_blocks(&$state, $container)
                 foreach (pg_office_docx_wrapped($row, 'tc') as $cell) {
                     $texts = array();
 
-                    foreach ($cell->getElementsByTagNameNS((string) $cell->namespaceURI, 'p') as $inner) {
-                        $texts[] = pg_document_docx_text($state, $inner, $lead, false);
+                    foreach ($cell->getElementsByTagNameNS((string) $cell->namespaceURI, 'p') as $paragraph) {
+                        $texts[] = pg_document_docx_text($state, $paragraph, $lead, false);
                     }
 
                     $cells[] = trim(implode(' ', $texts));
