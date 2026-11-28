@@ -1507,6 +1507,22 @@ function mp_products_listings_view($account, $counts, $category_count, $view, $s
 		</div>
 	</div>';
 
+	// What the marketplace charges for publishing, said until the account's
+	// first listing is out (Etsy).
+	if (mp_can($account['provider'], 'listing_fee')
+		&& !db_value("SELECT id FROM marketplace_product_map WHERE (account_id = '" . e($account_id) . "') AND (remote_id <> '') LIMIT 1")) {
+
+		$fee = (string) mp_call($account['provider'], 'listing_fee', array($account));
+
+		if ($fee !== '') {
+
+			echo '
+	<div class="alert theme-info small mb-5"><i class="bi bi-cash-coin me-1" aria-hidden="true"></i>' . h($fee) . '</div>';
+
+		}
+
+	}
+
 	if (!$category_count || !$counts['all']) {
 
 		echo '

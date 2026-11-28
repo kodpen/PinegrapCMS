@@ -6813,6 +6813,7 @@
     "software update {var:1}: {var:2}": "yazılım güncellemesi {var:1}: {var:2}",
     "software update: the bytecode cache could not be cleared - run Purge Cache if the update does not take effect": "yazılım güncellemesi: bayt kodu önbelleği temizlenemedi - güncelleme etkili olmazsa Önbelleği Temizle'yi çalıştırın",
     "software, language, licence, license, subscription, error, debug": "software, language, licence, license, subscription, error, debug, yazilim, dil, lisans, abonelik, hata",
+    "sold out": "tükenmiş",
     "solo, single, alone, single supplement": "tek kişi, yalnız, tek başına, tek kişi farkı",
     "solved, answered, accepted answer": "çözüldü, yanıtlandı, kabul edilen yanıt",
     "somebody": "biri",

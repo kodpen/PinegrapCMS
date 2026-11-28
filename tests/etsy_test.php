@@ -119,7 +119,7 @@ function test_etsy_marketplace_fields_are_five_remote_selects()
 	}
 
 	pg_assert_true(mp_can('etsy', 'test_credentials'));
-	pg_assert_false(mp_can('etsy', 'create_listings'), 'nothing it does not do yet');
+	pg_assert_false(mp_can('etsy', 'push_stock_price'), 'nothing it does not do yet');
 }
 
 /* --------------------------------------------------------- the shop's choices */

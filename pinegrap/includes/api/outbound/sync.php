@@ -1048,6 +1048,19 @@ function mp_sync_apply_results($account, $task_id, $results, &$summary) {
 
 		}
 
+		// A marketplace that names its listing in the verdict (Etsy, which
+		// has no listing by SKU) has it kept on the mapping, refused or not:
+		// the next send of the article updates that listing instead of making
+		// a second one.
+		$content_id = isset($verdict['content_id']) ? mb_substr(trim((string)$verdict['content_id']), 0, 64) : '';
+
+		if (($content_id !== '') && $row['map_id'] && ($content_id !== (string)$row['remote_id'])) {
+
+			db("UPDATE marketplace_product_map SET remote_id = '" . e($content_id) . "'
+				WHERE id = '" . e((int)$row['map_id']) . "'");
+
+		}
+
 		if (!empty($verdict['ok'])) {
 
 			mp_sync_finish_row((int)$row['id'], 'done', '');

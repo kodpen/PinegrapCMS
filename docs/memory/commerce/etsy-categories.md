@@ -19,7 +19,7 @@ module: etsy
 - A value of a property with more than one scale carries the scale's name, "8 (US)" and "8 (UK)", so the dialog tells them apart.
 
 ## How is a product group paired?
-- On Marketplace Products › Listings of the Etsy account, the same view and category search as the other marketplaces: it appears because the connector can `category_tree`. Sending a listing waits for `create_listings` (ET3 of `plans/sales-channels-global.md`).
+- On Marketplace Products › Listings of the Etsy account, the same view and category search as the other marketplaces: it appears because the connector can `category_tree`. Sending a listing: `etsy-listings.md`.
 
 ## What is not verified?
 - Built in ET2 from Etsy's documentation; fixtures `tests/fixtures/etsy/taxonomy-nodes.json`, `taxonomy-properties.json`; tests `tests/etsy_taxonomy_test.php`. Whether a property with possible values also takes a text of the shop's own is not settled; it is a closed choice here. The first try on a test shop is the owner's.

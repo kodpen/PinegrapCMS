@@ -438,12 +438,12 @@ function test_marketplace_trendyol_slicer_colour_is_read_from_each_product()
 	));
 
 	pg_assert_same(array(
-		array('id' => '293', 'value_id' => '4874', 'custom_value' => ''),
-		array('id' => '47', 'value_id' => '686230', 'custom_value' => ''),
+		array('id' => '293', 'value_id' => '4874', 'custom_value' => '', 'value' => 'M'),
+		array('id' => '47', 'value_id' => '686230', 'custom_value' => '', 'value' => 'Siyah'),
 		array('id' => '180', 'value_id' => '', 'custom_value' => 'Pamuk'),
 	), $black, 'the own colour wins over the one chosen for the article');
 
-	pg_assert_same(array('id' => '47', 'value_id' => '686234', 'custom_value' => ''), $red[1],
+	pg_assert_same(array('id' => '47', 'value_id' => '686234', 'custom_value' => '', 'value' => 'Kırmızı'), $red[1],
 		'an option under another name is matched on its value');
 }
 
@@ -459,8 +459,8 @@ function test_marketplace_trendyol_slicer_falls_back_to_the_articles_value()
 	$attributes = mp_listing_attributes_of($definitions, array('47' => '686230'), $own);
 
 	pg_assert_same(array(
-		array('id' => '293', 'value_id' => '4873', 'custom_value' => ''),
-		array('id' => '47', 'value_id' => '686230', 'custom_value' => ''),
+		array('id' => '293', 'value_id' => '4873', 'custom_value' => '', 'value' => 'S'),
+		array('id' => '47', 'value_id' => '686230', 'custom_value' => '', 'value' => 'Siyah'),
 	), $attributes);
 
 	pg_assert_same(null, mp_listing_attributes_of($definitions, array(), $own));
