@@ -27,5 +27,6 @@ description: A bug hunt (owner 2026-11-15): only in an area the architect named,
 - By the architect: code built in the last weeks that many users meet and that no hunt has read yet.
 - The areas given so far and what each hunt found and read clean: `bug-hunt-areas.md`, from 2026-11-17 on `bug-hunt-areas-2.md`, from 2026-11-20 on `bug-hunt-areas-3.md`; the screens of 2026-11-19 and the afternoon of 2026-11-20: `bug-hunt-areas-4.md`; from that evening on: `bug-hunt-areas-5.md`.
 - The one round of the night of 2026-11-27, which the owner asked for with up to 15 workers a coordinator once the work was given out: `bug-hunt-areas-6.md`; the 15 hunts of the night after: `bug-hunt-areas-7.md`.
+- The three areas of 2026-11-28, the limits above back in force: `bug-hunt-areas-8.md`.
 
 Related: docs/memory/workflow/bug-hunt-areas.md, docs/memory/workflow/test-coordinator.md, docs/memory/workflow/coordinator-no-plans.md
