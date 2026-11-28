@@ -108,7 +108,9 @@ function ws_channel_briefing($viewer, $channel, $membership)
 
     $new_rows = $membership ? (array) db_items("SELECT sender_id, sender_kind FROM ws_messages
         WHERE channel_id = '" . $channel_id . "' AND id > '" . $last_read . "' AND deleted_at = 0
-        AND kind <> 'system' AND NOT (sender_kind = 'user' AND sender_id = '" . $me . "')
+        AND kind <> 'system' AND NOT (sender_kind = 'user' AND sender_id = '" . $me . "')"
+        // A group of files is one new message.
+        . ws_file_group_counted_sql() . "
         LIMIT 500") : array();
 
     $new_count = count($new_rows);
@@ -124,7 +126,7 @@ function ws_channel_briefing($viewer, $channel, $membership)
     $loudest = empty($new_by) ? '' : ws_person_name(key($new_by));
 
     $first_unread = $membership ? (int) db_value("SELECT MIN(id) FROM ws_messages
-        WHERE channel_id = '" . $channel_id . "' AND id > '" . $last_read . "' AND deleted_at = 0 AND kind <> 'system'") : 0;
+        WHERE channel_id = '" . $channel_id . "' AND id > '" . $last_read . "' AND deleted_at = 0 AND kind <> 'system'" . ws_file_group_counted_sql()) : 0;
 
     $mention_ids = array_map('intval', (array) db_values("SELECT message_id FROM ws_inbox
         WHERE user_id = '" . $me . "' AND channel_id = '" . $channel_id . "' AND kind = 'mention' AND read_at = 0

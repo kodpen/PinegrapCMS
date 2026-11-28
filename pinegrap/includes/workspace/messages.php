@@ -60,7 +60,8 @@ function ws_messages_page($channel_id, $before_id = 0, $limit = 50)
         ORDER BY id DESC
         LIMIT " . max(1, min(200, (int) $limit)));
 
-    return array_reverse($rows);
+    // A group of files the page's edge cut is read whole (ws_file_groups.php).
+    return ws_file_group_whole(array_reverse($rows));
 }
 
 /**
@@ -82,7 +83,7 @@ function ws_messages_around($channel_id, $message_id)
         WHERE channel_id = '" . (int) $channel_id . "' AND id > '" . (int) $message_id . "'
         ORDER BY id ASC LIMIT 30");
 
-    return array_merge(array_reverse($before), $after);
+    return ws_file_group_whole(array_merge(array_reverse($before), $after));
 }
 
 /**
@@ -94,10 +95,12 @@ function ws_messages_around($channel_id, $message_id)
  */
 function ws_messages_since($channel_id, $since_id)
 {
-    return (array) db_items("SELECT * FROM ws_messages
+    // A file joining a group brings its group with it, so the screen
+    // redraws the one message.
+    return ws_file_group_whole((array) db_items("SELECT * FROM ws_messages
         WHERE channel_id = '" . (int) $channel_id . "' AND id > '" . max((int) $since_id, ws_channel_floor($channel_id)) . "'
         ORDER BY id ASC
-        LIMIT 200");
+        LIMIT 200"));
 }
 
 /**
@@ -360,6 +363,8 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         'id'          => (int) $row['id'],
         'channel_id'  => (int) $row['channel_id'],
         'parent_id'   => (int) $row['parent_id'],
+        // The head of the group of files it belongs to; 0 alone.
+        'file_group'  => (int) ($row['file_group'] ?? 0),
         'kind'        => (string) $row['kind'],
         'sender_kind' => $agent ? 'app' : (string) $row['sender_kind'],
         'sender'      => $sender,
@@ -937,7 +942,10 @@ function ws_message_parent_check($channel, $parent_id)
  * @param array  $options kind (message | note | decision | task), task_id, file_id,
  *                        file_name, parent_id, app_id (written by an API application
  *                        acting for $viewer), via_client_id (a person's message
- *                        written through that OAuth client, app_id 0)
+ *                        written through that OAuth client, app_id 0),
+ *                        file_group (the head a file joins, checked by
+ *                        ws_file_group_head(): written into the group, no
+ *                        mention, ring or application notice of its own)
  * @return array ok, error, message_id, apps_unread (the tags of the applications
  *               it mentions that may not read the channel, for the writer)
  */
@@ -979,8 +987,12 @@ function ws_message_send($viewer, $channel, $body, $options = array())
     $via = (($app_id === 0) && ((int) ($options['via_client_id'] ?? 0) > 0) && function_exists('ws_claude_sessions_ready') && ws_claude_sessions_ready())
         ? (int) $options['via_client_id'] : 0;
 
+    // A file joining a group (a head ws_file_group_head() checked) is
+    // written into it; it sends no notice of its own.
+    $group = (((int) ($options['file_group'] ?? 0) > 0) && ($file_id > 0) && ws_file_group_ready()) ? (int) $options['file_group'] : 0;
+
     db("INSERT INTO ws_messages (channel_id, parent_id, sender_kind, sender_id, kind, body, task_id, file_id, file_name,
-            marked_by, marked_at, created_at" . ($app_mark ? ', marked_by_kind' : '') . (($via > 0) ? ', via_client_id' : '') . ")
+            marked_by, marked_at, created_at" . ($app_mark ? ', marked_by_kind' : '') . (($via > 0) ? ', via_client_id' : '') . (($group > 0) ? ', file_group' : '') . ")
         VALUES (
             '" . (int) $channel['id'] . "',
             '" . $parent_id . "',
@@ -993,7 +1005,7 @@ function ws_message_send($viewer, $channel, $body, $options = array())
             '" . e(mb_substr((string) ($options['file_name'] ?? ''), 0, 255)) . "',
             '" . ($marked ? ($app_mark ? $app_id : (int) $viewer['id']) : 0) . "',
             '" . ($marked ? $now : 0) . "',
-            '" . $now . "'" . ($app_mark ? ", 'app'" : '') . (($via > 0) ? ", '" . $via . "'" : '') . ")");
+            '" . $now . "'" . ($app_mark ? ", 'app'" : '') . (($via > 0) ? ", '" . $via . "'" : '') . (($group > 0) ? ", '" . $group . "'" : '') . ")");
 
     $message_id = (int) mysqli_insert_id(db::$con);
 
@@ -1033,11 +1045,13 @@ function ws_message_send($viewer, $channel, $body, $options = array())
     if (function_exists('ws_blocks_index') && (strpos($body, ':::') !== false)) {
         ws_blocks_index('message', $message_id, $body, ($app_id > 0) ? 0 : (int) $viewer['id'], (int) $channel['id']);
     }
-    ws_message_notify_mentions($viewer, $channel, $message_id, $tokens, $app_id, ws_message_everyone($body));
+    if ($group === 0) {
+        ws_message_notify_mentions($viewer, $channel, $message_id, $tokens, $app_id, ws_message_everyone($body));
+    }
 
     // An application asking with a checklist rings the people it asks
     // (interact.php).
-    if (($app_id > 0) && function_exists('ws_question_ring') && ws_checklist_asks($body)) {
+    if (($group === 0) && ($app_id > 0) && function_exists('ws_question_ring') && ws_checklist_asks($body)) {
         ws_question_ring($channel, $message_id, $tokens);
     }
 
@@ -1074,7 +1088,7 @@ function ws_message_send($viewer, $channel, $body, $options = array())
 
     // An application it mentions hears it through its own subscriptions,
     // in any channel it may read; the writer alone learns which may not.
-    $apps = ws_message_tell_apps($channel, $message_id, $tokens);
+    $apps = ($group === 0) ? ws_message_tell_apps($channel, $message_id, $tokens) : array('unread' => array());
 
     return array('ok' => true, 'error' => '', 'message_id' => $message_id, 'apps_unread' => $apps['unread']);
 }
@@ -2491,6 +2505,10 @@ function ws_message_delete($viewer, $message, $as_app = 0)
     if (function_exists('ws_voice_message_deleted')) {
         ws_voice_message_deleted($message);
     }
+
+    // The head of a group of files takes its files with it; a file of a
+    // group leaves an emptied head behind it (ws_file_groups.php).
+    ws_file_group_message_deleted($message);
 
     if (!$mine) {
         log_activity(lang(array('string' => 'a workspace message by {var:1} was deleted', 'vars' => (($message['sender_kind'] === 'guest') && function_exists('ws_guest_sender'))

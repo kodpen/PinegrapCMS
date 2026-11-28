@@ -55,7 +55,9 @@ function ws_channels_for($viewer, $archived = false)
     foreach ((array) db_items("SELECT msg.channel_id, COUNT(*) AS unread
         FROM ws_messages msg
         INNER JOIN ws_channel_members m ON m.channel_id = msg.channel_id AND m.user_id = '" . $me . "'
-        WHERE msg.id > m.last_read_id AND NOT (msg.sender_kind = 'user' AND msg.sender_id = '" . $me . "') AND msg.deleted_at = 0 AND msg.sender_kind <> 'system'
+        WHERE msg.id > m.last_read_id AND NOT (msg.sender_kind = 'user' AND msg.sender_id = '" . $me . "') AND msg.deleted_at = 0 AND msg.sender_kind <> 'system'"
+        // A group of files counts once, by its head.
+        . ws_file_group_counted_sql('msg') . "
         GROUP BY msg.channel_id") as $row) {
         $unread[(int) $row['channel_id']] = (int) $row['unread'];
     }

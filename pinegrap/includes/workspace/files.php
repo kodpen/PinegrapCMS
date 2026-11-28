@@ -858,11 +858,12 @@ function ws_message_send_file_bytes($viewer, $channel, $body, $original_name, $b
         'sender_kind' => ($app_id > 0) ? 'app' : 'user',
         'sender_id'   => ($app_id > 0) ? $app_id : (int) $viewer['id'],
     ), (int) $options['file_group'], $stored['name']) : 0;
-    unset($options['file_group']);
 
+    // Written into its group, so it announces nothing of its own.
     $result = ws_message_send($viewer, $channel, $body, array_merge($options, array(
-        'file_id'   => $stored['file_id'],
-        'file_name' => $stored['name'],
+        'file_id'    => $stored['file_id'],
+        'file_name'  => $stored['name'],
+        'file_group' => $group_head,
     )));
     $result['file_group'] = 0;
 
