@@ -1330,6 +1330,51 @@
         searchBox.select();
     });
 
+    // On a phone the rail is a sheet from the lower edge, opened by the
+    // scope button and closed by its backdrop or Escape.
+    var scopeButton = app.querySelector('.pg-tr-scope');
+    var rail = document.getElementById('pg_tr_rail');
+    var railBackdrop = app.querySelector('.pg-tr-rail-backdrop');
+
+    var railSheet = function (open) {
+        rail.classList.toggle('show', open);
+        railBackdrop.classList.toggle('show', open);
+        scopeButton.setAttribute('aria-expanded', open ? 'true' : 'false');
+
+        if (open) {
+            var current = rail.querySelector('.pg-tr-rail-row.active') || rail.querySelector('a, input');
+
+            if (current) {
+                current.focus();
+            }
+        } else {
+            scopeButton.focus();
+        }
+    };
+
+    if (scopeButton && rail && railBackdrop) {
+        scopeButton.addEventListener('click', function () {
+            railSheet(!rail.classList.contains('show'));
+        });
+        railBackdrop.addEventListener('click', function () {
+            railSheet(false);
+        });
+        document.addEventListener('keydown', function (event) {
+            if ((event.key === 'Escape') && rail.classList.contains('show')) {
+                railSheet(false);
+            }
+        });
+    }
+
+    // "Scan for new texts" in "More" on a phone presses the head's button.
+    Array.prototype.forEach.call(app.querySelectorAll('[data-pg-tr-scan-proxy]'), function (item) {
+        item.addEventListener('click', function () {
+            if (scanButton) {
+                scanButton.click();
+            }
+        });
+    });
+
     var findPage = document.getElementById('pg_tr_find_page');
 
     if (findPage) {

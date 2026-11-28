@@ -541,7 +541,12 @@ foreach ($tile_specs as $key => $tile_spec) {
 
 // A row of the rail: its name, its count, an optional mark after the count
 // and the bar of its share. The current one carries aria-current.
-$rail_row = function ($href, $current, $icon, $name, $count, $share, $mark = '', $title = '', $page = false) {
+$rail_current = null;
+$rail_row = function ($href, $current, $icon, $name, $count, $share, $mark = '', $title = '', $page = false) use (&$rail_current) {
+    if ($current) {
+        $rail_current = array('icon' => $icon, 'name' => $name, 'count' => $count);
+    }
+
     return '<a class="pg-tr-rail-row' . ($current ? ' active" aria-current="page' : '') . '" href="' . h($href) . '"' . ($page ? ' data-pg-tr-page="1"' : '') . '>'
         . (($icon !== '') ? '<i class="bi ' . h($icon) . '" aria-hidden="true"></i>' : '')
         . '<span class="pg-tr-rail-name"' . (($title !== '') ? ' title="' . h($title) . '"' : '') . '>' . $name . '</span>'
@@ -1167,20 +1172,52 @@ echo pg_page_shell(array(
     .pg-tr-rail-bar { position: absolute; left: 8px; right: 8px; bottom: 3px; height: 3px; border-radius: 2px; background: var(--pg-quiet); overflow: hidden; }
     .pg-tr-rail-bar > span { display: block; height: 100%; background: var(--pg-accent); }
     /* The filter tiles: six of equal width; the chosen one framed in the accent. */
-    .pg-tr-tiles { --pg-figures: 6; gap: 10px; }
+    .pg-tr-tiles { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
     .pg-tr-tile { color: var(--pg-fg-body); text-decoration: none; border-radius: 12px; }
     .pg-tr-tile:hover { box-shadow: inset 0 0 0 1px var(--pg-border-color); }
     .pg-tr-tile.active { box-shadow: inset 0 0 0 1.5px var(--pg-accent); background: color-mix(in srgb, var(--pg-accent) 6%, transparent); }
     .pg-tr-dot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--pg-tone); }
     .pg-tr-tools { padding: 14px 18px; }
     .pg-tr-search { flex: 0 1 26rem; min-width: 12rem; }
+    /* The rows, notes and bars of the list keep 18 px from the sides of the card while
+       the rules between the rows run its full width. */
+    .pg-tr-list > * { padding-inline: 18px; }
+    .pg-tr-scope, .pg-tr-rail-backdrop, .pg-tr-more-scan { display: none; }
     @media (max-width: 1199.98px) {
         .pg-tr-body { grid-template-columns: 240px minmax(0, 1fr); }
-        .pg-tr-tiles { --pg-figures: 3; }
+        .pg-tr-tiles { gap: 8px; }
+        .pg-tr-tile { padding: 12px 12px 11px; }
+        .pg-tr-tile .pg-figure-label { align-items: flex-start; }
     }
     @media (max-width: 991.98px) {
         .pg-tr-body { grid-template-columns: minmax(0, 1fr); }
         .pg-tr-rail { position: static; max-height: 20rem; }
+    }
+    /* A phone: the language button and "More" on the first line, the tabs on
+       the second, the fill button the full width under them; "Scan for new
+       texts" beside an engine moves into "More". The rail becomes the scope
+       button that opens its list in a sheet from the lower edge; the tiles
+       are one row that scrolls sideways. */
+    @media (max-width: 767.98px) {
+        .pg-tr-head { gap: 10px; }
+        .pg-tr-head > .pg-toolbar-grow, .pg-tr-head > .pg-tr-more { order: 1; }
+        .pg-tr-head > .pg-seg { order: 2; display: flex; flex: 1 1 100%; }
+        .pg-tr-head > .pg-seg > .pg-seg-item { flex: 1 1 0; justify-content: center; }
+        .pg-tr-head > #pg_tr_update, .pg-tr-head > #pg_tr_scan { order: 3; flex: 1 1 100%; justify-content: center; }
+        .pg-tr-head > #pg_tr_scan.pg-button-quiet { display: none; }
+        .pg-tr-more-scan { display: list-item; list-style: none; }
+        .pg-tr-scope { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 8px 14px; border: 0; color: var(--pg-fg-body); text-align: start; }
+        .pg-tr-scope > .pg-tr-rail-name { flex: 1 1 auto; }
+        .pg-tr-scope > .bi:first-child { color: var(--pg-fg-2); }
+        .pg-tr-rail { display: none; position: fixed; inset: auto 0 0; z-index: 1056; max-height: 75vh; padding: 8px 12px calc(12px + env(safe-area-inset-bottom)); border-radius: 16px 16px 0 0; box-shadow: var(--pg-shadow-float); }
+        .pg-tr-rail.show { display: block; }
+        .pg-tr-rail::before { content: ""; display: block; width: 36px; height: 4px; margin: 0 auto 10px; border-radius: 2px; background: var(--pg-border-color); }
+        .pg-tr-rail-row { min-height: 44px; }
+        .pg-tr-rail-backdrop.show { display: block; position: fixed; inset: 0; z-index: 1055; background: color-mix(in srgb, var(--pg-fg-emphasis) 35%, transparent); }
+        .pg-tr-tiles { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; margin-inline: -4px; padding: 2px 4px; }
+        .pg-tr-tiles > .pg-tr-tile { flex: 0 0 42%; scroll-snap-align: start; }
+        .pg-tr-tiles > .pg-figure:last-child:nth-child(odd) { grid-column: auto; }
+        .pg-tr-list > * { padding-inline: 14px; }
     }
     }</style>
     ' . $liveform_messages . '
@@ -1204,9 +1241,11 @@ echo pg_page_shell(array(
             <button type="button" class="pg-button ' . (($engine_key === 'manual') ? 'pg-button-fill' : 'pg-button-quiet') . ' no-popover" id="pg_tr_scan" data-bs-toggle="tooltip" title="' . h($scan_button_title) . '">
                 <i class="bi bi-arrow-repeat" aria-hidden="true"></i>' . h($scan_button_label) . '
             </button>
-            <div class="pg-menu-wrap">
+            <div class="pg-menu-wrap pg-tr-more">
                 <button class="pg-icon-button no-popover" type="button" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false" aria-label="' . h(lang('More')) . '"><i class="bi bi-three-dots" aria-hidden="true"></i></button>
-                <ul class="menu pg-menu-end">
+                <ul class="menu pg-menu-end">' . (($engine_key !== 'manual') ? '
+                    <li class="pg-tr-more-scan"><button type="button" class="menu-item" data-pg-tr-scan-proxy="1"><i class="bi bi-arrow-repeat me-3" aria-hidden="true"></i>' . h($scan_button_label) . '</button></li>
+                    <li class="pg-tr-more-scan"><hr class="menu-divider"></li>' : '') . '
                     <li><a class="menu-item" href="' . h($export_base) . '"><i class="bi bi-download me-3" aria-hidden="true"></i>' . lang('Export CSV') . '</a></li>
                     <li><a class="menu-item" href="' . h($export_base . '&pending=1') . '"><i class="bi bi-download me-3" aria-hidden="true"></i>' . lang('Export pending texts as CSV') . '</a></li>
                     <li>' . pg_list_excel_link($export_base, 'menu-item') . '</li>
@@ -1235,7 +1274,9 @@ echo pg_page_shell(array(
         <div class="tab-content">
         <div class="tab-pane fade' . (($tab === 'texts') ? ' show active' : '') . '" id="pg_tr_pane_texts" role="tabpanel" aria-labelledby="pg_tr_tab_texts">
         <div class="pg-tr-body">
-            <nav class="pg-card pg-tr-rail" aria-label="' . h(lang('Pages')) . '">
+            <button type="button" class="pg-card pg-tr-scope" aria-controls="pg_tr_rail" aria-expanded="false">' . (($rail_current && ($rail_current['icon'] !== '')) ? '<i class="bi ' . h($rail_current['icon']) . '" aria-hidden="true"></i>' : '') . '<span class="pg-tr-rail-name">' . ($rail_current ? $rail_current['name'] : h(lang('All texts'))) . '</span>' . ($rail_current ? '<span class="pg-tr-rail-count pg-tabular">' . $rail_current['count'] . '</span>' : '') . '<i class="bi bi-chevron-down" aria-hidden="true"></i></button>
+            <div class="pg-tr-rail-backdrop" aria-hidden="true"></div>
+            <nav class="pg-card pg-tr-rail" id="pg_tr_rail" aria-label="' . h(lang('Pages')) . '">
                 <label class="form-control form-control-sm form-adorn rounded-pill mb-3">
                     <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
                     <input type="search" class="form-ghost" id="pg_tr_find_page" placeholder="' . h(lang('Find a page')) . '" aria-label="' . h(lang('Find a page')) . '" autocomplete="off"/>
@@ -1272,7 +1313,7 @@ echo pg_page_shell(array(
                             <i class="bi bi-check2-all" aria-hidden="true"></i>' . lang('Approve all') . ' <span class="pg-count pg-tr-review-all-shown">' . (int) $review_all_shown . '</span>
                         </button>
                     </div>
-                    <div class="card-body pt-0">' . $output_index_note . (($group === 'ui') ? '<div class="small fg-secondary py-3 border-bottom"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . lang('The texts of the cookie window: the notice, its settings and what each cookie is for. This language has no language file, so the window is translated here; until a text is translated, the English wording is shown. The rest of the software\'s wording is not translated here.') . '</div>' : '')
+                    <div class="card-body pt-0 px-0 pg-tr-list">' . $output_index_note . (($group === 'ui') ? '<div class="small fg-secondary py-3 border-bottom"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . lang('The texts of the cookie window: the notice, its settings and what each cookie is for. This language has no language file, so the window is translated here; until a text is translated, the English wording is shown. The rest of the software\'s wording is not translated here.') . '</div>' : '')
                         . (($group === 'pictures') ? '<div class="small fg-secondary py-3 border-bottom"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . lang('The texts of pictures made in the Artifact Canvas whose words are text layers. A picture is listed once a page that shows it is saved in the Visual Page Editor or opened in another language; a photo or an uploaded picture whose words are in its pixels is not. Once all of a language\'s texts are translated, its picture is drawn by itself: by an open panel, or, with nobody in the panel, by the server where it can. "Draw the waiting pictures" draws them now.') . '</div>' : '')
                         . $output_bulk . $output_rows . $output_selection_bar . '
                         ' . ($output_pagination !== '' ? '<div class="d-flex justify-content-center pt-5">' . $output_pagination . '</div>' : '') . '

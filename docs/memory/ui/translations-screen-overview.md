@@ -17,7 +17,7 @@ description: The Translations screen (translations.php) as a whole: what it is, 
 - Left out, the owner's to ask for: machine translations approved by themselves, a translator's role. The picture draw queue and the Languages and Translation card were not redrawn.
 
 ## Which file holds which part?
-- The head (language button, tabs "Texts", "Activity", "Glossary", "Translate pending", "Scan for new texts", "More"), the rail, the filter tiles, the tool line: `translations-screen-frame.md`.
+- The head (language button, tabs "Texts", "Activity", "Glossary", "Translate pending", "Scan for new texts", "More"), the rail, the filter tiles, the tool line: `translations-screen-frame.md`. The same at 1024 px and on a phone (scope button, the rail's bottom sheet): `translations-screen-narrow.md`.
 - The automation line, the dialog "Automation for <language>", the progress card: `translations-screen-automation.md`. "Activity", an update's drawer, "Try again with the failed ones": `translations-screen-activity.md`.
 - The row (grid, box, state column, "Suspicious", "Details", the refusal under the box, the keys): `translations-screen-row.md`.
 - The ticks, "Select all on this page", the selection bar and its dialogs ("Approve", "Translate again", "Keep as in the source and approve", "Clear"): `translations-screen-selection.md`.
