@@ -297,34 +297,33 @@ function pg_integrity_github_software_path()
     return 'pinegrap/';
 }
 
-// The tags a version can be released under. A stable release is tagged
-// v<version>, an old fixed beta package v<version>-beta; on the beta channel
-// the ref of the installed build (data/update_build.json) is asked first, as
-// it names exactly the files that build shipped.
-function pg_integrity_release_tags($version, $channel = null, $git_ref = null)
+// The tags the files of a version are looked up under. A stable release is
+// tagged v<version>; a beta build v<version>-beta.<YYYYMMDDHHMM>, which only
+// the build file (data/update_build.json) can name, so its ref is asked first:
+// it lists exactly the files that build shipped.
+function pg_integrity_release_tags($version, $git_ref = '')
 {
-    if ($channel === null) {
-        $channel = function_exists('pg_update_channel') ? pg_update_channel() : 'stable';
-    }
+    $tags = ['v' . $version];
 
-    $tags = ['v' . $version, 'v' . $version . '-beta'];
-
-    if (($channel === 'beta') && ((string) $git_ref !== '')) {
+    if ((string) $git_ref !== '') {
         array_unshift($tags, (string) $git_ref);
     }
 
     return array_values(array_unique($tags));
 }
 
-// The git_ref the integrity check asks for first: the installed build's on
-// the beta channel, else ''.
-function pg_integrity_build_ref()
+// The git_ref of the beta build this installation runs, '' when none is
+// recorded. The update channel does not matter: a site switched back to
+// Stable keeps the beta's files until a stable release replaces them (that
+// update deletes the build file), so the stable tag would list files it never
+// received.
+function pg_integrity_build_ref($path = null, $code_version = null)
 {
-    if (!function_exists('pg_update_channel') || !function_exists('pg_update_build_read') || (pg_update_channel() !== 'beta')) {
+    if (!function_exists('pg_update_build_read')) {
         return '';
     }
 
-    return pg_update_build_read()['git_ref'];
+    return pg_update_build_read($path, $code_version)['git_ref'];
 }
 
 // What the cached GitHub tree is kept under: the version, and the build's ref
@@ -424,7 +423,7 @@ function pg_integrity_github_reference($version, $ignored_files, $git_ref = '')
 {
     $software_path = pg_integrity_github_software_path();
 
-    foreach (pg_integrity_release_tags($version, null, $git_ref) as $tag) {
+    foreach (pg_integrity_release_tags($version, $git_ref) as $tag) {
         $response = pg_integrity_http_get(
             'https://api.github.com/repos/' . pg_integrity_github_repository() . '/git/trees/' . rawurlencode($tag) . '?recursive=1',
             ['Accept: application/vnd.github+json', 'X-GitHub-Api-Version: 2022-11-28']

@@ -165,14 +165,32 @@ function test_update_build_beta_offer_matrix()
 	pg_assert_contains('ccccccc.202611061200', pg_vendor_release_message($repair, '2026.11.0'));
 }
 
-// On beta the integrity check asks for the build's own ref first, then the
-// release tags; one cache entry per ref.
+// The integrity check asks for the installed build's own ref first, then the
+// stable tag; one cache entry per ref. No tag v<version>-beta exists: a
+// pre-release is tagged v<version>-beta.<YYYYMMDDHHMM>.
 function test_update_build_integrity_tags()
 {
-	pg_assert_same(array('v2026.11.0-beta.202611051500', 'v2026.11.0', 'v2026.11.0-beta'), pg_integrity_release_tags('2026.11.0', 'beta', 'v2026.11.0-beta.202611051500'));
-	pg_assert_same(array('v2026.11.0', 'v2026.11.0-beta'), pg_integrity_release_tags('2026.11.0', 'beta', ''));
-	pg_assert_same(array('v2026.11.0', 'v2026.11.0-beta'), pg_integrity_release_tags('2026.11.0', 'stable', 'v2026.11.0-beta.202611051500'), 'stable');
+	pg_assert_same(array('v2026.11.0-beta.202611051500', 'v2026.11.0'), pg_integrity_release_tags('2026.11.0', 'v2026.11.0-beta.202611051500'));
+	pg_assert_same(array('v2026.11.0'), pg_integrity_release_tags('2026.11.0', ''));
+	pg_assert_same(array('v2026.11.0'), pg_integrity_release_tags('2026.11.0'));
 
 	pg_assert_same('2026.11.0', pg_integrity_reference_key('2026.11.0', ''));
 	pg_assert_same('2026.11.0@v2026.11.0-beta.202611051500', pg_integrity_reference_key('2026.11.0', 'v2026.11.0-beta.202611051500'));
+}
+
+// A site switched back to Stable keeps the beta's files until a stable release
+// replaces them, so the build file's ref counts on either channel.
+function test_update_build_integrity_ref_any_channel()
+{
+	$folder = update_build_test_folder();
+	$path = $folder . '/update_build.json';
+
+	pg_assert_same('stable', pg_update_channel(), 'the tests run on the stable channel');
+	pg_assert_same('', pg_integrity_build_ref($path, '2026.11.0'), 'no file');
+
+	pg_update_build_write('2026.11.0', 'bbbbbbb.202611051500', 'v2026.11.0-beta.202611051500', $path);
+	pg_assert_same('v2026.11.0-beta.202611051500', pg_integrity_build_ref($path, '2026.11.0'), 'a beta build on stable');
+	pg_assert_same('', pg_integrity_build_ref($path, '2026.11.1'), 'a file of another version');
+
+	update_build_test_remove($folder);
 }

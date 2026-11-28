@@ -620,7 +620,9 @@ function test_payment_stripe_blik_waiting_page_script()
 	$script = <<<'JS'
 var fs = require('fs');
 var source = fs.readFileSync(process.argv[2], 'utf8');
-var config = process.argv[3];
+// Base64 on the command line: escapeshellarg() on Windows turns the
+// JSON's double quotes into blanks.
+var config = Buffer.from(process.argv[3], 'base64').toString('utf8');
 
 function run(withStripe) {
     var seen = { assigned: [], secret: null };
@@ -669,7 +671,7 @@ JS;
 
 	file_put_contents($file, $script);
 	$out = array();
-	@exec('node ' . escapeshellarg($file) . ' ' . escapeshellarg(PG_FUNCTIONS_DIR . '/assets/js/payment_hosted.js') . ' ' . escapeshellarg(html_entity_decode($match[1], ENT_QUOTES, 'UTF-8')) . ' 2>&1', $out, $code);
+	@exec('node ' . escapeshellarg($file) . ' ' . escapeshellarg(PG_FUNCTIONS_DIR . '/assets/js/payment_hosted.js') . ' ' . escapeshellarg(base64_encode(html_entity_decode($match[1], ENT_QUOTES, 'UTF-8'))) . ' 2>&1', $out, $code);
 	@unlink($file);
 
 	$result = json_decode(implode("\n", $out), true);
