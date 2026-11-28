@@ -253,3 +253,26 @@ function test_find_replace_leaves_script_and_style_code()
 	pg_assert_same(2, $res['r'], 'and replaced');
 	pg_assert_same('<p>Kontakt</p><script>if (x === "Contact") {}</script><STYLE media="all">.Contact{}</STYLE><p>Kontakt</p>', $res['html'], 'the script and the style stay byte for byte');
 }
+
+// "Whole word" holds with "Regex" too: "cat" no longer changes
+// "category", and a pattern the Unicode mode refuses still compiles.
+function test_find_replace_whole_word_with_a_regular_expression()
+{
+	$res = find_replace_test_node(
+		'var w = F.pattern({ search: "cat|dog", regex: true, wholeWord: true }).re,'
+		. ' t = F.pattern({ search: "çerez", regex: true, wholeWord: true }).re,'
+		. ' loose = F.pattern({ search: "a\\\\-b", regex: true, wholeWord: true });'
+		. 'out = { n: F.count("cat category dog hotdog", w), r: F.replace("cat category", w, "x", true).text,'
+		. ' t: F.count("Çerez ve çerezler; çerez.", t), loose: loose.error, ln: F.count("a-b xa-b", loose.re) };'
+	);
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(2, $res['n'], 'only the whole words');
+	pg_assert_same('x category', $res['r'], 'the longer word kept');
+	pg_assert_same(2, $res['t'], 'a whole word in Turkish letters, not inside "çerezler"');
+	pg_assert_same('', $res['loose'], 'an escape the Unicode mode refuses still compiles');
+	pg_assert_same(1, $res['ln'], 'and keeps to whole words');
+}

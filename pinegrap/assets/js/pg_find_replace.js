@@ -47,6 +47,21 @@
     // ASCII ("çerez", "İade").
     var WORD = '[\\p{L}\\p{N}_]';
 
+    // Letters and digits without the Unicode mode, for a regular
+    // expression that mode refuses (`\-`, `\:`): ASCII and Latin letters.
+    var WORD_LATIN = '[0-9A-Za-z_\\u00aa\\u00b5\\u00ba\\u00c0-\\u00d6\\u00d8-\\u00f6\\u00f8-\\u024f]';
+
+    // A typed regular expression held to whole words. The Unicode mode
+    // reads letters of any script; a pattern that mode refuses compiles
+    // as typed with the Latin letters. Its groups keep their numbers.
+    function wholeWordRegex(search, flags) {
+        try {
+            return new RegExp('(?<!' + WORD + ')(?:' + search + ')(?!' + WORD + ')', flags + 'u');
+        } catch (e) {
+            return new RegExp('(?<!' + WORD_LATIN + ')(?:' + search + ')(?!' + WORD_LATIN + ')', flags);
+        }
+    }
+
     function pattern(q) {
         q = q || {};
         var search = String(q.search == null ? '' : q.search);
@@ -54,7 +69,9 @@
         var flags = 'g' + (q.caseSensitive ? '' : 'i') + (q.lines ? 'm' : '');
         var re;
         try {
-            if (q.regex) {
+            if (q.regex && q.wholeWord) {
+                re = wholeWordRegex(search, flags);
+            } else if (q.regex) {
                 re = new RegExp(search, flags);
             } else {
                 var body = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
