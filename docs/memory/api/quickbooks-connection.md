@@ -22,11 +22,11 @@ module: quickbooks, quickbooks_page
 
 ## Which accounts and tax codes?
 - Accounts from `select * from Account where Active = true`: income Income or Other Income; clearing Bank or Other Current Asset (Undeposited Funds); bank Bank. Save rereads and refuses one not offered.
-- Tax codes from `select * from TaxCode where Active = true`, offered when they have a sales rate; each site rate matched once, kept as an `accounting_sync` tax pairing keyed by the realm, as Xero's (`xero-tax-rates.md`). A US company matches nothing: TAX or NON and the site's total (AS7's driver).
+- Tax codes from `select * from TaxCode where Active = true`, offered when they have a sales rate; each site rate matched once, kept as an `accounting_sync` tax pairing keyed by the realm, as Xero's (`xero-tax-rates.md`). A US company matches nothing: TAX or NON and the site's total (`quickbooks-sync-driver.md`).
 
 ## One accounting service at a time?
 - `pg_accounting_sync_target()` is Xero with an organisation chosen, else QuickBooks with a company. `quickbooks_after_connect()` keeps no company while Xero keeps the books, and `xero_after_connect()` picks no organisation while QuickBooks does; each page says to disconnect the other first.
-- The Events card shows only on the page of the service the site books into. No QuickBooks driver yet, so its rows wait.
+- The Events card shows only on the page of the service the site books into. What the rows become: `quickbooks-sync-driver.md`.
 
 ## What was not tried live?
 - No call to a real Intuit sandbox or company (no test keys); shapes come from Intuit's pages (`plans/accounting-sync-census-quickbooks.md`). Not verified: Intuit ignoring the PKCE parameters, and its revocation taking a form body. Tests: `tests/quickbooks_test.php`.
