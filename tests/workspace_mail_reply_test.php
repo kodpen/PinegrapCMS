@@ -35,6 +35,9 @@ function test_workspace_mail_reply_subject()
 	pg_assert_same('Re: Order [#T3] [#T7]', ws_mail_reply_subject('Order [#T3]', 7), 'another conversation\'s tag is not ours');
 	pg_assert_same('Re: [#T7]', ws_mail_reply_subject('', 7), 'no subject');
 	pg_assert_true(mb_strlen(ws_mail_reply_subject(str_repeat('ş', 300), 7)) <= 255, 'fits the column');
+	pg_assert_same(7, ws_mail_subject_tag(ws_mail_reply_subject(str_repeat('ş', 255), 7)), 'a subject as long as the column keeps the tag');
+	pg_assert_same(7, ws_mail_subject_tag(ws_mail_reply_subject(str_repeat('a', 247) . ' [#T7]', 7)), 'a full subject that carries the tag keeps it after Re:');
+	pg_assert_true(mb_strlen(ws_mail_reply_subject(str_repeat('a', 247) . ' [#T7]', 7)) <= 255, 'and still fits the column');
 }
 
 function test_workspace_mail_reply_headers()

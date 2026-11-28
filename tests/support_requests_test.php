@@ -165,6 +165,17 @@ function test_support_requests_reply_mail_threads_back()
 	support_requests_test_lacks("\r\nBcc:", $evil, 'no header injection');
 }
 
+function test_support_requests_reply_to_a_long_subject_threads_back()
+{
+	// The intake keeps a subject to 255 characters; the page's answer has no
+	// threading headers, so only its [#T<id>] tag leads it back.
+	$conversation = array('id' => 9, 'subject' => str_repeat('ş', 255), 'customer_email' => 'ayse@example.com', 'customer_name' => '');
+	$raw = pg_support_request_reply_raw($conversation, array('address' => 'help@shop.test'), 'Still waiting.', 'pg-request-9-def@shop.test', 1700000000);
+	$parsed = pg_mail_parse($raw, array('with_content' => true));
+
+	pg_assert_same(9, ws_mail_subject_tag((string) $parsed['subject']), 'the tag survives the cut');
+}
+
 function test_support_requests_page_html()
 {
 	$conversation = array('id' => 9, 'subject' => 'Broken <mug>', 'status' => 'waiting', 'customer_name' => 'Ayşe');
