@@ -408,6 +408,73 @@ function pg_office_xlsx_typed($text, $was, $format, $date1904)
     return array('kind' => 'string', 'value' => $text);
 }
 
+/**
+ * The formula a typed text becomes, as Excel stores it (English names,
+ * commas, no leading "="), or null when the text is not one: it must start
+ * with "=" and be a simple formula (pg_office_formula_parse()), typed with
+ * the English function names or those of the panel's language. A cell
+ * formatted as text (@) takes the text as it is, as in Excel.
+ *
+ * @param string $text     the cleaned text
+ * @param string $format   the cell's number format kind: date, text or ''
+ * @param string $language the panel's language code
+ * @return string|null
+ */
+function pg_office_xlsx_typed_formula($text, $format, $language)
+{
+    $text = (string) $text;
+
+    if (($format === 'text') || (substr($text, 0, 1) !== '=') || !function_exists('pg_office_formula_parse')) {
+        return null;
+    }
+
+    $tree = pg_office_formula_parse($text, (string) $language);
+
+    return ($tree === null) ? null : pg_office_formula_text($tree);
+}
+
+/**
+ * A stored formula's tree when the formula is a simple one this code works
+ * out and lets a person change, else null: a formula of its own cell (not
+ * shared, not an array or a data table, no range of cells it fills) whose
+ * text pg_office_formula_parse() reads with the English names. A cell whose
+ * value is linked to more than its text (vm) never is.
+ *
+ * @param string $text   the formula's text
+ * @param string $kind   its t attribute ('' or normal for a plain one)
+ * @param bool   $spread it carries ref or si (shared, array, data table)
+ * @param bool   $linked the cell carries vm
+ * @return array|null
+ */
+function pg_office_xlsx_simple_formula($text, $kind, $spread, $linked)
+{
+    if ($spread || $linked || !in_array((string) $kind, array('', 'normal'), true) || !function_exists('pg_office_formula_parse')) {
+        return null;
+    }
+
+    return pg_office_formula_parse((string) $text, 'en');
+}
+
+/**
+ * The simple formula of a cell in a parsed row (pg_office_xlsx_simple_formula()),
+ * or null.
+ *
+ * @param DOMElement $cell
+ * @return array|null
+ */
+function pg_office_xlsx_cell_formula($cell)
+{
+    $formula = pg_office_xlsx_child($cell, 'f');
+
+    if ($formula === null) {
+        return null;
+    }
+
+    $spread = $formula->hasAttribute('ref') || $formula->hasAttribute('si');
+
+    return pg_office_xlsx_simple_formula($formula->textContent, $formula->getAttribute('t'), $spread, (string) $cell->getAttribute('vm') !== '');
+}
+
 /* ---------------------------------------------------------------------------
    The workbook around the sheets
    --------------------------------------------------------------------------- */
