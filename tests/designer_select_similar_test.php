@@ -200,6 +200,43 @@ function test_select_similar_leaves_out_what_may_not_be_chosen()
 	pg_assert_same(array('locked' => 0, 'shared' => 0, 'kept' => 0), $res['slot'], 'alone in its slot: nothing beside it');
 }
 
+// The slots the editor draws as designed are the matcher's: the guest
+// slot and the booking widget's steps and form print their children, so a
+// button in a booking step is chosen, not left out as a kept part.
+function test_select_similar_open_slots_match_the_editor()
+{
+	$res = select_similar_test_node(
+		'function slot(id, sec, kids) { return n(id, "semantic", { tag: "div", _bindings: { section: sec } }, kids); }'
+		. 'var B = n("r", "root", {}, [slot("g", "guest", [card("g1", "card")]), slot("bs", "booking_step_service", [card("b1", "card")]),'
+		. ' slot("bf", "booking_form", [card("b2", "card")]), slot("bc", "booking_calendar", [card("b3", "card")]), card("top", "card")]);'
+		. 'var r = S.find(B, "top", { where: "page" }); out = { ids: r.ids, left: r.leftOut };'
+	);
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array('g1', 'b1', 'b2'), $res['ids'], 'the guest slot, a booking step and the booking form print their children');
+	pg_assert_same(array('locked' => 0, 'shared' => 0, 'kept' => 1), $res['left'], 'a part the booking script fills stays kept');
+
+	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_select_similar.js');
+	$editor = array();
+
+	foreach (array('_SD_SECTION_KEEPS_CHILDREN', '_SD_BOOKING_KEEPS_CHILDREN') as $name) {
+		pg_assert_true(preg_match('/var ' . $name . ' = \{([^}]*)\}/', $src, $m) === 1, 'the editor\'s ' . $name);
+		preg_match_all('/([a-z_]+):\s*1/', $m[1], $keys);
+		$editor = array_merge($editor, $keys[1]);
+	}
+
+	pg_assert_true(preg_match('/var KEEPS_CHILDREN = \{([^}]*)\}/', $js, $m) === 1, 'the matcher\'s list');
+	preg_match_all('/([a-z_]+):\s*1/', $m[1], $keys);
+	sort($editor);
+	$mine = $keys[1];
+	sort($mine);
+	pg_assert_same($editor, $mine, 'the matcher names the slots the editor draws as designed, no more and no fewer');
+}
+
 function test_select_similar_is_quick_on_the_fixture_page()
 {
 	$fixture = dirname(__FILE__) . '/fixtures/designer/big_page.json';

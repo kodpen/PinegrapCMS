@@ -104,6 +104,23 @@ function test_designer_tree_search_folds_turkish_letters_in_place()
 	pg_assert_same(true, $res[10][1], 'a letter outside the plane keeps its length too');
 }
 
+// Only a mark comes off a letter: a Korean syllable is not cut to its
+// first consonant, so "한국" no longer finds "하고".
+function test_designer_tree_search_folds_only_marks()
+{
+	$res = designer_tree_search_run('style_designer_treesearch.js', array('_tsFold'),
+		'console.log(JSON.stringify([_tsFold("한국"), _tsFold("하고"), _tsFold("é"), _tsFold("e\u0301")]));');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same('한국', $res[0], 'a Hangul syllable stays whole');
+	pg_assert_true($res[0] !== $res[1], 'two words with the same first consonants stay apart');
+	pg_assert_same('e', $res[2], 'a letter with a mark folds to the plain letter');
+	pg_assert_same("e\u{301}", $res[3], 'a letter and a separate mark stay one for one');
+}
+
 // The name, the designer label, the text, the class and the id are found;
 // a name that starts with the words comes first, then one that holds them,
 // then an id, a class and a text.

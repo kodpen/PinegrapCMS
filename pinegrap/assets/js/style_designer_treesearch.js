@@ -39,8 +39,10 @@ StyleDesigner.definePart('treesearch', function (K) {
             var low = c.toLowerCase();
             if (low.length !== 1) low = c;
             if (low.normalize) {
-                var plain = low.normalize('NFD').charAt(0);
-                if (plain) low = plain;
+                // The plain letter only when the rest is marks: a Hangul
+                // syllable also decomposes, into its letters.
+                var parts = low.normalize('NFD');
+                if (parts.length > 1 && /^[\u0300-\u036f\u1ab0-\u1aff\u1dc0-\u1dff\u20d0-\u20ff\ufe20-\ufe2f]+$/.test(parts.slice(1))) low = parts.charAt(0);
             }
             out += low;
         }

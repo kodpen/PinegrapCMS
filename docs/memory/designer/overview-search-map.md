@@ -4,8 +4,8 @@ description: Designer Overview (DP13): the tree search part (name, text, class, 
 ---
 
 ## What does the tree search find?
-- "Search the tree…" (`#sd-ov-search-input`) looks in each element's name, designer label, text (markup stripped, entities decoded by `_tsPlain()`: "&" finds "&amp;", "amp" nothing), class (`props.cssClass`) and id, shared components' cached trees once. It replaced the row filter `filterOverviewTree()`.
-- Letters are folded one for one (`_tsFold()`): lower case, İ I ı i alike, ş ğ ç ö ü â î û as the plain letter; "ikon" finds "İkon". DP8's `PGOptionsSearch.fold()` is a second copy of the same fold, kept apart (`designer-panels-keep.md`).
+- "Search the tree…" (`#sd-ov-search-input`) looks in each element's name, designer label, text (markup stripped, entities decoded by `_tsPlain()`: "&" finds "&amp;", "amp" nothing), class (`props.cssClass`) and id, shared components' cached trees once.
+- Letters are folded one for one (`_tsFold()`): lower case, İ I ı i alike, ş ğ ç ö ü â î û as the plain letter; "ikon" finds "İkon". Only marks come off: Korean syllables stay whole (#12242). `PGOptionsSearch.fold()` is a second copy, kept apart (`designer-panels-keep.md`).
 - Order (`_tsMatch()`): a name or label that starts with the words, then one that holds them, then id, class, text; the page's order inside each. At most 100 drawn; the count of all sits at the box's right end, where "Ctrl F" (⌘ F on a Mac) stands while it is empty. Under 230 px (a 1024 px window, container query) the key hint goes, the count stays.
 
 ## How are the results drawn and picked?

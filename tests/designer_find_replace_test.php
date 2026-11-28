@@ -232,3 +232,92 @@ function test_find_replace_opens_the_part()
 	pg_assert_true(strpos($part, "p.undoStack.push(") !== false, 'another page takes its undo step in its own history');
 	pg_assert_true(strpos($part, 'setValue(out.text, true)') !== false, 'a code file keeps the change in its undo history');
 }
+
+// A custom HTML's script and style are code, not words of the page: a
+// replace of "Contact" changes the paragraph, never the script's string or
+// the style's selector beside it.
+function test_find_replace_leaves_script_and_style_code()
+{
+	$res = find_replace_test_node(
+		'var html = "<p>Contact</p><script>if (x === \"Contact\") {}</script><STYLE media=\"all\">.Contact{}</STYLE><p>Contact</p>";'
+		. 'var T = n("r", "root", {}, [n("c", "custom_html", { html: html })]), re = F.pattern({ search: "Contact", caseSensitive: true }).re;'
+		. 'var c = F.treeCount(T, re), r = F.treeReplace(T, re, "Kontakt", false);'
+		. 'out = { c: c, r: r, html: T.children[0].props.html };'
+	);
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(2, $res['c'], 'only the two paragraphs are counted');
+	pg_assert_same(2, $res['r'], 'and replaced');
+	pg_assert_same('<p>Kontakt</p><script>if (x === "Contact") {}</script><STYLE media="all">.Contact{}</STYLE><p>Kontakt</p>', $res['html'], 'the script and the style stay byte for byte');
+}
+
+// "Whole word" holds with "Regex" too: "cat" no longer changes
+// "category", and a pattern the Unicode mode refuses still compiles.
+function test_find_replace_whole_word_with_a_regular_expression()
+{
+	$res = find_replace_test_node(
+		'var w = F.pattern({ search: "cat|dog", regex: true, wholeWord: true }).re,'
+		. ' t = F.pattern({ search: "çerez", regex: true, wholeWord: true }).re,'
+		. ' loose = F.pattern({ search: "a\\\\-b", regex: true, wholeWord: true });'
+		. 'out = { n: F.count("cat category dog hotdog", w), r: F.replace("cat category", w, "x", true).text,'
+		. ' t: F.count("Çerez ve çerezler; çerez.", t), loose: loose.error, ln: F.count("a-b xa-b", loose.re) };'
+	);
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(2, $res['n'], 'only the whole words');
+	pg_assert_same('x category', $res['r'], 'the longer word kept');
+	pg_assert_same(2, $res['t'], 'a whole word in Turkish letters, not inside "çerezler"');
+	pg_assert_same('', $res['loose'], 'an escape the Unicode mode refuses still compiles');
+	pg_assert_same(1, $res['ln'], 'and keeps to whole words');
+}
+
+// Any case reads the Turkish dotted and dotless i as the other searches
+// do: "istanbul" finds "İstanbul", "ılık" finds "ILIK"; case sensitive
+// keeps them apart.
+function test_find_replace_turkish_i_in_any_case()
+{
+	$res = find_replace_test_node(
+		'var a = F.pattern({ search: "istanbul" }).re, b = F.pattern({ search: "ılık" }).re,'
+		. ' c = F.pattern({ search: "İade", wholeWord: true }).re, s = F.pattern({ search: "istanbul", caseSensitive: true }).re;'
+		. 'out = { a: F.count("İstanbul, ISTANBUL, istanbul", a), b: F.count("ILIK ılık", b), c: F.count("iade İADE iadeler", c),'
+		. ' s: F.count("İstanbul istanbul", s), r: F.replace("İstanbul", a, "Ankara", false).text };'
+	);
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(3, $res['a'], '"istanbul" finds the capital İ too');
+	pg_assert_same(2, $res['b'], '"ılık" finds the capitals');
+	pg_assert_same(2, $res['c'], 'a whole word typed with İ');
+	pg_assert_same(1, $res['s'], 'case sensitive keeps them apart');
+	pg_assert_same('Ankara', $res['r'], 'and replaces it');
+}
+
+// A typed space finds a no-break space, as the tree search and the
+// browser's find read it: "our team" finds "our&nbsp;team", and the
+// replacement's own spaces go in as typed.
+function test_find_replace_space_finds_a_no_break_space()
+{
+	$res = find_replace_test_node(
+		'var T = n("r", "root", {}, [n("p", "content", { contentType: "paragraph", text: "our&nbsp;team" }), n("b", "component", { btnText: "our team" })]);'
+		. 'var re = F.pattern({ search: "our team" }).re, c = F.treeCount(T, re), r = F.treeReplace(T, re, "the crew", false);'
+		. 'out = { c: c, r: r, p: T.children[0].props.text, b: T.children[1].props.btnText, rx: F.count("a b", F.pattern({ search: "a b", regex: true }).re) };'
+	);
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(2, $res['c'], 'the entity and the sign both found');
+	pg_assert_same(2, $res['r'], 'and replaced');
+	pg_assert_same('the crew', $res['p'], 'the text');
+	pg_assert_same('the crew', $res['b'], 'the button');
+	pg_assert_same(0, $res['rx'], 'a regular expression reads a space as typed');
+}
