@@ -120,7 +120,7 @@ function test_etsy_marketplace_fields_are_five_remote_selects()
 
 	pg_assert_true(mp_can('etsy', 'test_credentials'));
 	pg_assert_true(mp_can('etsy', 'push_stock_price'), 'stock and price go through the queue');
-	pg_assert_false(mp_can('etsy', 'pull_orders'), 'nothing it does not do yet');
+	pg_assert_true(mp_can('etsy', 'pull_orders'), 'orders are read on the schedule');
 }
 
 /* --------------------------------------------------------- the shop's choices */

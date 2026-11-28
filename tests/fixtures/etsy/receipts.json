@@ -1,0 +1,95 @@
+{
+  "count": 2,
+  "results": [
+    {
+      "receipt_id": 3012345678,
+      "receipt_type": 0,
+      "seller_user_id": 11223344,
+      "buyer_user_id": 55667788,
+      "buyer_email": "buyer@example.com",
+      "name": "Jane Q Doe",
+      "first_line": "12 Elm Street",
+      "second_line": "Apt 4",
+      "city": "Portland",
+      "state": "OR",
+      "zip": "97201",
+      "status": "Paid",
+      "country_iso": "US",
+      "is_paid": true,
+      "is_shipped": false,
+      "create_timestamp": 1764200000,
+      "created_timestamp": 1764200000,
+      "update_timestamp": 1764200600,
+      "updated_timestamp": 1764200600,
+      "grandtotal": {"amount": 6450, "divisor": 100, "currency_code": "USD"},
+      "subtotal": {"amount": 6000, "divisor": 100, "currency_code": "USD"},
+      "total_price": {"amount": 6000, "divisor": 100, "currency_code": "USD"},
+      "total_shipping_cost": {"amount": 850, "divisor": 100, "currency_code": "USD"},
+      "total_tax_cost": {"amount": 400, "divisor": 100, "currency_code": "USD"},
+      "total_vat_cost": {"amount": 0, "divisor": 100, "currency_code": "USD"},
+      "discount_amt": {"amount": 800, "divisor": 100, "currency_code": "USD"},
+      "gift_wrap_price": {"amount": 0, "divisor": 100, "currency_code": "USD"},
+      "shipments": [],
+      "transactions": [
+        {
+          "transaction_id": 4011111111,
+          "title": "Linen apron, medium",
+          "receipt_id": 3012345678,
+          "is_digital": false,
+          "listing_id": 5001,
+          "product_id": 7001,
+          "sku": "APRON-M",
+          "quantity": 2,
+          "price": {"amount": 2450, "divisor": 100, "currency_code": "USD"},
+          "shipped_timestamp": null
+        },
+        {
+          "transaction_id": 4011111112,
+          "title": "Tea towel",
+          "receipt_id": 3012345678,
+          "is_digital": false,
+          "listing_id": 5002,
+          "product_id": 7002,
+          "sku": "TOWEL",
+          "quantity": 1,
+          "price": {"amount": 1100, "divisor": 100, "currency_code": "USD"},
+          "shipped_timestamp": null
+        }
+      ],
+      "refunds": []
+    },
+    {
+      "receipt_id": 3012345679,
+      "receipt_type": 0,
+      "seller_user_id": 11223344,
+      "buyer_user_id": 55667799,
+      "buyer_email": "",
+      "status": "Paid",
+      "is_paid": true,
+      "is_shipped": false,
+      "create_timestamp": 1764201000,
+      "created_timestamp": 1764201000,
+      "update_timestamp": 1764201200,
+      "updated_timestamp": 1764201200,
+      "grandtotal": {"amount": 2450, "divisor": 100, "currency_code": "EUR"},
+      "subtotal": {"amount": 2450, "divisor": 100, "currency_code": "EUR"},
+      "total_shipping_cost": {"amount": 0, "divisor": 100, "currency_code": "EUR"},
+      "discount_amt": {"amount": 0, "divisor": 100, "currency_code": "EUR"},
+      "shipments": [],
+      "transactions": [
+        {
+          "transaction_id": 4011111113,
+          "title": "Linen apron, small",
+          "receipt_id": 3012345679,
+          "is_digital": false,
+          "listing_id": 5001,
+          "sku": "APRON-S",
+          "quantity": 1,
+          "price": {"amount": 2450, "divisor": 100, "currency_code": "EUR"},
+          "shipped_timestamp": null
+        }
+      ],
+      "refunds": []
+    }
+  ]
+}
