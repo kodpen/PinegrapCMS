@@ -31,23 +31,24 @@ require_once(PG_FUNCTIONS_DIR . '/includes/erp/api.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_flows_alone.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_mail_alone.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/translate/api.php');
 
 // Every module's events and scopes, whether or not the module is on here.
 function webhook_event_scopes_test_events()
 {
-	return api_webhook_core_events() + erp_webhook_events() + ws_webhook_events();
+	return api_webhook_core_events() + erp_webhook_events() + ws_webhook_events() + translate_webhook_events();
 }
 
 function webhook_event_scopes_test_map()
 {
-	return api_webhook_core_event_scopes() + erp_webhook_event_scopes() + ws_webhook_event_scopes();
+	return api_webhook_core_event_scopes() + erp_webhook_event_scopes() + ws_webhook_event_scopes() + translate_webhook_event_scopes();
 }
 
 function webhook_event_scopes_test_known_scopes()
 {
 	$groups = array();
 
-	foreach (array('api_scope_groups', 'erp_scope_groups', 'ws_scope_groups') as $declare) {
+	foreach (array('api_scope_groups', 'erp_scope_groups', 'ws_scope_groups', 'translate_scope_groups') as $declare) {
 		$groups = array_merge(array_values($groups), array_values(call_user_func($declare)));
 	}
 
@@ -109,6 +110,7 @@ function test_webhook_event_scopes_follow_the_reads()
 	pg_assert_same('erp_cash:read', $map['erp.receipt.created']);
 	pg_assert_same('erp:read', $map['erp.invoice.created']);
 	pg_assert_same('tasks:read', $map['workspace.task.created']);
+	pg_assert_same('translations:read', $map['translation.update_finished']);
 	pg_assert_same('workspace:read', $map['workspace.message.created']);
 }
 

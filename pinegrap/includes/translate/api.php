@@ -64,6 +64,31 @@ function translate_owner_scopes($owner)
 }
 
 /**
+ * The events an application may subscribe to: the end of an update, from
+ * whichever move closed it (pg_tr_job_announce_finished()).
+ *
+ * @return array
+ */
+function translate_webhook_events()
+{
+    return array(
+        'translation.update_finished' => 'A translation update ended: done, failed or cancelled. Carries the scope, the engine and the counts; fallback_update_id names the update opened for its failed texts on the fallback engine',
+    );
+}
+
+/**
+ * The scope that may read each event's data.
+ *
+ * @return array
+ */
+function translate_webhook_event_scopes()
+{
+    return array(
+        'translation.update_finished' => 'translations:read',
+    );
+}
+
+/**
  * The objects the endpoints answer with.
  *
  * @return array
@@ -78,6 +103,9 @@ function translate_openapi_objects()
         'TranslationRefreshResult' => 'translate_api_refresh_result_schema',
         'TranslationStatusResult'  => 'translate_api_status_result_schema',
         'TranslationGlossaryTerm'  => 'translate_api_glossary_schema',
+        'TranslationUpdate'        => 'translate_api_update_schema',
+        'TranslationUpdateDetail'  => 'translate_api_update_detail_schema',
+        'TranslationUpdateStart'   => 'translate_api_update_start_schema',
         'TranslationJob'         => 'translate_api_job_schema',
         'TranslationJobItems'    => 'translate_api_job_items_schema',
         'TranslationJobResults'  => 'translate_api_job_results_schema',
@@ -124,7 +152,7 @@ function translate_api_routes()
                 array('name' => 'language', 'in' => 'query', 'type' => 'string', 'max_length' => 16, 'required' => true, 'description' => 'A target language code, from GET /translations/languages.'),
                 array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('all', 'pending', 'machine', 'reviewed', 'suspicious'), 'default' => 'all', 'description' => 'pending has no translation yet, machine was translated by an engine and not reviewed, reviewed was checked by a person, suspicious was flagged by the check.'),
                 array('name' => 'page_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the texts of this page, its title and description included.'),
-                array('name' => 'group', 'in' => 'query', 'type' => 'enum', 'values' => array('catalog', 'forms'), 'description' => 'Only the products and product groups (catalog), or only the forms (forms).'),
+                array('name' => 'group', 'in' => 'query', 'type' => 'enum', 'values' => array('catalog', 'forms', 'pictures', 'ui'), 'description' => 'Only the products and product groups (catalog), the forms (forms), the texts of pictures a page in another language has shown (pictures, the screen\'s Images) or the cookie window (ui), which the whole site leaves out.'),
                 array('name' => 'search', 'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Looks in the source text and the translation.'),
                 array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200),
                 array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 200, 'default' => 100),
@@ -224,7 +252,7 @@ function translate_api_routes()
             'dry_run'     => true,
             'returns'     => 'TranslationGlossaryTerm',
             'summary'     => 'Add or change a glossary term',
-            'description' => 'With id, changes that term. Without it, the term with the same wording in the same language is changed when there is one and a new term is added otherwise, so a repeated call does not leave two behind. A kept term (keep true) stays as written in every translation and may hold for every language; a translated term needs translation and belongs to one language. It applies to the texts sent to an engine from then on. Terms are removed on the Translations screen. A dry run makes every check and says whether a term would be added or changed.',
+            'description' => 'With id, changes that term. Without it, the term with the same wording in the same language is changed when there is one and a new term is added otherwise, so a repeated call does not leave two behind. A kept term (keep true) stays as written in every translation and may hold for every language; a translated term needs translation and belongs to one language. It applies to the texts sent to an engine from then on. A dry run makes every check and says whether a term would be added or changed.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The term to change.'),
                 array('name' => 'language', 'in' => 'body', 'type' => 'string', 'max_length' => 16, 'description' => 'A target language code. Not needed with all_languages.'),
@@ -234,6 +262,86 @@ function translate_api_routes()
                 array('name' => 'all_languages', 'in' => 'body', 'type' => 'bool', 'description' => 'For a kept term: it holds for every language. Ignored for a translated term.'),
                 array('name' => 'case_sensitive', 'in' => 'body', 'type' => 'bool', 'description' => 'Match the term only in this capitalisation.'),
                 array('name' => 'note', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'A note for the translator.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'translations.glossary.delete',
+            'method'      => 'DELETE',
+            'path'        => '/translations/glossary/{id}',
+            'scope'       => 'translations:write',
+            'handler'     => 'translate_api_glossary_delete',
+            'dry_run'     => true,
+            'returns'     => array('id' => 'integer', 'deleted' => 'boolean'),
+            'summary'     => 'Remove a glossary term',
+            'description' => 'Removes the term, as Remove on the Glossary tab of the Translations screen does. Texts already translated keep their wording; the texts sent to an engine from then on are no longer given the term. A dry run finds the term and removes nothing.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'translations.glossary.delete_post',
+            'method'      => 'POST',
+            'path'        => '/translations/glossary/{id}/delete',
+            'scope'       => 'translations:write',
+            'handler'     => 'translate_api_glossary_delete',
+            'dry_run'     => true,
+            'returns'     => array('id' => 'integer', 'deleted' => 'boolean'),
+            'summary'     => 'Remove a glossary term, addressed as a POST',
+            'description' => 'The same removal as DELETE /translations/glossary/{id}, for clients and servers that cannot send DELETE.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'translations.updates.list',
+            'method'      => 'GET',
+            'path'        => '/translations/updates',
+            'scope'       => 'translations:read',
+            'handler'     => 'translate_api_updates_list',
+            'returns'     => array('list' => 'TranslationUpdate'),
+            'summary'     => 'The updates of a language',
+            'description' => 'The updates of one target language, newest first, as the Activity tab of the Translations screen lists them: each with its scope, engine, status, how many texts it holds and how many were translated or failed. status running keeps the open ones, failed the ones that failed or left failed texts. Page with next_cursor.',
+            'details'     => 'An update is opened by "Translate pending" or "Translate again" on the Translations screen, by translate-on-save, by POST /translations/updates, or by itself for the texts an update failed on when the language has a fallback engine. Its status is queued, sent or running while open, then done, failed or cancelled; the event translation.update_finished announces the end.',
+            'params'      => array(
+                array('name' => 'language', 'in' => 'query', 'type' => 'string', 'max_length' => 16, 'required' => true, 'description' => 'A target language code, from GET /translations/languages.'),
+                array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('all', 'running', 'failed'), 'default' => 'all'),
+                array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200),
+                array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 100, 'default' => 20),
+            ),
+        ),
+
+        array(
+            'id'          => 'translations.updates.get',
+            'method'      => 'GET',
+            'path'        => '/translations/updates/{id}',
+            'scope'       => 'translations:read',
+            'handler'     => 'translate_api_updates_get',
+            'returns'     => 'TranslationUpdateDetail',
+            'summary'     => 'An update and its failed texts',
+            'description' => 'One update with the texts it failed on, up to 200, each with its hash, the start of its source text and the reason the engine gave (empty when it gave none), and how many it skipped - what the update\'s drawer on the Activity tab shows. A failed text still pending is sent again with POST /translations/updates for its scope.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'translations.updates.start',
+            'method'      => 'POST',
+            'path'        => '/translations/updates',
+            'scope'       => 'translations:write',
+            'handler'     => 'translate_api_updates_start',
+            'dry_run'     => true,
+            'returns'     => 'TranslationUpdateStart',
+            'summary'     => 'Translate what is pending',
+            'description' => 'Reads the scope\'s texts off the pages again and sends the pending ones of the language to its engine, as "Translate pending" does. update is null when nothing is pending. 409: translated_by_hand, engine_in_browser (runs only on the Translations screen), engine_not_ready, update_running (one of the scope is open; its id is in the message). A dry run makes every check, reads nothing again and counts what is pending now.',
+            'details'     => 'Neither page_id nor group sends the whole site, the cookie window left out. A server engine\'s update is worked by the scheduled translation job; Claude\'s waits for its routine. Follow it with GET /translations/updates/{id} or the event translation.update_finished. The engine is the one set for the language under "Automation" on the Translations screen.',
+            'params'      => array(
+                array('name' => 'language', 'in' => 'body', 'type' => 'string', 'max_length' => 16, 'required' => true, 'description' => 'A target language code.'),
+                array('name' => 'page_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'Only this page, with its title, description and the components and menus it uses.'),
+                array('name' => 'group', 'in' => 'body', 'type' => 'enum', 'values' => array('catalog', 'forms', 'pictures', 'ui'), 'description' => 'Only the catalogue, the forms, the pictures\' texts (Images) or the cookie window (ui).'),
             ),
         ),
 
@@ -1130,6 +1238,259 @@ function translate_api_glossary_save($params)
     }
 
     api_ok(translate_api_glossary_present($saved));
+}
+
+function translate_api_glossary_delete($params)
+{
+    translate_api_boot();
+
+    $id = (int) $params['id'];
+    $row = db_item("SELECT id, term FROM translation_glossary WHERE id = '$id' LIMIT 1");
+
+    if (!is_array($row)) {
+        api_fail_not_found(lang('Term'));
+    }
+
+    api_dry_run_stop('deleted', 'translation_glossary_term', array('id' => $id, 'term' => (string) $row['term']));
+
+    db("DELETE FROM translation_glossary WHERE id = '$id'");
+
+    $app = api_current_app();
+
+    log_activity(lang(array('string' => 'the glossary term "{var:1}" was removed', 'vars' => array($row['term']))), (string) ($app['name'] ?? 'API'));
+
+    api_ok(array('id' => $id, 'deleted' => true));
+}
+
+/* ---------------------------------------------------------------------------
+   Updates
+   --------------------------------------------------------------------------- */
+
+/**
+ * Why an update cannot be started over the API with a language's engine, or
+ * null when it can. "By hand" and the CSV import send nothing; a browser
+ * engine translates only while the Translations screen is open. Pure.
+ *
+ * @param string     $engine site_languages.engine
+ * @param array|null $spec   pg_tr_engine($engine)
+ * @return array|null array(code, message)
+ */
+function translate_api_update_refusal($engine, $spec)
+{
+    if (!is_array($spec)) {
+        return array('engine_not_ready', lang('The engine is not known.'));
+    }
+
+    $kind = (string) ($spec['kind'] ?? '');
+
+    if ($kind === 'panel') {
+        return array('translated_by_hand', lang('This language is translated by hand: no engine takes its texts. Write them with POST /translations.'));
+    }
+
+    if ($kind === 'browser') {
+        return array('engine_in_browser', lang('This language\'s engine runs in the browser and translates only while the Translations screen is open.'));
+    }
+
+    if (empty($spec['ready'])) {
+        $reason = trim((string) ($spec['reason'] ?? ''));
+
+        return array('engine_not_ready', ($reason !== '') ? $reason : lang('The engine is not ready.'));
+    }
+
+    return null;
+}
+
+function translate_api_update_present($job)
+{
+    return array(
+        'id'          => (int) $job['id'],
+        'language'    => (string) $job['language'],
+        'scope'       => (string) $job['scope'],
+        'engine'      => (string) $job['engine'],
+        'status'      => (string) $job['status'],
+        'open'        => pg_tr_activity_open($job['status']),
+        'total'       => (int) $job['total'],
+        'translated'  => (int) $job['done_count'],
+        'failed'      => (int) $job['failed_count'],
+        'error'       => (string) $job['error'],
+        'started_by'  => (int) $job['created_by'],
+        'created_at'  => api_time($job['created_at']),
+        'finished_at' => ((int) $job['finished_at'] > 0) ? api_time($job['finished_at']) : null,
+    );
+}
+
+// What translate_api_update_present() returns.
+function translate_api_update_schema()
+{
+    return array(
+        'id'          => 'integer',
+        'language'    => 'string',
+        'scope'       => 'string',
+        'engine'      => 'string',
+        'status'      => 'string',
+        'open'        => 'boolean',
+        'total'       => 'integer',
+        'translated'  => 'integer',
+        'failed'      => 'integer',
+        'error'       => 'string',
+        'started_by'  => 'integer',
+        'created_at'  => 'datetime',
+        'finished_at' => 'datetime?',
+    );
+}
+
+// What translate_api_updates_get() answers with.
+function translate_api_update_detail_schema()
+{
+    return translate_api_update_schema() + array(
+        'skipped'      => 'integer',
+        'failed_texts' => array(array('hash' => 'string', 'source' => 'string', 'error' => 'string')),
+    );
+}
+
+// What translate_api_updates_start() answers with.
+function translate_api_update_start_schema()
+{
+    return array(
+        'scope'   => 'string',
+        'engine'  => 'string',
+        'pending' => 'integer',
+        'update'  => 'TranslationUpdate?',
+    );
+}
+
+/**
+ * An update of a target language, or a 404.
+ */
+function translate_api_update_or_404($id)
+{
+    $job = pg_tr_job_get((int) $id);
+
+    if (!$job || ((string) $job['language'] === pg_tr_source_language())) {
+        api_fail_not_found(lang('Update'));
+    }
+
+    return $job;
+}
+
+function translate_api_updates_list($params)
+{
+    translate_api_boot();
+
+    $row = translate_api_language_or_422($params['language']);
+    $limit = (int) ($params['limit'] ?? 20);
+    $where = "language = '" . e((string) $row['code']) . "'";
+    $condition = pg_tr_activity_filter_sql((string) ($params['status'] ?? 'all'));
+
+    if ($condition !== '') {
+        $where .= ' AND ' . $condition;
+    }
+
+    if (!empty($params['cursor'])) {
+        $cursor = api_cursor_decode($params['cursor']);
+
+        if ($cursor === null) {
+            api_fail(400, 'invalid_cursor', lang('The cursor could not be read.'), 'cursor');
+        }
+
+        $where .= ' AND id < ' . (int) $cursor['i'];
+    }
+
+    $rows = db_items("SELECT * FROM translation_jobs WHERE $where ORDER BY id DESC LIMIT " . ($limit + 1));
+    $rows = is_array($rows) ? $rows : array();
+    $next = null;
+
+    if (count($rows) > $limit) {
+        array_pop($rows);
+        $last = end($rows);
+        $next = api_cursor_encode((int) $last['id'], (int) $last['id']);
+    }
+
+    $out = array();
+
+    foreach ($rows as $job) {
+        $out[] = translate_api_update_present($job);
+    }
+
+    api_ok_list($out, $limit, $next);
+}
+
+function translate_api_updates_get($params)
+{
+    translate_api_boot();
+
+    $job = translate_api_update_or_404($params['id']);
+    $detail = pg_tr_activity_job_detail((int) $job['id'], (string) $job['language']);
+
+    if (!$detail) {
+        api_fail_not_found(lang('Update'));
+    }
+
+    $failed = array();
+
+    foreach ($detail['failed'] as $text) {
+        $failed[] = array('hash' => $text['hash'], 'source' => $text['source'], 'error' => $text['error']);
+    }
+
+    api_ok(translate_api_update_present($detail['job']) + array(
+        'skipped'      => (int) $detail['skipped'],
+        'failed_texts' => $failed,
+    ));
+}
+
+function translate_api_updates_start($params)
+{
+    translate_api_boot();
+
+    $row = translate_api_language_or_422($params['language']);
+    $language = (string) $row['code'];
+    $scope = translate_api_scope_of($params);
+    $engine = (string) $row['engine'];
+    $refusal = translate_api_update_refusal($engine, pg_tr_engine($engine));
+
+    if ($refusal !== null) {
+        api_fail(409, $refusal[0], $refusal[1]);
+    }
+
+    $open = (int) db_value("SELECT id FROM translation_jobs
+        WHERE language = '" . e($language) . "' AND scope = '" . e($scope) . "' AND status IN ('queued', 'sent', 'running')
+        ORDER BY id DESC LIMIT 1");
+
+    if ($open > 0) {
+        api_fail(409, 'update_running', lang(array('string' => 'An update of this scope is still open ({var:1}). Follow it with GET /translations/updates/{var:1}.', 'vars' => array($open))));
+    }
+
+    // A rehearsal reads nothing off the pages: what is pending as last read.
+    if (api_dry_run_requested()) {
+        $pending = (($scope === 'group:ui') && pg_tr_ui_has_file($language)) ? array() : pg_tr_pending_string_ids($language, pg_tr_scope_owners($scope));
+    }
+
+    api_dry_run_stop('started', 'translation_update', array(
+        'language' => $language,
+        'scope'    => $scope,
+        'engine'   => $engine,
+        'pending'  => isset($pending) ? count($pending) : 0,
+    ));
+
+    $app = api_current_app();
+    $result = pg_tr_update($language, $scope, (int) ($app['owner']['id'] ?? 0));
+
+    if (!$result['ok']) {
+        api_fail(409, 'engine_not_ready', (string) $result['error']);
+    }
+
+    if (!empty($result['job_id'])) {
+        log_activity(lang(array('string' => 'translations were updated ({var:1}, {var:2} text(s) sent)', 'vars' => array($language, $result['pending']))), (string) ($app['name'] ?? 'API'));
+    }
+
+    $job = !empty($result['job_id']) ? pg_tr_job_get((int) $result['job_id']) : null;
+
+    api_ok(array(
+        'scope'   => $scope,
+        'engine'  => (string) $result['engine'],
+        'pending' => (int) $result['pending'],
+        'update'  => $job ? translate_api_update_present($job) : null,
+    ));
 }
 
 /* ---------------------------------------------------------------------------
