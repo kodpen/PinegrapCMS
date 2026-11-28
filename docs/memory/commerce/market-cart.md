@@ -26,7 +26,8 @@ module: market_cart
 - `submit_order.php` calls `pg_market_cart_seal()` before the payment (not on a payment's return): `charged_rate` from the rate the lines were priced at in that request.
 
 ## What is left after this PR (#12208)?
-- Gift cards and store credit spent at the order's rate, a contact group's minimum order converted, and the payment drivers charging the order's currency (MK7, MK8). Until then a gift card's base balance is taken as units of the cart's currency and a driver is asked for the figure in the base currency.
+- Gift cards and store credit spent at the order's rate and a contact group's minimum order converted. Until then a gift card's base balance is taken as units of the cart's currency.
+- Stripe charges the order's currency (MK7, `market-payment-methods.md`); PayPal, PayTR and iyzico are not offered to such an order until MK8.
 - Product prices shown inside a cart page outside its lines (an upsell's product, a quick-add list) are base figures printed in the cart's currency.
 
 ## Tests?
