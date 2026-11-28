@@ -22,6 +22,6 @@ description: A support request's priority and source on its mail conversation (h
 - List row: a plain label Form, Live chat or My Account (the row is a link, so no link inside). Reading pane head: "Opened from" and the label; Form opens `edit_submitted_form.php?id=`, Live chat opens the chat in the panel's chat window (`data-ws-mail-source-chat`, `pgChatOpenConversation()`). Mail, WhatsApp and SMS draw none (the transport badge says the last two).
 
 ## Tests?
-- `tests/workspace_mail_priority_test.php`; the box form's names in `tests/workspace_mail_drawer_test.php`. The step, the save, the list and the pane against a database and in a browser were not run in the cloud session (PR #12216).
+- `tests/workspace_mail_priority_test.php`; the box form's names in `tests/workspace_mail_drawer_test.php`. The step, the save, the list and the pane against a database and in a browser were not run in the cloud session (PR #12218).
 
 Related: docs/memory/workspace/mail-list.md, docs/memory/workspace/mail-status.md, docs/memory/workspace/mail-resolve-by.md, docs/memory/workspace/support-form-request.md
