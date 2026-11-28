@@ -214,6 +214,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-12.md: Shipment write path: the two rules? (#3839)
 - decisions-made-product-120.md: Where are the rules and the earlier parts?
 - decisions-made-product-120.md: Which way do documents, tables and presentations go? (owner, 2026-11-28, agent channel poll 256, message 15450)
+- decisions-made-product-121.md: Where are the rules and the earlier parts?
+- decisions-made-product-121.md: What is the document family called? (owner, 2026-11-28, agent channel poll 257, message 15514)
+- decisions-made-product-121.md: Under which licence is the family? (owner, 2026-11-28, agent channel message 15519; poll 258, message 15520)
 - decisions-made-product-13.md: Where are the rules and the earlier parts?
 - decisions-made-product-13.md: Does the Site Settings list get group headings? (#3879)
 - decisions-made-product-13.md: Do Workspace notes get a read-only secret-address feed? (#3880)
@@ -1210,6 +1213,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - commerce/wholesale.md: Wholesale selling (J1 to J11, built 2026.11.0): offers for a contact group, quantity prices on a product page, an ERP account using another's prices, a minimum order; no table, no Wholesale switch
 - core/application-review-my-reviews.md: "My reviews" (AR3b): opened by programme membership with no Forms right, the queue, the scoring screen, blind review, "I know this applicant", reminders 3 and 1 days before a round's end
 - core/application-review.md: Application review desk, the binding rules and what it covers (owner 2026-11-20, poll 196): V1 to V16 with the PR of each, what is left out, the words on screen
+- core/artifacts-family-licence.md: Which licence a file of the Pinegrap Artifacts family carries (owner 2026-11-28): the editors' licence for a file written from that day on, MIT for the files of Notes and Data tables written before
 - core/audiences-overview.md: Contact groups filled by rules as a whole (owner 2026-11-02): why they exist, the decisions that bind them, and which file holds each part (rules, recompute, editor, doors, token, joined triggers)
 - core/audit-trail-contacts.md: Contacts in audit_log (#2170, #2246, #2620, #2643, #2768): which panel, API, import, İYS, Workspace, storefront, job, merge paths write a line, the label, erasure
 - core/audit-trail-stored-values.md: What audit_log leaves out of before/after, how secrets are masked (by name, inside JSON text), how JSON text and long values are stored, what the audit screen must expect
