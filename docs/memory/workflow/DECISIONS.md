@@ -818,6 +818,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-54.md: Where are the accounting sync's queue and pairing kept? (owner, 2026-11-27, agent channel poll 250, message 14911)
 - decisions-made-schema-55.md: Where are the rules and the earlier parts?
 - decisions-made-schema-55.md: Which columns does automatic tax add? (owner, 2026-11-27, agent channel poll 248, message 14894)
+- decisions-made-schema-56.md: Where are the rules and the earlier parts?
+- decisions-made-schema-56.md: Which column do files sent together get? (owner, 2026-11-28, agent channel poll 255, message 15447)
 - decisions-made-schema-6.md: Where are the rules and the earlier steps?
 - decisions-made-schema-6.md: Which schema was approved on 2026-10-30 (midday)?
 - decisions-made-schema-6.md: Which schema was approved on 2026-10-30 (afternoon)?
