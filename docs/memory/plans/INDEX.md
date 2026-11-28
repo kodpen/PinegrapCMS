@@ -34,6 +34,8 @@
 - design-template-own-looks-order.md: Order of the polishing round after Launch: every shipped template's family and pages steps, in which order, and where each template stands
 - design-template-own-looks.md: Plan (owner 2026-11-07): block families in their own source files (B0), Launch as an Apple-like product page (L1-L3), then a polishing round for every template
 - designer-use-round.md: Plan (owner 2026-11-26): the Page Design Studio's features of 2026-11 used in a browser as a first-time person, their faults fixed, their look brought to the chrome's rules; steps UR1 to UR8
+- document-family-pptx-preview.md: Plan document-family, in words: the .pptx preview with the tabs Slides and Text, the strip of thumbs, the slide, the line on what was left out, its buttons and limits
+- document-family.md: Plan (owner 2026-11-28, poll 256): own types in the centre, Office files the bridge: the .pptx preview drawn as slides by the canvas's renderer, then one window head; steps DF1 to DF4
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-open-work.md: Paraşüt work left after the staging round of 2026-11-27 and its six fixes: what staging could not try, the decisions #2440-#2442, the queue worker, incoming e-invoices; where to start
 - github-channel-connection.md: Plan (owner 2026-11-08): connect GitHub with OAuth from Settings › Connections, the site sets its own webhook on chosen repositories and writes CI, pull request and label lines into a channel

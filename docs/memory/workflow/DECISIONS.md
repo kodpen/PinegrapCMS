@@ -211,6 +211,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-12.md: Does a screen's toolbar stick on phones? (#3837)
 - decisions-made-product-12.md: Trendyol Luxe listings? (#3838)
 - decisions-made-product-12.md: Shipment write path: the two rules? (#3839)
+- decisions-made-product-120.md: Where are the rules and the earlier parts?
+- decisions-made-product-120.md: Which way do documents, tables and presentations go? (owner, 2026-11-28, agent channel poll 256, message 15450)
 - decisions-made-product-13.md: Where are the rules and the earlier parts?
 - decisions-made-product-13.md: Does the Site Settings list get group headings? (#3879)
 - decisions-made-product-13.md: Do Workspace notes get a read-only secret-address feed? (#3880)
@@ -1458,6 +1460,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - platform/messages-area-sends-speed.md: How fast Communication › Sends reads 500,000 rows a queue (MA2 #9252, MA2b #9275): the architect's 300 ms, keyset bounds per branch, measured batches, the slow search and heading sorts left open
 - platform/messages-area-sends.md: Communication › Sends (MA2 #9252, MA2b #9275, WA2b #9409): the list of six branches, row ids, filters, buttons, e-mail sources, measured batch times, what the old queue screen left to it
 - platform/notification-channels.md: Chat notification channels (includes/fn/notify_channels.php): Slack, Teams and Telegram targets, the pure builders, the settings card and the Test button
+- platform/office-direction.md: Where Office files stand in the product (owner 2026-11-28): the own types (note, table, canvas) are the centre, Office files the way in and out; in-place editing is not grown further
 - platform/office-files-scope.md: How far the own Word and Excel code goes: what is edited (simple formulas too), only shown, never built (charts, pivots, layout, other formulas), the rules every edit keeps
 - platform/office-files.md: Word and Excel previews (includes/fn/office.php, pg_office_view.js): read on the server without a library, drawn in the file manager and the Workspace; limits, security, what is not read
 - platform/office-overview.md: Start file for the office-* files: Office files shown and edited by own code in the File Manager and channels; decisions, parts by screen label, which file holds what

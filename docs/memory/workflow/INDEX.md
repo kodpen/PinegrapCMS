@@ -233,6 +233,7 @@
 - decisions-made-product-118.md: Decisions made, product part 118 (2026-11-27 on): panel languages start with the mechanism and German; a touched old screen is brought to the look; a new setting sits beside its kin
 - decisions-made-product-119.md: Decisions made, product part 119 (2026-11-27 on): US sales tax is not built for now; automatic tax stays the EU's rates and the one-stop-shop report
 - decisions-made-product-12.md: Decisions list, product part 12 (2026-10-31 on): ERP settings cards for role 3, Trendyol address order, old n11 rows data step, phone toolbar, Trendyol Luxe, shipment rules confirmed
+- decisions-made-product-120.md: Decisions made, product part 120 (2026-11-28 on): documents, tables and presentations are the product's own types (note, table, canvas); Office files are the way in and out
 - decisions-made-product-13.md: Decisions list, product part 13 (2026-10-31 on): Site Settings group headings, no notes secret feed, no hint on forgot password, IIS preflight nudge
 - decisions-made-product-14.md: Decisions list, product part 14 (2026-10-31 on): own image editor, nothing alone under a screen's title, no PDF of ours for a purchase invoice, Site Settings regrouped
 - decisions-made-product-15.md: Decisions list, product part 15 (2026-10-31 on): affiliate commission voided on cancel; image editor redacted save, retention, site button, SVG animation; P7 api2 key; cash tills never below zero
