@@ -124,7 +124,7 @@ function translate_api_routes()
                 array('name' => 'language', 'in' => 'query', 'type' => 'string', 'max_length' => 16, 'required' => true, 'description' => 'A target language code, from GET /translations/languages.'),
                 array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('all', 'pending', 'machine', 'reviewed', 'suspicious'), 'default' => 'all', 'description' => 'pending has no translation yet, machine was translated by an engine and not reviewed, reviewed was checked by a person, suspicious was flagged by the check.'),
                 array('name' => 'page_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the texts of this page, its title and description included.'),
-                array('name' => 'group', 'in' => 'query', 'type' => 'enum', 'values' => array('catalog', 'forms'), 'description' => 'Only the products and product groups (catalog), or only the forms (forms).'),
+                array('name' => 'group', 'in' => 'query', 'type' => 'enum', 'values' => array('catalog', 'forms', 'pictures', 'ui'), 'description' => 'Only the products and product groups (catalog), the forms (forms), the texts of pictures a page in another language has shown (pictures, the screen\'s Images) or the cookie window (ui), which the whole site leaves out.'),
                 array('name' => 'search', 'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Looks in the source text and the translation.'),
                 array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200),
                 array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 200, 'default' => 100),
