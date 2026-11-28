@@ -439,8 +439,8 @@ function pg_import_wix_images($cell)
 }
 
 /**
- * An amount cell in minor units, null when empty or not an amount. Pure
- * but for the price reader's file.
+ * An amount cell in minor units, null when empty or not an amount, read by
+ * the product import's price reader. Pure but for the price reader's file.
  *
  * @param string $cell
  * @return int|null
@@ -451,9 +451,11 @@ function pg_import_wix_cents($cell)
         require_once(PG_FUNCTIONS_DIR . '/product_builder.php');
     }
 
-    $figure = pg_import_squarespace_figure($cell);
+    $cell = trim((string) $cell);
 
-    return ($figure !== '') ? pg_products_import_price_cents($figure) : null;
+    // Read as the product import reads a typed price: a thousands
+    // separator, a decimal comma and a currency sign or code.
+    return ($cell !== '') ? pg_products_import_price_cents($cell) : null;
 }
 
 /**
@@ -497,10 +499,16 @@ function pg_import_wix_discounted($cents, $mode, $value)
  */
 function pg_import_wix_stock($cell)
 {
-    $cell = pg_import_wix_column($cell);
+    $cell = trim((string) $cell);
 
-    if ($cell === 'outofstock') {
+    if (pg_import_wix_column($cell) === 'outofstock') {
         return 0;
+    }
+
+    // The count as written: its decimal point and minus sign kept, a comma
+    // grouping thousands dropped.
+    if (preg_match('/^\d{1,3}(,\d{3})+$/', $cell)) {
+        $cell = str_replace(',', '', $cell);
     }
 
     return is_numeric($cell) ? max(0, (int) $cell) : null;
@@ -690,7 +698,8 @@ function pg_import_wix_product($rows, $line)
  * A variant's price and compare-at price in minor units. The current
  * layout: its own price and strikethrough price, else the product's, the
  * strikethrough price above the price the compare-at. The previous one: the product's price plus
- * the variant's surcharge (or the variant's own price), less the product's
+ * the variant's surcharge, which a cheaper variant has below zero (or the
+ * variant's own price), never below zero, less the product's
  * discount, the price before the discount the compare-at. 'refused' names
  * a cell that is not an amount. Pure but for the price reader's file.
  *
@@ -717,7 +726,13 @@ function pg_import_wix_money($product, $row, $previous)
             continue;
         }
 
-        $cents[$part] = pg_import_wix_cents($cell);
+        // A variant cheaper than its product has a negative surcharge.
+        $minus = ($part === 'surcharge') && (strncmp($cell, '-', 1) === 0);
+        $cents[$part] = pg_import_wix_cents($minus ? substr($cell, 1) : $cell);
+
+        if ($minus && ($cents[$part] !== null)) {
+            $cents[$part] = -$cents[$part];
+        }
 
         if ($cents[$part] === null) {
             $money['refused'] = lang(array('string' => 'The price {var:1} is not an amount.', 'vars' => array($cell)));
@@ -731,7 +746,7 @@ function pg_import_wix_money($product, $row, $previous)
     }
 
     if ($previous) {
-        $full = $cents['price'] + (int) $cents['surcharge'];
+        $full = max(0, $cents['price'] + (int) $cents['surcharge']);
         $money['price'] = pg_import_wix_discounted($full, (string) ($product['discountmode'] ?? ''), (string) ($product['discountvalue'] ?? ''));
         $money['compare_at'] = ($money['price'] < $full) ? $full : null;
 

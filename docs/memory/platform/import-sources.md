@@ -14,7 +14,7 @@ module: importers
 - `pg_import_detect_kind()` (pure) reads the first 8 KB, a BOM dropped; the first test that holds wins, so a new reader's test goes where it cannot catch an earlier kind's file.
 - 1. An RSS with `wordpress.org/export/`: `squarespace` when the text says "squarespace", else `wordpress`.
 - 2. CSV header, cells lower case: `handle` + `body (html)`, or the name columns + `accepts (email) marketing` → shopify. 3. `id`, `type`, `sku`, `regular price` → woocommerce.
-- 4. `product page` + `product url`, or the name columns + `customer since` → squarespace. 5. `product handle` + `variant price`; a two-cell `source,target` or `/old,new` line; `item id` + `slug` → webflow.
+- 4. `product page` + `product url`, or the name columns + `customer since` → squarespace. 5. `product handle` + `variant price`; a two-cell `source,target` (also `old path,new path`, `from,to`, `redirect from,redirect to`) or `/old,new` line; `item id` + `slug` → webflow.
 - 6. `id` + `owner`, or `id` + `created date` + `updated date`; `handle`/`handleid` + `fieldtype`; `first name` or `last name` with `labels` or an e-mail subscriber/subscription status → wix.
 - No match: the upload is refused. A reader with several files decides again itself (`webflow_file`, `wix_file` in the cursor; none means a collection).
 

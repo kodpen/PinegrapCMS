@@ -430,8 +430,9 @@ function pg_import_webflow_money($row)
             continue;
         }
 
-        $figure = pg_import_squarespace_figure($cell);
-        $cents = ($figure !== '') ? pg_products_import_price_cents($figure) : null;
+        // Read as the product import reads a typed price: a thousands
+        // separator, a decimal comma and a currency sign or code.
+        $cents = pg_products_import_price_cents($cell);
 
         if ($cents === null) {
             $money['refused'] = lang(array('string' => 'The price {var:1} is not an amount.', 'vars' => array($cell)));

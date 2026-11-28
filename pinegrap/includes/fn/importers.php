@@ -171,9 +171,10 @@ function pg_import_detect_kind($head)
         return 'webflow';
     }
 
-    // Webflow's 301 redirects: two cells, a source and target header or an
-    // old path and a new address.
-    if ((count($cells) === 2) && ((($cells[0] === 'source') && ($cells[1] === 'target'))
+    // Webflow's 301 redirects: two cells, a source and target header (the
+    // ones pg_import_webflow_redirect_header() reads) or an old path and a
+    // new address.
+    if ((count($cells) === 2) && ((in_array($cells[0], array('source', 'old path', 'from', 'redirect from'), true) && in_array($cells[1], array('target', 'new path', 'to', 'redirect to'), true))
         || ((strpos($cells[0], '/') === 0) && preg_match('#^(/|https?://)#', $cells[1])))) {
         return 'webflow';
     }

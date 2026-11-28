@@ -25,4 +25,5 @@ module: importers
 
 ## How does a cell go into its field?
 - `pg_import_record_column_rows()` (pure, `write_record.php`). Rich text area: HTML through `pg_import_media_localize()` and the staff cleaner, a plain cell as an escaped paragraph; text area/box: plain text; e-mail and date: the value or a note; file upload: the cell's first web address fetched (`pg_import_media_fetch()`), a failure a note.
+- A date field keeps the day the cell names, read in the cell's own zone (`pg_import_collection_date()`): Webflow and Wix write a date as midnight UTC, the day before west of UTC (#12247). A date and time is shown in the site zone.
 - Check box, pick list, radio: names from a JSON list, else cut at `;`, else `,` (a one-choice field reads the whole cell), matched like categories; a lone check box takes `true`/`yes`. A reference column stays text: pair it with a text field.
