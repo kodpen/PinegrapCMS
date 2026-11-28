@@ -300,6 +300,9 @@ StyleDesigner.definePart('tour', function (K) {
 
     function showCard() {
         var content = access() === 'content';
+        // A narrow window has no palette on the screen: the tour skips its
+        // stop, and the card promises the four the tour will show.
+        var fewer = !content && M.shown(M.stops('full'), has).length < 5;
         var card = document.createElement('div');
         card.className = 'sd-tour-card' + (phone() ? ' is-sheet' : '') + (reduced() ? '' : ' is-fading');
         card.setAttribute('role', 'region');
@@ -308,7 +311,7 @@ StyleDesigner.definePart('tour', function (K) {
             '<span class="sd-tour-card-ic bi bi-signpost-2" aria-hidden="true"></span>' +
             '<div class="sd-tour-card-body">' +
                 '<div class="sd-tour-card-title" role="status">' + esc(_sdT('New here? A one-minute tour')) + '</div>' +
-                '<div class="sd-tour-card-line">' + esc(content ? _sdT('Three stops on what you can change.') : _sdT('Five stops on the real buttons.')) + '</div>' +
+                '<div class="sd-tour-card-line">' + esc(content ? _sdT('Three stops on what you can change.') : (fewer ? _sdT('Four stops on the real buttons.') : _sdT('Five stops on the real buttons.'))) + '</div>' +
                 '<div class="sd-tour-btns">' +
                     '<button type="button" class="sd-btn sd-btn-primary" data-sd-tour="start">' + esc(_sdT('Start')) + '</button>' +
                     '<button type="button" class="sd-btn" data-sd-tour="later">' + esc(_sdT('Not now')) + '</button>' +
@@ -330,8 +333,16 @@ StyleDesigner.definePart('tour', function (K) {
         }
     }
 
+    // The Escape the card or the tour takes is theirs alone: the editor's
+    // own Escape (clear the selection, close the Prototype view) would
+    // otherwise run on the same press.
+    function ownEscape(e) {
+        e.preventDefault();
+        if (e.stopPropagation) e.stopPropagation();
+    }
+
     function onCardKey(e) {
-        if (e.key === 'Escape' && escapeIsOurs()) closeCard();
+        if (e.key === 'Escape' && escapeIsOurs()) { ownEscape(e); closeCard(); }
     }
 
     function onCardResize() {
@@ -380,7 +391,7 @@ StyleDesigner.definePart('tour', function (K) {
         if (!at) { if (!how) finish(); return false; }
         var t = S.tour = {
             list: list, at: at, back: back, hidden: false, timer: 0, key: '', how: how, docs: [],
-            sig: '', wait: -1, scrolled: -1,
+            sig: '', wait: -1, scrolled: -1, pending: false, spoken: '',
             ring: document.createElement('div'), bubble: document.createElement('div')
         };
         t.ring.className = 'sd-tour-ring' + (reduced() ? '' : ' is-gliding');
@@ -468,7 +479,7 @@ StyleDesigner.definePart('tour', function (K) {
     }
 
     function onTourKey(e) {
-        if (e.key === 'Escape' && S.tour && escapeIsOurs()) finish();
+        if (e.key === 'Escape' && S.tour && escapeIsOurs()) { ownEscape(e); finish(); }
     }
 
     function go(dir) {
@@ -531,6 +542,13 @@ StyleDesigner.definePart('tour', function (K) {
         var last = how ? t.at.i === t.list.length - 1 : !M.move(t.list, t.at.i, 1, has);
         var words = how ? [taskName(how) + '.', pointerText(t.at.id)] : sentence(t.at.id);
         var count = (how ? _sdT('How do I · {n} of {total}') : _sdT('Tour · {n} of {total}')).replace('{n}', String(place + 1)).replace('{total}', String(total));
+        // A redraw takes the focused button away with the old markup: the
+        // focus comes back to the same button (Next and Done are one: the
+        // last stop's Next is Done), else to Next or Done.
+        var MAIN = '[data-sd-tour="next"], [data-sd-tour="done"]';
+        var had = t.bubble.contains(document.activeElement) && document.activeElement.getAttribute
+            ? document.activeElement.getAttribute('data-sd-tour') || 'next' : '';
+        if (had === 'done') had = 'next';
         var dots = '';
         for (var d = 0; d < total; d++) dots += '<i' + (d === place ? ' class="is-on"' : '') + '></i>';
         t.bubble.innerHTML =
@@ -547,15 +565,33 @@ StyleDesigner.definePart('tour', function (K) {
             '</div>' +
             '<span class="sd-tour-said" aria-live="polite"></span>';
         t.key = '';
+        if (had && !moved) {
+            var again = (had !== 'next' && t.bubble.querySelector('[data-sd-tour="' + had + '"]')) || t.bubble.querySelector(MAIN);
+            if (again) {
+                try { again.focus({ preventScroll: true }); } catch (e) { again.focus(); }
+            }
+        }
+        if (moved) {
+            // Read out whole: "Tour, 3 of 5. See it. Look at the page…"
+            t.spoken = (how ? _sdT('How do I, {n} of {total}.') : _sdT('Tour, {n} of {total}.')).replace('{n}', String(place + 1)).replace('{total}', String(total)) + ' ' + words[0] + ' ' + words[1];
+            t.pending = true;
+        }
         follow();
-        if (!moved) return;
+        // While a dialog is open (the Help window a task was chosen in is
+        // still closing) the bubble is hidden and can take no focus:
+        // follow() presents the stop once it shows.
+        if (moved && !t.hidden) present(t);
+    }
+
+    // Gives the stop's Next (or Done) the focus and reads the stop out.
+    function present(t) {
+        t.pending = false;
         var main = t.bubble.querySelector('[data-sd-tour="next"], [data-sd-tour="done"]');
         if (main) {
             try { main.focus({ preventScroll: true }); } catch (e) { main.focus(); }
         }
-        // Read out whole: "Tour, 3 of 5. See it. Look at the page…"
         var said = t.bubble.querySelector('.sd-tour-said');
-        var spoken = (how ? _sdT('How do I, {n} of {total}.') : _sdT('Tour, {n} of {total}.')).replace('{n}', String(place + 1)).replace('{total}', String(total)) + ' ' + words[0] + ' ' + words[1];
+        var spoken = t.spoken;
         setTimeout(function () { if (said.isConnected) said.textContent = spoken; }, 50);
     }
 
@@ -570,6 +606,15 @@ StyleDesigner.definePart('tour', function (K) {
             t.ring.hidden = wait;
             t.bubble.hidden = wait;
             t.key = '';
+            // Shown again with its stop not yet presented (it was drawn
+            // while a dialog was closing): the focus the tour started from
+            // was inside that dialog, so the end goes back to where the
+            // dialog gave it instead.
+            if (!wait && t.pending) {
+                var a = document.activeElement;
+                if (t.back && t.back.closest && t.back.closest('dialog, [aria-modal="true"]') && a && a !== document.body && !own(a)) t.back = a;
+                present(t);
+            }
         }
         if (wait) return;
         // The control went away: its stop's other control, else the next

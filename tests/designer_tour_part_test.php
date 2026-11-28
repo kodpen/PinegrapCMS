@@ -101,8 +101,9 @@ El.prototype = {
         if (/sd-tour-card|sd-tour-bubble/.test(sel) && /sd-tour-(card|bubble)/.test(this.className)) return this;
         return null;
     },
-    contains: function (el) { return el === this; },
-    focus: function () { document.activeElement = this; },
+    contains: function (el) { for (; el; el = el.parentNode) if (el === this) return true; return false; },
+    // A hidden element, or one inside a hidden element, takes no focus.
+    focus: function () { for (var p = this; p; p = p.parentNode) if (p.hidden) return; document.activeElement = this; },
     getClientRects: function () { return this.box ? [1] : []; },
     getBoundingClientRect: function () {
         var b = this.box || [0, 0, 0, 0];
@@ -150,8 +151,10 @@ var window = {
 var getComputedStyle = window.getComputedStyle;
 function requestAnimationFrame(f) { return setTimeout(f, 16); }
 function key(name) {
-    var e = { key: name, target: document.activeElement || document.body, defaultPrevented: false, preventDefault: function () { this.defaultPrevented = true; } };
+    var e = { key: name, target: document.activeElement || document.body, defaultPrevented: false, stopped: false,
+        preventDefault: function () { this.defaultPrevented = true; }, stopPropagation: function () { this.stopped = true; } };
     fire(document, 'keydown', e);
+    return e;
 }
 function press(sel) {
     var e = { target: controls[sel], type: 'click' };
@@ -334,4 +337,129 @@ JS
 
 	pg_assert_true($res['last'], 'a row below the fold of its list is a stop, not skipped');
 	pg_assert_same(array('#sd-snapshots-panel .sd-snap-item'), $res['scrolled'], 'it is scrolled into view once');
+}
+
+// A task started from the Help window starts while the window is still
+// closing: the bubble waits hidden, then takes the focus and is read out
+// once the window has gone, and the focus goes back to where the window
+// gave it at the end.
+function test_designer_tour_part_task_from_the_help_window_gets_the_focus()
+{
+	$res = designer_tour_part_node(<<<'JS'
+ctl('#sd-main-undo', [10, 4, 40, 34]);
+ctl('#sd-vb-snapshots', [50, 4, 80, 34]);
+var row = new El('button');
+row.parentNode = new El('dialog');
+row.parentNode.isDialog = true;
+row.closest = function (sel) { return /dialog/.test(sel) ? this.parentNode : null; };
+document.activeElement = row;
+dialogOpen = true;
+part.start('history');
+tick(100);
+var b = bubbleEl();
+var hiddenFocus = document.activeElement === row;
+dialogOpen = false;
+// The window gives the focus back to the "?" button that opened it.
+var opener = ctl('#sd-status-shortcuts', [1240, 778, 1270, 798]);
+opener.parentNode = document.body;
+document.activeElement = opener;
+tick(500);
+var main = b.querySelector('[data-sd-tour="next"], [data-sd-tour="done"]');
+var said = b.querySelector('.sd-tour-said').textContent || '';
+var mainFocused = document.activeElement === main;
+key('Escape');
+out = { hiddenFocus: hiddenFocus, mainFocused: mainFocused, focused: document.activeElement === opener ? 'opener' : 'other', said: said };
+JS
+	);
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_true($res['hiddenFocus'], 'no focus moves while the window is still closing');
+	pg_assert_true($res['mainFocused'], 'Next takes the focus once the window has gone');
+	pg_assert_true(strpos($res['said'], 'How do I, 1 of 3.') === 0, 'the pointer is read out once the window has gone');
+	pg_assert_same('opener', $res['focused'], 'the end gives the focus back to where the window gave it');
+}
+
+// A stop of another control that goes away while the focus is on the
+// bubble's Next redraws the count: the focus stays on the bubble's Next
+// instead of falling to the page with the old button.
+function test_designer_tour_part_redraw_keeps_the_focus()
+{
+	$res = designer_tour_part_node(<<<'JS'
+part.start();
+tick(10);
+next();
+var b = bubbleEl();
+var before = document.activeElement === b.querySelector('[data-sd-tour="next"], [data-sd-tour="done"]');
+// The window made narrow: the "find" stop's button goes away.
+ctl('#sd-status-shortcuts', null);
+tick(500);
+var main = b.querySelector('[data-sd-tour="next"], [data-sd-tour="done"]');
+out = { before: before, redrawn: bubble().indexOf('Tour · 2 of 4') !== -1, kept: document.activeElement === main };
+JS
+	);
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_true($res['before'], 'Next has the focus at the second stop');
+	pg_assert_true($res['redrawn'], 'the count is drawn again for four stops');
+	pg_assert_true($res['kept'], 'the focus stays on the bubble after the redraw');
+}
+
+// Escape that ends the tour or puts the card away is the tour's alone: it
+// does not go on to the editor, which would also clear the selection or
+// close the Prototype view with the same press. Escape meant for an open
+// menu is left to it.
+function test_designer_tour_part_escape_does_not_reach_the_editor()
+{
+	$res = designer_tour_part_node(<<<'JS'
+part.offer();
+tick(10);
+var cardKey = key('Escape');
+var cardGone = !card();
+part.start();
+tick(10);
+menuOpen = true;
+var menuKey = key('Escape');
+menuOpen = false;
+var tourKey = key('Escape');
+out = {
+    cardGone: cardGone, card: cardKey.stopped && cardKey.defaultPrevented,
+    menu: !menuKey.stopped && !menuKey.defaultPrevented,
+    tour: tourKey.stopped && tourKey.defaultPrevented && bubble() === ''
+};
+JS
+	);
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_true($res['cardGone'] && $res['card'], 'Escape that puts the card away stops there');
+	pg_assert_true($res['menu'], 'Escape for an open menu goes on to the menu');
+	pg_assert_true($res['tour'], 'Escape that ends the tour stops there');
+}
+
+// The card says how many stops the tour will show: four when the palette
+// is not on the screen (a narrow window), not the five of a wide one.
+function test_designer_tour_part_card_counts_the_stops_shown()
+{
+	$res = designer_tour_part_node(<<<'JS'
+ctl('#sd-components', null);
+part.offer();
+tick(10);
+var c = listeners.filter(function (l) { return l.type === 'click' && l.target.classList && l.target.classList.contains('sd-tour-card'); })[0];
+out = { html: c ? c.target.html : '' };
+JS
+	);
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_true(strpos($res['html'], 'Four stops on the real buttons.') !== false, 'the card promises the four stops shown: ' . $res['html']);
 }
