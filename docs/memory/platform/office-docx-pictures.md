@@ -15,7 +15,7 @@ module: office_docx_picture
 
 ## What is written?
 - The bytes as `word/media/imageN.png|jpeg|gif`, N the first no entry has (case ignored); the same bytes twice in a save are one part.
-- An image relationship of the main part (next free `rIdN`, strict type in a strict document), kept in the links' context so the rels part is written once (`office-docx-links.md`).
+- An image relationship of the main part (next free `rIdN`, strict type in a strict document), kept in the links' context so the rels part is written once (`office-docx-links.md`), with a numbering a kind adds in the same save (`pg_office_docx_rel_add()`). The content types build on the ones that kind changed.
 - A `Default` content type for the extension, before the overrides, only when `[Content_Types].xml` has none (case ignored); an extension already given another type gets an `Override` for the part. A content types part that cannot be read refuses the save as `unusual`.
 - A new paragraph after the anchor holding one `w:drawing` / `wp:inline` / `pic:pic` run, the namespaces declared on that paragraph. It takes only the anchor's alignment (`jc`), not its style or list: a picture is not a heading.
 - `docPr` id: one past the highest in the main part; name `Picture N`, `descr` the description.
