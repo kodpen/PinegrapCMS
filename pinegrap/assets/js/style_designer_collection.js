@@ -46,6 +46,12 @@ StyleDesigner.definePart('collection', function (K) {
 
     // ── Pure parts ──
 
+    // A value put into a sentence with String.replace(), kept as typed: a
+    // function's answer is not read for "$&", "$$" and the like.
+    function _ncLit(value) {
+        return function () { return String(value); };
+    }
+
     // An address made from a name: lower case, Turkish letters and letters
     // with a mark as the plain letter, a hyphen for every run of anything
     // else, at most 100 characters.
@@ -162,16 +168,16 @@ StyleDesigner.definePart('collection', function (K) {
         var link = function (m, text) { return '<a href="#" data-open="' + m.page_id + '">“' + esc(text) + '”</a>'; };
         var parts = [];
         if (isNew && made.collection) {
-            parts.push(esc(_sdT('the collection {c} with {n} fields')).replace('{c}', link(made.collection, coll.name)).replace('{n}', String(fields)));
+            parts.push(esc(_sdT('the collection {c} with {n} fields')).replace('{c}', _ncLit(link(made.collection, coll.name))).replace('{n}', String(fields)));
         }
-        if (made.list) parts.push(esc(_sdT('the list page {p}')).replace('{p}', link(made.list, made.list.title)));
-        if (made.detail) parts.push(esc(_sdT('the detail page {p}')).replace('{p}', link(made.detail, made.detail.title)));
+        if (made.list) parts.push(esc(_sdT('the list page {p}')).replace('{p}', _ncLit(link(made.list, made.list.title))));
+        if (made.detail) parts.push(esc(_sdT('the detail page {p}')).replace('{p}', _ncLit(link(made.detail, made.detail.title))));
         if (!parts.length) return '';
         var joined = parts.length === 1 ? parts[0]
             : parts.slice(0, -1).join(', ') + esc(_sdT(' and ')) + parts[parts.length - 1];
-        if (isNew) return esc(_sdT('Made {list}.')).replace('{list}', joined);
-        return esc(_sdT('Made {list} for the collection {c}.')).replace('{list}', joined)
-            .replace('{c}', link({ page_id: coll.page_id }, coll.name));
+        if (isNew) return esc(_sdT('Made {list}.')).replace('{list}', _ncLit(joined));
+        return esc(_sdT('Made {list} for the collection {c}.')).replace('{list}', _ncLit(joined))
+            .replace('{c}', _ncLit(link({ page_id: coll.page_id }, coll.name)));
     }
 
     // What a collection that is there reads as: "5 fields · 3 items · shown
@@ -179,7 +185,7 @@ StyleDesigner.definePart('collection', function (K) {
     function _ncCollMeta(c) {
         var pages = (c.pages || []).map(function (p) { return '“' + p + '”'; }).join(', ');
         return _sdT('{n} fields').replace('{n}', c.fields.length) + ' · ' + _sdT('{n} items').replace('{n}', c.items) + ' · ' +
-               (pages ? _sdT('shown on {pages}').replace('{pages}', pages) : _sdT('on no page yet'));
+               (pages ? _sdT('shown on {pages}').replace('{pages}', _ncLit(pages)) : _sdT('on no page yet'));
     }
 
     // ── State ──
@@ -249,17 +255,17 @@ StyleDesigner.definePart('collection', function (K) {
         h += '<label class="sd-nc-label" for="sd-nc-name">' + esc(_sdT('Name')) + '</label>' +
              '<input type="text" class="sd-nc-input" id="sd-nc-name" maxlength="100" autocomplete="off" value="' + esc(S.name) + '" placeholder="' + esc(_sdT('Teachers, Recipes, Projects…')) + '"' + (chk.taken ? ' aria-invalid="true"' : '') + '>';
         if (chk.taken) {
-            h += '<div class="sd-nc-bad" role="alert">' + esc(_sdT('A collection named “{name}” is there already.').replace('{name}', chk.taken.name)) +
+            h += '<div class="sd-nc-bad" role="alert">' + esc(_sdT('A collection named “{name}” is there already.').replace('{name}', _ncLit(chk.taken.name))) +
                  ' <button type="button" class="sd-nc-link" data-act="use">' + esc(_sdT('Use it')) + '</button></div>';
         }
         var n = S.fields.length + 1;
         h += '<div class="sd-nc-label sd-nc-fields-head">' + esc(_sdT('Fields')) + '<span class="sd-nc-count">' + esc(_sdT('{n} of {max}').replace('{n}', n).replace('{max}', MAX_FIELDS)) + '</span></div>' +
              '<ol class="sd-nc-fields">' +
-             '<li class="sd-nc-field sd-nc-locked"><span class="sd-nc-grip" aria-hidden="true"></span><input type="text" class="sd-nc-input sd-nc-fname" value="' + esc(_sdT('Title')) + '" readonly aria-label="' + esc(_sdT('Field {i} of {n}, {name}, {kind}').replace('{i}', 1).replace('{n}', n).replace('{name}', _sdT('Title')).replace('{kind}', _sdT('Text'))) + '">' +
+             '<li class="sd-nc-field sd-nc-locked"><span class="sd-nc-grip" aria-hidden="true"></span><input type="text" class="sd-nc-input sd-nc-fname" value="' + esc(_sdT('Title')) + '" readonly aria-label="' + esc(_sdT('Field {i} of {n}, {name}, {kind}').replace('{i}', 1).replace('{n}', n).replace('{name}', _ncLit(_sdT('Title'))).replace('{kind}', _ncLit(_sdT('Text')))) + '">' +
              '<span class="sd-nc-kind sd-nc-kind-fixed"><span class="bi bi-fonts" aria-hidden="true"></span>' + esc(_sdT('Text')) + '</span><span class="sd-nc-bin-gap"></span></li>';
         S.fields.forEach(function (f, i) {
             h += '<li class="sd-nc-field" data-f="' + i + '"><span class="sd-nc-grip bi bi-grip-vertical" draggable="true" aria-hidden="true"></span>' +
-                 '<input type="text" class="sd-nc-input sd-nc-fname" maxlength="100" value="' + esc(f.name) + '" aria-label="' + esc(_sdT('Field {i} of {n}, {name}, {kind}').replace('{i}', i + 2).replace('{n}', n).replace('{name}', f.name || '').replace('{kind}', _ncKindLabel(f.kind))) + '"' +
+                 '<input type="text" class="sd-nc-input sd-nc-fname" maxlength="100" value="' + esc(f.name) + '" aria-label="' + esc(_sdT('Field {i} of {n}, {name}, {kind}').replace('{i}', i + 2).replace('{n}', n).replace('{name}', _ncLit(f.name || '')).replace('{kind}', _ncLit(_ncKindLabel(f.kind)))) + '"' +
                  (chk.dup && String(f.name).trim().toLowerCase() === chk.dup.toLowerCase() ? ' aria-invalid="true"' : '') + '>' +
                  '<button type="button" class="sd-nc-kind" data-kind="' + i + '" aria-haspopup="listbox"><span class="bi ' + ICONS[f.kind] + '" aria-hidden="true"></span>' + esc(_ncKindLabel(f.kind)) + '<span class="bi bi-chevron-down ms-auto" aria-hidden="true"></span></button>' +
                  '<button type="button" class="sd-nc-bin" data-bin="' + i + '" title="' + esc(_sdT('Remove')) + '" aria-label="' + esc(_sdT('Remove')) + '"><span class="bi bi-trash" aria-hidden="true"></span></button>';
@@ -274,7 +280,7 @@ StyleDesigner.definePart('collection', function (K) {
             h += '</li>';
         });
         h += '</ol>';
-        if (chk.dup) h += '<div class="sd-nc-bad" role="alert">' + esc(_sdT('Two fields are named “{name}”.').replace('{name}', chk.dup)) + '</div>';
+        if (chk.dup) h += '<div class="sd-nc-bad" role="alert">' + esc(_sdT('Two fields are named “{name}”.').replace('{name}', _ncLit(chk.dup))) + '</div>';
         h += '<button type="button" class="sd-nc-add" data-act="add"' + (n >= MAX_FIELDS ? ' disabled' : '') + '><span class="bi bi-plus-lg" aria-hidden="true"></span>' + esc(_sdT('Add field')) + '</button>';
         h += '<p class="sd-nc-hint">' + esc(n >= MAX_FIELDS ? _sdT('Twelve fields here. More are added on the collection’s page afterwards.')
                                                            : _sdT('Every item has a Title: it is the item’s name in lists and makes its address.')) + '</p>';
@@ -297,7 +303,7 @@ StyleDesigner.definePart('collection', function (K) {
             if (bad && bad !== 'title') h += '<div class="sd-nc-bad" role="alert">' + esc(bad) + '</div>';
         });
         h += '<label class="sd-nc-label" for="sd-nc-group">' + esc(_sdT('Group')) + '</label><select class="sd-nc-input" id="sd-nc-group">' +
-             (isNew ? '<option value="new"' + (S.group === 'new' ? ' selected' : '') + '>' + esc(_sdT('{name} (a new group)').replace('{name}', c.name)) + '</option>' : '') +
+             (isNew ? '<option value="new"' + (S.group === 'new' ? ' selected' : '') + '>' + esc(_sdT('{name} (a new group)').replace('{name}', _ncLit(c.name))) + '</option>' : '') +
              S.host.groups().map(function (g) { return '<option value="' + esc(g.id) + '"' + (S.group === g.id ? ' selected' : '') + '>' + esc(g.name) + '</option>'; }).join('') +
              '<option value=""' + (S.group === '' ? ' selected' : '') + '>' + esc(_sdT('Other')) + '</option></select>' +
              '<p class="sd-nc-hint">' + esc(_sdT('The list page shows the items; an item opens on the detail page. Both are pages like any other afterwards.')) + '</p>';
@@ -314,8 +320,8 @@ StyleDesigner.definePart('collection', function (K) {
         if (a.toLowerCase() === String(other.name).trim().toLowerCase() && k === 'detail') return _sdT('The two pages have one address.');
         if (S.host.addresses().indexOf(a.toLowerCase()) !== -1 || Object.prototype.hasOwnProperty.call(S.taken, a)) {
             var owner = S.taken[a];
-            return owner ? _sdT('“/{addr}” is the address of the page “{page}”.').replace('{addr}', a).replace('{page}', owner)
-                         : _sdT('The address “/{addr}” is taken.').replace('{addr}', a);
+            return owner ? _sdT('“/{addr}” is the address of the page “{page}”.').replace('{addr}', _ncLit(a)).replace('{page}', _ncLit(owner))
+                         : _sdT('The address “/{addr}” is taken.').replace('{addr}', _ncLit(a));
         }
         return '';
     }
@@ -332,8 +338,8 @@ StyleDesigner.definePart('collection', function (K) {
         }
         var lines = _ncSteps().map(function (what) {
             var m = made[what], now = S.busy === what, fail = S.error && S.failed === what;
-            var label = what === 'collection' ? _sdT('The collection “{name}”').replace('{name}', c.name)
-                      : (what === 'list' ? _sdT('The list page “{name}”') : _sdT('The detail page “{name}”')).replace('{name}', S.pages[what].title);
+            var label = what === 'collection' ? _sdT('The collection “{name}”').replace('{name}', _ncLit(c.name))
+                      : (what === 'list' ? _sdT('The list page “{name}”') : _sdT('The detail page “{name}”')).replace('{name}', _ncLit(S.pages[what].title));
             var sub = what === 'collection' ? _sdT('{n} fields').replace('{n}', _ncDefs().length) : '/' + S.pages[what].name;
             return '<li class="sd-nc-made' + (m ? ' ok' : fail ? ' bad' : '') + '">' +
                    (m ? '<span class="bi bi-check-lg" aria-hidden="true"></span>' : now ? '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>'
@@ -392,7 +398,7 @@ StyleDesigner.definePart('collection', function (K) {
         var req = { what: what, style_id: h.styleId, draft: h.draft ? 1 : 0, collection_page_id: cid };
         var tree, cfg;
         if (what === 'collection') {
-            var title = _sdT('{name} collection').replace('{name}', c.name);
+            var title = _sdT('{name} collection').replace('{name}', _ncLit(c.name));
             req.collection = c.name;
             req.title = title;
             req.name = _ncFree(_ncSlug(title), h.addresses().concat([S.pages.list.name, S.pages.detail.name]));
@@ -467,8 +473,8 @@ StyleDesigner.definePart('collection', function (K) {
                 S.busy = false;
                 S.failed = what;
                 var name = what === 'collection' ? _sdT('The collection') : what === 'list' ? _sdT('The list page') : _sdT('The detail page');
-                S.error = _sdT('{thing} was not made: {why}. What was made stays.').replace('{thing}', name)
-                    .replace('{why}', String((err && err.message && !/fetch|network/i.test(err.message)) ? err.message : _sdT('the connection was lost')).replace(/\.$/, ''));
+                S.error = _sdT('{thing} was not made: {why}. What was made stays.').replace('{thing}', _ncLit(name))
+                    .replace('{why}', _ncLit(String((err && err.message && !/fetch|network/i.test(err.message)) ? err.message : _sdT('the connection was lost')).replace(/\.$/, '')));
                 _ncDraw();
                 _ncSay(S.error);
             });
@@ -569,7 +575,7 @@ StyleDesigner.definePart('collection', function (K) {
         var f = S.fields.splice(i, 1)[0];
         S.fields.splice(to, 0, f);
         _ncRedraw('[data-f="' + to + '"] .sd-nc-fname');
-        _ncSay(_sdT('{name}, place {i} of {n}').replace('{name}', f.name).replace('{i}', to + 2).replace('{n}', S.fields.length + 1));
+        _ncSay(_sdT('{name}, place {i} of {n}').replace('{name}', _ncLit(f.name)).replace('{i}', to + 2).replace('{n}', S.fields.length + 1));
     }
 
     function _ncKindMenu(i, anchor) {
