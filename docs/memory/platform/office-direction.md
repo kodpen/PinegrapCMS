@@ -12,6 +12,9 @@ description: Where Office files stand in the product (owner 2026-11-28): the own
 - Editing a Word or Excel file in place stays as built (`office-files-scope.md`). Its last plan has landed (the document's format, link, table and picture: `office-docx-overview.md`; simple formulas, `office-sheet-formulas.md`); nothing more is added there. This line is the architect's reading, told to the owner (agent channel message 15455).
 - A .pptx gets no viewer or editor of its own: it is drawn by the canvas's renderer and edited as a canvas (`plans/document-family.md`).
 
+## What is the family called?
+- Owner (2026-11-28, `workflow/decisions-made-product-121.md`): Pinegrap Artifacts. An umbrella name: the types keep their own names on the screens.
+- A file written for the family from that day on carries the owner's licence, not MIT (`core/artifacts-family-licence.md`).
+
 ## What is still open?
-- The family's name: asked of the owner once the shared window head is drawn.
-- One "New" menu (Document, Table, Canvas, Presentation): after the launch.
+- One "New" menu (Document, Table, Canvas, Presentation) under the family's name: after the launch.

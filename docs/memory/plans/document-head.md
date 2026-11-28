@@ -14,6 +14,7 @@ priority: 6
 - Each window keeps its body, its tool or format bar and its own save code. The canvas's Save split button and its menu stay as decided (`ui/image-editor-send.md`).
 - A note keeps the large title field on its sheet (`workspace/workspace-note-page.md`); the head shows the same name.
 - The foot with Save goes where the head now holds Save: the file window, a channel's Preview, a channel note's Edit window. Close asks while there are unsaved changes, in the look's confirm dialog.
+- The part's script is a new file of the family (owner, 2026-11-28): it carries the editors' licence header and is listed in `license-editors.txt` (`core/artifacts-family-licence.md`).
 - No schema. Words a window has today are kept; the state's words are the note's ("Saving…", "Unsaved", "Saved").
 
 ## Which steps? (S under 400 product lines, M about 1,000)
@@ -28,4 +29,4 @@ priority: 6
 ## What is left out?
 - One "New" menu and the conversions: after the launch (`platform/office-direction.md`).
 - The flow canvas, the code editor and the designer: not of the family.
-- The family's name: the architect asks the owner; no step waits for it.
+- The family's name, Pinegrap Artifacts (`workflow/decisions-made-product-121.md`): no screen of this plan shows it.

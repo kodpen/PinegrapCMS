@@ -27,7 +27,7 @@ priority: 6
 - DF4 (S) Census of heads: what the windows of a note, a table, the canvas, a Word file, an Excel file and Quick Look hold in their heads today (name, save state, undo, share, download, the ⋯ menu), in which order and by which code, as `document-family-census-heads.md`. The shared head drawn from it and its steps: `plans/document-head.md`.
 
 ## What waits until after the launch?
-- A Word file opened as a Note, a Note saved as a Word file, a canvas saved as a .pptx, one "New" menu, the family's name (`platform/office-direction.md`).
+- A Word file opened as a Note, a Note saved as a Word file, a canvas saved as a .pptx, one "New" menu under the family's name, Pinegrap Artifacts (`platform/office-direction.md`).
 
 ## What is left out?
 - More in-place editing of Word and Excel files than is built (`platform/office-docx-overview.md`, `office-sheet-formulas.md`).
