@@ -375,6 +375,11 @@ function ws_mail_phone_ingest($box, $message, $now)
 
         db("UPDATE ws_mail_conversations SET message_id = '" . (int) $message_id . "' WHERE id = '" . $conversation_id . "'");
 
+        // The door it came in by (mail_priority.php).
+        if (function_exists('ws_mail_source_set')) {
+            ws_mail_source_set($conversation_id, $transport);
+        }
+
         // A known customer's channels hear of it, as of a new e-mail.
         if ($contact_id > 0) {
             ws_mail_customer_lines(array('channel_id' => (int) $channel['id'], 'subject' => mb_substr($body, 0, 200), 'contact_id' => $contact_id, 'user_id' => 0),

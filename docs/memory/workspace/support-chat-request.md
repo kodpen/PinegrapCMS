@@ -15,6 +15,7 @@ module: chat_requests
 ## What is made?
 - `pg_chat_request_make()` builds a plain-text mail with `pg_support_form_mail_raw()`: From the chat's address and name, To the box, subject the customer's first words (80 characters at most, cut at a word) or "Live chat #<id>", text an opening line (chat number, start time, page) and one block a message, writer and time above the words, an attachment as `[Attachment: name]`; system lines are left out, 500 messages at most.
 - Handed to `ws_mail_ingest()` with a `tie` from the member who started the chat (`pg_support_form_tie()`: only when their address is the chat's), so routes, rules, notices and the automatic answer with `[#T<id>]` and the signed link follow (`support-request-page.md`).
+- `source` chat and `source_id` the chat: the list's Live chat label; the pane's label opens the chat window (`mail-priority-source.md`).
 - Message-ID `pg-chat-<chat id>-<last message id>@<host>`: clicked again before anything new was written, the intake calls it a duplicate and the window says "This chat is already request #T<id>."; after a new message a new request is made. Another box takes it again.
 - A refusal writes an activity-log line "chat conversation (#id) opened no support request: …"; a made one logs "… made into support request #T<id>". Nothing is written into the chat itself; the chat stays as it was (open or closed).
 

@@ -176,7 +176,7 @@ function test_workspace_mail_status_wiring()
 	pg_assert_contains("h.api('ws_mail_conversation', data)", $script);
 
 	foreach (array_keys(ws_mail_status_js_strings()) as $key) {
-		pg_assert_true((strpos($script, "'" . $key . "'") !== false) || (strpos($key, 'mail_status_') === 0), $key . ' is used');
+		pg_assert_true((strpos($script, "'" . $key . "'") !== false) || (strpos($key, 'mail_status_') === 0) || (strpos($key, 'mail_priority_') === 0), $key . ' is used');
 	}
 
 	pg_assert_contains("t('mail_status_' + key)", $script, 'the status words by key');

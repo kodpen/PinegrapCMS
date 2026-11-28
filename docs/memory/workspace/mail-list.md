@@ -8,10 +8,10 @@ description: The list of Communication › Incoming e-mail (messages_mail.php, m
 - Beside the list the reading pane opens a conversation (`workspace/mail-screen-pane.md`). A row's address (`ws_mail_list_page_url()`) is this screen with `conversation=<id>`, its filters and page (`before`) kept, and the server draws that pane, so a row opens the mail with or without the script, never a channel (WM10, #8796; owner 2026-11-11, #8765). Open in channel is the pane's button.
 
 ## Which views and filters?
-- Address words, `ws_mail_list_filters()`: `view` incoming (default; `last_in_at > 0`) | sent (an outgoing item with `send_state` '' or sent) | unsent (an outgoing item queued or failed) | all (the API only); `status` open (default in Incoming, else all) | waiting | closed | all; `holder` all | me | none; `overdue=1`; `box` (a mailbox id); `transport` (`mail-phone-list-event-api.md`); `q`; `before`. Unknown words fall back.
-- The toolbar (`ws_mail_list_filters_html()`): the views (Incoming, Sent, Not sent, Blocked) on a line of their own, status and holder selects, a Mailbox select when more than one box has conversations the reader sees (`ws_mail_list_boxes()`), the overdue toggle, the search field, Check e-mail (`mail-check.md`) and Mark all as read. `ws_mail_list_query()` builds each link's address and drops the defaults.
+- Address words, `ws_mail_list_filters()`: `view` incoming (default; `last_in_at > 0`) | sent (an outgoing item with `send_state` '' or sent) | unsent (queued or failed out) | all (API only); `status` open (default in Incoming, else all) | waiting | closed | all; `holder` all | me | none; `overdue=1`; `box` (a mailbox id); `transport` (`mail-phone-list-event-api.md`); `priority` (`mail-priority-source.md`); `q`; `before`. Unknown words fall back.
+- The toolbar (`ws_mail_list_filters_html()`): the views (Incoming, Sent, Not sent, Blocked) on a line of their own, status, holder and priority selects, a Mailbox select when more than one box has conversations the reader sees (`ws_mail_list_boxes()`), the overdue toggle, the search field, Check e-mail (`mail-check.md`) and Mark all as read. `ws_mail_list_query()` builds each link's address and drops the defaults.
 - Search (`q`, at most `WS_MAIL_LIST_QUERY_MAX` 100 characters, folded through `ws_search_like_sql()`): the conversation's subject, customer name and address, or any item's sender, To, Cc or text.
-- `ws_mail_list_where()` is the pure SQL part; a plain box's conversations count as open and held by nobody (`mail-support-box.md`). Overdue depends on each box's target, so the query takes five pages of unanswered, not closed rows and `ws_mail_first_reply_overdue()` keeps the late ones.
+- `ws_mail_list_where()` is the pure SQL part; a plain box's conversations count as open and held by nobody (`mail-support-box.md`). Overdue depends on each box's target and priority, so the query takes five pages of unanswered open rows and `ws_mail_first_reply_overdue()` keeps the late ones.
 
 ## How does Load more work?
 - A page is `WS_MAIL_LIST_PAGE` (50) rows. The cursor `before=<time>-<id>` (`ws_mail_list_cursor()`) is the last row's newest mail time and id; `ws_mail_list()` returns `rows` and `next` ('' at the end). The link works without the script; with it the panel action `ws_mail_rows` adds the rows and the next link under the list.
@@ -24,4 +24,4 @@ description: The list of Communication › Incoming e-mail (messages_mail.php, m
 - The API's list (`api_mail.php`) asks view all, so it still lists every conversation; its own `view`, `box_id`, `q` and `unread` are step WM8.
 
 ## Tests?
-- `tests/workspace_mail_list_test.php` (filters, cursor, query, where, rows, toolbar, unread rule, pane, menu count), `tests/workspace_side_test.php`. The screen against a database and in a browser was not run for PR #8652.
+- `tests/workspace_mail_list_test.php`, `tests/workspace_side_test.php`. Not run against a database or in a browser (PR #8652).

@@ -783,6 +783,7 @@
     "First answer by {var:1}": "İlk yanıt en geç {var:1}",
     "First answer overdue": "İlk yanıt gecikti",
     "First answer within (hours)": "İlk yanıt süresi (saat)",
+    "First answer within (hours) by priority": "Önceliğe göre ilk yanıt süresi (saat)",
     "First asked for": "İlk istenme",
     "First came from": "İlk geldiği yer",
     "First charge date": "İlk tahsilat tarihi",

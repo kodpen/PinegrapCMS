@@ -882,7 +882,10 @@ function ws_mail_message_write($channel_id, $parent_id, $item_id, $body, $file_i
  * @param array  $options past_block: true takes the mail in although its
  *                        sender is blocked ("Move to the inbox", mail_blocks.php);
  *                        tie: contact_id and user_id of a new conversation,
- *                        given by a site form that opens a request
+ *                        given by a site form that opens a request;
+ *                        source, source_id: the door a new conversation came
+ *                        in by (form, chat, account) and its row
+ *                        (mail_priority.php); a mail that joins one leaves it
  * @return array status, reason, item_id, conversation_id, message_id
  */
 function ws_mail_ingest($raw, $box, $options = array())
@@ -1033,6 +1036,10 @@ function ws_mail_ingest($raw, $box, $options = array())
         $parent_id = $message_id;
 
         db("UPDATE ws_mail_conversations SET message_id = '" . $message_id . "' WHERE id = '" . $conversation_id . "'");
+
+        if (isset($options['source']) && function_exists('ws_mail_source_set')) {
+            ws_mail_source_set($conversation_id, (string) $options['source'], (int) ($options['source_id'] ?? 0));
+        }
 
         // A known customer's channels hear of it.
         if (($contact_id > 0) || ($user_id > 0)) {
@@ -1257,6 +1264,11 @@ function ws_mail_items_map($rows)
             $items[$id]['conversation'] = $conversation;
             $items[$id]['answered_by'] = $conversation ? (string) ($writers[(int) $conversation['id']] ?? '') : '';
             $items[$id]['first_reply_hours'] = $conversation ? (int) ($hours[(int) $conversation['box_id']] ?? 0) : 0;
+
+            // The target of the conversation's priority (mail_priority.php).
+            if ($conversation && function_exists('ws_mail_priority_reply_hours') && isset($boxes[(int) $conversation['box_id']])) {
+                $items[$id]['first_reply_hours'] = ws_mail_priority_reply_hours($items[$id]['first_reply_hours'], ws_mail_priority_hours($boxes[(int) $conversation['box_id']]), $conversation);
+            }
             $items[$id]['support'] = $conversation ? ($support[(int) $conversation['box_id']] ?? true) : true;
             $items[$id]['transport'] = $conversation ? ($transports[(int) $conversation['box_id']] ?? 'imap') : 'imap';
             $items[$id]['reply_off'] = $conversation ? ws_mail_reply_off(
