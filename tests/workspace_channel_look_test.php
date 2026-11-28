@@ -337,9 +337,20 @@ function test_workspace_channel_panes_memory_is_rows_under_projects()
 function test_workspace_channel_panes_empty_states_are_dashed_cards()
 {
 	$css = workspace_channel_look_css();
-	$empty = workspace_channel_look_block($css, '.ws-pane:is(.ws-pane-tasks, .ws-pane-decisions, .ws-pane-files, .ws-pane-summary, .ws-pane-board, .ws-pane-memory) .ws-empty');
+	$empty = workspace_channel_look_block($css, '.ws-pane:is(.ws-pane-tasks, .ws-pane-decisions, .ws-pane-files, .ws-pane-notes, .ws-pane-summary, .ws-pane-board, .ws-pane-memory) .ws-empty');
 
 	pg_assert_contains('border: 1px dashed', $empty, 'an empty channel pane shows a dashed card');
 	pg_assert_same("\n  text-align: center;\n  color: var(--pg-fg-2);\n  padding: 2.5rem 1rem;\n", workspace_channel_look_block($css, '.ws-empty'), 'other screens keep their empty state');
 	pg_assert_contains('.ws-task-grid > .ws-empty {', $css, 'the task grid\'s empty state still spans it');
+}
+
+// The Notes tab: the bar and the list stand apart, and so do the search
+// and Write a note, by the Files tab's gap.
+function test_workspace_channel_panes_notes_tab_has_gaps()
+{
+	$css = workspace_channel_look_css();
+
+	pg_assert_contains('gap: var(--ws-space-3, .75rem);', workspace_channel_look_block($css, '.ws-pane-notes'), 'the bar and the list have a gap');
+	pg_assert_contains('flex-direction: column;', workspace_channel_look_block($css, '.ws-pane-notes'), 'the pane stacks its parts');
+	pg_assert_contains('gap: var(--ws-space-3, .75rem);', workspace_channel_look_block($css, '.ws-pane-notes .ws-cn-bar'), 'the search and Write a note have a gap');
 }
