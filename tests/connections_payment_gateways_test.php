@@ -139,5 +139,5 @@ function test_connections_gateway_keys_left_the_card()
 	pg_assert_contains('pg-tone-gray', $html, 'not connected is gray');
 
 	pg_assert_same(array('commerce', 'pgset-payments'), pg_settings_legacy_anchors()['ecommerce_stripe_api_key'] ?? null, 'an old link to a key lands on the card');
-	pg_assert_same(88, pg_connections_count(), 'the figure: three gateways became services of their own');
+	pg_assert_same(89, pg_connections_count(), 'the figure: three gateways became services of their own');
 }
