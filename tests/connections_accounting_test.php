@@ -51,7 +51,7 @@ function test_connections_accounting_pages_and_registry()
 		pg_assert_same(array('status', 'uses'), pg_connections_screen_page_cards($id, array('manager' => true, 'commerce' => true)), $id . ': the Ecommerce right is not enough');
 	}
 
-	pg_assert_same(88, pg_connections_count(), 'no service is added');
+	pg_assert_same(89, pg_connections_count(), 'no service is added');
 }
 
 function test_connections_accounting_page_post_reads_the_boxes()
