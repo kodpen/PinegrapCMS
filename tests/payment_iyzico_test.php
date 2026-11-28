@@ -1291,10 +1291,10 @@ function payment_iyzico_test_card_list($tokens)
 
 function test_payment_iyzico_renewals_capability_follows_the_setting()
 {
-	pg_assert_same(array('installments', 'partial_refund', 'threeds'), pg_payment_iyzico_capabilities_with(false));
+	pg_assert_same(array('installments', 'partial_refund', 'threeds', 'order_currency'), pg_payment_iyzico_capabilities_with(false));
 	pg_assert_same('', pg_payment_recurring_mode_declared(pg_payment_iyzico_capabilities_with(false)), 'off: no subscriptions through iyzico');
 	pg_assert_same('store', pg_payment_recurring_mode_declared(pg_payment_iyzico_capabilities_with(true)), 'on: the store runs them');
-	pg_assert_same(array('installments', 'recurring', 'partial_refund', 'threeds'), pg_payment_capabilities_normalize(pg_payment_iyzico_capabilities_with(true)));
+	pg_assert_same(array('installments', 'recurring', 'partial_refund', 'threeds', 'order_currency'), pg_payment_capabilities_normalize(pg_payment_iyzico_capabilities_with(true)));
 
 	pg_assert_false(pg_payment_iyzico_stored_card_renewals(), 'no stored setting: off');
 	pg_assert_same('', pg_payment_recurring_mode('iyzico'));

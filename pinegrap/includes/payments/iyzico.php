@@ -108,7 +108,12 @@ function pg_payment_iyzico_cancel($order, $transaction_id)
 
 function pg_payment_pay_with_iyzico_capabilities()
 {
-    return array('installments', 'partial_refund');
+    return array('installments', 'partial_refund', 'order_currency');
+}
+
+function pg_payment_pay_with_iyzico_currencies()
+{
+    return pg_payment_iyzico_currencies();
 }
 
 function pg_payment_pay_with_iyzico_authorize($order, $amount, $payment)
@@ -134,6 +139,44 @@ function pg_payment_pay_with_iyzico_cancel($order, $transaction_id)
 /* ---------------------------------------------------------------------------
    Settings and the SDK
    --------------------------------------------------------------------------- */
+
+/**
+ * The currencies iyzico takes payments in (the SDK's Currency model).
+ *
+ * @return array upper-case ISO codes
+ */
+function pg_payment_iyzico_currencies()
+{
+    return array('TRY', 'EUR', 'USD', 'GBP', 'IRR', 'NOK', 'RUB', 'CHF');
+}
+
+/**
+ * The settings with the currency an order is charged in. An order kept in
+ * another currency than the base one (a market's order, charged_currency)
+ * is charged in it as stored: nothing is converted, so the protected
+ * currency is not used for it and its refund is sent like any other. Every
+ * other order keeps the settings as they are, the protected currency
+ * included. Pure; giving it its own answer again changes nothing.
+ *
+ * @param array $settings pg_payment_iyzico_settings()
+ * @param array $order    the orders row (charged_currency)
+ * @return array
+ */
+function pg_payment_iyzico_order_settings($settings, $order)
+{
+    $base = isset($settings['currency']) ? (string) $settings['currency'] : '';
+    $currency = pg_order_amount_currency(is_array($order) ? $order : array(), $base);
+
+    if (($base === '') || ($currency === pg_order_currency_code($base))) {
+        return $settings;
+    }
+
+    $settings['currency'] = $currency;
+    $settings['protected_currency'] = '';
+    $settings['protected_rate'] = 0.0;
+
+    return $settings;
+}
 
 /**
  * The store's iyzico settings, from the config columns.
@@ -614,6 +657,8 @@ function pg_payment_iyzico_md_status_meaning($md_status)
  */
 function pg_payment_iyzico_authorize_with($order, $amount, $payment, $settings, $keep)
 {
+    // The order's own currency: its amounts are kept in it (order_currency.php).
+    $settings = pg_payment_iyzico_order_settings($settings, $order);
     pg_payment_iyzico_sdk();
 
     $payment = is_array($payment) ? $payment : array();
@@ -998,6 +1043,8 @@ function pg_payment_iyzico_threeds_claim($row, $payment_id)
  */
 function pg_payment_iyzico_complete_with($order, $amount, $return, $state, $settings, $find, $claim)
 {
+    // The order's own currency: its amounts are kept in it (order_currency.php).
+    $settings = pg_payment_iyzico_order_settings($settings, $order);
     pg_payment_iyzico_sdk();
 
     $return = is_array($return) ? $return : array();
@@ -1173,6 +1220,8 @@ function pg_payment_iyzico_complete_with($order, $amount, $return, $state, $sett
  */
 function pg_payment_pay_with_iyzico_authorize_with($order, $amount, $payment, $settings)
 {
+    // The order's own currency: its amounts are kept in it (order_currency.php).
+    $settings = pg_payment_iyzico_order_settings($settings, $order);
     pg_payment_iyzico_sdk();
 
     $payment = is_array($payment) ? $payment : array();
@@ -1261,6 +1310,8 @@ function pg_payment_pay_with_iyzico_authorize_with($order, $amount, $payment, $s
  */
 function pg_payment_pay_with_iyzico_complete_with($order, $amount, $return, $state, $settings)
 {
+    // The order's own currency: its amounts are kept in it (order_currency.php).
+    $settings = pg_payment_iyzico_order_settings($settings, $order);
     pg_payment_iyzico_sdk();
 
     $state = is_array($state) ? $state : array();
@@ -1450,7 +1501,9 @@ function pg_payment_iyzico_refund_with($order, $amount, $settings)
  * request as a refund made another way (view_return.php), since the order
  * screen has nothing to record it with. Card orders charged in the base
  * currency before the protected currency was turned on are refused too: the
- * order does not keep the currency it was charged in.
+ * order does not keep the currency it was charged in. An order kept in its
+ * own currency (a market's) was charged in it unconverted and is refunded
+ * as any other (pg_payment_iyzico_order_settings()).
  *
  * @param array $order    orders row (transaction_id)
  * @param int   $amount   hundredths to give back, in the base currency
@@ -1459,6 +1512,8 @@ function pg_payment_iyzico_refund_with($order, $amount, $settings)
  */
 function pg_payment_iyzico_card_refund_with($order, $amount, $settings)
 {
+    // The order's own currency: its amounts are kept in it (order_currency.php).
+    $settings = pg_payment_iyzico_order_settings($settings, $order);
     $protected_currency = isset($settings['protected_currency']) ? (string) $settings['protected_currency'] : '';
 
     if ($protected_currency !== '') {
@@ -1608,7 +1663,7 @@ function pg_payment_iyzico_cancel_with($order, $transaction_id, $settings)
  */
 function pg_payment_iyzico_capabilities_with($renewals)
 {
-    $capabilities = array('installments', 'partial_refund', 'threeds');
+    $capabilities = array('installments', 'partial_refund', 'threeds', 'order_currency');
 
     if ($renewals) {
         $capabilities['recurring'] = 'store';

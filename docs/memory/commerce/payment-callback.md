@@ -23,7 +23,7 @@ description: payment_callback.php?driver=<key> (PR #2143): what reaches notify()
 
 ## Why complete here? (A3, #3021)
 - Decided (#2382): a payment the service confirms after the visitor left completes the order (`order-completion-from-payment.md`).
-- The match: the order keeps the payment id in `transaction_id` (since #2199), the answer's `amount` (integer hundredths) equals `orders.total`, or exceeds it with `installments` ≥ 2 (PayTR, `pg_payment_paid_totals()`, #3070), its `raw['currency']` (since #3021) equals `BASE_CURRENCY_CODE`, any case. iyzico's 3-D Secure page names no payment: its orders still only alert.
+- The match: the order keeps the payment id in `transaction_id` (#2199), the answer's `amount` (integer hundredths) equals `orders.total`, or exceeds it with `installments` ≥ 2 (PayTR, `pg_payment_paid_totals()`, #3070), its `raw['currency']` (#3021) is the order's currency (`pg_order_amount_currency()`). iyzico's 3-D Secure page names no payment: its orders still only alert.
 
 ## What does the order keep for a later completion? (A3a, #2998; #3021)
 - Before the redirect, `pg_order_payment_started_query()` (pure) writes on the incomplete order: payment id, `total`, `payment_method`, `subtotal`, `discount`, `tax`, `shipping`, `gift_card_discount`, `surcharge` (minor units, `round()`) and, behind `pg_schema_has()`, `checkout_page_id` (11.0.120) and `legal_acceptance` (11.0.121, `pg_order_legal_acceptance_json()` or NULL).

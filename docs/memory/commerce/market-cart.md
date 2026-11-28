@@ -27,7 +27,7 @@ module: market_cart
 
 ## What is left after this PR (#12208)?
 - Gift cards and store credit spent at the order's rate and a contact group's minimum order converted. Until then a gift card's base balance is taken as units of the cart's currency.
-- Stripe charges the order's currency (MK7, `market-payment-methods.md`); PayPal, PayTR and iyzico are not offered to such an order until MK8.
+- Stripe (MK7), PayPal Checkout, PayTR and iyzico (MK8) charge the order's currency, each only in the currencies it takes (`market-payment-methods.md`).
 - Product prices shown inside a cart page outside its lines (an upsell's product, a quick-add list) are base figures printed in the cart's currency.
 
 ## Tests?

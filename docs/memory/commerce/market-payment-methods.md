@@ -1,6 +1,6 @@
 ---
 name: market-payment-methods
-description: A market's order at the checkout (MK7): Stripe charges and refunds it in its own currency; the methods such an order is offered (capability order_currency)
+description: A market's order at the checkout (MK7, MK8): Stripe, PayPal, PayTR, iyzico in its own currency; the methods it is offered (order_currency, each driver's list)
 module: payments
 ---
 
@@ -12,7 +12,8 @@ module: payments
 
 ## Which methods is a market's order offered?
 - An order in the base currency: every method, as before.
-- Another currency: Offline Payment (nothing is charged on the site) and a method whose driver declares the capability `order_currency` (`pg_payment_method_takes_currency_decide()`, pure; `pg_payment_method_takes_order($method, $order)`). Today only Stripe (gateway Stripe PaymentIntents) has it; a legacy gateway's card, PayPal Express Checkout, Pay With Iyzico, PayTR and the other redirect drivers are not offered until each charges the order's currency (MK8).
+- Another currency: Offline Payment (nothing is charged on the site) and a method whose driver declares the capability `order_currency` (`pg_payment_method_takes_currency_decide()`, pure; `pg_payment_method_takes_order($method, $order)`). Stripe, PayPal Checkout, PayTR, the iyzico card (gateway Iyzipay) and Pay With Iyzico have it; a legacy gateway's card and PayPal Express Checkout are never offered to such an order.
+- A driver may name its currencies in an optional `pg_payment_<key>_currencies()` (`pg_payment_driver_currencies()`, null for none = any); a market's order in another one is not offered it. PayPal: `pg_payment_paypal_currencies()` (no lira); PayTR: TRY, EUR, USD, GBP, RUB; iyzico and Pay With Iyzico: TRY, EUR, USD, GBP, IRR, NOK, RUB, CHF. Stripe names none. How the three charge: `market-payment-gateways.md`.
 - Applied in `pg_payment_checkout_methods()` (designer checkout and submit_order.php's allow-list, which refuses a posted method with "The selected payment method is not available."), `pg_payment_checkout_driver_methods()`, and the card, PayPal Express and Pay With Iyzico blocks of `get_order_preview.php` and `get_express_order.php`.
 - The visitor's order is read each time (`pg_payment_session_order_currency()`): the cart's market can change it within a request.
 
@@ -28,3 +29,4 @@ module: payments
 
 ## Tests?
 - `tests/payment_stripe_order_currency_test.php`: the settings, prepare and authorize in euro and yen, the return's check, the refund in yen, the switches for several currencies, the method decision.
+- `tests/payment_gateways_order_currency_test.php`: PayPal, PayTR and iyzico (MK8) and the decision by a driver's list.

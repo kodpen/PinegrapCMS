@@ -33,7 +33,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 function pg_payment_paypal_capabilities()
 {
-    return array('partial_refund');
+    return array('partial_refund', 'order_currency');
 }
 
 function pg_payment_paypal_fields()
@@ -117,6 +117,29 @@ function pg_payment_paypal_settings()
         'currency'      => strtoupper(defined('BASE_CURRENCY_CODE') ? (string) BASE_CURRENCY_CODE : ''),
         'locale'        => (preg_match('/^[a-z]{2}$/', $locale) === 1) ? $locale : '',
     );
+}
+
+/**
+ * The settings with the currency an order is charged in: the order's
+ * charged currency (a market's order), the store's base currency for every
+ * other order. Its amounts are already in that currency, so nothing is
+ * converted. Pure; giving it its own answer again changes nothing.
+ *
+ * @param array $settings pg_payment_paypal_settings()
+ * @param array $order    the orders row (charged_currency)
+ * @return array the settings, currency uppercase
+ */
+function pg_payment_paypal_order_settings($settings, $order)
+{
+    $base = isset($settings['currency']) ? (string) $settings['currency'] : '';
+
+    if ($base === '') {
+        return $settings;
+    }
+
+    $settings['currency'] = pg_order_amount_currency(is_array($order) ? $order : array(), $base);
+
+    return $settings;
 }
 
 /**
@@ -425,6 +448,8 @@ function pg_payment_paypal_id_valid($id)
  */
 function pg_payment_paypal_authorize_with($order, $amount, $payment, $settings, $http)
 {
+    // The order's own currency: its amounts are kept in it (order_currency.php).
+    $settings = pg_payment_paypal_order_settings($settings, $order);
     $return_url = (is_array($payment) && isset($payment['return_url']) && is_string($payment['return_url'])) ? $payment['return_url'] : '';
 
     if (($settings['client_id'] === '') || ($settings['client_secret'] === '') || (preg_match('#^https?://[^\s/]+#i', $return_url) !== 1)) {
@@ -432,7 +457,7 @@ function pg_payment_paypal_authorize_with($order, $amount, $payment, $settings, 
     }
 
     if (!in_array($settings['currency'], pg_payment_paypal_currencies(), true)) {
-        return pg_payment_paypal_refused($order, lang('PayPal does not take payments in this currency.'), 'the store currency ' . ($settings['currency'] !== '' ? $settings['currency'] : '(none)') . ' is not one PayPal takes', '');
+        return pg_payment_paypal_refused($order, lang('PayPal does not take payments in this currency.'), 'the order currency ' . ($settings['currency'] !== '' ? $settings['currency'] : '(none)') . ' is not one PayPal takes', '');
     }
 
     $order_id = pg_payment_paypal_order_value($order, 'id');
@@ -529,6 +554,8 @@ function pg_payment_paypal_authorize_with($order, $amount, $payment, $settings, 
  */
 function pg_payment_paypal_complete_with($order, $amount, $return, $state, $settings, $http)
 {
+    // The order's own currency: its amounts are kept in it (order_currency.php).
+    $settings = pg_payment_paypal_order_settings($settings, $order);
     $state = is_array($state) ? $state : array();
     $paypal_id = isset($state['paypal_order']) ? $state['paypal_order'] : '';
     $order_id = pg_payment_paypal_order_value($order, 'id');
@@ -627,6 +654,8 @@ function pg_payment_paypal_complete_with($order, $amount, $return, $state, $sett
  */
 function pg_payment_paypal_capture_answer($order, $amount, $started, $paypal_order, $settings, $http, $token, $state = array())
 {
+    // The order's own currency: its amounts are kept in it (order_currency.php).
+    $settings = pg_payment_paypal_order_settings($settings, $order);
     $order_id = (int) pg_payment_paypal_order_value($order, 'id');
     $capture = pg_payment_paypal_capture_of($paypal_order);
     $capture_id = isset($capture['id']) ? $capture['id'] : '';
@@ -752,6 +781,8 @@ function pg_payment_paypal_refund_call($http, $settings, $token, $capture_id, $v
  */
 function pg_payment_paypal_refund_with($order, $amount, $settings, $http)
 {
+    // The order's own currency: its amounts are kept in it (order_currency.php).
+    $settings = pg_payment_paypal_order_settings($settings, $order);
     $capture_id = pg_payment_paypal_order_value($order, 'transaction_id');
 
     if (!pg_payment_paypal_id_valid($capture_id)) {
@@ -810,6 +841,8 @@ function pg_payment_paypal_refund_with($order, $amount, $settings, $http)
  */
 function pg_payment_paypal_cancel_with($order, $transaction_id, $settings, $http)
 {
+    // The order's own currency: its amounts are kept in it (order_currency.php).
+    $settings = pg_payment_paypal_order_settings($settings, $order);
     $capture_id = (string) $transaction_id;
 
     if (!pg_payment_paypal_id_valid($capture_id)) {
@@ -958,7 +991,9 @@ function pg_payment_paypal_notify_with($headers, $body, $settings, $http)
         'status'          => ($type === 'PAYMENT.CAPTURE.COMPLETED') ? 'paid' : 'cancelled',
         'transaction_id'  => $raw['id'],
         'order_reference' => (preg_match('/^[1-9][0-9]{0,18}$/', $custom_id) === 1) ? $custom_id : $raw['id'],
-        'amount'          => (($currency === $settings['currency']) && ($value !== '')) ? pg_payment_hundredths($value) : null,
+        // In the capture's own currency: the callback compares it with the
+        // currency the order is kept in (raw.currency).
+        'amount'          => ((preg_match('/^[A-Z]{3}$/', $currency) === 1) && ($value !== '')) ? pg_payment_hundredths($value) : null,
         'log'             => array($line),
         'raw'             => $raw + array('currency' => $currency),
     );
