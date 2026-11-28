@@ -85,7 +85,7 @@ function pg_sw_list_sources()
                 array('__file_ext', lang('File type')),
             ),
         ),
-    ) + pg_sw_list_product_sources() + pg_sw_list_crumb_sources() + pg_sw_list_active_filter_sources() + pg_sw_list_calendar_sources() + pg_sw_list_order_sources()
+    ) + pg_sw_list_tree_sources() + pg_sw_list_product_sources() + pg_sw_list_crumb_sources() + pg_sw_list_active_filter_sources() + pg_sw_list_calendar_sources() + pg_sw_list_order_sources()
         + pg_sw_list_cart_sources() + pg_sw_list_checkout_sources() + pg_sw_list_menu_sources() + pg_sw_list_security_sources()
         + pg_sw_list_paging_sources() + pg_sw_list_folder_view_sources();
 }
@@ -595,6 +595,8 @@ function pg_sw_list_source_rows($source, $wanted, $published)
             }
         }
     } else {
+        // The record tree reads the records the key names (widgets_lists_tree.php).
+        if ($source === 'form_record.children' || $source === 'form_record.crumbs') return pg_sw_list_tree_source_rows($source, $wanted);
         $records = (isset($data['records']) && is_array($data['records'])) ? $data['records'] : array();
         $options = (isset($data['options']) && is_array($data['options'])) ? $data['options'] : array();
         foreach ($wanted as $key => $args) {

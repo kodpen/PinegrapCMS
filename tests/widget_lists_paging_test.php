@@ -32,7 +32,7 @@ function test_widget_lists_paging_source()
 	pg_assert_true(isset($sources['paging.pages']), 'a list source');
 	pg_assert_same('paging', $sources['paging.pages']['family']);
 	pg_assert_same('__page_number', $sources['paging.pages']['key']);
-	pg_assert_same(array('form_record.values', 'form_record.split', 'form_record.files', 'paging.pages'), array_keys(pg_sw_kind_lists('form_list_view')));
+	pg_assert_same(array('form_record.values', 'form_record.split', 'form_record.files', 'form_record.children', 'form_record.crumbs', 'paging.pages'), array_keys(pg_sw_kind_lists('form_list_view')));
 	pg_assert_false(isset(pg_sw_kind_lists('form_item_view')['paging.pages']), 'not in a record view');
 	pg_assert_true(isset(pg_sw_kind_lists('catalog_listing')['paging.pages']), 'in the catalog listing');
 	pg_assert_same(array('paging.pages'), array_keys(pg_sw_kind_lists('search_results')), 'the search results offer only it');
