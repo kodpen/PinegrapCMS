@@ -439,8 +439,8 @@ function pg_import_wix_images($cell)
 }
 
 /**
- * An amount cell in minor units, null when empty or not an amount. Pure
- * but for the price reader's file.
+ * An amount cell in minor units, null when empty or not an amount, read by
+ * the product import's price reader. Pure but for the price reader's file.
  *
  * @param string $cell
  * @return int|null
@@ -451,9 +451,11 @@ function pg_import_wix_cents($cell)
         require_once(PG_FUNCTIONS_DIR . '/product_builder.php');
     }
 
-    $figure = pg_import_squarespace_figure($cell);
+    $cell = trim((string) $cell);
 
-    return ($figure !== '') ? pg_products_import_price_cents($figure) : null;
+    // Read as the product import reads a typed price: a thousands
+    // separator, a decimal comma and a currency sign or code.
+    return ($cell !== '') ? pg_products_import_price_cents($cell) : null;
 }
 
 /**
