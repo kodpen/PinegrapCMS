@@ -274,6 +274,16 @@ if (!$_POST) {
         return !pg_stock_is_column_heading($heading) || in_array(trim((string) $heading), $stock_import['unknown'], true);
     }));
 
+    // The price:<market name> columns, by position, once the upgrade has
+    // added market_prices: a product's fixed price in that market. A price
+    // heading that names no market stays in the unknown list.
+    $market_price_markets = pg_market_prices_ready() ? pg_market_list() : array();
+    $market_price_import = pg_market_price_import_columns($columns, $market_price_markets);
+    $market_price_positions = $market_price_import['positions'];
+    $unknown_headings = array_values(array_filter($unknown_headings, function ($heading) use ($market_price_import) {
+        return !pg_market_price_is_column_heading($heading) || in_array(trim((string) $heading), $market_price_import['unknown'], true);
+    }));
+
     // The shelf columns, by position, once the upgrade has added
     // product_bins: "shelf" (the default location's address with locations)
     // and shelf:<location name>. A shelf heading that names no location
@@ -532,6 +542,16 @@ if (!$_POST) {
                 continue;
             } elseif ($row_stock_refusal === 'too_large') {
                 $rows_quantity_too_large[] = $row_label;
+                continue;
+            }
+
+            // The fixed prices by market: an empty cell leaves the market's
+            // price as it is, 0 takes it off, a cell that is not an amount
+            // leaves the row out.
+            $row_market_prices = pg_market_price_import_row($row, $market_price_positions);
+
+            if ($row_market_prices === false) {
+                $rows_not_amounts[] = $row_label;
                 continue;
             }
 
@@ -816,6 +836,10 @@ if (!$_POST) {
                         pg_bins_write($product_id, $row_bins);
                     }
 
+                    if ($row_market_prices) {
+                        pg_market_prices_save($product_id, $row_market_prices);
+                    }
+
                     if ($stock_columns_in_file) {
                         pg_products_import_stock_flag($product_id);
                     }
@@ -1000,6 +1024,10 @@ if (!$_POST) {
 
                 if ($row_bins && !pg_bundle_ids_among(array((int) $product_id))) {
                     pg_bins_write($product_id, $row_bins);
+                }
+
+                if ($row_market_prices) {
+                    pg_market_prices_save($product_id, $row_market_prices);
                 }
 
                 if ($stock_columns_in_file) {

@@ -281,6 +281,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_kb_votes();                // 11.0.289
 	upgrade_2026_11_0_ws_person_status();        // 11.0.290
 	upgrade_2026_11_0_ws_file_group();           // 11.0.291
+	upgrade_2026_11_0_market_prices();           // 11.0.292
 
 }
 
@@ -9933,5 +9934,27 @@ function upgrade_2026_11_0_ws_file_group() {
 	install_add_index('ws_messages', 'idx_file_group', "KEY idx_file_group (file_group)");
 
 	install_note('Workspace: files sent together in a channel can be kept as one group.');
+
+}
+
+
+
+// 11.0.292 - A product's fixed price in a market (includes/fn/market_prices.php):
+// one row per product and market, price in integer minor units of the
+// market's currency. A product with no row in a market is sold there at the
+// base price converted at the day's rate and rounded by the market's rule.
+// Deleting a market or a product drops its rows in code. The table is created
+// only when it is missing, so the step runs twice without a change.
+function upgrade_2026_11_0_market_prices() {
+
+	install_create_table('market_prices', "CREATE TABLE market_prices (
+		market_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		product_id INT UNSIGNED NOT NULL DEFAULT 0,
+		price      INT NOT NULL DEFAULT 0,
+		PRIMARY KEY (market_id, product_id),
+		KEY idx_product (product_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Markets: a product can have a fixed price in a market, set on the product form under "Prices by market" or by the product import.');
 
 }

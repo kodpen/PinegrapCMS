@@ -376,14 +376,20 @@ function pg_market_cart_sync()
 }
 
 /**
- * A product's base price as the session's cart charges it.
+ * A product's base price as the session's cart charges it: the product's
+ * fixed price in the cart's market when it has one (market_prices), else
+ * converted and rounded by the market's rule.
  *
  * @param int|string $base_minor
+ * @param int        $product_id 0 when the line names no product
  * @return int
  */
-function pg_market_cart_price($base_minor)
+function pg_market_cart_price($base_minor, $product_id = 0)
 {
-    return pg_market_cart_price_for(pg_market_cart(), $base_minor);
+    $state = pg_market_cart();
+    $fixed = ($state === null) ? null : pg_market_fixed_price($state['market_id'], $product_id);
+
+    return ($fixed !== null) ? $fixed : pg_market_cart_price_for($state, $base_minor);
 }
 
 /**

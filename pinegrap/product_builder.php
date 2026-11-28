@@ -2604,6 +2604,7 @@ function pg_pb_delete_product($product_id)
     db("DELETE FROM products_attributes_xref WHERE product_id = '$product_id'");
     db("DELETE FROM product_submit_form_fields WHERE product_id = '$product_id'");
     db("DELETE FROM offer_rules_products_xref WHERE product_id = '$product_id'");
+    pg_market_prices_delete_product($product_id);
 
     // Barcodes are unique across the table, so a row left behind would keep a
     // deleted product's barcode from ever being assigned again.
@@ -5941,6 +5942,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                         </div>
                     </div>
 
+                    ' . (($pg_mode === 'edit') ? pg_market_prices_card($pg_product_id) : '') . '
                     ' . pg_pb_render_bundle_card($pg_mode, $pg_product_id, $values) . '
                     <!-- --------------------------------------------- variants -->
                     <div class="col-12" id="pg_pb_sec_variants">
@@ -7090,6 +7092,11 @@ function pg_pb_update_product($product_id)
     // its newest one, so a save that left the price alone adds nothing.
     pg_price_history_record($product_id, 'panel');
 
+    // The "Prices by market" card: only the markets it drew are written,
+    // an empty field takes the market's fixed price off.
+    // pg_pb_validate_product_post() refused a price that is not an amount.
+    pg_market_prices_save_posted($product_id, $_POST);
+
     // "Price from the feed" on the Supplier feed card, drawn only for a
     // product a feed carries; written when the switch moved.
     if (isset($_POST['supplier_feed_follow_was']) && ((int) $_POST['supplier_feed_follow_was'] !== (empty($_POST['supplier_feed_follow_price']) ? 0 : 1))
@@ -7636,6 +7643,16 @@ function pg_pb_validate_product_post($user, $product_id = 0)
 
         if (!$stock_check['ok']) {
             output_error(lang('Enter an inventory quantity.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+        }
+    }
+
+    // A fixed price by market that is not an amount is refused before
+    // anything is written, naming the market.
+    if (pg_market_prices_ready()) {
+        $market_prices_read = pg_market_prices_posted($_POST, pg_market_list());
+
+        if ($market_prices_read['refused']) {
+            output_error(lang(array('string' => 'The price for {var:1} is not an amount.', 'vars' => array(h(implode(', ', $market_prices_read['refused']))))) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
         }
     }
 }

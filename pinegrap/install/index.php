@@ -9132,6 +9132,7 @@ function get_tables() {
 		'marketplace_product_map',
 		'marketplace_remote_products',
 		'markets',
+		'market_prices',
 		'marketplace_sync_queue',
 		'menu_items',
 		'menus',
