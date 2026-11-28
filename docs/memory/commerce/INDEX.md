@@ -141,6 +141,7 @@
 - ebay-orders.md: eBay orders read on the schedule (getOrders by last modification) into mp_import_order() in the order's own currency, and a parcel reported back with carrier and tracking number
 - ebay-stock-price.md: eBay stock and price through the queue: bulkUpdatePriceQuantity 25 SKUs a call, offer looked up first, price in the site currency to the cent, per-SKU verdicts
 - edit-product-undrawn-columns-kept.md: Edit Product's save leaves out the shipping, customs, zone, gift card and unlabelled custom-field columns the screen does not draw.
+- etsy-connection.md: Etsy marketplace accounts: the etsy connect provider (PKCE, keystring, no secret on the token request, x-api-key on every call), the connector test, the shop read from the sign-in, five remote selects
 - eu-vat-check.md: EU VAT ids checked against VIES: the clean function and patterns per member state, the REST request, answer mapping, a day's cache, the reverse-charge decision; where it is wired [decision: decisions-made-product-19.md, decisions-made-product-26.md]
 - eu-vat-checkout.md: The EU VAT check at checkout: when it runs, what each VIES answer does to tax_exempt and the three orders.vat_* columns, where the customer, the order screen, the API and the ERP invoice show it
 - event-tickets-api.md: Event tickets (TK5): GET /calendars/events/{id}/tickets (orders:read), ticket.checked_in, the product's "Gives tickets" switch, the personal data export's tickets [decision: here]

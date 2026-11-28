@@ -842,6 +842,7 @@
 - translations-screen-drawing.md: The Translations screen's redraw (2026-11-27): where its sheet is, what each board A to J shows, the measures, the keys, and the drawn choices that bind the steps of the plan
 - translations-screen-editor-rows.md: Translations screen (translations.php, translations.js): engine wait, row state and count sync, scoped tiles, glossary duplicates and refused saves, return view, CSV guard, box size
 - translations-screen-frame.md: Translations screen frame (TS1): head with language shares, tabs Texts/Activity/Glossary, Scan for new texts and Translate pending, the rail, the filter tiles, the tool line
+- translations-screen-glossary.md: Translations screen "Glossary" tab (TS5): the table of terms, "Search the glossary", the filled "Add a term", the remove buttons on one form outside the table; the term dialog unchanged
 - translations-screen-noindex-reason.md: Translations screen: a page's search verdict in the page list, its own-noindex state, the "Why?" list of texts keeping it out (blocking filter) and "Keep as in the source and approve" [decision: decisions-made-product-38.md]
 - translations-screen-overview.md: The Translations screen (translations.php) as a whole: what it is, the redraw under way, its parts by label and which memory file holds each
 - translations-screen-reload-messages.md: Translations screen (translations.php): which messages survive the reload after an update, a scan, a bulk action or the automation dialog, and what the Site Log says for a language translated by hand

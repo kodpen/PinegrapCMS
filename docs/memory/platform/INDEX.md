@@ -202,6 +202,7 @@
 - office-sheet-format-borders.md: The border of a format entry (office_format.php): none, all sides, outline or bottom of the range turned into each cell's sides, how a side is written
 - office-sheet-format-controls.md: The sheet editor's format bar (OE3b) for the selected cells, its colour swatches, ranges waiting with the typed cells, and how each cell's look and number format is drawn [decision: here]
 - office-sheet-format.md: Format of selected cells of an .xlsx (office_format.php, OE3a): the save entry, how new styles are written beside the old ones, the number formats, what is refused and why [decision: decisions-made-product-115.md]
+- office-sheet-formula-save.md: Simple formulas in a workbook save (office_edit.php, SF2): typed "=" formulas, open formula cells, the changed sheet worked out in dependency order, circles, what loses its result
 - office-sheet-head-menu.md: The sheet grid's row and column head menu (pg_office_view.js): insert, delete, Column width…, Row height…, Freeze top row; where it opens, what it puts in the list of changes
 - office-sheet-rows-columns.md: Insert and delete a row or column of an .xlsx (office_shift.php): the save entry, what moves, what is refused and why, one entry of a save's list
 - office-sheet-sizes-grid.md: The sheet grid's column widths, row heights and frozen top rows (pg_office_view.js, SA4): how they are drawn, the drag on a head's edge, the menu items, the list entry [decision: decisions-made-product-115.md]

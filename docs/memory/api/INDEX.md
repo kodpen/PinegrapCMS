@@ -173,7 +173,7 @@
 - claude-plugin-census.md: Claude plugin bundle as Anthropic's pages state it (read 2026-11-14): folder and manifest, directory checks and policy, which Claude app loads what, and how a bundle can (not) ask for a site's address [decision: here]
 - claude-plugin-tool-check.md: The site's MCP tools checked against Claude's directory rules (2026-11-14): name length, annotations, and the routes that move money or issue stored value, by route id and scope [decision: here]
 - connections-registry-rows.md: Every row of the registry of outside services by group: the place of its setting (Site Settings card or screen) and how its state is read, and the services that show no state, with why
-- connections-registry.md: Registry of outside services (pg_connections_registry()): a row, the count rule, the figure (86 + 12 MCP connectors), the difference from the census's 79, adding a service [decision: here]
+- connections-registry.md: Registry of outside services (pg_connections_registry()): a row, the count rule, the figure (89 + 12 MCP connectors), the difference from the census's 79, adding a service [decision: here]
 - external-api-authorization.md: External API authorization: app scopes x owner scopes, write implies read, where a new scope goes, what failed sign-ins do, the removed apps.php model; role-3 rows in api-user-role-rows
 - external-api-iis-environment.md: What IIS and the WAF impose on the external API: path-based API detection, rate buckets outside the sensitive limit, no PATCH/DELETE, POST twins, older deletes on a plain POST, first-match routing [decision: decisions-made-product-13.md]
 - figma-api-file-reads.md: Figma REST file reads (read 2026-11-24): GET file and nodes, depth and ids, frame auto layout (with GRID), text style, component instances, the styles map
@@ -198,6 +198,7 @@
 - oauth-authorize-state.md: OAuth authorize (includes/oauth/authorize.php): state is handed back exactly as sent, never cut; a state over 4096 bytes is refused with invalid_request and the same state
 - oauth-client-automation-platforms.md: Whether one OAuth client could serve an automation platform on every site (read 2026-11-17): the client metadata document a site reads, what Zapier, Make, Pabbly and n8n allow, why it is not used [decision: here]
 - quickbooks-connection.md: QuickBooks Online connected (AS6): the site's own Intuit app, environment, discovery addresses, realmId kept from the return, the company read, accounts and tax codes chosen, one service at a time
+- quickbooks-sync-driver.md: QuickBooks Online's accounting sync driver: SalesReceipt, Invoice, Payment, RefundReceipt, CreditMemo, void, customers and items, requestid and SyncToken, its call spacing
 - removed-rest-api-apps.md: History note: apps.php, apps_settings.php and the custom_apps table were removed in 2026.4.4 and replaced by the external API (integration.php, includes/api/). [decision: decisions-made-data.md, decisions-made.md]
 - tiktok-events-facts.md: TikTok Events API 2.0 as TikTok's own documents say it (read 2026-11-20): address, Access-Token header, body, hashing (phone in E.164 with +), test code, answers, what could not be checked
 - translations-api-dry-run.md: The seven translation API writes take X-Dry-Run (PR #1911): where each stops, the batch counts, translate_api_write_check(), pg_tr_result_judge(), pg_tr_reviewed_kept()
