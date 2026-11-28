@@ -1353,6 +1353,47 @@
         });
     }
 
+    // "Search the glossary" narrows the terms as typed: the term, the
+    // translation to use and the note are matched.
+    var findTerm = document.getElementById('pg_tr_find_term');
+
+    if (findTerm) {
+        var termNone = document.getElementById('pg_tr_term_none');
+        var termTable = app.querySelector('.pg-tr-terms');
+
+        findTerm.addEventListener('input', function () {
+            var needle = findTerm.value.trim().toLocaleLowerCase();
+            var shown = 0;
+
+            Array.prototype.forEach.call(app.querySelectorAll('.pg-tr-term'), function (row) {
+                var haystack = [row.getAttribute('data-term'), row.getAttribute('data-translation'), row.getAttribute('data-note')].join(' ').toLocaleLowerCase();
+                var match = (needle === '') || (haystack.indexOf(needle) !== -1);
+
+                row.hidden = !match;
+                shown += match ? 1 : 0;
+            });
+
+            if (termTable) {
+                termTable.hidden = (shown === 0);
+            }
+
+            if (termNone) {
+                termNone.hidden = (shown > 0);
+            }
+        });
+    }
+
+    // A term's remove button submits the one delete form after the question.
+    var termDelete = document.getElementById('pg_tr_glossary_delete');
+
+    if (termDelete) {
+        termDelete.addEventListener('submit', function (event) {
+            if (!window.confirm(termDelete.getAttribute('data-confirm'))) {
+                event.preventDefault();
+            }
+        });
+    }
+
     app.addEventListener('click', function (event) {
         var tab = event.target.closest ? event.target.closest('[data-pg-tr-tab]') : null;
 
