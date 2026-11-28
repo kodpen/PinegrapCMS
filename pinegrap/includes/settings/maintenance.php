@@ -40,7 +40,7 @@ $maintenance_parts['channel'] = array('html' => '
                 ' . lang('Update Channel') . '
             </div>
             <div class="card-body">
-                <div class="row gy-5">' . pg_maintenance_settings_seg(lang('Update channel'), 'software_update_channel', array('stable' => lang('Stable'), 'beta' => lang('Beta')), $software_update_channel, lang('Beta gets new versions earlier, for a test site. Switching back keeps the beta until a newer stable release; once the stable release of this version is out, Repair Software installs it.'))
+                <div class="row gy-5">' . pg_maintenance_settings_seg(lang('Update channel'), 'software_update_channel', array('stable' => lang('Stable'), 'beta' => lang('Beta')), $software_update_channel, lang('Beta gets new versions earlier, for a test site, and the stable releases too. Switching back to Stable keeps the installed beta until the stable release of its version comes as an update.'))
                     . '
                     <div class="col-12">
                         <p class="pg-text-meta fg-secondary mb-0">' . lang('License and update checks send Kodpen this site\'s Hostname, the server\'s IP address and the versions of the software, PHP, the database and the web server.') . '</p>

@@ -559,6 +559,7 @@
     "Beta Sign-up": "Beta-Anmeldung",
     "Beta Tester": "Beta-Tester",
     "Beta Testers": "Beta-Tester",
+    "Beta gets new versions earlier, for a test site, and the stable releases too. Switching back to Stable keeps the installed beta until the stable release of its version comes as an update.": "Beta erhält neue Versionen früher, für eine Test-Website, und auch die stabilen Versionen. Beim Zurückwechseln zu Stabil bleibt die installierte Beta, bis die stabile Version ihrer Versionsnummer als Update kommt.",
     "Beta gets new versions earlier, for a test site. Switching back keeps the beta until a newer stable release; once the stable release of this version is out, Repair Software installs it.": "Beta erhält neue Versionen früher, für eine Test-Website. Beim Zurückwechseln bleibt die Beta, bis eine neuere stabile Version erscheint; sobald diese Version als stabile Version erscheint, installiert „Software reparieren“ sie.",
     "Beta gets new versions earlier, for a test site; switching back keeps a beta until a stable release passes it.": "Beta erhält neue Versionen früher, für eine Test-Website; beim Zurückwechseln bleibt eine Beta, bis eine stabile Version sie überholt.",
     "Beta test and store launch": "Betatest und Store-Start",

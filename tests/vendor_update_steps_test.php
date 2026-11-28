@@ -426,3 +426,55 @@ function test_vendor_update_git_ref_pin_and_installed_build()
 		pg_assert_contains("pg_update_build_read()['build']", $body, $name);
 	}
 }
+
+// A beta site installs a stable release it was offered: the manifest step
+// checks the channel the site was on at the check and that this channel
+// takes the release's; the zip step takes the stable release of the
+// installed version over a recorded beta build as another build.
+function test_vendor_update_steps_stable_release_on_beta()
+{
+	$state = vendor_update_steps_test_vectors()['baseline'];
+	$keys = vendor_update_steps_test_keys($state);
+	$pin = vendor_update_steps_test_pin($state['answer']);
+	$pin['site_channel'] = 'beta';
+	$site = vendor_update_steps_test_site($state);
+	$site['update_channel'] = 'beta';
+
+	pg_assert_same('extract', pg_vendor_update_steps($pin, $site, $keys, $state['observed'])['outcome'], 'a newer stable release on beta');
+
+	$site['update_channel'] = 'stable';
+	pg_assert_same('manifest_mismatch', pg_vendor_update_steps($pin, $site, $keys, $state['observed'])['reason'], 'the site left beta after the check');
+
+	// A beta release pinned for a stable site is never installed, whatever
+	// the pin says of the site.
+	$beta = $state;
+	$beta['answer']['channel'] = 'beta';
+	$beta['answer']['build'] = 'bbbbbbb.202611051500';
+	$beta['observed']['manifest']['channel'] = 'beta';
+	$beta['observed']['manifest']['build'] = 'bbbbbbb.202611051500';
+	$beta_pin = vendor_update_steps_test_pin($beta['answer']);
+	$beta_pin['site_channel'] = 'stable';
+
+	pg_assert_same('manifest_mismatch', pg_vendor_update_steps($beta_pin, $site, $keys, $beta['observed'])['reason'], 'a beta release on stable');
+
+	// The stable release of the installed version over a recorded beta
+	// build, on either channel; over no build it is not newer.
+	$same = $state;
+	$same['observed']['zip_versions_last'] = '2026.11.0';
+	$same['answer']['version'] = '2026.11.0';
+	$same['observed']['manifest']['version'] = '2026.11.0';
+	$same_pin = vendor_update_steps_test_pin($same['answer']);
+	$same_pin['site_channel'] = 'beta';
+	$site = vendor_update_steps_test_site($same);
+	$site['update_channel'] = 'beta';
+	$site['installed_build'] = 'aaaaaaa.202611010900';
+
+	pg_assert_same('extract', pg_vendor_update_steps($same_pin, $site, $keys, $same['observed'])['outcome'], 'stable over a beta build on beta');
+
+	$same_pin['site_channel'] = 'stable';
+	$site['update_channel'] = 'stable';
+	pg_assert_same('extract', pg_vendor_update_steps($same_pin, $site, $keys, $same['observed'])['outcome'], 'stable over a beta build on stable');
+
+	$site['installed_build'] = '';
+	pg_assert_same('not_newer', pg_vendor_update_steps($same_pin, $site, $keys, $same['observed'])['reason'], 'stable over no build');
+}

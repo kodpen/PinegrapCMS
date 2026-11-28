@@ -134,6 +134,22 @@ function test_update_build_rerun_and_previous_version()
 	pg_assert_true(pg_vendor_update_rerun($pin, '2026.11.0', ''), 'a build over the release');
 	pg_assert_false(pg_vendor_update_rerun($pin, '2026.11.0', 'ccccccc.202611061200'), 'the same build');
 	pg_assert_false(pg_vendor_update_rerun($pin, '2026.4.10', ''), 'a newer version upgrades anyway');
+
+	// The stable release over a recorded beta build of its version.
+	$stable = array('mode' => 'update', 'version' => '2026.11.0', 'channel' => 'stable', 'build' => '');
+
+	pg_assert_true(pg_vendor_update_rerun($stable, '2026.11.0', 'bbbbbbb.202611051500'), 'the stable release over a beta build');
+	pg_assert_false(pg_vendor_update_rerun($stable, '2026.11.0', ''), 'the stable release over itself');
+
+	// Repair Software at the running version runs its steps again, also
+	// with no build file (a snapshot installed by hand or by an older
+	// updater); a repair that installs a newer version upgrades anyway.
+	$stable['mode'] = 'repair';
+	$pin['mode'] = 'repair';
+
+	pg_assert_true(pg_vendor_update_rerun($stable, '2026.11.0', ''), 'a repair with no build file');
+	pg_assert_true(pg_vendor_update_rerun($pin, '2026.11.0', 'ccccccc.202611061200'), 'a repair of the same build');
+	pg_assert_false(pg_vendor_update_rerun($stable, '2026.4.10', ''), 'a repair to a newer version');
 }
 
 // Q1 (#3204): the beta channel offers another build of the running version
@@ -163,6 +179,21 @@ function test_update_build_beta_offer_matrix()
 	pg_assert_same('repair', $repair['outcome']);
 	pg_assert_same('ccccccc.202611061200', $repair['pin']['build']);
 	pg_assert_contains('ccccccc.202611061200', pg_vendor_release_message($repair, '2026.11.0'));
+
+	// The stable release of the version: over a recorded beta build on
+	// either channel, never without one, since the site may already run it
+	// (installing it deletes the build file).
+	$stable = $found;
+	$stable['release']['channel'] = 'stable';
+	$stable['release']['build'] = '';
+	$on = function ($channel, $file) use ($stable) {
+		return pg_vendor_release_offer($stable, '2026.11.0', pg_update_build_parse($file, '2026.11.0')['build'], $channel, 'update')['outcome'];
+	};
+
+	pg_assert_same('update', $on('beta', $file), 'a beta site over a beta build');
+	pg_assert_same('update', $on('stable', $file), 'a site switched back to Stable over a beta build');
+	pg_assert_same('no_update', $on('beta', ''), 'a beta site with no build file');
+	pg_assert_same('no_update', $on('stable', ''), 'a stable site with no build file');
 }
 
 // The integrity check asks for the installed build's own ref first, then the

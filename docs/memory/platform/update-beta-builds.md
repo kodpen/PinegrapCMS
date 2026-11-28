@@ -8,11 +8,12 @@ description: Beta builds of one version over the Kodpen API (PR #3755): data/upd
 - Why a file: a beta build carries its release's version number, so `config.version` cannot tell two builds apart.
 
 ## When is a same-version build offered? (Q1, #3204)
-- Only on the beta channel and only when the file names a beta build of the running version: `pg_vendor_release_check()` and `pg_vendor_update_site()` pass `pg_update_build_read()['build']`. A beta site without the file (stable install, 2026.4.x updated) gets betas again from the next version. Repair installs the pointer's build, named on screen.
+- Only when the file names a beta build of the running version: `pg_vendor_release_check()` and `pg_vendor_update_site()` pass `pg_update_build_read()['build']`. Then another beta build of it (beta channel) and its stable release (either channel, owner 2026-11-28) are updates. A beta site without the file (stable install, 2026.4.x updated) gets betas again from the next version. Repair installs the pointer's build, named on screen.
 
 ## What happens after replace?
 - `git_ref` comes from the signed manifest: the download step stores `pg_vendor_update_pin_manifest()` as the session pin.
-- The replace step reads the installed build before extraction, then `pg_vendor_update_record_build()`: for another build of the running version (`pg_vendor_update_rerun()`) `config.version` goes back to the previous `versions.php` entry (`pg_upgrade_previous_version()`), read back to check; a failure is an error naming Repair Software. Then the file is written for a beta pin with a build (`pg_update_build_for_pin()`), deleted otherwise. The upgrade screen then reruns the version's (idempotent) steps.
+- The replace step reads the installed build before extraction, then `pg_vendor_update_record_build()`: for another build of the running version, or a Repair at it (`pg_vendor_update_rerun()`), `config.version` goes back to the previous `versions.php` entry (`pg_upgrade_previous_version()`), read back to check; a failure is an error naming Repair Software.
+- Then the file is written for a beta pin with a build (`pg_update_build_for_pin()`), deleted otherwise. The upgrade screen then reruns the version's (idempotent) steps.
 
 ## Backup, rollback, integrity?
 - Backup `manifest.json` carries `build` and `git_ref`; rollback restores the file or deletes it (`update-backup-rollback.md`).

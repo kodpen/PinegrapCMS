@@ -561,6 +561,7 @@
     "Beta Sign-up": "Beta Kaydı",
     "Beta Tester": "Beta Test Kullanıcısı",
     "Beta Testers": "Beta Test Kullanıcıları",
+    "Beta gets new versions earlier, for a test site, and the stable releases too. Switching back to Stable keeps the installed beta until the stable release of its version comes as an update.": "Beta yeni sürümleri daha erken alır, test sitesi içindir; kararlı sürümleri de alır. Kararlı'ya dönünce kurulu beta, kendi sürümünün kararlısı güncelleme olarak gelene kadar kalır.",
     "Beta gets new versions earlier, for a test site. Switching back keeps the beta until a newer stable release; once the stable release of this version is out, Repair Software installs it.": "Beta yeni sürümleri daha erken alır, test sitesi içindir. Geri dönünce kurulu beta, daha yeni bir kararlı sürüm gelene kadar kalır; bu sürümün kararlısı çıkınca Yazılımı Onar onu kurar.",
     "Beta gets new versions earlier, for a test site; switching back keeps a beta until a stable release passes it.": "Beta yeni sürümleri daha erken alır, test sitesi içindir; geri dönünce kurulu beta, bir kararlı sürüm onu geçene kadar kalır.",
     "Beta test and store launch": "Beta testi ve mağazada yayın",
