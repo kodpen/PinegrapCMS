@@ -380,7 +380,7 @@ StyleDesigner.definePart('tour', function (K) {
         if (!at) { if (!how) finish(); return false; }
         var t = S.tour = {
             list: list, at: at, back: back, hidden: false, timer: 0, key: '', how: how, docs: [],
-            sig: '', wait: -1, scrolled: -1,
+            sig: '', wait: -1, scrolled: -1, pending: false, spoken: '',
             ring: document.createElement('div'), bubble: document.createElement('div')
         };
         t.ring.className = 'sd-tour-ring' + (reduced() ? '' : ' is-gliding');
@@ -547,15 +547,27 @@ StyleDesigner.definePart('tour', function (K) {
             '</div>' +
             '<span class="sd-tour-said" aria-live="polite"></span>';
         t.key = '';
+        if (moved) {
+            // Read out whole: "Tour, 3 of 5. See it. Look at the page…"
+            t.spoken = (how ? _sdT('How do I, {n} of {total}.') : _sdT('Tour, {n} of {total}.')).replace('{n}', String(place + 1)).replace('{total}', String(total)) + ' ' + words[0] + ' ' + words[1];
+            t.pending = true;
+        }
         follow();
-        if (!moved) return;
+        // While a dialog is open (the Help window a task was chosen in is
+        // still closing) the bubble is hidden and can take no focus:
+        // follow() presents the stop once it shows.
+        if (moved && !t.hidden) present(t);
+    }
+
+    // Gives the stop's Next (or Done) the focus and reads the stop out.
+    function present(t) {
+        t.pending = false;
         var main = t.bubble.querySelector('[data-sd-tour="next"], [data-sd-tour="done"]');
         if (main) {
             try { main.focus({ preventScroll: true }); } catch (e) { main.focus(); }
         }
-        // Read out whole: "Tour, 3 of 5. See it. Look at the page…"
         var said = t.bubble.querySelector('.sd-tour-said');
-        var spoken = (how ? _sdT('How do I, {n} of {total}.') : _sdT('Tour, {n} of {total}.')).replace('{n}', String(place + 1)).replace('{total}', String(total)) + ' ' + words[0] + ' ' + words[1];
+        var spoken = t.spoken;
         setTimeout(function () { if (said.isConnected) said.textContent = spoken; }, 50);
     }
 
@@ -570,6 +582,15 @@ StyleDesigner.definePart('tour', function (K) {
             t.ring.hidden = wait;
             t.bubble.hidden = wait;
             t.key = '';
+            // Shown again with its stop not yet presented (it was drawn
+            // while a dialog was closing): the focus the tour started from
+            // was inside that dialog, so the end goes back to where the
+            // dialog gave it instead.
+            if (!wait && t.pending) {
+                var a = document.activeElement;
+                if (t.back && t.back.closest && t.back.closest('dialog, [aria-modal="true"]') && a && a !== document.body && !own(a)) t.back = a;
+                present(t);
+            }
         }
         if (wait) return;
         // The control went away: its stop's other control, else the next

@@ -101,8 +101,9 @@ El.prototype = {
         if (/sd-tour-card|sd-tour-bubble/.test(sel) && /sd-tour-(card|bubble)/.test(this.className)) return this;
         return null;
     },
-    contains: function (el) { return el === this; },
-    focus: function () { document.activeElement = this; },
+    contains: function (el) { for (; el; el = el.parentNode) if (el === this) return true; return false; },
+    // A hidden element, or one inside a hidden element, takes no focus.
+    focus: function () { for (var p = this; p; p = p.parentNode) if (p.hidden) return; document.activeElement = this; },
     getClientRects: function () { return this.box ? [1] : []; },
     getBoundingClientRect: function () {
         var b = this.box || [0, 0, 0, 0];
@@ -334,4 +335,47 @@ JS
 
 	pg_assert_true($res['last'], 'a row below the fold of its list is a stop, not skipped');
 	pg_assert_same(array('#sd-snapshots-panel .sd-snap-item'), $res['scrolled'], 'it is scrolled into view once');
+}
+
+// A task started from the Help window starts while the window is still
+// closing: the bubble waits hidden, then takes the focus and is read out
+// once the window has gone, and the focus goes back to where the window
+// gave it at the end.
+function test_designer_tour_part_task_from_the_help_window_gets_the_focus()
+{
+	$res = designer_tour_part_node(<<<'JS'
+ctl('#sd-main-undo', [10, 4, 40, 34]);
+ctl('#sd-vb-snapshots', [50, 4, 80, 34]);
+var row = new El('button');
+row.parentNode = new El('dialog');
+row.parentNode.isDialog = true;
+row.closest = function (sel) { return /dialog/.test(sel) ? this.parentNode : null; };
+document.activeElement = row;
+dialogOpen = true;
+part.start('history');
+tick(100);
+var b = bubbleEl();
+var hiddenFocus = document.activeElement === row;
+dialogOpen = false;
+// The window gives the focus back to the "?" button that opened it.
+var opener = ctl('#sd-status-shortcuts', [1240, 778, 1270, 798]);
+opener.parentNode = document.body;
+document.activeElement = opener;
+tick(500);
+var main = b.querySelector('[data-sd-tour="next"], [data-sd-tour="done"]');
+var said = b.querySelector('.sd-tour-said').textContent || '';
+var mainFocused = document.activeElement === main;
+key('Escape');
+out = { hiddenFocus: hiddenFocus, mainFocused: mainFocused, focused: document.activeElement === opener ? 'opener' : 'other', said: said };
+JS
+	);
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_true($res['hiddenFocus'], 'no focus moves while the window is still closing');
+	pg_assert_true($res['mainFocused'], 'Next takes the focus once the window has gone');
+	pg_assert_true(strpos($res['said'], 'How do I, 1 of 3.') === 0, 'the pointer is read out once the window has gone');
+	pg_assert_same('opener', $res['focused'], 'the end gives the focus back to where the window gave it');
 }
