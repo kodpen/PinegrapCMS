@@ -854,6 +854,7 @@ function pg_consent_ui_keys()
         'Remembers the language you chose for the site.',
         'Tells a cache in front of the site to pass your requests through while your visit holds a cart, a sign-in or a message.',
         'Remembers the products you saved to your favourites before signing in.',
+        'Remembers the articles you rated as helpful or not, so each answer counts once.',
         'Counts your visits, to tell new visitors from returning ones.',
         'Remembers the tracking code of the link you arrived with.',
         'Remembers the campaign (UTM) that brought you to the site.',
