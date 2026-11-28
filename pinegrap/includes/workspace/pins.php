@@ -79,6 +79,12 @@ function ws_channel_pin_message($viewer, $channel, $message_id)
 
     $message = ws_message($message_id);
 
+    // A file of a group pins its group, which its head carries.
+    if ($message && ws_file_group_is_member($message)) {
+        $message_id = ws_file_group_target_id($message);
+        $message = ws_message($message_id);
+    }
+
     if (!$message || ((int) $message['channel_id'] !== (int) $channel['id']) || ((int) $message['deleted_at'] > 0)
         || !in_array($message['kind'], array('message', 'note', 'decision', 'task'), true)
         || (function_exists('ws_message_in_past') && ws_message_in_past($message))) {

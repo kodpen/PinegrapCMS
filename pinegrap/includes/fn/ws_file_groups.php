@@ -324,3 +324,73 @@ function ws_file_group_ids($head_id)
         WHERE file_group = '" . $head_id . "' AND deleted_at = 0
         ORDER BY id ASC"));
 }
+
+/**
+ * After a message was deleted: a head's files go with it, and a head left
+ * with no file, no words and no other file goes too, so it reads "message
+ * deleted" as a single message does. Members are deleted the way the head
+ * was, the deleter's right being checked on the head.
+ *
+ * @param array $message the ws_messages row as it was before the delete
+ */
+function ws_file_group_message_deleted($message)
+{
+    $group = (int) ($message['file_group'] ?? 0);
+
+    if (($group <= 0) || !ws_file_group_ready()) {
+        return;
+    }
+
+    $now = time();
+
+    if ($group === (int) $message['id']) {
+        foreach (ws_file_group_ids($group) as $member_id) {
+            db_q("UPDATE ws_messages SET body = '', file_id = 0, file_name = '', deleted_at = ? WHERE id = ? AND deleted_at = 0", array($now, $member_id));
+            ws_message_touch($member_id);
+        }
+
+        return;
+    }
+
+    $head = ws_message($group);
+
+    if ($head && ((int) $head['deleted_at'] === 0) && ((int) $head['file_id'] === 0) && (trim((string) $head['body']) === '')
+        && (count(ws_file_group_ids($group)) <= 1)) {
+        db_q("UPDATE ws_messages SET deleted_at = ? WHERE id = ? AND deleted_at = 0", array($now, $group));
+        ws_message_touch($group);
+    }
+}
+
+/**
+ * Takes one file out of its message. A file of a group other than the head,
+ * or a message alone, is deleted as a message is; the head gives up its
+ * file and keeps its words, reactions and replies, and is deleted only when
+ * nothing is left of it (no words and no other file).
+ *
+ * @param array $viewer
+ * @param array $message the ws_messages row carrying the file
+ * @return array ok, error
+ */
+function ws_file_group_take_out($viewer, $message)
+{
+    $head_id = (int) ($message['file_group'] ?? 0);
+
+    if (($head_id <= 0) || ($head_id !== (int) $message['id']) || ((int) $message['file_id'] <= 0)) {
+        return ws_message_delete($viewer, $message);
+    }
+
+    $checked = ws_message_delete_check($viewer, $message);
+
+    if (!$checked['ok']) {
+        return array('ok' => false, 'error' => $checked['error']);
+    }
+
+    if ((trim((string) $message['body']) === '') && (count(ws_file_group_ids($head_id)) <= 1)) {
+        return ws_message_delete($viewer, $message);
+    }
+
+    db_q("UPDATE ws_messages SET file_id = 0, file_name = '' WHERE id = ?", array($head_id));
+    ws_message_touch($head_id);
+
+    return array('ok' => true, 'error' => '');
+}

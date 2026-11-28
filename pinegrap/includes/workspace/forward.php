@@ -51,6 +51,34 @@ function ws_forwards_ready()
 }
 
 /**
+ * Chosen message ids with every file of the groups they belong to, in the
+ * order chosen (ws_file_group_expand_ids()); one more than WS_FORWARD_MAX at
+ * most, so a choice too large is still refused.
+ *
+ * @param int[] $ids
+ * @return int[]
+ */
+function ws_forward_pick_groups($ids)
+{
+    if (empty($ids) || !ws_file_group_ready() || (count($ids) > WS_FORWARD_MAX)) {
+        return $ids;
+    }
+
+    $heads = array();
+    $groups = array();
+
+    foreach ((array) db_items("SELECT id, file_group FROM ws_messages WHERE id IN (" . implode(',', array_map('intval', $ids)) . ") AND file_group > 0") as $row) {
+        $heads[(int) $row['id']] = (int) $row['file_group'];
+    }
+
+    foreach (array_unique(array_values($heads)) as $head) {
+        $groups[$head] = ws_file_group_ids($head);
+    }
+
+    return ws_file_group_expand_ids($ids, $groups, $heads, WS_FORWARD_MAX + 1);
+}
+
+/**
  * The messages chosen, as they may be answered or forwarded: of one channel
  * the person reads, not deleted, written by a person or an application,
  * oldest first.
@@ -70,6 +98,9 @@ function ws_forward_pick($viewer, $message_ids)
     if (empty($ids)) {
         return $fail(lang('Choose the messages first.'));
     }
+
+    // A group of files goes whole, whichever of its files was chosen.
+    $ids = ws_forward_pick_groups($ids);
 
     if (count($ids) > WS_FORWARD_MAX) {
         return $fail(lang(array('string' => 'At most {var:1} messages can be chosen together.', 'vars' => WS_FORWARD_MAX)));

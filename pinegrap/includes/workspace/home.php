@@ -437,7 +437,9 @@ function ws_home_digest($viewer, $channels, $limit = 5)
     $last = array();
 
     foreach ((array) db_items("SELECT channel_id, MAX(id) AS id FROM ws_messages
-        WHERE channel_id IN (" . implode(',', array_keys($unread)) . ") AND deleted_at = 0 AND sender_kind <> 'system'
+        WHERE channel_id IN (" . implode(',', array_keys($unread)) . ") AND deleted_at = 0 AND sender_kind <> 'system'"
+        // A group of files reads as its head, the one carrying the words.
+        . ws_file_group_counted_sql() . "
         GROUP BY channel_id") as $row) {
         $last[(int) $row['channel_id']] = (int) $row['id'];
     }

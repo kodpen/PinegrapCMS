@@ -2236,6 +2236,12 @@ function ws_handle_action($action, $request)
 
             $around = (int) ($request['message_id'] ?? 0);
 
+            // A link to a file of a group lands on its head, the message drawn.
+            if (($around > 0) && ws_file_group_ready()) {
+                $around_row = db_item("SELECT id, file_group FROM ws_messages WHERE id = '" . $around . "' AND channel_id = '" . (int) $channel['id'] . "'");
+                $around = is_array($around_row) ? ws_file_group_target_id($around_row) : $around;
+            }
+
             // An earlier version of the conversation, asked for or holding
             // the message a link points at: read as it was, nothing marked
             // read (includes/workspace/eras.php).
@@ -2831,8 +2837,14 @@ function ws_handle_action($action, $request)
                 return ws_action_error(lang('That message could not be found.'));
             }
 
-            // For the person alone, or for everyone (without a trace).
-            $result = ((string) ($request['scope'] ?? '') === 'me') ? ws_message_hide($viewer, $message) : ws_message_delete($viewer, $message);
+            // For the person alone, or for everyone (without a trace); file
+            // takes one file out of a group of files, its head keeping its
+            // words (ws_file_groups.php).
+            if ((string) ($request['scope'] ?? '') === 'me') {
+                $result = ws_message_hide($viewer, $message);
+            } else {
+                $result = !empty($request['file']) ? ws_file_group_take_out($viewer, $message) : ws_message_delete($viewer, $message);
+            }
 
             return $result['ok'] ? ws_action_ok() : ws_action_error($result['error']);
 

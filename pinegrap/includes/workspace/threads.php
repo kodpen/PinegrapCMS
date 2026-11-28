@@ -1411,7 +1411,7 @@ function ws_thread_present($viewer, $thread, $channel)
         'last'       => ((int) ($counts['last_at'] ?? 0) > 0) ? ws_time_label((int) $counts['last_at']) : '',
         'unread'     => $member ? (int) db_value("SELECT COUNT(*) FROM ws_messages
             WHERE channel_id = '" . (int) $channel['id'] . "' AND id > '" . (int) $member['last_read_id'] . "' AND deleted_at = 0
-            AND sender_kind <> 'system' AND NOT (sender_kind = 'user' AND sender_id = '" . (int) $viewer['id'] . "')") : 0,
+            AND sender_kind <> 'system' AND NOT (sender_kind = 'user' AND sender_id = '" . (int) $viewer['id'] . "')" . ws_file_group_counted_sql()) : 0,
         'mine'       => (bool) $member,
         'can_join'   => ws_thread_can_join($viewer, $channel),
         'closed'     => $closed,
@@ -1528,7 +1528,7 @@ function ws_threads_for($viewer)
             'message_id' => (int) $row['message_id'],
             'unread'     => (int) db_value("SELECT COUNT(*) FROM ws_messages
                 WHERE channel_id = '" . (int) $row['id'] . "' AND id > '" . (int) $row['last_read_id'] . "' AND deleted_at = 0
-                AND sender_kind <> 'system' AND NOT (sender_kind = 'user' AND sender_id = '" . $me . "')"),
+                AND sender_kind <> 'system' AND NOT (sender_kind = 'user' AND sender_id = '" . $me . "')" . ws_file_group_counted_sql()),
             'last_message_at' => (int) $row['last_message_at'],
         );
     }

@@ -65,3 +65,33 @@ function test_ws_file_group_expand_ids_takes_the_whole_group()
 	pg_assert_same(array(30, 40), ws_file_group_expand_ids(array(30, 41), $groups, $heads, 2), 'bounded');
 	pg_assert_same(array(45), ws_file_group_expand_ids(array(45), $groups, array(), 20), 'alone');
 }
+
+function test_ws_file_group_counted_sql_is_empty_before_the_column()
+{
+	// The test runner has no database, so the column reads as missing.
+	pg_assert_same('', ws_file_group_counted_sql('msg'));
+}
+
+// The places that must read a group as one message call its helpers.
+function test_ws_file_group_rules_are_wired()
+{
+	$read = function ($file) {
+		return (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/' . $file);
+	};
+	$messages = $read('messages.php');
+
+	pg_assert_same(3, substr_count($messages, 'return ws_file_group_whole('), 'the page, around and since are read whole');
+	pg_assert_true(strpos($messages, "'file_group'  => (int) (\$row['file_group'] ?? 0)") !== false, 'the payload carries file_group');
+	pg_assert_true(strpos($messages, 'if ($group === 0) {' . "\n" . '        ws_message_notify_mentions(') !== false, 'a member sends no mention notice');
+	pg_assert_true(strpos($messages, 'ws_file_group_message_deleted($message);') !== false, 'a deleted head takes its files');
+	pg_assert_true(strpos($read('files.php'), "'file_group' => \$group_head,") !== false, 'the member is written into its group');
+	pg_assert_true(strpos($read('channels.php'), "ws_file_group_counted_sql('msg')") !== false, 'channel unread counts a group once');
+	pg_assert_same(2, substr_count($read('threads.php'), 'ws_file_group_counted_sql()'), 'discussion unread counts a group once');
+	pg_assert_same(2, substr_count($read('briefing.php'), 'ws_file_group_counted_sql()'), 'the briefing counts a group once');
+	pg_assert_true(strpos($read('home.php'), 'ws_file_group_counted_sql()') !== false, 'the last line is the head');
+	pg_assert_true(strpos($read('forward.php'), '$ids = ws_forward_pick_groups($ids);') !== false, 'a forward takes the group');
+	pg_assert_true(strpos($read('pins.php'), 'ws_file_group_is_member($message)') !== false, 'a pin takes the group');
+	$actions = $read('actions.php');
+	pg_assert_true(strpos($actions, '$around = is_array($around_row) ? ws_file_group_target_id($around_row) : $around;') !== false, 'a jump lands on the head');
+	pg_assert_true(strpos($actions, 'ws_file_group_take_out($viewer, $message)') !== false, 'one file is taken out alone');
+}
