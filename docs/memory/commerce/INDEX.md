@@ -197,6 +197,7 @@
 - marketplace-channel-price.md: A marketplace account's own price by rules (2026.11.0, 11.0.256): rule pick, rounding endings, the profit floor, the three repricer tables, history rows on marketplace:<account id>
 - marketplace-commission-and-invoice-columns.md: marketplace_product_map.commission and marketplace_order_map.invoice_sent (2026.11.0, 11.0.37): what each holds, NULL vs 0, the probes code reads them through (#1687)
 - marketplace-ebay.md: eBay marketplace (Connections › eBay, Marketplace Products): its lasting rules, what the connector base gained for the next marketplace, which ebay-*.md holds what [decision: here]
+- marketplace-etsy.md: Etsy marketplace (Connections › Etsy, Marketplace Products): its lasting rules, what the connector base gained for the next marketplace, which etsy-*.md holds what, what registering asks [decision: here]
 - marketplace-listing-recycle-bin.md: Why a product in the Recycle Bin is never listed on a marketplace: the queries that leave it out, a line queued before binning closed failed with its reason, Try again after a restore
 - marketplace-listing-view.md: Listings view of marketplace_products.php (#2066): article cards with pictures, category search by path words, one category for many articles, required attributes first
 - marketplace-listings.md: Rules for opening products on a marketplace (listings.php): product_group as article, category/attribute caching and unread attributes, SET order, Recycle Bin, stock tracking, n11 VAT.

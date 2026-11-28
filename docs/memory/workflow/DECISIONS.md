@@ -1160,6 +1160,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - commerce/kvkk-notice-switch.md: The KVKK notice's own switch (Show the KVKK notice, config_text ecommerce_kvkk_enabled, step 11.0.271): checkout and sign-up follow it, apart from Legal documents
 - commerce/marketplace-buybox-read.md: The hourly buybox read (2026.11.0): the Trendyol connector ability buybox, its body, header and limit, the job pass, and what marketplace_price_state keeps
 - commerce/marketplace-ebay.md: eBay marketplace (Connections › eBay, Marketplace Products): its lasting rules, what the connector base gained for the next marketplace, which ebay-*.md holds what
+- commerce/marketplace-etsy.md: Etsy marketplace (Connections › Etsy, Marketplace Products): its lasting rules, what the connector base gained for the next marketplace, which etsy-*.md holds what, what registering asks
 - commerce/marketplace-pricing-tab.md: Marketplaces › Settings drawer › Pricing tab and the Products in this shop row's own price and strategy (repricer RP2): what is stored, when nothing is written, the one-time requeue by the general job
 - commerce/marketplace-repricer.md: The marketplace repricer as a whole (2026.11.0, RP1 to RP5): what binds it, the architect's choices, which PR carries each feature R1 to R13, what is not built, where each part is written up
 - commerce/marketplace-repricing-screen.md: Marketplace Products › Repricing view (RP3b): figure cards, one segment row with Price log, lists on the table driver, Try first notice, rank on a product row

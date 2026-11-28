@@ -79,11 +79,10 @@
 - person-status.md: Plan (owner 2026-11-28): a person's own status (kind, note, end time) shown beside their name and told to agents in each brief, in ws_profiles.status; steps PS1 to PS4
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
 - sales-channels-global-census-amazon.md: Census (2026-11-27): Amazon's Selling Partner API (SP-API) as its developer pages say it: connecting a seller, listings, stock and price, orders and shipment, registering an application, fees
-- sales-channels-global-census-etsy.md: Census (2026-11-27): Etsy's Open API v3: connecting a shop with PKCE, listings with uploaded images, stock and price, receipts and shipment, limits for sellers in Turkey, registering
 - sales-channels-global-census-proposal.md: Census (2026-11-27) proposal for global sales channels: the order of eBay, Etsy, Amazon and TikTok Shop, what each needs stored beyond today's marketplace tables, the owner's questions
 - sales-channels-global-census-tables.md: Census (2026-11-27): the marketplace tables for listings, category pairing and orders, whether they fit a marketplace with several countries and currencies, where OAuth tokens go
 - sales-channels-global-census-tiktok.md: Census (2026-11-27): TikTok Shop's Partner API: connecting a shop, a shop cipher per country, products, stock and price, orders and packages, partner registration and reviews
-- sales-channels-global-census-unread.md: Census (2026-11-27): the Amazon, Etsy and TikTok Shop developer pages that could not be read (missing, refused, behind a sign-in) and the points the pages leave unclear or contradict
+- sales-channels-global-census-unread.md: Census (2026-11-27): the Amazon and TikTok Shop developer pages that could not be read (missing, refused, behind a sign-in) and the points the pages leave unclear or contradict
 - sales-channels-global-census.md: Census (2026-11-27) for selling on Amazon, eBay, Etsy and TikTok Shop: what the marketplace connector base gives a new marketplace, what n11 and Trendyol each added, where the census's other files are
 - sales-channels-global.md: Plan (owner 2026-11-27, poll 246): products listed and orders taken from eBay (built), then Etsy, Amazon and TikTok Shop; Etsy's steps ET1 to ET6 need no table and no column
 - settings-scan-findings.md: Faults the 2026-11-21 scan of the Site Settings panes left on SEO, Languages, Channels, Team and Maintenance; a step deletes its lines, the last one the file

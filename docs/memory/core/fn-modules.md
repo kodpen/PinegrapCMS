@@ -181,7 +181,7 @@ description: Generated from the module field of the memory files: each includes/
 - `email_settings_tabs`: [[settings-email-tabs]]
 - `encryption_key`: [[settings-security-cards]]
 - `errors`: [[fn-module-errors-mail-backup-consent]]
-- `etsy`: [[etsy-categories]], [[etsy-connection]], [[etsy-listings]], [[etsy-orders]], [[etsy-stock-price]]
+- `etsy`: [[etsy-categories]], [[etsy-connection]], [[etsy-listings]], [[etsy-orders]], [[etsy-stock-price]], [[marketplace-etsy]]
 - `event_check_in`: [[bug-hunt-event-tickets]], [[event-tickets-check-in]], [[event-tickets-series]]
 - `event_tickets`: [[bug-hunt-event-tickets]], [[event-tickets]], [[event-tickets-api]], [[event-tickets-key]], [[event-tickets-model]], [[event-tickets-returns]], [[event-tickets-series]]
 - `event_tickets_page`: [[bug-hunt-event-tickets]], [[event-tickets-page]], [[event-tickets-series]]
