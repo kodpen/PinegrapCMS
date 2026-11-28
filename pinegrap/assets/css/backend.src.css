@@ -14286,6 +14286,50 @@ b.ws-agent-card-anchor:focus-visible {
   gap: .5rem;
   margin-top: .75rem;
 }
+/* A person's own status (person_status_screen.php): the mark beside a name
+   is the kind's icon in its tone; the card's line sits under the title; the
+   composer's lines sit over the box. The Status dialog's kinds are the
+   choice cards three across, the head's icon over its label. */
+.ws-person-status-mark {
+  display: inline-flex;
+  align-items: center;
+  margin-left: .35rem;
+  font-size: 14px;
+  line-height: 1;
+  vertical-align: -1px;
+}
+.ws-person-status-ink {
+  color: var(--pg-tone, var(--pg-tone-gray));
+}
+.ws-person-status-line {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin-top: .75rem;
+}
+.ws-person-status-line > .ws-person-status-mark {
+  margin-left: 0;
+}
+.ws-person-status-lines:not(:empty) {
+  padding: 0 .25rem .35rem;
+}
+.ws-person-status-dialog .pg-start.pg-start-choice {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.ws-person-status-dialog .pg-start-choice .form-field-card {
+  padding: 10px;
+}
+.ws-person-status-dialog .pg-start-choice .pg-start-head {
+  flex-wrap: wrap;
+}
+.ws-person-status-dialog .ws-plan-field {
+  margin-top: 1rem;
+}
+.ws-person-status-count {
+  margin-top: .25rem;
+  text-align: right;
+}
 .ws-info-badge {
   margin-left: .4rem;
   font-size: 11px;

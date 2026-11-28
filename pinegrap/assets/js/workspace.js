@@ -5260,6 +5260,375 @@
         cardHook(chip, function () { messageRefShow(chip, id); }, true);
     }
 
+    // ── A person's own status (person_status_screen.php) ──
+    // A kind, a note and an end the person set; the dot on the face stays
+    // the heartbeat. Drawn only for a team member's screen
+    // (CFG.person_status), never on the guest page.
+
+    // Whether a status holds now: a kind, and an end not yet passed. An
+    // ended one goes when it is next drawn, with no poll. Pure
+    // (tests/person_status_screens_test.php).
+    function personStatusActive(status, now) {
+        return !!(status && status.kind && !(status.until > 0 && status.until * 1000 <= now));
+    }
+
+    // Whether a status is drawn beside a name: Available with no note is
+    // told only on the card. Pure.
+    function personStatusShown(status, now) {
+        return personStatusActive(status, now) && !((status.kind === 'available') && !status.note);
+    }
+
+    // A status in words: its label, its end and its note ("Out of office
+    // until 18:00 today: only following this channel"); quoted puts the note
+    // in quotes, as the card has it. Pure.
+    function personStatusWords(status, quoted) {
+        if (!status || !status.kind) {
+            return '';
+        }
+
+        var words = String(status.label || status.kind) + (status.until_words ? ' ' + status.until_words : '');
+
+        if (status.note) {
+            words += quoted ? ' · “' + status.note + '”' : ': ' + status.note;
+        }
+
+        return words;
+    }
+
+    // The composer's lines: each person named whose status holds and is
+    // not Available, one line each, at most two, then "and N more" through
+    // more(N). Pure.
+    function personStatusComposerLines(people, now, more) {
+        var held = (people || []).filter(function (person) {
+            return person && personStatusActive(person.status, now) && (person.status.kind !== 'available');
+        });
+        var lines = held.slice(0, 2).map(function (person) {
+            return person.name + ': ' + personStatusWords(person.status, false);
+        });
+
+        if (held.length > 2) {
+            lines.push(more(held.length - 2));
+        }
+
+        return lines;
+    }
+
+    // The look of a kind (icon, tone) from the settings.
+    function personStatusLook(kind) {
+        var kinds = (CFG.person_status && CFG.person_status.kinds) || [];
+
+        return kinds.filter(function (item) { return item.kind === kind; })[0] || { icon: 'bi-circle', tone: 'gray', label: kind };
+    }
+
+    // The 14 px mark beside a name: the kind's icon in its tone, the words
+    // as its tooltip and as hidden text, so the icon is never the only
+    // teller. null when nothing is drawn.
+    function personStatusMark(person) {
+        var status = person ? personStatusOf(person) : null;
+
+        if (!CFG.person_status || !personStatusShown(status, Date.now())) {
+            return null;
+        }
+
+        var look = personStatusLook(status.kind);
+        var words = personStatusWords(status, false);
+        var mark = el('span', 'ws-person-status-mark pg-tone-' + look.tone);
+
+        mark.title = words;
+        mark.appendChild(icon(look.icon, 'ws-person-status-ink'));
+        mark.appendChild(el('span', 'visually-hidden', ' (' + words + ')'));
+
+        return mark;
+    }
+
+    // A person's status as this screen last heard it: the reader's own from
+    // what they saved, anyone else's from their brief.
+    function personStatusOf(person) {
+        if (person && BOOT && BOOT.me && (person.id === BOOT.me.id) && CFG.person_status) {
+            return CFG.person_status.mine || null;
+        }
+
+        return (person && person.status) || null;
+    }
+
+    // The card's line under the title: icon, label, end and the note in
+    // quotes; on the reader's own card "Change", or "Set a status" with
+    // none. null when there is nothing to say.
+    function personStatusCardLine(person) {
+        var own = !!(BOOT && BOOT.me && person && (person.id === BOOT.me.id));
+        var status = personStatusOf(person);
+        var active = personStatusActive(status, Date.now());
+
+        if (!CFG.person_status || (!active && !own)) {
+            return null;
+        }
+
+        var line = el('div', 'ws-person-status-line');
+
+        if (active) {
+            var look = personStatusLook(status.kind);
+            var mark = el('span', 'ws-person-status-mark pg-tone-' + look.tone);
+
+            mark.appendChild(icon(look.icon, 'ws-person-status-ink'));
+            line.appendChild(mark);
+            line.appendChild(el('span', 'ws-grow', personStatusWords(status, true)));
+        }
+
+        if (own) {
+            var change = button('pg-button pg-button-quiet pg-button-sm', active ? t('ps_change') : t('ps_set'), active ? '' : 'bi-emoji-smile');
+
+            change.addEventListener('click', function () {
+                agentCardClose();
+                personStatusDialog();
+            });
+            line.appendChild(change);
+        }
+
+        return line;
+    }
+
+    // The reader's own status saved or cleared: kept for every mark of this
+    // screen and written into the account menu's row.
+    function personStatusKeep(status) {
+        CFG.person_status.mine = status || null;
+
+        if (BOOT && BOOT.me) {
+            BOOT.me.status = status || null;
+            ((BOOT && BOOT.people) || []).forEach(function (member) {
+                if (member.id === BOOT.me.id) {
+                    member.status = status || null;
+                }
+            });
+        }
+
+        Array.prototype.forEach.call(document.querySelectorAll('a[data-pg-person-status]'), function (row) {
+            var look = status ? personStatusLook(status.kind) : null;
+            var glyph = row.querySelector('.bi');
+            var text = row.querySelector('.pg-um-text');
+
+            if (glyph) {
+                glyph.className = look ? 'bi ' + look.icon + ' ws-person-status-ink pg-tone-' + look.tone : 'bi bi-emoji-smile';
+            }
+
+            if (text) {
+                text.textContent = status ? (status.label + (status.until_words ? ' ' + status.until_words : '')) : t('ps_set');
+            }
+        });
+    }
+
+    // A moment as the value of a date and time field, in the browser's own
+    // time. Pure.
+    function personStatusLocalValue(seconds) {
+        var date = new Date(seconds * 1000);
+        var two = function (number) { return (number < 10 ? '0' : '') + number; };
+
+        return date.getFullYear() + '-' + two(date.getMonth() + 1) + '-' + two(date.getDate()) + 'T' + two(date.getHours()) + ':' + two(date.getMinutes());
+    }
+
+    // The Status dialog, for the reader's own status only: the six kinds as
+    // a radio group, the note with its count, "Clear after" and, for
+    // "Choose a time…", the date and time; Clear status, Cancel and Save.
+    function personStatusDialog() {
+        var config = CFG.person_status;
+
+        if (!config || !BOOT) {
+            return;
+        }
+
+        var mine = personStatusActive(config.mine, Date.now()) ? config.mine : null;
+        var node = el('dialog', 'dialog ws-person-status-dialog md-down:dialog-fullscreen');
+        var group = nextId('ws-ps-kind-');
+        var kinds = el('div', 'pg-start pg-start-choice ws-person-status-kinds');
+        var legendSet = el('fieldset');
+        var note = el('input', 'pg-input');
+        var count = el('div', 'pg-text-meta ws-person-status-count');
+        var end = formParts.select(config.ends, mine ? (mine.until > 0 ? 'at' : 'none') : 'none');
+        var at = pgDateField(el('input', 'pg-input'), 'datetime-local');
+        var atRow = formParts.field(t('ps_at'), at);
+        var errors = { kind: formParts.error(''), note: formParts.error(''), end: formParts.error(''), until: formParts.error('') };
+        var clearButton = el('button', 'pg-button pg-button-ghost pg-button-sm me-auto', t('ps_clear'));
+        var cancel = button('pg-button pg-button-ghost pg-button-sm', t('ps_cancel'));
+        var save = formParts.save(t('ps_save'));
+        var endTouched = false;
+        var chosen = mine ? mine.kind : '';
+
+        node.tabIndex = -1;
+        node.innerHTML = '<div class="dialog-header"><h5 class="dialog-title"></h5><button type="button" class="btn-close" data-bs-dismiss="dialog"></button></div>'
+            + '<div class="dialog-body"></div><div class="dialog-footer"></div>';
+        node.querySelector('.dialog-title').textContent = t('ps_title');
+        node.querySelector('.btn-close').setAttribute('aria-label', t('close'));
+
+        var body = node.querySelector('.dialog-body');
+        var footer = node.querySelector('.dialog-footer');
+
+        legendSet.appendChild(el('legend', 'visually-hidden', t('ps_kinds')));
+        config.kinds.forEach(function (kind) {
+            var card = el('div', 'form-field form-field-card');
+            var radio = el('input', 'radio');
+            var head = el('label', 'pg-start-head');
+            var tile = el('span', 'pg-icon-tile pg-tone-' + kind.tone);
+            var tick = el('span', 'pg-start-mark');
+
+            radio.type = 'radio';
+            radio.name = group;
+            radio.value = kind.kind;
+            radio.id = group + '-' + kind.kind;
+            radio.checked = (kind.kind === chosen);
+            head.htmlFor = radio.id;
+            tile.setAttribute('aria-hidden', 'true');
+            tile.appendChild(icon(kind.icon));
+            tick.setAttribute('aria-hidden', 'true');
+            tick.appendChild(icon('bi-check'));
+            head.appendChild(tile);
+            head.appendChild(el('strong', '', kind.label));
+            head.appendChild(tick);
+            card.appendChild(radio);
+            card.appendChild(head);
+            kinds.appendChild(card);
+
+            // Choosing a kind sets its end until the person changes the
+            // select.
+            radio.addEventListener('change', function () {
+                chosen = kind.kind;
+                save.disabled = false;
+
+                if (!endTouched) {
+                    end.value = kind.end;
+                    atShown();
+                }
+            });
+        });
+        legendSet.appendChild(kinds);
+        legendSet.appendChild(errors.kind);
+        body.appendChild(legendSet);
+
+        note.type = 'text';
+        note.maxLength = config.max;
+        note.placeholder = t('ps_note_hint');
+        note.value = mine ? (mine.note || '') : '';
+        count.id = nextId('ws-ps-count-');
+        Object.keys(errors).forEach(function (key) {
+            errors[key].id = nextId('ws-ps-error-');
+        });
+        note.setAttribute('aria-describedby', count.id + ' ' + errors.note.id);
+        end.setAttribute('aria-describedby', errors.end.id);
+        at.setAttribute('aria-describedby', errors.until.id);
+        legendSet.setAttribute('aria-describedby', errors.kind.id);
+
+        function counted() {
+            // Characters, as the server counts them: a pair of surrogates is one.
+            count.textContent = note.value.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, '_').length + ' / ' + config.max;
+        }
+
+        note.addEventListener('input', counted);
+        counted();
+
+        var noteRow = formParts.field(t('ps_note'), note);
+
+        noteRow.appendChild(count);
+        noteRow.appendChild(errors.note);
+        body.appendChild(noteRow);
+
+        var endRow = formParts.field(t('ps_clear_after'), end);
+
+        endRow.appendChild(errors.end);
+        body.appendChild(endRow);
+        atRow.appendChild(errors.until);
+        body.appendChild(atRow);
+
+        if (mine && (mine.until > 0)) {
+            at.value = personStatusLocalValue(mine.until);
+        }
+
+        function atShown() {
+            atRow.classList.toggle('d-none', end.value !== 'at');
+        }
+
+        end.addEventListener('change', function () {
+            endTouched = true;
+            atShown();
+        });
+        atShown();
+
+        clearButton.type = 'button';
+        clearButton.hidden = !mine;
+        save.disabled = !chosen;
+        footer.appendChild(clearButton);
+        footer.appendChild(cancel);
+        footer.appendChild(save);
+        cancel.setAttribute('data-bs-dismiss', 'dialog');
+
+        function send(values, done) {
+            Object.keys(errors).forEach(function (key) {
+                errors[key].textContent = '';
+                errors[key].classList.add('d-none');
+            });
+            save.disabled = true;
+            clearButton.disabled = true;
+
+            api('ws_person_status_save', values).then(function (data) {
+                personStatusKeep(data.status || null);
+                pgUI.dialog.hide(node).then(function () {
+                    toast(t(done), 'success');
+                });
+            }).catch(function (error) {
+                var line = errors[error.field] || null;
+
+                if (!line) {
+                    fail(error);
+                    return;
+                }
+
+                line.textContent = error.message || t('error_generic');
+                line.classList.remove('d-none');
+
+                var field = { kind: kinds.querySelector('.radio:checked') || kinds.querySelector('.radio'), note: note, end: end, until: at }[error.field];
+
+                if (field) {
+                    field.focus();
+                }
+            }).then(function () {
+                save.disabled = !chosen;
+                clearButton.disabled = false;
+            });
+        }
+
+        save.addEventListener('click', function () {
+            var values = { kind: chosen, note: note.value, end: end.value };
+
+            // A chosen time is sent as a moment, read in the browser's own
+            // zone as the person sees it.
+            if (end.value === 'at') {
+                var moment = at.value ? new Date(at.value).getTime() : NaN;
+
+                values.until = isNaN(moment) ? '' : String(Math.round(moment / 1000));
+            }
+
+            send(values, 'ps_saved');
+        });
+        clearButton.addEventListener('click', function () {
+            send({ kind: '' }, 'ps_cleared');
+        });
+
+        pgUI.dialog.on(node, 'hidden', function () {
+            node.remove();
+        });
+
+        document.body.appendChild(node);
+        pgUI.dialog.show(node);
+    }
+
+    // The account menu's status row opens the dialog in place where this
+    // script runs; elsewhere it leads to the channel screen, which opens it.
+    document.addEventListener('click', function (event) {
+        var row = event.target.closest ? event.target.closest('a[data-pg-person-status]') : null;
+
+        if (row && CFG.person_status && BOOT) {
+            event.preventDefault();
+            personStatusDialog();
+        }
+    });
+
     // ── A person's card (person_card.php, ws_person_card) ──
     // The agent card's frame with a team member's facts: role, title,
     // departments and their leads, working day, local time, away days, last
@@ -5324,6 +5693,13 @@
 
         head.appendChild(who);
         node.appendChild(head);
+
+        // The person's own status, one line under the title.
+        var statusLine = personStatusCardLine(data);
+
+        if (statusLine) {
+            node.appendChild(statusLine);
+        }
 
         if (!card) {
             node.appendChild(el('div', 'pg-text-meta ws-agent-card-loading', t('loading')));
@@ -9759,6 +10135,9 @@
                 self.showMemory();
             } else if ((query.panel === 'audit') && BOOT.me.rights.staff) {
                 self.showAudit();
+            } else if (query.panel === 'status') {
+                // The account menu's status row, followed from another screen.
+                personStatusDialog();
             }
 
             document.addEventListener('visibilitychange', function () {
@@ -13352,11 +13731,19 @@
             }
 
             channel.members.forEach(function (member) {
-                var role = [(member.id === channel.owner_id) ? t('owner') : '', member.title || ''].filter(Boolean).join(' · ');
+                // The person's own status: its mark beside the name, its
+                // label and end in words under it.
+                var held = personStatusShown(personStatusOf(member), Date.now()) ? personStatusOf(member) : null;
+                var role = [(member.id === channel.owner_id) ? t('owner') : '', member.title || '', held ? held.label + (held.until_words ? ' ' + held.until_words : '') : ''].filter(Boolean).join(' · ');
                 var name = el('div', 'ws-info-person-name', member.name);
                 var row = personRow(personCardHook(avatar(member, null, true), channel, member, false), name, role);
+                var mark = personStatusMark(member);
 
                 personCardHook(name, channel, member, true);
+
+                if (mark) {
+                    name.appendChild(mark);
+                }
 
                 // Online or not is the dot on the face; said in words too.
                 name.appendChild(el('span', 'visually-hidden', ' (' + t('presence_' + member.presence) + ')'));
@@ -14213,6 +14600,13 @@
             var senderName = el('b', '', agentMarks ? agentMarks.name : (message.sender ? message.sender.name : ''));
 
             meta.appendChild(cardAgent ? agentCardHook(senderName, self.channel, cardAgent, true) : personCardHook(senderName, self.channel, person, true));
+
+            // The sender's own status beside their name.
+            var senderStatus = (person && !cardAgent) ? personStatusMark(person) : null;
+
+            if (senderStatus) {
+                meta.appendChild(senderStatus);
+            }
 
             // An agent of this channel: its role in place of "(application)".
             if (agentMarks && agentMarks.role) {
@@ -19811,6 +20205,11 @@
             self.commandStrip = el('div');
             wrap.appendChild(self.commandStrip);
 
+            // The people the words name whose status is not Available
+            // (drawStatusLines()); it never stops the send.
+            self.statusLines = el('div', 'ws-person-status-lines');
+            wrap.appendChild(self.statusLines);
+
             var box = el('div', 'ws-composer');
 
             // The keys the box leaves to the conversation: the picker's,
@@ -20134,6 +20533,7 @@
                 self.autosize();
                 self.pickerCheck();
                 self.keepDraft();
+                self.drawStatusLines();
             });
             input.addEventListener('click', function () { self.pickerCheck(); });
             input.addEventListener('blur', function () { self.flushDraft(); });
@@ -20696,7 +21096,45 @@
                 clear(this.commandStrip);
             }
 
+            if (this.statusLines) {
+                clear(this.statusLines);
+            }
+
             this.autosize();
+        },
+
+        // One quiet line over the composer for each person the words name
+        // with @ whose status holds and is not Available (at most two, then
+        // "and N more"); the channel's member list is fresher than the
+        // team's, which came with the page.
+        drawStatusLines: function () {
+            var self = this;
+
+            if (!self.statusLines || !CFG.person_status) {
+                return;
+            }
+
+            var ids = [];
+
+            (self.tokens(self.inputText()).match(/<@user:\d+>/g) || []).forEach(function (token) {
+                var id = parseInt(token.slice(7), 10);
+
+                if ((ids.indexOf(id) === -1) && !(BOOT && BOOT.me && id === BOOT.me.id)) {
+                    ids.push(id);
+                }
+            });
+
+            var people = ids.map(function (id) {
+                var find = function (list) { return (list || []).filter(function (person) { return person.id === id; })[0]; };
+
+                return find(self.channel && self.channel.members) || find(BOOT && BOOT.people);
+            });
+            var lines = personStatusComposerLines(people, Date.now(), function (more) { return t('ps_more', more); });
+
+            clear(self.statusLines);
+            lines.forEach(function (line) {
+                self.statusLines.appendChild(el('div', 'pg-text-meta ws-person-status-composer', line));
+            });
         },
 
         // Empties the box only while it still holds the text that was sent.
@@ -23137,7 +23575,7 @@
 
                 BOOT.people.forEach(function (member) {
                     if (!needle || foldText(member.name).indexOf(needle) !== -1 || foldText(member.username).indexOf(needle) !== -1) {
-                        items.push({ label: member.name, meta: member.title, avatar: member.avatar, face: member, token: '<@user:' + member.id + '>', shown: shownLabel('@', member.name) });
+                        items.push({ label: member.name, meta: member.title, avatar: member.avatar, face: member, person: member, token: '<@user:' + member.id + '>', shown: shownLabel('@', member.name) });
                     }
                 });
 
@@ -23331,6 +23769,13 @@
                     row.appendChild(text);
                 } else {
                     row.appendChild(pickerText('ws-picker-label', item.label));
+                }
+
+                // A person's own status beside their name.
+                var pickerStatus = item.person ? personStatusMark(item.person) : null;
+
+                if (pickerStatus) {
+                    row.appendChild(pickerStatus);
                 }
 
                 // The state in words for a screen reader; the dot shows it.
@@ -25232,6 +25677,12 @@
 
                 row.appendChild(personCardHook(avatar(member, null, true), channel, member, false));
                 personCardHook(name, channel, member, true);
+
+                var mark = personStatusMark(member);
+
+                if (mark) {
+                    name.appendChild(mark);
+                }
 
                 if (member.id === channel.owner_id) {
                     text.appendChild(el('div', 'ws-info-person-role', t('owner')));

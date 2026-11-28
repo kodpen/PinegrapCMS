@@ -479,6 +479,7 @@ function pg_look_examples_patterns($prefix = 'light')
     $patterns[] = pg_look_examples_flow_trial_pattern();
     $patterns[] = pg_look_examples_flow_counts_pattern();
     $patterns[] = pg_look_examples_menu_icon_pattern();
+    $patterns[] = pg_look_examples_person_status_pattern($p);
 
     // The e-mail settings drawing (Site Settings › E-mail, boards A to E):
     // the parts the one E-mail category is built from.
@@ -1400,6 +1401,45 @@ function pg_look_examples_menu_icon_pattern()
             . '<div class="pg-look-line pg-look-mi">' . $open . '</div>'
             . '<p class="pg-text-meta">' . h(lang('From the main menu: one line drawing on a tile in the colour of the row\'s category. Pointing at a row or focusing it plays its icon\'s one move, half a second; nothing loops but a live part, the running flow\'s dot. With less motion asked for, nothing moves.')) . '</p>'
             . '<p class="pg-text-meta">' . h(lang('The open row, second beside a row at rest: its tile filled with the colour and the drawing white (the menu\'s ground in the dark theme), the row a quiet grey fill with dark words. A panel\'s current entry is drawn the same way; pointing never fills a tile.')) . '</p>',
+    );
+}
+
+/**
+ * A person's own status (person_status_screen.php, workspace.js): the Status
+ * dialog's six kinds as the choice cards three across, a name with the mark
+ * of its status beside it, and the person card's line under the title.
+ *
+ * @param string $p the pane's id prefix, already cleaned
+ * @return array array('id', 'title', 'classes', 'html')
+ */
+function pg_look_examples_person_status_pattern($p)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/person_status_screen.php');
+
+    $looks = ws_person_status_looks();
+    $cards = '';
+
+    foreach (pg_person_status_kinds() as $kind => $label) {
+        $id = $p . '_look_status_' . $kind;
+        $cards .= '<div class="form-field form-field-card">'
+            . '<input class="radio" type="radio" name="' . $p . '_look_status" value="' . h($kind) . '" id="' . $id . '"' . (($kind === 'out') ? ' checked' : '') . '>'
+            . '<label class="pg-start-head" for="' . $id . '"><span class="pg-icon-tile pg-tone-' . $looks[$kind][1] . '" aria-hidden="true"><i class="bi ' . $looks[$kind][0] . '"></i></span>'
+            . '<strong>' . h($label) . '</strong><span class="pg-start-mark" aria-hidden="true"><i class="bi bi-check"></i></span></label>'
+            . '</div>';
+    }
+
+    $kinds = pg_person_status_kinds();
+    $words = $kinds['out'] . ' ' . lang(array('string' => 'until {var:1} today', 'vars' => array('18:00')));
+    $mark = '<span class="ws-person-status-mark pg-tone-amber" title="' . h($words) . '"><i class="bi bi-door-open ws-person-status-ink" aria-hidden="true"></i><span class="visually-hidden"> (' . h($words) . ')</span></span>';
+
+    return array(
+        'id'      => 'pattern-person-status',
+        'title'   => lang('Status'),
+        'classes' => array('.ws-person-status-dialog', '.pg-start-choice', '.ws-person-status-mark', '.ws-person-status-ink', '.ws-person-status-line'),
+        'html'    => '<div class="ws-person-status-dialog"><fieldset><legend class="visually-hidden">' . h(lang('Your status')) . '</legend><div class="pg-start pg-start-choice">' . $cards . '</div></fieldset></div>'
+            . '<div class="pg-look-line"><strong>' . h(lang('A team member')) . '</strong>' . $mark . '</div>'
+            . '<div class="ws-person-status-line">' . $mark . '<span>' . h($words) . '</span><button type="button" class="pg-button pg-button-quiet pg-button-sm">' . h(lang('Change')) . '</button></div>'
+            . '<p class="pg-text-meta">' . h(lang('A person\'s own status: the kind\'s icon in its tone beside a name, its words in the tooltip and for screen readers; the dot on the face stays the heartbeat.')) . '</p>',
     );
 }
 
