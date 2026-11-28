@@ -6491,6 +6491,7 @@ dialog.sd-cmp-host[open], dialog.dialog.sd-cmp-host[open] { transform: none; fil
     transition: background .1s;
 }
 .sd-gf-item:hover { background: rgba(255,255,255,.05); }
+.sd-gf-item:focus-visible { outline: none; box-shadow: var(--sd-focus-ring); }
 .sd-gf-item.active {
     background: rgba(110, 168, 254, .12);
     color: #e6edf3;

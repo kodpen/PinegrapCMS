@@ -661,6 +661,94 @@ function test_designer_fonts_part_update_keeps_the_font_off_and_in_place()
 	), json_decode($lines[0] ?? '', true), 'the new weights; off, moved and first as before');
 }
 
+// The preview links the family twice: its regular face alone, which Google
+// always serves, and every weight from 100 to 900, which it refuses whole
+// for a family missing one of them. Before, only the second was linked, so
+// most families (Lobster, Pacifico, Bebas Neue…) previewed in sans-serif.
+function test_designer_fonts_part_preview_links_the_regular_face()
+{
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		return;
+	}
+
+	$js = designer_fonts_part_js()
+		. 'var api = factory(K); api.open(host);'
+		. 'byId["sd-gf-detail"].q = { "input:checked": [], ".sd-gf-det-add": [el("button")], ".sd-gf-det-remove": [], ".sd-gf-det-wt input": [] };'
+		. 'api.pick(host, "Bebas Neue"); api.pick(host, "Lobster");'
+		. 'console.log(JSON.stringify(document.head.children.map(function (l) { return l.href; })));';
+	$file = tempnam(sys_get_temp_dir(), 'sdfonts') . '.js';
+	file_put_contents($file, $js);
+	$lines = array();
+	exec('node ' . escapeshellarg($file) . ' 2>&1', $lines, $code);
+	@unlink($file);
+	pg_assert_same(0, $code, 'the fonts part runs: ' . implode("\n", $lines));
+	pg_assert_same(array(
+		'https://fonts.googleapis.com/css2?family=Lobster:wght@100;200;300;400;500;600;700;800;900&display=swap',
+		'https://fonts.googleapis.com/css2?family=Lobster&display=swap',
+	), json_decode($lines[0] ?? '', true), 'two links, reused for the next font: every weight, and the regular face alone');
+}
+
+// Every font of the list is reached with Tab and opened with Enter or the
+// space bar, as with a click. Before, the rows were plain boxes with a
+// click handler: no font could be added from the keyboard.
+function test_designer_fonts_part_list_works_from_the_keyboard()
+{
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		return;
+	}
+
+	$js = designer_fonts_part_js()
+		. 'var api = factory(K); api.open(host); var row = el("div"); row.dataset.gfPick = "Roboto"; byId["sd-gf-list"].q = { "[data-gf-pick]": [row] };'
+		. 'byId["sd-gf-detail"].q = { "input:checked": [], ".sd-gf-det-add": [el("button")], ".sd-gf-det-remove": [], ".sd-gf-det-wt input": [] };'
+		. 'api.open(host); var list = byId["sd-gf-list"].innerHTML, stopped = 0;'
+		. 'var key = function (k) { row.listeners.keydown.call(row, { key: k, preventDefault: function () { stopped++; } }); };'
+		. 'key("a"); var before = byId["sd-gf-detail"].innerHTML.indexOf("Roboto") !== -1; key("Enter");'
+		. 'console.log(JSON.stringify([(list.match(/role="button" tabindex="0"/g) || []).length, typeof row.listeners.keydown, before, byId["sd-gf-detail"].innerHTML.indexOf("Roboto") !== -1, stopped]));';
+	$file = tempnam(sys_get_temp_dir(), 'sdfonts') . '.js';
+	file_put_contents($file, $js);
+	$lines = array();
+	exec('node ' . escapeshellarg($file) . ' 2>&1', $lines, $code);
+	@unlink($file);
+	pg_assert_same(0, $code, 'the fonts part runs: ' . implode("\n", $lines));
+	pg_assert_same(array(3, 'function', false, true, 1), json_decode($lines[0] ?? '', true), 'each row a focusable button; Enter opens its detail, another key does nothing');
+}
+
+// The browser is a dialog for assistive technology, named by its title, and
+// closing it gives the focus back to what opened it. Before, the focus was
+// left on the hidden dialog and a keyboard user started again from the top
+// of the editor.
+function test_designer_fonts_part_close_gives_the_focus_back()
+{
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		return;
+	}
+
+	$js = designer_fonts_part_js()
+		. 'var opener = el("button"), focused = 0; opener.focus = function () { focused++; }; document.activeElement = opener;'
+		. 'var api = factory(K); api.open(host); document.activeElement = byId["sd-gf-search"];'
+		. 'var html = byId["sd-gf-modal"].innerHTML; byId["sd-gf-modal-close"].listeners.click();'
+		. 'console.log(JSON.stringify([/role="dialog" aria-modal="true" aria-labelledby="sd-gf-modal-title"/.test(html), /id="sd-gf-modal-title"/.test(html), byId["sd-gf-modal"].style.display, focused]));';
+	$file = tempnam(sys_get_temp_dir(), 'sdfonts') . '.js';
+	file_put_contents($file, $js);
+	$lines = array();
+	exec('node ' . escapeshellarg($file) . ' 2>&1', $lines, $code);
+	@unlink($file);
+	pg_assert_same(0, $code, 'the fonts part runs: ' . implode("\n", $lines));
+	pg_assert_same(array(true, true, 'none', 1), json_decode($lines[0] ?? '', true), 'a named modal dialog; Close hides it and focuses its opener');
+}
+
 // The Interactions section's rows and fields are a part: the core draws the
 // section (its header and an empty body) and keeps what the page and the
 // canvas need at open (_sdFxSpec(), _sdFxNormalize(), _sdFxAttrs(),

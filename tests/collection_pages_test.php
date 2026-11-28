@@ -270,7 +270,7 @@ function test_collection_pages_part_field_defs()
 
 function test_collection_pages_part_closing_line()
 {
-	$res = collection_pages_node(array('_ncMadeHtml'),
+	$res = collection_pages_node(array('_ncLit', '_ncMadeHtml'),
 		'var made = { collection: { page_id: 3 }, list: { page_id: 4, title: "Teachers" }, detail: { page_id: 5, title: "<b>" } };'
 		. 'console.log(JSON.stringify({ all: _ncMadeHtml(made, { name: "Teachers", page_id: 3 }, 5, true),'
 		. ' half: _ncMadeHtml({ collection: made.collection, list: made.list }, { name: "Teachers", page_id: 3 }, 5, true),'
@@ -339,4 +339,43 @@ function test_collection_pages_upload_folder()
 	pg_assert_same('image', $kids[0]['props']['_cf']['kind'], 'its kind is kept');
 	pg_assert_same(7, $kids[2]['props']['_cf']['upload_folder_id'], 'a file field too, from an empty record');
 	pg_assert_true(!isset($kids[1]['props']['_cf']), 'a text field is left alone');
+}
+
+// "Done" on the closing line, a name's link there and Escape all leave the
+// view through _ncBack(): it starts the window afresh, hides the view and
+// turns the Pages window back. Before, the fresh state had no view, so
+// hiding it threw: the window stayed on the closing line and a link's page
+// never opened.
+function test_collection_pages_part_done_turns_back()
+{
+	$res = collection_pages_node(array('_ncFresh', '_ncBack'),
+		'var view = { hidden: false }, backs = 0, S = _ncFresh({}, { back: function () { backs++; } });'
+		. 'S.view = view; S.step = "done"; S.made = { list: { page_id: 4 } }; var err = "";'
+		. 'try { _ncBack(); } catch (e) { err = String(e); }'
+		. 'console.log(JSON.stringify({ err: err, backs: backs, hidden: view.hidden, step: S.step, made: Object.keys(S.made).length, kept: S.view === view }));');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array('err' => '', 'backs' => 1, 'hidden' => true, 'step' => 1, 'made' => 0, 'kept' => true), $res, 'a fresh start, the view hidden and kept, the Pages window back');
+}
+
+// A name holding a dollar sign is shown and sent as typed: "$&", "$$" and
+// "$'" are text, not the patterns String.replace() reads in its second
+// argument. Before, "Rates $$" read "Rates $" in the closing line and in
+// the collection page's title, and "$&" printed the placeholder.
+function test_collection_pages_part_dollar_names_kept()
+{
+	$res = collection_pages_node(array('_ncLit', '_ncMadeHtml'),
+		'var made = { collection: { page_id: 3 }, list: { page_id: 4, title: "Save $& more" }, detail: { page_id: 5, title: "Deal $\x27s" } };'
+		. 'console.log(JSON.stringify({ line: _ncMadeHtml(made, { name: "Rates $$", page_id: 3 }, 2, true),'
+		. ' title: _sdT("{name} collection").replace("{name}", _ncLit("Rates $$")) }));');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same('Made the collection <a href="#" data-open="3">“Rates $$”</a> with 2 fields, the list page <a href="#" data-open="4">“Save $&amp; more”</a> and the detail page <a href="#" data-open="5">“Deal $\'s”</a>.', $res['line'], 'the names as typed');
+	pg_assert_same('Rates $$ collection', $res['title'], 'the collection page title as typed');
 }

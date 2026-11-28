@@ -27,6 +27,8 @@ StyleDesigner.definePart('fonts', function (K) {
     var H = null;
     var gfModalEl = null;
     var _gfOpenFamily = null;
+    // What had the focus when the browser opened: closing gives it back.
+    var _gfReturnFocus = null;
 
     // The modal is built the first time the browser opens, with its close
     // button, its search field and the Escape key.
@@ -36,9 +38,9 @@ StyleDesigner.definePart('fonts', function (K) {
         gfModalEl.id = 'sd-gf-modal';
         gfModalEl.style.display = 'none';
         gfModalEl.innerHTML =
-            '<div class="sd-gf-modal-dialog">' +
+            '<div class="sd-gf-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="sd-gf-modal-title">' +
                 '<div class="sd-gf-modal-hdr">' +
-                    '<span class="bi bi-fonts me-3"></span><span class="sd-gf-modal-title">Google Fonts</span>' +
+                    '<span class="bi bi-fonts me-3"></span><span class="sd-gf-modal-title" id="sd-gf-modal-title">Google Fonts</span>' +
                     '<button id="sd-gf-modal-close" class="sd-gf-modal-close" type="button" aria-label="' + esc(_sdT('Close')) + '"><span class="bi bi-x-lg" aria-hidden="true"></span></button>' +
                 '</div>' +
                 '<div class="sd-gf-modal-body">' +
@@ -64,6 +66,7 @@ StyleDesigner.definePart('fonts', function (K) {
 
     function openGfModal() {
         buildGfModal();
+        if (gfModalEl.style.display === 'none') _gfReturnFocus = document.activeElement;
         gfModalEl.style.display = 'flex';
         renderGfBrowser('');
         setTimeout(function() { var s = document.getElementById('sd-gf-search'); if (s) { s.value = ''; s.focus(); } }, 50);
@@ -74,6 +77,9 @@ StyleDesigner.definePart('fonts', function (K) {
         var det = document.getElementById('sd-gf-detail');
         if (det) det.innerHTML = '<div class="sd-gf-detail-empty"><span class="bi bi-arrow-left"></span> ' + esc(_sdT('Pick a font from the list')) + '</div>';
         _gfOpenFamily = null;
+        var back = _gfReturnFocus;
+        _gfReturnFocus = null;
+        if (back && back.isConnected !== false && typeof back.focus === 'function') back.focus();
     }
 
     function renderGfBrowser(query) {
@@ -91,10 +97,16 @@ StyleDesigner.definePart('fonts', function (K) {
         el.innerHTML = fonts.map(function(f) {
             var added = addedFams.indexOf(f) !== -1;
             var activeCls = (_gfOpenFamily === f) ? ' active' : '';
-            return '<div class="sd-gf-item' + (added ? ' sd-gf-added-mark' : '') + activeCls + '" data-gf-pick="' + f + '"><span class="sd-gf-item-name">' + f + '</span>' + (added ? '<span class="bi bi-check2-circle sd-gf-icon-ok"></span>' : '<span class="bi bi-plus-circle sd-gf-icon-add"></span>') + '</div>';
+            return '<div class="sd-gf-item' + (added ? ' sd-gf-added-mark' : '') + activeCls + '" data-gf-pick="' + f + '" role="button" tabindex="0"><span class="sd-gf-item-name">' + f + '</span>' + (added ? '<span class="bi bi-check2-circle sd-gf-icon-ok"></span>' : '<span class="bi bi-plus-circle sd-gf-icon-add"></span>') + '</div>';
         }).join('');
         el.querySelectorAll('[data-gf-pick]').forEach(function(item) {
-            item.addEventListener('click', function() { openGfPicker(this.dataset.gfPick, this); });
+            item.addEventListener('click', function() { openGfPicker(item.dataset.gfPick, item); });
+            // A row is a button for the keyboard too: Enter or the space bar.
+            item.addEventListener('keydown', function(e) {
+                if (e.key !== 'Enter' && e.key !== ' ') return;
+                e.preventDefault();
+                openGfPicker(item.dataset.gfPick, item);
+            });
         });
     }
 
@@ -117,11 +129,18 @@ StyleDesigner.definePart('fonts', function (K) {
         var gfAdded = H.added();
         var existing = null; for (var i=0; i<gfAdded.length; i++) { if (gfAdded[i].family === family) { existing = gfAdded[i]; break; } }
         var selWts = existing ? existing.weights.slice() : [400];
-        // Load preview font — the <link> targets the parent document so
+        // Load preview font — the <link>s target the parent document so
         // the preview area in the modal can render in the chosen face.
-        var prevLink = document.getElementById('sd-gf-preview-link');
-        if (!prevLink) { prevLink = document.createElement('link'); prevLink.id = 'sd-gf-preview-link'; prevLink.rel = 'stylesheet'; document.head.appendChild(prevLink); }
-        prevLink.href = 'https://fonts.googleapis.com/css2?family=' + encodeURIComponent(family).replace(/%20/g, '+') + ':wght@100;200;300;400;500;600;700;800;900&display=swap';
+        // Google refuses a request for every weight whole when the family
+        // lacks one of them, so the regular face is linked on its own too.
+        var famArg = encodeURIComponent(family).replace(/%20/g, '+');
+        var previewLink = function (id, href) {
+            var l = document.getElementById(id);
+            if (!l) { l = document.createElement('link'); l.id = id; l.rel = 'stylesheet'; document.head.appendChild(l); }
+            l.href = href;
+        };
+        previewLink('sd-gf-preview-link', 'https://fonts.googleapis.com/css2?family=' + famArg + ':wght@100;200;300;400;500;600;700;800;900&display=swap');
+        previewLink('sd-gf-preview-plain', 'https://fonts.googleapis.com/css2?family=' + famArg + '&display=swap');
         var det = document.getElementById('sd-gf-detail');
         if (!det) return;
         // Detail layout (top-down): title → preview card → weights row
