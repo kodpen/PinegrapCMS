@@ -24,5 +24,5 @@ module: office_pptx_canvas
 
 ## Which way does DF2 take?
 - The browser's painter, under 3 s to the first slide both openings, so the architect is not asked. The server answers the mapped documents (milliseconds), the browser loads the editor when the Slides tab shows, draws the first slide, then the strip one by one. Nothing drawn is kept on the server; the server's draw is not used.
-- DF2 must give the picture parts to the painter by a view-only address out of the package: today they become files only through `design_file` with an edit right (`ui/image-editor-design-file.md`).
+- DF2 gives the picture parts to the painter through the preview's own door, one slide at a time as data: addresses (`office-pptx-slides-preview.md`).
 - The reader's master text styles, shape-style text colour and the report naming a theme font are DF2's or a later step's fixes, not this measure's.

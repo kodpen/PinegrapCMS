@@ -23169,6 +23169,170 @@ button.ws-file-name {
   border-left: 3px solid var(--pg-border-color);
   color: var(--pg-fg-2);
 }
+/* A presentation's Slides tab (pg_office_view.js, renderSlides()): the
+   tabs, the quiet line on what is left out, a strip of numbered thumbs
+   148 px wide beside the chosen slide on the look's ground; below 768 px
+   the strip lies under the slide as one row that scrolls sideways. A slide
+   not drawn yet is a skeleton in its ratio. */
+.office-slides-view {
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+}
+.office-slides-tabs {
+  align-self: flex-start;
+}
+.office-slides-left {
+  margin: 0;
+}
+.office-slides-body {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  min-height: 0;
+}
+.office-slides-strip {
+  flex: 0 0 auto;
+  width: calc(148px + 1.5rem);
+  max-height: 70vh;
+  overflow-y: auto;
+  list-style: none;
+  margin: 0;
+  padding: .25rem;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+.office-slides-thumb {
+  display: flex;
+  align-items: flex-start;
+  gap: .35rem;
+  width: 100%;
+  padding: .25rem;
+  border: 0;
+  border-radius: var(--pg-radius-sm);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+.office-slides-thumb .office-slides-picture {
+  border-radius: var(--pg-radius-sm);
+  box-shadow: 0 0 0 1px var(--pg-border-color);
+}
+.office-slides-thumb.is-active .office-slides-picture {
+  box-shadow: 0 0 0 2px var(--pg-primary);
+}
+.office-slides-thumb:focus-visible {
+  outline: var(--pg-focus-ring-width) solid var(--pg-primary-ink);
+  outline-offset: var(--pg-focus-ring-offset);
+}
+.office-slides-thumb-hidden .office-slides-picture {
+  opacity: .45;
+}
+.office-slides-n {
+  min-width: 1.25rem;
+  text-align: right;
+}
+.office-slides-hidden {
+  display: block;
+  font-style: italic;
+}
+.office-slides-thumb-hidden {
+  flex-wrap: wrap;
+}
+.office-slides-picture {
+  display: block;
+  flex: 0 0 auto;
+  overflow: hidden;
+  max-width: 100%;
+}
+.office-slides-picture canvas {
+  display: block;
+}
+.office-slides-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .5rem;
+}
+.office-slides-stage {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: .75rem;
+  border-radius: var(--pg-radius);
+  background: var(--pg-bg-2);
+}
+.office-slides-stage:focus-visible {
+  outline: var(--pg-focus-ring-width) solid var(--pg-primary-ink);
+  outline-offset: calc(-1 * var(--pg-focus-ring-width));
+}
+.office-slides-stage .office-slides-picture {
+  box-shadow: 0 0 0 1px var(--pg-border-color);
+}
+.office-slides-skeleton {
+  background: var(--pg-bg-2);
+}
+.office-slides-stage .office-slides-skeleton {
+  background: var(--pg-bg-1);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .office-slides-skeleton {
+    background: linear-gradient(90deg, var(--pg-bg-2) 25%, var(--pg-bg-1) 50%, var(--pg-bg-2) 75%);
+    background-size: 200% 100%;
+    animation: ws-skeleton-shine 1.4s ease-in-out infinite;
+  }
+}
+.office-slides-failed {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: .5rem;
+  text-align: center;
+  background: var(--pg-bg-1);
+}
+.office-slides-nav {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+.office-slides-position {
+  font-variant-numeric: tabular-nums;
+}
+.office-slides-notes-toggle {
+  align-self: flex-start;
+}
+.office-slides-notes {
+  align-self: stretch;
+  padding: .5rem .75rem;
+  border-left: 3px solid var(--pg-border-color);
+  color: var(--pg-fg-2);
+}
+.office-slides-notes .office-slide-text {
+  margin: 0 0 .35rem;
+  white-space: pre-wrap;
+}
+@media (max-width: 767.98px) {
+  .office-slides-body {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+  .office-slides-strip {
+    width: auto;
+    max-height: none;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  .office-slides-thumb-item {
+    flex: 0 0 auto;
+  }
+  .office-slides-thumb {
+    width: auto;
+  }
+}
 /* A document offered for editing (pg_office_view.js): a paragraph that
    may change is typed where it stands (contenteditable, .office-typing),
    with no box or ring; one that may not is picked and ringed. Spaces and
