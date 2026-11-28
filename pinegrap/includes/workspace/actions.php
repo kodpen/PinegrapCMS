@@ -1898,6 +1898,20 @@ function ws_handle_action($action, $request)
                 return ws_action_error(lang('There is no preview for this kind of file.'));
             }
 
+            // A presentation's Slides tab asks for one slide's pictures at a
+            // time (slide), read with the channel reader's rights and never
+            // kept as files.
+            if (isset($request['slide']) && (pg_office_preview_kind($message['file_name']) === 'pptx')) {
+                require_once(PG_FUNCTIONS_DIR . '/includes/fn/office_pptx_slides.php');
+                $pictures = pg_office_pptx_slide_pictures(pg_file_reader_path($stored), $request['slide']);
+
+                if (!$pictures['ok']) {
+                    return ws_action_error($pictures['error']);
+                }
+
+                return ws_action_ok(array('pictures' => (object) $pictures['pictures'], 'lost' => $pictures['lost']));
+            }
+
             // A macro file posted before channels refused them opens read only: its edit would be refused.
             $editing = !empty($request['edit']) && (pg_office_kind($message['file_name']) !== '') && ws_can_post_channel($viewer, $channel) && !ws_upload_refused($message['file_name']);
             // The file may be in the object store: the reader gets a copy.

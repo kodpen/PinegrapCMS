@@ -64,7 +64,9 @@ function pg_explorer_webp_base_name($name)
 // above it sends the separator and character set to read it with
 // (delimiter, encoding). An .xls is only looked at too; the answer's
 // can_copy says whether a copy as .xlsx may be saved beside it
-// (explorer_office_copy).
+// (explorer_office_copy). A presentation's answer also carries its slides
+// as documents (office.design); with slide it answers that slide's
+// pictures as data: addresses instead (pg_office_pptx_slide_pictures()).
 function pg_explorer_handle_office_preview($type, $request, $user)
 {
     $office_file = pg_explorer_file_row((int) (isset($request['id']) ? $request['id'] : 0));
@@ -84,6 +86,19 @@ function pg_explorer_handle_office_preview($type, $request, $user)
         || !pg_file_panel_content_verdict($office_file['attachment'], check_edit_access($office_file['folder']), $user['id'], $user['role'], pg_file_chat_conversations($office_file['id']))
     ) {
         respond(array('status' => 'error', 'message' => lang('Access denied')));
+    }
+
+    // A presentation's Slides tab asks for one slide's pictures at a time
+    // (slide): read with the same view rights, never kept as files.
+    if (isset($request['slide']) && (pg_office_preview_kind($office_file['name']) === 'pptx')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/office_pptx_slides.php');
+        $pictures = pg_office_pptx_slide_pictures(pg_file_reader_path($office_file['name']), $request['slide']);
+
+        if (!$pictures['ok']) {
+            respond(array('status' => 'error', 'message' => $pictures['error']));
+        }
+
+        respond(array('status' => 'success', 'request' => $type, 'pictures' => (object) $pictures['pictures'], 'lost' => $pictures['lost']));
     }
 
     $office_edit = !empty($request['edit']) && !$office_erp && pg_explorer_file_editable_by($office_file, $user);

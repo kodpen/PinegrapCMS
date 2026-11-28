@@ -3833,8 +3833,18 @@ function pg_office_read($path, $name, $edit = false, $choice = array())
         return array('kind' => 'xls') + pg_office_xls_read($path);
     }
 
+    // The text list, and its slides as documents for the Slides tab
+    // (includes/fn/office_pptx_slides.php); design is null when the design
+    // reader refuses the file, which then shows the text list alone.
     if ($kind === 'pptx') {
-        return array('kind' => 'pptx') + pg_office_pptx_read($path);
+        $read = array('kind' => 'pptx') + pg_office_pptx_read($path);
+
+        if ($read['ok']) {
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/office_pptx_slides.php');
+            $read['design'] = pg_office_pptx_slides_drawn($path);
+        }
+
+        return $read;
     }
 
     return array('ok' => false, 'error' => lang('There is no preview for this kind of file.'), 'kind' => '');
