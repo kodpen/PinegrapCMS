@@ -25,6 +25,9 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 // The visitor's market on the site: its prices, the country list.
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/markets_site.php');
 
+// The cart in its market's currency.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/market_cart.php');
+
 // The longest market name the column keeps.
 define('PG_MARKET_NAME_MAX', 100);
 
