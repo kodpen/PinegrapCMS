@@ -947,3 +947,211 @@ function pg_etsy_image_file_name($url, $base)
 
     return $name;
 }
+
+/**
+ * The most listings one getListingsByListingIds call reads with their
+ * inventory. Etsy takes 100; 25 keeps the answer, every listing with all its
+ * products, well inside what is read of a body.
+ *
+ * @return int
+ */
+function pg_etsy_inventory_read_max()
+{
+    return 25;
+}
+
+/**
+ * The inventories of a getListingsByListingIds answer read with
+ * includes=Inventory: listing id => the inventory as getListingInventory
+ * answers it. A listing the answer carries without its inventory is left
+ * out, so it is read on its own. Pure.
+ *
+ * @param mixed $data
+ * @return array
+ */
+function pg_etsy_batch_inventories($data)
+{
+    $inventories = array();
+    $results = (is_array($data) && isset($data['results']) && is_array($data['results'])) ? $data['results'] : array();
+
+    foreach ($results as $listing) {
+        if (!is_array($listing) || !isset($listing['listing_id']) || !is_scalar($listing['listing_id'])
+            || !isset($listing['inventory']) || !is_array($listing['inventory'])) {
+            continue;
+        }
+
+        $inventories[(string) $listing['listing_id']] = $listing['inventory'];
+    }
+
+    return $inventories;
+}
+
+/**
+ * The currency of a listing's inventory: the first offering's price
+ * currency, or ''. Pure.
+ *
+ * @param array $inventory getListingInventory's answer
+ * @return string
+ */
+function pg_etsy_inventory_currency($inventory)
+{
+    foreach ((isset($inventory['products']) && is_array($inventory['products'])) ? $inventory['products'] : array() as $product) {
+        foreach ((is_array($product) && isset($product['offerings']) && is_array($product['offerings'])) ? $product['offerings'] : array() as $offering) {
+            if (isset($offering['price']['currency_code']) && is_string($offering['price']['currency_code'])) {
+                $currency = strtoupper(trim($offering['price']['currency_code']));
+
+                if (preg_match('/^[A-Z]{3}$/', $currency) === 1) {
+                    return $currency;
+                }
+            }
+        }
+    }
+
+    return '';
+}
+
+/**
+ * The body of updateListingInventory that changes stock and price of some
+ * of a listing's products and keeps the others as Etsy has them: the call
+ * replaces the whole products array, so every product of the read
+ * inventory goes back, with its property values and offerings in the shape
+ * the call takes (a price as a decimal number, no ids, nothing deleted).
+ * Pure.
+ *
+ * $changes is SKU => quantity (int, or null to keep Etsy's) and price
+ * ("12.34", or '' to keep Etsy's). A changed quantity is capped at
+ * pg_etsy_quantity_max() and an offering is enabled only with stock, as a
+ * new listing's are. Answers body (null when nothing differs from Etsy's)
+ * and found, the SKUs of $changes the listing has.
+ *
+ * @param array $inventory getListingInventory's answer
+ * @param array $changes
+ * @return array body, found
+ */
+function pg_etsy_inventory_update($inventory, $changes)
+{
+    $products = array();
+    $found = array();
+    $changed = false;
+
+    foreach ((isset($inventory['products']) && is_array($inventory['products'])) ? $inventory['products'] : array() as $product) {
+        if (!is_array($product) || !empty($product['is_deleted'])) {
+            continue;
+        }
+
+        $sku = isset($product['sku']) && is_scalar($product['sku']) ? (string) $product['sku'] : '';
+        $change = (($sku !== '') && isset($changes[$sku])) ? $changes[$sku] : null;
+
+        if ($change !== null) {
+            $found[] = $sku;
+        }
+
+        $property_values = array();
+
+        foreach ((isset($product['property_values']) && is_array($product['property_values'])) ? $product['property_values'] : array() as $value) {
+            $kept = array(
+                'property_id' => isset($value['property_id']) ? (int) $value['property_id'] : 0,
+                'value_ids'   => isset($value['value_ids']) ? array_values(array_map('intval', (array) $value['value_ids'])) : array(),
+                'values'      => isset($value['values']) ? array_values(array_map('strval', (array) $value['values'])) : array(),
+            );
+
+            if (isset($value['property_name']) && is_string($value['property_name']) && ($value['property_name'] !== '')) {
+                $kept['property_name'] = $value['property_name'];
+            }
+
+            if (isset($value['scale_id']) && is_numeric($value['scale_id'])) {
+                $kept['scale_id'] = (int) $value['scale_id'];
+            }
+
+            $property_values[] = $kept;
+        }
+
+        $offerings = array();
+
+        foreach ((isset($product['offerings']) && is_array($product['offerings'])) ? $product['offerings'] : array() as $offering) {
+            if (!is_array($offering) || !empty($offering['is_deleted'])) {
+                continue;
+            }
+
+            $divisor = (isset($offering['price']['divisor']) && ((int) $offering['price']['divisor'] > 0)) ? (int) $offering['price']['divisor'] : 100;
+            $amount = isset($offering['price']['amount']) ? (int) $offering['price']['amount'] : 0;
+            $quantity = isset($offering['quantity']) ? (int) $offering['quantity'] : 0;
+            $enabled = !empty($offering['is_enabled']);
+            $price = round($amount / $divisor, 2);
+
+            if ($change !== null) {
+                if ($change['quantity'] !== null) {
+                    $new = max(0, min(pg_etsy_quantity_max(), (int) $change['quantity']));
+                    $changed = $changed || ($new !== $quantity) || ($enabled !== ($new > 0));
+                    $quantity = $new;
+                    $enabled = $new > 0;
+                }
+
+                if ((string) $change['price'] !== '') {
+                    $new = (float) $change['price'];
+                    $changed = $changed || (abs($new - $price) >= 0.005);
+                    $price = $new;
+                }
+            }
+
+            $kept = array('price' => $price, 'quantity' => $quantity, 'is_enabled' => $enabled);
+
+            if (isset($offering['readiness_state_id']) && is_numeric($offering['readiness_state_id'])) {
+                $kept['readiness_state_id'] = (int) $offering['readiness_state_id'];
+            }
+
+            $offerings[] = $kept;
+        }
+
+        $products[] = array('sku' => $sku, 'property_values' => $property_values, 'offerings' => $offerings);
+    }
+
+    if (!$changed) {
+        return array('body' => null, 'found' => $found);
+    }
+
+    $body = array('products' => $products);
+
+    foreach (array('price_on_property', 'quantity_on_property', 'sku_on_property', 'readiness_state_on_property') as $on) {
+        if (isset($inventory[$on]) && is_array($inventory[$on])) {
+            $body[$on] = array_values(array_map('intval', $inventory[$on]));
+        }
+    }
+
+    return array('body' => $body, 'found' => $found);
+}
+
+/**
+ * What the limits an answer carries ask of the next call (Etsy names them
+ * in every answer: x-remaining-this-second, x-remaining-today, and
+ * retry-after on a 429). wait: seconds to sleep before the next call, once
+ * this second's calls are used up; stop: seconds the rest waits in the
+ * queue, for a 429 (its retry-after, else a minute) or a day's calls used
+ * up (the queue's longest wait, an hour). Pure.
+ *
+ * @param array $result ok, status, headers (lower-case names)
+ * @return array wait, stop
+ */
+function pg_etsy_pace($result)
+{
+    $headers = (isset($result['headers']) && is_array($result['headers'])) ? $result['headers'] : array();
+    $header = function ($name) use ($headers) {
+        return (isset($headers[$name]) && is_numeric(trim((string) $headers[$name]))) ? (int) trim((string) $headers[$name]) : null;
+    };
+
+    $today = $header('x-remaining-today');
+
+    if (($today !== null) && ($today <= 0)) {
+        return array('wait' => 0, 'stop' => 3600);
+    }
+
+    if (isset($result['status']) && ((int) $result['status'] === 429)) {
+        $after = $header('retry-after');
+
+        return array('wait' => 0, 'stop' => ($after === null) ? 60 : max(1, min(3600, $after)));
+    }
+
+    $second = $header('x-remaining-this-second');
+
+    return array('wait' => (($second !== null) && ($second <= 0)) ? 1 : 0, 'stop' => 0);
+}

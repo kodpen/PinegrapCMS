@@ -24,6 +24,12 @@
  * the verdicts carry the listing id, written on the mappings, and a later
  * send of the same article updates that listing rather than making a second.
  *
+ * push_stock_price() sends stock and price from the queue: the listings'
+ * inventories are read in bulk, then each listing's whole products array
+ * goes back in one call with the batch's products changed, the price
+ * converted to the shop's currency, paced by the limits Etsy's answers
+ * name (pg_etsy_pace()).
+ *
  * Every call carries the application's x-api-key header
  * (pg_etsy_app_headers()). The Etsy functions of their own (scopes, the
  * provider, the parsers of these answers) are in includes/fn/etsy.php.
@@ -40,6 +46,12 @@ if (!defined('PG_INIT_LOADED')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/etsy.php');
 
+// Seconds one push_stock_price() call may spend on Etsy before the rest of
+// the batch waits for the next pass.
+if (!defined('PG_ETSY_PUSH_BUDGET')) {
+	define('PG_ETSY_PUSH_BUDGET', 20);
+}
+
 function mp_etsy_connector() {
 
 	return array(
@@ -47,7 +59,8 @@ function mp_etsy_connector() {
 		'category_tree'       => 'mp_etsy_category_tree',
 		'category_attributes' => 'mp_etsy_category_attributes',
 		'create_listings'     => 'mp_etsy_create_listings',
-		'listing_fee'         => 'mp_etsy_listing_fee'
+		'listing_fee'         => 'mp_etsy_listing_fee',
+		'push_stock_price'    => 'mp_etsy_push_stock_price'
 	);
 
 }
@@ -88,6 +101,7 @@ function mp_etsy_api_call() {
 		$options['headers'] = array_merge(array('Accept: application/json'), $key_headers, $headers);
 		$options['timeout'] = isset($options['timeout']) ? $options['timeout'] : 30;
 		$options['agent'] = 'marketplace';
+		$options['response_headers'] = true;
 
 		$result = pg_connect_api($connection_id, $method, pg_etsy_api_base() . $path, $options);
 
@@ -687,5 +701,367 @@ function mp_etsy_create_listings($account, $items, $call = null, $rate = null, $
 		: array('ok' => false, 'error' => pg_etsy_error_text($read_back));
 
 	return mp_ok(array('task_id' => '', 'results' => mp_etsy_verdicts($items, $verdict['ok'], $verdict['error'], $listing_id)));
+
+}
+
+/* -------------------------------------------------------- stock and price */
+
+// Stock and price of a batch of mapped products (mp_product_row()) on the
+// account's shop, as mp_sync_send_batch() asks. Etsy answers at once, so
+// there is no task: data['pushed'] names the products that went through,
+// data['refused'] the ones Etsy or this side refused (product id => reason,
+// written on the mapping) and data['deferred'] the ones left for the next
+// pass, after a fault on Etsy's side, a limit its answers name or past the
+// time budget, with data['retry_after']. A product with nothing to say
+// (untracked stock on an account that sends no prices) closes as done.
+//
+// A product's listing is the one its mapping keeps (remote_id, written by
+// create_listings). The listings are read with their inventories, at most
+// pg_etsy_inventory_read_max() a call (getListingsByListingIds); one the
+// answer carries without its inventory is read on its own. Then each
+// listing whose products changed gets its whole products array back in one
+// updateListingInventory call: Etsy replaces the array, so the products not
+// in the batch go back as Etsy has them. The price is the row's channel
+// price converted to the listing's currency, the shop's, and rounded to the
+// cent, as the listing's was.
+//
+// $call, $rate (a number for every currency), $sleep and $budget (seconds)
+// replace Etsy, the rate table, usleep() and PG_ETSY_PUSH_BUDGET in tests.
+function mp_etsy_push_stock_price($account, $rows, $call = null, $rate = null, $sleep = null, $budget = null) {
+
+	$rows = array_values((array)$rows);
+
+	$with_price = !empty($account['push_price']);
+
+	$with_stock = !empty($account['push_stock']);
+
+	if (!$rows || (!$with_price && !$with_stock)) {
+
+		return mp_ok(array('task_id' => ''));
+
+	}
+
+	$refused = array();
+
+	$listings = array();
+
+	foreach ($rows as $row) {
+
+		$product_id = (int)$row['product_id'];
+
+		$sku = trim((string)$row['remote_code']);
+
+		$listing_id = trim((string)(isset($row['remote_id']) ? $row['remote_id'] : ''));
+
+		// Untracked stock on an account sending no prices: nothing to say.
+		if (!$with_price && empty($row['tracked'])) {
+
+			continue;
+
+		}
+
+		if (($sku === '') || (preg_match('/^[0-9]{1,20}$/', $listing_id) !== 1)) {
+
+			$refused[$product_id] = lang(array('string' => '{var:1} is not listed on Etsy yet.', 'vars' => array(($sku !== '') ? $sku : (string)$product_id)));
+
+			continue;
+
+		}
+
+		$listings[$listing_id][] = $row;
+
+	}
+
+	if (!$listings) {
+
+		return mp_ok(array('task_id' => '', 'sent' => 0, 'pushed' => array(), 'refused' => $refused, 'deferred' => array()));
+
+	}
+
+	if ($call === null) {
+
+		$call = mp_etsy_api_call();
+
+		if ($call === null) {
+
+			return mp_error(lang('Connect an Etsy account on Connections first.'));
+
+		}
+
+	}
+
+	$sleep = ($sleep === null) ? 'usleep' : $sleep;
+
+	$deadline = microtime(true) + (($budget === null) ? PG_ETSY_PUSH_BUDGET : (float)$budget);
+
+	$pushed = array();
+
+	$deferred = array();
+
+	$failure = null;
+
+	$stop = 0;
+
+	$rates = array();
+
+	$wait = false;
+
+	// One call through the limits: a call after the previous answer used up
+	// this second's calls waits for the next second; after a 429 or a day's
+	// calls used up, or past the budget, no call is made (null).
+	$paced = function ($method, $path, $options = array()) use ($call, $sleep, $deadline, &$stop, &$failure, &$wait) {
+
+		if (($stop > 0) || ($failure !== null) || (microtime(true) >= $deadline)) {
+
+			return null;
+
+		}
+
+		if (!empty($wait)) {
+
+			call_user_func($sleep, 1000000);
+
+		}
+
+		$answer = call_user_func($call, $method, $path, $options);
+
+		$pace = pg_etsy_pace($answer);
+
+		$wait = $pace['wait'] > 0;
+
+		$stop = max($stop, (int)$pace['stop']);
+
+		if (!$answer['ok'] && pg_etsy_retry($answer)) {
+
+			$failure = $answer;
+
+		}
+
+		return $answer;
+
+	};
+
+	$defer = function ($group) use (&$deferred) {
+
+		foreach ($group as $row) {
+
+			$deferred[] = (int)$row['product_id'];
+
+		}
+
+	};
+
+	$refuse = function ($group, $reason) use (&$refused) {
+
+		foreach ($group as $row) {
+
+			$refused[(int)$row['product_id']] = mb_substr((string)$reason, 0, 500);
+
+		}
+
+	};
+
+	foreach (array_chunk(array_keys($listings), pg_etsy_inventory_read_max()) as $chunk) {
+
+		$chunk = array_map('strval', $chunk);
+
+		$read = $paced('GET', '/listings/batch?listing_ids=' . implode(',', $chunk) . '&includes=Inventory', array('max_body' => 4194304));
+
+		if (($read === null) || !$read['ok']) {
+
+			foreach ($chunk as $listing_id) {
+
+				if (($read === null) || pg_etsy_retry($read)) {
+
+					$defer($listings[$listing_id]);
+
+				} else {
+
+					$refuse($listings[$listing_id], pg_etsy_error_text($read));
+
+				}
+
+			}
+
+			continue;
+
+		}
+
+		$inventories = pg_etsy_batch_inventories($read['data']);
+
+		foreach ($chunk as $listing_id) {
+
+			$group = $listings[$listing_id];
+
+			if (!isset($inventories[$listing_id])) {
+
+				$own = $paced('GET', '/listings/' . $listing_id . '/inventory');
+
+				if (($own === null) || (!$own['ok'] && pg_etsy_retry($own))) {
+
+					$defer($group);
+
+					continue;
+
+				}
+
+				if (!$own['ok']) {
+
+					$refuse($group, ((int)$own['status'] === 404)
+						? lang('The listing is not on Etsy any more. Send the article again from Listings.')
+						: pg_etsy_error_text($own));
+
+					continue;
+
+				}
+
+				$inventories[$listing_id] = $own['data'];
+
+			}
+
+			$changes = array();
+
+			if ($with_price) {
+
+				$currency = pg_etsy_inventory_currency($inventories[$listing_id]);
+
+				if ($currency === '') {
+
+					$refuse($group, lang('Etsy named no currency for the listing.'));
+
+					continue;
+
+				}
+
+				if (!isset($rates[$currency])) {
+
+					$rates[$currency] = ($rate === null) ? mp_etsy_rate($currency) : $rate;
+
+				}
+
+				if (!is_numeric($rates[$currency]) || ((float)$rates[$currency] <= 0)) {
+
+					$refuse($group, lang(array(
+						'string' => 'There is no exchange rate from {var:1} to {var:2} yet, so the price on Etsy cannot be worked out.',
+						'vars'   => array(defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : '', $currency)
+					)));
+
+					continue;
+
+				}
+
+			}
+
+			$sending = array();
+
+			foreach ($group as $row) {
+
+				$sku = trim((string)$row['remote_code']);
+
+				$price = '';
+
+				if ($with_price) {
+
+					$price = pg_etsy_price(isset($row['price_major']) ? $row['price_major'] : 0, $rates[$currency]);
+
+					if ($price === '') {
+
+						$refused[(int)$row['product_id']] = lang(array('string' => '{var:1} has no price.', 'vars' => array($sku)));
+
+						continue;
+
+					}
+
+				}
+
+				$quantity = ($with_stock && !empty($row['tracked'])) ? max(0, (int)$row['quantity']) : null;
+
+				$changes[$sku] = array('quantity' => $quantity, 'price' => $price);
+
+				$sending[] = $row;
+
+			}
+
+			$update = pg_etsy_inventory_update($inventories[$listing_id], $changes);
+
+			$listed = array();
+
+			foreach ($sending as $row) {
+
+				if (in_array(trim((string)$row['remote_code']), $update['found'], true)) {
+
+					$listed[] = $row;
+
+				} else {
+
+					$refused[(int)$row['product_id']] = lang(array(
+						'string' => '{var:1} is not in its Etsy listing. Send the article again from Listings.',
+						'vars'   => array(trim((string)$row['remote_code']))
+					));
+
+				}
+
+			}
+
+			// Etsy already has these values: nothing to send, done.
+			if (!$listed || ($update['body'] === null)) {
+
+				foreach ($listed as $row) {
+
+					$pushed[] = (int)$row['product_id'];
+
+				}
+
+				continue;
+
+			}
+
+			$answer = $paced('PUT', '/listings/' . $listing_id . '/inventory', array(
+				'headers' => array('Content-Type: application/json'),
+				'body'    => json_encode($update['body'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+			));
+
+			if (($answer === null) || (!$answer['ok'] && pg_etsy_retry($answer))) {
+
+				$defer($listed);
+
+			} elseif (!$answer['ok']) {
+
+				$refuse($listed, pg_etsy_error_text($answer));
+
+			} else {
+
+				foreach ($listed as $row) {
+
+					$pushed[] = (int)$row['product_id'];
+
+				}
+
+			}
+
+		}
+
+	}
+
+	// A limit Etsy named waits as long as it said; another fault on its side
+	// half a minute; the time budget the next pass.
+	$retry_after = ($stop > 0) ? $stop : (($failure !== null) ? 30 : 0);
+
+	// Nothing went through and nothing was refused: the batch failed as a
+	// whole, so its rows count an attempt and back off.
+	if ($failure !== null && !$pushed && !$refused) {
+
+		return mp_error(pg_etsy_error_text($failure), true, array('retry_after' => $retry_after));
+
+	}
+
+	return mp_ok(array(
+		'task_id'     => '',
+		'sent'        => count($pushed),
+		'pushed'      => array_values(array_unique($pushed)),
+		'refused'     => $refused,
+		'deferred'    => array_values(array_unique($deferred)),
+		'retry_after' => $retry_after
+	));
 
 }
