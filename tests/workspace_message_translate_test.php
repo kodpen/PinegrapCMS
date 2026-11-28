@@ -113,3 +113,56 @@ function test_workspace_message_translate_wiring()
 	$bundles = pg_js_bundles();
 	pg_assert_true(in_array('assets/js/workspace_translate.js', $bundles['assets/js/workspace.min.js'], true), 'in the Workspace bundle');
 }
+
+function test_workspace_message_translate_letters_of_every_script()
+{
+	// A letter of any script is something to translate: Georgian, Khmer,
+	// Ethiopic, Vietnamese letters of Latin Extended Additional, Greek
+	// Extended. Signs and digits alone stay nothing.
+	$cases = array('გამარჯობა', 'សួស្តី', 'ሰላም', 'Ḁ ỹ', 'ἀ', '१२३ — 45%');
+	$answer = workspace_message_translate_test_run($cases);
+
+	if ($answer === null) {
+		return;
+	}
+
+	foreach (array(0, 1, 2, 3, 4) as $i) {
+		pg_assert_same(array($cases[$i]), $answer[$i]['wanted'], 'translated: ' . $cases[$i]);
+	}
+
+	pg_assert_same(array(), $answer[5]['wanted'], 'digits and signs only');
+}
+
+function test_workspace_message_translate_lands_on_the_drawn_message()
+{
+	// A message redrawn while its translation runs (a sync, a reaction) has a
+	// new body: the result and the progress line go to the one on screen,
+	// not to the body the click started from.
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		return;
+	}
+
+	$script = "'use strict';\nvar asked = [];\nvar fresh = { isConnected: true, id: 'fresh' };\n"
+		. "var document = { querySelector: function (selector) { asked.push(selector); return selector.indexOf('\"7\"') !== -1 ? fresh : null; } };\n"
+		. "var window = { document: document };\n"
+		. workspace_message_translate_test_source('assets/js/workspace_translate.js')
+		. "\nvar T = window.PGWsTranslate;\nvar old = { isConnected: false, id: 'old' };\nvar shown = { isConnected: true, id: 'shown' };\n"
+		. "console.log(JSON.stringify([T.live(old, 7).id, T.live(shown, 7).id, T.live(old, 8).id, asked[0]]));\n";
+
+	$file = tempnam(sys_get_temp_dir(), 'pgwstr');
+	file_put_contents($file, $script);
+	$out = array();
+	exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	unlink($file);
+
+	$printed = implode("\n", $out);
+	pg_assert_same(0, $code, $printed);
+	pg_assert_same(array('fresh', 'shown', 'old', '[data-ws-message="7"] .ws-msg-main > .ws-msg-body'), json_decode($printed, true), 'the body on screen');
+
+	$source = workspace_message_translate_test_source('assets/js/workspace_translate.js');
+	pg_assert_true(strpos($source, 'show(message, live(body, message.id), h)') !== false, 'the translation is shown on the body on screen');
+}

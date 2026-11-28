@@ -213,3 +213,74 @@ function test_workspace_link_preview_api_wiring()
 	pg_assert_true(strpos($api, "'WorkspaceMessageLinkPreview' => 'ws_api_message_link_preview_schema'") !== false, 'the object is named');
 	pg_assert_true(strpos($resources, 'ws_link_preview_card_rows_map($ids)') !== false, 'a page reads its cards in one query');
 }
+
+function test_workspace_link_preview_fields_charset_alias()
+{
+	// The charset is named only in the Content-Type header, by a name that is
+	// an alias of mbstring's (Shift_JIS for SJIS, gbk for CP936, big5 for
+	// BIG-5, cp1252 for Windows-1252).
+	foreach (array(
+		array('SJIS', 'Shift_JIS', '日本語のページ'),
+		array('CP936', 'gbk', '中文页面'),
+		array('BIG-5', 'big5', '中文頁面'),
+		array('Windows-1252', 'cp1252', 'Café “quoted”'),
+	) as $case) {
+		$body = mb_convert_encoding('<html><head><title>' . $case[2] . '</title></head></html>', $case[0], 'UTF-8');
+		pg_assert_same($case[2], ws_link_preview_fields($body, 'https://example.com/', 'text/html; charset=' . $case[1])['title'], 'a page in ' . $case[1]);
+	}
+
+	pg_assert_same('Plain', ws_link_preview_fields('<title>Plain</title>', 'https://example.com/', 'text/html; charset=no-such-charset')['title'], 'an unknown charset is read as it is');
+}
+
+function test_workspace_link_preview_idn_host()
+{
+	if (!function_exists('idn_to_ascii')) {
+		return;
+	}
+
+	// A name written in its own letters is read under its ASCII form.
+	pg_assert_true(ws_link_preview_url_allowed('https://çiçek.com.tr/yaz?a=1'), 'a name in Turkish letters');
+	pg_assert_same('https://xn--iek-1lab.com.tr/yaz?a=1', ws_link_preview_ascii_url('https://çiçek.com.tr/yaz?a=1'), 'the host in its ASCII form');
+	pg_assert_same('https://example.com/ğ', ws_link_preview_ascii_url('https://example.com/ğ'), 'an ASCII host stays');
+	pg_assert_false(ws_link_preview_url_allowed('http://yazıcı.local/'), 'a local name stays refused');
+	pg_assert_false(ws_link_preview_url_allowed('http://bilgisayar/'), 'a dotless name stays refused');
+}
+
+function test_workspace_link_preview_expiry_is_no_read()
+{
+	// Closing rows that waited over a day reads nothing: they must not count
+	// in the hourly cap, which counts read_at of the last hour.
+	$sql = ws_link_preview_expire_sql(1000000);
+
+	pg_assert_true(strpos($sql, "SET state = 'none'") !== false, 'the rows are closed');
+	pg_assert_true(strpos($sql, "created_at < '" . (1000000 - WS_LINK_PREVIEW_WAIT_MAX) . "'") !== false, 'only rows waiting over a day');
+	pg_assert_false(strpos($sql, 'read_at') !== false, 'no read time is stamped');
+}
+
+function test_workspace_link_preview_claim_pins_the_address()
+{
+	// A message edited to another address between the pass's read of its
+	// rows and the claim has a new row: the claim must not take it for the
+	// old address, or the new one is never read.
+	$sql = ws_link_preview_claim_sql(42, "https://example.com/a'b", 1000000);
+
+	pg_assert_true(strpos($sql, "message_id = '42'") !== false, 'the row');
+	pg_assert_true(strpos($sql, "AND state = 'waiting' AND read_at = 0") !== false, 'only an unclaimed waiting row');
+	pg_assert_true(strpos($sql, "AND url = '" . e("https://example.com/a'b") . "'") !== false, 'only for the address the pass read');
+}
+
+function test_workspace_link_preview_time_left_spans_redirects()
+{
+	// The whole read, redirects included, has WS_LINK_PREVIEW_TIMEOUT
+	// seconds: each hop gets what is left, none once it is spent.
+	$start = 1000.0;
+	$deadline = $start + WS_LINK_PREVIEW_TIMEOUT;
+
+	pg_assert_same(WS_LINK_PREVIEW_TIMEOUT, ws_link_preview_time_left($deadline, $start), 'the first hop has it all');
+	pg_assert_same(3, ws_link_preview_time_left($deadline, $deadline - 2.5), 'a later hop what is left, rounded up');
+	pg_assert_same(0, ws_link_preview_time_left($deadline, $deadline), 'nothing left');
+	pg_assert_same(0, ws_link_preview_time_left($deadline, $deadline + 5), 'past the deadline');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/link_preview.php');
+	pg_assert_true(strpos($source, "'timeout'          => \$left,") !== false, 'the request gets the time left');
+}

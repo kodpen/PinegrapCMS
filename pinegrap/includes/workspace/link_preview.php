@@ -70,13 +70,37 @@ const WS_LINK_PREVIEW_REDIRECTS = 3;
 /** Most bytes of a page read; the head of a page is in its first part. */
 const WS_LINK_PREVIEW_BODY_MAX = 262144;
 
-/** Seconds a page may take, the whole answer. */
+/** Seconds a page may take, the whole read with its redirects. */
 const WS_LINK_PREVIEW_TIMEOUT = 8;
 
 /** The longest title, description and site name kept, in characters. */
 const WS_LINK_PREVIEW_TITLE_MAX = 300;
 const WS_LINK_PREVIEW_DESCRIPTION_MAX = 500;
 const WS_LINK_PREVIEW_SITE_MAX = 100;
+
+/**
+ * The address with its host in ASCII form: a name written in its own letters
+ * (çiçek.com.tr) becomes its xn-- form, which is what is checked, looked up
+ * and called. Unchanged when the host is ASCII already or cannot be turned
+ * (no intl extension, a name IDNA refuses).
+ *
+ * @param string $url
+ * @return string
+ */
+function ws_link_preview_ascii_url($url)
+{
+    $url = (string) $url;
+
+    if (!preg_match('#^(https?://(?:[^/?\#@]*@)?)([^/?\#:]+)(.*)$#is', $url, $match)
+        || !preg_match('/[^\x00-\x7F]/', $match[2]) || !function_exists('idn_to_ascii')) {
+        return $url;
+    }
+
+    $variant = defined('INTL_IDNA_VARIANT_UTS46') ? INTL_IDNA_VARIANT_UTS46 : 0;
+    $host = @idn_to_ascii($match[2], defined('IDNA_NONTRANSITIONAL_TO_ASCII') ? IDNA_NONTRANSITIONAL_TO_ASCII : 0, $variant);
+
+    return (is_string($host) && ($host !== '')) ? $match[1] . $host . $match[3] : $url;
+}
 
 /**
  * Whether an address may be read, from the address alone: http or https, no
@@ -89,7 +113,7 @@ const WS_LINK_PREVIEW_SITE_MAX = 100;
  */
 function ws_link_preview_url_allowed($url)
 {
-    $url = (string) $url;
+    $url = ws_link_preview_ascii_url($url);
 
     if (($url === '') || (strlen($url) > WS_LINK_PREVIEW_URL_MAX) || preg_match('/[\s\x00-\x1F\x7F]/', $url)) {
         return false;
@@ -220,6 +244,35 @@ function ws_link_preview_cut($text, $max)
 }
 
 /**
+ * A page's charset as mbstring takes it, its aliases included (Shift_JIS,
+ * gbk, big5, cp1252), 'UTF-8' for UTF-8, or '' for one mbstring does not
+ * know (PHP 8 throws on such a name, PHP 7 warns and answers false).
+ *
+ * @param string $name as the page or its Content-Type header says it
+ * @return string
+ */
+function ws_link_preview_charset($name)
+{
+    $name = trim((string) $name);
+
+    if ($name === '') {
+        return '';
+    }
+
+    if (in_array(strtolower($name), array('utf-8', 'utf8'), true)) {
+        return 'UTF-8';
+    }
+
+    try {
+        $known = (@mb_convert_encoding('a', 'UTF-8', $name) !== false);
+    } catch (\Throwable $error) {
+        $known = false;
+    }
+
+    return $known ? $name : '';
+}
+
+/**
  * The card's fields from what a page says about itself: title (og:title,
  * twitter:title, else <title>), description (og:description, description,
  * twitter:description) and site name (og:site_name, else the host without
@@ -241,7 +294,9 @@ function ws_link_preview_fields($html, $url, $content_type = '')
         $charset = $match[1];
     }
 
-    if (($charset !== '') && (strtolower($charset) !== 'utf-8') && in_array(strtolower($charset), array_map('strtolower', mb_list_encodings()), true)) {
+    $charset = ws_link_preview_charset($charset);
+
+    if (($charset !== '') && ($charset !== 'UTF-8')) {
         $html = (string) @mb_convert_encoding($html, 'UTF-8', $charset);
         // The page's own declaration would make the reader decode it again.
         $html = (string) preg_replace('/(<meta[^>]+charset\s*=\s*["\']?)[a-z0-9_.:-]+/i', '${1}utf-8', $html);
@@ -515,6 +570,37 @@ function ws_link_preview_due()
 }
 
 /**
+ * The query that closes the rows waiting over a day with no card. It reads
+ * nothing, so it stamps no read_at: the hourly cap counts read_at of the last
+ * hour, and a closed backlog would otherwise hold every read for an hour.
+ * Pure.
+ *
+ * @param int $now
+ * @return string
+ */
+function ws_link_preview_expire_sql($now)
+{
+    return "UPDATE ws_link_previews SET state = 'none'
+        WHERE state = 'waiting' AND created_at < '" . ((int) $now - WS_LINK_PREVIEW_WAIT_MAX) . "'";
+}
+
+/**
+ * The query that claims a row for one read: still waiting, not claimed, and
+ * still for the address the pass read. A message edited to another address
+ * in between has a new waiting row, which is left to the next pass. Pure.
+ *
+ * @param int    $message_id
+ * @param string $url the address the pass read with the row
+ * @param int    $now
+ * @return string
+ */
+function ws_link_preview_claim_sql($message_id, $url, $now)
+{
+    return "UPDATE ws_link_previews SET read_at = '" . (int) $now . "'
+        WHERE message_id = '" . (int) $message_id . "' AND state = 'waiting' AND read_at = 0 AND url = '" . e((string) $url) . "'";
+}
+
+/**
  * One pass of the general job: rows waiting over a day are closed, then a
  * few of the oldest are read, under the hourly cap. Each row is claimed
  * first (read_at set while still waiting), so two overlapping runs never
@@ -531,8 +617,7 @@ function ws_link_preview_run($limit = WS_LINK_PREVIEW_BATCH)
 
     $now = time();
 
-    db("UPDATE ws_link_previews SET state = 'none', read_at = '" . $now . "'
-        WHERE state = 'waiting' AND created_at < '" . ($now - WS_LINK_PREVIEW_WAIT_MAX) . "'");
+    db(ws_link_preview_expire_sql($now));
 
     $room = WS_LINK_PREVIEW_HOURLY - (int) db_value("SELECT COUNT(*) FROM ws_link_previews WHERE read_at > '" . ($now - 3600) . "'");
     $limit = min((int) $limit, $room);
@@ -553,7 +638,7 @@ function ws_link_preview_run($limit = WS_LINK_PREVIEW_BATCH)
 
         $id = (int) $row['message_id'];
 
-        db("UPDATE ws_link_previews SET read_at = '" . time() . "' WHERE message_id = '" . $id . "' AND state = 'waiting' AND read_at = 0");
+        db(ws_link_preview_claim_sql($id, (string) $row['url'], time()));
 
         if ((int) mysqli_affected_rows(db::$con) !== 1) {
             continue;
@@ -680,11 +765,26 @@ function ws_link_preview_own_card($row, $access, $site)
 }
 
 /**
+ * Whole seconds left before the read's deadline, for the next hop's request;
+ * 0 once it is spent. Pure.
+ *
+ * @param float $deadline
+ * @param float $now
+ * @return int
+ */
+function ws_link_preview_time_left($deadline, $now)
+{
+    $left = (float) $deadline - (float) $now;
+
+    return ($left > 0) ? (int) min(WS_LINK_PREVIEW_TIMEOUT, ceil($left)) : 0;
+}
+
+/**
  * Read a page once: every hop checked and pinned by api_http_request()
  * (an address inside the network is refused, the resolved address is the
  * one called), redirects walked here at most WS_LINK_PREVIEW_REDIRECTS, only
  * an HTML answer, the body read up to the end of its head or the limit, the
- * whole wait bounded. null when it gives nothing.
+ * whole wait, redirects included, bounded by WS_LINK_PREVIEW_TIMEOUT. null when it gives nothing.
  *
  * @param string $url
  * @return array|null
@@ -703,7 +803,16 @@ function ws_link_preview_fetch($url)
         return (strlen($body) >= WS_LINK_PREVIEW_BODY_MAX) || (stripos($body, '</head>') !== false);
     };
 
+    $deadline = microtime(true) + WS_LINK_PREVIEW_TIMEOUT;
+
     for ($hop = 0; $hop <= WS_LINK_PREVIEW_REDIRECTS; $hop++) {
+        $url = ws_link_preview_ascii_url($url);
+        $left = ws_link_preview_time_left($deadline, microtime(true));
+
+        if ($left <= 0) {
+            return null;
+        }
+
         if (!ws_link_preview_url_allowed($url)) {
             return null;
         }
@@ -711,7 +820,7 @@ function ws_link_preview_fetch($url)
         $answer = api_http_request('GET', $url, array(
             'allow_http'       => true,
             'decode'           => true,
-            'timeout'          => WS_LINK_PREVIEW_TIMEOUT,
+            'timeout'          => $left,
             'max_body'         => WS_LINK_PREVIEW_BODY_MAX,
             'response_headers' => true,
             'complete'         => $complete,

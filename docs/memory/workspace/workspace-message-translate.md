@@ -15,6 +15,7 @@ description: Translate in a message's menu (MT1): the browser's own Translator a
 ## What does the reader see?
 - The translation in the message's place, with "Translated from <language>" and "Show original" in a line under it (`.ws-msg-tr`); "Show original" swaps back and the button then reads "Show translation". Only this reader; gone on a reload.
 - A redraw of the message (sync, `replaceMessage()`) shows the translation again while its html is the same (`PGWsTranslate.apply()` in `messageNode()`); an edited message loses it.
+- A redraw while the translation or the language download runs: the progress line and the result go to the body on screen (`live()`, by `data-ws-message`), not the detached one the click started from.
 - One line instead: already in the reader's language, language not found, a source the browser cannot translate, nothing to translate, a failure. While the browser fetches the language pack: "preparing", with its percentage.
 - Strings `tr_*` in `includes/workspace/screen.php`.
 
@@ -22,6 +23,7 @@ description: Translate in a message's menu (MT1): the browser's own Translator a
 - Elements: links and record chips (`a`, `.ws-chip`, `[data-ws-ref]`), tag cards, code (`code`, `pre`, `.ws-code`), the message's own controls, `[translate="no"]`.
 - Inside text: `<@…>` / `<#…>` tags, inline code, web addresses (without the sign closing the sentence), e-mail addresses, pieces with no letter, the spaces around a piece. Pure `pieces()` / `join()`, the rewrite's rule (`workspace-ai-rewrite.md`).
 - Each text node is translated on its own, so a sentence split by bold or a link is translated in parts.
+- A letter is `\p{L}` (built with `new RegExp` so an older browser still parses the bundle); digits of any script are no letter.
 
 ## What is left out?
 - Pinegrap AI where the browser has no translator, "always translate this conversation", sending an answer translated, an e-mail conversation's items: each a later yes of the owner.

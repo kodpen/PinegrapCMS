@@ -1,6 +1,6 @@
 ---
 name: workspace-link-preview
-description: A Workspace message's link preview (#9843): the ws_link_previews row, the general job's one read of the first web address, the switch; pointers to the card and the API
+description: A Workspace message's link preview (#9843): the ws_link_previews row, when it is written, the switch; pointers to the job's read, the card and the API
 ---
 
 ## What is kept, and where?
@@ -12,12 +12,7 @@ description: A Workspace message's link preview (#9843): the ws_link_previews ro
 - `ws_message_edit()`: the same first address keeps the row (a removed card stays removed); another one replaces it as `waiting`; none deletes it. `ws_message_delete()` deletes it; a discussion purged with its messages (`threads.php`) deletes its rows by `channel_id`.
 
 ## How does the general job read it?
-- `job.php`, Workspace on: `ws_link_preview_due()` (one small read), then `ws_link_preview_run()`: rows waiting over a day close as `none`; at most 5 rows a pass, 60 reads an hour for the site (`read_at` of the last hour), a pass stops after 20 s. A row is claimed (`read_at` set while `waiting`) so overlapping runs never read it twice; a message deleted or edited to another address since is skipped.
-- A link to the site's own page (`ws_link_preview_own_page()` against `HOSTNAME_SETTING` and `PATH`, www. ignored) takes its card from the `page` row (title else name, meta description) only for a page every visitor opens (`ws_link_preview_own_card()`, #11408) or, for the home page, `TITLE`; the site name is `ORGANIZATION_NAME`, else `TITLE`, else the host. No call. Such a link gets its row even on a local host (`ws_link_preview_wanted()`).
-- Public folder, not archived, not binned; a private, member, registration or guest page gives nothing: the card reaches every reader of the channel, guests included.
-- Anything else: `ws_link_preview_fetch()` over `api_http_request()` (the resolved address is checked and is the one called), plain http allowed, redirects walked here, at most 3, each checked again.
-- `ws_link_preview_url_allowed()` refuses credentials in the address, a port other than 80/443, an address inside the network, a dotless or local name (`.local`, `.internal`, `.lan`…) and a numeric last label. Only `text/html` or XHTML; 8 s for the whole answer; the body is read up to `</head>` or 256 KB (the limit reached with no `</head>`: nothing). No cURL: nothing.
-- Fields (`ws_link_preview_fields()`): og:title, twitter:title, else `<title>`; og:description, description, twitter:description; og:site_name, else the host without www. The page's charset is honoured. `ws_link_preview_cut()` keeps them plain (no tags, entities decoded, control and direction marks out) and cuts at 300 / 500 / 100 characters; they are escaped where drawn. No title: `none`.
+- Its pass, the own-page card and the read of a web address (refused addresses, redirects, limits, charset): `workspace-link-preview-read.md`.
 
 ## Where is the card?
 - `workspace-link-preview-card.md`; over the API `api/workspace-api-link-preview.md`.
