@@ -70,7 +70,7 @@ const WS_LINK_PREVIEW_REDIRECTS = 3;
 /** Most bytes of a page read; the head of a page is in its first part. */
 const WS_LINK_PREVIEW_BODY_MAX = 262144;
 
-/** Seconds a page may take, the whole answer. */
+/** Seconds a page may take, the whole read with its redirects. */
 const WS_LINK_PREVIEW_TIMEOUT = 8;
 
 /** The longest title, description and site name kept, in characters. */
@@ -765,11 +765,26 @@ function ws_link_preview_own_card($row, $access, $site)
 }
 
 /**
+ * Whole seconds left before the read's deadline, for the next hop's request;
+ * 0 once it is spent. Pure.
+ *
+ * @param float $deadline
+ * @param float $now
+ * @return int
+ */
+function ws_link_preview_time_left($deadline, $now)
+{
+    $left = (float) $deadline - (float) $now;
+
+    return ($left > 0) ? (int) min(WS_LINK_PREVIEW_TIMEOUT, ceil($left)) : 0;
+}
+
+/**
  * Read a page once: every hop checked and pinned by api_http_request()
  * (an address inside the network is refused, the resolved address is the
  * one called), redirects walked here at most WS_LINK_PREVIEW_REDIRECTS, only
  * an HTML answer, the body read up to the end of its head or the limit, the
- * whole wait bounded. null when it gives nothing.
+ * whole wait, redirects included, bounded by WS_LINK_PREVIEW_TIMEOUT. null when it gives nothing.
  *
  * @param string $url
  * @return array|null
@@ -788,8 +803,15 @@ function ws_link_preview_fetch($url)
         return (strlen($body) >= WS_LINK_PREVIEW_BODY_MAX) || (stripos($body, '</head>') !== false);
     };
 
+    $deadline = microtime(true) + WS_LINK_PREVIEW_TIMEOUT;
+
     for ($hop = 0; $hop <= WS_LINK_PREVIEW_REDIRECTS; $hop++) {
         $url = ws_link_preview_ascii_url($url);
+        $left = ws_link_preview_time_left($deadline, microtime(true));
+
+        if ($left <= 0) {
+            return null;
+        }
 
         if (!ws_link_preview_url_allowed($url)) {
             return null;
@@ -798,7 +820,7 @@ function ws_link_preview_fetch($url)
         $answer = api_http_request('GET', $url, array(
             'allow_http'       => true,
             'decode'           => true,
-            'timeout'          => WS_LINK_PREVIEW_TIMEOUT,
+            'timeout'          => $left,
             'max_body'         => WS_LINK_PREVIEW_BODY_MAX,
             'response_headers' => true,
             'complete'         => $complete,

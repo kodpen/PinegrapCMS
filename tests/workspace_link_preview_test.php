@@ -268,3 +268,19 @@ function test_workspace_link_preview_claim_pins_the_address()
 	pg_assert_true(strpos($sql, "AND state = 'waiting' AND read_at = 0") !== false, 'only an unclaimed waiting row');
 	pg_assert_true(strpos($sql, "AND url = '" . e("https://example.com/a'b") . "'") !== false, 'only for the address the pass read');
 }
+
+function test_workspace_link_preview_time_left_spans_redirects()
+{
+	// The whole read, redirects included, has WS_LINK_PREVIEW_TIMEOUT
+	// seconds: each hop gets what is left, none once it is spent.
+	$start = 1000.0;
+	$deadline = $start + WS_LINK_PREVIEW_TIMEOUT;
+
+	pg_assert_same(WS_LINK_PREVIEW_TIMEOUT, ws_link_preview_time_left($deadline, $start), 'the first hop has it all');
+	pg_assert_same(3, ws_link_preview_time_left($deadline, $deadline - 2.5), 'a later hop what is left, rounded up');
+	pg_assert_same(0, ws_link_preview_time_left($deadline, $deadline), 'nothing left');
+	pg_assert_same(0, ws_link_preview_time_left($deadline, $deadline + 5), 'past the deadline');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/link_preview.php');
+	pg_assert_true(strpos($source, "'timeout'          => \$left,") !== false, 'the request gets the time left');
+}
