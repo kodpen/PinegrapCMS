@@ -25,7 +25,8 @@ description: The designer's Find and Replace window (DO25): This page, All pages
 
 ## How does matching work?
 - `pattern()` refuses a regular expression that does not compile and one that matches empty text. A plain replacement goes in as typed (`$&`, `$1` are text); a regular expression reads its groups. A whole word uses letters of any script (`\p{L}`), so "çerez" is not found inside "çerezler".
+- Whole word holds with Regex too; a plain search in any case reads i, I, İ, ı alike, a typed space finds a no-break space (#12242).
 - Markup: the text of a content element (heading, paragraph, span, link) and a custom HTML's `html` print as markup (`isMarkup()`).
-- In markup only the words between tags are read, entities decoded: "&" finds "&amp;", a word inside a tag, an attribute or an entity is none, and a replacement goes in encoded (`<` as `&lt;`); only the matched letters change. A match never crosses a tag ("our <b>team</b>" is no match for "our team"). Every other prop is printed escaped and read as it is. Before, a replace of "about" rewrote `href="/about"`.
+- In markup `<script>`/`<style>` blocks are never read (#12242); only the words between tags are read, entities decoded: "&" finds "&amp;", a word inside a tag, an attribute or an entity is none, and a replacement goes in encoded (`<` as `&lt;`); only the matched letters change. A match never crosses a tag ("our <b>team</b>" is no match for "our team"). Every other prop is printed escaped and read as it is. Before, a replace of "about" rewrote `href="/about"`.
 - Content level (`_sdAccess() === 'content'`): only the words the save keeps are counted and replaced, the `text` of an element outside a marked area and every word inside one (`props._editable` on it or above it), as `pg_designer_merge_restricted_tree()` copies them. Before, a button's words outside an area changed on the canvas and the save dropped them.
 - Tests: `tests/designer_find_replace_test.php` (Node).
