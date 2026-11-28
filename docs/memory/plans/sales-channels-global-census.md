@@ -5,7 +5,7 @@ description: Census (2026-11-27) for selling on Amazon, eBay, Etsy and TikTok Sh
 
 ## What is counted, and where is the rest?
 - On `development` at c94bc4d1: the outbound marketplace connectors (`includes/api/outbound/connectors/`), their tables, the order import, and the four marketplaces' own developer pages, read 2026-11-27.
-- Tables and their fit: `sales-channels-global-census-tables.md`. Each marketplace still to build: `-amazon.md`, `-etsy.md`, `-tiktok.md`; eBay is built (`commerce/marketplace-ebay.md`). Pages not read: `-unread.md`. Order, storage and the owner's questions: `-proposal.md`.
+- Tables and their fit: `sales-channels-global-census-tables.md`. Each marketplace still to build: `-amazon.md`, `-tiktok.md`; eBay and Etsy are built (`commerce/marketplace-ebay.md`, `commerce/marketplace-etsy.md`). Pages not read: `-unread.md`. Order, storage and the owner's questions: `-proposal.md`.
 
 ## What does the base give a new marketplace?
 - A connector is a table of function names from `mp_<key>_connector()` in `connectors/<key>.php`, loaded by `mp_connector()` (base.php:285) from `mp_providers()` (base.php:101). Only `test_credentials` is required; `mp_can()` / `mp_call()` (base.php:322, 330) ask and call the rest, and a missing ability hides its action.
