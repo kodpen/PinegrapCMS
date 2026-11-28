@@ -307,6 +307,17 @@ function pg_products_export_table($where = '', $order = 'name ASC')
         $guard[] = false;
     }
 
+    // One price:<market name> column per market, after the stock columns:
+    // the product's fixed price there, empty for none. Read back by
+    // import_products.php.
+    $markets = (function_exists('pg_market_prices_ready') && pg_market_prices_ready()) ? pg_market_list() : array();
+    $market_prices = $markets ? pg_market_prices_by_product() : array();
+
+    foreach (pg_market_price_export_headings($markets) as $heading) {
+        $headings[] = $heading;
+        $guard[] = false;
+    }
+
     $select = array('id');
 
     foreach ($columns as $column) {
@@ -343,6 +354,12 @@ function pg_products_export_table($where = '', $order = 'name ASC')
             $product_rows = isset($stock_rows[(int) $product['id']]) ? $stock_rows[(int) $product['id']] : array();
 
             foreach (pg_stock_export_cells($stock_locations, $product_rows, $product) as $cell) {
+                $row[] = $cell;
+            }
+        }
+
+        if ($markets) {
+            foreach (pg_market_price_export_cells($markets, isset($market_prices[(int) $product['id']]) ? $market_prices[(int) $product['id']] : array()) as $cell) {
                 $row[] = $cell;
             }
         }

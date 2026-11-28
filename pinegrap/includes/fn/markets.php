@@ -28,6 +28,9 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/markets_site.php');
 // The cart in its market's currency.
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/market_cart.php');
 
+// A product's fixed price in a market.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/market_prices.php');
+
 // The longest market name the column keeps.
 define('PG_MARKET_NAME_MAX', 100);
 
@@ -326,6 +329,7 @@ function pg_market_delete($market_id)
     }
 
     db_q("DELETE FROM market_countries WHERE market_id = ?", array($market_id));
+    pg_market_prices_delete_market($market_id);
     db_q("DELETE FROM markets WHERE id = ?", array($market_id));
 
     return array('ok' => true, 'error' => '');

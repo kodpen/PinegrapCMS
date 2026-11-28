@@ -6737,6 +6737,7 @@
     "The price and stock update source is not registered in Merchant Center; register the feed again on its page of Connections.": "Fiyat ve stok güncelleme kaynağı Merchant Center'da kayıtlı değil; beslemeyi Bağlantılar'daki kendi sayfasında yeniden kaydedin.",
     "The price and stock update source is not registered in Merchant Center; register the feed again on the Product Feeds card.": "Fiyat ve stok güncelleme kaynağı Merchant Center'da kayıtlı değil; beslemeyi Ürün Beslemeleri kartında yeniden kaydedin.",
     "The price could not be written.": "Fiyat yazılamadı.",
+    "The price for {var:1} is not an amount.": "{var:1} için girilen fiyat bir tutar değil.",
     "The price is agreed before any work starts; the status shows Confirmed once the visit is set.": "Fiyat, iş başlamadan önce kararlaştırılır; ziyaret belirlendiğinde durum Onaylandı olarak görünür.",
     "The price is multiplied by this number.": "Fiyat bu sayıyla çarpılır.",
     "The price is too large.": "Fiyat çok büyük.",

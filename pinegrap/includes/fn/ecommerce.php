@@ -210,7 +210,7 @@ function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add
             // else this product is not a donation product, so use price of product for price of order item
         } else {
             // In a market's cart the line is in the market's currency.
-            $price = pg_market_cart_price($product['price']);
+            $price = pg_market_cart_price($product['price'], $product['id']);
         }
         $add_watcher = '';
         // If this product submits a form and add watcher info is in the session,
@@ -2251,7 +2251,7 @@ function update_order_item_prices()
                 // cart's rate; a list price is converted as the market rounds.
                 $price = isset($member_prices[(int) $order_items[$key]['product_id']])
                     ? pg_market_cart_amount($member_prices[(int) $order_items[$key]['product_id']]['price'])
-                    : pg_market_cart_price($order_items[$key]['product_price']);
+                    : pg_market_cart_price($order_items[$key]['product_price'], $order_items[$key]['product_id']);
                 $query = "UPDATE order_items
 
                          SET price = ?

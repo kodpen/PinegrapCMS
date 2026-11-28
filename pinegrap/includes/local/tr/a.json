@@ -1116,6 +1116,7 @@
     "A fixed price before the work begins": "İş başlamadan sabit fiyat",
     "A fixed price for design and construction": "Tasarım ve inşaat için sabit fiyat",
     "A fixed price for the work we agree, in writing before work starts": "Anlaştığımız iş için, iş başlamadan yazılı olarak sabit fiyat",
+    "A fixed price in the market's currency. Left empty, the unit price is converted at the day's rate and rounded by the market's rule.": "Pazarın para biriminde sabit fiyat. Boş bırakılırsa birim fiyat günün kuruyla çevrilir ve pazarın kuralıyla yuvarlanır.",
     "A floor directory from the roof down, each level with its number, its name and line, what is on it as pills and who may go up.": "Çatıdan aşağı kat rehberi: her katta numara, ad ve kısa açıklama, katta olanlar etiketlerle ve kimlerin çıkabileceği.",
     "A floor pump with a large gauge and a head for both valves.": "Büyük göstergeli ve iki sibop tipine uyan başlıklı bir ayak pompası.",
     "A florist choosing stems from buckets of fresh flowers": "Kovalardaki taze çiçeklerden dal seçen bir çiçekçi",

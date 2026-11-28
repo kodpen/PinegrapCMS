@@ -122,8 +122,8 @@ function test_market_cart_wiring()
 	$root = dirname(__DIR__) . '/pinegrap/';
 	$ecommerce = file_get_contents($root . 'includes/fn/ecommerce.php');
 
-	pg_assert_contains("\$price = pg_market_cart_price(\$product['price']);", $ecommerce, 'a new line is priced in the market');
-	pg_assert_contains(": pg_market_cart_price(\$order_items[\$key]['product_price']);", $ecommerce, 'the prices refresh in the market');
+	pg_assert_contains("\$price = pg_market_cart_price(\$product['price'], \$product['id']);", $ecommerce, 'a new line is priced in the market');
+	pg_assert_contains(": pg_market_cart_price(\$order_items[\$key]['product_price'], \$order_items[\$key]['product_id']);", $ecommerce, 'the prices refresh in the market');
 	pg_assert_contains("return pg_market_cart_tiers_for(pg_market_cart(), \$tiers);", $ecommerce, 'the ladder is in the cart currency');
 	pg_assert_same(3, substr_count($ecommerce, 'pg_market_cart_member_prices(pg_erp_member_prices())'), 'member prices at the rate');
 

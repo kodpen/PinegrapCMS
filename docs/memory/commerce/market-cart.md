@@ -10,7 +10,7 @@ module: market_cart
 - The row is the record: every conversion reads `pg_market_cart($order_id)` (the order's market, its rule, the currency's rate), never the visitor, so a payment's return or callback works the order as the cart did. A site without a market never writes the row.
 
 ## How is each amount converted?
-- A product's list price: `pg_market_cart_price()` = `pg_market_price_minor()` (rate, then the market's rule), so a line costs what the catalog printed (`market-site-prices.md`).
+- A product's list price: `pg_market_cart_price()` = the product's fixed price in the market when it has one (`market-prices.md`), else `pg_market_price_minor()` (rate, then the market's rule), so a line costs what the catalog printed (`market-site-prices.md`).
 - At the rate only, `round()` half away from zero, never the rule: shipping rates (the total of each of the five formula copies, `shipping-rate-paths.md`, and `order_items.shipping`), a ladder's rungs (`pg_offer_tiers()`), a member's agreed price (`pg_market_cart_member_prices()`).
 - Offers: `pg_market_cart_offer_row()` on every offer read of the cart; `product_price`, `add_product_price` as list prices, `discount_*_amount`, `required_subtotal`, `upsell_trigger_subtotal` at the rate.
 - A shipping band compares the recipient's subtotal back in base (`pg_market_cart_base()`).
