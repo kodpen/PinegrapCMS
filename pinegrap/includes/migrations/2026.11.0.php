@@ -279,6 +279,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_order_item_tax_country();  // 11.0.287
 	upgrade_2026_11_0_ws_mail_priority_source(); // 11.0.288
 	upgrade_2026_11_0_kb_votes();                // 11.0.289
+	upgrade_2026_11_0_ws_person_status();        // 11.0.290
 
 }
 
@@ -9875,5 +9876,28 @@ function upgrade_2026_11_0_kb_votes() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Collections: an article\'s page can ask "Was this helpful?", and the record list counts the Yes and No answers.');
+
+}
+
+
+// 11.0.290 - A person's own status (includes/fn/person_status.php): a kind
+// (available, busy, in a meeting, out, sleeping, on leave), a one-line note
+// and an optional end, as JSON (kind, note, until, at) beside quiet_hours
+// and mail_away on the person's Workspace row. No backfill: NULL is no
+// status, and a status past its end reads as none. The column is added only
+// when it is missing, so the step runs twice without a change.
+function upgrade_2026_11_0_ws_person_status() {
+
+	if (!install_table_exists('ws_profiles')) {
+
+		install_skipped(lang(array('string' => '{var:1} does not exist, skipped', 'vars' => 'ws_profiles')));
+
+		return;
+
+	}
+
+	install_add_column('ws_profiles', 'status', 'TEXT NULL');
+
+	install_note('Workspace: a person can set a status (available, busy, out, sleeping and more) with a note and an end time.');
 
 }
