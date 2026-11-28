@@ -28344,6 +28344,8 @@ const StyleDesigner = (function () {
                 { label: _sdT('Values of a field'), type: 'loop_area', icon: 'bi-list-check', extra: { listSource: 'form_record.values' } },
                 { label: _sdT('Parts of a field, split at commas'), type: 'loop_area', icon: 'bi-list-ul', extra: { listSource: 'form_record.split' } },
                 { label: _sdT('Attachments'), type: 'loop_area', icon: 'bi-paperclip', extra: { listSource: 'form_record.files' } },
+                { label: _sdT('Records that point at the record'), type: 'loop_area', icon: 'bi-diagram-3', extra: { listSource: 'form_record.children' } },
+                { label: _sdT('Path to the record'), type: 'loop_area', icon: 'bi-signpost-split', extra: { listSource: 'form_record.crumbs' } },
                 { label: _sdT('Images of the product'), type: 'loop_area', icon: 'bi-images', extra: { listSource: 'product.images' } },
                 { label: _sdT('Attributes of the product'), type: 'loop_area', icon: 'bi-card-list', extra: { listSource: 'product.attributes' } },
                 { label: _sdT('Products bought together'), type: 'loop_area', icon: 'bi-bag', extra: { listSource: 'product.related' } },
@@ -40247,6 +40249,12 @@ const StyleDesigner = (function () {
             var fieldCtl = '';
             if (!src.arg) {
                 // no field
+            } else if (p.source === 'form_record.children') {
+                // The field may be one of another form (an article's
+                // Category), so it is typed.
+                fieldCtl = '<input type="text" class="form-control form-control-sm sd-list-arg" value="' + esc(String(p.sourceArg == null ? '' : p.sourceArg)) +
+                    '" placeholder="' + esc(_sdT('parent')) + '" aria-label="' + esc(_sdT('Field')) + '">' +
+                    note(_sdT('The name of the reference field that names the record, in this form or another.'), false);
             } else if (!formId) {
                 fieldCtl = note(_sdT('Pick the widget\'s form first (the System Widget section).'), true);
             } else if (!fields) {
@@ -40286,6 +40294,8 @@ const StyleDesigner = (function () {
             'form_record.values': _sdT('One row for every value the field holds: every ticked box of a check box group, every choice of a multiple choice list. Bind the row\'s elements to "Value" in Bind Data.'),
             'form_record.split':  _sdT('One row for every part of the field\'s text cut at its commas, spaces at either end dropped: "red, green, blue" gives three rows. Bind the row\'s elements to "Value" in Bind Data.'),
             'form_record.files':  _sdT('One row for every file the record holds. Bind a link to "File address" and its text to "File Name" in Bind Data; the file opens for visitors who may see the record.'),
+            'form_record.children': _sdT('One row for every record whose reference field of this name, in this form or another, names the record: Parent lists the sub-categories, Category the articles. Put another such list inside the row for the level below. Only records their public record page shows are listed.'),
+            'form_record.crumbs': _sdT('One row for every record above the record, from the top, read through the reference field of this name: the category of an article, then its parent categories. Only records their public record page shows are listed.'),
             'product.images':     _sdT('One row for every image of the product, its main image first. Bind a picture to "Image address" in Bind Data. A variant picked on the page does not change the list.'),
             'product.attributes': _sdT('One row for every attribute the product has a value for, such as its colour or size. Bind the row\'s elements to "Attribute" and "Attribute value" in Bind Data.'),
             'product.related':    _sdT('One row for every product ordered together with this one, else for the products of its groups, at most 12. With this list on the page the automatic "Frequently bought together" block is not added.'),
@@ -69775,6 +69785,28 @@ const StyleDesigner = (function () {
                 ['__file_ext',   _sdT('File type')]
             ]
         },
+        // The record tree (pg_sw_list_tree_sources()): records naming the
+        // record in a reference field, and the records above it.
+        'form_record.children': {
+            label: _sdT('Records that point at the record'),
+            arg: 'field', argRequired: true,
+            kinds: ['form_list_view', 'form_item_view'],
+            rows: [
+                ['__record_title', _sdT('Record title')],
+                ['__record_url',   _sdT('Record address')],
+                ['__record_code',  _sdT('Record reference code')]
+            ]
+        },
+        'form_record.crumbs': {
+            label: _sdT('Path to the record'),
+            arg: 'field', argRequired: true,
+            kinds: ['form_list_view', 'form_item_view'],
+            rows: [
+                ['__record_title', _sdT('Record title')],
+                ['__record_url',   _sdT('Record address')],
+                ['__record_code',  _sdT('Record reference code')]
+            ]
+        },
         // The product sources (pg_sw_list_product_sources()): what the
         // product of a catalog detail view or of a listing's card holds
         // (the products bought together in the detail view alone); none
@@ -70644,6 +70676,9 @@ const StyleDesigner = (function () {
         __volunteering_state_label: _sdT('Signed up'),
         __volunteering_tone:        'success',
         __menu_item_name: _sdT('Menu item'),
+        __record_title: _sdT('Getting started'),
+        __record_url: '#',
+        __record_code: 'A1B2C3',
         __menu_item_id: '2',
         __menu_item_url: '#',
         __menu_item_target: '',
@@ -70856,6 +70891,26 @@ const StyleDesigner = (function () {
                     createNode('semantic', { tag: 'li', cssClass: '', customName: _sdT('Sub-item') }, [
                         createNode('semantic', { tag: 'a', cssClass: '', text: _sdT('Menu item'), href: '#', customName: _sdT('Link'),
                             _bindings: { href: '__menu_item_url', text: '__menu_item_name' } })
+                    ])
+                ])
+            ]);
+        }
+        if (source === 'form_record.children') {
+            return createNode('semantic', { tag: 'ul', cssClass: bs ? 'list-unstyled ps-3' : '', customName: _sdT('Records that point at the record') }, [
+                createNode('loop_area', { source: source }, [
+                    createNode('semantic', { tag: 'li', cssClass: '', customName: _sdT('Record') }, [
+                        createNode('semantic', { tag: 'a', cssClass: '', text: _sdT('Record title'), href: '#', customName: _sdT('Link'),
+                            _bindings: { href: '__record_url', text: '__record_title' } })
+                    ])
+                ])
+            ]);
+        }
+        if (source === 'form_record.crumbs') {
+            return createNode('semantic', { tag: 'ol', cssClass: bs ? 'breadcrumb' : '', customName: _sdT('Path to the record') }, [
+                createNode('loop_area', { source: source }, [
+                    createNode('semantic', { tag: 'li', cssClass: bs ? 'breadcrumb-item' : '', customName: _sdT('Crumb') }, [
+                        createNode('semantic', { tag: 'a', cssClass: '', text: _sdT('Record title'), href: '#', customName: _sdT('Link'),
+                            _bindings: { href: '__record_url', text: '__record_title' } })
                     ])
                 ])
             ]);
@@ -71468,6 +71523,7 @@ const StyleDesigner = (function () {
     function _sdListFieldFits(source, ff) {
         if (!ff) return false;
         if (source === 'form_record.files') return ff.type === 'file upload';
+        if (source === 'form_record.children' || source === 'form_record.crumbs') return ff.collection_kind === 'reference' && parseInt(ff.reference_page_id, 10) > 0;
         return ff.type !== 'file upload' && !(ff.type === 'text area' && String(ff.wysiwyg) === '1');
     }
 
@@ -71517,7 +71573,7 @@ const StyleDesigner = (function () {
                 _fetchFormFields(formId, function () { renderCanvas(); });
             }
             var ff = fields ? _sdListFieldOf(fields, spec.arg) : null;
-            if (fields && !_sdListFieldFits(spec.source, ff)) {
+            if (fields && !_sdListFieldFits(spec.source, ff) && !(spec.source === 'form_record.children' && !ff)) {
                 return { off: true, text: _sdT('{var:1}: the field {var:2} gives this list no rows', [src.label, spec.arg]) };
             }
             name += ' · ' + (ff ? (ff.label || ff.name) : spec.arg);
@@ -94869,6 +94925,10 @@ const StyleDesigner = (function () {
                                     d: _sdT('Repeats its row for each part of a field text, split at the commas.') },
             'l:form_record.files': { v: 'l-files', k: 'attachments files uploads list repeat loop record',
                                     d: _sdT('Repeats its row for each file attached to the record.') },
+            'l:form_record.children': { v: 'l-menu-children', k: 'tree categories children sub categories articles help centre knowledge base list repeat loop record',
+                                    d: _sdT('Repeats its row for each record that names this one in a field, such as the sub-categories or the articles of a category.') },
+            'l:form_record.crumbs': { v: 'l-crumbs', k: 'breadcrumb crumbs path parent categories help centre list repeat loop record',
+                                    d: _sdT('Repeats its row for each record above this one, from the top: the breadcrumbs of a category or an article.') },
             'l:product.images': { v: 'l-images', k: 'product images gallery thumbnails list repeat loop',
                                     d: _sdT('Repeats its row for each image of the product, such as the thumbnails under the large picture.') },
             'l:product.attributes': { v: 'l-attributes', k: 'product attributes specifications list repeat loop',

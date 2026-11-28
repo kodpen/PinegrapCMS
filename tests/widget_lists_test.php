@@ -202,6 +202,8 @@ function test_widget_lists_descriptor_parity()
 		// The product and calendar sources: widget_lists_product_test.php,
 		// widget_lists_calendar_test.php.
 		if ($d['family'] !== 'form_record') continue;
+		// The record tree reads the database: widget_lists_tree_test.php.
+		if ($source === 'form_record.children' || $source === 'form_record.crumbs') continue;
 		pg_assert_true(isset($args[$source]), $source . ' has a fixture');
 		$tokens = array();
 		foreach ($d['tokens'] as $pair) $tokens[] = $pair[0];
@@ -210,7 +212,7 @@ function test_widget_lists_descriptor_parity()
 		foreach ($rows[5][$args[$source]] as $row) pg_assert_same($tokens, array_keys($row), $source . ' row keys');
 	}
 	pg_assert_same(pg_sw_kind_lists('form_list_view'), pg_sw_kind_lists('blog_list'));
-	pg_assert_same(array_keys($args), array_keys(pg_sw_kind_lists('form_item_view')));
+	pg_assert_same(array_merge(array_keys($args), array('form_record.children', 'form_record.crumbs')), array_keys(pg_sw_kind_lists('form_item_view')));
 	pg_assert_same(array('product.images', 'product.attributes', 'product.bundle_items', 'catalog.crumbs', 'catalog.active_filters', 'paging.pages'), array_keys(pg_sw_kind_lists('catalog_listing')));
 	pg_assert_same(array('paging.pages'), array_keys(pg_sw_kind_lists('comments')), 'the comments widget: its page links');
 	pg_assert_same(array(), pg_sw_kind_lists('comments_recent'));
