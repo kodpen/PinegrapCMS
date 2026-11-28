@@ -766,40 +766,46 @@ if ($output_jobs !== '') {
         . (($activity_filter === 'all') ? lang('No update has been run for this language yet.') : lang('No update matches this filter.')) . '</div></div>';
 }
 
-// The glossary rows. Each carries its values as data attributes, so the
-// edit button fills the modal without a round trip.
+// "Glossary": one table row a term. Each row carries its values as data
+// attributes, so the edit button fills the dialog without a round trip; the
+// remove buttons submit the one form below the table (no form in a row).
 $output_glossary = '';
+$glossary_language = h(pg_tr_language_label($language));
 
 foreach ($glossary as $term) {
     $for_all = ((string) $term['language'] === '');
+    $kept = ((int) $term['keep'] === 1);
 
-    $output_glossary .= '<div class="d-flex align-items-start gap-3 py-3 border-top small pg-tr-term"'
+    $output_glossary .= '<tr class="pg-tr-term"'
         . ' data-id="' . (int) $term['id'] . '" data-term="' . h($term['term']) . '" data-translation="' . h($term['translation']) . '"'
         . ' data-keep="' . (int) $term['keep'] . '" data-case="' . (int) $term['case_sensitive'] . '" data-note="' . h($term['note']) . '" data-all="' . ($for_all ? 1 : 0) . '">'
-        . '<div class="flex-grow-1 text-break">'
-        . '<span class="fw-semibold"' . $text_lang($source) . '>' . h($term['term']) . '</span>'
-        . (((int) $term['keep'] === 1)
-            ? ' <span class="pg-pill pg-tone-gray">' . lang('keep as written') . '</span>'
-            : ' <span class="fg-secondary">→</span> <span' . $text_lang($language) . '>' . h($term['translation']) . '</span>')
-        . ($for_all ? ' <span class="pg-pill pg-tone-gray">' . lang('all languages') . '</span>' : '')
-        . (((int) $term['case_sensitive'] === 1) ? ' <span class="pg-pill pg-tone-gray font-monospace">Aa</span>' : '')
-        . (($term['note'] !== '') ? '<div class="fg-secondary">' . h($term['note']) . '</div>' : '')
-        . '</div>'
+        . '<td class="text-break"><span class="fw-semibold"' . $text_lang($source) . '>' . h($term['term']) . '</span>'
+        . (((int) $term['case_sensitive'] === 1) ? ' <span class="pg-pill pg-tone-gray font-monospace">Aa</span>' : '') . '</td>'
+        . '<td class="text-break">' . ($kept ? '<span class="pg-pill pg-tone-gray">' . lang('Keep as written') . '</span>' : '<span' . $text_lang($language) . '>' . h($term['translation']) . '</span>') . '</td>'
+        . '<td class="pg-text-2 text-nowrap">' . ($for_all ? lang('Every language') : $glossary_language) . '</td>'
+        . '<td class="pg-text-2 text-break">' . h($term['note']) . '</td>'
+        . '<td class="text-end text-nowrap">'
         . '<button type="button" class="pg-icon-button pg-icon-button-sm pg-tr-term-edit" data-bs-toggle="dialog" data-bs-target="#pg_tr_glossary_modal" aria-label="' . h(lang('Edit')) . '"><i class="bi bi-pencil" aria-hidden="true"></i></button>'
-        . '<form method="post" action="translations_action.php" class="d-inline" onsubmit="return confirm(' . h(json_encode(lang('Remove this term from the glossary?'))) . ');">'
+        . '<button type="submit" form="pg_tr_glossary_delete" name="id" value="' . (int) $term['id'] . '" class="pg-icon-button pg-icon-button-sm fg-danger pg-tr-term-remove" aria-label="' . h(lang('Remove')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></button>'
+        . '</td>'
+        . '</tr>';
+}
+
+if ($output_glossary !== '') {
+    $output_glossary = '<div class="table-responsive"><table class="table align-middle mb-0 pg-tr-terms">'
+        . '<thead class="pg-table-light"><tr><th scope="col">' . lang('Term') . '</th><th scope="col">' . lang('Translation to use') . '</th><th scope="col">' . lang('Language') . '</th><th scope="col">' . lang('Note for the translator') . '</th><th scope="col"><span class="visually-hidden">' . lang('Actions') . '</span></th></tr></thead>'
+        . '<tbody>' . $output_glossary . '</tbody></table></div>'
+        . '<p class="pg-text-meta px-3 py-3 mb-0" id="pg_tr_term_none" hidden>' . lang('No term matches the search.') . '</p>'
+        . '<form method="post" action="translations_action.php" id="pg_tr_glossary_delete" class="d-none" data-confirm="' . h(lang('Remove this term from the glossary?')) . '">'
         . '<input type="hidden" name="action" value="glossary_delete"/>'
         . '<input type="hidden" name="language" value="' . h($language) . '"/>'
         . $view_fields
         . '<input type="hidden" name="tab" value="glossary"/>'
-        . '<input type="hidden" name="id" value="' . (int) $term['id'] . '"/>'
         . get_token_field()
-        . '<button type="submit" class="pg-icon-button pg-icon-button-sm fg-danger" aria-label="' . h(lang('Remove')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></button>'
-        . '</form>'
-        . '</div>';
-}
-
-if ($output_glossary === '') {
-    $output_glossary = '<div class="small fg-secondary py-3">' . lang('No term yet. A term with the translation to use, or a name to keep as written: the engines follow the glossary on every text they are sent.') . '</div>';
+        . '</form>';
+} else {
+    $output_glossary = '<div class="pg-card-inner m-3"><div class="ws-empty py-5"><i class="bi bi-book" aria-hidden="true"></i>'
+        . lang('No term yet. A term with the translation to use, or a name to keep as written: the engines follow the glossary on every text they are sent.') . '</div></div>';
 }
 
 $scope = ($page_id > 0) ? 'page:' . $page_id : (($group !== '') ? 'group:' . $group : 'all');
@@ -1124,6 +1130,7 @@ echo pg_page_shell(array(
     .pg-tr-progress-meter { flex: 1 1 60px; min-width: 60px; height: 4px; }
     /* "Activity": a row opens the drawer of its update. */
     .pg-tr-job { cursor: pointer; }
+    .pg-tr-term-find { width: 360px; max-width: 100%; }
     .pg-tr-job-open { padding: 0; border: 0; background: none; color: inherit; font-weight: var(--pg-weight-strong); text-align: start; }
     .pg-tr-job-progress { display: inline-flex; align-items: center; gap: 8px; }
     .pg-tr-job-progress .progress { width: 80px; height: 4px; }
@@ -1265,13 +1272,14 @@ echo pg_page_shell(array(
             <section class="pg-card overflow-hidden mb-5" id="pg_tr_jobs" aria-label="' . h(lang('Activity')) . '">' . $output_jobs . '</section>
         </div>
         <div class="tab-pane fade' . (($tab === 'glossary') ? ' show active' : '') . '" id="pg_tr_pane_glossary" role="tabpanel" aria-labelledby="pg_tr_tab_glossary">
-            <section class="pg-card pg-tr-pane-card mb-5" id="pg_tr_glossary" aria-labelledby="pg_tr_glossary_title">
-                <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center gap-3">
-                    <h2 class="pg-title-section mb-0" id="pg_tr_glossary_title">' . lang('Glossary') . '</h2>
-                    <button type="button" class="pg-button pg-button-quiet pg-button-sm no-popover pg-tr-term-add" data-bs-toggle="dialog" data-bs-target="#pg_tr_glossary_modal"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . lang('Add a term') . '</button>
-                </div>
-                <div class="card-body py-3">' . $output_glossary . '</div>
-            </section>
+            <div class="d-flex flex-wrap align-items-center gap-3 mb-3">' . (($glossary !== array()) ? '
+                <label class="form-control form-control-sm form-adorn rounded-pill pg-tr-term-find">
+                    <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
+                    <input type="search" class="form-ghost" id="pg_tr_find_term" placeholder="' . h(lang('Search the glossary')) . '" aria-label="' . h(lang('Search the glossary')) . '" autocomplete="off"/>
+                </label>' : '') . '
+                <button type="button" class="pg-button pg-button-fill no-popover ms-auto pg-tr-term-add" data-bs-toggle="dialog" data-bs-target="#pg_tr_glossary_modal"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . lang('Add a term') . '</button>
+            </div>
+            <section class="pg-card overflow-hidden mb-5" id="pg_tr_glossary" aria-label="' . h(lang('Glossary')) . '">' . $output_glossary . '</section>
         </div>
         </div>
         <dialog class="dialog" id="pg_tr_import" aria-labelledby="pg_tr_import_title">
