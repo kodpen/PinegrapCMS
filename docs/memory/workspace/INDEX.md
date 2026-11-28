@@ -229,6 +229,7 @@
 - notes-screen-opening.md: Which note My Notes opens on (address, the note last open, else the first listed), the phone opening on the list, the next after a delete, the first note's card
 - person-card-facts.md: A person's card facts in a channel (person_card.php, PF6a): the ws_person_card action, who may read it, role, title, departments and leads, working day, away days, local time, last seen [decision: here]
 - person-status-rule.md: A person's own status (PS1): ws_profiles.status (11.0.290), the pure rule, ws_person_status_*(), GET/POST /workspace/status as MCP tools, status on the person brief
+- person-status-screens-ui.md: A person's own status on screen (PS2): the Status dialog, the account menu's row, the mark beside names, the card's line, the composer's lines, CFG.person_status
 - personal-calendar-census-mail.md: PC1 census (2026-11-14): pg_mail_parse() keeps a mail's calendar part as an attachment entry; the Workspace mail ingest drops it today; what PC7 can reuse [decision: here]
 - personal-calendar-census-privacy.md: PC1 census (2026-11-14): export, erasure, account deletion and leaving the team today, and what each does with private plans (architect's answer) [decision: here]
 - personal-calendar-census-readers.md: PC1 census (2026-11-14): every reader of the Work Calendar's rows (ws_events) and of Today, which one asks whose row it is, and what each must do with a person's private plan

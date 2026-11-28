@@ -206,6 +206,7 @@
 - details-panel-rule.md: The one structure rule of a list's details panel ("Detaylar"): fixed section order, label/value lines with a fixed label column, empty values left out; how the table driver applies it [decision: here]
 - dialog-focus-on-open.md: Bootstrap 6 dialogs and drawers take focus when shown (pg_ui.js focusShown()): [autofocus], else the first field, else the dialog itself; never a button; touch screens; screens' own focus left alone
 - dialog-result-after-close.md: A Bootstrap 6 dialog or drawer hands its result to the page only once closed; the writing box's + menu windows put in nothing before that (#4196); the caret after a card [decision: here]
+- document-head-part.md: The shared document head (assets/js/pg_doc_head.js, pgDocHead.build(), DH1): its options in order, setters, the more menu's groups, the phone shape, its words, styles and example
 - duplicate-products-options.md: Duplicate Products (duplicate_products.php) copy options as a titled card of labelled form-field boxes above the list (step B11, #7552)
 - dynamic-region-shared-form.md: The dynamic region create and edit screens share includes/forms/dynamic_region_form.php: what it holds, the label fix, what stays in the screens
 - edit-contact-return-key.md: Return in an Edit Contact field saves through a hidden nameless first submit; before, with the address suppressed, it pressed Allow again, lifted the block and dropped the edits
