@@ -429,7 +429,7 @@
 - workspace-field-names.md: How Workspace drawer and dialog fields get their screen-reader names: formRow(), saLabelled(), ask(), labelTarget()/hasName(), the pickers
 - workspace-file-address-gate.md: Who get_file.php serves a Workspace channel's or note's file to by its address (#11476): readers of the channel or note; staff never by rank; users left to the folder's view right
 - workspace-file-card-preview.md: A channel file's name opens it on the screen (message file card, Files tab), Preview and Download in words, Save as data for a sheet into a Data table of the channel (#11028)
-- workspace-file-groups.md: Files sent together in a channel as one group: ws_messages.file_group (step 11.0.291), ws_file_group_check() rules, how ws_attach and ws_library_attach write a member
+- workspace-file-groups.md: Files sent together in a channel as one group: ws_messages.file_group (step 11.0.291), when a file may join, how a member is written (FG1 #12266) and read, counted, deleted, forwarded and pinned (FG2)
 - workspace-file-manager-files.md: A file of the file manager posted into a Workspace channel as a copy (library.php): "Send to a channel" in the file manager, "From the file manager" under the paperclip; who may pick what, refusals
 - workspace-files-object-storage.md: Workspace channel files, note attachments, guest files and ERP documents in the object store: which functions read them, which places still write the file directory, the guard test
 - workspace-flow-ai-drafts.md: Pinegrap AI drafts a flow (propose_flow, read_flow; D8a #2605): catalogue schema and hints, graph or patch, auto layout, the card's window (D8b), a patch opened onto its flow and marked (D8c)
