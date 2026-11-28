@@ -464,6 +464,7 @@
 - designer-form-palette-and-fields.md: Designer form controls: label[for] protection, fieldset radio/checkbox groups, CF_PALETTE rules, overview-tree option folding.
 - designer-form-uploads-for-readers.md: Designed-form uploads open for visitors when a public designed record view or list shows the record and prints the field (get_file.php, includes/record_files.php); what keeps them closed
 - designer-frame-tidy-drawing.md: Drawing of the Page Design Studio editor's frame (2026-11-26): the one bar, the left column's heads, the bottom panel, the status bar; which board is which step of designer-frame-tidy [decision: here]
+- designer-google-font-links.md: How a design's Google font is linked on the site, the canvas, Preview and code view: the regular face beside the weighted request, pg_google_font_hrefs() and its JS twin _sdGfHrefs() (#12243)
 - designer-grid-areas.md: Advanced › Layout's "Areas" on a grid box and "Area" on its child (DO6): the small grid, what each change writes, the lines, per screen size, the canvas tint, the part 'grid'
 - designer-grid-child-place.md: Advanced › Layout's Span columns, Span rows and Start at on a grid box's child (DO5): the CSS each writes, per screen size, typed values kept, the part 'grid'
 - designer-grid-columns-rows.md: Advanced › Layout's Columns and Rows on a grid box (DO4): modes (Default, Equal, Fixed sizes, As many as fit, Custom), the CSS each writes, per screen size, the part 'grid', Gap kept

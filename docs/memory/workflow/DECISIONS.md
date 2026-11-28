@@ -1602,7 +1602,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/messages-area-surveys-tab.md: Communication › Surveys (FD2): the satisfaction survey list, its gate, Add survey's starting points drawer, the row's Send me a test, Delete or Archive
 - ui/messages-area-templates-tab.md: Communication › Templates (MA6 #9294, WA3b #9355): SMS texts edited on their card, WhatsApp templates with state, reason and Refresh, e-mail designs (MA5d)
 - ui/notifications-menu.md: The bell's drawer #notifications at the right edge: opened by the bell, Ctrl+Q, pgBellOpen(); head, events, focus; only the list scrolls; the poll redraws when the count moves
-- ui/notifications-one-inbox.md: The bell as the one inbox (#3817): filters in bell-filters.md, a flow's runs folded and drawn as gathered lines, pgBellOpen() for the old inbox address, the Workspace count
+- ui/notifications-one-inbox.md: The bell as the one inbox (#3817): filters in bell-filters.md, a flow's runs folded and drawn as gathered lines, pgBellOpen() for the Workspace list's Notifications row, the Workspace count
 - ui/page-form-number-ranges.md: Page form System Options number boxes refused out of range by pg_page_form_number_errors() instead of cut by their columns; whole-number boxes use the integer mask
 - ui/panel-screenshots.md: tools/screenshots/shoot.js shoots panel screens (light/dark, wide/phone) on a setup_sandbox.sh instance with sample records: running it, adding a screen, the private page
 - ui/panel-shell-foot.md: Panel foot at the window's bottom, none on the Workspace channel view; top bar description ends 16px before the search field; no Ctrl+K there on Workspace screens
@@ -1948,7 +1948,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/workspace-mcp-servers-card.md: Workspace "MCP servers" card (mcp.php, mcp_catalogue.php): ready-made connectors, adding by address, read-only tools on at first read, the form kept after an error, Pinegrap AI failing
 - workspace/workspace-memory-form-drawer.md: The Memory tab's New entry / Edit form as a form drawer beside the list (MF1): head, fields, foot, refusals, the ask before closing, the saved row lit, /memory, mount()'s start
 - workspace/workspace-memory-tab.md: The Memory tab (GM3a, MS3): the general and the channel's part as rows under folding project headings, the search box, a row's columns, Move, the form drawer, ws_memory_list's answer
-- workspace/workspace-menu-list.md: The Workspace list in the main menu (#2545, #6281, redrawn #11079-#11141): workspace_side.js draws ws_side_payload(): order, All / Unread, tools dock, who sees what, data, hooks
+- workspace/workspace-menu-list.md: The Workspace list in the main menu (#2545, #6281, redrawn #11079-#11141): workspace_side.js draws ws_side_payload(): order, the Notifications row, All / Unread, tools dock, who sees what, data, hooks
 - workspace/workspace-menu-tools.md: The tools dock of the Workspace list (#3817, #6281, dock #11101): places (My Tasks first), short names, tones, the count on My Tasks, More as a card, the tour opening hidden places
 - workspace/workspace-menu-unread.md: The Workspace list's All / Unread filter (#11141, board L2): which rows Unread keeps, ws-side-filter, Mark all as read (ws_read_all), "Everything is read", the keys Alt+Up/Down and Alt+Shift+Up/Down
 - workspace/workspace-message-box-width.md: Channel message boxes: 90rem wide at most, .5rem apart (grouped lines joined), a faint sender tint over 1700px (data-ws-tone; light 5 %, dark 2.2 %)

@@ -144,6 +144,7 @@
 - etsy-categories.md: Etsy categories and properties on the Listings view: the seller taxonomy under the provider's key (etsy), nested nodes flattened, a leaf's properties as attribute rows, scales named on values
 - etsy-connection.md: Etsy marketplace accounts: the etsy connect provider (PKCE, keystring, no secret on the token request, x-api-key on every call), the connector test, the shop read from the sign-in, five remote selects
 - etsy-listings.md: Etsy listings: one listing an article, draft, pictures uploaded as files, shared properties, inventory with the variants, active and read back; the listing id kept from the verdict; the fee notice
+- etsy-orders.md: Etsy orders by the scheduled pull (getShopReceipts) in the receipt's currency, a receipt without an address imported with a notice, a parcel reported with tracking code and carrier
 - etsy-stock-price.md: Etsy stock and price through the queue: inventories read in bulk, one call a listing with its whole products array, price in the shop's currency, paced by limit headers
 - eu-vat-check.md: EU VAT ids checked against VIES: the clean function and patterns per member state, the REST request, answer mapping, a day's cache, the reverse-charge decision; where it is wired [decision: decisions-made-product-19.md, decisions-made-product-26.md]
 - eu-vat-checkout.md: The EU VAT check at checkout: when it runs, what each VIES answer does to tax_exempt and the three orders.vat_* columns, where the customer, the order screen, the API and the ERP invoice show it
@@ -188,6 +189,7 @@
 - market-cart.md: The cart in its market's currency (MK6): the order row's market, currency and rate; lines, offers, shipping, donations converted; cart pages printed as they are; the rate sealed at submit
 - market-payment-gateways.md: How PayPal Checkout, PayTR and iyzico charge and refund a market's order in its own currency (MK8): the order settings, the webhook amount, iyzico's protected currency left out of such an order
 - market-payment-methods.md: A market's order at the checkout (MK7, MK8): Stripe, PayPal, PayTR, iyzico in its own currency; the methods it is offered (order_currency, each driver's list)
+- market-prices.md: A product's fixed price in a market (MK9, 11.0.292): the market_prices table, the "Prices by market" card, the cart charging it, the price:<market> columns of the product export and import
 - market-site-prices.md: The visitor's market on the site (MK5): chosen by country or the country list, its currency and rounding in every printed price, the currency picker hidden, the page cache kept per country
 - marketplace-api-and-events.md: GET /products/{id}/marketplaces (manager role only, never credentials) and the marketplace.order.imported, .cancelled and .shipped webhook events: where each is announced and what it carries (#1667)
 - marketplace-bulk-matching.md: Bulk matching of marketplace products to the shop's (marketplace_products.php, #1880): remote catalogue table, paged read, suggestion scores, sure rule, what a match writes
