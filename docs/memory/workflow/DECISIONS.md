@@ -68,6 +68,10 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-panel-2.md: Why do the File Manager and the visual designer print no alert boxes? (owner, 2026-11-02)
 - decisions-made-panel-2.md: Why do the user-rights folder trees still list the Workspace folder? (owner, 2026-11-02)
 - decisions-made-panel-2.md: May the vendored Bootstrap 6 dist be changed? (architect, 2026-11-04, #6619)
+- decisions-made-panel-20.md: Where are the rules and the earlier parts?
+- decisions-made-panel-20.md: How is the main menu's open row told? (owner, 2026-11-28, channel message 15414)
+- decisions-made-panel-20.md: Where does the Workspace row's count lead? (owner, 2026-11-28, channel message 15414)
+- decisions-made-panel-20.md: Which other main menu rows carry a count? (owner, 2026-11-28, channel message 15414)
 - decisions-made-panel-3.md: Where are the rules and the earlier parts?
 - decisions-made-panel-3.md: Why is jquery-multiselect-checkbox no Bootstrap 6 component? (owner, 2026-10-25)
 - decisions-made-panel-3.md: Which screens must never look worse? (owner, 2026-10-25)

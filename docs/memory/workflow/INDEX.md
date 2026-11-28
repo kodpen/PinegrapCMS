@@ -198,6 +198,7 @@
 - decisions-made-panel-18.md: Decisions made, panel part 18 (2026-11-24 on): Artifact Canvas buttons say "Edit in Artifact Canvas"; its "?" is the help link; a place citing a menu row draws the row's new icon
 - decisions-made-panel-19.md: Decisions list, panel part 19 (2026-11-24 on): main menu row icons at least 1.2rem so each is told apart; the menu widens without stuttering
 - decisions-made-panel-2.md: Decisions list, panel part 2 (2026-11-02 on): no Site Settings menu row; two-colour menu icons; no alert boxes on app-like screens; rights trees keep Workspace; a local change in the Bootstrap 6 dist
+- decisions-made-panel-20.md: Decisions list, panel part 20 (2026-11-28 on): the main menu's open row is told by a filled tile (drawing B); a Notifications row in the Workspace list; counts on Orders, Forms and Products
 - decisions-made-panel-3.md: Decisions list, panel part 3: Bootstrap 6 choices of 2026-10-25 (multiselect kept, liked screens, Stepper, Avatar, password meter, old browser notice); the Site Settings dialog's drawer (2026-11-11)
 - decisions-made-panel-4.md: Decisions list, panel part 4: the bell (owner 2026-11-11): a right drawer, rows as the dashboard's Next up rows, module chips, unread only, asked of me, search, in-place actions, read when opened
 - decisions-made-panel-5.md: Decisions list, panel part 5 (2026-11-11 on): the dashboard's notes card as a My Notes shortcut, last online times, the world map without city names (#8672); the report screens' renewal (#8673)

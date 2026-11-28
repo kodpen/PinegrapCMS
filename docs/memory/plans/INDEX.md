@@ -56,6 +56,8 @@
 - integrations-census-today.md: Census (2026-11-17) of the outside services the product connects to today, the selling side: how they were counted, payments, shipping, marketplaces, e-documents, how a new one is added
 - integrations-census.md: Start file of the integrations census (2026-11-17, the owner's request in the agent channel): what was asked, the parts, the decisions that bind, the summary, what is still to decide
 - launch-summary-files.md: Plan: the agency summary's customer page shows the steps still open, and a "What we need from you" line can ask for one file or several instead of text; LS1, LS2
+- main-menu-counts-active-screens.md: Plan main-menu-counts-active, how each part is drawn: the main menu's open row with a filled tile, the Workspace list's "Notifications" row, the quiet count on Products
+- main-menu-counts-active.md: Plan (owner 2026-11-28): the main menu's open row told by a filled tile, a "Notifications" row in the Workspace list, counts on the Orders, Forms and Products rows; steps MB1 to MB5
 - market-table-stakes.md: Plan (owner 2026-11-17): what the Turkish market's lists expect and the product lacks: a Google XML product feed now (TS1); the price sites, Craftgate and the integrators after 2026.11.0
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer
 - markets-price-lists-census-orders.md: Markets and price lists MK1 census, orders: where an order keeps its currency and rate, and what refunds, reports, the API, the ERP entry, marketplaces and feeds assume about its totals
