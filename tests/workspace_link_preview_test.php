@@ -231,3 +231,17 @@ function test_workspace_link_preview_fields_charset_alias()
 
 	pg_assert_same('Plain', ws_link_preview_fields('<title>Plain</title>', 'https://example.com/', 'text/html; charset=no-such-charset')['title'], 'an unknown charset is read as it is');
 }
+
+function test_workspace_link_preview_idn_host()
+{
+	if (!function_exists('idn_to_ascii')) {
+		return;
+	}
+
+	// A name written in its own letters is read under its ASCII form.
+	pg_assert_true(ws_link_preview_url_allowed('https://çiçek.com.tr/yaz?a=1'), 'a name in Turkish letters');
+	pg_assert_same('https://xn--iek-1lab.com.tr/yaz?a=1', ws_link_preview_ascii_url('https://çiçek.com.tr/yaz?a=1'), 'the host in its ASCII form');
+	pg_assert_same('https://example.com/ğ', ws_link_preview_ascii_url('https://example.com/ğ'), 'an ASCII host stays');
+	pg_assert_false(ws_link_preview_url_allowed('http://yazıcı.local/'), 'a local name stays refused');
+	pg_assert_false(ws_link_preview_url_allowed('http://bilgisayar/'), 'a dotless name stays refused');
+}

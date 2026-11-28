@@ -79,6 +79,30 @@ const WS_LINK_PREVIEW_DESCRIPTION_MAX = 500;
 const WS_LINK_PREVIEW_SITE_MAX = 100;
 
 /**
+ * The address with its host in ASCII form: a name written in its own letters
+ * (çiçek.com.tr) becomes its xn-- form, which is what is checked, looked up
+ * and called. Unchanged when the host is ASCII already or cannot be turned
+ * (no intl extension, a name IDNA refuses).
+ *
+ * @param string $url
+ * @return string
+ */
+function ws_link_preview_ascii_url($url)
+{
+    $url = (string) $url;
+
+    if (!preg_match('#^(https?://(?:[^/?\#@]*@)?)([^/?\#:]+)(.*)$#is', $url, $match)
+        || !preg_match('/[^\x00-\x7F]/', $match[2]) || !function_exists('idn_to_ascii')) {
+        return $url;
+    }
+
+    $variant = defined('INTL_IDNA_VARIANT_UTS46') ? INTL_IDNA_VARIANT_UTS46 : 0;
+    $host = @idn_to_ascii($match[2], defined('IDNA_NONTRANSITIONAL_TO_ASCII') ? IDNA_NONTRANSITIONAL_TO_ASCII : 0, $variant);
+
+    return (is_string($host) && ($host !== '')) ? $match[1] . $host . $match[3] : $url;
+}
+
+/**
  * Whether an address may be read, from the address alone: http or https, no
  * user name or password in it, the usual port, and a host that is no name or
  * address of the network itself. The resolved address is checked again where
@@ -89,7 +113,7 @@ const WS_LINK_PREVIEW_SITE_MAX = 100;
  */
 function ws_link_preview_url_allowed($url)
 {
-    $url = (string) $url;
+    $url = ws_link_preview_ascii_url($url);
 
     if (($url === '') || (strlen($url) > WS_LINK_PREVIEW_URL_MAX) || preg_match('/[\s\x00-\x1F\x7F]/', $url)) {
         return false;
@@ -735,6 +759,8 @@ function ws_link_preview_fetch($url)
     };
 
     for ($hop = 0; $hop <= WS_LINK_PREVIEW_REDIRECTS; $hop++) {
+        $url = ws_link_preview_ascii_url($url);
+
         if (!ws_link_preview_url_allowed($url)) {
             return null;
         }
