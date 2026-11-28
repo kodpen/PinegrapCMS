@@ -365,7 +365,7 @@ function pg_office_xlsx_parse_bool($text)
  * date or a time (pg_office_xlsx_parse_date()). An
  * empty cell, or one holding a number, takes a number when the text is one.
  * A cell formatted as text (@) always takes text. A leading "=" is kept as
- * text: no formula is written here.
+ * text here: a simple formula is read before (pg_office_xlsx_typed_formula()).
  *
  * @param string $text     the cleaned text (pg_office_xlsx_clean_text())
  * @param string $was      the cell's kind now: empty, number, string, bool, error
@@ -406,6 +406,73 @@ function pg_office_xlsx_typed($text, $was, $format, $date1904)
     }
 
     return array('kind' => 'string', 'value' => $text);
+}
+
+/**
+ * The formula a typed text becomes, as Excel stores it (English names,
+ * commas, no leading "="), or null when the text is not one: it must start
+ * with "=" and be a simple formula (pg_office_formula_parse()), typed with
+ * the English function names or those of the panel's language. A cell
+ * formatted as text (@) takes the text as it is, as in Excel.
+ *
+ * @param string $text     the cleaned text
+ * @param string $format   the cell's number format kind: date, text or ''
+ * @param string $language the panel's language code
+ * @return string|null
+ */
+function pg_office_xlsx_typed_formula($text, $format, $language)
+{
+    $text = (string) $text;
+
+    if (($format === 'text') || (substr($text, 0, 1) !== '=') || !function_exists('pg_office_formula_parse')) {
+        return null;
+    }
+
+    $tree = pg_office_formula_parse($text, (string) $language);
+
+    return ($tree === null) ? null : pg_office_formula_text($tree);
+}
+
+/**
+ * A stored formula's tree when the formula is a simple one this code works
+ * out and lets a person change, else null: a formula of its own cell (not
+ * shared, not an array or a data table, no range of cells it fills) whose
+ * text pg_office_formula_parse() reads with the English names. A cell whose
+ * value is linked to more than its text (vm) never is.
+ *
+ * @param string $text   the formula's text
+ * @param string $kind   its t attribute ('' or normal for a plain one)
+ * @param bool   $spread it carries ref or si (shared, array, data table)
+ * @param bool   $linked the cell carries vm
+ * @return array|null
+ */
+function pg_office_xlsx_simple_formula($text, $kind, $spread, $linked)
+{
+    if ($spread || $linked || !in_array((string) $kind, array('', 'normal'), true) || !function_exists('pg_office_formula_parse')) {
+        return null;
+    }
+
+    return pg_office_formula_parse((string) $text, 'en');
+}
+
+/**
+ * The simple formula of a cell in a parsed row (pg_office_xlsx_simple_formula()),
+ * or null.
+ *
+ * @param DOMElement $cell
+ * @return array|null
+ */
+function pg_office_xlsx_cell_formula($cell)
+{
+    $formula = pg_office_xlsx_child($cell, 'f');
+
+    if ($formula === null) {
+        return null;
+    }
+
+    $spread = $formula->hasAttribute('ref') || $formula->hasAttribute('si');
+
+    return pg_office_xlsx_simple_formula($formula->textContent, $formula->getAttribute('t'), $spread, (string) $cell->getAttribute('vm') !== '');
 }
 
 /* ---------------------------------------------------------------------------
@@ -684,6 +751,7 @@ function pg_office_xlsx_scan($reader, $until_row, $open_styles, $column_styles =
     $row = 0;
     $row_open = null;
     $cell = '';
+    $linked = false;
     $record = false;
     $ranges = 0;
     $formula_text = 0;
@@ -745,6 +813,7 @@ function pg_office_xlsx_scan($reader, $until_row, $open_styles, $column_styles =
 
                 $record = ($until_row > 0) && ($row <= $until_row) && ($position[1] < PG_OFFICE_MAX_COLUMNS);
                 $cell = $reader->isEmptyElement ? '' : $reference;
+                $linked = ((string) $reader->getAttribute('vm') !== '');
 
                 if ($record) {
                     if (((string) $reader->getAttribute('vm') !== '') || ((string) $reader->getAttribute('t') === 'd')) {
@@ -775,16 +844,25 @@ function pg_office_xlsx_scan($reader, $until_row, $open_styles, $column_styles =
                 }
 
                 if ($record) {
-                    $out['locked'][$cell] = 'formula';
-                    unset($out['open'][$cell], $out['closed'][$cell]);
+                    $kind = (string) $reader->getAttribute('t');
+                    $spread = ($reader->getAttribute('ref') !== null) || ($reader->getAttribute('si') !== null);
 
-                    // Read node by node, and only as much as the label
-                    // shows (four bytes a character at most).
-                    $formula = ($reader->isEmptyElement || ($formula_text >= PG_OFFICE_EDIT_FORMULA_TEXT)) ? '' : pg_office_reader_text($reader, PG_OFFICE_EDIT_FORMULA_LABEL * 4);
+                    // Read node by node, and no more than the longest simple
+                    // formula (four bytes a character at most); the label
+                    // keeps its own length.
+                    $over = false;
+                    $formula = ($reader->isEmptyElement || ($formula_text >= PG_OFFICE_EDIT_FORMULA_TEXT)) ? '' : pg_office_reader_text($reader, PG_OFFICE_FORMULA_MAX_LENGTH * 4, $over);
 
                     if ($formula !== '') {
                         $out['formulas'][$cell] = mb_substr($formula, 0, PG_OFFICE_EDIT_FORMULA_LABEL, 'UTF-8');
                         $formula_text += strlen($out['formulas'][$cell]);
+                    }
+
+                    // A simple formula is worked out again by the save and
+                    // may be changed like a value; any other stays locked.
+                    if ($over || ($formula === '') || (pg_office_xlsx_simple_formula($formula, $kind, $spread, $linked) === null)) {
+                        $out['locked'][$cell] = 'formula';
+                        unset($out['open'][$cell], $out['closed'][$cell]);
                     }
                 }
                 break;
@@ -1259,13 +1337,14 @@ function pg_office_xlsx_column_ranges($column_styles, $open_styles, $open)
  * namespace declarations so its prefixes resolve, changed with DOM and
  * written back as text. Cells keep their style; a cell that did not exist is
  * made in its column's place with the style a spreadsheet program would
- * give it. A formula, a linked value or a locked cell of a protected sheet
- * is refused here too, whatever the caller checked before.
+ * give it. A typed simple formula is written as the formula alone. A formula
+ * other than a simple one, a linked value or a locked cell of a protected
+ * sheet is refused here too, whatever the caller checked before.
  *
  * @param string $row_xml the row as the sheet has it
  * @param int    $number  the row's number
  * @param array  $changes column number => typed text (cleaned)
- * @param array  $context declarations, prefix, styles, date1904, protected, column_styles
+ * @param array  $context declarations, prefix, styles, date1904, protected, column_styles, language (optional, 'en')
  * @return array ok, xml, error (layout, locked, xml, large), cell
  */
 function pg_office_xlsx_patch_row($row_xml, $number, $changes, $context)
@@ -1321,7 +1400,11 @@ function pg_office_xlsx_patch_row($row_xml, $number, $changes, $context)
         $reference = pg_office_xlsx_column_name($column) . $number;
         $cell = isset($cells[$column]) ? $cells[$column] : null;
 
-        if (($cell !== null) && ((pg_office_xlsx_child($cell, 'f') !== null) || ((string) $cell->getAttribute('vm') !== '') || ((string) $cell->getAttribute('t') === 'd'))) {
+        // A simple formula is the one formula a person may change: it is
+        // worked out again after the rows are written.
+        $had_formula = ($cell !== null) && (pg_office_xlsx_child($cell, 'f') !== null);
+
+        if (($cell !== null) && (($had_formula && (pg_office_xlsx_cell_formula($cell) === null)) || ((string) $cell->getAttribute('vm') !== '') || ((string) $cell->getAttribute('t') === 'd'))) {
             return $fail('locked', $reference);
         }
 
@@ -1333,7 +1416,11 @@ function pg_office_xlsx_patch_row($row_xml, $number, $changes, $context)
         }
 
         $format = isset($styles['text'][$style_number]) ? 'text' : (isset($styles['date'][$style_number]) ? 'date' : '');
-        $typed = pg_office_xlsx_typed($text, pg_office_xlsx_cell_kind($cell), $format, $context['date1904']);
+        $formula = pg_office_xlsx_typed_formula($text, $format, isset($context['language']) ? $context['language'] : 'en');
+
+        // A formula's cached result says nothing about what a typed value
+        // becomes: the cell is taken as empty.
+        $typed = ($formula !== null) ? array('kind' => 'formula', 'value' => $formula) : pg_office_xlsx_typed($text, $had_formula ? 'empty' : pg_office_xlsx_cell_kind($cell), $format, $context['date1904']);
 
         if ($typed['kind'] === 'empty') {
             if ($cell === null) {
@@ -1384,6 +1471,15 @@ function pg_office_xlsx_patch_row($row_xml, $number, $changes, $context)
 
         pg_office_xlsx_clear_cell($cell);
 
+        // The formula alone: its value is written when the sheet's simple
+        // formulas are worked out (pg_office_xlsx_work_formulas()).
+        if ($typed['kind'] === 'formula') {
+            $formula_node = $document->createElement($prefix . 'f');
+            $formula_node->appendChild($document->createTextNode($typed['value']));
+            pg_office_xlsx_append($cell, $formula_node);
+            continue;
+        }
+
         if ($typed['kind'] === 'string') {
             $cell->setAttribute('t', 'inlineStr');
             $inline = $document->createElement($prefix . 'is');
@@ -1424,13 +1520,14 @@ function pg_office_xlsx_patch_row($row_xml, $number, $changes, $context)
 }
 
 /**
- * Takes a cell's value away, keeping the cell, its address and its style.
+ * Takes a cell's value away (its formula too: only a simple one reaches
+ * here), keeping the cell, its address and its style.
  *
  * @param DOMElement $cell
  */
 function pg_office_xlsx_clear_cell($cell)
 {
-    foreach (array('v', 'is') as $local) {
+    foreach (array('f', 'v', 'is') as $local) {
         while (($child = pg_office_xlsx_child($cell, $local)) !== null) {
             $cell->removeChild($child);
         }
@@ -1636,6 +1733,486 @@ function pg_office_xlsx_strip_formula_values($xml)
     }
 
     return array('ok' => true, 'xml' => $out, 'count' => $count);
+}
+
+/**
+ * The most simple formulas, and the most cells with a value, a sheet may
+ * hold for its formulas to be worked out on a save. Past either the sheet's
+ * formulas lose their results as other formulas do, and the spreadsheet
+ * program works them out on opening.
+ */
+define('PG_OFFICE_EDIT_MAX_FORMULAS', 5000);
+define('PG_OFFICE_EDIT_MAX_FORMULA_CELLS', 200000);
+
+/**
+ * Works out a changed sheet's simple formulas again and writes their
+ * results; every other formula loses its cached result
+ * (pg_office_xlsx_strip_formula_values()).
+ *
+ * The cells are read once; the simple formulas (pg_office_xlsx_simple_formula())
+ * are worked out in dependency order, a formula after the formulas it reads.
+ * Formulas reading each other in a circle get #REF!. A simple formula that
+ * reads a cell whose value is not known here (another formula's, a shared
+ * string past the table read, a strict date) loses its result too. A result
+ * is written as Excel writes it: a number, t="str" for a text, t="b" for a
+ * logical value, t="e" for an error.
+ *
+ * @param string   $xml     the sheet part
+ * @param callable $strings gives the shared strings (a list), or null when they cannot be read; asked at most once
+ * @return array ok, xml, count (cells whose cached result changed), worked (formulas given a result)
+ */
+function pg_office_xlsx_work_formulas($xml, $strings)
+{
+    $xml = (string) $xml;
+    $plain = function () use ($xml) {
+        $stripped = pg_office_xlsx_strip_formula_values($xml);
+
+        return array('ok' => $stripped['ok'], 'xml' => $stripped['xml'], 'count' => $stripped['count'], 'worked' => 0);
+    };
+
+    $read = pg_office_xlsx_formula_cells($xml);
+
+    if (($read === null) || empty($read['formulas'])) {
+        return $plain();
+    }
+
+    // Shared strings are read only when a cell holds one.
+    if (!empty($read['shared'])) {
+        $list = $strings();
+
+        foreach ($read['shared'] as $row => $columns) {
+            foreach ($columns as $column => $index) {
+                if (is_array($list) && isset($list[$index])) {
+                    $read['values'][$row][$column] = (string) $list[$index];
+                } else {
+                    $read['unknown'][$row][$column] = true;
+                }
+            }
+        }
+    }
+
+    $results = pg_office_xlsx_formula_results($read['formulas'], $read['values'], $read['unknown']);
+
+    $xml_out = pg_office_xlsx_write_formula_results($xml, $results);
+
+    if ($xml_out === null) {
+        return $plain();
+    }
+
+    $xml_out['worked'] = count(array_filter($results, function ($value) {
+        return $value !== null;
+    }));
+
+    return $xml_out;
+}
+
+/**
+ * The cells of a sheet as the formula calculator wants them, read once with
+ * a reader: the simple formulas, the values of the other cells, the cells
+ * holding a shared string (resolved by the caller) and the cells whose value
+ * is not known here.
+ *
+ * @param string $xml the sheet part
+ * @return array|null formulas (ref => [row, column, tree]), values (row => [column => value]),
+ *                    shared (row => [column => index]), unknown (row => [column => true]);
+ *                    null past the limits or when the sheet is not read to its end
+ */
+function pg_office_xlsx_formula_cells($xml)
+{
+    $reader = new XMLReader();
+
+    if (!@$reader->XML($xml, null, LIBXML_NONET)) {
+        return null;
+    }
+
+    $out = array('formulas' => array(), 'values' => array(), 'shared' => array(), 'unknown' => array());
+    $kept = 0;
+    $cell = null;
+    $previous = libxml_use_internal_errors(true);
+    libxml_clear_errors();
+
+    $finish = function ($cell) use (&$out, &$kept) {
+        $row = $cell['row'];
+        $column = $cell['column'];
+
+        if ($cell['f'] !== null) {
+            $tree = pg_office_xlsx_simple_formula($cell['f'], $cell['f_kind'], $cell['f_spread'], $cell['linked']);
+
+            if ($tree === null) {
+                $out['unknown'][$row][$column] = true;
+            } else {
+                $out['formulas'][$cell['ref']] = array($row, $column, $tree);
+            }
+
+            return true;
+        }
+
+        $value = $cell['v'];
+
+        if ($cell['linked'] || ($cell['t'] === 'd')) {
+            $out['unknown'][$row][$column] = true;
+
+            return true;
+        }
+
+        switch ($cell['t']) {
+            case 's':
+                if ($value === '') {
+                    return true;
+                }
+
+                $out['shared'][$row][$column] = (int) $value;
+                break;
+            case 'inlineStr':
+                $out['values'][$row][$column] = (string) $cell['is'];
+                break;
+            case 'str':
+                $out['values'][$row][$column] = $value;
+                break;
+            case 'b':
+                if ($value === '') {
+                    return true;
+                }
+
+                $out['values'][$row][$column] = ($value === '1');
+                break;
+            case 'e':
+                if ($value === '') {
+                    return true;
+                }
+
+                $out['values'][$row][$column] = pg_office_formula_error($value);
+                break;
+            default:
+                if ($value === '') {
+                    return true;
+                }
+
+                if (is_numeric($value)) {
+                    $out['values'][$row][$column] = (float) $value;
+                } else {
+                    $out['unknown'][$row][$column] = true;
+                }
+        }
+
+        return (++$kept <= PG_OFFICE_EDIT_MAX_FORMULA_CELLS);
+    };
+
+    $ok = true;
+
+    while ($ok && @$reader->read()) {
+        $type = $reader->nodeType;
+
+        if (($type === XMLReader::END_ELEMENT) && ($reader->localName === 'c') && ($cell !== null)) {
+            $ok = $finish($cell);
+            $cell = null;
+            continue;
+        }
+
+        if ($type !== XMLReader::ELEMENT) {
+            continue;
+        }
+
+        $name = $reader->localName;
+
+        if ($name === 'c') {
+            $position = pg_office_xlsx_cell((string) $reader->getAttribute('r'));
+
+            if ($position === null) {
+                $ok = false;
+                break;
+            }
+
+            $cell = array(
+                'ref' => pg_office_xlsx_column_name($position[1]) . $position[0],
+                'row' => $position[0],
+                'column' => $position[1],
+                't' => (string) $reader->getAttribute('t'),
+                'linked' => ((string) $reader->getAttribute('vm') !== ''),
+                'f' => null, 'f_kind' => '', 'f_spread' => false, 'v' => '', 'is' => '',
+            );
+
+            // A cell that closes itself holds nothing.
+            if ($reader->isEmptyElement) {
+                $cell = null;
+            }
+            continue;
+        }
+
+        if ($cell === null) {
+            continue;
+        }
+
+        if ($name === 'f') {
+            $cell['f_kind'] = (string) $reader->getAttribute('t');
+            $cell['f_spread'] = ($reader->getAttribute('ref') !== null) || ($reader->getAttribute('si') !== null);
+            $cell['f'] = pg_office_reader_text($reader, PG_OFFICE_FORMULA_MAX_LENGTH * 4 + 1);
+        } elseif ($name === 'v') {
+            $cell['v'] = pg_office_reader_text($reader, PG_OFFICE_EDIT_MAX_TEXT * 4);
+        } elseif ($name === 'is') {
+            $cell['is'] = pg_office_reader_text($reader, PG_OFFICE_EDIT_MAX_TEXT * 4);
+        }
+
+        if (count($out['formulas']) > PG_OFFICE_EDIT_MAX_FORMULAS) {
+            $ok = false;
+        }
+    }
+
+    $ok = $ok && (count(libxml_get_errors()) === 0);
+    libxml_clear_errors();
+    libxml_use_internal_errors($previous);
+    $reader->close();
+
+    return $ok ? $out : null;
+}
+
+/**
+ * The results of a sheet's simple formulas, each worked out after the
+ * formulas it reads (pure). Formulas are grouped into strongly connected
+ * parts (Tarjan), which come out dependencies first; a part of more than
+ * one formula, or a formula reading its own cell, is a circle and gets
+ * #REF!. A formula reading an unknown cell, or a formula whose result is
+ * unknown, has no result (null).
+ *
+ * @param array $formulas ref => [row, column, tree]
+ * @param array $values   row => [column => value] of the other cells
+ * @param array $unknown  row => [column => true]
+ * @return array ref => value (float, string, bool, [error => code]) or null
+ */
+function pg_office_xlsx_formula_results($formulas, $values, $unknown)
+{
+    // The formula cells by row, to find those inside an area.
+    $by_row = array();
+
+    foreach ($formulas as $ref => $formula) {
+        $by_row[$formula[0]][$formula[1]] = $ref;
+    }
+
+    $state = array(
+        'formulas' => $formulas,
+        'reads' => array(),
+        'blind' => array(),
+        'index' => array(),
+        'low' => array(),
+        'stack' => array(),
+        'on_stack' => array(),
+        'next' => 0,
+        'parts' => array(),
+    );
+
+    foreach ($formulas as $ref => $formula) {
+        $reads = array();
+        $blind = false;
+
+        foreach (pg_office_formula_cells($formula[2]) as $area) {
+            foreach ($by_row as $row => $columns) {
+                if (($row < $area[0]) || ($row > $area[2])) {
+                    continue;
+                }
+
+                foreach ($columns as $column => $other) {
+                    if (($column >= $area[1]) && ($column <= $area[3])) {
+                        $reads[$other] = true;
+                    }
+                }
+            }
+
+            foreach ($unknown as $row => $columns) {
+                if ($blind || ($row < $area[0]) || ($row > $area[2])) {
+                    continue;
+                }
+
+                foreach ($columns as $column => $true) {
+                    if (($column >= $area[1]) && ($column <= $area[3])) {
+                        $blind = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        $state['reads'][$ref] = array_keys($reads);
+        $state['blind'][$ref] = $blind;
+    }
+
+    foreach ($formulas as $ref => $formula) {
+        if (!isset($state['index'][$ref])) {
+            pg_office_xlsx_formula_part($ref, $state);
+        }
+    }
+
+    $results = array();
+    $cells = $values;
+
+    foreach ($state['parts'] as $part) {
+        $circle = (count($part) > 1) || in_array($part[0], $state['reads'][$part[0]], true);
+
+        foreach ($part as $ref) {
+            $value = null;
+
+            if ($circle) {
+                $value = pg_office_formula_error('#REF!');
+            } elseif (!$state['blind'][$ref]) {
+                $known = true;
+
+                foreach ($state['reads'][$ref] as $other) {
+                    if (!isset($results[$other])) {
+                        $known = false;
+                        break;
+                    }
+                }
+
+                if ($known) {
+                    $value = pg_office_formula_value($formulas[$ref][2], $cells);
+                }
+            }
+
+            $results[$ref] = $value;
+
+            if ($value !== null) {
+                $cells[$formulas[$ref][0]][$formulas[$ref][1]] = $value;
+            }
+        }
+    }
+
+    return $results;
+}
+
+/**
+ * One step of Tarjan's strongly connected parts over the formulas, from
+ * one formula along the formulas it reads; a finished part is added to
+ * $state['parts'], so the parts come out dependencies first.
+ *
+ * @param string $ref
+ * @param array  $state
+ * @return void
+ */
+function pg_office_xlsx_formula_part($ref, &$state)
+{
+    $state['index'][$ref] = $state['next'];
+    $state['low'][$ref] = $state['next'];
+    $state['next']++;
+    $state['stack'][] = $ref;
+    $state['on_stack'][$ref] = true;
+
+    foreach ($state['reads'][$ref] as $other) {
+        if (!isset($state['index'][$other])) {
+            pg_office_xlsx_formula_part($other, $state);
+            $state['low'][$ref] = min($state['low'][$ref], $state['low'][$other]);
+        } elseif (isset($state['on_stack'][$other])) {
+            $state['low'][$ref] = min($state['low'][$ref], $state['index'][$other]);
+        }
+    }
+
+    if ($state['low'][$ref] !== $state['index'][$ref]) {
+        return;
+    }
+
+    $part = array();
+
+    do {
+        $member = array_pop($state['stack']);
+        unset($state['on_stack'][$member]);
+        $part[] = $member;
+    } while ($member !== $ref);
+
+    $state['parts'][] = $part;
+}
+
+/**
+ * A formula's result as the text of its cell's value and the cell type that
+ * goes with it.
+ *
+ * @param float|string|bool|array $value
+ * @return array [t attribute or '', value text]
+ */
+function pg_office_xlsx_formula_result_text($value)
+{
+    if (pg_office_formula_is_error($value)) {
+        return array('e', $value['error']);
+    }
+
+    if (is_bool($value)) {
+        return array('b', $value ? '1' : '0');
+    }
+
+    if (is_string($value)) {
+        return array('str', $value);
+    }
+
+    // Fifteen digits as Excel shows them, or seventeen when the number
+    // needs them to be read back the same.
+    $text = pg_office_formula_number_text((float) $value);
+
+    if ((float) $text !== (float) $value) {
+        $text = sprintf('%.17G', (float) $value);
+    }
+
+    return array('', $text);
+}
+
+/**
+ * Writes the formulas' results into the sheet's text: a formula cell with a
+ * result gets it (its type with it), every other formula cell loses its
+ * cached result as pg_office_xlsx_strip_formula_values() takes it out. The
+ * rest of the text is kept byte for byte.
+ *
+ * @param string $xml
+ * @param array  $results ref => value or null (pg_office_xlsx_formula_results())
+ * @return array|null ok, xml, count; null for markup the match does not read
+ */
+function pg_office_xlsx_write_formula_results($xml, $results)
+{
+    if ((strpos($xml, '<!--') !== false) || (strpos($xml, '<![CDATA[') !== false) || (stripos($xml, '<!DOCTYPE') !== false)
+        || !preg_match('/<([A-Za-z_][\w.\-]*:)?worksheet(?=[\s>])/', $xml, $root)) {
+        return null;
+    }
+
+    $prefix = isset($root[1]) ? $root[1] : '';
+    $quoted = preg_quote($prefix, '/');
+    $count = 0;
+
+    // <c ...>, the formula, then its value when it has one: the same match
+    // as pg_office_xlsx_strip_formula_values() with the value optional.
+    $attributes = '(?:[^>\/]|\/(?!>))*+';
+    $pattern = '/<' . $quoted . 'c(?=[\s>])(' . $attributes . ')>(\s*+)'
+        . '(<' . $quoted . 'f(?=[\s>\/])' . $attributes . '(?:\/>|>[^<]*+<\/' . $quoted . 'f>))(\s*+)'
+        . '(<' . $quoted . 'v(?=[\s>\/])' . $attributes . '(?:\/>|>[^<]*+<\/' . $quoted . 'v>))?/';
+
+    $out = preg_replace_callback($pattern, function ($match) use ($prefix, $results, &$count) {
+        $has_value = isset($match[5]) && ($match[5] !== '');
+
+        if (preg_match('/\svm\s*=/', $match[1])) {
+            return $match[0];
+        }
+
+        $ref = '';
+
+        if (preg_match('/\sr\s*=\s*["\']([A-Za-z]+\d+)["\']/', $match[1], $address)) {
+            $position = pg_office_xlsx_cell($address[1]);
+            $ref = ($position === null) ? '' : pg_office_xlsx_column_name($position[1]) . $position[0];
+        }
+
+        $attributes = preg_replace('/\st\s*=\s*(?:"[^"]*"|\'[^\']*\')/', '', $match[1]);
+
+        if (($ref === '') || !array_key_exists($ref, $results) || ($results[$ref] === null)) {
+            if (!$has_value) {
+                return $match[0];
+            }
+
+            $count++;
+
+            return '<' . $prefix . 'c' . $attributes . '>' . $match[2] . $match[3] . $match[4];
+        }
+
+        list($type, $text) = pg_office_xlsx_formula_result_text($results[$ref]);
+        $count++;
+
+        return '<' . $prefix . 'c' . $attributes . (($type !== '') ? ' t="' . $type . '"' : '') . '>' . $match[2] . $match[3] . $match[4]
+            . '<' . $prefix . 'v>' . htmlspecialchars($text, ENT_QUOTES | ENT_XML1, 'UTF-8') . '</' . $prefix . 'v>';
+    }, $xml);
+
+    return is_string($out) ? array('ok' => true, 'xml' => $out, 'count' => $count) : null;
 }
 
 /**
@@ -2298,8 +2875,9 @@ function pg_office_save_package($path, $version, $directory, $fail, $prepare)
 
 /**
  * Works out every part a save changes and writes each to a file: the sheets
- * with changed cells, every worksheet whose formulas cached results, and the
- * workbook with its recalculation mark.
+ * with changed cells (their simple formulas worked out again,
+ * pg_office_xlsx_work_formulas()), every worksheet whose formulas cached
+ * results, and the workbook with its recalculation mark.
  *
  * @param ZipArchive $zip    open on the workbook
  * @param array      $wanted sheet position => [name, rows => [row => [column => text]]]
@@ -2332,6 +2910,20 @@ function pg_office_xlsx_save_parts($zip, $wanted, $fail, $spool)
     $date1904 = pg_office_xlsx_date1904($workbook);
     $parts = array();
     $changed = 0;
+
+    // The shared strings, read once and only when a formula reads a cell
+    // that holds one, held to the preview's limits.
+    $strings_read = false;
+    $strings_list = null;
+    $strings = function () use ($zip, &$strings_read, &$strings_list) {
+        if (!$strings_read) {
+            $strings_read = true;
+            $list = pg_office_xlsx_strings((string) $zip->filename, pg_sheet_xlsx_part($zip, 'sharedstrings', 'xl/sharedStrings.xml'));
+            $strings_list = is_array($list) ? $list : null;
+        }
+
+        return $strings_list;
+    };
 
     foreach ($wanted as $index => $sheet_changes) {
         if (!isset($sheets[$index]) || (($sheet_changes['name'] !== null) && ($sheet_changes['name'] !== $sheets[$index]['name']))) {
@@ -2388,6 +2980,7 @@ function pg_office_xlsx_save_parts($zip, $wanted, $fail, $spool)
             'styles' => $styles,
             'date1904' => $date1904,
             'protected' => $scan['protected'],
+            'language' => (string) lang(array('info' => true)),
         ));
 
         unset($xml);
@@ -2400,7 +2993,9 @@ function pg_office_xlsx_save_parts($zip, $wanted, $fail, $spool)
             return $fail(($patched['error'] === 'large') ? 'large' : 'sheet', '', $sheet['name']);
         }
 
-        $stripped = pg_office_xlsx_strip_formula_values($patched['xml']);
+        // The sheet's simple formulas are worked out again; the others
+        // lose their cached results.
+        $stripped = pg_office_xlsx_work_formulas($patched['xml'], $strings);
         $xml = $stripped['ok'] ? $stripped['xml'] : $patched['xml'];
         unset($patched, $stripped);
 

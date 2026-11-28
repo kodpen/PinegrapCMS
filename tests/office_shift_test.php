@@ -234,7 +234,7 @@ function test_office_shift_save_and_read_back()
 
 	pg_assert_same(array(1, 2, 4, 6, 7), $numbers, 'the rows past the line moved down');
 	pg_assert_same(array('Toplam', '', '4'), $book['sheets'][0]['rows'][4]['cells'], 'with their cells');
-	pg_assert_same(array('D1' => 'formula', 'D2' => 'formula', 'A6' => 'formula'), $book['sheets'][0]['edit']['locked'], 'the formula locks are where the formulas went');
+	pg_assert_same(array('D2' => 'formula', 'A6' => 'formula'), $book['sheets'][0]['edit']['locked'], 'the formula locks are where the formulas went (D1 is simple, so open)');
 	pg_assert_contains(array(7, 0, 7, 1, 'merged'), $book['sheets'][0]['edit']['ranges'], 'and the merge lock with its merge');
 	pg_assert_same(array('2', ''), $book['sheets'][1]['rows'][0]['cells'], 'the other sheet\'s values stay, its formula without its stored result');
 	pg_assert_same(array(1), $book['sheets'][1]['rows'][0]['calc'], 'waiting to be worked out again');

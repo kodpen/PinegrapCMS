@@ -26,7 +26,7 @@ module: office_formula
 - `=A1` alone (also `=(A1)`) gives the cell as it is: text stays text (`"5"` too), TRUE stays TRUE, empty is 0.
 - Functions: a cell or range argument gives its numbers only (text, logical values, empty left out; an error is the result); any other argument is worked out as one number. COUNT counts past errors. No number: SUM, MIN, MAX, COUNT 0, AVERAGE `#DIV/0!`.
 - A range visits only the cells given, row by row. Numbers come back as float.
-- Not here: a circle and its error value, the dependency order, `<v>` writing: SF2.
+- Circles, order and `<v>`: `office-sheet-formula-save.md`.
 
 ## What is not followed?
 - Excel's thousands separator, dates and currency signs in a text read as a number (`"1,000"`, `"$5"`) give `#VALUE!` here.
