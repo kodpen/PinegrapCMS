@@ -26,6 +26,7 @@
 - automation-platforms.md: Plan (owner 2026-11-17): a site reached from Zapier, Make, n8n and Pabbly Connect, by a published app or by a pasted address; features A1 to A13, steps AU1 to AU10, the apps AX1 to AX4 after 2026.11.0
 - channel-file-groups-screens.md: Plan channel-file-groups, in words: how a group of files is sent and drawn: one upload card, the grid by count, file rows, a tile's menu, deleting, how it reads elsewhere
 - channel-file-groups.md: Plan (owner 2026-11-28, poll 255): files sent together in a channel are one group, drawn as one message with a grid, by ws_messages.file_group; steps FG1 to FG5
+- channel-memory-form-drawer.md: Plan (owner 2026-11-28): the Memory tab's entry form opens in a form drawer beside the list instead of replacing it; one step, MF1
 - claude-plugin-bundle-steps.md: Plan claude-plugin-bundle, steps CB1 to CB5: the census and checks (done), the bundle in the plugin's repository, the "Connect to Claude" button now (CB4a), the listing, what waits for 2026.11.0
 - claude-plugin-bundle.md: Plan (owner 2026-11-14): a Pinegrap plugin bundle for Claude's directory: a site's MCP server connected by its address, skills for common site work, the listing; the repository is the owner's to open
 - design-examples-patterns-mail.md: Step DX2b of the Design examples plan: the parts of the approved e-mail settings drawing as patterns (tabs with a state, choice cards, provider sign-in, effects confirm), before EM1
