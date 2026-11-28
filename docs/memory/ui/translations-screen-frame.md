@@ -18,11 +18,11 @@ description: Translations screen frame (TS1): head with language shares, tabs Te
 - On the automation line under the head, changed in the dialog "Automation for <language>"; the progress card takes the line's place while an update runs (`translations-screen-automation.md`).
 
 ## What is the rail?
-- One `pg-card`, 300 px (240 px under 1200 px, above the list under 992 px), sticky and scrolling on its own. "Find a page" narrows the page rows as typed (`data-pg-tr-page`, client side; "No page matches the search."). Then "All texts" (was "All pages"), "Pages" with the reviewed count, the pages with count, verdict icon and a 3 px bar, "Other texts" with the groups.
+- One `pg-card` (`#pg_tr_rail`), 300 px (240 px under 1200 px, above the list under 992 px), sticky and scrolling on its own. "Find a page" narrows the page rows as typed (`data-pg-tr-page`, client side; "No page matches the search."). Then "All texts" (was "All pages"), "Pages" with the reviewed count, the pages with count, verdict icon and a 3 px bar, "Other texts" with the groups.
 - Every row is drawn by the closure `$rail_row`; the current one is `.active` with `aria-current="page"` and a 3 px accent edge.
 
 ## What are the filter tiles?
-- Links as `pg-card pg-figure` in `.pg-figures` (six a row, three under 1200 px): All, Pending, Machine, Reviewed, Suspicious, and "Keeping pages out of search" while the language's index policy is "reviewed". Each shows the scope's count; Suspicious and the blocking count are queried for the scope (the blocking one only while its tile shows).
+- Links as `pg-card pg-figure` in `.pg-figures`, six of equal width in one row down to 768 px (`translations-screen-narrow.md`): All, Pending, Machine, Reviewed, Suspicious, and "Keeping pages out of search" while the language's index policy is "reviewed". Each shows the scope's count; Suspicious and the blocking count are queried for the scope (the blocking one only while its tile shows).
 
 ## What is the tool line?
 - "Search in the texts" (the key "/" puts the cursor there outside a field), "Draw the waiting pictures" in the Images group, "Approve all" quiet with its count. Under it the page's index note, the group notes, the bulk line and the rows (TS2 redraws the row).

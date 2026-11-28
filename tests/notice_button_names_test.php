@@ -99,5 +99,5 @@ function test_notice_button_names_translations_label_is_computed_once()
 	pg_assert_same(1, substr_count($source, "lang('Scan for new texts')"), 'the scan button label is chosen in one place');
 	pg_assert_same(1, substr_count($source, "lang('Translate pending')"), 'the translate button label is chosen in one place');
 	pg_assert_same(4, substr_count($source, '$update_button_label'), 'the label is set, drawn on the button and named by the two clear dialogs');
-	pg_assert_same(6, substr_count($source, '$scan_button_label'), 'the scan label is set, drawn on its button and named by the three notes');
+	pg_assert_same(7, substr_count($source, '$scan_button_label'), 'the scan label is set, drawn on its button and its phone menu item, and named by the three notes');
 }
