@@ -28,6 +28,6 @@ description: Translations screen frame (TS1): head with language shares, tabs Te
 - "Search in the texts" (the key "/" puts the cursor there outside a field), "Draw the waiting pictures" in the Images group, "Approve all" quiet with its count. Under it the page's index note, the group notes, the bulk line and the rows (TS2 redraws the row).
 
 ## What do the other two tabs hold?
-- "Activity": the table of the language's updates and an update's drawer (`translations-screen-activity.md`). "Glossary": today's card with "Add a term", unchanged until TS5.
+- "Activity": the table of the language's updates and an update's drawer (`translations-screen-activity.md`). "Glossary": the table of terms with its search (`translations-screen-glossary.md`).
 
 Related: docs/memory/ui/translations-screen-drawing.md, docs/memory/ui/translations-screen-today.md, docs/memory/ui/look-translations-screen.md
