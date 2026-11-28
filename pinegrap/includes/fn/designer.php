@@ -10155,6 +10155,34 @@ function pg_design_template_email_pages($tpl)
 }
 
 /**
+ * The Google Fonts stylesheet URLs for one font of a design (an entry of
+ * the editor's `fonts` JSON: family, weights, enabled), in link order.
+ * Google answers 400 for a whole css2 request when the family lacks one
+ * of the weights asked (or they are out of order), so the regular face is
+ * linked on its own first and the weighted request beside it: a family
+ * without a ticked weight still loads, and the browser draws the missing
+ * weight from the face it has. Weights are kept as unique numbers from 1
+ * to 1000 in ascending order; regular alone is one link. A disabled or
+ * nameless font gives none. Twin: _sdGfHrefs() in style_designer.src.js.
+ */
+function pg_google_font_hrefs($font)
+{
+    if (!is_array($font) || (isset($font['enabled']) && $font['enabled'] === false)) return array();
+    if (empty($font['family']) || !is_string($font['family'])) return array();
+    $base = 'https://fonts.googleapis.com/css2?family=' . rawurlencode($font['family']);
+    $weights = array();
+    foreach ((isset($font['weights']) && is_array($font['weights'])) ? $font['weights'] : array() as $w) {
+        if (!is_int($w) && !(is_string($w) && ctype_digit($w))) continue;
+        $w = (int)$w;
+        if ($w >= 1 && $w <= 1000) $weights[$w] = $w;
+    }
+    sort($weights);
+    $hrefs = array($base . '&display=swap');
+    if ($weights && $weights !== array(400)) $hrefs[] = $base . ':wght@' . implode(';', $weights) . '&display=swap';
+    return $hrefs;
+}
+
+/**
  * The head markup for a template's own fonts and CSS (its `assets` 'fonts'
  * and 'css', JSON as the editor stores them), printed the way a published
  * page prints them (get_page_content.php): a Google Fonts link per enabled
@@ -10171,9 +10199,9 @@ function _pg_tpl_preview_assets($tpl, $page_key)
 
     $fonts = isset($assets['fonts']) && is_string($assets['fonts']) ? json_decode($assets['fonts'], true) : null;
     foreach (is_array($fonts) ? $fonts : array() as $font) {
-        if (!is_array($font) || (isset($font['enabled']) && $font['enabled'] === false) || empty($font['family']) || !is_string($font['family'])) continue;
-        $weights = (!empty($font['weights']) && is_array($font['weights'])) ? implode(';', $font['weights']) : '400';
-        $head .= '<link rel="stylesheet" href="' . h('https://fonts.googleapis.com/css2?family=' . rawurlencode($font['family']) . ':wght@' . $weights . '&display=swap') . '">';
+        foreach (pg_google_font_hrefs($font) as $href) {
+            $head .= '<link rel="stylesheet" href="' . h($href) . '">';
+        }
     }
 
     $css = isset($assets['css']) && is_string($assets['css']) ? json_decode($assets['css'], true) : null;

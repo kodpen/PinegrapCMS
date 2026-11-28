@@ -313,11 +313,9 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             if (is_array($_fonts_arr)) {
                 // New JSON format
                 foreach ($_fonts_arr as $_gf) {
-                    if (isset($_gf['enabled']) && $_gf['enabled'] === false) continue;
-                    if (empty($_gf['family'])) continue;
-                    $_wts = !empty($_gf['weights']) ? implode(';', $_gf['weights']) : '400';
-                    $_gf_url = 'https://fonts.googleapis.com/css2?family=' . rawurlencode($_gf['family']) . ':wght@' . $_wts . '&display=swap';
-                    $_font_links .= '<link rel="stylesheet" href="' . htmlspecialchars($_gf_url, ENT_QUOTES, 'UTF-8') . '">' . "\n";
+                    foreach (pg_google_font_hrefs($_gf) as $_gf_url) {
+                        $_font_links .= '<link rel="stylesheet" href="' . htmlspecialchars($_gf_url, ENT_QUOTES, 'UTF-8') . '">' . "\n";
+                    }
                 }
             } else {
                 // Legacy: URL-per-line format
