@@ -14,6 +14,7 @@ description: Decisions list, workspace part 6 (2026-11-01 on): calendar move wri
 
 ## What stands at the top of the Workspace list, and where is the tour? (#6281)
 - Owner (2026-11-03, on the drawn proposal: "çok güzel bu şekilde"): Today alone over the channels; no Inbox entry, as the bell already shows the notifications (the Workspace row keeps its count); My Tasks the first of the Tools; the tour in the channel's header beside New task, as it introduces the channel screen (on a phone the channel's ⋯ menu); the head's "+" a circle; groups drawn as folders, New group at the end of Channels.
+- Since 2026-11-28 the list has a "Notifications" row that opens the bell (`decisions-made-panel-20.md`); the bell stays the one list.
 - Detail: `workspace/workspace-menu-list.md`, `workspace/workspace-channel-head.md`.
 - Since 2026-11-22 the Tools are a dock at the list's foot, My Tasks its first cell (`decisions-made-workspace-48.md`).
 
