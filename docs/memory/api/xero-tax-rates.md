@@ -21,4 +21,4 @@ module: xero, xero_page, accounting_sync
 - "Not matched" deletes the row (`pg_accounting_sync_pair_drop()`, which drops only pairing kinds customer, item, tax). So a tax row present always has a TaxType; the driver reads it with `pg_accounting_sync_pair()` and answers `wait` when it is missing.
 
 ## What was not tried live?
-- No real Xero organisation was read; the answer's shape is Xero's OpenAPI (`plans/accounting-sync-census-xero-sale.md`). Tests: `tests/xero_test.php` (parse, offered, label), `tests/accounting_sync_test.php` (ids, label).
+- No real Xero organisation was read; the answer's shape is Xero's OpenAPI (`xero-service-facts.md`). Tests: `tests/xero_test.php` (parse, offered, label), `tests/accounting_sync_test.php` (ids, label).

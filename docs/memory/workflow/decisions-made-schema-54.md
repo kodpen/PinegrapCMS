@@ -28,7 +28,7 @@ description: Decisions made, schema part 54 (2026-11-27 on): the help centre's p
 - Running sites: with no market made nothing changes; an order stored before reads as charged in base at rate 1, and no stored total is rewritten.
 
 ## Where are the accounting sync's queue and pairing kept? (owner, 2026-11-27, agent channel poll 250, message 14911)
-- Asked after the count of the QuickBooks and Xero sync, the rest told as settled by the architect (`plans/accounting-sync.md`).
+- Asked after the count of the QuickBooks and Xero sync, the rest told as settled by the architect (`api/accounting-sync-rules.md`).
 - Owner: "Tek yeni tablo". Not chosen: columns on the records; not built for now.
 - So: one table, `accounting_sync`, by a step of the open version (AS3): service, company, kind (customer, item, tax, sale, payment, refund), local table and id, remote id, sync token, status (waiting, sent, failed), attempts, next try, last error, times; unique on service, company, kind, local table and id. A row is both the queue and the pairing, as `ad_conversion_events` is (`decisions-made-schema-35.md`).
 - No column is added to `orders`, `products`, `erp_invoices` or the customer for either service.

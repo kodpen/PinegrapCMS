@@ -29,4 +29,4 @@ module: quickbooks, quickbooks_page
 - The Events card shows only on the page of the service the site books into. What the rows become: `quickbooks-sync-driver.md`.
 
 ## What was not tried live?
-- No call to a real Intuit sandbox or company (no test keys); shapes come from Intuit's pages (`plans/accounting-sync-census-quickbooks.md`). Not verified: Intuit ignoring the PKCE parameters, and its revocation taking a form body. Tests: `tests/quickbooks_test.php`.
+- No call to a real Intuit sandbox or company (no test keys); shapes come from Intuit's pages (`quickbooks-service-facts.md`). Not verified: Intuit ignoring the PKCE parameters, and its revocation taking a form body. Tests: `tests/quickbooks_test.php`.

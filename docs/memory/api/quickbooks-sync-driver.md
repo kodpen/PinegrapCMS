@@ -32,4 +32,4 @@ module: accounting_sync_quickbooks
 - Calls are 120 ms apart (10 a second allowed), at most 400 a minute a run (500 allowed); past that a call answers 429 and the pass stops. A 429 waits Retry-After, a minute at least. `pg_accounting_sync_quickbooks_pause()`.
 
 ## What was not tried live?
-- No call to a real Intuit sandbox (no test keys): shapes from Intuit's pages (`plans/accounting-sync-census-quickbooks-sale.md`). Not verified: the PrimaryEmailAddr query, US TotalTax kept without TxnTaxCodeRef, CreditMemo delete. Tests: `tests/accounting_sync_quickbooks_test.php`.
+- No call to a real Intuit sandbox (no test keys): shapes from Intuit's pages (`quickbooks-service-facts.md`). Not verified: the PrimaryEmailAddr query, US TotalTax kept without TxnTaxCodeRef, CreditMemo delete. Tests: `tests/accounting_sync_quickbooks_test.php`.
