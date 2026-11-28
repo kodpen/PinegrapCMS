@@ -19,8 +19,9 @@
 #   - the tag form and the pre-release flag disagree, or the stamp is not a
 #     real date;
 #   - the version the tag's tree ends on is not the tag's version;
-#   - a beta's version already has a stable release (open the next version on
-#     development first);
+#   - a beta's version already has a stable release, its release branch
+#     (release/<version>) or its stable tag: the stable release must hold
+#     every beta of its version (open the next version on development first);
 #   - a stable tag's tree still holds the paths the release branch leaves out;
 #   - the RELEASE_KEY_ID repository variable is not a key id.
 # The flag is read from the release, not from the event, so a flag fixed on
@@ -188,6 +189,21 @@ jobs:
               echo "::error::the releases of $REPOSITORY could not be read"
               exit 1
             fi
+            # The stable release is development's tree at the cut of
+            # release/<version>. A beta built after the cut would hold
+            # commits the stable release lacks, and a beta site, which takes
+            # the stable release of its version, would go back to older code.
+            # The branch stops it, and the stable tag once the branch is gone.
+            for ref in "heads/release/$version" "tags/v$version"; do
+              if gh api "repos/$REPOSITORY/git/ref/$ref" --silent 2> "$RUNNER_TEMP/ref.err"; then
+                echo "::error::$version is already cut ($ref exists); open the next version on development before a beta"
+                exit 1
+              elif ! grep -q 'HTTP 404' "$RUNNER_TEMP/ref.err"; then
+                cat "$RUNNER_TEMP/ref.err" >&2
+                echo "::error::the refs of $REPOSITORY could not be read"
+                exit 1
+              fi
+            done
           else
             channel=stable
             build=""

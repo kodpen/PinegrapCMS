@@ -490,12 +490,6 @@ function pg_panel_software_update($request, $action)
             // data/temp/, one per check.
             $_SESSION['software']['update'] = $decision['pin'] + array('package_file' => 'vendor_update_' . bin2hex(random_bytes(8)) . '.zip');
 
-            if ($repair) {
-                // software_repair.php?mode=done names the version in the
-                // activity log.
-                $_SESSION['software']['repair']['version'] = $decision['pin']['version'];
-            }
-
             respond(array(
                 'status' => 'success',
                 'message' => pg_vendor_release_message($decision, VERSION)
@@ -652,8 +646,9 @@ function pg_panel_software_update($request, $action)
                 log_activity(lang('software update: the bytecode cache could not be cleared - run Purge Cache if the update does not take effect'));
             }
 
-            // Another build of the running version runs its upgrade steps
-            // again; the build file then names what is installed.
+            // Another build of the running version, or a repair at it, runs
+            // its upgrade steps again; the build file then names what is
+            // installed.
             $build_error = pg_vendor_update_record_build($pin, $installed_build);
 
             if ($build_error !== '') {
@@ -666,6 +661,10 @@ function pg_panel_software_update($request, $action)
 
             $query = "DELETE FROM notifications WHERE action = 'software_update'";
             $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+
+            // Here, not on a screen opened next: the panel now sends every
+            // address to the upgrade screen (pg_vendor_update_finish()).
+            pg_vendor_update_finish($pin, $repair);
 
             //there is no error so update complete.
             //return success json output

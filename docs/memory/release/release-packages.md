@@ -8,7 +8,8 @@ description: Release packages (P2, PR #10350): release-packages.yml adds both ZI
 - Stable: `v<version>` on the release merge commit (`release-status.md`). Beta: a pre-release `v<version>-beta.<YYYYMMDDHHMM>` (UTC) on a `development` commit, build id `<sha7>.<stamp>`, so every pre-release is a build of its own.
 
 ## What stops the run before the build?
-- Tag form and pre-release flag disagree, or the stamp is no real date; the tag's tree ends on another version (`versions.php`, read with the tool's own function); a beta of a version that has a stable release (open the next version first); a stable tag whose tree holds `CLAUDE.md`, `.claude/`, `docs/`, `tools/` or `tests/`; `RELEASE_KEY_ID` not `^[a-z0-9][a-z0-9._-]{0,15}$`; a tag that no longer names the checked-out commit.
+- Tag form and pre-release flag disagree, or the stamp is no real date; the tag's tree ends on another version (`versions.php`, read with the tool's own function); a beta of a version that has a stable release, a `release/<version>` branch or a `v<version>` tag (open the next version first: a beta built after the cut holds code the stable release lacks).
+- A stable tag whose tree holds `CLAUDE.md`, `.claude/`, `docs/`, `tools/` or `tests/`; `RELEASE_KEY_ID` not `^[a-z0-9][a-z0-9._-]{0,15}$`; a tag that no longer names the checked-out commit.
 - A release with all three assets ends green without changes; one with some fails and names them (delete them, re-run). Uploads never `--clobber`; the manifest goes last.
 - The flag and the assets are read from the release, not the event: a flag fixed on the release page counts on a re-run.
 

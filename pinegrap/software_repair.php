@@ -54,40 +54,6 @@ $software_repair_url = PATH . SOFTWARE_DIRECTORY . '/software_repair.php';
 // was refused as mixed content). go() below redirects the same way.
 $software_upgrade_url = PATH . SOFTWARE_DIRECTORY . '/install/index.php?automated_upgrade=true';
 
-// The replace step succeeded: the files on disk are the package's. The
-// version the check step found is in the session; failing that, the VERSION
-// of the code now running is the package's own.
-if (isset($_GET['mode']) && ($_GET['mode'] === 'done')) {
-
-    // The address logs, changes config and deletes caches, so it needs the
-    // form token the redirect below appends.
-    validate_token_field();
-
-    $repair_version = (isset($_SESSION['software']['repair']['version']) && is_string($_SESSION['software']['repair']['version']))
-        ? $_SESSION['software']['repair']['version']
-        : VERSION;
-
-    unset($_SESSION['software']['repair']);
-
-    log_activity(lang(array('string' => 'Software repaired with the {var:1} package from the update server.', 'vars' => array($repair_version))), $_SESSION['sessionusername']);
-
-    db("UPDATE config SET software_update_available = 0");
-
-    // System Status and the file integrity check work from caches of their
-    // own; they are to look at the new files, not remember the old ones.
-    foreach (array('system_status_cache.json', 'hash_reference_state.json') as $repair_cache) {
-        if (file_exists(PG_FUNCTIONS_DIR . '/data/temp/' . $repair_cache)) {
-            @unlink(PG_FUNCTIONS_DIR . '/data/temp/' . $repair_cache);
-        }
-    }
-
-    $liveform_welcome = new liveform('welcome');
-    $liveform_welcome->add_notice(lang('Software files repaired.'));
-
-    header('Location: ' . $software_upgrade_url);
-    exit();
-}
-
 $rerun_choices = pg_upgrade_rerun_choices();
 
 $rerun_install_folder = is_dir(PG_FUNCTIONS_DIR . '/install');
@@ -159,9 +125,9 @@ $repair_warning = '
                     <div class="alert theme-warning">
                         <div class="fw-semibold mb-3"><i class="bi bi-shield-exclamation me-1" aria-hidden="true"></i>' . h(lang('Before you repair')) . '</div>
                         <ul class="mb-0 small">
-                            <li>' . h(lang('The package is the current release of this site\'s channel (Stable or Beta), downloaded from kodpen.com over a verified connection.')) . '</li>
+                            <li>' . h(lang('The package is the newest release this site\'s channel offers (a Beta site also takes the stable releases), downloaded from kodpen.com over a verified connection.')) . '</li>
                             <li>' . h(lang('It is written over every software file. Changes made to those files by hand are lost; files that are not in the package stay where they are. The data folder and the database are not touched.')) . '</li>
-                            <li>' . h(lang('Afterwards the upgrade screen opens and runs any upgrade steps that are due.')) . '</li>
+                            <li>' . h(lang('Afterwards the upgrade screen opens and runs the upgrade steps of the installed version, even those that already ran.')) . '</li>
                             <li>' . h(lang('Take a backup first. If the Files check on System Status shows Problem, Repair Software puts it right.')) . '</li>
                             <li>' . h(lang('This replaces the code the site runs. Use it yourself or let an administrator you trust use it; only administrators can open this screen.')) . '</li>
                         </ul>
@@ -352,8 +318,10 @@ echo '
                     if (index + 1 < steps.length) {
                         run(index + 1);
                     } else {
+                        // The replace step wrote the Site Log line; the code is
+                        // ahead of the database now, so the upgrade comes next.
                         window.setTimeout(function(){
-                            window.location.replace("software_repair.php?mode=done&token=" + encodeURIComponent(software_token));
+                            window.location.replace("' . escape_javascript($software_upgrade_url) . '");
                         }, 1500);
                     }
                 },

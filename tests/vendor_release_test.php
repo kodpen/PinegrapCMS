@@ -42,8 +42,8 @@ function vendor_release_test_found($state)
 	return array('status' => $state['answer_status'], 'code' => (string) $state['answer_code'], 'release' => $state['answer']);
 }
 
-// The pin the check step makes of a flat release.
-function vendor_release_test_pin($release, $mode)
+// The pin the check step makes of a flat release for a site on $channel.
+function vendor_release_test_pin($release, $mode, $channel = 'stable')
 {
 	return array(
 		'mode'            => $mode,
@@ -57,6 +57,7 @@ function vendor_release_test_pin($release, $mode)
 		'sig_key_id'      => $release['sig_key_id'],
 		'manifest_url'    => $release['manifest_url'],
 		'signature_url'   => $release['signature_url'],
+		'site_channel'    => $channel,
 	);
 }
 
@@ -110,7 +111,7 @@ function test_vendor_release_check_step_follows_the_vectors()
 			pg_assert_same(null, $decision['pin'], $case['id'] . ' pins nothing');
 		} else {
 			pg_assert_same('update', $decision['outcome'], $case['id'] . ' passes the check');
-			pg_assert_same(vendor_release_test_pin($state['answer'], 'update'), $decision['pin'], $case['id'] . ' pin');
+			pg_assert_same(vendor_release_test_pin($state['answer'], 'update', $state['update_channel']), $decision['pin'], $case['id'] . ' pin');
 		}
 	}
 }
@@ -239,10 +240,72 @@ function test_vendor_release_beta_builds()
 	pg_assert_same('update', pg_vendor_release_offer($found, '2026.11.0', '', 'beta', 'update')['outcome'], 'a newer version');
 	pg_assert_same('no_update', pg_vendor_release_offer($found, '2026.11.2', 'aaaaaaa.202611010900', 'beta', 'update')['outcome'], 'an older version');
 
+	// The stable release of the version is another build of it: no build.
 	$release['channel'] = 'stable';
 	$release['build'] = '';
+	$stable = array('status' => 200, 'code' => '', 'release' => $release);
 
-	pg_assert_same('no_update', pg_vendor_release_offer(array('status' => 200, 'code' => '', 'release' => $release), '2026.11.1', 'aaaaaaa.202611010900', 'stable', 'update')['outcome'], 'stable compares versions only');
+	pg_assert_same('update', pg_vendor_release_offer($stable, '2026.11.1', 'aaaaaaa.202611010900', 'stable', 'update')['outcome'], 'stable over a beta build');
+	pg_assert_same('update', pg_vendor_release_offer($stable, '2026.11.1', 'aaaaaaa.202611010900', 'beta', 'update')['outcome'], 'stable over a beta build on beta');
+	pg_assert_same('no_update', pg_vendor_release_offer($stable, '2026.11.1', '', 'stable', 'update')['outcome'], 'stable over no build');
+}
+
+// A beta site follows the stable releases too; a stable site never takes a
+// beta release. The pin keeps the channel the site was on at the check.
+function test_vendor_release_channel_ladder()
+{
+	$release = vendor_release_test_vectors()['baseline']['answer'];
+	$stable = array('status' => 200, 'code' => '', 'release' => $release);
+
+	pg_assert_same(array('stable', 'beta'), pg_update_channels_followed('beta'));
+	pg_assert_same(array('stable'), pg_update_channels_followed('stable'));
+	pg_assert_same(array('stable'), pg_update_channels_followed('nightly'), 'an unknown channel follows stable');
+	pg_assert_true(pg_update_channel_accepts('beta', 'stable'));
+	pg_assert_false(pg_update_channel_accepts('stable', 'beta'));
+	pg_assert_false(pg_update_channel_accepts('beta', 'nightly'));
+
+	$decision = pg_vendor_release_offer($stable, '2026.11.0', '', 'beta', 'update');
+
+	pg_assert_same('update', $decision['outcome'], 'a newer stable release on beta');
+	pg_assert_same(vendor_release_test_pin($release, 'update', 'beta'), $decision['pin']);
+
+	$release['channel'] = 'beta';
+	$release['build'] = 'bbbbbbb.202611051500';
+	$beta = pg_vendor_release_offer(array('status' => 200, 'code' => '', 'release' => $release), '2026.11.0', '', 'stable', 'update');
+
+	pg_assert_same('refuse', $beta['outcome'], 'a beta release on stable');
+	pg_assert_same('channel_mismatch', $beta['reason']);
+}
+
+// Of the channels a site follows the check keeps the highest version that
+// pins a release, the more stable channel at the same version; with none, a
+// blocked answer, else the site's own channel's.
+function test_vendor_release_pick()
+{
+	$pinned = function ($version, $channel) {
+		return array('outcome' => 'update', 'reason' => '', 'pin' => array('version' => $version, 'channel' => $channel));
+	};
+	$none = function ($outcome, $reason) {
+		return array('outcome' => $outcome, 'reason' => $reason, 'pin' => null);
+	};
+
+	pg_assert_same(0, pg_vendor_release_pick(array($pinned('2026.11.0', 'stable'), $pinned('2026.11.0', 'beta'))), 'stable at the same version');
+	pg_assert_same(1, pg_vendor_release_pick(array($pinned('2026.11.0', 'stable'), $pinned('2026.12.0', 'beta'))), 'a newer beta');
+	pg_assert_same(0, pg_vendor_release_pick(array($pinned('2026.12.0', 'stable'), $pinned('2026.11.0', 'beta'))), 'a newer stable');
+	pg_assert_same(0, pg_vendor_release_pick(array($pinned('2026.11.0', 'stable'), $none('no_update', 'up_to_date'))), 'only stable pins');
+	pg_assert_same(1, pg_vendor_release_pick(array($none('refuse', 'older'), $pinned('2026.11.0', 'beta'))), 'only beta pins');
+	pg_assert_same(0, pg_vendor_release_pick(array($none('blocked', 'blocked_min_from_version'), $none('no_update', 'up_to_date'))), 'a blocked answer');
+	pg_assert_same(1, pg_vendor_release_pick(array($none('no_update', 'up_to_date'), $none('refuse', 'channel_mismatch'))), 'the own channel\'s answer');
+
+	// One channel gave no usable answer: the check fails rather than decide
+	// on the other alone (an older build kept for a repair, an update cleared).
+	pg_assert_same(0, pg_vendor_release_pick(array($none('unusable', ''), $pinned('2026.11.0', 'beta'))), 'stable unusable, a beta pin of the same version');
+	pg_assert_same(0, pg_vendor_release_pick(array($none('unusable', ''), $none('no_update', 'up_to_date'))), 'stable unusable, beta up to date');
+	pg_assert_same(1, pg_vendor_release_pick(array($pinned('2026.11.0', 'stable'), $none('unusable', ''))), 'beta unusable, a stable pin');
+	pg_assert_same(1, pg_vendor_release_pick(array($none('blocked', 'blocked_min_from_version'), $none('unusable', ''))), 'beta unusable, stable blocked');
+	pg_assert_same(0, pg_vendor_release_pick(array($none('unusable', ''))), 'one channel, unusable');
+	pg_assert_same(0, pg_vendor_release_pick(array($pinned('2026.11.0', 'stable'))), 'one channel');
+	pg_assert_same(null, pg_vendor_release_pick(array()), 'nothing asked');
 }
 
 // Repair Software: an older version is refused, the same one repairs, a
@@ -261,7 +324,7 @@ function test_vendor_release_repair()
 	$same = pg_vendor_release_offer($found, '2026.11.1', '', 'stable', 'repair');
 
 	pg_assert_same('repair', $same['outcome']);
-	pg_assert_same(vendor_release_test_pin($release, 'repair'), $same['pin']);
+	pg_assert_same(vendor_release_test_pin($release, 'repair', 'stable'), $same['pin']);
 
 	$newer = pg_vendor_release_offer($found, '2026.11.0', '', 'stable', 'repair');
 
@@ -296,7 +359,11 @@ function test_vendor_release_messages()
 	pg_assert_contains('2026.11.1;', $message($found, '2026.11.0', '', 'stable', 'repair'), 'a repair that updates');
 	pg_assert_contains('older than this installation (2026.11.2)', $message($found, '2026.11.2', '', 'stable', 'repair'), 'older');
 	pg_assert_same('There is no update available.', $message($found, '2026.11.1', '', 'stable', 'update'), 'up to date');
-	pg_assert_contains('another update channel', $message($found, '2026.11.0', '', 'beta', 'update'), 'another channel');
+	$beta = $found;
+	$beta['release']['channel'] = 'beta';
+	$beta['release']['build'] = 'bbbbbbb.202611051500';
+
+	pg_assert_contains('another update channel', $message($beta, '2026.11.0', '', 'stable', 'update'), 'another channel');
 
 	$blocked = $found;
 	$blocked['release']['version'] = '2027.3.0';
