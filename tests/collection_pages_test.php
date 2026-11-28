@@ -340,3 +340,23 @@ function test_collection_pages_upload_folder()
 	pg_assert_same(7, $kids[2]['props']['_cf']['upload_folder_id'], 'a file field too, from an empty record');
 	pg_assert_true(!isset($kids[1]['props']['_cf']), 'a text field is left alone');
 }
+
+// "Done" on the closing line, a name's link there and Escape all leave the
+// view through _ncBack(): it starts the window afresh, hides the view and
+// turns the Pages window back. Before, the fresh state had no view, so
+// hiding it threw: the window stayed on the closing line and a link's page
+// never opened.
+function test_collection_pages_part_done_turns_back()
+{
+	$res = collection_pages_node(array('_ncFresh', '_ncBack'),
+		'var view = { hidden: false }, backs = 0, S = _ncFresh({}, { back: function () { backs++; } });'
+		. 'S.view = view; S.step = "done"; S.made = { list: { page_id: 4 } }; var err = "";'
+		. 'try { _ncBack(); } catch (e) { err = String(e); }'
+		. 'console.log(JSON.stringify({ err: err, backs: backs, hidden: view.hidden, step: S.step, made: Object.keys(S.made).length, kept: S.view === view }));');
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(array('err' => '', 'backs' => 1, 'hidden' => true, 'step' => 1, 'made' => 0, 'kept' => true), $res, 'a fresh start, the view hidden and kept, the Pages window back');
+}

@@ -519,7 +519,9 @@ StyleDesigner.definePart('collection', function (K) {
     function _ncBack() {
         if (S.step === 2) { S.step = 1; _ncRedraw('[data-act="next"]'); return; }
         if (S.step === 1 || S.step === 'done') {
-            if (S.step === 'done') S = _ncFresh(S.win, S.host);
+            // After the closing line the window starts afresh, on the same
+            // view: the fresh state has none of its own.
+            if (S.step === 'done') { var v = S.view; S = _ncFresh(S.win, S.host); S.view = v; }
             S.view.hidden = true;
             S.host.back();
         }
