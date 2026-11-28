@@ -117,11 +117,18 @@ StyleDesigner.definePart('fonts', function (K) {
         var gfAdded = H.added();
         var existing = null; for (var i=0; i<gfAdded.length; i++) { if (gfAdded[i].family === family) { existing = gfAdded[i]; break; } }
         var selWts = existing ? existing.weights.slice() : [400];
-        // Load preview font — the <link> targets the parent document so
+        // Load preview font — the <link>s target the parent document so
         // the preview area in the modal can render in the chosen face.
-        var prevLink = document.getElementById('sd-gf-preview-link');
-        if (!prevLink) { prevLink = document.createElement('link'); prevLink.id = 'sd-gf-preview-link'; prevLink.rel = 'stylesheet'; document.head.appendChild(prevLink); }
-        prevLink.href = 'https://fonts.googleapis.com/css2?family=' + encodeURIComponent(family).replace(/%20/g, '+') + ':wght@100;200;300;400;500;600;700;800;900&display=swap';
+        // Google refuses a request for every weight whole when the family
+        // lacks one of them, so the regular face is linked on its own too.
+        var famArg = encodeURIComponent(family).replace(/%20/g, '+');
+        var previewLink = function (id, href) {
+            var l = document.getElementById(id);
+            if (!l) { l = document.createElement('link'); l.id = id; l.rel = 'stylesheet'; document.head.appendChild(l); }
+            l.href = href;
+        };
+        previewLink('sd-gf-preview-link', 'https://fonts.googleapis.com/css2?family=' + famArg + ':wght@100;200;300;400;500;600;700;800;900&display=swap');
+        previewLink('sd-gf-preview-plain', 'https://fonts.googleapis.com/css2?family=' + famArg + '&display=swap');
         var det = document.getElementById('sd-gf-detail');
         if (!det) return;
         // Detail layout (top-down): title → preview card → weights row

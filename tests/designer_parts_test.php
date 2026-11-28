@@ -661,6 +661,37 @@ function test_designer_fonts_part_update_keeps_the_font_off_and_in_place()
 	), json_decode($lines[0] ?? '', true), 'the new weights; off, moved and first as before');
 }
 
+// The preview links the family twice: its regular face alone, which Google
+// always serves, and every weight from 100 to 900, which it refuses whole
+// for a family missing one of them. Before, only the second was linked, so
+// most families (Lobster, Pacifico, Bebas Neue…) previewed in sans-serif.
+function test_designer_fonts_part_preview_links_the_regular_face()
+{
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		return;
+	}
+
+	$js = designer_fonts_part_js()
+		. 'var api = factory(K); api.open(host);'
+		. 'byId["sd-gf-detail"].q = { "input:checked": [], ".sd-gf-det-add": [el("button")], ".sd-gf-det-remove": [], ".sd-gf-det-wt input": [] };'
+		. 'api.pick(host, "Bebas Neue"); api.pick(host, "Lobster");'
+		. 'console.log(JSON.stringify(document.head.children.map(function (l) { return l.href; })));';
+	$file = tempnam(sys_get_temp_dir(), 'sdfonts') . '.js';
+	file_put_contents($file, $js);
+	$lines = array();
+	exec('node ' . escapeshellarg($file) . ' 2>&1', $lines, $code);
+	@unlink($file);
+	pg_assert_same(0, $code, 'the fonts part runs: ' . implode("\n", $lines));
+	pg_assert_same(array(
+		'https://fonts.googleapis.com/css2?family=Lobster:wght@100;200;300;400;500;600;700;800;900&display=swap',
+		'https://fonts.googleapis.com/css2?family=Lobster&display=swap',
+	), json_decode($lines[0] ?? '', true), 'two links, reused for the next font: every weight, and the regular face alone');
+}
+
 // The Interactions section's rows and fields are a part: the core draws the
 // section (its header and an empty body) and keeps what the page and the
 // canvas need at open (_sdFxSpec(), _sdFxNormalize(), _sdFxAttrs(),
