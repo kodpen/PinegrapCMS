@@ -228,8 +228,11 @@ function pg_office_docx_kind_context($zip, $document)
         return 'kind_unusual';
     }
 
-    // The relationship types the document already writes, transitional or
-    // strict, are the ones an added part is named with.
+    // The standard relationship types the document already writes,
+    // transitional or strict, are the ones an added part is named with.
+    // Word lists its own extension parts (stylesWithEffects, people,
+    // commentsExtended) under Microsoft's address among them; a numbering
+    // named under that address is not found by Word.
     $base = '';
     $targets = array();
 
@@ -237,10 +240,12 @@ function pg_office_docx_kind_context($zip, $document)
         $targets[$relationship['type']] = $relationship['external'] ? '' : pg_office_part_name('word/', $relationship['target']);
     }
 
-    if (preg_match('/\sType\s*=\s*"([^"]*\/)[^"\/]*"/', $rels, $type)) {
+    if (preg_match('~\sType\s*=\s*"(http://schemas\.openxmlformats\.org/officeDocument/2006/relationships/|http://purl\.oclc\.org/ooxml/officeDocument/relationships/)[^"/]*"~', $rels, $type)) {
         $base = $type[1];
     } elseif ($namespace === 'http://schemas.openxmlformats.org/wordprocessingml/2006/main') {
         $base = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/';
+    } elseif ($namespace === 'http://purl.oclc.org/ooxml/wordprocessingml/main') {
+        $base = 'http://purl.oclc.org/ooxml/officeDocument/relationships/';
     }
 
     $context = array(
