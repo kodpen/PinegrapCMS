@@ -1,6 +1,6 @@
 ---
 name: market-product-feed
-description: The product feeds priced in a market (MK10): the "Prices in" field, config.product_feeds market_id, the fixed or converted price, the offer's saving, the no_market build error
+description: The product feeds priced in a market (PR #12291): the "Prices in" field, config.product_feeds market_id, the fixed or converted price, the offer's saving, the no_market build error
 module: product_feeds
 ---
 
