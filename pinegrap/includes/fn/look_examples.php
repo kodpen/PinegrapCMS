@@ -467,6 +467,7 @@ function pg_look_examples_patterns($prefix = 'light')
     $patterns[] = pg_look_examples_timeline_pattern();
     $patterns[] = pg_look_examples_ws_list_row_pattern($p);
     $patterns = array_merge($patterns, pg_look_examples_record_patterns($p));
+    $patterns[] = pg_look_examples_doc_head_pattern();
     $patterns[] = pg_look_examples_figure_grid_pattern();
     $patterns[] = pg_look_examples_address_pattern($p);
     $patterns[] = pg_look_examples_line_row_pattern($p);
@@ -982,6 +983,114 @@ function pg_look_examples_record_patterns($p)
     );
 }
 
+
+
+/**
+ * The document head (assets/js/pg_doc_head.js) as the six windows of the
+ * drawing fill it: a note, a Data table, the Artifact Canvas, a Word file,
+ * an Excel file in a channel's Preview and Quick Look. Each host holds its
+ * options as JSON and the script builds the head into it; the screen prints
+ * pg_doc_head_includes(). Without callbacks the heads only show, rename in
+ * place and open their menus.
+ *
+ * @return array the pattern's id, title, classes, html and phone flag
+ */
+function pg_look_examples_doc_head_pattern()
+{
+    $icon = function ($name, $label) {
+        return '<button type="button" class="pg-icon-button" title="' . h($label) . '" aria-label="' . h($label) . '"><i class="bi ' . $name . '" aria-hidden="true"></i></button>';
+    };
+    $ghost = function ($name, $label, $count = '') {
+        return '<button type="button" class="pg-button pg-button-ghost pg-button-sm"><i class="bi ' . $name . '" aria-hidden="true"></i>' . h($label) . $count . '</button>';
+    };
+    $seg = function ($first, $second) {
+        return '<span class="pg-seg" role="group"><button type="button" class="pg-seg-item is-active" aria-pressed="true">' . h($first) . '</button>'
+            . '<button type="button" class="pg-seg-item" aria-pressed="false">' . h($second) . '</button></span>';
+    };
+    $now = time() * 1000;
+    $heads = array(
+        array(
+            'kind' => array('icon' => 'bi-journal-text', 'tone' => 'amber', 'label' => lang('Note')),
+            'name' => lang('Launch checklist'), 'renamable' => true,
+            'state' => 'saved', 'stateInfo' => array('time' => $now - 120000, 'ago' => true),
+            'undo' => array('canUndo' => true, 'canRedo' => false),
+            'faces' => array(array('initials' => 'TK', 'name' => 'Tuna Kaya'), array('initials' => 'EG', 'name' => 'Ece Gür')),
+            'share' => true,
+            'menu' => array('copyLink' => true, 'send' => true, 'print' => true, 'versions' => true, 'delete' => true),
+        ),
+        array(
+            'back' => true,
+            'kind' => array('icon' => 'bi-table', 'tone' => 'teal', 'label' => lang('Table')),
+            'name' => lang('Leads'), 'renamable' => true,
+            'meta' => lang(array('string' => '{var:1} rows', 'vars' => array(124))),
+            'state' => 'saved',
+            'slotHtml' => $seg(lang('Table'), lang('Board')) . $ghost('bi-funnel', lang('Filter')),
+            'share' => true,
+            'main' => array('label' => lang('New row'), 'icon' => 'bi-plus-lg'),
+            'menu' => array('download' => true, 'own' => array(array('icon' => 'bi-layout-three-columns', 'label' => lang('Columns')), array('icon' => 'bi-box-arrow-in-down', 'label' => lang('Import'))), 'delete' => true),
+        ),
+        array(
+            'kind' => array('icon' => 'bi-easel2', 'tone' => 'rose', 'label' => lang('Artifact Canvas')),
+            'name' => lang('Campaign poster'), 'renamable' => true,
+            'meta' => '1080 × 1350 px',
+            'state' => 'unsaved',
+            'undo' => array('canUndo' => true, 'canRedo' => true),
+            'slotHtml' => $ghost('bi-clock-history', lang('Versions'), '<span class="pg-count">3</span>') . $icon('bi-box-arrow-in-down', lang('Import')) . $icon('bi-database', lang('Data')) . $icon('bi-translate', lang('Languages')) . $ghost('bi-play-fill', lang('Present')),
+            'main' => array('label' => lang('Save')),
+            'menu' => array('help' => true),
+            'grow' => true,
+            'close' => true,
+        ),
+        array(
+            'kind' => array('icon' => 'bi-file-earmark-word', 'tone' => 'blue', 'label' => lang('Word file')),
+            'name' => 'Proposal-2026.docx', 'renamable' => true,
+            'meta' => '48 KB',
+            'state' => 'unsaved',
+            'undo' => array('canUndo' => true, 'canRedo' => false),
+            'main' => array('label' => lang('Save'), 'gate' => true, 'dirty' => true),
+            'menu' => array('open' => true, 'download' => true),
+            'close' => true,
+        ),
+        array(
+            'kind' => array('icon' => 'bi-file-earmark-excel', 'tone' => 'teal', 'label' => lang('Excel file')),
+            'name' => 'Budget-2027.xlsx',
+            'meta' => lang(array('string' => '{var:1} sheets', 'vars' => array(3))),
+            'state' => 'saved',
+            'undo' => array('canUndo' => false, 'canRedo' => false),
+            'slotHtml' => $ghost('bi-table', lang('Save as data')),
+            'download' => true,
+            'main' => array('label' => lang('Save'), 'gate' => true),
+            'menu' => array('open' => true, 'copyLink' => true),
+            'close' => true,
+        ),
+        array(
+            'kind' => array('icon' => 'bi-file-earmark-slides', 'tone' => 'amber', 'label' => lang('Presentation')),
+            'name' => 'Investor deck.pptx',
+            'meta' => lang(array('string' => '{var:1} slides', 'vars' => array(24))) . ' · 3.1 MB',
+            'slotHtml' => $seg(lang('Slides'), lang('Text')) . $ghost('bi-play-fill', lang('Present')),
+            'download' => true,
+            'main' => array('label' => lang('Edit in Artifact Canvas'), 'icon' => 'bi-easel2', 'style' => 'quiet'),
+            'menu' => array('open' => true, 'download' => true, 'copyLink' => true),
+            'grow' => array('icon' => 'bi-arrows-angle-expand', 'label' => lang('Expand')),
+            'close' => true,
+        ),
+    );
+    $html = '';
+
+    foreach ($heads as $options) {
+        $html .= '<div class="pg-card pg-doc-head-host" data-pg-doc-head="' . h(json_encode($options, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) . '"></div>';
+    }
+
+    return array(
+        'id'      => 'pattern-doc-head',
+        'title'   => lang('Document head'),
+        'classes' => array('.pg-doc-head-host', 'data-pg-doc-head', 'pgDocHead.build()'),
+        'phone'   => true,
+        'html'    => $html
+            . '<p class="pg-text-meta">' . h(lang('From pgDocHead.build(): one head for a note, a Data table, the Artifact Canvas, a file window and the view windows. Left the kind\'s tile, the name (click to rename), the meta and the save state; then Undo, Redo and the kind\'s own controls; at the right faces, Share, Download, the main button, the more menu, grow and Close.')) . '</p>'
+            . '<p class="pg-text-meta">' . h(lang('The more menu keeps one order for every kind, a missing row not drawn: Open in a new tab, Full screen; Copy link, Send to a channel; Download, Export…, Print; Versions; the kind\'s own rows; Help, then Delete. A menu of one row stands as its icon. On a phone only Back, the name, the state\'s dot, the main button and the menu stay.')) . '</p>',
+    );
+}
 
 /**
  * Edit Product's Performance card as the screen draws it
@@ -1530,7 +1639,7 @@ function pg_look_examples_phone_frame()
 {
     return '<section class="pg-look-phone" aria-labelledby="pg_look_phone_title">'
         . '<h2 class="pg-title-section pg-look-pane-title" id="pg_look_phone_title">' . h(lang('Phone')) . '</h2>'
-        . '<p class="pg-text-2 pg-look-phone-line">' . h(lang('The settings pane, the form drawer, the choice cards and the step line at 390 px, as a phone draws them.')) . '</p>'
+        . '<p class="pg-text-2 pg-look-phone-line">' . h(lang('The settings pane, the form drawer, the document head, the choice cards and the step line at 390 px, as a phone draws them.')) . '</p>'
         . '<iframe class="pg-look-phone-frame" src="design_examples.php?phone=1" width="390" height="844" loading="lazy" title="' . h(lang('Design examples at 390 px')) . '"></iframe>'
         . '</section>';
 }

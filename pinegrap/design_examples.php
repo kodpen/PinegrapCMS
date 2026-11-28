@@ -34,7 +34,7 @@ if (isset($_GET['phone'])) {
 <main id="content" class="container-fluid">
     ' . pg_look_examples_phone_pane() . '
 </main>
-' .
+' . pg_doc_head_includes() .
     output_footer();
     exit;
 }
@@ -74,5 +74,5 @@ pg_page_shell(array(
     </div>
     ' . pg_look_examples_phone_frame() . '
 </main>
-' .
+' . pg_doc_head_includes() .
 output_footer();

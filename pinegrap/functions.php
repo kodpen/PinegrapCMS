@@ -151,6 +151,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/image_focus.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/image_editor.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/image_editor_data.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/image_editor_design.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/doc_head.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/picture_translation.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/svg_sanitize.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/figma_import.php');

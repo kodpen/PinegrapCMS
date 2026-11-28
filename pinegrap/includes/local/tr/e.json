@@ -2527,6 +2527,7 @@
     "Exported": "Dışa Aktarılmış",
     "Exported by {var:1} on {var:2}": "{var:1} tarafından {var:2} tarihinde dışa aktarıldı",
     "Exports stop at 500 rows": "Dışa aktarma 500 satırda duruyor",
+    "Export…": "Dışa aktar…",
     "Exposure": "Pozlama",
     "Express Courier": "Yurtiçi Kargo",
     "Express Order": "Hızlı Sipariş",
