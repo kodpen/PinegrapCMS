@@ -167,8 +167,8 @@
 - object-storage-migration.md: The Storage card's Uploaded files tool: move existing files, pause, resume, bring back; the switch's modes; Disk Usage and System Info counting local and stored bytes
 - object-storage-unmovable-come-home.md: A stored file that a rename or the design flag makes unmovable (design file, .css, .js) is brought back to the disk by the door that changed it: pg_file_storage_bring_home()
 - ods-cell-ceiling.md: The .ods cell and used-range ceilings of the importers' sheet reader (PG_SHEET_ODS_MAX_CELLS, PG_SHEET_ODS_MAX_RANGE): repeated rows/columns counted, empty runs stepped over, "The file is too large."
-- office-cell-edits.md: Excel cells changed in the file window (includes/fn/office_edit.php, PR #656): what may change, the cell keys, how a typed value is stored, the row splice, why formula results are taken out
-- office-cell-locks.md: Which workbook cells the file window never changes (formulas, merges, tables, signed or password-reserved files) and how the grid tells which cells of a protected sheet are open
+- office-cell-edits.md: Excel cells changed in the file window (office_edit.php, PR #656): what may change, how a typed value is stored, the row splice, why formula results are worked out or taken out
+- office-cell-locks.md: Which workbook cells the file window never changes (formulas that are not simple, merges, tables, signed or password-reserved files) and how the grid tells which cells of a protected sheet are open
 - office-csv-preview.md: .csv and .tsv as a sheet in Quick Look and a channel's Preview (PR #10484): separator and character set guessed, the choice above the sheet, limits, view only
 - office-docx-add-delete.md: Adding a paragraph after another (Enter) and deleting one (Delete the paragraph) in a .docx (office_docx_paragraphs.php, OD3, PR #11811): the save entries, the kind a new paragraph takes, the refusals
 - office-docx-bar-look.md: The document bar's Size, Text color, Highlight color and four alignments (DA2, PR #12084): controls, shown state, a character's look, page and preview drawing
@@ -186,7 +186,7 @@
 - office-docx-undo.md: Undo and Redo of a Word document typed on its sheet (OP3, PR #11963): the bar's pair, Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z, what one change is, what a press puts back
 - office-dom-ceiling.md: How much of a docx or xlsx becomes a libxml tree (office.php, office_edit.php, PR #882): 8 MB a DOM part, a long document read from its beginning, rows and strings node by node
 - office-edit-test-own-folder.md: Why the workbook save test (tests/office_edit_test.php) saves into a folder of its own run and not into the shared temporary folder (#12096)
-- office-files-scope.md: How far the own Word and Excel code goes and why: what is edited, what is only shown, what is never built (charts, pivots, layout; formulas beyond the simple ones), the rules every edit keeps [decision: decisions-made-product-115.md, decisions-made-product-79.md]
+- office-files-scope.md: How far the own Word and Excel code goes: what is edited (simple formulas too), only shown, never built (charts, pivots, layout, other formulas), the rules every edit keeps [decision: decisions-made-product-115.md, decisions-made-product-79.md]
 - office-files.md: Word and Excel previews (includes/fn/office.php, pg_office_view.js): read on the server without a library, drawn in the file manager and the Workspace; limits, security, what is not read [decision: decisions-made-workspace-45.md]
 - office-formula-engine.md: The simple formula reader and calculator (includes/fn/office_formula.php, SF1): what is a simple formula, the tree, cells read, stored text, Turkish names, values as Excel gives them, limits
 - office-new-files.md: New spreadsheet and New document (OE5, PR #11119): the File Manager's New menu and a channel's attach menu make an empty .xlsx or .docx with the product's writer and open it for editing
@@ -205,6 +205,7 @@
 - office-sheet-format.md: Format of selected cells of an .xlsx (office_format.php, OE3a): the save entry, how new styles are written beside the old ones, the number formats, what is refused and why [decision: decisions-made-product-115.md]
 - office-sheet-formula-save.md: Simple formulas in a workbook save (office_edit.php, SF2): typed "=" formulas, open formula cells, the changed sheet worked out in dependency order, circles, what loses its result
 - office-sheet-formula-view.md: Simple formulas in the workbook grid (SF3): typed with "=", the editor shows the formula, values a change reaches drawn by the twin pg_office_formula.js, refusals
+- office-sheet-formulas.md: Start file for simple formulas in the Excel editor (SUM, AVERAGE, MIN, MAX, COUNT, + - * /, TOPLA): the decision, what is simple, which file holds the reader, save and grid [decision: decisions-made-product-115.md]
 - office-sheet-head-menu.md: The sheet grid's row and column head menu (pg_office_view.js): insert, delete, Column width…, Row height…, Freeze top row; where it opens, what it puts in the list of changes
 - office-sheet-rows-columns.md: Insert and delete a row or column of an .xlsx (office_shift.php): the save entry, what moves, what is refused and why, one entry of a save's list
 - office-sheet-sizes-grid.md: The sheet grid's column widths, row heights and frozen top rows (pg_office_view.js, SA4): how they are drawn, the drag on a head's edge, the menu items, the list entry [decision: decisions-made-product-115.md]
