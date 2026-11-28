@@ -271,7 +271,7 @@ function test_payment_paypal_authorize_refusals()
 	$answer = payment_paypal_test_authorize($created, array('currency' => 'TRY'));
 	pg_assert_false($answer['success']);
 	pg_assert_same('PayPal does not take payments in this currency.', $answer['error']);
-	pg_assert_same(array('PayPal Checkout payment for order #438 was not accepted: the store currency TRY is not one PayPal takes.'), $answer['log']);
+	pg_assert_same(array('PayPal Checkout payment for order #438 was not accepted: the order currency TRY is not one PayPal takes.'), $answer['log']);
 	pg_assert_same(array(), payment_paypal_test_calls());
 
 	$answer = payment_paypal_test_authorize($created, array(), 0);

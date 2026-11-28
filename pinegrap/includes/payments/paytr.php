@@ -33,7 +33,17 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 function pg_payment_paytr_capabilities()
 {
-    return array('partial_refund');
+    return array('partial_refund', 'order_currency');
+}
+
+/**
+ * The currencies PayTR takes payments in (pg_payment_paytr_currency()).
+ *
+ * @return array upper-case ISO codes
+ */
+function pg_payment_paytr_currencies()
+{
+    return array('TRY', 'EUR', 'USD', 'GBP', 'RUB');
 }
 
 function pg_payment_paytr_fields()
@@ -182,6 +192,30 @@ function pg_payment_paytr_return_urls($payment)
 }
 
 /**
+ * The settings with the currency an order is charged in: the order's
+ * charged currency (a market's order), the store's base currency for every
+ * other order. Its amounts are already in that currency, so nothing is
+ * converted. A refund names no currency: PayTR gives it back in the
+ * payment's own. Pure.
+ *
+ * @param array $settings pg_payment_paytr_settings()
+ * @param array $order    the orders row (charged_currency)
+ * @return array the settings, currency uppercase
+ */
+function pg_payment_paytr_order_settings($settings, $order)
+{
+    $base = isset($settings['currency']) ? (string) $settings['currency'] : '';
+
+    if ($base === '') {
+        return $settings;
+    }
+
+    $settings['currency'] = pg_order_amount_currency(is_array($order) ? $order : array(), $base);
+
+    return $settings;
+}
+
+/**
  * The currency PayTR's API names for an ISO code ('' for one PayTR does not
  * take): the lira is TL there.
  *
@@ -190,10 +224,13 @@ function pg_payment_paytr_return_urls($payment)
  */
 function pg_payment_paytr_currency($iso)
 {
-    $map = array('TRY' => 'TL', 'EUR' => 'EUR', 'USD' => 'USD', 'GBP' => 'GBP', 'RUB' => 'RUB');
     $iso = strtoupper((string) $iso);
 
-    return isset($map[$iso]) ? $map[$iso] : '';
+    if (!in_array($iso, pg_payment_paytr_currencies(), true)) {
+        return '';
+    }
+
+    return ($iso === 'TRY') ? 'TL' : $iso;
 }
 
 /**
@@ -210,7 +247,7 @@ function pg_payment_paytr_currency_iso($paytr)
         return 'TRY';
     }
 
-    return in_array($paytr, array('EUR', 'USD', 'GBP', 'RUB'), true) ? $paytr : '';
+    return in_array($paytr, pg_payment_paytr_currencies(), true) ? $paytr : '';
 }
 
 /**
@@ -474,13 +511,16 @@ function pg_payment_paytr_page($token)
  */
 function pg_payment_paytr_authorize_with($order, $amount, $payment, $settings, $http)
 {
+    // The order's own currency: its amounts are kept in it (order_currency.php).
+    $settings = pg_payment_paytr_order_settings($settings, $order);
+
     if (($settings['merchant_id'] === '') || ($settings['merchant_key'] === '') || ($settings['merchant_salt'] === '')
         || ($settings['ok_url'] === '') || ($settings['fail_url'] === '')) {
         return pg_payment_failure(lang('This payment method is not available.'));
     }
 
     if (pg_payment_paytr_currency($settings['currency']) === '') {
-        return pg_payment_failure(lang('PayTR does not take payments in this currency.'), array('message' => 'the store currency ' . (($settings['currency'] !== '') ? $settings['currency'] : '(none)') . ' is not one PayTR takes'));
+        return pg_payment_failure(lang('PayTR does not take payments in this currency.'), array('message' => 'the order currency ' . (($settings['currency'] !== '') ? $settings['currency'] : '(none)') . ' is not one PayTR takes'));
     }
 
     $order_id = (is_array($order) && isset($order['id'])) ? (int) $order['id'] : 0;

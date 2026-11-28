@@ -418,7 +418,7 @@ function test_payment_paytr_refund_hash()
 
 function test_payment_paytr_refund_capability()
 {
-	pg_assert_same(array('partial_refund'), pg_payment_paytr_capabilities());
+	pg_assert_same(array('partial_refund', 'order_currency'), pg_payment_paytr_capabilities());
 	pg_assert_true(function_exists('pg_payment_paytr_refund'));
 }
 

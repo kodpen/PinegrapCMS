@@ -680,6 +680,39 @@ function pg_payment_can($key, $what)
 }
 
 /**
+ * The currencies a driver charges an order in, when it names them: its
+ * optional pg_payment_<key>_currencies() (upper-case ISO codes). null when
+ * it names none (any currency the service takes) or is not there.
+ *
+ * @param string $key
+ * @return array|null
+ */
+function pg_payment_driver_currencies($key)
+{
+    if (!pg_payment_load($key) || !function_exists(pg_payment_function_name($key, 'currencies'))) {
+        return null;
+    }
+
+    try {
+        $listed = call_user_func(pg_payment_function_name($key, 'currencies'));
+    } catch (\Throwable $exception) {
+        return array();
+    }
+
+    $codes = array();
+
+    foreach ((array) $listed as $code) {
+        $code = strtoupper(trim((string) $code));
+
+        if (preg_match('/^[A-Z]{3}$/', $code) === 1) {
+            $codes[] = $code;
+        }
+    }
+
+    return array_values(array_unique($codes));
+}
+
+/**
  * A driver's capabilities.
  *
  * @param string $key

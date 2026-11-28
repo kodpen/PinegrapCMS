@@ -1360,15 +1360,17 @@ function pg_payment_checkout_methods($order = array())
  * orders.charged_currency) Offline Payment, which charges nothing here, and
  * a method whose driver charges the order's own currency (the
  * 'order_currency' capability). A legacy gateway's card and a driver without
- * it charge in the base currency only. Pure.
+ * it charge in the base currency only. A driver that names its currencies
+ * (pg_payment_driver_currencies()) is offered only in one of them. Pure.
  *
- * @param string $method       a checkout method (pg_payment_method_values())
- * @param bool   $driver_takes the method's driver has 'order_currency'
- * @param string $currency     the currency the order is kept in
- * @param string $base         BASE_CURRENCY_CODE
+ * @param string     $method       a checkout method (pg_payment_method_values())
+ * @param bool       $driver_takes the method's driver has 'order_currency'
+ * @param string     $currency     the currency the order is kept in
+ * @param string     $base         BASE_CURRENCY_CODE
+ * @param array|null $currencies   the driver's own list; null for any
  * @return bool
  */
-function pg_payment_method_takes_currency_decide($method, $driver_takes, $currency, $base)
+function pg_payment_method_takes_currency_decide($method, $driver_takes, $currency, $base, $currencies = null)
 {
     $currency = pg_order_currency_code($currency);
 
@@ -1376,7 +1378,11 @@ function pg_payment_method_takes_currency_decide($method, $driver_takes, $curren
         return true;
     }
 
-    return ((string) $method === 'Offline Payment') || (bool) $driver_takes;
+    if ((string) $method === 'Offline Payment') {
+        return true;
+    }
+
+    return (bool) $driver_takes && (($currencies === null) || in_array($currency, (array) $currencies, true));
 }
 
 /**
@@ -1404,7 +1410,9 @@ function pg_payment_method_takes_order($method, $order = null)
 
     $key = ((string) $method === 'Offline Payment') ? '' : pg_payment_order_driver((string) $method);
 
-    return pg_payment_method_takes_currency_decide($method, ($key !== '') && pg_payment_can($key, 'order_currency'), $currency, $base);
+    $takes = ($key !== '') && pg_payment_can($key, 'order_currency');
+
+    return pg_payment_method_takes_currency_decide($method, $takes, $currency, $base, $takes ? pg_payment_driver_currencies($key) : null);
 }
 
 /**
