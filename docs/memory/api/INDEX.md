@@ -4,6 +4,7 @@
 
 - accounting-sync-log.md: A failed accounting sync send (AS5): Events card with Try again on Xero's Connections page, the line on View Order and the ERP invoice, the daily alert, the reauth hold
 - accounting-sync-queue.md: Accounting sync queue and pairing (table accounting_sync, 11.0.284): what writes a row, the general job's pass, the driver's answer, retries, the key against a second sale, what is not sent
+- accounting-sync-rules.md: Accounting sync rules: out only, the site's own app, one service at a time, the source record, one record per order, customers, items, currency, tax, refunds, only the job sends [decision: decisions-made-schema-54.md]
 - ad-conversions-click-ids.md: Ad click ids of the landing address (fbclid, gclid, ttclid, #10781): read list, value bound, held in the session only, into a purchase row's ids with consent, cleared on refusal, page cache [decision: here]
 - ad-conversions-counter-sales.md: The choices block of the Meta, GA4 and TikTok pages (event switches, Lead forms, counter sales) and "Send counter sales": a local order's purchase without any personal data [decision: here]
 - ad-conversions-ga4.md: GA4 Measurement Protocol (#10866): its Connections page, Measurement ID from the Google Analytics page, sealed API secret, sender, refunds from order_refunds, test
@@ -198,6 +199,7 @@
 - oauth-authorize-state.md: OAuth authorize (includes/oauth/authorize.php): state is handed back exactly as sent, never cut; a state over 4096 bytes is refused with invalid_request and the same state
 - oauth-client-automation-platforms.md: Whether one OAuth client could serve an automation platform on every site (read 2026-11-17): the client metadata document a site reads, what Zapier, Make, Pabbly and n8n allow, why it is not used [decision: here]
 - quickbooks-connection.md: QuickBooks Online connected (AS6): the site's own Intuit app, environment, discovery addresses, realmId kept from the return, the company read, accounts and tax codes chosen, one service at a time
+- quickbooks-service-facts.md: What QuickBooks Online asks of the accounting sync (2026-11): sign-in, realmId, tokens, App Assessment, partner fees, limits, sale records, tax, requestid
 - quickbooks-sync-driver.md: QuickBooks Online's accounting sync driver: SalesReceipt, Invoice, Payment, RefundReceipt, CreditMemo, void, customers and items, requestid and SyncToken, its call spacing
 - removed-rest-api-apps.md: History note: apps.php, apps_settings.php and the custom_apps table were removed in 2026.4.4 and replaced by the external API (integration.php, includes/api/). [decision: decisions-made-data.md, decisions-made.md]
 - tiktok-events-facts.md: TikTok Events API 2.0 as TikTok's own documents say it (read 2026-11-20): address, Access-Token header, body, hashing (phone in E.164 with +), test code, answers, what could not be checked
@@ -217,5 +219,6 @@
 - workspace-message-file-api.md: The API routes for files in a message (#9769): post a file of the file manager, put an edited file in place of the old one (own words, no tool), list a file's earlier versions
 - workspace-thread-approval-api.md: The API routes (#9794) that conclude or rename a discussion and take back or close an approval request: the panel function each runs, the check it shares for the dry run, who may and the refusals
 - xero-connection.md: Xero connected (#12069): the site's own app, provider and purpose, the organisation read from /connections, the three accounts, the sealed service entry, when Xero is called, Disconnect
+- xero-service-facts.md: What Xero asks of the accounting sync (2026-11): sign-in, tokens, scopes, app tiers, Custom Connections closing, limits, sale records, Idempotency-Key
 - xero-sync-driver.md: Xero's accounting sync driver: what each queued row becomes (invoice, payment, credit note, void), contacts and items, Idempotency-Key, limit headers
 - xero-tax-rates.md: Tax rates matched on Xero's Connections page after Ledger accounts: the site rates listed, the Xero rates offered, the match kept as an accounting_sync tax pairing

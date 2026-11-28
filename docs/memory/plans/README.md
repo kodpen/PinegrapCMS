@@ -15,7 +15,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 
 ## Clusters
 
-- `accounting-sync-*`: 9 files; start at `accounting-sync.md`.
 - `addon-hook-*`: 11 files.
 - `automation-platforms-*`: 6 files; start at `automation-platforms.md`.
 - `help-centre-*`: 7 files; start at `help-centre.md`.

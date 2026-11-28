@@ -1076,6 +1076,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 
 ## Topic files that record a dated owner or architect decision
 
+- api/accounting-sync-rules.md: Accounting sync rules: out only, the site's own app, one service at a time, the source record, one record per order, customers, items, currency, tax, refunds, only the job sends
 - api/ad-conversions-click-ids.md: Ad click ids of the landing address (fbclid, gclid, ttclid, #10781): read list, value bound, held in the session only, into a purchase row's ids with consent, cleared on refusal, page cache
 - api/ad-conversions-counter-sales.md: The choices block of the Meta, GA4 and TikTok pages (event switches, Lead forms, counter sales) and "Send counter sales": a local order's purchase without any personal data
 - api/ad-conversions-meta.md: Meta Conversions API (#10812): its Connections page and gate, the sealed token, the sender, how Meta's answers become a row's outcome, the test event, the registry row

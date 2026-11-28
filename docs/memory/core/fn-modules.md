@@ -8,7 +8,7 @@ description: Generated from the module field of the memory files: each includes/
 ## Which memory file describes an `includes/fn/` module?
 - `a11y`: [[accessibility-report]], [[editor-a11y-measurements]]
 - `accounting_settings_fold`: [[settings-accounting]], [[settings-accounting-open-rows]]
-- `accounting_sync`: [[accounting-sync-queue]], [[xero-tax-rates]]
+- `accounting_sync`: [[accounting-sync-queue]], [[accounting-sync-rules]], [[xero-tax-rates]]
 - `accounting_sync_log`: [[accounting-sync-log]]
 - `accounting_sync_quickbooks`: [[quickbooks-sync-driver]]
 - `accounting_sync_xero`: [[xero-sync-driver]]
