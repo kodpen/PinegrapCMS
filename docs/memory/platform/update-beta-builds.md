@@ -16,7 +16,7 @@ description: Beta builds of one version over the Kodpen API (PR #3755): data/upd
 
 ## Backup, rollback, integrity?
 - Backup `manifest.json` carries `build` and `git_ref`; rollback restores the file or deletes it (`update-backup-rollback.md`).
-- The integrity check tries the file's `git_ref` first on beta, then `v<version>`, `v<version>-beta`; cache keyed by ref (`core/file-integrity-github-reference.md`).
+- The integrity check tries the file's `git_ref` first on either channel, then `v<version>`; cache keyed by ref (`core/file-integrity-github-reference.md`).
 
 ## Tests? What is unverified?
 - `tests/update_build_test.php` (parse, write/read/delete, pin record, previous entry, Q1 matrix, tag order), `update_backup_test.php`, `vendor_update_steps_test.php`. The live path waits for the first signed beta release (packages from P2, `release/release-packages.md`; keys from P5c, #10348).
