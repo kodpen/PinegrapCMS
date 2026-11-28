@@ -1116,7 +1116,10 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
             //              ^^__item_remove_url^^.
             if ($region_type === 'shopping_cart') {
                 if (!$tree_json) return '<!-- pg-system-widget:' . $sid . ' has no tree_json (designer never saved) -->';
-                return _render_system_widget_shopping_cart($tree_json, $sid, $cfg);
+                // A cart in a market prints as it is, in its currency.
+                return pg_market_cart_drawn(function () use ($tree_json, $sid, $cfg) {
+                    return _render_system_widget_shopping_cart($tree_json, $sid, $cfg);
+                });
             }
 
             // 'express_order' — single-page checkout: cart + billing + shipping (when needed)
@@ -1141,7 +1144,9 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
                 // The visitor's last submit is read before rendering: the
                 // widget drops the form from the session as it draws.
                 $legal_values = pg_legal_documents_form_values('express_order');
-                return pg_legal_documents_inject(_render_system_widget_express_order($tree_json, $sid, $cfg), $legal_values);
+                return pg_legal_documents_inject(pg_market_cart_drawn(function () use ($tree_json, $sid, $cfg) {
+                    return _render_system_widget_express_order($tree_json, $sid, $cfg);
+                }), $legal_values);
             }
 
             // 'order_view' — renders a single completed order (id from $_GET['order_id']).

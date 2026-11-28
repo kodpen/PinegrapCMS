@@ -315,9 +315,9 @@ function pg_market_cart_forget($order_id)
 /**
  * Points the session's incomplete order at the visitor's market, once a
  * request, from the cart's writers (add_order_item(),
- * update_order_item_prices(), a typed amount). When the market or its
- * currency changes, the recipients already priced are priced again in the
- * new currency; the lines follow from update_order_item_prices(). Nothing
+ * update_order_item_prices(), a typed amount) and the cart's pages. When
+ * the market or its currency changes, the lines, the recipients' shipping
+ * and the offers are worked out again in the new currency. Nothing
  * on a site whose order rows have no market, and nothing for an order that
  * never had a market on a site without one.
  *
@@ -358,7 +358,10 @@ function pg_market_cart_sync()
 
     pg_market_cart_forget($order_id);
 
-    // The recipients' shipping was worked out in the old currency.
+    // Every amount of the cart was worked out in the old currency: the
+    // lines, the recipients' shipping, then the offers on both.
+    update_order_item_prices();
+
     if (defined('ECOMMERCE_SHIPPING') && ECOMMERCE_SHIPPING) {
         require_once(PG_FUNCTIONS_DIR . '/shipping.php');
 
@@ -366,6 +369,8 @@ function pg_market_cart_sync()
             update_shipping_cost_for_ship_to($ship_to_id);
         }
     }
+
+    apply_offers_to_cart();
 
     return true;
 }
@@ -438,4 +443,92 @@ function pg_market_cart_typed_minor($typed_major)
     $rate = (defined('VISITOR_CURRENCY_EXCHANGE_RATE') && ((float) VISITOR_CURRENCY_EXCHANGE_RATE > 0)) ? (float) VISITOR_CURRENCY_EXCHANGE_RATE : 1.0;
 
     return (int) round($typed_major / $rate * 100);
+}
+
+/**
+ * A member's agreed prices (pg_erp_member_prices(), base) in the cart's
+ * currency, at its rate. Pure.
+ *
+ * @param array|null $state
+ * @param array      $member_prices  product id => row with 'price'
+ * @return array
+ */
+function pg_market_cart_member_prices_for($state, $member_prices)
+{
+    if ($state === null) {
+        return $member_prices;
+    }
+
+    foreach ((array) $member_prices as $product_id => $row) {
+        if (is_array($row) && isset($row['price'])) {
+            $member_prices[$product_id]['price'] = pg_market_cart_amount_for($state, $row['price']);
+        }
+    }
+
+    return $member_prices;
+}
+
+/**
+ * A member's agreed prices in the session's cart currency.
+ *
+ * @param array $member_prices
+ * @return array
+ */
+function pg_market_cart_member_prices($member_prices)
+{
+    return pg_market_cart_member_prices_for(pg_market_cart(), $member_prices);
+}
+
+/**
+ * Writes the rate a market's order is placed at: base units for one unit
+ * of its currency, from the rate its lines were priced at in this request.
+ * Run by submit_order.php before the payment, never later, so a payment's
+ * return keeps the rate the buyer was charged at. Nothing for an order in
+ * no market or in the base currency.
+ *
+ * @param int $order_id
+ * @return void
+ */
+function pg_market_cart_seal($order_id)
+{
+    $state = pg_market_cart((int) $order_id);
+
+    if (($state === null) || ($state['code'] === '')) {
+        return;
+    }
+
+    $pair = pg_order_charged_pair($state['code'], defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : '', 1 / $state['rate'], 0);
+
+    db_q("UPDATE orders SET charged_rate = ? WHERE id = ? AND status = 'incomplete'", array($pair['rate'], (string) (int) $order_id));
+}
+
+/**
+ * Starts drawing the session's cart: the order follows the visitor's
+ * market first, then (pg_order_display_begin()) the site's money functions
+ * print its amounts as they are, in its own currency, while it is in a
+ * market. A cart in no market prints as before.
+ *
+ * @return array|null  the display before, for pg_order_display_end()
+ */
+function pg_market_cart_display_begin()
+{
+    pg_market_cart_sync();
+
+    return pg_order_display_begin((int) ($_SESSION['ecommerce']['order_id'] ?? 0));
+}
+
+/**
+ * Draws a part of the cart (a cart widget) inside
+ * pg_market_cart_display_begin() and pg_order_display_end().
+ *
+ * @param callable $draw  returns the HTML
+ * @return string
+ */
+function pg_market_cart_drawn($draw)
+{
+    $display = pg_market_cart_display_begin();
+    $output = (string) call_user_func($draw);
+    pg_order_display_end($display);
+
+    return $output;
 }

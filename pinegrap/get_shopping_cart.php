@@ -17,6 +17,15 @@
  */
 
 function get_shopping_cart($properties) {
+    // A cart in a market prints its amounts as they are, in its currency.
+    $display = pg_market_cart_display_begin();
+    $output = get_shopping_cart_content($properties);
+    pg_order_display_end($display);
+
+    return $output;
+}
+
+function get_shopping_cart_content($properties) {
 
     $page_id = $properties['page_id'];
     $editable = $properties['editable'];
@@ -858,7 +867,8 @@ function get_shopping_cart($properties) {
                     
                     // if order item is a donation
                     if ($selection_type == 'donation') {
-                        $output_donation_amount_text_box = VISITOR_CURRENCY_SYMBOL . '<input type="text" name="donations[' . $order_item_id . ']" value="' . pg_format_input_amount(get_currency_amount($total_price, VISITOR_CURRENCY_EXCHANGE_RATE)) . '" size="5" class="software_input_text" style="text-align: right" />' . h(VISITOR_CURRENCY_CODE_FOR_OUTPUT);
+                        $donation_currency = pg_visitor_currency_parts();
+                        $output_donation_amount_text_box = $donation_currency['symbol'] . '<input type="text" name="donations[' . $order_item_id . ']" value="' . pg_format_input_amount(pg_visitor_amount($total_price)) . '" size="5" class="software_input_text" style="text-align: right" />' . h($donation_currency['suffix']);
                     }
                     
                     // nofollow on a destructive action link. The CSRF token
@@ -2854,7 +2864,7 @@ function get_shopping_cart($properties) {
                         // appear blank if html 5 number type field is used.
                         $form->set(
                             'donations[' . $item['id'] . ']',
-                            number_format(get_currency_amount($item['amount'], VISITOR_CURRENCY_EXCHANGE_RATE), 2, '.', ''));
+                            number_format(pg_visitor_amount($item['amount']), 2, '.', ''));
                     }
 
                     $item['amount_info'] = prepare_price_for_output($item['amount'] * 100, false, $discounted_price = '', 'html');

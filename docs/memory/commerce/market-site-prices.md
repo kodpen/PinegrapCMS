@@ -18,8 +18,8 @@ module: markets_site
 - `pg_visitor_amount()` stays the bare rate: a typed donation is divided back by it and the price filter of the catalog divides by it; never round there.
 - The classic product page's attribute script gets prices already in the market (`pg_market_js_prices()`) and rate 1 (`pg_market_js_rate()`): `frontend.min.js` is hand-patched, so the script is not changed.
 
-## What about the cart before MK6?
-- The cart still charges base. Its lines and totals are printed converted, each figure rounded alone, so a total may differ from the sum of the lines shown; MK6 works the cart in the market's currency.
+## What about the cart?
+- The cart is worked in the market's currency and printed as it is: `market-cart.md`.
 
 ## Where is the country list?
 - `pg_market_country_form($send_to, 'classic'|'cart')`: the enabled markets' countries by name, then "Other countries"; posts to `update_market.php`, which keeps a country a market holds (any other value is ''), sets an incomplete cart order's `currency_code` to the market's currency, and returns to the page.

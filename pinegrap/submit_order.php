@@ -219,6 +219,12 @@ function submit_order($type) {
                 contact_id = ?
              WHERE id = ?";
     $result = db_q($query, array((string) $user_id, (string) $contact_id, (string) (int) ($_SESSION['ecommerce']['order_id'] ?? 0))) or output_error('Query failed.');
+
+    // A market's order is placed at the rate its lines were priced at; a
+    // payment's return keeps the rate written before the buyer left.
+    if (!pg_payment_is_return_mode($_GET['mode'] ?? '')) {
+        pg_market_cart_seal((int) ($_SESSION['ecommerce']['order_id'] ?? 0));
+    }
     
     // initialize a variable for storing the total balance of all gift cards
     $gift_card_balance = 0;

@@ -176,7 +176,7 @@ function update_shipping_cost_for_ship_to($ship_to_id) {
         $shipping_cost_for_item = $shipping_method_cost + $zone_cost + $extra_shipping_cost;
         $shipping_cost = $shipping_cost + $shipping_cost_for_item;
         
-        db("UPDATE order_items SET shipping = '" . round($shipping_cost_for_item / $order_item['quantity']) . "' WHERE id = '" . $order_item['id'] . "'");
+        db("UPDATE order_items SET shipping = '" . round(pg_market_cart_amount($shipping_cost_for_item) / $order_item['quantity']) . "' WHERE id = '" . $order_item['id'] . "'");
     }
     
     // Check for a shipping discount from an offer.  We go ahead and do this now, instead of waiting
@@ -184,6 +184,8 @@ function update_shipping_cost_for_ship_to($ship_to_id) {
     // completes shipping fields on an express order page and clicks purchase now, where we do not
     // run apply_offers_to_cart().
 
+    // The rates are in base; the cart's shipping is in its currency.
+    $shipping_cost = pg_market_cart_amount($shipping_cost);
     $original_shipping_cost = 0;
 
     $offer = get_best_shipping_discount_offer($ship_to_id, $shipping_method_id);
@@ -1560,10 +1562,11 @@ function get_shipping_method_base_rate($properties) {
         return $base_rate;
     }
 
-    $recipient_subtotal = db_value(
+    // The bands are base amounts; the lines are in the cart's currency.
+    $recipient_subtotal = pg_market_cart_base(db_value(
         "SELECT SUM(price * CAST(quantity AS signed))
         FROM order_items
-        WHERE ship_to_id = '" . e($ship_to_id) . "'" . pg_order_item_active_sql());
+        WHERE ship_to_id = '" . e($ship_to_id) . "'" . pg_order_item_active_sql()));
 
     // If there is not a 2nd base rate, or if the recipient total is less than
     // the 2nd base rate, then return the base rate.
@@ -2153,6 +2156,8 @@ function get_shipping_methods($properties) {
         }
         
         // prepare for checking for shipping discounts
+        // The rates are in base; the cart's shipping is in its currency.
+        $shipping_cost = pg_market_cart_amount($shipping_cost);
         $original_shipping_cost = 0;
 
         $discounted = false;

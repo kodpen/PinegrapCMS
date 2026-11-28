@@ -224,12 +224,9 @@ if (($liveform->field_in_session('submit_add') == true) || ($liveform->field_in_
                         if($donation_amount == ''){
                             $donation_amount = 0;
                         }
-                        // convert donation amount into USD
-                        // Suppressing error for PHP 7.1+ support
-                        $donation_amount = @($donation_amount / VISITOR_CURRENCY_EXCHANGE_RATE);
-                        
-                        // convert dollars into cents for database storage
-                        $donation_amount = round($donation_amount * 100);
+                        // Minor units: the cart's own currency in a market's cart, else
+                        // the visitor's display currency divided back into base.
+                        $donation_amount = pg_market_cart_typed_minor($donation_amount);
                         
                         // if donation entered is greater than zero, then add donation to cart
                         if ($donation_amount > 0) {

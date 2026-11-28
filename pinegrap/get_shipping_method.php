@@ -17,6 +17,15 @@
  */
 
 function get_shipping_method($properties) {
+    // A cart in a market prints its amounts as they are, in its currency.
+    $display = pg_market_cart_display_begin();
+    $output = get_shipping_method_content($properties);
+    pg_order_display_end($display);
+
+    return $output;
+}
+
+function get_shipping_method_content($properties) {
 
     $page_id = $properties['page_id'];
 
@@ -759,6 +768,8 @@ function get_shipping_method($properties) {
                 }
                 
                 // prepare for checking for shipping discounts
+                // The rates are in base; the cart's shipping is in its currency.
+                $shipping_cost = pg_market_cart_amount($shipping_cost);
                 $original_shipping_cost = 0;
                 
                 // if an active shipping discount offer exists, then check if there is an offer that will discount this shipping method
@@ -1477,6 +1488,8 @@ function get_shipping_method($properties) {
                 }
                 
                 // prepare for checking for shipping discounts
+                // The rates are in base; the cart's shipping is in its currency.
+                $shipping_cost = pg_market_cart_amount($shipping_cost);
                 $original_shipping_cost = 0;
 
                 $discounted = false;
