@@ -323,6 +323,7 @@ description: Generated from the module field of the memory files: each includes/
 - `office_docx_kind`: [[office-docx-paragraph-kind]]
 - `office_docx_link`: [[office-docx-links]]
 - `office_docx_paragraphs`: [[office-docx-add-delete]]
+- `office_docx_picture`: [[office-docx-pictures]]
 - `office_docx_table`: [[office-docx-table-bar]], [[office-docx-tables]]
 - `office_edit`: [[office-save-list]], [[office-sheet-formula-save]]
 - `office_format`: [[office-sheet-bar-text-borders]], [[office-sheet-format]], [[office-sheet-format-borders]]
