@@ -813,6 +813,43 @@ function erp_order_sale_fields($order)
 }
 
 /**
+ * The currency and rate an order's invoice is written in. An order is kept in
+ * the currency it was charged in (orders.charged_currency, '' for the home
+ * one), with the home units one charged unit was worth on its day beside it
+ * (charged_rate); the invoice takes both and never today's rate. An order in
+ * the home currency, and one stored before the columns, is home at rate 1.
+ * The rate is cut to the six places the ERP's rate columns keep, with
+ * round(), so the header, the ledger and every later settlement convert by
+ * the same figure. A charged currency whose rate is not known gives the
+ * error 'no_rate'. Pure.
+ *
+ * @param array  $order  orders row: charged_currency, charged_rate, order_date
+ * @param string $base   erp_base_currency()
+ * @return array  currency, rate (float), rate_date (Y-m-d, '' for the issue
+ *                date), source ('base' | 'order'), error ('' | 'no_rate')
+ */
+function erp_order_invoice_currency($order, $base)
+{
+    $base = strtoupper(trim((string) $base));
+    $code = strtoupper(trim((string) ($order['charged_currency'] ?? '')));
+
+    if ((preg_match('/^[A-Z]{3}$/', $code) !== 1) || ($code === $base)) {
+        return array('currency' => $base, 'rate' => 1.0, 'rate_date' => '', 'source' => 'base', 'error' => '');
+    }
+
+    $rate = round((float) ($order['charged_rate'] ?? 0), 6);
+    $placed = (int) ($order['order_date'] ?? 0);
+
+    return array(
+        'currency' => $code,
+        'rate' => ($rate > 0) ? $rate : 0.0,
+        'rate_date' => date('Y-m-d', ($placed > 0) ? $placed : time()),
+        'source' => 'order',
+        'error' => ($rate > 0) ? '' : 'no_rate',
+    );
+}
+
+/**
  * The name of an order's invoicing lock, as SQL.
  *
  * GET_LOCK names belong to the whole MySQL server, so the database is part of
@@ -979,11 +1016,29 @@ function erp_invoice_from_order_locked($order_id, $options = array())
     // reaches it (erp_order_lines()); that kurus stays with the payment.
     $expected = (int) $order['total'] + (int) ($order['gift_card_discount'] ?? 0) - (int) $built['totals']['charges_left'];
 
+    // The order's amounts are in the currency it was charged in, so the
+    // invoice is written in that currency at the order's own rate.
+    $money = erp_order_invoice_currency($order, erp_base_currency());
+
     if ($built['totals']['grand_total'] !== $expected) {
         return $fail(lang(array(
             'string' => 'The invoice total ({var:1}) does not match the order total ({var:2}). The invoice was not created.',
-            'vars' => array(erp_money_out($built['totals']['grand_total']), erp_money_out($expected)),
+            'vars' => array(
+                erp_money_out_currency($built['totals']['grand_total'], $money['currency']),
+                erp_money_out_currency($expected, $money['currency']),
+            ),
         )));
+    }
+
+    if ($money['error'] === 'no_rate') {
+        return $fail(lang(array(
+            'string' => 'The order was charged in {var:1} and its rate to the home currency is not known, so it cannot be invoiced.',
+            'vars' => array($money['currency']),
+        )));
+    }
+
+    if (!erp_base_amount_fits($built['totals']['grand_total'], $money['rate'])) {
+        return $fail(lang('The total is too large in the home currency.'));
     }
 
     $series = trim((string) ($options['series'] ?? (defined('ERP_DEFAULT_SERIES') ? ERP_DEFAULT_SERIES : 'PGF')));
@@ -998,6 +1053,7 @@ function erp_invoice_from_order_locked($order_id, $options = array())
         $issue_date = date('Y-m-d');
     }
     $issue_year = (int) substr($issue_date, 0, 4);
+    $rate_date = ($money['rate_date'] !== '') ? $money['rate_date'] : $issue_date;
 
     if (($refusal = erp_lock_refusal($issue_date)) !== '') {
         return $fail($refusal);
@@ -1029,10 +1085,10 @@ function erp_invoice_from_order_locked($order_id, $options = array())
             order_id = '" . $order_id . "',
             issue_date = '" . escape($issue_date) . "',
             due_date = '" . escape(erp_account_due_date($account_id, $issue_date)) . "',
-            currency = '" . escape(erp_base_currency()) . "',
-            exchange_rate = '1.000000',
-            exchange_rate_date = '" . escape($issue_date) . "',
-            exchange_rate_source = 'base',
+            currency = '" . escape($money['currency']) . "',
+            exchange_rate = '" . escape(number_format($money['rate'], 6, '.', '')) . "',
+            exchange_rate_date = '" . escape($rate_date) . "',
+            exchange_rate_source = '" . escape($money['source']) . "',
             subtotal = '" . (int) $totals['subtotal'] . "',
             discount_total = '" . (int) $totals['discount_total'] . "',
             shipping_total = '" . (int) $totals['shipping_total'] . "',
@@ -1040,7 +1096,7 @@ function erp_invoice_from_order_locked($order_id, $options = array())
             gift_card_total = '" . (int) $totals['gift_card_total'] . "',
             tax_total = '" . (int) $totals['tax_total'] . "',
             grand_total = '" . (int) $totals['grand_total'] . "',
-            grand_total_base = '" . (int) $totals['grand_total'] . "',
+            grand_total_base = '" . erp_to_base((int) $totals['grand_total'], $money['rate']) . "',
             status = 'issued',
             is_internet_sale = '" . (int) $sale['is_internet_sale'] . "',
             payment_method = '" . escape($sale['payment_method']) . "',
@@ -1108,8 +1164,10 @@ function erp_invoice_from_order_locked($order_id, $options = array())
         'kind' => 'invoice',
         'direction' => 'debit',
         'amount' => (int) $totals['grand_total'],
-        'currency' => erp_base_currency(),
-        'exchange_rate_source' => 'base',
+        'currency' => $money['currency'],
+        'exchange_rate' => $money['rate'],
+        'exchange_rate_date' => $rate_date,
+        'exchange_rate_source' => $money['source'],
         'doc_type' => 'invoice',
         'doc_id' => $invoice_id,
         'description' => $numbered['full'],
@@ -1132,6 +1190,10 @@ function erp_invoice_from_order_locked($order_id, $options = array())
         'invoice_id' => $invoice_id,
         'account_id' => $account_id,
         'amount' => $gift_card,
+        'currency' => $money['currency'],
+        'exchange_rate' => $money['rate'],
+        'exchange_rate_date' => $rate_date,
+        'exchange_rate_source' => $money['source'],
         'doc_date' => $issue_date,
         'description' => $numbered['full'] . ' - ' . lang('Gift Card'),
         'created_by' => (int) ($options['created_by'] ?? 0),

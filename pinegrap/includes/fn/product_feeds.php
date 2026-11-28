@@ -422,10 +422,12 @@ function pg_product_feed_row_skip($product)
 //
 // $extra: 'category_path', 'group_id' (variant chooser group, 0 for none),
 // 'gallery' (file names after the main image), 'choices' (attribute label =>
-// option label) and 'sale_price' (offer price in minor units or null).
+// option label), 'sale_price' (offer price in minor units or null) and
+// 'fixed_price' (the product's fixed price in the feed's market, or null).
 // $site: 'base_url' (scheme, host and site path, ending in "/"),
-// 'detail_page' (name of the page products open on), 'currency' and
-// 'default_brand' (used when the product has none).
+// 'detail_page' (name of the page products open on), 'currency',
+// 'default_brand' (used when the product has none) and 'market'
+// (pg_product_feed_market_for(), null for the base currency).
 function pg_product_feed_item($product, $extra, $site)
 {
     $base_url = (string) $site['base_url'];
@@ -478,6 +480,10 @@ function pg_product_feed_item($product, $extra, $site)
         }
     }
 
+    $priced = pg_product_feed_market_prices($price, $sale_price, isset($extra['fixed_price']) ? $extra['fixed_price'] : null, isset($site['market']) ? $site['market'] : null);
+    $price = $priced['price'];
+    $sale_price = $priced['sale_price'];
+
     $brand = pg_product_feed_text(isset($product['brand']) ? $product['brand'] : '');
 
     if ($brand === '') {
@@ -520,6 +526,93 @@ function pg_product_feed_item($product, $extra, $site)
         'group_id'                => ($group_id > 0) ? 'G' . $group_id : '',
         'choices'                 => ($group_id > 0) ? $choices : array(),
     );
+}
+
+// The market a feed is priced in, from the setup's market_id: null for the
+// base currency (0), false when that market is not an enabled one or its
+// currency has no usable rate (the build fails rather than publish base
+// prices under the market's currency), else array('id', 'currency', 'rate',
+// 'rounding'). Pure.
+//
+// $markets: pg_market_site_markets() rows (id => id, currency_code,
+// rounding); $rates: currency code => currencies.exchange_rate (units for
+// one base unit).
+function pg_product_feed_market_for($market_id, $markets, $rates, $base)
+{
+    $market_id = (int) $market_id;
+
+    if ($market_id < 1) {
+        return null;
+    }
+
+    if (!isset($markets[$market_id]) || !is_array($markets[$market_id])) {
+        return false;
+    }
+
+    $base = strtoupper(trim((string) $base));
+    $code = strtoupper(trim((string) $markets[$market_id]['currency_code']));
+    $rate = ($code === $base) ? 1.0 : ((isset($rates[$code]) && is_numeric($rates[$code])) ? (float) $rates[$code] : 0.0);
+
+    if (($code === '') || ($rate <= 0)) {
+        return false;
+    }
+
+    return array(
+        'id'       => $market_id,
+        'currency' => $code,
+        'rate'     => $rate,
+        'rounding' => function_exists('pg_market_rounding_code') ? pg_market_rounding_code($markets[$market_id]['rounding']) : 'none',
+    );
+}
+
+// A product's price and sale price (base minor units, sale null for none) as
+// the feed's market charges them. No market: as they are. In a market the
+// price is the product's fixed price there, else the base price at the rate
+// rounded by the market's rule (pg_market_price_minor(), as the cart and the
+// site print it). An offer's saving is converted at the rate, as the cart
+// converts an offer's amount, and taken off that price; it is a sale price
+// only while it stays above 0 and below the price. Pure.
+function pg_product_feed_market_prices($price, $sale_price, $fixed, $market)
+{
+    $price = (int) $price;
+
+    if (!is_array($market)) {
+        return array('price' => $price, 'sale_price' => ($sale_price === null) ? null : (int) $sale_price);
+    }
+
+    $market_price = ($fixed !== null) ? (int) $fixed : pg_market_price_minor($price, $market['rate'], $market['rounding']);
+    $market_sale = null;
+
+    if ($sale_price !== null) {
+        $offer = $market_price - (int) round(($price - (int) $sale_price) * (float) $market['rate']);
+
+        if (($offer > 0) && ($offer < $market_price)) {
+            $market_sale = $offer;
+        }
+    }
+
+    return array('price' => $market_price, 'sale_price' => $market_sale);
+}
+
+// The market of the setup's market_id with the site's markets and rates
+// read: pg_product_feed_market_for().
+function pg_product_feed_market($market_id)
+{
+    if (((int) $market_id < 1) || !function_exists('pg_market_site_markets') || !function_exists('pg_market_price_minor')) {
+        return ((int) $market_id < 1) ? null : false;
+    }
+
+    $rates = array();
+
+    foreach ((array) db_items("SELECT code, exchange_rate FROM currencies") as $row) {
+        $code = strtoupper(trim((string) $row['code']));
+
+        if (($code !== '') && !isset($rates[$code])) {
+            $rates[$code] = $row['exchange_rate'];
+        }
+    }
+
+    return pg_product_feed_market_for($market_id, pg_market_site_markets(), $rates, defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : '');
 }
 
 // ---------------------------------------------------------------------------
@@ -1144,6 +1237,21 @@ function pg_product_feed_products($options = array(), $each = null)
         return $result;
     }
 
+    $market = pg_product_feed_market(isset($options['market_id']) ? $options['market_id'] : 0);
+
+    if ($market === false) {
+        $result['error'] = 'no_market';
+        return $result;
+    }
+
+    $site['market'] = $market;
+
+    if ($market !== null) {
+        $site['currency'] = $market['currency'];
+    }
+
+    $fixed_ready = ($market !== null) && function_exists('pg_market_prices_ready') && pg_market_prices_ready();
+
     $roots = pg_product_feed_catalog_roots();
 
     if (!$roots) {
@@ -1223,6 +1331,16 @@ function pg_product_feed_products($options = array(), $each = null)
             $choices[(int) $row['product_id']][$label] = (string) $row['option_label'];
         }
 
+        // The fixed prices of the feed's market (market_prices).
+        $fixed = array();
+
+        if ($fixed_ready) {
+            foreach ((array) db_items("SELECT product_id, price FROM market_prices
+                WHERE (market_id = " . (int) $market['id'] . ") AND (product_id IN (" . $ids . "))") as $row) {
+                $fixed[(int) $row['product_id']] = (int) $row['price'];
+            }
+        }
+
         $items = array();
 
         foreach ($products as $product) {
@@ -1248,6 +1366,7 @@ function pg_product_feed_products($options = array(), $each = null)
                 'gallery'       => isset($gallery[$id]) ? $gallery[$id] : array(),
                 'choices'       => isset($choices[$id]) ? $choices[$id] : array(),
                 'sale_price'    => isset($sale_prices[$id]) ? $sale_prices[$id] : null,
+                'fixed_price'   => isset($fixed[$id]) ? $fixed[$id] : null,
             ), $site);
         }
 
@@ -1259,7 +1378,7 @@ function pg_product_feed_products($options = array(), $each = null)
             }
         }
 
-        unset($items, $groups, $gallery, $choices);
+        unset($items, $groups, $gallery, $choices, $fixed);
     } while (count($products) === PG_PRODUCT_FEED_CHUNK);
 
     return $result;
@@ -1302,6 +1421,7 @@ function pg_product_feed_settings_parse($json)
         'terms_url'          => '',
         'default_brand'      => '',
         'excluded_group_ids' => array(),
+        'market_id'          => 0,
         'formats'            => array(),
     );
 
@@ -1331,6 +1451,11 @@ function pg_product_feed_settings_parse($json)
         }
 
         $settings['excluded_group_ids'] = array_keys($ids);
+    }
+
+    // The market every feed is priced in, 0 for the base currency.
+    if (isset($stored['market_id']) && is_scalar($stored['market_id'])) {
+        $settings['market_id'] = max(0, (int) $stored['market_id']);
     }
 
     // Google Merchant Center's account, data source and last issue reading
@@ -1394,6 +1519,7 @@ function pg_product_feed_settings_options($settings)
         'terms_url'          => $settings['terms_url'],
         'default_brand'      => $settings['default_brand'],
         'excluded_group_ids' => $settings['excluded_group_ids'],
+        'market_id'          => $settings['market_id'],
     );
 }
 
@@ -2123,6 +2249,31 @@ function pg_product_feed_posted_groups($posted, $offered_ids)
     return array_keys($ids);
 }
 
+// The markets the card offers to price the feeds in: the enabled ones,
+// id => "Name (CODE)", in the Markets screen's order. Empty on a site
+// without markets, where the field is not drawn.
+function pg_product_feed_market_choices()
+{
+    $choices = array();
+
+    foreach (function_exists('pg_market_site_markets') ? pg_market_site_markets() : array() as $id => $market) {
+        $choices[(int) $id] = (string) $market['name'] . ' (' . (string) $market['currency_code'] . ')';
+    }
+
+    return $choices;
+}
+
+// The market a save posted, 0 (the base currency) unless it names one the
+// card offered. Pure.
+function pg_product_feed_posted_market($posted, $choices)
+{
+    if (!is_scalar($posted) || !ctype_digit((string) $posted)) {
+        return 0;
+    }
+
+    return isset($choices[(int) $posted]) ? (int) $posted : 0;
+}
+
 // What each format is called on the screen, and what it is for.
 function pg_product_feed_format_texts()
 {
@@ -2157,6 +2308,7 @@ function pg_product_feed_error_text($code)
         'no_seller_name'         => lang('The OpenAI feed needs the seller name on every product; enter it below.'),
         'write_failed'           => lang('The file could not be written to the data/feeds folder; check that the folder can be written to.'),
         'not_ready'              => lang('The database upgrade that adds product feeds has not run yet.'),
+        'no_market'              => lang('The market the feeds are priced in is switched off or its currency has no exchange rate.'),
     );
 
     return isset($texts[$code]) ? $texts[$code] : lang('The feed could not be built.');
@@ -2261,6 +2413,10 @@ function pg_product_feed_save_from_screen($input)
     $settings = array_merge($settings, pg_product_feed_seller_from_input($input));
 
     $settings['excluded_group_ids'] = array_values(array_map('intval', (array) $input['excluded_group_ids']));
+
+    if (isset($input['market_id'])) {
+        $settings['market_id'] = max(0, (int) $input['market_id']);
+    }
 
     foreach ($settings['formats'] as $format => $entry) {
         $on = !empty($input['enabled'][$format]);

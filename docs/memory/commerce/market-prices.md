@@ -13,7 +13,7 @@ module: market_prices
 - The cart: `pg_market_cart_price($base_minor, $product_id)` (`includes/fn/market_cart.php`) charges `pg_market_fixed_price()` of the order's market when the product has a row, else the base price converted and rounded by the market's rule. The rule never rounds a fixed price.
 - Called from `add_order_item()` and `update_order_item_prices()`; a member's agreed price still wins over both.
 - Not yet in the printed catalog prices: `pg_visitor_price()` and `prepare_price_for_output()` take a base amount without a product, so a catalog, search or product page still shows the converted price while the cart charges the fixed one. No plan step covers it yet.
-- A marketplace and the product feed are sent the base price; nothing is queued on a fixed price write.
+- A marketplace is sent the base price; nothing is queued on a fixed price write. A product feed priced in a market gives the fixed price (`market-product-feed.md`).
 
 ## Where is it set?
 - Edit Product, card "Prices by market" (`pg_market_prices_card()`), drawn in the edit mode on a site with a market: one field per market (name, currency code, Off pill), the currency's symbol beside it, placeholder "Converted".

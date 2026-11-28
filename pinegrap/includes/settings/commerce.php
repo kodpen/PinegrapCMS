@@ -717,6 +717,26 @@ $commerce_parts['referral'] = array('html' => '
 // finds them missing; commerce.save.php writes nothing until the column is there.
 $product_feeds_groups = pg_product_feed_screen_groups();
 $product_feeds_rows = '';
+
+// Prices in: drawn only on a site with an enabled market. A stored market
+// that is no longer offered shows as the base currency.
+$product_feeds_market = '';
+$product_feeds_markets = pg_product_feed_market_choices();
+
+if ($product_feeds_markets) {
+    $product_feeds_market_options = '<option value="0">' . h(lang(array('string' => 'Base currency ({var:1})', 'vars' => array(BASE_CURRENCY_CODE)))) . '</option>';
+
+    foreach ($product_feeds_markets as $product_feeds_market_id => $product_feeds_market_label) {
+        $product_feeds_market_options .= '<option value="' . (int) $product_feeds_market_id . '"' . (((int) $product_feeds_settings['market_id'] === (int) $product_feeds_market_id) ? ' selected' : '') . '>' . h($product_feeds_market_label) . '</option>';
+    }
+
+    $product_feeds_market = '
+                    <div class="pg-f-md">
+                        <label for="product_feed_market_id" class="form-label">' . lang('Prices in') . '</label>
+                        <select name="product_feed_market_id" id="product_feed_market_id" class="form-control" aria-describedby="product_feed_market_id_help">' . $product_feeds_market_options . '</select>
+                        <div class="form-text" id="product_feed_market_id_help">' . lang('In a market, every feed gives its currency and the price the cart there charges: the fixed price, else the converted and rounded one.') . '</div>
+                    </div>';
+}
 $product_feeds_in_dialog = !empty($pg_settings_in_dialog);
 
 // The Google Merchant Center part of the card ($product_feeds_merchant).
@@ -830,7 +850,7 @@ $commerce_parts['feeds'] = array('html' => '
                         <label for="product_feed_default_brand" class="form-label">' . lang('Brand for products without one') . '</label>
                         <input type="text" name="product_feed_default_brand" id="product_feed_default_brand" class="form-control" maxlength="255" value="' . h($product_feeds_settings['default_brand']) . '" aria-describedby="product_feed_default_brand_help"/>
                         <div class="form-text" id="product_feed_default_brand_help">' . lang('Usually your own brand. The OpenAI feed leaves out a product with no brand.') . '</div>
-                    </div>' . ($product_feeds_groups
+                    </div>' . $product_feeds_market . ($product_feeds_groups
                         ? pg_commerce_settings_group_ticks('product_feed_excluded_groups', lang('Leave out these product groups'), $product_feeds_groups, $product_feeds_settings['excluded_group_ids'], lang('A product in a ticked group, or in a group under it, is in no feed.'), lang('Filter groups'))
                         : '
                     <div class="col-12">

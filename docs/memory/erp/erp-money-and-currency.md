@@ -18,7 +18,7 @@ description: ERP money storage (integer minor units), the single rounding point 
 - Opt-in: `config.erp_fx_enabled` / `ERP_FX_ENABLED`. Off: forms do not ask for a currency, the home currency is used silently, no FX difference is written. Every FX branch checks `erp_fx_enabled()`.
 - On: allowed codes = `ERP_FX_CURRENCIES` ∩ `currencies` − home (`erp_fx_currencies()`).
 - Rate history: `currency_rates (rate_date, base_code, currency_code) UNIQUE`, written by `update_exchange_rates.php` (fetch in `includes/fn/currency_rates.php`: Frankfurter then HexaRate, TLS verification on). `pg_currency_rate($code, $date)` returns that day or the last earlier day.
-- An invoice from an order is always home currency; a foreign-currency invoice is entered by hand (`add_erp_manual_invoice.php`, see erp-manual-invoice-draft-issue).
+- An order's invoice: its charged currency at its rate (erp-order-invoice-currency); any other foreign invoice is entered by hand (erp-manual-invoice-draft-issue).
 
 ## How is the exchange difference posted?
 - Only by `erp_fx_post_difference()`, inside the transaction that makes a foreign invoice `paid`: a receipt (`erp_post_receipt()`, `cash.php`), a later allocation (`erp_settlement_allocate()`, `settlement.php`) or a return (`erp_invoice_return()`). Only while `erp_fx_auto_diff()` (FX on and `config.erp_fx_auto_diff`, default 1).

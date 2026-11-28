@@ -5,17 +5,17 @@ description: Product feed builder (includes/fn/product_feeds.php, PR #561): whic
 
 ## What exists?
 - `includes/fn/product_feeds.php` builds feeds in `openai_jsonl`, `openai_csv`, `google_tsv` or `google_xml` (RSS 2.0 from the TSV's rows, #10133: product-feed-google-xml.md): `pg_product_feed_render()` in memory, the daily build streamed (product-feed-streaming.md). Setup, build, feed.php: product-feed-serving.md. The catalog's `?rss=true` feed is untouched.
-- Tests: `tests/product_feeds_test.php`.
+- Tests: tests/product_feeds_test.php.
 
 ## Which products go in?
-- Enabled products in a group the shop's catalogs show: `pg_product_feed_catalog_roots()` takes the group of each legacy catalog page and each Catalog widget (0 = the top-level group) whose page is in a public folder, and `pg_product_feed_group_index()` walks enabled groups under them. Templates keep dues, exam, event and membership groups beside the shop under the top group; without this scope they would be listed.
+- Enabled products in a group the shop's catalogs show: `pg_product_feed_catalog_roots()` takes the group of each legacy catalog page and each Catalog widget (0 = the top-level group) whose page is in a public folder, and `pg_product_feed_group_index()` walks enabled groups under them. Templates keep dues, exam, event and membership groups under the top group; without this scope they would be listed.
 - Left out, with a reason count in `skipped`: `no_address` (no address_name), `donation`, `recurring`, `no_price` (price ≤ 0), `not_in_catalog`, `excluded_group` (any of its groups under `excluded_group_ids`).
-- Whole-feed errors: `ecommerce_off`, `no_catalog`, `no_detail_page`, `detail_page_not_public`, `no_seller_name` (OpenAI formats), `unknown_format`.
+- Whole-feed errors: `ecommerce_off`, `no_catalog`, `no_detail_page`, `detail_page_not_public`, `no_seller_name` (OpenAI), `no_market`, `unknown_format`.
 
 ## How is a product described?
-- URL: site base + `pg_sw_catalog_detail_page_name(0)` + `/` + address_name, as the cart and express order link products. Images: `image_name` then `products_images_xref` by file name (as the product page), absolute, max 1 + 10.
+- URL: site base + `pg_sw_catalog_detail_page_name(0)` + `/` + address_name, as the cart links products. Images: `image_name` then `products_images_xref` by file name (as the product page), absolute, max 1 + 10.
 - Title: `_pg_product_rss_title()` (as RSS/JSON-LD), 150 chars. Description: plain text of `full_description` (block starts and ends become spaces, #4729; also dl, dt, dd, figure, figcaption, pre, header, footer: a spec list gave "Ölçü40 cm", #8617), else meta, else short description, else title; 5000 chars. Text fields are entity-decoded, not tag-stripped ("<10 cm" stays).
-- Price: `products.price` as "1499.00 TRY" built from integers; `sale_price` only when the offer price for everybody (`get_discounted_product_prices(false)`, below) is above 0 and below the price.
+- Price: `products.price` as "1499.00 TRY" from integers (in a market: market-product-feed.md); `sale_price` only when the offer price for everybody (`get_discounted_product_prices(false)`, below) is above 0 and below the price.
 - GTIN only with a valid GS1 check digit (spaces/dashes dropped). Brand: product brand, else `default_brand` option.
 - Variant family: the product's first select-type group gives `group_id` "G<id>" (never equals an item id) and the attribute choices (label without a trailing colon, "nothing selected" options skipped).
 
