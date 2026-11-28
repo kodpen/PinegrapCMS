@@ -117,6 +117,17 @@ function pg_explorer_handle_office_preview($type, $request, $user)
         $answer['can_copy'] = !$office_erp && pg_explorer_office_copy_allowed($office_file);
     }
 
+    // A presentation opens in the Artifact Canvas (its design_file action)
+    // for whoever may add a file to its folder, where the canvases are made;
+    // the canvas reads the file's bytes from its address.
+    if (($office['kind'] === 'pptx') && !$office_erp && pg_explorer_office_copy_allowed($office_file)) {
+        $answer['canvas'] = array(
+            'folder_id' => (int) $office_file['folder'],
+            'name'      => (string) $office_file['name'],
+            'url'       => PATH . $office_file['name'],
+        );
+    }
+
     respond($answer);
 }
 

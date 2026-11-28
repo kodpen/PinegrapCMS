@@ -6,8 +6,8 @@ module: image_editor_design
 
 ## What is it, and why the .pptx?
 - Owner (2026-11-26, poll 230, `workflow/decisions-made-product-113.md`): a design downloaded from Canva (Share, Download, PPTX) opens in the canvas, each page a canvas or a scene. Built in PRs #11840, #11872, #11889, #11913.
-- Architect (2026-11-26): the .pptx, not the .pdf: it keeps every text as a box with paragraphs and style and every picture apart with its crop; the PDF gives drawn lines of glyphs. Read on the owner's ten-page file (never committed).
-- Owner (2026-11-26): a Canva design of the Website kind is published, not downloaded, so the doors' hint says it gives no file.
+- Architect (2026-11-26): the .pptx, not the .pdf: it keeps each text a box with paragraphs and style, each picture apart with its crop; a PDF gives drawn glyphs. Read on the owner's ten-page file (never committed).
+- Owner (2026-11-26): a Canva design of the Website kind is published, not downloaded: the doors' hint says it gives no file.
 - Open: the Page Design Studio's Canva start reading the same file for a page's texts and pictures, asked of the owner.
 
 ## Which rules bind it?
@@ -29,7 +29,7 @@ module: image_editor_design
 - No ZIP: "This is not a .pptx file. In Canva: Share, Download, then PPTX."; the reader's sentences: too large (part 64 MB, package 256 MB), a part not readable; one request too large without parts: 413.
 
 ## What do the doors do?
-- The New image dialog's "Open a design file" and the window "Open a design file": `image-editor-design-chooser.md`.
+- The New image dialog's "Open a design file" and the window "Open a design file": `image-editor-design-chooser.md`. A .pptx of Files: Edit in Artifact Canvas (`platform/office-pptx-present.md`).
 - Import's "A design file (.pptx)": one page joins as one group (`designPlace()`): board colour a rectangle under it, new ids, scaled into the board and centred (`M.groupScale()`, `M.textResize()`), one undo step, a toast "Page {n} added: {texts} texts, {pictures} pictures.".
 
 ## How is it tested?

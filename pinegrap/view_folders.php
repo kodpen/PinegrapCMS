@@ -14991,6 +14991,30 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         }).catch(function () { toast(L.image_editor_missing, false); });
     }
 
+    // A presentation opened in the Artifact Canvas: a new canvas in its
+    // folder that reads the file through the design_file action, its pages
+    // chosen in the canvas's window and made canvases or scenes beside it.
+    function openDesignCanvas(source) {
+
+        window.pgImageEditor.open({
+            blank: { width: BLANK_IMAGE_SIZE, height: BLANK_IMAGE_SIZE, background: '#ffffff' },
+            save: { mode: 'new', folderId: source.folder_id, name: source.name },
+            designFile: { url: source.url, name: source.name },
+            send: canvasSend(),
+            onCreated: function () {
+                if (source.folder_id !== state.folderId) { exitAllFiles(source.folder_id); } else { reload(); }
+            },
+            onSave: function (result) {
+
+                var response = result.file || {};
+
+                toast(fmt(L.saved_named, [response.name || source.name]), true);
+
+                if (source.folder_id !== state.folderId) { exitAllFiles(source.folder_id); } else { reload(); }
+            }
+        }).catch(function () { toast(L.image_editor_missing, false); });
+    }
+
     // The canvas a video opens on until the video says its own size.
     var VIDEO_CANVAS_SIZE = [1280, 720];
 
@@ -15119,7 +15143,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                             api({ type: 'explorer_office_preview', id: fileId, slide: n }, function (answer) {
                                 done((answer && answer.status === 'success') ? answer : null);
                             }, function () { done(null); });
-                        }
+                        },
+                        // Edit in Artifact Canvas, for whoever may add a
+                        // file to the presentation's folder.
+                        editCanvas: (response.canvas && window.pgImageEditor) ? function () {
+                            openDesignCanvas(response.canvas);
+                        } : null
                     };
                 }
 
@@ -16467,7 +16496,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // tooltip of the focused Close button, whose own capture handler on the
     // document would spend the first Escape hiding itself.
     window.addEventListener('keydown', function (event) {
-        if ((event.key !== 'Escape') || !quickLookIsOpen() || document.querySelector('.dialog[open], .drawer[open]')) { return; }
+        // A presentation shown full screen from the preview takes its own Escape.
+        if ((event.key !== 'Escape') || !quickLookIsOpen() || document.querySelector('.dialog[open], .drawer[open], .office-slides-present')) { return; }
 
         event.preventDefault();
         event.stopPropagation();

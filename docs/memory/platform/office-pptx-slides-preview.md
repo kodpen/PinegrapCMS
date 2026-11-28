@@ -27,7 +27,7 @@ module: office_pptx_slides
 - Not counted (measure's leftovers, a later step's): master and layout text styles, a shape style's text colour, a theme font replaced without being named.
 
 ## What stays?
-- The preview's limits and refusals (`office-pptx-preview.md`, `office-files.md`); past the slide limit "Only the beginning is shown." under the slides too. View only; Present and Edit in Artifact Canvas are DF3.
+- The preview's limits and refusals (`office-pptx-preview.md`, `office-files.md`); past the slide limit "Only the beginning is shown." under the slides too. View only; Present and Edit in Artifact Canvas: `office-pptx-present.md`.
 
 ## How is it tested?
 - `tests/office_pptx_slides_test.php`: the line, a written presentation read with `design`, one slide's pictures, refusals, and the view's helpers (`pgOfficeView.slides`: doc, fit, key, name) under Node. The drawing itself was not run in a browser here.

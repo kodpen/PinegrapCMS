@@ -3800,6 +3800,9 @@ function pg_office_view_strings()
         'slide_previous'    => lang('Previous slide'),
         'slide_next'        => lang('Next slide'),
         'slide_failed'      => lang('This slide could not be drawn.'),
+        'slides_present'    => lang('Present'),
+        'slides_present_close' => lang('Close the presentation'),
+        'slides_edit_canvas' => lang('Edit in Artifact Canvas'),
         'picture'           => lang('picture'),
     );
 }

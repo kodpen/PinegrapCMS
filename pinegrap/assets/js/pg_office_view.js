@@ -9671,6 +9671,56 @@
         return -1;
     }
 
+    // The size a slide fills the screen at in Present: its ratio kept,
+    // larger than its own size when the screen is.
+    function presentFit(width, height, roomW, roomH) {
+        var scale = Math.min(roomW / width, roomH / height);
+
+        scale = (isFinite(scale) && scale > 0) ? scale : 1;
+
+        return { w: Math.max(1, Math.floor(width * scale)), h: Math.max(1, Math.floor(height * scale)) };
+    }
+
+    // The slides Present steps through: hidden ones are skipped, as a slide
+    // show skips them, unless every slide is hidden.
+    function presentOrder(hidden) {
+        var list = [];
+
+        hidden.forEach(function (isHidden, index) {
+            if (!isHidden) {
+                list.push(index);
+            }
+        });
+
+        return list.length ? list : hidden.map(function (isHidden, index) { return index; });
+    }
+
+    // Where a key moves Present from position at among count shown slides:
+    // a new position, 'close' for Escape, or -1 when the key is not Present's.
+    function presentKey(key, at, count) {
+        if (key === 'Escape') {
+            return 'close';
+        }
+
+        if (key === 'ArrowRight' || key === 'ArrowDown' || key === 'PageDown' || key === ' ' || key === 'Spacebar' || key === 'Enter') {
+            return Math.min(count - 1, at + 1);
+        }
+
+        if (key === 'ArrowLeft' || key === 'ArrowUp' || key === 'PageUp' || key === 'Backspace') {
+            return Math.max(0, at - 1);
+        }
+
+        if (key === 'Home') {
+            return 0;
+        }
+
+        if (key === 'End') {
+            return count - 1;
+        }
+
+        return -1;
+    }
+
     // "Slide 3 of 24" with the slide's title after it, for a screen reader.
     function slideName(strings, n, count, title) {
         var name = String(strings.slide_of || '').replace('{1}', n).replace('{2}', count);
@@ -9766,7 +9816,39 @@
             });
         });
 
-        wrap.appendChild(tabs);
+        // The head: the tabs, then Present and, when the window offers it
+        // (options.editCanvas, for whoever may make canvases beside the
+        // file), Edit in Artifact Canvas.
+        var head = el('div', 'office-slides-head');
+        var actions = el('div', 'office-slides-actions');
+
+        function headButton(className, icon, label, run) {
+            var button = el('button', className);
+            var glyph = el('span', 'bi ' + icon);
+
+            button.type = 'button';
+            glyph.setAttribute('aria-hidden', 'true');
+            button.appendChild(glyph);
+            button.appendChild(document.createTextNode(' ' + label));
+            button.addEventListener('click', run);
+            actions.appendChild(button);
+
+            return button;
+        }
+
+        var presentButton = headButton('pg-button pg-button-sm', 'bi-play-fill', strings.slides_present || '', function () {
+            present();
+        });
+
+        if (options && typeof options.editCanvas === 'function') {
+            headButton('pg-button pg-button-quiet pg-button-sm', 'bi-easel', strings.slides_edit_canvas || '', function () {
+                options.editCanvas();
+            });
+        }
+
+        head.appendChild(tabs);
+        head.appendChild(actions);
+        wrap.appendChild(head);
 
         // What the drawing leaves out, in one quiet line.
         if (design.left) {
@@ -10151,6 +10233,176 @@
             watch.observe(main);
         }
 
+        // Present: the slides one at a time full screen on black, from the
+        // chosen one; arrow keys, Space, Page Up/Down, Home and End move,
+        // a click goes on, Escape closes. Leaving the browser's full screen
+        // closes it too; without the Fullscreen API it fills the window.
+        // Its keys are caught before the window's own (Quick Look's Escape).
+        var showing = null;
+
+        function present() {
+            if (showing) {
+                return;
+            }
+
+            var order = presentOrder(pages.map(function (page) { return !!page.hidden; }));
+            var at = 0;
+            var layer = el('div', 'office-slides-present');
+            var frame = el('div', 'office-slides-present-frame');
+            var spoken = el('div', 'visually-hidden');
+            var closeButton = el('button', 'pg-icon-button office-slides-present-close');
+            var closeGlyph = el('span', 'bi bi-x-lg');
+            var wentFull = false;
+            var drawn = '';
+
+            order.forEach(function (index, position) {
+                if (index <= current) {
+                    at = position;
+                }
+            });
+
+            layer.setAttribute('role', 'dialog');
+            layer.setAttribute('aria-modal', 'true');
+            layer.setAttribute('aria-label', strings.slides_present || '');
+            layer.tabIndex = -1;
+            spoken.setAttribute('aria-live', 'polite');
+            closeButton.type = 'button';
+            closeGlyph.setAttribute('aria-hidden', 'true');
+            closeButton.appendChild(closeGlyph);
+            closeButton.setAttribute('aria-label', strings.slides_present_close || '');
+            closeButton.title = strings.slides_present_close || '';
+            layer.appendChild(frame);
+            layer.appendChild(closeButton);
+            layer.appendChild(spoken);
+
+            function show(position) {
+                at = Math.max(0, Math.min(order.length - 1, position));
+
+                var index = order[at];
+                var page = pages[index];
+                var size = sizeOf(page);
+                var fit = presentFit(size.w, size.h, layer.clientWidth || window.innerWidth, layer.clientHeight || window.innerHeight);
+                var key = index + ':' + fit.w + 'x' + fit.h;
+                var box;
+
+                if (key === drawn) {
+                    return;
+                }
+
+                drawn = key;
+                box = el('div', 'office-slides-picture');
+                skeleton(box, fit.w, fit.h);
+                frame.innerHTML = '';
+                frame.appendChild(box);
+                spoken.textContent = slideName(strings, page.n, count, (byNumber[page.n] || {}).title || '');
+                paint(index, box, fit.w, fit.h);
+            }
+
+            function onKey(event) {
+                var to;
+
+                if (!layer.isConnected) {
+                    close();
+                    return;
+                }
+
+                if (event.altKey || event.ctrlKey || event.metaKey) {
+                    return;
+                }
+
+                // A focused button keeps its own Enter and Space.
+                if ((event.key === 'Enter' || event.key === ' ') && event.target === closeButton) {
+                    return;
+                }
+
+                to = presentKey(event.key, at, order.length);
+
+                if (to === -1) {
+                    if (event.key === 'Tab') {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        closeButton.focus();
+                    }
+
+                    return;
+                }
+
+                event.preventDefault();
+                event.stopPropagation();
+
+                if (to === 'close') {
+                    close();
+                    return;
+                }
+
+                show(to);
+            }
+
+            function onFull() {
+                var full = document.fullscreenElement || document.webkitFullscreenElement || null;
+
+                if (full === layer) {
+                    wentFull = true;
+                } else if (wentFull) {
+                    close();
+                }
+            }
+
+            function onResize() {
+                show(at);
+            }
+
+            function close() {
+                if (showing !== layer) {
+                    return;
+                }
+
+                showing = null;
+                document.removeEventListener('keydown', onKey, true);
+                document.removeEventListener('fullscreenchange', onFull);
+                document.removeEventListener('webkitfullscreenchange', onFull);
+                window.removeEventListener('resize', onResize);
+
+                if ((document.fullscreenElement || document.webkitFullscreenElement) === layer) {
+                    (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+                }
+
+                if (layer.parentNode) {
+                    layer.parentNode.removeChild(layer);
+                }
+
+                // The preview stays on the slide Present ended on.
+                if (container.isConnected) {
+                    choose(order[at], false);
+                    presentButton.focus();
+                }
+            }
+
+            closeButton.addEventListener('click', close);
+            frame.addEventListener('click', function () {
+                show(at + 1);
+            });
+
+            // Inside the preview, so a window that keeps the focus in itself
+            // (Quick Look) keeps it on the layer.
+            showing = layer;
+            container.appendChild(layer);
+            document.addEventListener('keydown', onKey, true);
+            document.addEventListener('fullscreenchange', onFull);
+            document.addEventListener('webkitfullscreenchange', onFull);
+            window.addEventListener('resize', onResize);
+            layer.focus();
+
+            var ask = layer.requestFullscreen || layer.webkitRequestFullscreen;
+            var asked = ask ? ask.call(layer) : null;
+
+            if (asked && typeof asked.then === 'function') {
+                asked.then(null, function () { /* the layer fills the window */ });
+            }
+
+            show(at);
+        }
+
         choose(0, false);
 
         return null;
@@ -10240,7 +10492,10 @@
             doc: slideDoc,
             fit: slideFit,
             key: slideKey,
-            name: slideName
+            name: slideName,
+            presentFit: presentFit,
+            presentOrder: presentOrder,
+            presentKey: presentKey
         },
         docPicture: {
             pictureType: pictureType,
