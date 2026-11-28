@@ -19,7 +19,8 @@
  * (PGWsSide.attach(): assets/js/workspace.js): the channel screen opens a
  * channel, a discussion or the overview in place and adds the pin, the
  * dragging and the right-click menus. The list has no inbox of its own:
- * the panel's bell is the one inbox (backend.src.js). Which sections and
+ * its Notifications row opens the panel's bell, the one inbox
+ * (backend.src.js). Which sections and
  * groups are closed is the person's, on this browser, the same on every
  * page.
  *
@@ -504,10 +505,42 @@
         };
     }
 
+    // The Notifications row's red pill: the unread count at the row's right
+    // edge, nothing at zero.
+    function paintNotifyCount(node, count) {
+        var pill = node.querySelector('.ws-side-notify-count');
+
+        if (!count) {
+            if (pill) {
+                pill.parentNode.removeChild(pill);
+            }
+
+            node.removeAttribute('aria-label');
+            return;
+        }
+
+        var shown = (count > 99) ? '99+' : String(count);
+
+        if (!pill) {
+            pill = el('span', 'ws-side-notify-count badge rounded-pill theme-danger');
+            pill.setAttribute('aria-hidden', 'true');
+            node.appendChild(pill);
+        }
+
+        pill.textContent = shown;
+        node.setAttribute('aria-label', t('side_notify') + ', ' + t('side_notify_unread', shown));
+    }
+
     // The menu row's count of what is new for the person, kept with the
-    // list on the screens that keep the list current.
+    // list on the screens that keep the list current; the list's
+    // Notifications row shows the same number.
     function paintRowBadge(count) {
         var row = panel ? document.getElementById(panel.getAttribute('data-pg-menu-row')) : null;
+        var notify = root.querySelector('[data-ws-side-key="notify"]');
+
+        if (notify) {
+            paintNotifyCount(notify, count);
+        }
 
         if (!row) {
             return;
@@ -831,6 +864,31 @@
         (nav.top || []).forEach(function (item) {
             navLink(top, item, navActive(item));
         });
+
+        // Notifications: the bell's icon and the unread count. It opens the
+        // bell on Team, so it is never the list's current entry; where the
+        // page has no bell its address opens the workspace's own drawer.
+        (function () {
+            var node = link('ws-channel-link ws-side-notify', workspaceUrl('view=home&inbox=1'));
+            var host = ((TARGET === '_parent') && window.parent && (typeof window.parent.pgBellOpen === 'function')) ? window.parent : window;
+
+            node.setAttribute('data-ws-side-key', 'notify');
+            node.setAttribute('data-pg-menu-skip', '');
+            node.setAttribute('data-pg-menu-label', t('side_notify'));
+            node.appendChild(icon('bi-bell'));
+            node.appendChild(el('span', 'ws-channel-name', t('side_notify')));
+            paintNotifyCount(node, data.inbox);
+
+            if (typeof host.pgBellOpen === 'function') {
+                inPlace(node, function () {
+                    if (!host.pgBellOpen('workspace')) {
+                        go(node.href);
+                    }
+                });
+            }
+
+            top.appendChild(node);
+        })();
 
         // Channels in a group are listed under it (pinned ones stay pinned).
         var groupKnown = {};

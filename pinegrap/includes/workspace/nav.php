@@ -65,8 +65,8 @@ function ws_nav_groups($viewer, $flags = null)
 
     $base = isset($flags['base']) ? (string) $flags['base'] : OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/';
 
-    // Today alone over the channels. The bell is the one inbox, so the list
-    // has no entry of its own for it; My Tasks leads the tiles.
+    // Today alone over the channels; the list draws the Notifications row
+    // under it, which opens the bell, the one inbox. My Tasks leads the tiles.
     $groups = array(
         'head' => array(),
         'top' => array(
@@ -247,7 +247,7 @@ function ws_side_js_keys()
         'th_mine', 'th_show_all', 'th_show_fewer', 'no_channels',
         'side_expand', 'side_collapse', 'grp_expand', 'grp_collapse', 'grp_access', 'grp_empty', 'grp_new',
         'more', 'loading', 'error_generic', 'join',
-        'side_find', 'side_join', 'side_draft', 'side_unread', 'side_due',
+        'side_find', 'side_join', 'side_draft', 'side_unread', 'side_due', 'side_notify', 'side_notify_unread',
         'side_filter', 'side_all', 'side_unread_tab', 'side_keys', 'side_read_all', 'side_read_ask', 'side_read_yes', 'side_all_read',
     );
 }
@@ -267,6 +267,9 @@ function ws_side_js_strings()
             'side_draft'  => lang('Unsent draft'),
             'side_unread' => lang('Unread messages'),
             'side_due'    => ws_js_template('{var:1} due today or before', 1),
+            // The row under Today that opens the bell on Team, and its count.
+            'side_notify'        => lang('Notifications'),
+            'side_notify_unread' => ws_js_template('{var:1} unread notification(s)', 1),
             // The All / Unread filter, Mark all as read and the keys.
             'side_filter'     => lang('Show'),
             'side_all'        => lang('All'),
@@ -324,6 +327,8 @@ function ws_side_payload($viewer, $screen)
         // workspace_side.js), as the channel screen's config gives it: the
         // site's api.php and the reader.
         'draft'    => array('site' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/api.php', 'me' => (int) $viewer['id']),
+        // The person's unread notification lines (the bell's Team rows): the
+        // count of the list's Notifications row and of the menu row.
         'inbox'    => ws_inbox_unread_count((int) $viewer['id']),
         // The reader's open tasks due today or before, on My Tasks (the
         // number Today's "Today and overdue" card counts).

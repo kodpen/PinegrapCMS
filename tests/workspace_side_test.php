@@ -244,7 +244,13 @@ function test_workspace_side_head_is_one_search_field()
 	pg_assert_contains("view=home&palette=1", $script, 'and links to it elsewhere');
 	pg_assert_false(strpos($script, 'data-ws-tour') !== false, 'no tour button in the list');
 	pg_assert_false(strpos($script, 'hooks.tour') !== false, 'the tour hook is not called');
-	pg_assert_false(strpos($script, 'pgBellOpen') !== false, 'no Inbox entry opening the bell');
+	// The Notifications row under Today opens the bell on Team; the menu
+	// never marks it current.
+	pg_assert_contains("pgBellOpen('workspace')", $script, 'the Notifications row opens the bell on Team');
+	pg_assert_contains("view=home&inbox=1", $script, 'and links to the old Inbox address where the page has no bell');
+	pg_assert_contains("'data-pg-menu-skip'", $script, 'it is never the list\'s current entry');
+	pg_assert_contains('paintNotifyCount(notify, count)', $script, 'the menu row\'s badge paints its count');
+	pg_assert_same(lang('Notifications'), ws_side_js_strings()['side_notify'] ?? '', 'the row\'s name');
 	pg_assert_contains("' ws-notjoined'", $script, 'channels not joined are dimmed');
 }
 
