@@ -6,7 +6,7 @@ module: office_docx_picture
 
 ## Which save entry puts a picture in?
 - In a save's `paragraphs` list (`office-docx-add-delete.md`): `{after: p, picture: {data, name?}}`. `data` is the picture's bytes in base64 (white space allowed), `name` its description (alt text, one line, at most 255 characters).
-- It reads after paragraph p in the order listed beside added paragraphs and tables after the same p. The bar's Picture button that sends it is DA7 (`plans/office-document-abilities.md`).
+- It reads after paragraph p in the order listed beside added paragraphs and tables after the same p. The bar's Picture button that sends it: `office-docx-picture-bar.md`.
 
 ## What is taken, and what is refused?
 - PNG, JPEG or GIF, known by its first bytes and read by `getimagesizefromstring()` as the same kind, 1 to 20000 pixels a side; anything else is `picture_type`.

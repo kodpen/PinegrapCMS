@@ -30,5 +30,5 @@ priority: 6
 - A Word file opened as a Note, a Note saved as a Word file, a canvas saved as a .pptx, one "New" menu, the family's name (`platform/office-direction.md`).
 
 ## What is left out?
-- More in-place editing of Word and Excel files than `plans/office-document-abilities.md` holds.
+- More in-place editing of Word and Excel files than is built (`platform/office-docx-overview.md`, `office-sheet-formulas.md`).
 - Editing a .pptx in place; the binary .ppt.

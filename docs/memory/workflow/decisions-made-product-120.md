@@ -18,5 +18,5 @@ description: Decisions made, product part 120 (2026-11-28 on): documents, tables
   - The windows of a note, a table, a canvas, a Word and an Excel file share one head; their bodies stay apart.
   - The family's name is asked of him once the shared head is drawn.
 - Timing, the launch being aimed at 1 January 2027: before it the .pptx preview and the shared head; after it Word to Note, Note to Word, canvas to .pptx and one "New" menu.
-- The architect's reading, told to him under the poll (message 15455): editing a Word or Excel file in place stays as built, its open plan finishes (`plans/office-document-abilities.md`; simple formulas are done, `platform/office-sheet-formulas.md`) and nothing more is added there. The message still counted the formulas plan as open.
+- The architect's reading, told to the owner under the poll (message 15455): editing a Word or Excel file in place stays as built and nothing more is added there; its last plans have landed (`platform/office-docx-overview.md`, `platform/office-sheet-formulas.md`).
 - Plan: `plans/document-family.md`; the standing rule: `platform/office-direction.md`.
