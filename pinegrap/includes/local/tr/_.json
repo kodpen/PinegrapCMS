@@ -2320,6 +2320,7 @@
     "{var:1} unit{suffix}": "{var:1} birim",
     "{var:1} unread": "{var:1} okunmamış",
     "{var:1} unread e-mail conversation(s)": "{var:1} okunmamış e-posta konuşması",
+    "{var:1} unread notification(s)": "{var:1} okunmamış bildirim",
     "{var:1} unsubscribed with one click.": "{var:1} tek tıkla abonelikten çıktı.",
     "{var:1} untouched for {var:2}+ days": "{var:1} görev {var:2}+ gündür dokunulmamış",
     "{var:1} unused offer rule/action record(s) were deleted": "{var:1} kullanılmayan teklif kuralı/hareketi kaydı silindi",

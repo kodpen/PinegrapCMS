@@ -1,6 +1,6 @@
 ---
 name: notifications-one-inbox
-description: The bell as the one inbox (#3817): filters in bell-filters.md, a flow's runs folded and drawn as gathered lines, pgBellOpen() for the old inbox address, the Workspace count
+description: The bell as the one inbox (#3817): filters in bell-filters.md, a flow's runs folded and drawn as gathered lines, pgBellOpen() for the Workspace list's Notifications row, the Workspace count
 ---
 
 ## Which filters does the bell have, and what does it keep?
@@ -19,10 +19,12 @@ description: The bell as the one inbox (#3817): filters in bell-filters.md, a fl
 - Its icon before the title (`--workspace-color`), "Join" for a meeting about to start (a new tab, http(s) only), the address it opens (`ws_bell_describe()`), read in either place read in both (`ws_bell_sync_read()`, `pg_notification_mark_read()`).
 
 ## What opens it on Workspace?
-- `window.pgBellOpen('workspace')` opens the drawer on Team for this opening (`'ask'` or `'unread'` choose the selector instead) (`pgUI.drawer.show()`, `notifications-menu.md`); the kept choice comes back when it closes. Its caller since #6281 is `workspace.php?view=home&inbox=1`, the list's old Inbox address; a page without the bell opens the workspace's drawer.
+- `window.pgBellOpen('workspace')` opens the drawer on Team for this opening (`'ask'` or `'unread'` choose the selector instead) (`pgUI.drawer.show()`, `notifications-menu.md`); the kept choice comes back when it closes. Its callers: the Workspace list's "Notifications" row (`workspace_side.js`) and `workspace.php?view=home&inbox=1`, that row's address; a page without the bell opens the workspace's drawer.
 
 ## Where is the Workspace's unread count?
-- On the Workspace row of the main menu (`ws_inbox_unread_count()`, `paintRowBadge()`) and on the bell's Team chip: the same rows. The list has had no Inbox entry since #6281 (owner 2026-11-03, `workflow/decisions-made-workspace-6.md`: the bell already shows them).
+- On the Workspace row of the main menu (`ws_inbox_unread_count()`, `paintRowBadge()`), on the Workspace list's "Notifications" row and on the bell's Team chip: the same rows, one number (`ws_side_payload()['inbox']`).
+- The row sits under "Today", the bell's icon, the count as a red pill at its right edge, nothing at zero; a click opens the bell on Team, and the menu never marks it current (`data-pg-menu-skip`). `paintRowBadge()` paints both counts, so on the channel screen they follow `BOOT.inbox` together.
+- Owner (2026-11-28, `workflow/decisions-made-panel-20.md`): the menu row showed 29 and the list nothing to match it, so the count had no place in the panel it opens; the row replaces "no Inbox entry" of 2026-11-03.
 
 ## Why?
 - Owner (2026-10-31, `workflow/decisions-made-workspace-5.md`): since 4.83 every Workspace inbox row was also a bell row, so one item showed in two lists with two counts. `ws_inbox` stays the store for the API, sync and push; the panel is now a 30rem drawer (`notifications-menu.md`).

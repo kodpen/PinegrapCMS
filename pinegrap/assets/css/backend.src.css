@@ -26016,6 +26016,17 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
   background: var(--pg-accent);
   color: var(--pg-on-accent-fill);
 }
+/* The Notifications row's unread count: the menu row's red pill at the
+   row's right edge. */
+.ws-menu-side .ws-side-notify-count {
+  flex: none;
+  margin-left: auto;
+  font-size: var(--pg-text-count);
+  font-weight: var(--pg-weight-title);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  padding: 0.3em 0.55em;
+}
 /* Pointing at a row the screen can pin shows the pin and "⋯" in the place
    of its marks; a pinned channel's pin shows only then too. */
 .ws-menu-side .ws-side-row-tools {
