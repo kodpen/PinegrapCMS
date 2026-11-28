@@ -3787,12 +3787,9 @@ function ws_handle_action($action, $request)
             // sender's browser wrote, cleaned before they are kept
             // (ws_voice_queue()).
             $result = ws_message_send_file_bytes($viewer, $channel, $body, $file['name'], $file['binary'], array(
-                'parent_id'  => $parent_id,
-                // The message of a file sent before it in the same send:
-                // its group is joined when it may be, else the file is
-                // posted alone. A /create command's file is never grouped.
+                'parent_id' => $parent_id,
                 'file_group' => $product_file ? 0 : (int) ($request['group'] ?? 0),
-                'voice'      => array(
+                'voice'     => array(
                     'duration_ms' => $request['voice_duration_ms'] ?? 0,
                     'peaks'       => $request['voice_peaks'] ?? '',
                     'transcript'  => $request['voice_transcript'] ?? '',
@@ -3834,7 +3831,10 @@ function ws_handle_action($action, $request)
                 return ws_action_error($channel);
             }
 
-            // group: as ws_attach's.
+            // group: the message of a file sent before it in the same send,
+            // joined when it may be (ws_file_group_head()), else the file is
+            // posted alone; ws_attach takes it the same way but for a /create
+            // command's file.
             $result = ws_library_send($viewer, $channel, (int) ($request['file_id'] ?? 0), (string) ($request['body'] ?? ''), array(
                 'file_group' => (int) ($request['group'] ?? 0),
             ));
