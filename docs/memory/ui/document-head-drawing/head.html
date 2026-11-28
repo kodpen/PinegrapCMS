@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="tr" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>panel look A: the document head shared by a note, a Data table, the Artifact Canvas, a Word and an Excel file and the view windows</title>
+<link rel="stylesheet" href="../../../../pinegrap/assets/fonts/bootstrap-icons/bootstrap-icons.min.css">
+<link rel="stylesheet" href="../look-sheet/sheet.css">
+<style>
+.board { display: grid; grid-template-columns: 1180px 430px; gap: 36px; align-items: start; }
+.col { display: grid; gap: 22px; }
+.lab { margin: 0 4px 8px; font-size: 12.5px; color: var(--fg2); }
+.lab b { color: var(--fg); font-weight: 600; }
+
+/* a window: only its head is drawn, the body is a placeholder */
+.win { border-radius: 16px; overflow: hidden; border: 1px solid var(--line); box-shadow: var(--shadow-card); background: linear-gradient(180deg, var(--surf1), var(--surf2)); }
+.body { height: 58px; padding: 14px 18px; display: flex; gap: 10px; align-items: center; }
+.body.tools { height: 44px; border-bottom: 1px solid var(--line); padding: 0 14px; gap: 6px; }
+.body .sk { flex: none; }
+
+/* the document head */
+.dh { display: flex; align-items: center; gap: 4px; height: 52px; padding: 0 10px 0 14px; border-bottom: 1px solid var(--line); }
+.dh .tile { margin-right: 8px; }
+.dh .name { font: 600 15px/1.2 "Inter Display", Inter, sans-serif; letter-spacing: -.01em; white-space: nowrap; padding: 5px 7px; margin-left: -7px; border-radius: 8px; }
+.dh .name.edit { background: var(--field); box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+.dh .meta { font-size: 12.5px; color: var(--fg3); white-space: nowrap; margin-left: 2px; }
+.dh .state { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--fg2); white-space: nowrap; margin-left: 12px; }
+.dh .state i { width: 6px; height: 6px; border-radius: 50%; background: var(--teal); }
+.dh .state.un i { background: var(--amber); box-shadow: 0 0 0 3px color-mix(in srgb, var(--amber) 20%, transparent); }
+.dh .state.busy i { background: var(--fg3); }
+.dh .sep { width: 1px; height: 20px; background: var(--line); margin: 0 8px; flex: none; }
+.dh .faces { display: flex; margin-right: 8px; }
+.dh .faces span { width: 24px; height: 24px; border-radius: 50%; margin-left: -6px; display: grid; place-items: center; font-size: 10px; font-weight: 650; color: var(--on-accent); box-shadow: 0 0 0 2px var(--surf1); }
+.dh .btn { margin-left: 4px; }
+.dh .btn.off { opacity: .45; }
+.dh .split { display: inline-flex; margin-left: 4px; }
+.dh .split .btn { margin: 0; border-radius: 8px 0 0 8px; }
+.dh .split .btn + .btn { border-radius: 0 8px 8px 0; padding: 0 7px; margin-left: 1px; }
+.seg { display: inline-flex; padding: 2px; border-radius: 9px; background: var(--quiet); box-shadow: inset 0 0 0 1px var(--line); }
+.seg span { height: 24px; padding: 0 10px; border-radius: 7px; font-size: 12.5px; font-weight: 550; color: var(--fg2); display: inline-flex; align-items: center; gap: 6px; }
+.seg span.on { background: var(--thumb); box-shadow: var(--thumb-shadow); color: var(--fg); }
+.cnt { font-size: 11px; font-weight: 600; color: var(--fg2); background: var(--quiet); border-radius: 8px; padding: 1px 6px; }
+.t-green { --c: #3fbf6f; } .t-orange { --c: #f08a4b; }
+[data-theme="light"] .t-green { --c: #1f8f4c; } [data-theme="light"] .t-orange { --c: #c65a1c; }
+
+/* the ⋯ menu */
+.pop { width: 268px; border-radius: 14px; padding: 6px; background: var(--float); backdrop-filter: blur(18px); box-shadow: var(--shadow-float); }
+.pop .it { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; border-radius: 9px; font-size: 13.5px; }
+.pop .it i { width: 16px; color: var(--fg2); font-size: 15px; }
+.pop .it kbd { margin-left: auto; }
+.pop .it.red, .pop .it.red i { color: var(--rose); }
+.pop hr { border: 0; border-top: 1px solid var(--line); margin: 5px 4px; }
+.pop .gh { font-size: 11.5px; font-weight: 600; color: var(--fg3); padding: 6px 10px 3px; }
+.phone { width: 390px; }
+.rule { font-size: 13px; color: var(--fg2); line-height: 1.55; margin: 0; padding-left: 18px; }
+.rule li { margin-bottom: 5px; }
+.rule b { color: var(--fg); font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="stage">
+<p class="cap"><b>Belge başlığı: tek başlık, altı pencere</b>Solda kimlik (tür, ad, kayıt durumu), ortada geri al ve türün kendi düğmeleri, sağda paylaş, ana düğme, ⋯, kapat. Gövdeler olduğu gibi kalır.</p>
+<div class="board">
+<div class="col">
+
+<div><p class="lab"><b>Not</b> (Notlarım): kendiliğinden kaydeder, ana düğme yok</p>
+<div class="win"><div class="dh">
+  <span class="tile t-amber"><i class="bi bi-journal-text"></i></span>
+  <span class="name">Lansman kontrol listesi</span>
+  <span class="state"><i></i>Kaydedildi · 2 dk önce</span>
+  <span class="sep"></span>
+  <button class="ib"><i class="bi bi-arrow-counterclockwise"></i></button><button class="ib dim"><i class="bi bi-arrow-clockwise"></i></button>
+  <span class="sp"></span>
+  <span class="faces"><span style="background:var(--teal)">TK</span><span style="background:var(--violet)">EG</span></span>
+  <button class="btn ghost sm"><i class="bi bi-person-plus"></i>Paylaş</button>
+  <button class="ib"><i class="bi bi-three-dots"></i></button>
+</div><div class="body tools"><i class="sk" style="width:26px;height:26px;border-radius:7px"></i><i class="sk" style="width:26px;height:26px;border-radius:7px"></i><i class="sk" style="width:26px;height:26px;border-radius:7px"></i><i class="sk" style="width:90px;height:26px;border-radius:7px"></i><i class="sk" style="width:26px;height:26px;border-radius:7px"></i></div></div></div>
+
+<div><p class="lab"><b>Veri tablosu</b> (sayfa): her hücre kendi kaydeder; durum satırı bildirim balonunun yerini alır</p>
+<div class="win"><div class="dh">
+  <button class="ib" style="margin-left:-6px"><i class="bi bi-arrow-left"></i></button>
+  <span class="tile t-teal"><i class="bi bi-table"></i></span>
+  <span class="name">Müşteri adayları</span><span class="meta">124 satır</span>
+  <span class="state"><i></i>Kaydedildi</span>
+  <span class="sep"></span>
+  <span class="seg"><span class="on"><i class="bi bi-table"></i>Tablo</span><span><i class="bi bi-kanban"></i>Pano</span></span>
+  <button class="btn ghost sm"><i class="bi bi-funnel"></i>Filtre</button>
+  <span class="sp"></span>
+  <button class="btn ghost sm"><i class="bi bi-person-plus"></i>Paylaş</button>
+  <button class="btn fill sm"><i class="bi bi-plus-lg"></i>Yeni satır</button>
+  <button class="ib"><i class="bi bi-three-dots"></i></button>
+</div><div class="body"><i class="sk" style="width:180px"></i><i class="sk" style="width:120px"></i><i class="sk" style="width:220px"></i><i class="sk" style="width:90px"></i></div></div></div>
+
+<div><p class="lab"><b>Artifact Canvas</b>: elle kaydeder; ad yerinde değiştirilirken</p>
+<div class="win"><div class="dh">
+  <span class="tile t-rose"><i class="bi bi-easel2"></i></span>
+  <span class="name edit">Kampanya afişi</span><span class="meta">1080 × 1350 px</span>
+  <span class="state un"><i></i>Kaydedilmemiş değişiklik</span>
+  <span class="sep"></span>
+  <button class="ib"><i class="bi bi-arrow-counterclockwise"></i></button><button class="ib"><i class="bi bi-arrow-clockwise"></i></button>
+  <span class="sep"></span>
+  <button class="btn ghost sm"><i class="bi bi-clock-history"></i>Sürümler<span class="cnt">3</span></button>
+  <button class="ib" title="İçe aktar"><i class="bi bi-box-arrow-in-down"></i></button><button class="ib" title="Veri"><i class="bi bi-database"></i></button><button class="ib" title="Diller"><i class="bi bi-translate"></i></button>
+  <button class="btn ghost sm"><i class="bi bi-play-fill"></i>Sun</button>
+  <span class="sp"></span>
+  <span class="split"><button class="btn fill sm">Kaydet</button><button class="btn fill sm"><i class="bi bi-chevron-down"></i></button></span>
+  <button class="ib" title="Yardım"><i class="bi bi-question-circle"></i></button>
+  <button class="ib"><i class="bi bi-arrows-fullscreen"></i></button>
+  <button class="ib"><i class="bi bi-x-lg"></i></button>
+</div><div class="body"><i class="sk" style="width:240px"></i><i class="sk" style="width:120px"></i></div></div></div>
+
+<div><p class="lab"><b>Word dosyası</b> (dosya penceresi): alttaki Kaydet ve "Kaydedilmemiş değişiklik" satırı başlığa çıkar</p>
+<div class="win"><div class="dh">
+  <span class="tile t-blue"><i class="bi bi-file-earmark-word"></i></span>
+  <span class="name">Teklif-2026.docx</span><span class="meta">48 KB</span>
+  <span class="state un"><i></i>Kaydedilmemiş değişiklik</span>
+  <span class="sep"></span>
+  <button class="ib"><i class="bi bi-arrow-counterclockwise"></i></button><button class="ib dim"><i class="bi bi-arrow-clockwise"></i></button>
+  <span class="sp"></span>
+  <button class="btn fill sm">Kaydet</button>
+  <button class="ib"><i class="bi bi-three-dots"></i></button>
+  <button class="ib"><i class="bi bi-x-lg"></i></button>
+</div><div class="body tools"><i class="sk" style="width:26px;height:26px;border-radius:7px"></i><i class="sk" style="width:26px;height:26px;border-radius:7px"></i><i class="sk" style="width:120px;height:26px;border-radius:7px"></i><i class="sk" style="width:26px;height:26px;border-radius:7px"></i></div></div></div>
+
+<div><p class="lab"><b>Excel dosyası</b> (kanalda Önizleme): değişiklik yokken Kaydet soluk</p>
+<div class="win"><div class="dh">
+  <span class="tile t-green"><i class="bi bi-file-earmark-excel"></i></span>
+  <span class="name">Bütçe-2027.xlsx</span><span class="meta">3 sayfa</span>
+  <span class="state"><i></i>Kaydedildi</span>
+  <span class="sep"></span>
+  <button class="ib dim"><i class="bi bi-arrow-counterclockwise"></i></button><button class="ib dim"><i class="bi bi-arrow-clockwise"></i></button>
+  <span class="sep"></span>
+  <button class="btn ghost sm"><i class="bi bi-table"></i>Veri olarak kaydet</button>
+  <span class="sp"></span>
+  <button class="ib" title="İndir"><i class="bi bi-download"></i></button>
+  <button class="btn fill sm off">Kaydet</button>
+  <button class="ib"><i class="bi bi-three-dots"></i></button>
+  <button class="ib"><i class="bi bi-x-lg"></i></button>
+</div><div class="body"><i class="sk" style="width:160px"></i><i class="sk" style="width:200px"></i><i class="sk" style="width:110px"></i></div></div></div>
+
+<div><p class="lab"><b>Hızlı Bakış</b> (bir .pptx): yalnızca görüntüler; ana düğme düzenleme kapısıdır</p>
+<div class="win"><div class="dh">
+  <span class="tile t-orange"><i class="bi bi-file-earmark-slides"></i></span>
+  <span class="name">Yatırımcı sunumu.pptx</span><span class="meta">24 slayt · 3,1 MB</span>
+  <span class="sep"></span>
+  <span class="seg"><span class="on">Slaytlar</span><span>Metin</span></span>
+  <button class="btn ghost sm"><i class="bi bi-play-fill"></i>Sun</button>
+  <span class="sp"></span>
+  <button class="ib" title="İndir"><i class="bi bi-download"></i></button>
+  <button class="btn quiet sm"><i class="bi bi-easel2"></i>Artifact Canvas'ta düzenle</button>
+  <button class="ib"><i class="bi bi-three-dots"></i></button>
+  <button class="ib"><i class="bi bi-arrows-angle-expand"></i></button>
+  <button class="ib"><i class="bi bi-x-lg"></i></button>
+</div><div class="body"><i class="sk" style="width:148px;height:30px;border-radius:8px"></i><i class="sk" style="width:420px;height:30px;border-radius:8px"></i></div></div></div>
+
+</div>
+<div class="col">
+
+<div><p class="lab"><b>Telefonda</b>: geri, ad, durum noktası, ana düğme, ⋯</p>
+<div class="win phone"><div class="dh" style="height:48px">
+  <button class="ib" style="margin-left:-8px"><i class="bi bi-arrow-left"></i></button>
+  <span class="name" style="overflow:hidden;text-overflow:ellipsis;min-width:0">Teklif-2026.docx</span>
+  <span class="state un" style="margin-left:6px"><i></i></span>
+  <span class="sp"></span>
+  <button class="btn fill sm">Kaydet</button>
+  <button class="ib"><i class="bi bi-three-dots"></i></button>
+</div><div class="body"><i class="sk" style="width:200px"></i></div></div></div>
+
+<div><p class="lab"><b>⋯ menüsü</b>: her türde aynı sıra; türde olmayan satır çizilmez</p>
+<div class="pop">
+  <div class="it"><i class="bi bi-box-arrow-up-right"></i>Yeni sekmede aç</div>
+  <div class="it"><i class="bi bi-arrows-fullscreen"></i>Tam ekran</div>
+  <hr>
+  <div class="it"><i class="bi bi-link-45deg"></i>Bağlantıyı kopyala</div>
+  <div class="it"><i class="bi bi-send"></i>Bir kanala gönder</div>
+  <hr>
+  <div class="it"><i class="bi bi-download"></i>İndir</div>
+  <div class="it"><i class="bi bi-file-earmark-arrow-down"></i>Dışa aktar…</div>
+  <div class="it"><i class="bi bi-printer"></i>Yazdır</div>
+  <hr>
+  <div class="it"><i class="bi bi-clock-history"></i>Sürümler</div>
+  <div class="gh">Bu türe özel</div>
+  <div class="it"><i class="bi bi-layout-three-columns"></i>Sütunlar</div>
+  <div class="it"><i class="bi bi-box-arrow-in-down"></i>İçe aktar</div>
+  <hr>
+  <div class="it"><i class="bi bi-question-circle"></i>Yardım</div>
+  <div class="it red"><i class="bi bi-trash3"></i>Sil</div>
+</div></div>
+
+<div><p class="lab"><b>Kurallar</b></p>
+<ul class="rule">
+  <li><b>Ad</b> başlıktadır; değiştirebilen kişi üstüne tıklar, yerinde yazar.</li>
+  <li><b>Durum</b> tek satırdır: Kaydediliyor…, Kaydedildi, Kaydedilmemiş değişiklik, Kaydedilemedi.</li>
+  <li><b>Geri al / Yinele</b> başlıkta; geri alması olmayan türde çizilmez.</li>
+  <li><b>Ana düğme</b> türün ana işidir: Kaydet, Yeni satır, Düzenle. Kendiliğinden kaydeden notta yoktur.</li>
+  <li><b>Paylaş</b> yalnızca paylaşımı bugün olan türde görünür.</li>
+  <li><b>İndir</b> görüntüleme pencerelerinde simgedir, hepsinde ⋯ içindedir.</li>
+  <li><b>Kapat</b> en sağda; kaydedilmemiş değişiklik varken sorar.</li>
+  <li><b>⋯</b> tek satırlıksa çizilmez; o satır simge olarak durur (Canvas'ta Yardım).</li>
+</ul></div>
+
+</div>
+</div>
+</div>
+</body>
+</html>
