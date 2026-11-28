@@ -1,0 +1,9 @@
+{"count": 2, "results": [
+  {"listing_id": 5001, "shop_id": 87654321, "state": "active", "title": "Linen apron", "quantity": 7,
+   "inventory": {"products": [
+     {"product_id": 9001, "sku": "APRON-S", "is_deleted": false, "offerings": [{"offering_id": 7001, "quantity": 3, "is_enabled": true, "is_deleted": false, "readiness_state_id": 301, "price": {"amount": 2450, "divisor": 100, "currency_code": "USD"}}], "property_values": [{"property_id": 100, "property_name": "Size", "scale_id": 7, "scale_name": "Letter", "value_ids": [11], "values": ["S"]}]},
+     {"product_id": 9002, "sku": "APRON-M", "is_deleted": false, "offerings": [{"offering_id": 7002, "quantity": 4, "is_enabled": true, "is_deleted": false, "readiness_state_id": 301, "price": {"amount": 2450, "divisor": 100, "currency_code": "USD"}}], "property_values": [{"property_id": 100, "property_name": "Size", "scale_id": 7, "scale_name": "Letter", "value_ids": [12], "values": ["M"]}]},
+     {"product_id": 9003, "sku": "APRON-OLD", "is_deleted": true, "offerings": [], "property_values": []}
+   ], "price_on_property": [100], "quantity_on_property": [100], "sku_on_property": [100], "readiness_state_on_property": []}},
+  {"listing_id": 5002, "shop_id": 87654321, "state": "active", "title": "Canvas tote", "quantity": 3}
+]}

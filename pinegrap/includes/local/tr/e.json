@@ -1345,6 +1345,7 @@
     "Etsy keeps the listing as {var:1}. Open it in Shop Manager to see what it still needs.": "Etsy ilanı {var:1} olarak tutuyor. Neyin eksik olduğunu görmek için Shop Manager'da açın.",
     "Etsy lets a shop sell what it makes or designs, vintage items and craft supplies; mass-produced goods bought to resell are not allowed. Etsy charges USD 0.20 a listing and 6.5% of a sale.": "Etsy bir mağazanın kendi yaptığı ya da tasarladığı ürünleri, vintage ürünleri ve el işi malzemelerini satmasına izin verir; yeniden satmak için alınan seri üretim mallara izin verilmez. Etsy ilan başına 0,20 USD ve satışın %6,5'ini alır.",
     "Etsy made the draft but named no listing id.": "Etsy taslağı oluşturdu ama ilan kimliği bildirmedi.",
+    "Etsy named no currency for the listing.": "Etsy ilan için para birimi bildirmedi.",
     "Etsy named no currency for the shop.": "Etsy mağaza için para birimi bildirmedi.",
     "Etsy returned no categories.": "Etsy hiç kategori döndürmedi.",
     "Etsy shop": "Etsy mağazası",
