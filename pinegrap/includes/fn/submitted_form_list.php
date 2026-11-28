@@ -756,6 +756,67 @@ function pg_submitted_form_list_columns($payment = false, $edit = false)
 }
 
 /**
+ * The list's columns with "Was this helpful?" counted, Yes and No right
+ * before Action. Not sorted: the kept sort codes stay the screen's own.
+ * Pure.
+ *
+ * @param array $columns pg_submitted_form_list_columns()
+ * @return array
+ */
+function pg_submitted_form_list_vote_columns($columns)
+{
+    $out = array();
+
+    foreach ($columns as $key => $column) {
+        if ($key === 'actions') {
+            $out['helpful_yes'] = array('heading' => lang('Helpful: Yes'), 'width' => '7rem', 'kind' => 'number');
+            $out['helpful_no'] = array('heading' => lang('Helpful: No'), 'width' => '7rem', 'kind' => 'number');
+        }
+
+        $out[$key] = $column;
+    }
+
+    return $out;
+}
+
+/**
+ * The rows with their Yes and No counts (pg_kb_vote_counts()), one read for
+ * the batch, the cells right before Action as in
+ * pg_submitted_form_list_vote_columns().
+ *
+ * @param array $rows pg_submitted_form_list_rows()
+ * @return array
+ */
+function pg_submitted_form_list_vote_cells($rows)
+{
+    $ids = array();
+
+    foreach ($rows as $row) {
+        $ids[] = (int) $row['id'];
+    }
+
+    $counts = pg_kb_vote_counts($ids);
+
+    foreach ($rows as $i => $row) {
+        $record = isset($counts[(int) $row['id']]) ? $counts[(int) $row['id']] : null;
+        $cells = array();
+
+        foreach ($row['cells'] as $key => $cell) {
+            if ($key === 'actions') {
+                $cells['helpful_yes'] = pg_list_cell(pg_kb_vote_count_cell($record, 'yes'));
+                $cells['helpful_no'] = pg_list_cell(pg_kb_vote_count_cell($record, 'no'));
+            }
+
+            $cells[$key] = $cell;
+        }
+
+        $rows[$i]['cells'] = $cells;
+    }
+
+    return $rows;
+}
+
+/**
  * The submitted forms list as the list table driver's source
  * (includes/fn/list_table.php), for the screen, the rows action and Delete
  * Selected (delete_submitted_forms.php) alike. It is the screen's gate too
@@ -788,9 +849,18 @@ function pg_submitted_form_list_source($user, $params)
     // the folder rule of the filter), so the list always has quick edit.
     $quick_edit = pg_submitted_form_quick_edit_columns();
 
+    // Narrowed to one collection, the list counts each record's answers to
+    // "Was this helpful?" (includes/fn/kb_votes.php).
+    $columns = pg_submitted_form_list_columns($payment, true);
+    $kb_votes = (pg_kb_vote_list_form($_SESSION['software']['forms']['view_submitted_forms'] ?? array()) > 0);
+
+    if ($kb_votes) {
+        $columns = pg_submitted_form_list_vote_columns($columns);
+    }
+
     return pg_list_table_source(array(
         'list' => 'view_submitted_forms',
-        'columns' => pg_submitted_form_list_columns($payment, true),
+        'columns' => $columns,
         'from' => $filter['tables'],
         'where' => $filter['condition'],
         'params' => $filter['params'],
@@ -813,8 +883,10 @@ function pg_submitted_form_list_source($user, $params)
         'levels' => $filter['sort_levels'],
         // A whole-list selection leaves out the forms submitted after it.
         'created' => 'forms.submitted_timestamp',
-        'rows' => function ($records) use ($user, $quick_edit) {
-            return pg_submitted_form_list_rows($user, $records, $quick_edit);
+        'rows' => function ($records) use ($user, $quick_edit, $kb_votes) {
+            $rows = pg_submitted_form_list_rows($user, $records, $quick_edit);
+
+            return $kb_votes ? pg_submitted_form_list_vote_cells($rows) : $rows;
         },
         // The status and the form editor change in place, written by the
         // list's own screen as the submitted form screen writes them.

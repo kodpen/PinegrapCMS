@@ -566,6 +566,12 @@ function pg_consent_catalogue($content)
         $catalogue['necessary'][] = array(PG_WISHLIST_COOKIE, true, lang('Remembers the products you saved to your favourites before signing in.'));
     }
 
+    // "Was this helpful?" remembers the records a visitor answered, set
+    // only when they answer one (pg_kb_vote_remember()).
+    if (function_exists('pg_kb_votes_ready') && pg_kb_votes_ready()) {
+        $catalogue['necessary'][] = array(PG_KB_VOTE_COOKIE, true, lang('Remembers the articles you rated as helpful or not, so each answer counts once.'));
+    }
+
     // A page experiment keeps the variant a visitor was shown
     // (pg_experiment_bucket_write()); written only while one runs.
     $catalogue['necessary'][] = array('pg_exp', true, lang('Keeps showing you the same version of a page while the site compares two versions of it.'));
@@ -848,6 +854,7 @@ function pg_consent_ui_keys()
         'Remembers the language you chose for the site.',
         'Tells a cache in front of the site to pass your requests through while your visit holds a cart, a sign-in or a message.',
         'Remembers the products you saved to your favourites before signing in.',
+        'Remembers the articles you rated as helpful or not, so each answer counts once.',
         'Counts your visits, to tell new visitors from returning ones.',
         'Remembers the tracking code of the link you arrived with.',
         'Remembers the campaign (UTM) that brought you to the site.',
