@@ -1587,6 +1587,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/main-menu-drawer-top-bar.md: Page Design Studio draws no panel top bar: its tools at the head of the main menu's drawer, Go to Site and the account at its foot, a dot on the menu button for an unread notification (FR5)
 - ui/main-menu-icons.md: Main menu icons: the rows' one-line drawings (pg_menu_icon()) on a tile in their category's colour (pg_menu_icon_tile(), pg_menu_category_tone()), the seven tones, the panel entries' tiles
 - ui/main-menu-mail-row.md: Incoming e-mail pinned to a person's own main menu (IM1, #10408): the tab's Pin to main menu, ws_profiles.mail_pinned, row 27 under the Workspace, its gate, badge and icon
+- ui/main-menu-open-row.md: How the main menu's open row and a panel's current entry are told: the tile filled with the category's tone, the drawing white (dark: the menu's ground), the quiet row fill, hover lighter
 - ui/main-menu-overview.md: The panel's main menu as a whole: rows in categories, panels and second-level panels, states and the drawer, gates, the decisions that bind it, and which main-menu file holds each part
 - ui/main-menu-system-tools-row.md: Main menu row 25, System tools: its slot and gate, its panel as one list of every tool under group headings (pg_menu_tools_markup()), the screens that light it
 - ui/messages-area-look.md: Communication area look (MA12 #9363): pill tab strip, filter segments, notices under the strip, Sends figures and pills, Channels grid, old screens left inside
