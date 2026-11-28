@@ -31,7 +31,9 @@ define('PG_TR_JOB_STALE', 86400);
  * The owners a scope names: 'all' is every owner; 'page:12' is the page, its
  * SEO fields and what it references; 'records:14' the records of one custom
  * form (a record save, pg_tr_records_saved()); 'file:9' the texts of one
- * Design Canvas picture (pg_picture_tr_texts_jobs()).
+ * Design Canvas picture (pg_picture_tr_texts_jobs()); 'product:5',
+ * 'product_group:3', 'offer:2' and 'form:14' one item of the catalog or one
+ * form, opened by its save (pg_tr_owner_auto_saved()).
  *
  * @return array of array(owner_type, owner_id); empty for all
  */
@@ -47,6 +49,12 @@ function pg_tr_scope_owners($scope)
 
     if (preg_match('/^file:(\d+)$/', (string) $scope, $m)) {
         return array(array('file', (int) $m[1]));
+    }
+
+    // One product, product group, offer or form, opened by its save
+    // (pg_tr_owner_auto_saved()).
+    if (preg_match('/^(product|product_group|offer|form):(\d+)$/', (string) $scope, $m)) {
+        return array(array($m[1], (int) $m[2]));
     }
 
     // A group of the Translations screen: every owner of its types.
@@ -93,6 +101,11 @@ function pg_tr_scope_extract($scope, $deadline = 0, $from = 0)
         $segments = in_array($form_page_id, pg_tr_record_forms(), true) ? pg_tr_extract_form_records($form_page_id) : 0;
 
         return array('pages' => 0, 'segments' => $segments);
+    }
+
+    // One catalog item or form, read again on its own.
+    if (preg_match('/^(product|product_group|offer|form):(\d+)$/', (string) $scope, $m)) {
+        return array('pages' => 0, 'segments' => pg_tr_extract_owner($m[1], (int) $m[2]));
     }
 
     // A picture's texts are written by each save of the picture
@@ -248,18 +261,98 @@ function pg_tr_job_close_if_complete($job_id)
 
     db("UPDATE translation_jobs SET status = '$status', finished_at = '" . time() . "' WHERE id = '$job_id' AND status IN ('queued', 'sent', 'running')");
 
+    // Only the call that closed the job hands its failed texts on, so two
+    // runs finishing together open one fallback update, not two.
+    if ((mysqli_affected_rows(db::$con) > 0) && ((int) $job['failed_count'] > 0)) {
+        pg_tr_job_fallback($job_id);
+    }
+
     return $status;
 }
 
 /**
- * Marks a job failed with a reason; its waiting items are skipped.
+ * The engine an update's failed texts go to: the language's fallback engine
+ * when one is set, is not the engine the update ran on, and works without
+ * the Translations screen (a server engine or Claude's queue) and is ready.
+ * A browser engine needs an open screen and "By hand" sends nothing, so
+ * their failed texts wait for "Try again with the failed ones". Pure.
+ *
+ * @param string     $job_engine the engine the update ran on
+ * @param string     $fallback   site_languages.fallback_engine
+ * @param array|null $spec       pg_tr_engine($fallback)
+ * @return string the engine key, '' for none
+ */
+function pg_tr_fallback_engine_for($job_engine, $fallback, $spec)
+{
+    $fallback = (string) $fallback;
+
+    if (($fallback === '') || ($fallback === (string) $job_engine) || !is_array($spec)) {
+        return '';
+    }
+
+    if (empty($spec['ready']) || !in_array((string) ($spec['kind'] ?? ''), array('server', 'queue'), true)) {
+        return '';
+    }
+
+    return $fallback;
+}
+
+/**
+ * Hands the texts an ended update could not translate to the language's
+ * fallback engine (pg_tr_fallback_engine_for()): its failed texts, and for
+ * an update that failed as a whole the ones it never reached, as far as
+ * they are still without a translation, go to a new update of the same
+ * scope and starter. An update on the fallback engine itself has none, so
+ * a fallback never falls back again.
+ *
+ * @param int $job_id
+ * @return int the new update's id, 0 when none was opened
+ */
+function pg_tr_job_fallback($job_id)
+{
+    $job = pg_tr_job_get($job_id);
+
+    if (!$job) {
+        return 0;
+    }
+
+    $row = pg_tr_language_row((string) $job['language']);
+    $fallback = $row ? (string) $row['fallback_engine'] : '';
+    $spec = ($fallback !== '') ? pg_tr_engine($fallback) : null;
+    $engine = pg_tr_fallback_engine_for((string) $job['engine'], $fallback, $spec);
+
+    if ($engine === '') {
+        return 0;
+    }
+
+    $statuses = ((string) $job['status'] === 'failed') ? "'failed', 'skipped'" : "'failed'";
+    $ids = db_values("SELECT string_id FROM translation_job_items WHERE job_id = '" . (int) $job['id'] . "' AND status IN ($statuses)");
+    $ids = pg_tr_activity_retry_ids((array) $ids, pg_tr_screen_statuses((string) $job['language'], (array) $ids));
+
+    if (!$ids) {
+        return 0;
+    }
+
+    $opened = pg_tr_job_open((string) $job['language'], $engine, $spec, (string) $job['scope'], $ids, (int) $job['created_by']);
+
+    return (int) $opened['job_id'];
+}
+
+/**
+ * Marks an open job failed with a reason; its waiting items are skipped and
+ * go to the fallback engine (pg_tr_job_fallback()).
  */
 function pg_tr_job_fail($job_id, $error)
 {
     $job_id = (int) $job_id;
 
     db("UPDATE translation_job_items SET status = 'skipped' WHERE job_id = '$job_id' AND status = 'waiting'");
-    db("UPDATE translation_jobs SET status = 'failed', error = '" . e(mb_substr((string) $error, 0, 2000)) . "', finished_at = '" . time() . "' WHERE id = '$job_id'");
+    db("UPDATE translation_jobs SET status = 'failed', error = '" . e(mb_substr((string) $error, 0, 2000)) . "', finished_at = '" . time() . "' WHERE id = '$job_id' AND status IN ('queued', 'sent', 'running')");
+
+    // The texts the engine never reached go to the fallback engine.
+    if (mysqli_affected_rows(db::$con) > 0) {
+        pg_tr_job_fallback($job_id);
+    }
 }
 
 /**

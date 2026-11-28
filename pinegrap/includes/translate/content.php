@@ -1047,11 +1047,21 @@ function pg_tr_field_segments($field, $html, &$position)
  * @param array  $by_owner owner_id => segments; owners not listed keep nothing
  * @param string $kind
  * @param array  $kinds    field => kind, for fields of another kind (seo)
+ * @param array|null $only owner ids whose uses are replaced, the others of
+ *                   the type kept (one item read again on its save); null
+ *                   for the whole type
  * @return int segments written
  */
-function pg_tr_store_owner_type($owner_type, $by_owner, $kind = 'content', $kinds = array())
+function pg_tr_store_owner_type($owner_type, $by_owner, $kind = 'content', $kinds = array(), $only = null)
 {
     $now = time();
+    $where = "owner_type = '" . e($owner_type) . "'";
+
+    if (is_array($only)) {
+        $only = array_values(array_filter(array_map('intval', $only)));
+        $where .= $only ? " AND owner_id IN (" . implode(',', $only) . ")" : " AND 0";
+    }
+
     $strings = array();
 
     foreach ($by_owner as $segments) {
@@ -1086,11 +1096,11 @@ function pg_tr_store_owner_type($owner_type, $by_owner, $kind = 'content', $kind
     // translation beside it as context.
     $previous = array();
 
-    foreach ((array) db_items("SELECT owner_id, field, string_id, prev_string_id FROM translation_uses WHERE owner_type = '" . e($owner_type) . "'") as $row) {
+    foreach ((array) db_items("SELECT owner_id, field, string_id, prev_string_id FROM translation_uses WHERE $where") as $row) {
         $previous[$row['owner_id'] . '|' . $row['field']] = $row;
     }
 
-    db("DELETE FROM translation_uses WHERE owner_type = '" . e($owner_type) . "'");
+    db("DELETE FROM translation_uses WHERE $where");
 
     $values = array();
     $count = 0;
@@ -1158,47 +1168,10 @@ function pg_tr_extract_catalog()
         @set_time_limit(300);
     }
 
-    $seo = array('title' => 'seo', 'meta_description' => 'seo');
+    $seo = pg_tr_catalog_seo_kinds();
 
-    foreach (array(
-        // name is the unique stock code of a product and a group; what the
-        // visitor reads as the name is short_description.
-        'product'       => array('products', array('short_description', 'full_description', 'details', 'keywords', 'title', 'meta_description')),
-        'product_group' => array('product_groups', array('short_description', 'full_description', 'details', 'keywords', 'title', 'meta_description')),
-    ) as $owner_type => $spec) {
-        list($table, $fields) = $spec;
-        $fields = array_values(array_filter($fields, function ($field) use ($table) {
-            return pg_tr_has_column($table, $field);
-        }));
-
-        if (!$fields) {
-            continue;
-        }
-
-        $where = pg_tr_has_column($table, 'enabled') ? " WHERE enabled = '1'" : '';
-        $by_owner = array();
-        $offset = 0;
-
-        do {
-            $rows = db_items("SELECT id, " . implode(', ', $fields) . " FROM $table$where ORDER BY id LIMIT $offset, 1000");
-            $rows = is_array($rows) ? $rows : array();
-
-            foreach ($rows as $row) {
-                $position = 0;
-                $segments = array();
-
-                foreach ($fields as $field) {
-                    $segments = array_merge($segments, pg_tr_field_segments($field, (string) $row[$field], $position));
-                }
-
-                if ($segments) {
-                    $by_owner[(int) $row['id']] = $segments;
-                }
-            }
-
-            $offset += 1000;
-        } while (count($rows) === 1000);
-
+    foreach (array('product', 'product_group') as $owner_type) {
+        $by_owner = pg_tr_catalog_owner_segments($owner_type);
         $summary['owners'] += count($by_owner);
         $summary['segments'] += pg_tr_store_owner_type($owner_type, $by_owner, 'content', $seo);
     }
@@ -1234,14 +1207,46 @@ function pg_tr_extract_catalog()
 
     // Offers: every enabled offer's texts (pg_tr_offer_segments()). The
     // pass over the finished page swaps them where a page prints them.
-    $fields = array_values(array_filter(pg_tr_offer_fields(), function ($field) {
-        return pg_tr_has_column('offers', $field);
-    }));
+    $by_owner = pg_tr_catalog_owner_segments('offer');
+    $summary['owners'] += count($by_owner);
+    $summary['segments'] += pg_tr_store_owner_type('offer', $by_owner, 'content');
 
-    if ($fields) {
-        $by_owner = array();
+    return $summary;
+}
 
-        foreach ((array) db_items("SELECT id, " . implode(', ', $fields) . " FROM offers WHERE status = 'enabled' ORDER BY id") as $row) {
+/**
+ * The fields of a product or product group whose kind is seo.
+ *
+ * @return array field => kind
+ */
+function pg_tr_catalog_seo_kinds()
+{
+    return array('title' => 'seo', 'meta_description' => 'seo');
+}
+
+/**
+ * The segments of the enabled products, product groups or offers, or of the
+ * one with $owner_id (none when it is disabled or gone).
+ *
+ * @param string $owner_type product | product_group | offer
+ * @param int    $owner_id   0 for all of them
+ * @return array owner_id => segments
+ */
+function pg_tr_catalog_owner_segments($owner_type, $owner_id = 0)
+{
+    $owner_id = (int) $owner_id;
+    $by_owner = array();
+
+    if ($owner_type === 'offer') {
+        $fields = array_values(array_filter(pg_tr_offer_fields(), function ($field) {
+            return pg_tr_has_column('offers', $field);
+        }));
+
+        if (!$fields) {
+            return $by_owner;
+        }
+
+        foreach ((array) db_items("SELECT id, " . implode(', ', $fields) . " FROM offers WHERE status = 'enabled'" . (($owner_id > 0) ? " AND id = '$owner_id'" : '') . " ORDER BY id") as $row) {
             $segments = pg_tr_offer_segments($row, $fields);
 
             if ($segments) {
@@ -1249,11 +1254,90 @@ function pg_tr_extract_catalog()
             }
         }
 
-        $summary['owners'] += count($by_owner);
-        $summary['segments'] += pg_tr_store_owner_type('offer', $by_owner, 'content');
+        return $by_owner;
     }
 
-    return $summary;
+    // name is the unique stock code of a product and a group; what the
+    // visitor reads as the name is short_description.
+    $tables = array('product' => 'products', 'product_group' => 'product_groups');
+
+    if (!isset($tables[$owner_type])) {
+        return $by_owner;
+    }
+
+    $table = $tables[$owner_type];
+    $fields = array_values(array_filter(array('short_description', 'full_description', 'details', 'keywords', 'title', 'meta_description'), function ($field) use ($table) {
+        return pg_tr_has_column($table, $field);
+    }));
+
+    if (!$fields) {
+        return $by_owner;
+    }
+
+    $conditions = array();
+
+    if (pg_tr_has_column($table, 'enabled')) {
+        $conditions[] = "enabled = '1'";
+    }
+
+    if ($owner_id > 0) {
+        $conditions[] = "id = '$owner_id'";
+    }
+
+    $where = $conditions ? ' WHERE ' . implode(' AND ', $conditions) : '';
+    $offset = 0;
+
+    do {
+        $rows = db_items("SELECT id, " . implode(', ', $fields) . " FROM $table$where ORDER BY id LIMIT $offset, 1000");
+        $rows = is_array($rows) ? $rows : array();
+
+        foreach ($rows as $row) {
+            $position = 0;
+            $segments = array();
+
+            foreach ($fields as $field) {
+                $segments = array_merge($segments, pg_tr_field_segments($field, (string) $row[$field], $position));
+            }
+
+            if ($segments) {
+                $by_owner[(int) $row['id']] = $segments;
+            }
+        }
+
+        $offset += 1000;
+    } while (count($rows) === 1000);
+
+    return $by_owner;
+}
+
+/**
+ * Reads one product, product group, offer or form again, as its save left
+ * it, and replaces only its own uses: the rest of the catalog or the forms
+ * is not read. A disabled or deleted one keeps no uses.
+ *
+ * @param string $owner_type product | product_group | offer | form
+ * @param int    $owner_id
+ * @return int segments written
+ */
+function pg_tr_extract_owner($owner_type, $owner_id)
+{
+    $owner_id = (int) $owner_id;
+
+    if ($owner_id <= 0) {
+        return 0;
+    }
+
+    if ($owner_type === 'form') {
+        return pg_tr_store_owner_type('form', pg_tr_form_owner_segments($owner_id), 'content', array(), array($owner_id));
+    }
+
+    if (!in_array($owner_type, array('product', 'product_group', 'offer'), true) || !defined('ECOMMERCE') || !ECOMMERCE) {
+        return 0;
+    }
+
+    $kinds = ($owner_type === 'offer') ? array() : pg_tr_catalog_seo_kinds();
+
+    return pg_tr_store_owner_type($owner_type, pg_tr_catalog_owner_segments($owner_type, $owner_id), 'content', $kinds, array($owner_id));
 }
 
 /**
@@ -1292,19 +1376,20 @@ function pg_tr_offer_segments($row, $fields)
 }
 
 /**
- * The custom forms: the title, the confirmation message, the subject of the
- * e-mail sent to the sender, and every field's label, help text and
- * options - the texts the validation messages, the confirmation and the
- * sender's e-mail repeat. One owner per form page.
+ * The texts of the custom forms, or of the one on page $page_id: the title,
+ * the confirmation message, the subject of the e-mail sent to the sender,
+ * and every field's label, help text and options.
  *
- * @return array('owners' => int, 'segments' => int)
+ * @param int $page_id 0 for every form
+ * @return array page_id => segments
  */
-function pg_tr_extract_forms()
+function pg_tr_form_owner_segments($page_id = 0)
 {
-    $summary = array('owners' => 0, 'segments' => 0);
+    $page_id = (int) $page_id;
+    $only = ($page_id > 0) ? " WHERE page_id = '$page_id'" : '';
     $by_owner = array();
 
-    foreach ((array) db_items("SELECT page_id, form_name, confirmation_message, submitter_email_subject FROM custom_form_pages ORDER BY page_id") as $row) {
+    foreach ((array) db_items("SELECT page_id, form_name, confirmation_message, submitter_email_subject FROM custom_form_pages" . $only . " ORDER BY page_id") as $row) {
         $position = 0;
         $pid = (int) $row['page_id'];
         $by_owner[$pid] = array_merge(
@@ -1324,7 +1409,7 @@ function pg_tr_extract_forms()
         }
     }
 
-    foreach ((array) db_items("SELECT id, page_id, " . implode(', ', $columns) . " FROM form_fields ORDER BY page_id, sort_order") as $row) {
+    foreach ((array) db_items("SELECT id, page_id, " . implode(', ', $columns) . " FROM form_fields" . $only . " ORDER BY page_id, sort_order") as $row) {
         $pid = (int) $row['page_id'];
         $position = isset($by_owner[$pid]) ? count($by_owner[$pid]) : 0;
 
@@ -1337,7 +1422,7 @@ function pg_tr_extract_forms()
     }
 
     if (pg_tr_has_column('form_field_options', 'label')) {
-        foreach ((array) db_items("SELECT o.id, o.label, f.page_id FROM form_field_options o INNER JOIN form_fields f ON f.id = o.form_field_id ORDER BY f.page_id, o.id") as $row) {
+        foreach ((array) db_items("SELECT o.id, o.label, f.page_id FROM form_field_options o INNER JOIN form_fields f ON f.id = o.form_field_id" . (($page_id > 0) ? " WHERE f.page_id = '$page_id'" : '') . " ORDER BY f.page_id, o.id") as $row) {
             $pid = (int) $row['page_id'];
             $position = isset($by_owner[$pid]) ? count($by_owner[$pid]) : 0;
 
@@ -1348,7 +1433,21 @@ function pg_tr_extract_forms()
         }
     }
 
-    $by_owner = array_filter($by_owner);
+    return array_filter($by_owner);
+}
+
+/**
+ * The custom forms: the title, the confirmation message, the subject of the
+ * e-mail sent to the sender, and every field's label, help text and
+ * options - the texts the validation messages, the confirmation and the
+ * sender's e-mail repeat. One owner per form page.
+ *
+ * @return array('owners' => int, 'segments' => int)
+ */
+function pg_tr_extract_forms()
+{
+    $summary = array('owners' => 0, 'segments' => 0);
+    $by_owner = pg_tr_form_owner_segments();
     $summary['owners'] = count($by_owner);
     $summary['segments'] = pg_tr_store_owner_type('form', $by_owner);
 

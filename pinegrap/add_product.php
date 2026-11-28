@@ -85,6 +85,17 @@ if ($_POST) {
         pg_audit_record('create', 'products', (int) $audit_product_id);
     }
 
+    // Translate on save: the new products' and set's texts go to the engine.
+    if (function_exists('pg_tr_owner_auto_saved')) {
+        foreach ($result['product_ids'] as $tr_product_id) {
+            pg_tr_owner_auto_saved('product', (int) $tr_product_id, (int) $user['id']);
+        }
+
+        if (!empty($result['group_id'])) {
+            pg_tr_owner_auto_saved('product_group', (int) $result['group_id'], (int) $user['id']);
+        }
+    }
+
     // A product form is drawn on the field editor, which needs the row to exist
     // first. When the operator asked for one, the save lands there instead of on
     // a list screen — same trip the previous screen made, extended to a set.

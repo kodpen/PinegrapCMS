@@ -3920,6 +3920,11 @@ function pg_cf_reconcile_page_form($page_id, $user_id, $settings = array())
                                 is_array($settings) ? $settings : array());
     $res['synced'] = true;
 
+    // Translate on save: the form's new texts go to the engine.
+    if (empty($res['read_only']) && function_exists('pg_tr_owner_auto_saved')) {
+        pg_tr_owner_auto_saved('form', (int)$page_id, (int)$user_id);
+    }
+
     // Hand the ids back to the controls, so the next save recognises them
     // by row and not by name.
     $ids_by_name = array();

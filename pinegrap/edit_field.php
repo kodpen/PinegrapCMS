@@ -618,6 +618,11 @@ if (!$_POST) {
         pg_field_form_layout_warning($liveform_view_fields, $page_type, $page_id);
         
         log_activity(lang(array('string'=>'{var:1} field ({var:2}) on {var:1} ({var:3}) was modified','vars'=>array($form_type_name,$_POST['name'],$form_name) )));
+
+        // Translate on save: a page form's changed field goes to the engine.
+        if (function_exists('pg_tr_owner_auto_saved') && ((int) $page_id > 0)) {
+            pg_tr_owner_auto_saved('form', (int) $page_id, (int) $user['id']);
+        }
         
         $liveform_view_fields->add_notice(pg_field_form_saved_notice(lang('The field has been saved.'), $invalid_email_address, $invalid_trigger));
 

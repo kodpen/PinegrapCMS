@@ -77,6 +77,10 @@ function test_translations_activity_scope_label()
 	pg_assert_same('Forms', pg_tr_activity_scope_label('records:12', $groups, $pages), 'a record save');
 	pg_assert_same('Images', pg_tr_activity_scope_label('file:3', $groups, $pages), 'a picture');
 	pg_assert_same('One page', pg_tr_activity_scope_label('group:nope', $groups, $pages), 'an unknown group');
+	pg_assert_same('Products', pg_tr_activity_scope_label('product:7', $groups, $pages), 'a product save');
+	pg_assert_same('Products', pg_tr_activity_scope_label('product_group:2', $groups, $pages), 'a product group save');
+	pg_assert_same('Products', pg_tr_activity_scope_label('offer:5', $groups, $pages), 'an offer save');
+	pg_assert_same('Forms', pg_tr_activity_scope_label('form:14', $groups, $pages), 'a form save');
 }
 
 function test_translations_activity_took()

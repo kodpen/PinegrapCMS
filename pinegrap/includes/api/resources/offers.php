@@ -727,6 +727,11 @@ function api_offers_update($params) {
 
 	$row = api_row(api_offer_select() . " WHERE offers.id = '" . $id . "' LIMIT 1");
 
+	// Translate on save: its new texts go to the engine.
+	if (function_exists('pg_tr_owner_auto_saved')) {
+		pg_tr_owner_auto_saved('offer', (int)$id, (int)$app['owner']['id']);
+	}
+
 	pg_announce('offer.updated', array('id' => $id, 'code' => (string)$row['code'], 'enabled' => ($row['status'] === 'enabled')));
 
 	$state = _pg_offer_load($id);

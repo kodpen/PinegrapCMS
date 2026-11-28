@@ -3182,6 +3182,7 @@
     "Not sent. The e-mail is back in its form as a draft.": "Gönderilmedi. E-posta taslak olarak formuna döndü.",
     "Not sent: the address bounced or complained.": "Gönderilmedi: adres geri döndü veya şikâyet etti.",
     "Not sent: {var:1}": "Gönderilmedi: {var:1}",
+    "Not served": "Yayında değil",
     "Not set": "Ayarlanmamış",
     "Not set up": "Kurulmadı",
     "Not set up: no message is sent": "Kurulmadı: hiçbir mesaj gönderilmez",

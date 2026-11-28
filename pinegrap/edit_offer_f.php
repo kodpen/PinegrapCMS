@@ -1236,6 +1236,13 @@ function _pg_offer_save($clean, $user, $username = null, $activity = null)
     }
     pg_audit($is_new ? 'create' : 'update', 'offer', $offer_id, $audit_before, $audit_after, $offer['code']);
     pg_announce($is_new ? 'offer.created' : 'offer.updated', array('id' => (int) $offer_id, 'code' => (string) $offer['code'], 'enabled' => (bool) $offer['enabled']));
+
+    // Translate on save: the offer's messages go to the engine (the offer
+    // screen, its list's quick edit and the API all save here).
+    if (function_exists('pg_tr_owner_auto_saved')) {
+        pg_tr_owner_auto_saved('offer', (int) $offer_id, (int) ($user['id'] ?? 0));
+    }
+
     return $offer_id;
 }
 
