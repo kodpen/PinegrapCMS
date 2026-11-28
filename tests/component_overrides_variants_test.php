@@ -379,3 +379,30 @@ function test_component_overrides_case_only_rename_keeps_its_places()
 	}
 	pg_assert_same(array('Dark', 'Compact', null), $js['found'], 'the twin finds the same variants');
 }
+
+// Duplicate of a variant whose name is near the 60-character limit: the
+// copy's name was cut back to one already taken and the search for a free
+// name never ended, so the editor hung. The name is shortened instead.
+function test_component_overrides_duplicate_of_a_long_named_variant()
+{
+	$tree = component_overrides_variants_tree();
+	$long = str_repeat('a', 60);
+	$tree['props']['_variants'] = array(array('name' => $long, 'nodes' => array('root' => array('cssClass' => 'card p-1'))));
+	$code = "var document = { querySelector: function () { return null; }, addEventListener: function () {}, removeEventListener: function () {} };\n"
+		. "var comp = " . json_encode($tree, JSON_UNESCAPED_UNICODE) . ";\n"
+		. "kit.sharedCache = {7: {tree: comp, name: 'Promo card'}}; kit.render = function () {}; kit.renderProperties = function () {};\n"
+		. "kit._sdCoWrite = function (sid, fn) { fn(); }; kit.coVar = null;\n"
+		. "part.duplicateVariant(7, '" . $long . "'); part.duplicateVariant(7, '" . $long . "');\n"
+		. "out = comp.props._variants.map(function (v) { return v.name; });\n";
+	$kit = "var calls = 0, tr = kit._sdT; kit._sdT = function (k, v) { if (++calls > 5000) throw new Error('no free name found'); return tr(k, v); };";
+	$js = component_overrides_place_node($code, $kit);
+	if ($js === null) {
+		return;
+	}
+	pg_assert_same(3, count($js), 'two copies are added');
+	pg_assert_same(3, count(array_unique(array_map('strtolower', $js))), 'each with a name of its own');
+	foreach ($js as $name) {
+		pg_assert_true(mb_strlen($name, 'UTF-8') <= 60, 'a name within the limit: ' . $name);
+	}
+}
+
