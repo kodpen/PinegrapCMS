@@ -76,7 +76,6 @@
 - mobile-api-shelved-m8.md: Plan mobile-api-shelved, steps M8a to M8d (owner 2026-11-22, beside the other plans): sort=newest on the remaining lists, several reads in one request, a list of deleted records, a CORS allow-list
 - mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what exists (M1–M7), M8 given out beside the other plans, decisions, how its needs arrive
 - notes-screen-redraw.md: Plan (owner 2026-11-28): My Notes redrawn, the list a card of its own with a head and lined rows, the note a second card, the screen opening on a note; steps NR1 to NR3
-- office-document-abilities.md: Plan (owner 2026-11-26, poll 235): the document editor's new abilities once it is typed on a page: alignment, text and highlight colour, font size, links, tables, pictures from Files; steps DA1 to DA8
 - panel-language-german.md: Plan (owner 2026-11-27, poll 247): the German language pack, 79,407 keys in eight steps side by side by shard; the mechanism has landed and the eight steps are free, DE9 waits for them
 - panel-language-packs.md: Plan (owner 2026-11-27, poll 247): the panel in further languages, first the mechanism (one list of languages, the column's type, the checks, the pack tool); German follows in its own plan
 - parasut-devhub-connection.md: Plan (2026-11-25): connecting Paraşüt with a client from its Developer Portal (DevHub): the registered redirect address, sign-in at id.parasut.com with PKCE, short tokens; step PD1
