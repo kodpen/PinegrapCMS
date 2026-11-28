@@ -692,6 +692,35 @@ function test_designer_fonts_part_preview_links_the_regular_face()
 	), json_decode($lines[0] ?? '', true), 'two links, reused for the next font: every weight, and the regular face alone');
 }
 
+// Every font of the list is reached with Tab and opened with Enter or the
+// space bar, as with a click. Before, the rows were plain boxes with a
+// click handler: no font could be added from the keyboard.
+function test_designer_fonts_part_list_works_from_the_keyboard()
+{
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		return;
+	}
+
+	$js = designer_fonts_part_js()
+		. 'var api = factory(K); api.open(host); var row = el("div"); row.dataset.gfPick = "Roboto"; byId["sd-gf-list"].q = { "[data-gf-pick]": [row] };'
+		. 'byId["sd-gf-detail"].q = { "input:checked": [], ".sd-gf-det-add": [el("button")], ".sd-gf-det-remove": [], ".sd-gf-det-wt input": [] };'
+		. 'api.open(host); var list = byId["sd-gf-list"].innerHTML, stopped = 0;'
+		. 'var key = function (k) { row.listeners.keydown.call(row, { key: k, preventDefault: function () { stopped++; } }); };'
+		. 'key("a"); var before = byId["sd-gf-detail"].innerHTML.indexOf("Roboto") !== -1; key("Enter");'
+		. 'console.log(JSON.stringify([(list.match(/role="button" tabindex="0"/g) || []).length, typeof row.listeners.keydown, before, byId["sd-gf-detail"].innerHTML.indexOf("Roboto") !== -1, stopped]));';
+	$file = tempnam(sys_get_temp_dir(), 'sdfonts') . '.js';
+	file_put_contents($file, $js);
+	$lines = array();
+	exec('node ' . escapeshellarg($file) . ' 2>&1', $lines, $code);
+	@unlink($file);
+	pg_assert_same(0, $code, 'the fonts part runs: ' . implode("\n", $lines));
+	pg_assert_same(array(3, 'function', false, true, 1), json_decode($lines[0] ?? '', true), 'each row a focusable button; Enter opens its detail, another key does nothing');
+}
+
 // The Interactions section's rows and fields are a part: the core draws the
 // section (its header and an empty body) and keeps what the page and the
 // canvas need at open (_sdFxSpec(), _sdFxNormalize(), _sdFxAttrs(),

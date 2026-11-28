@@ -91,10 +91,16 @@ StyleDesigner.definePart('fonts', function (K) {
         el.innerHTML = fonts.map(function(f) {
             var added = addedFams.indexOf(f) !== -1;
             var activeCls = (_gfOpenFamily === f) ? ' active' : '';
-            return '<div class="sd-gf-item' + (added ? ' sd-gf-added-mark' : '') + activeCls + '" data-gf-pick="' + f + '"><span class="sd-gf-item-name">' + f + '</span>' + (added ? '<span class="bi bi-check2-circle sd-gf-icon-ok"></span>' : '<span class="bi bi-plus-circle sd-gf-icon-add"></span>') + '</div>';
+            return '<div class="sd-gf-item' + (added ? ' sd-gf-added-mark' : '') + activeCls + '" data-gf-pick="' + f + '" role="button" tabindex="0"><span class="sd-gf-item-name">' + f + '</span>' + (added ? '<span class="bi bi-check2-circle sd-gf-icon-ok"></span>' : '<span class="bi bi-plus-circle sd-gf-icon-add"></span>') + '</div>';
         }).join('');
         el.querySelectorAll('[data-gf-pick]').forEach(function(item) {
-            item.addEventListener('click', function() { openGfPicker(this.dataset.gfPick, this); });
+            item.addEventListener('click', function() { openGfPicker(item.dataset.gfPick, item); });
+            // A row is a button for the keyboard too: Enter or the space bar.
+            item.addEventListener('keydown', function(e) {
+                if (e.key !== 'Enter' && e.key !== ' ') return;
+                e.preventDefault();
+                openGfPicker(item.dataset.gfPick, item);
+            });
         });
     }
 
