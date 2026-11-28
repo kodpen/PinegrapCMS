@@ -3,7 +3,8 @@ Pinegrap Editors Licence
 Copyright (c) 2026 Erdal Güral. All rights reserved.
 
 This licence covers the files listed under "Covered files" below (the
-"Editors"): the Pinegrap visual editor and the Pinegrap image editor.
+"Editors"): the Pinegrap visual editor, the Pinegrap image editor and
+Pinegrap Artifacts.
 
 1. Use. You may use the Editors free of charge with any distribution of
    Pinegrap CMS: install, run, update and back them up, copy them together
@@ -70,6 +71,10 @@ Covered files (paths from the repository root):
   pinegrap/image_editor_edit.php
   pinegrap/includes/fn/image_editor.php
 
+  Pinegrap Artifacts
+  pinegrap/assets/js/pg_doc_head.js
+  pinegrap/includes/fn/doc_head.php
+
 --------------------------------------------------------------------------
 
 Pinegrap Editörler Lisansı (Türkçe çeviri)
@@ -77,8 +82,8 @@ Pinegrap Editörler Lisansı (Türkçe çeviri)
 Telif hakkı (c) 2026 Erdal Güral. Tüm hakları saklıdır.
 
 Bu lisans, yukarıda "Covered files" başlığı altında sayılan dosyaları
-("Editörler") kapsar: Pinegrap görsel editörü ve Pinegrap görsel
-düzenleyicisi.
+("Editörler") kapsar: Pinegrap görsel editörü, Pinegrap görsel
+düzenleyicisi ve Pinegrap Artifacts.
 
 1. Kullanım. Editörleri her Pinegrap CMS dağıtımıyla ücretsiz
    kullanabilirsiniz: kurabilir, çalıştırabilir, güncelleyebilir,

@@ -6,7 +6,7 @@ module: doc_head
 
 ## What is the document head?
 - One row at the top of a note, a Data table, the Artifact Canvas, a file window and the view windows (`plans/document-head.md`, look in `plans/document-head-screens.md`). DH1 built the part; no window uses it yet (DH2 to DH6).
-- `assets/js/pg_doc_head.js`, served as written (no bundle): `window.pgDocHead`. A page prints `pg_doc_head_includes()` (`includes/fn/doc_head.php`, once per page): the words as `window.pgDocHeadWords`, then the script.
+- `assets/js/pg_doc_head.js`, served as written (no bundle): `window.pgDocHead`. It and `includes/fn/doc_head.php` are Pinegrap Artifacts files under `license-editors.txt` (proprietary header), not MIT. A page prints `pg_doc_head_includes()` (`includes/fn/doc_head.php`, once per page): the words as `window.pgDocHeadWords`, then the script.
 - No Bootstrap script: the more menu is the head's own (`.pg-doc-head-menu`, closed by Escape, an outside press or a row). Styles: block "Look A: document head" at the end of `backend.src.css`, built from `pg-icon-button`, `pg-button-sm`, `pg-icon-tile`, `pg-initials`, `pg-seg`. A page without the panel stylesheet (the canvas on a site page) needs its own answer in DH4.
 
 ## What does pgDocHead.build(options) take?
