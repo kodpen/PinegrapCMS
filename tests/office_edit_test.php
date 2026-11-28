@@ -73,7 +73,7 @@ function office_edit_test_book_parts()
 		'xl/sharedStrings.xml' => '<?xml version="1.0"?><sst xmlns="' . $ns . '" count="3" uniqueCount="3"><si><t>Ürün</t></si><si><t>Ad</t></si><si><t>Fiyat</t></si></sst>',
 		'xl/styles.xml' => '<?xml version="1.0"?><styleSheet xmlns="' . $ns . '"><numFmts count="1"><numFmt numFmtId="164" formatCode="dd.mm.yyyy"/></numFmts><cellXfs count="4"><xf numFmtId="0"/><xf numFmtId="164"/><xf numFmtId="49"/><xf numFmtId="0"><protection locked="0"/></xf></cellXfs></styleSheet>',
 		'xl/worksheets/sheet1.xml' => office_edit_test_sheet(
-			'<row r="1" spans="1:5"><c r="A1" t="s"><v>0</v></c><c r="B1"><v>10</v></c><c r="C1"><f>B1*2</f><v>20</v></c><c r="D1" t="s"><v>1</v></c><c r="E1" t="s"><v>2</v></c></row>'
+			'<row r="1" spans="1:5"><c r="A1" t="s"><v>0</v></c><c r="B1"><v>10</v></c><c r="C1"><f>ROUND(B1*2,0)</f><v>20</v></c><c r="D1" t="s"><v>1</v></c><c r="E1" t="s"><v>2</v></c></row>'
 			. '<row r="2" spans="1:5"><c r="A2" s="1"><v>46314</v></c><c r="B2" s="2" t="inlineStr"><is><t>007</t></is></c><c r="D2" t="inlineStr"><is><t>Kalem</t></is></c><c r="E2"><v>5</v></c></row>'
 			. '<row r="3" spans="1:5"><c r="A3" t="b"><v>1</v></c><c r="D3" t="inlineStr"><is><t>Silgi</t></is></c><c r="E3"><v>3</v></c></row>'
 			. '<row r="5"><c r="A5"><v>1</v></c></row>',
@@ -275,7 +275,7 @@ function test_office_edit_patch_row_cells()
 
 function test_office_edit_patch_refuses()
 {
-	$xml = office_edit_test_sheet('<row r="1"><c r="A1"><f>1+1</f><v>2</v></c><c r="B1" vm="1"><v>0</v></c><c r="C1" s="3"><v>1</v></c><c r="D1"><v>1</v></c></row>');
+	$xml = office_edit_test_sheet('<row r="1"><c r="A1"><f>NOW()</f><v>2</v></c><c r="B1" vm="1"><v>0</v></c><c r="C1" s="3"><v>1</v></c><c r="D1"><v>1</v></c></row>');
 	$context = office_edit_test_context(array('open' => array(3 => true)));
 
 	$result = pg_office_xlsx_patch_sheet($xml, array(1 => array(0 => '5')), $context);
@@ -364,7 +364,7 @@ function test_office_edit_patch_workbook()
 function test_office_edit_scan()
 {
 	$xml = office_edit_test_sheet(
-		'<row r="1"><c r="A1"><f>SUM(B1:C1)</f><v>3</v></c><c r="B1" s="3"><v>1</v></c><c r="C1" vm="2"/></row>'
+		'<row r="1"><c r="A1"><f>SUM(B1:C1)+NOW()</f><v>3</v></c><c r="B1" s="3"><v>1</v></c><c r="C1" vm="2"/></row>'
 		. '<row r="2"><c r="A2"><f t="array" ref="A2:A4">B1*2</f><v>2</v></c></row>'
 		. '<row r="9"><c r="A9"><f>1</f><v>1</v></c></row>',
 		'<sheetProtection sheet="1"/><mergeCells count="1"><mergeCell ref="B2:C3"/></mergeCells>');
@@ -376,7 +376,7 @@ function test_office_edit_scan()
 	pg_assert_true($scan['addressed'], 'every cell has its address');
 	pg_assert_true($scan['protected'], 'protected');
 	pg_assert_same(array('A1' => 'formula', 'C1' => 'value', 'A2' => 'formula'), $scan['locked'], 'formulas and linked values of the rows asked for');
-	pg_assert_same('SUM(B1:C1)', $scan['formulas']['A1'], 'the formula, for the tooltip');
+	pg_assert_same('SUM(B1:C1)+NOW()', $scan['formulas']['A1'], 'the formula, for the tooltip');
 	pg_assert_same(array('B1' => true), $scan['open'], 'an unlocked cell');
 	pg_assert_same(array(array(2, 1, 3, 2)), $scan['merges'], 'the merge');
 	pg_assert_same(array(array(2, 0, 4, 0)), $scan['arrays'], 'the array formula\'s range');
@@ -406,7 +406,7 @@ function test_office_edit_scan()
 	$xml = office_edit_test_sheet(
 		'<row r="1" s="3" customFormat="1"><c r="A1"><v>1</v></c><c r="B1" s="3"/></row>'
 		. '<row r="2" s="1" customFormat="1"/>'
-		. '<row r="3"><c r="B3"><f>1</f><v>1</v></c><c r="C3" s="1"/><c r="D3" s="1"/></row>'
+		. '<row r="3"><c r="B3"><f>NOW()</f><v>1</v></c><c r="C3" s="1"/><c r="D3" s="1"/></row>'
 		. '<row r="9" s="3" customFormat="1"/>',
 		'<sheetProtection sheet="1"/>',
 		'<cols><col min="2" max="3" width="12" style="3"/><col min="4" max="4" style="1"/><col min="5" max="16384" style="3"/></cols>');
@@ -508,7 +508,7 @@ function test_office_edit_save_and_read_back()
 
 	pg_assert_contains('<calcPr fullCalcOnLoad="1"/><extLst>', (string) $zip->getFromName('xl/workbook.xml'), 'the formulas are worked out again on opening');
 	pg_assert_contains('<row r="5"><c r="A5"><v>1</v></c></row></sheetData><mergeCells', (string) $zip->getFromName('xl/worksheets/sheet1.xml'), 'an unchanged row stays as it was');
-	pg_assert_contains('<c r="C1"><f>B1*2</f></c>', (string) $zip->getFromName('xl/worksheets/sheet1.xml'), 'the formula stays, without its result');
+	pg_assert_contains('<c r="C1"><f>ROUND(B1*2,0)</f></c>', (string) $zip->getFromName('xl/worksheets/sheet1.xml'), 'the formula stays, without its result');
 	pg_assert_same(count($parts), $zip->numFiles, 'no part added or lost');
 	$zip->close();
 

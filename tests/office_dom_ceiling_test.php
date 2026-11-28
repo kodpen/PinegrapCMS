@@ -456,6 +456,6 @@ function test_office_dom_scan_formula_label()
 
 	pg_assert_same(mb_substr($formula, 0, PG_OFFICE_EDIT_FORMULA_LABEL, 'UTF-8'), $scan['formulas']['A1'], 'a long formula cut to the label');
 	pg_assert_same('SUM(A1)', $scan['formulas']['B1'], 'the next cell\'s formula');
-	pg_assert_same(array('A1' => 'formula', 'B1' => 'formula'), $scan['locked'], 'both locked');
+	pg_assert_same(array(), $scan['locked'], 'both simple formulas, so both open (the long one read whole, not cut to the label)');
 	pg_assert_same(1, count($scan['merges']), 'and what follows the cells is read');
 }
