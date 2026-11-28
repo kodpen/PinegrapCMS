@@ -13,12 +13,12 @@ module: payments
 ## Which types are sent?
 - `pg_payment_stripe_method_types($currency, $settings, $recurring)`, pure: `card` (+ `link` with its switch), then each listed type (but `step` `page`) switched on in `$settings['methods']` whose currencies hold `$currency`. Transaction type Authorize (`capture` `manual`) keeps only `hold` types. `$recurring` gives cards only.
 - `prepare_with()` (order `recurring`) and `authorize_with()` (payment `recurring`) both call it, so the Payment Element's `allowedPaymentMethodTypes` and the intent's `payment_method_types` agree; renewal and card update call it with `$recurring` true.
-- The currency is the site's base currency (`pg_payment_stripe_settings()['currency']`); the charge is never converted.
+- The currency is the order's: `pg_payment_stripe_order_settings()` puts `orders.charged_currency` (a market's order) in place of the base one, so a euro market's order is offered iDEAL in a lira store. The charge is never converted (`market-payment-methods.md`).
 
 ## Where are the switches?
 - `connect_apps` row `payment_stripe`, values `method_<type>` = `'1'` or `''` (switch fields of `pg_payment_stripe_fields()`, built by `pg_payment_stripe_method_fields($currency)`); all off by default. `pg_payment_stripe_settings()['methods']` is type => bool.
 - Drawn on Site Settings › Commerce, Payment methods card, under the Stripe gateway, below Offer Link: a heading "Payment methods", one switch a method, help "Currencies: …" (+ "Not offered while Transaction type is Authorize." for a method without `hold`).
-- A method that does not take the base currency is drawn off and disabled with "Off: the store's base currency is …". The base currency is set on another screen, so the reason is drawn from `BASE_CURRENCY_CODE`.
+- A method that takes none of the store's currencies (`pg_payment_stripe_store_currencies()`: base, then each switched-on market's) is drawn off and disabled: "Off: the store's base currency is …" with base alone, "Off: the store charges in …" with markets. Both are set on other screens, so the reason names them.
 
 ## What did the field layer gain?
 - `pg_payment_fields_normalize()` keeps `group` (string: a `pg-group-label` heading before the field) and `unavailable` (switch only: the reason). `pg_payment_settings_inputs_html()` draws both; `pg_payment_settings_decide()` stores an unavailable switch as `''` even when posted.

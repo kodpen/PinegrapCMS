@@ -104,7 +104,9 @@ function pg_payment_notify_order($answer)
     }
 
     $paid_at = pg_schema_has('orders', 'paid_at') ? 'paid_at' : '0 AS paid_at';
-    $order = db_item("SELECT id, status, transaction_id, payment_method, total, " . $paid_at . " FROM orders WHERE " . $where . " ORDER BY id DESC LIMIT 1");
+    // A market's order is charged in its own currency (order_currency.php).
+    $charged = pg_order_charged_ready() ? ', charged_currency' : '';
+    $order = db_item("SELECT id, status, transaction_id, payment_method, total, " . $paid_at . $charged . " FROM orders WHERE " . $where . " ORDER BY id DESC LIMIT 1");
 
     return is_array($order) ? $order : null;
 }
@@ -115,11 +117,11 @@ function pg_payment_notify_order($answer)
  * the visitor was sent to the service), the amount equals orders.total in
  * integer hundredths, or exceeds it by the installment difference of a
  * payment in two or more installments (pg_payment_paid_totals()), and the
- * currency is the store's. Pure.
+ * currency is the one the order is kept in. Pure.
  *
  * @param array  $answer         pg_payment_answer() of notify()
  * @param array  $order          pg_payment_notify_order()
- * @param string $store_currency
+ * @param string $store_currency the order's currency (pg_order_amount_currency())
  * @return bool
  */
 function pg_payment_notify_matches_order($answer, $order, $store_currency)
@@ -165,7 +167,7 @@ function pg_payment_notify_matches_order($answer, $order, $store_currency)
  * @param array      $answer         pg_payment_answer() of notify(); the
  *                                   payment's currency in raw.currency
  * @param array|null $order          pg_payment_notify_order()
- * @param string     $store_currency the store's currency code
+ * @param string     $store_currency the order's currency (pg_order_amount_currency())
  * @return array http (status code), status, log (lines), alert (detail, '' for none),
  *               mark_paid (bool), complete (bool), source (the service's line,
  *               once the message names an order)
@@ -454,7 +456,8 @@ function pg_payment_callback_receive()
         pg_payment_callback_renewal_failed($key, $answer);
     }
     $order = $answer['success'] ? pg_payment_notify_order($answer) : null;
-    $outcome = pg_payment_notify_outcome($key, $answer, $order, defined('BASE_CURRENCY_CODE') ? (string) BASE_CURRENCY_CODE : '');
+    // The currency the order's amounts are in: its charged one, else the base.
+    $outcome = pg_payment_notify_outcome($key, $answer, $order, pg_order_amount_currency(is_array($order) ? $order : array(), defined('BASE_CURRENCY_CODE') ? (string) BASE_CURRENCY_CODE : ''));
 
     // The completion runs before the log line, which names its result: the
     // order's number, another request completing it first (nothing), or a

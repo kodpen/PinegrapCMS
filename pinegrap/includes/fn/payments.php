@@ -1346,12 +1346,99 @@ function pg_payment_builtin_switches($card_brands = false)
  */
 function pg_payment_checkout_methods($order = array())
 {
-    return pg_payment_checkout_methods_decide(
+    return pg_payment_order_currency_methods(pg_payment_checkout_methods_decide(
         pg_payment_builtin_switches(!empty($order['card_brands'])),
         array_keys(pg_payment_driver_methods(true)),
         !empty($order['recurring']),
         !array_key_exists('offline_allowed', $order) || !empty($order['offline_allowed'])
-    );
+    ));
+}
+
+/**
+ * Whether a payment method can be offered to an order in a currency: every
+ * method for an order in the base currency; for another (a market's order,
+ * orders.charged_currency) Offline Payment, which charges nothing here, and
+ * a method whose driver charges the order's own currency (the
+ * 'order_currency' capability). A legacy gateway's card and a driver without
+ * it charge in the base currency only. Pure.
+ *
+ * @param string $method       a checkout method (pg_payment_method_values())
+ * @param bool   $driver_takes the method's driver has 'order_currency'
+ * @param string $currency     the currency the order is kept in
+ * @param string $base         BASE_CURRENCY_CODE
+ * @return bool
+ */
+function pg_payment_method_takes_currency_decide($method, $driver_takes, $currency, $base)
+{
+    $currency = pg_order_currency_code($currency);
+
+    if (($currency === '') || ($currency === pg_order_currency_code($base))) {
+        return true;
+    }
+
+    return ((string) $method === 'Offline Payment') || (bool) $driver_takes;
+}
+
+/**
+ * Whether a payment method can be offered to an order: its currency
+ * (pg_payment_method_takes_currency_decide()).
+ *
+ * @param string     $method
+ * @param array|null $order the orders row (charged_currency); null for the
+ *                          visitor's incomplete order
+ * @return bool
+ */
+function pg_payment_method_takes_order($method, $order = null)
+{
+    $base = defined('BASE_CURRENCY_CODE') ? (string) BASE_CURRENCY_CODE : '';
+
+    if ($order === null) {
+        $order = pg_payment_session_order_currency();
+    }
+
+    $currency = pg_order_amount_currency(is_array($order) ? $order : array(), $base);
+
+    if ($currency === pg_order_currency_code($base)) {
+        return true;
+    }
+
+    $key = ((string) $method === 'Offline Payment') ? '' : pg_payment_order_driver((string) $method);
+
+    return pg_payment_method_takes_currency_decide($method, ($key !== '') && pg_payment_can($key, 'order_currency'), $currency, $base);
+}
+
+/**
+ * The charged currency of the visitor's incomplete order, read each time:
+ * the cart's market can change it within a request (pg_market_cart_sync());
+ * '' when there is none or it is in the base currency.
+ *
+ * @return array charged_currency
+ */
+function pg_payment_session_order_currency()
+{
+    $order_id = (isset($_SESSION['ecommerce']['order_id']) && is_scalar($_SESSION['ecommerce']['order_id'])) ? (int) $_SESSION['ecommerce']['order_id'] : 0;
+
+    if (($order_id <= 0) || !pg_order_charged_ready()) {
+        return array('charged_currency' => '');
+    }
+
+    return array('charged_currency' => (string) db_value("SELECT charged_currency FROM orders WHERE id = '" . $order_id . "'"));
+}
+
+/**
+ * The methods of a list the visitor's order can be charged in
+ * (pg_payment_method_takes_order()), in their order.
+ *
+ * @param array $methods
+ * @return array
+ */
+function pg_payment_order_currency_methods($methods)
+{
+    $order = pg_payment_session_order_currency();
+
+    return array_values(array_filter((array) $methods, function ($method) use ($order) {
+        return pg_payment_method_takes_order((string) $method, $order);
+    }));
 }
 
 /**
@@ -1366,7 +1453,7 @@ function pg_payment_checkout_driver_methods($recurring)
 {
     $methods = array();
 
-    foreach (pg_payment_checkout_methods_decide(array(), array_keys(pg_payment_driver_methods(true)), (bool) $recurring, false) as $method) {
+    foreach (pg_payment_order_currency_methods(pg_payment_checkout_methods_decide(array(), array_keys(pg_payment_driver_methods(true)), (bool) $recurring, false)) as $method) {
         $methods[$method] = pg_payment_method_label($method);
     }
 

@@ -57,7 +57,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 function pg_payment_stripe_capabilities()
 {
     // Stripe charges a kept card off-session for any account: no switch.
-    return array('wallets', 'partial_refund', 'threeds', 'hosted_fields', 'recurring' => 'store');
+    return array('wallets', 'partial_refund', 'threeds', 'hosted_fields', 'order_currency', 'recurring' => 'store');
 }
 
 function pg_payment_stripe_fields()
@@ -91,7 +91,7 @@ function pg_payment_stripe_fields()
             'label' => lang('Offer Link'),
             'help'  => lang('Stripe\'s one-click checkout beside the card. Turn Link on in the Stripe Dashboard first.'),
         ),
-    ), pg_payment_stripe_method_fields(defined('BASE_CURRENCY_CODE') ? (string) BASE_CURRENCY_CODE : ''));
+    ), pg_payment_stripe_method_fields(pg_payment_stripe_store_currencies()));
 }
 
 function pg_payment_stripe_prepare($order, $amount)
@@ -181,6 +181,29 @@ function pg_payment_stripe_settings()
         'capture'         => (defined('ECOMMERCE_PAYMENT_GATEWAY_TRANSACTION_TYPE') && (ECOMMERCE_PAYMENT_GATEWAY_TRANSACTION_TYPE == 'Authorize')) ? 'manual' : 'automatic',
         'locale'          => (preg_match('/^[a-z]{2}(-[a-z]{2})?$/', $locale) === 1) ? $locale : 'auto',
     );
+}
+
+/**
+ * The settings with the currency an order is charged in: the order's
+ * charged currency (a market's order), the store's base currency for every
+ * other order. Its amounts are already in that currency, so nothing is
+ * converted. Pure; giving it its own answer again changes nothing.
+ *
+ * @param array $settings pg_payment_stripe_settings()
+ * @param array $order    the orders row (charged_currency)
+ * @return array the settings, currency lowercased
+ */
+function pg_payment_stripe_order_settings($settings, $order)
+{
+    $base = isset($settings['currency']) ? (string) $settings['currency'] : '';
+
+    if ($base === '') {
+        return $settings;
+    }
+
+    $settings['currency'] = strtolower(pg_order_amount_currency(is_array($order) ? $order : array(), $base));
+
+    return $settings;
 }
 
 /* ---------------------------------------------------------------------------
@@ -370,17 +393,47 @@ function pg_payment_stripe_blik_error($decline_code, $code)
 }
 
 /**
- * The switches of the methods beside the card, one a method under the group
- * "Payment methods", each naming its currencies. A method that does not take
- * the site's base currency is drawn off with the reason (the base currency is
- * chosen on another screen). Pure.
+ * The currencies the store charges in: the base currency first, then each
+ * switched-on market's currency (an order of a market is charged in it).
  *
- * @param string $currency the site's base currency, any case; '' when not known
+ * @return array upper-case ISO codes, each once
+ */
+function pg_payment_stripe_store_currencies()
+{
+    $codes = array(pg_order_currency_code(defined('BASE_CURRENCY_CODE') ? (string) BASE_CURRENCY_CODE : ''));
+
+    foreach (pg_market_list() as $market) {
+        if (!empty($market['enabled'])) {
+            $codes[] = pg_order_currency_code($market['currency_code']);
+        }
+    }
+
+    return array_values(array_unique(array_filter($codes, 'strlen')));
+}
+
+/**
+ * The switches of the methods beside the card, one a method under the group
+ * "Payment methods", each naming its currencies. A method that takes none of
+ * the store's currencies (the base one and the markets', chosen on other
+ * screens) is drawn off with the reason. Pure.
+ *
+ * @param string|array $currency the store's currencies (pg_payment_stripe_store_currencies()),
+ *                               base first, any case; '' or none when not known
  * @return array pg_payment_fields_normalize() input
  */
 function pg_payment_stripe_method_fields($currency)
 {
-    $currency = strtoupper(trim((string) $currency));
+    $store = array();
+
+    foreach ((array) $currency as $code) {
+        $code = strtoupper(trim((string) $code));
+
+        if ($code !== '') {
+            $store[] = $code;
+        }
+    }
+
+    $currency = ($store !== array()) ? $store[0] : '';
     $fields = array();
 
     foreach (pg_payment_stripe_methods() as $type => $method) {
@@ -403,8 +456,10 @@ function pg_payment_stripe_method_fields($currency)
             'group' => ($fields === array()) ? lang('Payment methods') : '',
         );
 
-        if (($currency !== '') && !in_array($currency, $method['currencies'], true)) {
-            $field['unavailable'] = lang(array('string' => 'Currencies: {var:1}. Off: the store\'s base currency is {var:2}.', 'vars' => array($currencies, $currency)));
+        if (($store !== array()) && (array_intersect($store, $method['currencies']) === array())) {
+            $field['unavailable'] = (count($store) === 1)
+                ? lang(array('string' => 'Currencies: {var:1}. Off: the store\'s base currency is {var:2}.', 'vars' => array($currencies, $currency)))
+                : lang(array('string' => 'Currencies: {var:1}. Off: the store charges in {var:2}.', 'vars' => array($currencies, implode(', ', $store))));
         }
 
         $fields[] = $field;
@@ -812,6 +867,8 @@ function pg_payment_stripe_card_details($intent)
  */
 function pg_payment_stripe_prepare_with($order, $amount, $settings)
 {
+    // The order's own currency: its amounts are kept in it (order_currency.php).
+    $settings = pg_payment_stripe_order_settings($settings, $order);
     if (($settings['publishable_key'] === '') || ($settings['secret_key'] === '') || ($settings['currency'] === '')) {
         return pg_payment_failure(lang('This payment method is not available.'));
     }
@@ -870,6 +927,8 @@ function pg_payment_stripe_prepare_with($order, $amount, $settings)
  */
 function pg_payment_stripe_authorize_with($order, $amount, $payment, $settings, $http)
 {
+    // The order's own currency: its amounts are kept in it (order_currency.php).
+    $settings = pg_payment_stripe_order_settings($settings, $order);
     if (($settings['secret_key'] === '') || ($settings['currency'] === '')) {
         return pg_payment_failure(lang('This payment method is not available.'));
     }
@@ -961,6 +1020,8 @@ function pg_payment_stripe_authorize_with($order, $amount, $payment, $settings, 
  */
 function pg_payment_stripe_blik_authorize_with($order, $amount, $payment, $settings, $http)
 {
+    // The order's own currency: its amounts are kept in it (order_currency.php).
+    $settings = pg_payment_stripe_order_settings($settings, $order);
     $return_url = (isset($payment['return_url']) && is_string($payment['return_url'])) ? $payment['return_url'] : '';
 
     if (!pg_payment_stripe_blik_offered($settings['currency'], $settings, !empty($payment['recurring'])) || ($return_url === '') || ($settings['publishable_key'] === '')) {
@@ -1042,6 +1103,8 @@ function pg_payment_stripe_blik_authorize_with($order, $amount, $payment, $setti
  */
 function pg_payment_stripe_complete_with($order, $amount, $return, $state, $settings, $http)
 {
+    // The order's own currency: its amounts are kept in it (order_currency.php).
+    $settings = pg_payment_stripe_order_settings($settings, $order);
     $state = is_array($state) ? $state : array();
     $intent_id = (isset($state['payment_intent']) && is_string($state['payment_intent'])) ? $state['payment_intent'] : '';
     $order_id = pg_payment_stripe_order_value($order, 'id');
@@ -1106,6 +1169,8 @@ function pg_payment_stripe_complete_with($order, $amount, $return, $state, $sett
  */
 function pg_payment_stripe_intent_answer($order, $amount, $intent, $settings, $http, $can_redirect, $page_step = array())
 {
+    // The order's own currency: its amounts are kept in it (order_currency.php).
+    $settings = pg_payment_stripe_order_settings($settings, $order);
     $order_id = pg_payment_stripe_order_value($order, 'id');
     $intent_id = (isset($intent['id']) && is_string($intent['id'])) ? $intent['id'] : '';
     $status = (isset($intent['status']) && is_string($intent['status'])) ? $intent['status'] : '';
@@ -1298,6 +1363,8 @@ function pg_payment_stripe_void_with($intent_id, $settings, $http)
  */
 function pg_payment_stripe_refund_with($order, $amount, $settings, $http)
 {
+    // The order's own currency: its amounts are kept in it (order_currency.php).
+    $settings = pg_payment_stripe_order_settings($settings, $order);
     $transaction_id = pg_payment_stripe_order_value($order, 'transaction_id');
     $units = pg_payment_stripe_amount($amount, $settings['currency']);
 
@@ -1356,6 +1423,8 @@ function pg_payment_stripe_refund_with($order, $amount, $settings, $http)
  */
 function pg_payment_stripe_cancel_with($order, $transaction_id, $settings, $http)
 {
+    // The order's own currency: its amounts are kept in it (order_currency.php).
+    $settings = pg_payment_stripe_order_settings($settings, $order);
     $transaction_id = (string) $transaction_id;
 
     if (preg_match('/^ch_[A-Za-z0-9]{1,250}$/', $transaction_id) === 1) {

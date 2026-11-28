@@ -186,6 +186,9 @@ function pg_payment_capability_names()
         'hosted_fields',  // the card is typed into the service's own fields in
                           // the page (prepare() gives what they need); no card
                           // number reaches the site, authorize() gets a token
+        'order_currency', // an order kept in another currency than the base
+                          // one (a market's, orders.charged_currency) is
+                          // charged and refunded in that currency
     );
 }
 
