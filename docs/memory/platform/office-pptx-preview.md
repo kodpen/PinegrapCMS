@@ -13,7 +13,7 @@ module: office
 - `pg_office_pptx_read()` in `includes/fn/office.php`, no library: the presentation part named by `_rels/.rels` (ppt/presentation.xml when none), its `sldIdLst` through the presentation's relationships (the `r:id`, not the bare `id`) for the order, each slide a DOM through `pg_office_xml()`.
 - Reading order is the shape tree's order (PowerPoint's own reading order): groups read in place, of `mc:AlternateContent` the Fallback. The first title or centred-title placeholder is the title and is not repeated in the text; empty paragraphs are left out; a paragraph keeps its level (`lvl`) and its line breaks.
 - Notes: the body placeholder of the slide's notes page (`notesSlide` relationship).
-- `pgOfficeView.render()` draws kind `pptx` (`renderSlides()`), the same in the file window and a channel, taking no options; every text is set as text, a picture only from a `data:image/` URL.
+- `pgOfficeView.render()` draws kind `pptx` the same in the file window and a channel: this list is the Text tab (`renderSlideList()`), beside the Slides tab of `office-pptx-slides-preview.md`; every text is set as text, a picture only from a `data:image/` URL.
 
 ## What are the limits?
 - Pictures: the .docx preview's, through the shared `pg_office_image_url()`: 2 MB each, 8 MB together, png, jpeg, gif, bmp, webp; the rest show "[picture]" and the note "{1} picture(s) could not be shown." An EMF or WMF is lost.

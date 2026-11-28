@@ -2068,6 +2068,22 @@
                     return;
                 }
 
+                // A presentation, only looked at: its Slides tab asks for one
+                // slide's pictures at a time through the same door.
+                if (data.office && data.office.kind === 'pptx') {
+                    window.pgOfficeView.render(box, data.office, (CFG.office && CFG.office.strings) || {}, {
+                        slidePictures: function (n, done) {
+                            api('ws_file_office', { message_id: file.message_id, slide: n }).then(function (answer) {
+                                done(answer);
+                            }).catch(function () {
+                                done(null);
+                            });
+                        }
+                    });
+
+                    return;
+                }
+
                 state.view = window.pgOfficeView.render(box, data.office, (CFG.office && CFG.office.strings) || {}, writable ? {
                     editable: true,
                     onChange: function (count) {

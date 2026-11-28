@@ -6,9 +6,10 @@
  * document as the safe HTML the server made, a .csv or .tsv as a sheet under
  * the choice of its separator and character set, an .ods as a workbook only
  * looked at (kind 'ods', options not taken), an .xls the same way under the
- * button that saves a copy as .xlsx (kind 'xls'), a presentation as a list
- * of its slides, only looked at (kind 'pptx'). Loaded on first use by the
- * file manager and the Workspace; nothing here reads a file itself.
+ * button that saves a copy as .xlsx (kind 'xls'), a presentation as its
+ * slides drawn by the image editor's painter under the tabs Slides and Text,
+ * only looked at (kind 'pptx'). Loaded on first use by the file manager and
+ * the Workspace; nothing here reads a file itself.
  *
  *   var view = window.pgOfficeView.render(container, office, strings, options)
  *
@@ -26,6 +27,12 @@
  *                       choice.delimiter and choice.encoding and calls
  *                       done(office) or done(null, message); without it
  *                       the choice is not drawn
+ *           for a presentation (kind 'pptx', only looked at):
+ *             slidePictures function (n, done): asks the window's door for
+ *                       slide n's pictures and calls done(answer) with
+ *                       {pictures: {layer id: data: address}} or done(null);
+ *                       without it, or without the image editor on the
+ *                       page, the text list alone is drawn
  *           for an .xls (kind 'xls', only looked at):
  *             saveCopy  function (done): saves a copy as .xlsx and calls
  *                       done(true, message) or done(false, message);
@@ -9525,11 +9532,11 @@
         return null;
     }
 
-    // A presentation: its slides as a list, each with its number and title,
-    // its text and pictures in reading order and its speaker notes; only
-    // looked at. Every text is set as text; a picture's source is only ever
-    // a data: URL of an image the server read from the file.
-    function renderSlides(container, office, strings) {
+    // A presentation's text: its slides as a list, each with its number and
+    // title, its text and pictures in reading order and its speaker notes;
+    // only looked at. Every text is set as text; a picture's source is only
+    // ever a data: URL of an image the server read from the file.
+    function renderSlideList(container, office, strings) {
         var list = el('ol', 'office-doc office-slides');
         var slides = office.slides || [];
 
@@ -9600,6 +9607,551 @@
         if (office.truncated) {
             container.appendChild(el('div', 'office-note', strings.truncated || ''));
         }
+
+        return null;
+    }
+
+    // The width of a thumb in the strip, in CSS pixels (the look's 148).
+    var SLIDE_THUMB = 148;
+
+    // A slide's document with its pictures pointed at the data: addresses
+    // the preview's door answered (layer id => address); a picture layer
+    // with no address is left out, so a picture never comes from elsewhere.
+    function slideDoc(doc, pictures) {
+        var copy = JSON.parse(JSON.stringify(doc || {}));
+
+        copy.layers = (Array.isArray(copy.layers) ? copy.layers : []).filter(function (layer) {
+            if (!layer || layer.type !== 'image') {
+                return true;
+            }
+
+            var src = pictures ? pictures[layer.id] : null;
+
+            if (typeof src !== 'string' || !/^data:image\/(png|jpeg|gif|webp);base64,/.test(src)) {
+                return false;
+            }
+
+            layer.src = src;
+
+            return true;
+        });
+
+        return copy;
+    }
+
+    // The size a slide is drawn at inside room (w x h), its ratio kept and
+    // never larger than its own size.
+    function slideFit(width, height, roomW, roomH) {
+        var scale = Math.min(1, roomW / width, roomH > 0 ? roomH / height : Infinity);
+
+        scale = (isFinite(scale) && scale > 0) ? scale : Math.min(1, roomW / width);
+
+        return { w: Math.max(1, Math.floor(width * scale)), h: Math.max(1, Math.floor(height * scale)) };
+    }
+
+    // The slide a key moves to from index among count slides, or -1 when
+    // the key is not one of the slides' keys.
+    function slideKey(key, index, count) {
+        if (key === 'ArrowLeft' || key === 'ArrowUp' || key === 'PageUp') {
+            return Math.max(0, index - 1);
+        }
+
+        if (key === 'ArrowRight' || key === 'ArrowDown' || key === 'PageDown') {
+            return Math.min(count - 1, index + 1);
+        }
+
+        if (key === 'Home') {
+            return 0;
+        }
+
+        if (key === 'End') {
+            return count - 1;
+        }
+
+        return -1;
+    }
+
+    // "Slide 3 of 24" with the slide's title after it, for a screen reader.
+    function slideName(strings, n, count, title) {
+        var name = String(strings.slide_of || '').replace('{1}', n).replace('{2}', count);
+
+        return title ? name + ': ' + title : name;
+    }
+
+    // A presentation: the tabs Slides and Text. Slides draws each slide's
+    // document (office.design, mapped on the server) with the image editor's
+    // painter, its pictures asked for one slide at a time through
+    // options.slidePictures(n, done) — the window's own door, read with its
+    // view rights. Without the painter, the documents or that door, the text
+    // list alone, as before.
+    function renderSlides(container, office, strings, options) {
+        var design = office && office.design;
+        var pages = (design && Array.isArray(design.pages)) ? design.pages : [];
+        var ask = options && (typeof options.slidePictures === 'function') ? options.slidePictures : null;
+
+        if (!pages.length || !ask || !(design.width > 0) || !(design.height > 0) || typeof window === 'undefined' || !window.pgImageEditor || !window.pgImageEditor.load) {
+            return renderSlideList(container, office, strings);
+        }
+
+        var uid = 'office-slides-' + Math.random().toString(36).slice(2, 9);
+        var wrap = el('div', 'office-slides-view');
+        var tabs = el('div', 'pg-seg office-slides-tabs');
+        var slidesPane = el('div', 'office-slides-pane');
+        var textPane = el('div', 'office-slides-pane');
+        var textDrawn = false;
+        var count = pages.length;
+        var byNumber = {};
+        var current = 0;
+
+        (office.slides || []).forEach(function (slide) {
+            byNumber[slide.n] = slide;
+        });
+
+        // The two tabs, Slides first; Text draws today's list on first use.
+        tabs.setAttribute('role', 'tablist');
+        tabs.setAttribute('aria-label', strings.slides || '');
+
+        var tabButtons = [['slides', strings.slides || '', slidesPane], ['text', strings.slides_text || '', textPane]].map(function (item, index) {
+            var tab = el('button', 'pg-seg-item' + (index ? '' : ' active'), item[1]);
+
+            tab.type = 'button';
+            tab.id = uid + '-tab-' + item[0];
+            tab.setAttribute('role', 'tab');
+            tab.setAttribute('aria-selected', index ? 'false' : 'true');
+            tab.setAttribute('aria-controls', uid + '-pane-' + item[0]);
+            tab.tabIndex = index ? -1 : 0;
+            item[2].id = uid + '-pane-' + item[0];
+            item[2].setAttribute('role', 'tabpanel');
+            item[2].setAttribute('aria-labelledby', tab.id);
+            item[2].hidden = index > 0;
+            tabs.appendChild(tab);
+
+            return tab;
+        });
+
+        function showTab(index, focus) {
+            tabButtons.forEach(function (tab, i) {
+                var on = (i === index);
+
+                tab.classList.toggle('active', on);
+                tab.setAttribute('aria-selected', on ? 'true' : 'false');
+                tab.tabIndex = on ? 0 : -1;
+            });
+            slidesPane.hidden = index !== 0;
+            textPane.hidden = index !== 1;
+
+            if (index === 1 && !textDrawn) {
+                textDrawn = true;
+                renderSlideList(textPane, office, strings);
+            }
+
+            if (focus) {
+                tabButtons[index].focus();
+            }
+
+            if (index === 0) {
+                drawMain();
+            }
+        }
+
+        tabButtons.forEach(function (tab, index) {
+            tab.addEventListener('click', function () {
+                showTab(index, false);
+            });
+            tab.addEventListener('keydown', function (event) {
+                if (event.key === 'ArrowLeft' || event.key === 'ArrowRight' || event.key === 'Home' || event.key === 'End') {
+                    event.preventDefault();
+                    showTab((event.key === 'Home') ? 0 : ((event.key === 'End') ? 1 : 1 - index), true);
+                }
+            });
+        });
+
+        wrap.appendChild(tabs);
+
+        // What the drawing leaves out, in one quiet line.
+        if (design.left) {
+            slidesPane.appendChild(el('p', 'pg-text-meta office-slides-left', design.left));
+        }
+
+        var body = el('div', 'office-slides-body');
+        var strip = el('ol', 'office-slides-strip');
+        var main = el('div', 'office-slides-main');
+        var stage = el('div', 'office-slides-stage');
+        var nav = el('div', 'office-slides-nav');
+        var said = el('div', 'visually-hidden');
+        var position = el('span', 'pg-text-meta office-slides-position');
+        var notesToggle = el('button', 'pg-button pg-button-quiet pg-button-sm office-slides-notes-toggle', strings.slide_notes || '');
+        var notes = el('div', 'office-slides-notes');
+        var thumbs = [];
+
+        strip.setAttribute('aria-label', strings.slides || '');
+        stage.tabIndex = 0;
+        stage.setAttribute('role', 'img');
+        said.setAttribute('aria-live', 'polite');
+        notesToggle.type = 'button';
+        notesToggle.setAttribute('aria-expanded', 'false');
+        notesToggle.setAttribute('aria-controls', uid + '-notes');
+        notes.id = uid + '-notes';
+        notes.hidden = true;
+        notesToggle.addEventListener('click', function () {
+            var open = notes.hidden;
+
+            notes.hidden = !open;
+            notesToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+
+        function navButton(icon, label, step) {
+            var button = el('button', 'pg-icon-button pg-icon-button-sm');
+            var glyph = el('span', 'bi ' + icon);
+
+            button.type = 'button';
+            glyph.setAttribute('aria-hidden', 'true');
+            button.appendChild(glyph);
+            button.setAttribute('aria-label', label);
+            button.title = label;
+            button.addEventListener('click', function () {
+                choose(current + step, false);
+            });
+
+            return button;
+        }
+
+        var previous = navButton('bi-chevron-left', strings.slide_previous || '', -1);
+        var next = navButton('bi-chevron-right', strings.slide_next || '', 1);
+
+        nav.appendChild(previous);
+        nav.appendChild(position);
+        nav.appendChild(next);
+
+        // The painter: the editor's own drawing code, loaded once the tab
+        // shows; each slide's pictures asked for once.
+        var editor = null;
+        var asked = {};
+        var queue = [];
+        var busy = false;
+
+        function loadEditor() {
+            if (!editor) {
+                editor = window.pgImageEditor.load().then(function (E) {
+                    return (E && E.parts) ? E.parts : (window.PgImageEditor && window.PgImageEditor.parts) || null;
+                });
+            }
+
+            return editor;
+        }
+
+        function picturesOf(page) {
+            var n = page.n;
+
+            if (!asked[n]) {
+                asked[n] = (page.doc && (page.doc.layers || []).some(function (layer) { return layer && layer.type === 'image'; }))
+                    ? new Promise(function (resolve) {
+                        ask(n, function (answer) {
+                            resolve((answer && answer.pictures) ? answer.pictures : {});
+                        });
+                    })
+                    : Promise.resolve({});
+            }
+
+            return asked[n];
+        }
+
+        // A painter for a page, its layers ready: kept, so a slide is drawn
+        // again at another size without loading anything.
+        var painters = {};
+
+        function painterOf(index) {
+            if (!painters[index]) {
+                var page = pages[index];
+
+                painters[index] = Promise.all([loadEditor(), picturesOf(page)]).then(function (loaded) {
+                    var parts = loaded[0];
+                    var opened = parts ? parts.M.canvasOpenDoc(slideDoc(page.doc, loaded[1])) : null;
+
+                    if (!opened) {
+                        throw new Error('slide');
+                    }
+
+                    var painter = Object.create(parts.Editor.prototype);
+
+                    painter.doc = opened;
+                    painter.pictures = {};
+                    painter.textFonts = {};
+                    painter.dataReads = {};
+                    painter.dataAsked = {};
+                    painter.dataBareDraw = true;
+                    painter.layersDirty = true;
+                    painter.renderView = function () { /* no stage to draw */ };
+
+                    return painter.layersReady().then(function () {
+                        return painter;
+                    });
+                });
+            }
+
+            return painters[index];
+        }
+
+        // A slide drawn into box at w x h CSS pixels: a canvas in place of
+        // the skeleton, or the sentence that it could not be drawn.
+        function paint(index, box, w, h) {
+            return painterOf(index).then(function (painter) {
+                var art = painter.doc.artboard;
+                var ratio = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
+                var canvas = document.createElement('canvas');
+                var g;
+
+                canvas.width = Math.max(1, Math.round(w * ratio));
+                canvas.height = Math.max(1, Math.round(h * ratio));
+                canvas.style.width = w + 'px';
+                canvas.style.height = h + 'px';
+                canvas.setAttribute('aria-hidden', 'true');
+                g = canvas.getContext('2d');
+
+                if (art.background && art.background !== 'transparent') {
+                    g.fillStyle = art.background;
+                    g.fillRect(0, 0, canvas.width, canvas.height);
+                }
+
+                painter.paintLayers(g, { x: 0, y: 0, w: art.width, h: art.height }, canvas.width, canvas.height);
+                box.innerHTML = '';
+                box.classList.remove('office-slides-skeleton');
+                box.appendChild(canvas);
+            }).catch(function () {
+                box.innerHTML = '';
+                box.classList.remove('office-slides-skeleton');
+                box.classList.add('office-slides-failed');
+                box.appendChild(el('span', 'pg-text-meta', strings.slide_failed || ''));
+            });
+        }
+
+        // One slide drawn at a time, the chosen one first.
+        function drawNext() {
+            if (busy || !queue.length || !container.isConnected) {
+                return;
+            }
+
+            var job = queue.shift();
+
+            busy = true;
+            job().then(function () {
+                busy = false;
+                drawNext();
+            });
+        }
+
+        function later(job, first) {
+            if (first) {
+                queue.unshift(job);
+            } else {
+                queue.push(job);
+            }
+
+            drawNext();
+        }
+
+        function sizeOf(page) {
+            var art = (page.doc && page.doc.artboard) || {};
+
+            return { w: art.width || design.width, h: art.height || design.height };
+        }
+
+        function skeleton(box, w, h) {
+            box.innerHTML = '';
+            box.classList.remove('office-slides-failed');
+            box.classList.add('office-slides-skeleton');
+            box.style.width = w + 'px';
+            box.style.height = h + 'px';
+        }
+
+        // The strip: a numbered thumb a slide in its own ratio, drawn when it
+        // comes into view.
+        var seen = typeof window.IntersectionObserver === 'function' ? new window.IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+                if (entry.isIntersecting) {
+                    seen.unobserve(entry.target);
+                    drawThumb(thumbs.indexOf(entry.target.parentNode.parentNode));
+                }
+            });
+        }, { root: null, rootMargin: '200px' }) : null;
+
+        function drawThumb(index) {
+            var thumb = thumbs[index];
+
+            if (!thumb || thumb.drawn) {
+                return;
+            }
+
+            thumb.drawn = true;
+            later(function () {
+                var size = sizeOf(pages[index]);
+                var fit = slideFit(size.w, size.h, SLIDE_THUMB, 0);
+
+                return paint(index, thumb.picture, fit.w, fit.h);
+            }, false);
+        }
+
+        pages.forEach(function (page, index) {
+            var text = byNumber[page.n] || {};
+            var item = el('li', 'office-slides-thumb-item');
+            var button = el('button', 'office-slides-thumb' + (page.hidden ? ' office-slides-thumb-hidden' : ''));
+            var picture = el('span', 'office-slides-picture');
+            var size = sizeOf(page);
+            var fit = slideFit(size.w, size.h, SLIDE_THUMB, 0);
+            var label = slideName(strings, page.n, count, text.title || '');
+
+            button.type = 'button';
+            button.tabIndex = index ? -1 : 0;
+            button.setAttribute('aria-label', page.hidden ? label + ', ' + (strings.slide_hidden || '') : label);
+            button.appendChild(el('span', 'pg-text-meta office-slides-n', page.n));
+            skeleton(picture, fit.w, fit.h);
+            button.appendChild(picture);
+
+            if (page.hidden) {
+                button.appendChild(el('span', 'pg-text-meta office-slides-hidden', strings.slide_hidden || ''));
+            }
+
+            button.addEventListener('click', function () {
+                choose(index, false);
+            });
+            item.picture = picture;
+            item.button = button;
+            item.appendChild(button);
+            strip.appendChild(item);
+            thumbs.push(item);
+        });
+
+        // The chosen slide, fitted to the room beside the strip.
+        var drawnAt = '';
+
+        function drawMain() {
+            if (slidesPane.hidden || !container.isConnected) {
+                return;
+            }
+
+            var page = pages[current];
+            var size = sizeOf(page);
+            var roomW = Math.max(120, (stage.clientWidth || main.clientWidth || 624) - 24);
+            var roomH = Math.max(120, Math.round(window.innerHeight * 0.6));
+            var fit = slideFit(size.w, size.h, roomW, roomH);
+            var key = current + ':' + fit.w + 'x' + fit.h;
+
+            if (key === drawnAt) {
+                return;
+            }
+
+            drawnAt = key;
+
+            var box = el('div', 'office-slides-picture');
+
+            skeleton(box, fit.w, fit.h);
+            stage.innerHTML = '';
+            stage.appendChild(box);
+            later(function () {
+                return (drawnAt === key) ? paint(current, box, fit.w, fit.h) : Promise.resolve();
+            }, true);
+        }
+
+        function choose(index, focusThumb) {
+            index = Math.max(0, Math.min(count - 1, index));
+
+            var page = pages[index];
+            var text = byNumber[page.n] || {};
+            var name = slideName(strings, page.n, count, text.title || '');
+
+            current = index;
+            thumbs.forEach(function (thumb, i) {
+                thumb.button.classList.toggle('is-active', i === index);
+                thumb.button.setAttribute('aria-current', (i === index) ? 'true' : 'false');
+                thumb.button.tabIndex = (i === index) ? 0 : -1;
+            });
+            position.textContent = page.n + ' / ' + count;
+            previous.disabled = index === 0;
+            next.disabled = index === count - 1;
+            stage.setAttribute('aria-label', page.hidden ? name + ', ' + (strings.slide_hidden || '') : name);
+            said.textContent = name;
+
+            notes.innerHTML = '';
+            (text.notes || []).forEach(function (line) {
+                notes.appendChild(el('p', 'office-slide-text', line));
+            });
+            notesToggle.hidden = !(text.notes && text.notes.length);
+
+            if (notesToggle.hidden) {
+                notes.hidden = true;
+                notesToggle.setAttribute('aria-expanded', 'false');
+            }
+
+            if (thumbs[index].button.scrollIntoView) {
+                thumbs[index].button.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+            }
+
+            if (focusThumb) {
+                thumbs[index].button.focus();
+            }
+
+            drawMain();
+            drawThumb(index);
+        }
+
+        // The arrow keys, Home and End while the focus is in the strip or on
+        // the slide.
+        function onKey(event) {
+            var to = slideKey(event.key, current, count);
+
+            if (to < 0 || event.altKey || event.ctrlKey || event.metaKey) {
+                return;
+            }
+
+            event.preventDefault();
+            choose(to, strip.contains(document.activeElement));
+        }
+
+        strip.addEventListener('keydown', onKey);
+        stage.addEventListener('keydown', onKey);
+
+        main.appendChild(stage);
+        main.appendChild(nav);
+        main.appendChild(notesToggle);
+        main.appendChild(notes);
+        body.appendChild(strip);
+        body.appendChild(main);
+        slidesPane.appendChild(body);
+        slidesPane.appendChild(said);
+
+        if (office.truncated || design.truncated) {
+            slidesPane.appendChild(el('div', 'office-note', strings.truncated || ''));
+        }
+
+        wrap.appendChild(slidesPane);
+        wrap.appendChild(textPane);
+        container.appendChild(wrap);
+
+        thumbs.forEach(function (thumb, index) {
+            if (seen) {
+                seen.observe(thumb.picture);
+            } else {
+                drawThumb(index);
+            }
+        });
+
+        // Drawn again at its new size when the window changes.
+        if (typeof window.ResizeObserver === 'function') {
+            var timer = null;
+            var watch = new window.ResizeObserver(function () {
+                if (!container.isConnected) {
+                    watch.disconnect();
+                    return;
+                }
+
+                clearTimeout(timer);
+                timer = setTimeout(drawMain, 150);
+            });
+
+            watch.observe(main);
+        }
+
+        choose(0, false);
 
         return null;
     }
@@ -9681,6 +10233,15 @@
             limits: DOC_TABLE_LIMITS
         },
         // A picture's kind by its first bytes and why one is refused.
+        // The Slides tab's own logic, which reads no page: a slide's
+        // pictures pointed at the door's addresses, the size it is drawn
+        // at, the slide a key moves to, the name a screen reader hears.
+        slides: {
+            doc: slideDoc,
+            fit: slideFit,
+            key: slideKey,
+            name: slideName
+        },
         docPicture: {
             pictureType: pictureType,
             pictureRefusal: pictureRefusal,
@@ -9721,9 +10282,10 @@
                 return renderDocument(container, office, strings, options || null);
             }
 
-            // A presentation takes no options: it is only looked at.
+            // A presentation is only looked at; its options carry the door
+            // its slides' pictures are asked for through (slidePictures).
             if (office && office.kind === 'pptx') {
-                return renderSlides(container, office, strings);
+                return renderSlides(container, office, strings, options || null);
             }
 
             return null;

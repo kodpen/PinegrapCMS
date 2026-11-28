@@ -10836,6 +10836,7 @@
     "This site runs on Pinegrap. Everything a visitor sees — these pages, the forms, the blog, the shop — is edited in one place, and the work behind it lives in the same panel.": "Bu site Pinegrap ile çalışır. Ziyaretçinin gördüğü her şey — bu sayfalar, formlar, blog, mağaza — tek bir yerden düzenlenir; arkasındaki iş de aynı panelde yürür.",
     "This site sends its own Content-Security-Policy (Firewall settings). Add these sources to it, or {var:1} cannot load: {var:2}": "Bu site kendi Content-Security-Policy başlığını gönderiyor (Güvenlik Duvarı ayarları). Şu kaynakları ona ekleyin, yoksa {var:1} yüklenemez: {var:2}",
     "This site uses the cookies it needs to work. Other cookies are used only if you allow them; you can choose them in Settings.": "Bu site çalışması için gerekli çerezleri kullanır. Diğer çerezler yalnızca izin verirseniz kullanılır; bunları Ayarlar'dan seçebilirsiniz.",
+    "This slide could not be drawn.": "Bu slayt çizilemedi.",
     "This slope could not be found. It may have been renamed.": "Bu pist bulunamadı. Adı değişmiş olabilir.",
     "This space could not be found. It may have been let, or the page was renamed.": "Bu alan bulunamadı. Kiralanmış olabilir ya da sayfanın adı değişmiş olabilir.",
     "This sponsorship enquiry could not be found, or it is not yours to see.": "Bu sponsorluk talebi bulunamadı ya da onu görme yetkiniz yok.",

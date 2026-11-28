@@ -4127,6 +4127,7 @@
     "Slide transition": "Kaydırma",
     "Slide up": "Yukarı kayma",
     "Slide {1}": "Slayt {1}",
+    "Slide {1} of {2}": "Slayt {1} / {2}",
     "Slide {var:1}": "Slayt {var:1}",
     "Slide {var}": "Slayt {var}",
     "Slide {var} Title": "Slayt {var} Başlığı",

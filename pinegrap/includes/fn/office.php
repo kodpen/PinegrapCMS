@@ -3795,6 +3795,11 @@ function pg_office_view_strings()
         'slide_hidden'      => lang('Hidden slide'),
         'slide_notes'       => lang('Speaker notes'),
         'slide_none'        => lang('The presentation has no slides.'),
+        'slides_text'       => lang('Text'),
+        'slide_of'          => lang('Slide {1} of {2}'),
+        'slide_previous'    => lang('Previous slide'),
+        'slide_next'        => lang('Next slide'),
+        'slide_failed'      => lang('This slide could not be drawn.'),
         'picture'           => lang('picture'),
     );
 }

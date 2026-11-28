@@ -132,3 +132,80 @@ function test_office_pptx_slides_read()
 	pg_assert_false(pg_office_pptx_slide_pictures($bad, 1)['ok'], 'not a package: no pictures');
 	@unlink($bad);
 }
+
+// Runs a script after the view in Node with its Slides helpers as S and
+// answers what it printed as JSON; null when Node cannot run.
+function office_pptx_slides_node($script)
+{
+	if (!function_exists('exec')) {
+		return null;
+	}
+
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		return null;
+	}
+
+	$file = @tempnam(sys_get_temp_dir(), 'pgslides');
+
+	if ($file === false) {
+		return null;
+	}
+
+	file_put_contents($file, "var window = {};\n" . file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_office_view.js')
+		. "\nvar S = window.pgOfficeView.slides;\n" . $script);
+	$out = array();
+	@exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	@unlink($file);
+
+	pg_assert_same(0, $code, 'the Node script runs: ' . implode("\n", array_slice($out, 0, 8)));
+
+	return json_decode(implode("\n", $out), true);
+}
+
+// The Slides tab's own logic: pictures only from the door's data:
+// addresses, the size kept in ratio and never above the slide's own, the
+// keys, the name a screen reader hears.
+function test_office_pptx_slides_view_helpers()
+{
+	$result = office_pptx_slides_node(<<<'JS'
+var doc = { artboard: { width: 1920, height: 1080 }, layers: [
+	{ id: 'l0', type: 'image', src: 'pptx:ppt/media/a.png' },
+	{ id: 'l1', type: 'text', text: 'Hi' },
+	{ id: 'l2', type: 'image', src: 'pptx:ppt/media/b.png' },
+	{ id: 'l3', type: 'image', src: 'pptx:ppt/media/c.png' }
+] };
+var drawn = S.doc(doc, { l0: 'data:image/png;base64,AAAA', l2: 'https://example.com/x.png', l3: 'data:text/html;base64,AAAA' });
+console.log(JSON.stringify({
+	layers: drawn.layers.map(function (l) { return l.id; }),
+	src: drawn.layers[0].src,
+	kept: doc.layers[0].src,
+	none: S.doc(doc, null).layers.length,
+	thumb: S.fit(1920, 1080, 148, 0),
+	wide: S.fit(1920, 1080, 4000, 3000),
+	tall: S.fit(1920, 1080, 1000, 300),
+	keys: [S.key('ArrowRight', 0, 3), S.key('ArrowLeft', 0, 3), S.key('ArrowDown', 2, 3), S.key('Home', 2, 3), S.key('End', 0, 3), S.key('a', 1, 3)],
+	name: S.name({ slide_of: 'Slide {1} of {2}' }, 3, 24, 'Plans'),
+	bare: S.name({ slide_of: 'Slide {1} of {2}' }, 3, 24, '')
+}));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('l0', 'l1'), $result['layers'], 'a picture without a data: image address is left out');
+	pg_assert_same('data:image/png;base64,AAAA', $result['src'], 'the door\'s address is drawn');
+	pg_assert_same('pptx:ppt/media/a.png', $result['kept'], 'the server\'s document is not changed');
+	pg_assert_same(1, $result['none'], 'no pictures: the text alone');
+	pg_assert_same(array('w' => 148, 'h' => 83), $result['thumb'], 'a thumb 148 px wide in the slide\'s ratio');
+	pg_assert_same(array('w' => 1920, 'h' => 1080), $result['wide'], 'never larger than its own size');
+	pg_assert_same(array('w' => 533, 'h' => 300), $result['tall'], 'fitted to the height');
+	pg_assert_same(array(1, 0, 2, 0, 2, -1), $result['keys'], 'arrows, Home and End; other keys are not the slides\'');
+	pg_assert_same('Slide 3 of 24: Plans', $result['name'], 'the name with the title');
+	pg_assert_same('Slide 3 of 24', $result['bare'], 'without a title');
+}

@@ -15111,6 +15111,18 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     };
                 }
 
+                // A presentation's Slides tab asks for one slide's pictures
+                // at a time through this door, with the same view rights.
+                if (response.office && (response.office.kind === 'pptx')) {
+                    options = {
+                        slidePictures: function (n, done) {
+                            api({ type: 'explorer_office_preview', id: fileId, slide: n }, function (answer) {
+                                done((answer && answer.status === 'success') ? answer : null);
+                            }, function () { done(null); });
+                        }
+                    };
+                }
+
                 var view = window.pgOfficeView.render(box, response.office, OFFICE_STRINGS, options);
 
                 if (editing && fileEdit && fileEdit.file && (fileEdit.file.id === fileId)) {
