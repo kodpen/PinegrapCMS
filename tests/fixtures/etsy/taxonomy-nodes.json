@@ -1,0 +1,34 @@
+{
+  "count": 2,
+  "results": [
+    {
+      "id": 1,
+      "level": 0,
+      "name": "Accessories",
+      "parent_id": null,
+      "children": [
+        {
+          "id": 2,
+          "level": 1,
+          "name": "Belts & Suspenders",
+          "parent_id": 1,
+          "children": [
+            {"id": 3, "level": 2, "name": "Belt Buckles", "parent_id": 2, "children": [], "full_path_taxonomy_ids": [1, 2, 3]},
+            {"id": 4, "level": 2, "name": "Belts", "parent_id": 2, "children": [], "full_path_taxonomy_ids": [1, 2, 4]}
+          ],
+          "full_path_taxonomy_ids": [1, 2]
+        },
+        {"id": "x9", "level": 1, "name": "Broken node", "parent_id": 1, "children": [], "full_path_taxonomy_ids": []}
+      ],
+      "full_path_taxonomy_ids": [1]
+    },
+    {
+      "id": 69,
+      "level": 0,
+      "name": "Art & Collectibles",
+      "parent_id": null,
+      "children": [],
+      "full_path_taxonomy_ids": [69]
+    }
+  ]
+}

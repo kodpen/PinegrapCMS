@@ -12,6 +12,11 @@
  * selects (mp_account_choices_merge()). One account is one shop, in the
  * shop's currency.
  *
+ * Etsy's seller taxonomy is one tree for every shop, so it is cached under
+ * the provider's key (no category_key): category_tree() reads its nodes,
+ * category_attributes() a leaf's properties, for the pairing of a product
+ * group on Marketplace Products › Listings.
+ *
  * Every call carries the application's x-api-key header
  * (pg_etsy_app_headers()). The Etsy functions of their own (scopes, the
  * provider, the parsers of these answers) are in includes/fn/etsy.php.
@@ -31,7 +36,9 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/etsy.php');
 function mp_etsy_connector() {
 
 	return array(
-		'test_credentials' => 'mp_etsy_test_credentials'
+		'test_credentials'    => 'mp_etsy_test_credentials',
+		'category_tree'       => 'mp_etsy_category_tree',
+		'category_attributes' => 'mp_etsy_category_attributes'
 	);
 
 }
@@ -170,5 +177,82 @@ function mp_etsy_test_credentials($account, $call = null) {
 	}
 
 	return mp_etsy_read_choices($call);
+
+}
+
+/* -------------------------------------------------------------- taxonomy */
+
+// The seller taxonomy, flattened (pg_etsy_taxonomy_rows()). Several thousand
+// nested nodes make an answer of a few megabytes; the cap is generous
+// because a cut answer is broken JSON, not a smaller tree. $call replaces
+// the calls to Etsy in tests.
+function mp_etsy_category_tree($account, $call = null) {
+
+	if ($call === null) {
+
+		$call = mp_etsy_api_call();
+
+		if ($call === null) {
+
+			return mp_error(lang('Connect an Etsy account on Connections first.'));
+
+		}
+
+	}
+
+	$answer = call_user_func($call, 'GET', '/seller-taxonomy/nodes', array('timeout' => 120, 'max_body' => 33554432, 'decode' => true));
+
+	if (!$answer['ok']) {
+
+		return mp_error(pg_etsy_error_text($answer), pg_etsy_retry($answer));
+
+	}
+
+	$rows = pg_etsy_taxonomy_rows($answer['data']);
+
+	if (!$rows) {
+
+		return mp_error(lang('Etsy returned no categories.'));
+
+	}
+
+	return mp_ok(array('categories' => $rows));
+
+}
+
+// The properties one taxonomy node takes (getPropertiesByTaxonomyId), as
+// attribute rows (pg_etsy_property_rows()). An id that is not a number is
+// never sent.
+function mp_etsy_category_attributes($account, $category_id, $call = null) {
+
+	$category_id = trim((string)$category_id);
+
+	if (preg_match('/^[0-9]{1,20}$/', $category_id) !== 1) {
+
+		return mp_error(lang('No category to ask about.'));
+
+	}
+
+	if ($call === null) {
+
+		$call = mp_etsy_api_call();
+
+		if ($call === null) {
+
+			return mp_error(lang('Connect an Etsy account on Connections first.'));
+
+		}
+
+	}
+
+	$answer = call_user_func($call, 'GET', '/seller-taxonomy/nodes/' . $category_id . '/properties', array('timeout' => 60, 'max_body' => 8388608, 'decode' => true));
+
+	if (!$answer['ok']) {
+
+		return mp_error(pg_etsy_error_text($answer), pg_etsy_retry($answer));
+
+	}
+
+	return mp_ok(array('attributes' => pg_etsy_property_rows($answer['data'])));
 
 }

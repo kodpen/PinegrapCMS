@@ -1,0 +1,80 @@
+{
+  "count": 5,
+  "results": [
+    {
+      "property_id": 200,
+      "name": "Primary color",
+      "display_name": "Primary color",
+      "scales": [],
+      "is_required": true,
+      "supports_attributes": true,
+      "supports_variations": true,
+      "is_multivalued": false,
+      "max_values_allowed": null,
+      "possible_values": [
+        {"value_id": 1, "name": "Beige", "scale_id": null, "equal_to": []},
+        {"value_id": 2, "name": "Black", "scale_id": null, "equal_to": []},
+        {"value_id": 2, "name": "Black", "scale_id": null, "equal_to": []}
+      ],
+      "selected_values": []
+    },
+    {
+      "property_id": 100,
+      "name": "Size",
+      "display_name": "Size",
+      "scales": [
+        {"scale_id": 1, "display_name": "US", "description": ""},
+        {"scale_id": 2, "display_name": "UK", "description": ""}
+      ],
+      "is_required": false,
+      "supports_attributes": false,
+      "supports_variations": true,
+      "is_multivalued": false,
+      "max_values_allowed": null,
+      "possible_values": [
+        {"value_id": 1795, "name": "8", "scale_id": 1, "equal_to": []},
+        {"value_id": 1796, "name": "8", "scale_id": 2, "equal_to": []}
+      ],
+      "selected_values": []
+    },
+    {
+      "property_id": 46803063641,
+      "name": "Holiday",
+      "display_name": "",
+      "scales": [],
+      "is_required": false,
+      "supports_attributes": true,
+      "supports_variations": false,
+      "is_multivalued": true,
+      "max_values_allowed": 5,
+      "possible_values": [],
+      "selected_values": []
+    },
+    {
+      "property_id": 513,
+      "name": "Custom Property",
+      "display_name": "Custom Property",
+      "scales": [],
+      "is_required": false,
+      "supports_attributes": false,
+      "supports_variations": false,
+      "is_multivalued": false,
+      "max_values_allowed": null,
+      "possible_values": [],
+      "selected_values": []
+    },
+    {
+      "property_id": "abc",
+      "name": "Broken",
+      "display_name": "Broken",
+      "scales": [],
+      "is_required": true,
+      "supports_attributes": true,
+      "supports_variations": false,
+      "is_multivalued": false,
+      "max_values_allowed": null,
+      "possible_values": [],
+      "selected_values": []
+    }
+  ]
+}

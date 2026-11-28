@@ -289,3 +289,142 @@ function pg_etsy_when_made_choices()
 
     return $choices;
 }
+
+
+/* ---------------------------------------------------------------------------
+   Seller taxonomy (connectors/etsy.php): categories and their properties
+   --------------------------------------------------------------------------- */
+
+/**
+ * A getSellerTaxonomyNodes answer as the rows of the category cache: every
+ * node with its parent and its path of names, depth first in Etsy's order.
+ * Etsy nests a node's children under it; a node without children is a leaf,
+ * the only kind a listing takes as its taxonomy_id. A node whose id is not a
+ * number is left out with its branch. Pure.
+ *
+ * @param mixed $data
+ * @return array remote_id, parent_id, name, path, is_leaf
+ */
+function pg_etsy_taxonomy_rows($data)
+{
+    $rows = array();
+    $list = (is_array($data) && isset($data['results']) && is_array($data['results'])) ? $data['results'] : array();
+    $stack = array();
+    $seen = array();
+
+    // A stack rather than recursion, pushed in reverse so the rows come out
+    // in Etsy's order.
+    foreach (array_reverse($list) as $node) {
+        $stack[] = array($node, '', '');
+    }
+
+    while ($stack) {
+        list($node, $parent_id, $parent_path) = array_pop($stack);
+
+        $id = (is_array($node) && isset($node['id']) && is_scalar($node['id'])) ? trim((string) $node['id']) : '';
+
+        if ((preg_match('/^[0-9]{1,20}$/', $id) !== 1) || isset($seen[$id])) {
+            continue;
+        }
+
+        $seen[$id] = true;
+        $name = (isset($node['name']) && is_scalar($node['name'])) ? trim((string) $node['name']) : '';
+        $path = ($parent_path === '') ? $name : ($parent_path . ' > ' . $name);
+        $children = (isset($node['children']) && is_array($node['children'])) ? $node['children'] : array();
+
+        $rows[] = array(
+            'remote_id' => $id,
+            'parent_id' => $parent_id,
+            'name'      => $name,
+            'path'      => $path,
+            'is_leaf'   => $children ? 0 : 1,
+        );
+
+        foreach (array_reverse($children) as $child) {
+            $stack[] = array($child, $id, $path);
+        }
+    }
+
+    return $rows;
+}
+
+/**
+ * A getPropertiesByTaxonomyId answer as the attribute rows of the category
+ * cache. The property id is the attribute id and each possible value's id
+ * its value id, as updateListingProperty takes them. Required is
+ * is_required; a property with no possible values takes the shop's own
+ * text; one that supports variations is answered by each product's own
+ * option, the article's answer being its fallback. A value of a property
+ * with more than one scale (sizes: US, UK, EU) carries its scale's name, so
+ * "8" of two scales are told apart. A property that is neither an attribute
+ * nor a variation is left out. Pure.
+ *
+ * @param mixed $data
+ * @return array attribute_id, name, mandatory, is_variant, custom_allowed, sort_order, values
+ */
+function pg_etsy_property_rows($data)
+{
+    $rows = array();
+    $list = (is_array($data) && isset($data['results']) && is_array($data['results'])) ? $data['results'] : array();
+    $seen = array();
+
+    foreach ($list as $property) {
+        $id = (is_array($property) && isset($property['property_id']) && is_scalar($property['property_id'])) ? trim((string) $property['property_id']) : '';
+
+        if ((preg_match('/^[0-9]{1,20}$/', $id) !== 1) || isset($seen[$id])) {
+            continue;
+        }
+
+        if (empty($property['supports_attributes']) && empty($property['supports_variations'])) {
+            continue;
+        }
+
+        $seen[$id] = true;
+        $name = (isset($property['display_name']) && is_scalar($property['display_name'])) ? trim((string) $property['display_name']) : '';
+
+        if ($name === '') {
+            $name = (isset($property['name']) && is_scalar($property['name'])) ? trim((string) $property['name']) : $id;
+        }
+
+        $scales = array();
+
+        foreach ((isset($property['scales']) && is_array($property['scales'])) ? $property['scales'] : array() as $scale) {
+            if (is_array($scale) && isset($scale['scale_id']) && is_scalar($scale['scale_id']) && isset($scale['display_name']) && is_scalar($scale['display_name'])) {
+                $scales[(string) $scale['scale_id']] = trim((string) $scale['display_name']);
+            }
+        }
+
+        $values = array();
+        $known = array();
+
+        foreach ((isset($property['possible_values']) && is_array($property['possible_values'])) ? $property['possible_values'] : array() as $value) {
+            $value_id = (is_array($value) && isset($value['value_id']) && is_scalar($value['value_id'])) ? trim((string) $value['value_id']) : '';
+            $text = (is_array($value) && isset($value['name']) && is_scalar($value['name'])) ? trim((string) $value['name']) : '';
+
+            if (($value_id === '') || ($text === '') || isset($known[$value_id])) {
+                continue;
+            }
+
+            $scale_id = (isset($value['scale_id']) && is_scalar($value['scale_id'])) ? (string) $value['scale_id'] : '';
+
+            if ((count($scales) > 1) && isset($scales[$scale_id]) && ($scales[$scale_id] !== '')) {
+                $text .= ' (' . $scales[$scale_id] . ')';
+            }
+
+            $known[$value_id] = true;
+            $values[] = array('id' => $value_id, 'value' => $text);
+        }
+
+        $rows[] = array(
+            'attribute_id'   => $id,
+            'name'           => $name,
+            'mandatory'      => !empty($property['is_required']) ? 1 : 0,
+            'is_variant'     => !empty($property['supports_variations']) ? 1 : 0,
+            'custom_allowed' => $values ? 0 : 1,
+            'sort_order'     => count($rows),
+            'values'         => $values,
+        );
+    }
+
+    return $rows;
+}
