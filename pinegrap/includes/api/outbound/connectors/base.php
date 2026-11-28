@@ -202,6 +202,9 @@ function mp_providers() {
 			'name'   => 'Etsy',
 			'file'   => 'etsy.php',
 			'help'   => 'Connect your Etsy shop on Connections first. Save, then test the connection to read your shop, its shipping and processing profiles. Etsy gives an app made in Turkey no buyer addresses and no shipment reports: such a shop gets its listings, stock, prices and orders, without the address.',
+			// No carrier of Etsy's own: every parcel is the shop's to report.
+			'ships_itself'  => true,
+			'open_statuses' => array('paid', 'partially refunded'),
 			'fields' => array(
 				'shop'             => array('label' => 'Etsy shop',          'type' => 'select', 'remote' => true, 'options' => array()),
 				'shipping_profile' => array('label' => 'Shipping profile',   'type' => 'select', 'remote' => true, 'options' => array()),

@@ -1155,3 +1155,348 @@ function pg_etsy_pace($result)
 
     return array('wait' => (($second !== null) && ($second <= 0)) ? 1 : 0, 'stop' => 0);
 }
+
+/**
+ * How many receipts one getShopReceipts page asks for: Etsy's most.
+ *
+ * @return int
+ */
+function pg_etsy_receipts_page()
+{
+    return 100;
+}
+
+/**
+ * An Etsy money object (amount over divisor) in minor units, rounded half
+ * away from zero; 0 when it does not read. A negative amount counts as its
+ * size. Pure.
+ *
+ * @param mixed $money array(amount, divisor, currency_code)
+ * @return int
+ */
+function pg_etsy_minor($money)
+{
+    if (!is_array($money) || !isset($money['amount']) || !is_numeric($money['amount'])) {
+        return 0;
+    }
+
+    $divisor = (isset($money['divisor']) && is_numeric($money['divisor']) && ((int) $money['divisor'] > 0)) ? (int) $money['divisor'] : 100;
+
+    return (int) abs(round(round((float) $money['amount'] * 100 / $divisor, 6)));
+}
+
+/**
+ * The window of last modification one pull asks for: from five minutes
+ * before the cursor (the importer skips what it has seen) to now or a week
+ * past the cursor, whichever is first, so a backlog is read a week a pass
+ * and the cursor still moves. A first pull reads the last week. Pure.
+ *
+ * @param int $since the cursor, 0 before the first pull
+ * @param int $now
+ * @return array array(start, end) in unix seconds
+ */
+function pg_etsy_order_window($since, $now)
+{
+    $since = (int) $since;
+    $now = (int) $now;
+
+    if (($since <= 0) || ($since > $now)) {
+        $since = ($since > $now) ? $now : $now - 604800;
+    }
+
+    return array(max(0, $since - 300), min($now, $since + 604800));
+}
+
+/**
+ * One page of getShopReceipts: the paid receipts modified inside the window.
+ * Pure.
+ *
+ * @param string $shop_id
+ * @param int    $start
+ * @param int    $end
+ * @param int    $offset
+ * @return string
+ */
+function pg_etsy_receipts_path($shop_id, $start, $end, $offset)
+{
+    return '/shops/' . rawurlencode((string) $shop_id) . '/receipts?min_last_modified=' . (int) $start
+        . '&max_last_modified=' . (int) $end . '&was_paid=true&limit=' . pg_etsy_receipts_page()
+        . '&offset=' . (int) $offset;
+}
+
+/**
+ * The word a receipt's state is kept under (marketplace_order_map's
+ * remote_status): Etsy's status (paid, completed, canceled, partially
+ * refunded, fully refunded...), completed once the receipt is shipped
+ * although Etsy may still say paid. Pure.
+ *
+ * @param array $receipt
+ * @return string
+ */
+function pg_etsy_receipt_status($receipt)
+{
+    $status = (isset($receipt['status']) && is_string($receipt['status'])) ? strtolower(trim($receipt['status'])) : '';
+
+    if (($status === 'paid') && !empty($receipt['is_shipped'])) {
+        return 'completed';
+    }
+
+    return mb_substr($status, 0, 40);
+}
+
+/**
+ * A text field of an Etsy answer, trimmed; '' when it is not text. Pure.
+ *
+ * @param mixed  $row
+ * @param string $key
+ * @return string
+ */
+function pg_etsy_text($row, $key)
+{
+    return (is_array($row) && isset($row[$key]) && is_scalar($row[$key])) ? trim((string) $row[$key]) : '';
+}
+
+/**
+ * The delivery address of a receipt in the importer's shape, or an empty
+ * array when Etsy gave none: an application made in Turkey gets no address
+ * fields at all. The buyer's e-mail is kept beside it. Pure.
+ *
+ * @param array $receipt
+ * @return array
+ */
+function pg_etsy_receipt_address($receipt)
+{
+    if ((pg_etsy_text($receipt, 'first_line') === '') && (pg_etsy_text($receipt, 'country_iso') === '')) {
+        return array();
+    }
+
+    return array(
+        'name'      => pg_etsy_text($receipt, 'name'),
+        'company'   => '',
+        'address_1' => pg_etsy_text($receipt, 'first_line'),
+        'address_2' => pg_etsy_text($receipt, 'second_line'),
+        'city'      => pg_etsy_text($receipt, 'city'),
+        'state'     => pg_etsy_text($receipt, 'state'),
+        'district'  => '',
+        'zip'       => pg_etsy_text($receipt, 'zip'),
+        'country'   => strtoupper(pg_etsy_text($receipt, 'country_iso')),
+        'phone'     => '',
+        'email'     => pg_etsy_text($receipt, 'buyer_email'),
+    );
+}
+
+/**
+ * Whether a receipt holds a good that is sent, not only downloads. Pure.
+ *
+ * @param array $receipt
+ * @return bool
+ */
+function pg_etsy_receipt_ships($receipt)
+{
+    foreach ((isset($receipt['transactions']) && is_array($receipt['transactions'])) ? $receipt['transactions'] : array() as $transaction) {
+        if (is_array($transaction) && empty($transaction['is_digital'])) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * A discount on the whole receipt shared over its lines in proportion to
+ * their values, the remainder by the largest fractions, so the shares add
+ * up to the discount and no share is above its line. Pure.
+ *
+ * @param array $values   minor units of each line, keyed as the lines
+ * @param int   $discount minor units
+ * @return array the share of each line, same keys
+ */
+function pg_etsy_discount_shares($values, $discount)
+{
+    $values = array_map('intval', (array) $values);
+    $sum = array_sum($values);
+    $discount = min(max(0, (int) $discount), max(0, $sum));
+    $shares = array_fill_keys(array_keys($values), 0);
+
+    if (($discount === 0) || ($sum <= 0)) {
+        return $shares;
+    }
+
+    $fractions = array();
+
+    foreach ($values as $key => $value) {
+        $exact = $discount * max(0, $value) / $sum;
+        $shares[$key] = (int) floor($exact);
+        $fractions[$key] = $exact - $shares[$key];
+    }
+
+    arsort($fractions);
+
+    $left = $discount - array_sum($shares);
+
+    foreach (array_keys($fractions) as $key) {
+        if ($left <= 0) {
+            break;
+        }
+
+        if ($shares[$key] < $values[$key]) {
+            $shares[$key]++;
+            $left--;
+        }
+    }
+
+    return $shares;
+}
+
+/**
+ * One Etsy receipt as the package mp_import_order() takes, or null: no
+ * receipt id, or not paid. The receipt is the package: it is what Etsy
+ * ships and reports a shipment for.
+ *
+ * Amounts are in the receipt's currency (its grand total's), in minor
+ * units: a line's price is its transaction's price for one, the shop's
+ * discount on the receipt is shared over the lines (discount_total), the
+ * shipping is the receipt's. The sales tax and VAT Etsy collects and remits
+ * itself are not the seller's money and are left out, as eBay's are.
+ *
+ * A receipt Etsy gave no address for while it holds a good to send is
+ * imported all the same, with the notice that says so on the Imported
+ * orders card; its shipment is reported on Etsy. Only what delivering the
+ * order needs is kept of the buyer. Pure.
+ *
+ * @param array  $receipt
+ * @param string $no_address the notice of a receipt without an address
+ * @return array|null
+ */
+function pg_etsy_receipt_package($receipt, $no_address)
+{
+    $receipt_id = pg_etsy_text($receipt, 'receipt_id');
+
+    if (($receipt_id === '') || (isset($receipt['is_paid']) && !$receipt['is_paid'])) {
+        return null;
+    }
+
+    $lines = array();
+    $values = array();
+    $currency = isset($receipt['grandtotal']) ? pg_etsy_text($receipt['grandtotal'], 'currency_code') : '';
+
+    foreach ((isset($receipt['transactions']) && is_array($receipt['transactions'])) ? $receipt['transactions'] : array() as $transaction) {
+        if (!is_array($transaction)) {
+            continue;
+        }
+
+        $quantity = isset($transaction['quantity']) ? max(1, (int) $transaction['quantity']) : 1;
+        $price = pg_etsy_minor(isset($transaction['price']) ? $transaction['price'] : null);
+
+        if (($currency === '') && isset($transaction['price'])) {
+            $currency = pg_etsy_text($transaction['price'], 'currency_code');
+        }
+
+        $sku = pg_etsy_text($transaction, 'sku');
+
+        $lines[] = array(
+            'remote_line_id' => pg_etsy_text($transaction, 'transaction_id'),
+            'code'           => $sku,
+            'sku'            => $sku,
+            'name'           => pg_etsy_text($transaction, 'title'),
+            'quantity'       => $quantity,
+            'price'          => $price,
+            'tax'            => 0,
+            'discount'       => 0,
+            'discount_total' => 0,
+            'status'         => !empty($transaction['shipped_timestamp']) ? 'shipped' : '',
+        );
+
+        $values[] = $price * $quantity;
+    }
+
+    foreach (pg_etsy_discount_shares($values, pg_etsy_minor(isset($receipt['discount_amt']) ? $receipt['discount_amt'] : null)) as $index => $share) {
+        $lines[$index]['discount_total'] = $share;
+        $lines[$index]['discount'] = (int) round($share / $lines[$index]['quantity']);
+    }
+
+    $address = pg_etsy_receipt_address($receipt);
+    $billing = $address ? $address : array_fill_keys(array('name', 'company', 'address_1', 'address_2', 'city', 'state', 'district', 'zip', 'country', 'phone', 'email'), '');
+    $name = isset($address['name']) ? $address['name'] : pg_etsy_text($receipt, 'name');
+    $space = ($name !== '') ? strrpos($name, ' ') : false;
+
+    $updated = isset($receipt['updated_timestamp']) ? (int) $receipt['updated_timestamp']
+        : (isset($receipt['update_timestamp']) ? (int) $receipt['update_timestamp'] : 0);
+
+    $package = array(
+        'remote_order_id'   => $receipt_id,
+        'remote_package_id' => $receipt_id,
+        'remote_status'     => pg_etsy_receipt_status($receipt),
+        // The modification time, on the scale the feed is asked on: "Try
+        // again" moves the pull cursor back to it.
+        'placed_at'         => $updated,
+        'currency'          => strtoupper($currency),
+        'customer'          => array(
+            'first_name' => ($space === false) ? $name : trim(substr($name, 0, $space)),
+            'last_name'  => ($space === false) ? '' : trim(substr($name, $space + 1)),
+            'email'      => pg_etsy_text($receipt, 'buyer_email'),
+            'phone'      => '',
+            'company'    => '',
+        ),
+        'billing'           => $billing,
+        'shipping_address'  => $address,
+        'shipping_cost'     => pg_etsy_minor(isset($receipt['total_shipping_cost']) ? $receipt['total_shipping_cost'] : null),
+        'lines'             => $lines,
+    );
+
+    if (!$address && pg_etsy_receipt_ships($receipt)) {
+        $package['notice'] = (string) $no_address;
+    }
+
+    return $package;
+}
+
+/**
+ * The carrier_name a parcel is reported with: Etsy's name for a carrier of
+ * the shop's list it knows, else the carrier's name as the shop has it. ''
+ * when the parcel names none. Pure.
+ *
+ * @param string $carrier the carrier's key in pg_shipping_carriers(), or ''
+ * @param string $name    the carrier's name as the order screen shows it
+ * @return string
+ */
+function pg_etsy_carrier_name($carrier, $name)
+{
+    $names = array(
+        'ups'          => 'ups',
+        'usps'         => 'usps',
+        'fedex'        => 'fedex',
+        'dhl'          => 'dhl',
+        'deutschepost' => 'deutsche-post',
+        'dpd'          => 'dpd',
+        'royalmail'    => 'royal-mail',
+    );
+
+    $carrier = trim((string) $carrier);
+
+    if (isset($names[$carrier])) {
+        return $names[$carrier];
+    }
+
+    return mb_substr(trim((string) $name), 0, 50);
+}
+
+/**
+ * The form fields of a createReceiptShipment call, or null when the parcel
+ * has no number or no carrier. Pure.
+ *
+ * @param string $number
+ * @param string $carrier_name pg_etsy_carrier_name()
+ * @return array|null
+ */
+function pg_etsy_shipment_fields($number, $carrier_name)
+{
+    $number = trim((string) $number);
+    $carrier_name = trim((string) $carrier_name);
+
+    if (($number === '') || ($carrier_name === '')) {
+        return null;
+    }
+
+    return array('tracking_code' => mb_substr($number, 0, 100), 'carrier_name' => $carrier_name);
+}

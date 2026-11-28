@@ -1,0 +1,10 @@
+{
+  "receipt_id": 3012345678,
+  "status": "Completed",
+  "is_paid": true,
+  "is_shipped": true,
+  "updated_timestamp": 1764300000,
+  "shipments": [
+    {"receipt_shipping_id": 9001, "shipment_notification_timestamp": 1764300000, "carrier_name": "ups", "tracking_code": "1Z999AA10123456784"}
+  ]
+}

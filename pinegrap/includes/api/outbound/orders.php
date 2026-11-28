@@ -63,6 +63,8 @@ require_once(dirname(__FILE__) . '/webhooks.php');
 //   shipping_address   the same shape, plus district (the town, written to
 //                      ship_tos.district), or an empty array
 //   currency           three letters
+//   notice             optional: a note kept on the map row (last_error) once
+//                      the order is written, e.g. that no address was given
 //   lines              array of array(remote_line_id, code, name, quantity,
 //                      price, tax, discount, and optionally discount_total
 //                      and sku)
@@ -217,8 +219,14 @@ function mp_import_claimed($account, $package, $map_id) {
 
 	}
 
+	// A connector may hand a notice with the package (Etsy: no address was
+	// given). It is kept where the Imported orders card shows a package's
+	// note, which also keeps the package out of the shipment report: a
+	// package nobody can address is shipped in the marketplace's panel.
+	$notice = isset($package['notice']) ? trim((string)$package['notice']) : '';
+
 	db("UPDATE marketplace_order_map
-		SET order_id = '" . e($order_id) . "', status = 'imported', last_error = '',
+		SET order_id = '" . e($order_id) . "', status = 'imported', last_error = '" . e(mb_substr($notice, 0, 500)) . "',
 			updated_timestamp = UNIX_TIMESTAMP()
 		WHERE id = '" . e($map_id) . "'");
 
