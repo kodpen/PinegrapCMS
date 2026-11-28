@@ -641,13 +641,16 @@ function pg_office_docx_paragraph_kind(&$context, $paragraph, $kind)
 /**
  * The parts a save that set kinds adds to or changes beside the main part:
  * the styles and the numbering with what was added, and when one of them
- * was not in the package, its content type and relationship.
+ * was not in the package, its content type and relationship. When the
+ * save writes the relationships for links or pictures too, the new one is
+ * added to theirs, so neither writing undoes the other.
  *
  * @param ZipArchive $zip
  * @param array      $context
+ * @param array|null $links   pg_office_docx_link_context() of the save, when it has one
  * @return array|null part name => text; null when they cannot be written
  */
-function pg_office_docx_kind_parts($zip, $context)
+function pg_office_docx_kind_parts($zip, $context, &$links = null)
 {
     $texts = array();
     $rels = $context['rels'];
@@ -696,9 +699,13 @@ function pg_office_docx_kind_parts($zip, $context)
         $texts['word/' . $kind . '.xml'] = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' . "\n"
             . '<w:' . $kind . ' xmlns:w="' . $attr($context['namespace']) . '">' . $pieces . $part['added'] . '</w:' . $kind . '>';
 
-        preg_match_all('/\sId\s*=\s*"rId(\d+)"/', $rels, $ids);
-        $id = 'rId' . (empty($ids[1]) ? 1 : max(array_map('intval', $ids[1])) + 1);
-        $rels = pg_office_sheets_append($rels, 'Relationships', '<Relationship Id="' . $id . '" Type="' . $attr($context['base'] . $kind) . '" Target="' . $kind . '.xml"/>');
+        if (is_array($links)) {
+            pg_office_docx_rel_add($links, $context['base'] . $kind, $kind . '.xml');
+        } else {
+            preg_match_all('/\sId\s*=\s*"rId(\d+)"/', $rels, $ids);
+            $id = 'rId' . (empty($ids[1]) ? 1 : max(array_map('intval', $ids[1])) + 1);
+            $rels = pg_office_sheets_append($rels, 'Relationships', '<Relationship Id="' . $id . '" Type="' . $attr($context['base'] . $kind) . '" Target="' . $kind . '.xml"/>');
+        }
 
         if (($rels === null) || ($types === null)) {
             return null;
