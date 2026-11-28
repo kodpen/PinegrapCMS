@@ -23,7 +23,8 @@ description: Main menu rows that open their entries in a panel inside the menu: 
 - While the labels show (expanded, drawer) the open panel is kept for the tab (`sessionStorage` `pgMenuPanel`). The next page reopens it, without the slide, only when one of its entries is the page or its row is the page's row; otherwise it is forgotten, and a panel marked to open by itself there opens (`data-pg-menu-auto`). The rail never reopens one.
 
 ## How are the current entry and the row's hint found?
-- `markMenuCurrent()` (`backend.src.js`) marks in each panel the entry whose path is the page's, whose query parameters are all on the page (more wins, the same set best) and whose `#section`, if any, is the page's: `.pg-menu-current`, `aria-current="page"`, coloured through `--bs-emphasis-color-rgb` (`.link-body-emphasis` is `!important`). Its name goes into the row's `.pg-menu-hint` (unless it is the row's own name); CSS shows the hint on the `.active` row only, so it follows `.active` when `workspace.js` pins or unpins My Notes.
+- `markMenuCurrent()` (`backend.src.js`) marks in each panel the entry whose path is the page's, whose query parameters are all on the page (more wins, the same set best) and whose `#section`, if any, is the page's: `.pg-menu-current`, `aria-current="page"`, drawn as the open row (`main-menu-open-row.md`).
+- Its name goes into the row's `.pg-menu-hint` (unless it is the row's own name); CSS shows the hint on the `.active` row only, so it follows `.active` when `workspace.js` pins or unpins My Notes.
 - `MENU_PANEL_KEY` is set above the init calls; below them it was undefined.
 
 ## What else had to change with it?

@@ -202,8 +202,48 @@ function test_menu_row_icon_sits_on_its_category_tile()
 	pg_assert_contains("  --pg-menu-tile: 2rem;\n  --pg-menu-icon: 1.2rem;", $css, 'a 32 px tile and an icon of at least 1.2rem');
 	pg_assert_contains("  width: var(--pg-menu-tile);\n  height: var(--pg-menu-tile);\n  border-radius: 0.625rem;", $css, 'the tile');
 	pg_assert_contains("  --pg-mi-tint: 13%;\n  --pg-mi-line: 16%;", $css, 'a tint and an inner line');
-	pg_assert_contains("#menu .list-group-item.active .pg-mi-tile {\n  --pg-mi-tint: 26%;\n  --pg-mi-line: 34%;", $css, 'stronger on the current row');
 	pg_assert_contains(":is(#menu, .pg-look-mi) .pg-mi-tile > svg {\n  width: var(--pg-menu-icon);", $css, 'the icon on it');
+}
+
+function test_menu_open_row_is_told_by_a_filled_tile()
+{
+	// The open row and a panel's current entry: the tile filled with the
+	// category's tone, the drawing on it, the row the neutral quiet fill.
+	// No blue fill: it read as one more blue tile beside the top rows.
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+
+	pg_assert_contains("  --pg-mi-on: light-dark(var(--bs-white), var(--pg-navbar-bg));", $css, 'white on the tile, the ground in dark');
+	pg_assert_contains(":is(#menu .list-group-item.active, .pg-look-mi-open) .pg-mi-tile {\n  --pg-mi-tint: 100%;\n  --pg-mi-line: 100%;\n  color: var(--pg-mi-on);", $css, 'the open row\'s tile is filled');
+	pg_assert_contains("  --bs-list-group-active-color: var(--pg-fg-emphasis);\n  --bs-list-group-active-bg: var(--pg-quiet);", $css, 'the row the quiet fill and dark words');
+	pg_assert_false(strpos($css, '--bs-list-group-active-bg: rgba(var(--pg-primary-rgb)') !== false, 'no blue fill on the row');
+	pg_assert_contains("#menu:not(.expanded) .pg-menu-main .list-group-item.list-group-item-action.active {\n    --bs-list-group-active-bg: transparent;", $css, 'the tile alone on the rail');
+	pg_assert_contains("#menu .menu-body .pg-menu-panel-body > a.pg-menu-current {\n  background: var(--pg-quiet);", $css, 'the current entry the quiet fill');
+	pg_assert_contains("a.bi.pg-menu-current::before {\n  color: var(--pg-mi-on);\n  background: var(--pg-menu-tone);", $css, 'the current entry\'s tile is filled');
+	pg_assert_contains("  --bs-list-group-action-hover-bg: var(--pg-hover);", $css, 'hover a lighter fill');
+	pg_assert_contains("#menu .menu-body .pg-menu-panel-body > a:is(:hover, :focus-visible) {\n  background: var(--pg-hover);", $css, 'hover on an entry too');
+
+	// The drawing at 3:1 or more on every filled tile: white in the light
+	// theme, the menu's ground in the dark one.
+	preg_match('/--pg-navbar-bg-rgb: 248, 248, 248;.*?--pg-navbar-bg-rgb: (\d+), (\d+), (\d+);/s', $css, $ground);
+	pg_assert_true(!empty($ground), 'the dark ground is found');
+	$dark_ground = sprintf('%02x%02x%02x', $ground[1], $ground[2], $ground[3]);
+	$lum = function ($hex) {
+		$sum = 0;
+		foreach (array(0 => 0.2126, 2 => 0.7152, 4 => 0.0722) as $offset => $weight) {
+			$c = hexdec(substr($hex, $offset, 2)) / 255;
+			$sum += $weight * (($c <= 0.03928) ? $c / 12.92 : pow(($c + 0.055) / 1.055, 2.4));
+		}
+		return $sum;
+	};
+	$ratio = function ($a, $b) use ($lum) {
+		return (max($lum($a), $lum($b)) + 0.05) / (min($lum($a), $lum($b)) + 0.05);
+	};
+
+	foreach (array('blue', 'teal', 'rose', 'amber', 'lime', 'violet', 'gray') as $tone) {
+		pg_assert_true((bool) preg_match('/--pg-tone-' . $tone . ': light-dark\(#([0-9a-f]{6}), #([0-9a-f]{6})\);/', $css, $m), $tone . ' is found');
+		pg_assert_true($ratio($m[1], 'ffffff') >= 3, $tone . ': white on the light tile');
+		pg_assert_true($ratio($m[2], $dark_ground) >= 3, $tone . ': the ground on the dark tile');
+	}
 }
 
 function test_menu_site_settings_row_is_retired()

@@ -133,4 +133,6 @@ function test_menu_icon_pattern_in_design_examples()
 
 	pg_assert_same(7, substr_count($html, 'class="pg-look-tile pg-look-mi-item" tabindex="0"'), 'one item a category, reached by the keyboard');
 	pg_assert_same(1, substr_count($html, ' data-pg-flows-running'), 'one icon runs');
+	pg_assert_same(1, substr_count($html, '<span class="pg-look-mi-row pg-look-mi-open">'), 'the open row');
+	pg_assert_same(1, substr_count($html, '<span class="pg-look-mi-row">'), 'beside a row at rest');
 }

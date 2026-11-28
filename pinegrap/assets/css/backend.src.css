@@ -1780,9 +1780,14 @@ html[data-bs-theme="dark"] body .design-color {
    24-unit grid in currentColor. Each row shows its drawing, or its fallback
    icon, on a tile (pg_menu_icon_tile()) in the colour of the row's category
    (data-pg-menu-tone, pg_menu_category_tone()): the icon in the tone, the
-   tile a 13% tint of it with a 16% inner line. The current row's tile is
-   stronger. The panels carry the same tone for their entries' tiles, and
+   tile a 13% tint of it with a 16% inner line. The open row's tile is
+   filled with the tone and its drawing takes --pg-mi-on: white in the light
+   theme, the menu's ground in the dark one (3:1 or more on every tone in
+   both). The panels carry the same tone for their entries' tiles, and
    Design examples' "Menu row icon" (.pg-look-mi) draws the same tiles. */
+:is(#menu, .pg-look-mi) {
+  --pg-mi-on: light-dark(var(--bs-white), var(--pg-navbar-bg));
+}
 :is(#menu, .pg-look-mi) [data-pg-menu-tone="top"] { --pg-menu-tone: var(--pg-tone-blue); }
 :is(#menu, .pg-look-mi) [data-pg-menu-tone="content"] { --pg-menu-tone: var(--pg-tone-teal); }
 :is(#menu, .pg-look-mi) [data-pg-menu-tone="design"] { --pg-menu-tone: var(--pg-tone-rose); }
@@ -1804,9 +1809,14 @@ html[data-bs-theme="dark"] body .design-color {
   background: color-mix(in srgb, var(--pg-menu-tone) var(--pg-mi-tint), transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pg-menu-tone) var(--pg-mi-line), transparent);
 }
-#menu .list-group-item.active .pg-mi-tile {
-  --pg-mi-tint: 26%;
-  --pg-mi-line: 34%;
+/* At 100% the hiding parts (.pg-mi-h) take the tone too, so they still
+   cover the line behind them. The soft shadow under the tile is drawn in
+   the light theme only: on the dark ground it muddies the tile's edge. */
+:is(#menu .list-group-item.active, .pg-look-mi-open) .pg-mi-tile {
+  --pg-mi-tint: 100%;
+  --pg-mi-line: 100%;
+  color: var(--pg-mi-on);
+  box-shadow: inset 0 0 0 1px var(--pg-menu-tone), 0 2px 6px light-dark(color-mix(in srgb, var(--pg-menu-tone) 35%, transparent), transparent);
 }
 :is(#menu, .pg-look-mi) .pg-mi-tile > svg {
   width: var(--pg-menu-icon);
@@ -2216,9 +2226,11 @@ body:not(.toolbar) .software-content > #footer {
 #menu.expanded .list-group .list-group-item {
   padding-right: 0.625rem;
 }
+/* Hover is a lighter fill than the open row's and never fills the tile,
+   so a pointed row is not taken for the open one. */
 #menu .list-group-item-action:hover,
 #menu .list-group-item-action:focus-visible {
-  --bs-list-group-action-hover-bg: var(--pg-tint-hover);
+  --bs-list-group-action-hover-bg: var(--pg-hover);
 }
 #menu.expanded .list-group .list-group-item {
   text-overflow: ellipsis;
@@ -2650,11 +2662,12 @@ body:not(.toolbar) .software-content > #footer {
   vertical-align: -0.15em;
 }
 #menu .menu-body .pg-menu-panel-body > a:is(:hover, :focus-visible) {
-  background: var(--pg-tint-hover);
+  background: var(--pg-hover);
 }
+/* The current entry is told as the open row is: the quiet fill, the
+   emphasis colour at 600 and, below, its tile filled with the tone. */
 #menu .menu-body .pg-menu-panel-body > a.pg-menu-current {
-  --bs-emphasis-color-rgb: var(--pg-primary-ink-rgb);
-  background: rgba(var(--pg-primary-rgb), 0.18);
+  background: var(--pg-quiet);
   font-weight: 600;
 }
 /* An entry's icon on a tile, as on the rows: the glyph in the tone of the
@@ -2678,6 +2691,11 @@ body:not(.toolbar) .software-content > #footer {
   color: var(--pg-menu-tone);
   background: color-mix(in srgb, var(--pg-menu-tone) 13%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pg-menu-tone) 16%, transparent);
+}
+#menu .menu-body .pg-menu-panel[data-pg-menu-tone] .pg-menu-panel-body > a.bi.pg-menu-current::before {
+  color: var(--pg-mi-on);
+  background: var(--pg-menu-tone);
+  box-shadow: inset 0 0 0 1px var(--pg-menu-tone), 0 2px 6px light-dark(color-mix(in srgb, var(--pg-menu-tone) 35%, transparent), transparent);
 }
 
 /* A System tools entry (pg_menu_tools_markup()): the name ends in an
@@ -2793,15 +2811,21 @@ body:not(.toolbar) .software-content > #footer {
   }
 }
 
-/* A 3px tick against the rail edge was easy to miss and was the thing getting
-   clipped. The whole row carries the state now; the module colour stays on the
-   icon, which keeps the rail readable at a glance. */
+/* The open row: its tile filled with the category's tone ("Main menu
+   icons"), the row the neutral quiet fill, its words the emphasis colour at
+   600. No blue fill: it read as one more blue tile beside the top rows. */
 #menu .list-group-item.list-group-item-action.active {
-  --bs-list-group-active-color: var(--pg-primary-ink);
-  --bs-list-group-active-bg: rgba(var(--pg-primary-rgb), 0.18);
+  --bs-list-group-active-color: var(--pg-fg-emphasis);
+  --bs-list-group-active-bg: var(--pg-quiet);
   --bs-list-group-active-border-color: transparent;
   --bs-list-group-border-width: 0px;
   font-weight: 600;
+}
+/* On the rail the filled tile alone tells the open row. */
+@media (min-width: 1024px) {
+  :where(.software-container:not(.menu-drawer-only)) #menu:not(.expanded) .pg-menu-main .list-group-item.list-group-item-action.active {
+    --bs-list-group-active-bg: transparent;
+  }
 }
 
 @keyframes slideInFromTop {
@@ -5183,6 +5207,21 @@ a.link-top-row {
    and keyboard focus, as a menu row does. */
 .pg-look-mi-item {
   cursor: default;
+}
+/* Its rows at rest and open, the menu row's height and padding. */
+.pg-look-mi-row {
+  display: inline-flex;
+  align-items: center;
+  min-width: 12rem;
+  min-height: 2.5rem;
+  padding: 0.25rem 0.6875rem;
+  border-radius: var(--pg-radius-lg);
+  color: var(--pg-fg-body);
+}
+.pg-look-mi-open {
+  background: var(--pg-quiet);
+  color: var(--pg-fg-emphasis);
+  font-weight: var(--pg-weight-strong);
 }
 .pg-look-pad {
   padding: 20px;

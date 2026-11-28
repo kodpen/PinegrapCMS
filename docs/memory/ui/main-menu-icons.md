@@ -13,8 +13,8 @@ module: output
 ## What colour is a row?
 - The colour of its category in `pg_menu_categories()`, not of its module class: `pg_menu_category_tone($slot)` gives `top` (the untitled block, and a row no category lists), `content`, `design`, `ecommerce`, `accounting`, `marketing` or `system`.
 - `backend.src.css`, block "Main menu icons", has one line a category: `:is(#menu, .pg-look-mi) [data-pg-menu-tone="…"]` sets `--pg-menu-tone` to blue, teal, rose, amber, lime, violet or grey (`--pg-tone-*`, `light-dark()` so both themes). A new category needs its line; the test checks each.
-- The row's icon sits on `pg_menu_icon_tile()`: `<span class="pg-mi-tile me-3" data-pg-menu-tone="…">`, 32 px (`--pg-menu-tile`, 2rem), radius 10 px, the 1.2rem (19 px) icon (`--pg-menu-icon`) in the tone on a 13% tint with a 16% inner line; the current row (`.active`) 26% and 34%. The row is 40 px high, its label 13.5 px; collapsed, 11 px item padding centres the tile on the 66 px rail (`--pg-rail-w`).
-- 1.2rem since #11271: the 15 px icons were too small to tell apart (`workflow/decisions-made-panel-19.md`). Drawings shown outside the menu keep their own size.
+- The row's icon sits on `pg_menu_icon_tile()`: `<span class="pg-mi-tile me-3" data-pg-menu-tone="…">`, 32 px (`--pg-menu-tile`, 2rem), radius 10 px, the 1.2rem (19 px) icon (`--pg-menu-icon`) in the tone on a 13% tint with a 16% inner line. The open row's tile is filled: `main-menu-open-row.md`. The row is 40 px high, its label 13.5 px; collapsed, 11 px item padding centres the tile on the 66 px rail (`--pg-rail-w`).
+- 1.2rem since #11271: the 15 px icons were too small to tell apart (`workflow/decisions-made-panel-19.md`).
 - The Workspace's pin actions (My Notes, Incoming e-mail) use the same tile.
 
 ## Which icons do the panel entries carry?
