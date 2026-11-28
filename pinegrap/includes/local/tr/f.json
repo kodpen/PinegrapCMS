@@ -2230,6 +2230,7 @@
     "From our family grove to your table.": "Ailemizin zeytinliğinden sofranıza.",
     "From our roastery": "Kavurma atölyemizden",
     "From our sites": "Şantiyelerimizden",
+    "From pgDocHead.build(): one head for a note, a Data table, the Artifact Canvas, a file window and the view windows. Left the kind's tile, the name (click to rename), the meta and the save state; then Undo, Redo and the kind's own controls; at the right faces, Share, Download, the main button, the more menu, grow and Close.": "pgDocHead.build() ile: not, Veri tablosu, Yapıt Tuvali, dosya penceresi ve görüntüleme pencereleri için tek başlık. Solda türün simgesi, ad (değiştirmek için tıklayın), ek bilgi ve kayıt durumu; ardından Geri al, İleri al ve türün kendi düğmeleri; sağda kişiler, Paylaş, İndir, ana düğme, diğer işlemler menüsü, büyüt ve Kapat.",
     "From purchase order {var:1}": "{var:1} numaralı satın alma siparişinden",
     "From putting on skis to riding the chairlift and the first blue run.": "Kayakları takmaktan telesiyeje binmeye ve ilk mavi piste kadar.",
     "From quote {var:1}": "{var:1} numaralı tekliften",

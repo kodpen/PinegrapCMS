@@ -39631,3 +39631,280 @@ button.pg-var-chip:focus-visible {
 }
 
 }
+
+/* ==========================================================================
+   Look A: document head.
+   The one row at the top of a note, a Data table, the Artifact Canvas, a
+   file window and the view windows (assets/js/pg_doc_head.js; Design
+   examples "Document head"): identity, history and slot, acts. 52 px on
+   the window's surface with a line under it; 48 px under 640 px, where only
+   Back, the name, the state's dot, the main button and the menu stay.
+   ========================================================================== */
+@layer custom {
+
+.pg-doc-head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  height: 52px;
+  padding: 0 10px 0 14px;
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+}
+.pg-doc-head-ident,
+.pg-doc-head-history,
+.pg-doc-head-acts,
+.pg-doc-head-slot,
+.pg-doc-head-slot-items {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.pg-doc-head-ident {
+  flex: 0 1 auto;
+}
+.pg-doc-head-history,
+.pg-doc-head-acts {
+  flex: none;
+}
+.pg-doc-head-space {
+  flex: 1 1 0;
+  min-width: 8px;
+}
+.pg-doc-head-back {
+  margin-left: -6px;
+}
+.pg-doc-head-tile {
+  margin-right: 8px;
+}
+/* The name: one line, cut with an ellipsis (whole in its tooltip); who may
+   rename clicks it and types in place, the field taking the accent ring. */
+.pg-doc-head-name {
+  min-width: 0;
+  max-width: 28rem;
+  margin-left: -7px;
+  padding: 5px 7px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--pg-fg-body);
+  font: inherit;
+  font-size: var(--pg-text-status-title);
+  font-weight: var(--pg-weight-title);
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  font-variation-settings: var(--pg-opsz-display);
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pg-doc-head-name.is-renamable {
+  cursor: text;
+}
+.pg-doc-head-name.is-renamable:hover {
+  background: var(--pg-hover);
+}
+.pg-doc-head-name.is-renamable:focus-visible {
+  outline: 2px solid var(--pg-accent);
+  outline-offset: 0;
+}
+.pg-doc-head-name-input {
+  width: 18rem;
+  background: var(--pg-field-bg);
+  box-shadow: inset 0 0 0 1px var(--pg-accent), 0 0 0 3px color-mix(in srgb, var(--pg-accent) 22%, transparent);
+  outline: 0;
+}
+.pg-doc-head-meta {
+  flex: none;
+  margin-left: 2px;
+  color: var(--pg-fg-3);
+  font-size: var(--pg-text-meta);
+  white-space: nowrap;
+}
+/* The save state: a 6 px dot and its words. */
+.pg-doc-head-state {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  margin-left: 12px;
+  color: var(--pg-fg-2);
+  font-size: var(--pg-text-meta);
+  white-space: nowrap;
+}
+.pg-doc-head-state[hidden] {
+  display: none;
+}
+.pg-doc-head-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--pg-fg-3);
+}
+.pg-doc-head-state.is-saved .pg-doc-head-dot {
+  background: var(--pg-tone-teal);
+}
+.pg-doc-head-state.is-unsaved .pg-doc-head-dot {
+  background: var(--pg-tone-amber);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--pg-tone-amber) 20%, transparent);
+}
+.pg-doc-head-state.is-failed .pg-doc-head-dot {
+  background: var(--pg-tone-rose);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--pg-tone-rose) 20%, transparent);
+}
+.pg-doc-head-state.is-failed {
+  color: var(--pg-tone-rose-text);
+}
+.pg-doc-head-sep {
+  flex: none;
+  width: 1px;
+  height: 20px;
+  margin: 0 8px;
+  background: var(--pg-border-color-translucent);
+}
+.pg-doc-head-faces {
+  display: flex;
+  margin: 0 8px 0 6px;
+}
+.pg-doc-head-faces > .pg-initials {
+  width: 24px;
+  height: 24px;
+  box-shadow: 0 0 0 2px var(--pg-surface-1);
+}
+.pg-doc-head-faces > .pg-initials + .pg-initials {
+  margin-left: -6px;
+}
+/* Save at 45 % strength until something changed. */
+.pg-doc-head-main.is-off {
+  opacity: 0.45;
+  cursor: default;
+}
+.pg-doc-head-single.is-danger {
+  color: var(--pg-tone-rose-text);
+}
+/* The "more" menu: the head's own, under its button at the right. */
+.pg-doc-head-more {
+  position: relative;
+  display: inline-flex;
+}
+.pg-doc-head-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 1060;
+  width: 268px;
+  max-height: min(70vh, 32rem);
+  overflow-y: auto;
+  padding: 6px;
+  border-radius: 14px;
+  background: var(--pg-surface-float);
+  box-shadow: var(--pg-shadow-float);
+  backdrop-filter: blur(18px);
+}
+.pg-doc-head-menu[hidden] {
+  display: none;
+}
+.pg-doc-head-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 34px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 9px;
+  background: none;
+  color: var(--pg-fg-body);
+  font: inherit;
+  font-size: var(--pg-text-2);
+  text-align: left;
+  cursor: pointer;
+}
+.pg-doc-head-menu-item > .bi {
+  width: 16px;
+  color: var(--pg-fg-2);
+}
+.pg-doc-head-menu-item:hover,
+.pg-doc-head-menu-item:focus-visible {
+  background: var(--pg-hover);
+  outline: 0;
+}
+.pg-doc-head-menu-item:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+.pg-doc-head-menu-item.is-danger,
+.pg-doc-head-menu-item.is-danger > .bi {
+  color: var(--pg-tone-rose-text);
+}
+.pg-doc-head-menu-item > .pg-count {
+  margin-left: auto;
+}
+.pg-doc-head-menu-line {
+  margin: 5px 4px;
+  border: 0;
+  border-top: 1px solid var(--pg-border-color-translucent);
+  opacity: 1;
+}
+.pg-doc-head-menu-slot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px 6px;
+}
+.pg-doc-head-phone-only {
+  display: none;
+}
+/* A head drawn alone in a card (Design examples): the menu may leave it. */
+.pg-doc-head-host {
+  margin-bottom: 12px;
+  padding: 0;
+  overflow: visible;
+}
+.pg-doc-head-host > .pg-doc-head {
+  border-bottom: 0;
+}
+
+/* A phone: Back in place of Close, the name, the state's dot alone, the
+   main button and the menu; the rest moves into the menu. */
+@media (max-width: 639.98px) {
+  .pg-doc-head {
+    height: 48px;
+    padding: 0 8px 0 12px;
+  }
+  .pg-doc-head-phone-only {
+    display: inline-grid;
+  }
+  .pg-doc-head-back {
+    margin-left: -8px;
+  }
+  .pg-doc-head-tile,
+  .pg-doc-head-meta,
+  .pg-doc-head-state-text,
+  .pg-doc-head-history,
+  .pg-doc-head-faces,
+  .pg-doc-head-share,
+  .pg-doc-head-download,
+  .pg-doc-head-single,
+  .pg-doc-head-grow,
+  .pg-doc-head-close {
+    display: none;
+  }
+  .pg-doc-head-ident {
+    flex: 1 1 auto;
+  }
+  .pg-doc-head-name {
+    max-width: none;
+  }
+  .pg-doc-head-name-input {
+    width: 100%;
+  }
+  .pg-doc-head-state {
+    margin-left: 6px;
+  }
+}
+
+}

@@ -178,7 +178,7 @@ function test_look_examples_phone_pane()
 	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/design_examples.php');
 
 	preg_match_all('/<h3 class="pg-title-status" id="pg_look_phone_([^"]+)"/', $pane, $drawn);
-	pg_assert_same(array('pattern-settings', 'pattern-form', 'pattern-choice', 'pattern-stepline'), $drawn[1], 'the phone pane draws the marked patterns, in their order');
+	pg_assert_same(array('pattern-settings', 'pattern-form', 'pattern-doc-head', 'pattern-choice', 'pattern-stepline'), $drawn[1], 'the phone pane draws the marked patterns, in their order');
 	preg_match_all('/\sid="([^"]+)"/', $pane, $ids);
 	pg_assert_same(count($ids[1]), count(array_unique($ids[1])), 'no id twice in the phone pane');
 	pg_assert_contains('<iframe class="pg-look-phone-frame" src="design_examples.php?phone=1" width="390"', pg_look_examples_phone_frame(), 'the frame is a phone\'s width');
@@ -199,7 +199,7 @@ function test_look_examples_mail_patterns_in_order()
 	$mail = array('pattern-tabs', 'pattern-values', 'pattern-choice', 'pattern-stepline', 'pattern-signin', 'pattern-result', 'pattern-confirm', 'pattern-confirm-go', 'pattern-switch');
 
 	pg_assert_same($mail, array_slice($ids, -9), 'the e-mail drawing\'s seven parts, the confirm History takes back, then the switch rows, close the Patterns group');
-	pg_assert_same(array('pattern-settings', 'pattern-form', 'pattern-choice', 'pattern-stepline'), array_keys(array_filter(array_column(pg_look_examples_patterns('light'), 'phone', 'id'))), 'the phone pane takes the settings pane, the form drawer, the choice cards and the step line');
+	pg_assert_same(array('pattern-settings', 'pattern-form', 'pattern-doc-head', 'pattern-choice', 'pattern-stepline'), array_keys(array_filter(array_column(pg_look_examples_patterns('light'), 'phone', 'id'))), 'the phone pane takes the settings pane, the form drawer, the choice cards and the step line');
 	pg_assert_contains('Look A: tabs with a state, value rows, choice cards, step line, provider', (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css'), 'the recipes in their own block');
 }
 
