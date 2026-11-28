@@ -14,7 +14,8 @@
  * list of rows as they are stored, with secrets masked by the audit trail's
  * rule (pg_audit_secret_key()), stored IP numbers written as addresses and
  * bearer codes (gift card codes, push endpoints) cut to what identifies them.
- * ERP documents and Workspace channels are listed by reference only.
+ * ERP documents and Workspace channels are listed by reference only; a
+ * support request comes with its mails in and out, never the team's notes.
  * privacy_export.php hands it out as JSON, the full record, or as a PDF
  * summary to send to the person; every download is an audit_log line.
  *
@@ -82,6 +83,7 @@ function pg_privacy_export_sections()
         'mail_bounces'       => lang('E-mail bounces and complaints'),
         'sms'                => lang('Text messages'),
         'chats'              => lang('Site chat'),
+        'support_requests'   => lang('Support requests'),
         'erp_accounts'       => lang('Current accounts'),
         'erp_documents'      => lang('Accounting documents'),
         'workspace'          => lang('Workspace'),
@@ -1336,6 +1338,13 @@ function pg_privacy_export_collect(array $found)
         }
     }
 
+    // Support requests: the person's conversations of a support box, with
+    // the mails in and out. The team's notes under a request are channel
+    // messages, not mails, and are never read here.
+    if (pg_schema_has('ws_mail_conversations', 'customer_email') && pg_schema_has('ws_mail_boxes', 'settings')) {
+        $sections['support_requests'] = _pg_privacy_export_support_requests($user_ids, $contact_ids, $emails, $limit);
+    }
+
     // ERP: the person's current accounts, and their documents by reference.
     if (pg_schema_has('erp_accounts', 'contact_id')) {
         $account_ids = array_merge(
@@ -1436,6 +1445,76 @@ function pg_privacy_export_collect(array $found)
     $sections['workspace'] = pg_privacy_export_join($workspace);
 
     return $sections;
+}
+
+/**
+ * The person's support requests: the conversations of support boxes tied to
+ * their account, contact or address, each with its number and the box's
+ * name, and its mails in and out (drafts left out) under mails.
+ *
+ * @param int[]    $user_ids
+ * @param int[]    $contact_ids
+ * @param string[] $emails
+ * @param int      $limit rows the section holds
+ * @return array rows, truncated
+ */
+function _pg_privacy_export_support_requests(array $user_ids, array $contact_ids, array $emails, $limit)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_status.php');
+
+    $support = array();
+
+    foreach ((array) db_items("SELECT id, name, settings FROM ws_mail_boxes") as $box) {
+        if (ws_mail_box_is_support($box)) {
+            $support[(int) $box['id']] = (string) $box['name'];
+        }
+    }
+
+    $where = _pg_privacy_export_any(array(
+        _pg_privacy_export_in('customer_email', $emails),
+        _pg_privacy_export_in('user_id', $user_ids),
+        _pg_privacy_export_in('contact_id', $contact_ids),
+    ));
+
+    if (!$support || ($where === '')) {
+        return array('rows' => array(), 'truncated' => false);
+    }
+
+    $read = _pg_privacy_export_select("SELECT id, box_id, subject, status, customer_email, customer_name, contact_id, user_id,
+        first_in_at, first_reply_at, last_in_at, last_out_at, closed_at FROM ws_mail_conversations
+        WHERE " . _pg_privacy_export_in('box_id', array_keys($support)) . " AND " . $where . " ORDER BY id", array(1));
+    $ids = _pg_privacy_export_column($read['rows'], 'id');
+    $mails = array();
+
+    if ($ids && pg_schema_has('ws_mail_items', 'conversation_id')) {
+        $drafts = pg_schema_has('ws_mail_items', 'send_state') ? " AND send_state <> 'draft'" : '';
+
+        foreach ((array) db_items("SELECT id, conversation_id, direction, from_email, from_name, to_list, cc_list, subject, body_text, sent_at, created_at
+            FROM ws_mail_items WHERE " . _pg_privacy_export_in('conversation_id', $ids) . $drafts . " ORDER BY conversation_id, id LIMIT " . ((int) $limit * 20)) as $mail) {
+            $mails[(int) $mail['conversation_id']][] = pg_privacy_export_clean($mail);
+        }
+    }
+
+    foreach ($read['rows'] as $index => $row) {
+        $read['rows'][$index] = pg_privacy_export_request_row($row, $support[(int) $row['box_id']] ?? '', $mails[(int) $row['id']] ?? array());
+    }
+
+    return $read;
+}
+
+/**
+ * A support request as the pack gives it: its number as the customer sees it
+ * in a subject ([#T<id>]), the box's name, the conversation's columns and
+ * its mails. Pure.
+ *
+ * @param array  $row   ws_mail_conversations row
+ * @param string $box   the box's name
+ * @param array  $mails ws_mail_items rows of the conversation
+ * @return array
+ */
+function pg_privacy_export_request_row(array $row, $box, array $mails)
+{
+    return array('number' => '#T' . (int) ($row['id'] ?? 0), 'box' => (string) $box) + $row + array('mails' => array_values($mails));
 }
 
 /**

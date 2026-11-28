@@ -27,7 +27,7 @@ function test_privacy_export_sections_are_pinned()
 			'contact', 'contact_groups', 'address_book',
 			'orders', 'order_items', 'ship_tos', 'order_documents', 'returns', 'refunds', 'gift_cards', 'event_tickets', 'cart_quotes',
 			'form_submissions', 'signatures', 'applications', 'comments', 'prototype_reviews', 'watchers', 'wishlist', 'stock_notify', 'customer_rhythm', 'bookings', 'feedback', 'volunteers', 'volunteer_documents', 'volunteer_hours', 'queue', 'courses', 'journey_visits', 'journey', 'interest_score', 'journey_browsers', 'campaigns', 'consents', 'ad_conversions',
-			'mail', 'mail_bounces', 'sms', 'chats', 'erp_accounts', 'erp_documents', 'workspace',
+			'mail', 'mail_bounces', 'sms', 'chats', 'support_requests', 'erp_accounts', 'erp_documents', 'workspace',
 		),
 		array_keys(pg_privacy_export_sections()),
 		'section keys'
@@ -389,4 +389,18 @@ function test_privacy_export_order_total_currency()
 	pg_assert_same('TRY', _pg_privacy_export_order_currency(array('type' => 'local', 'currency_code' => ''), 'TRY'), 'counter sale');
 	pg_assert_same('EUR', _pg_privacy_export_order_currency(array('type' => 'marketplace', 'currency_code' => 'EUR'), 'TRY'), 'marketplace order');
 	pg_assert_same('TRY', _pg_privacy_export_order_currency(array('type' => 'marketplace', 'currency_code' => ''), 'TRY'), 'marketplace order without a code');
+}
+
+// A support request carries the number the customer sees in a subject, the
+// box's name, its columns and its mails, in that order.
+function test_privacy_export_request_row()
+{
+	$row = pg_privacy_export_request_row(array('id' => 42, 'box_id' => 3, 'subject' => 'Broken lid', 'status' => 'waiting'), 'Support',
+		array(5 => array('id' => 9, 'direction' => 'in'), 7 => array('id' => 11, 'direction' => 'out')));
+
+	pg_assert_same(array('number', 'box', 'id', 'box_id', 'subject', 'status', 'mails'), array_keys($row), 'keys in order');
+	pg_assert_same('#T42', $row['number'], 'the subject tag\'s number');
+	pg_assert_same('Support', $row['box']);
+	pg_assert_same(array(9, 11), array_column($row['mails'], 'id'), 'the mails, in and out, as a list');
+	pg_assert_same(array(), pg_privacy_export_request_row(array('id' => 1), '', array())['mails'], 'no mails');
 }

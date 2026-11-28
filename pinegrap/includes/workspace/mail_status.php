@@ -8,7 +8,9 @@
  * the customer opens it again. One person holds it: whoever takes it, or a
  * member of its channel it is given to, who is told. A box may set the time
  * its first answer is due, and may answer a new conversation once by
- * itself, off unless switched on, with a text of its own.
+ * itself, off unless switched on, with a text of its own. It may also set
+ * the time a conversation is due to be closed, shown on the Incoming
+ * e-mail screen.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -28,6 +30,9 @@ define('WS_MAIL_AUTO_REPLY_EVERY', 86400);
 
 /** The longest first-response target a box may set, in hours (30 days). */
 define('WS_MAIL_FIRST_REPLY_MAX', 720);
+
+/** The longest resolve-by target a box may set, in hours (90 days). */
+define('WS_MAIL_RESOLVE_MAX', 2160);
 
 /**
  * The states of a conversation and their words.
@@ -106,15 +111,17 @@ function ws_mail_support_field($prefix, $box)
 
 /**
  * What a conversation's card shows of its state: the status, who holds it,
- * and when the first answer is due or that it is overdue.
+ * and when the first answer is due or that it is overdue; on the Incoming
+ * e-mail screen also when it is due to be closed.
  *
- * @param array  $conversation ws_mail_conversations row
- * @param string $assignee     the name of the person who holds it, '' for nobody
- * @param int    $hours        the box's first-response target, 0 for none
+ * @param array  $conversation  ws_mail_conversations row
+ * @param string $assignee      the name of the person who holds it, '' for nobody
+ * @param int    $hours         the box's first-response target, 0 for none
  * @param int    $now
+ * @param int    $resolve_hours the box's resolve-by target, 0 for none or not shown
  * @return string HTML
  */
-function ws_mail_status_html($conversation, $assignee, $hours = 0, $now = 0)
+function ws_mail_status_html($conversation, $assignee, $hours = 0, $now = 0, $resolve_hours = 0)
 {
     $status = (string) ($conversation['status'] ?? 'open');
     $statuses = ws_mail_statuses();
@@ -130,7 +137,7 @@ function ws_mail_status_html($conversation, $assignee, $hours = 0, $now = 0)
         $html .= '<span class="ms-1"><i class="bi bi-person-check me-1" aria-hidden="true"></i>' . h($assignee) . '</span>';
     }
 
-    return $html . ws_mail_first_reply_html($conversation, $hours, $now);
+    return $html . ws_mail_first_reply_html($conversation, $hours, $now) . ws_mail_resolve_html($conversation, $resolve_hours, $now);
 }
 
 /**
@@ -530,6 +537,127 @@ function ws_mail_first_reply_input($input)
 
     if (!ctype_digit($value) || ((int) $value > WS_MAIL_FIRST_REPLY_MAX)) {
         return array('ok' => false, 'error' => lang(array('string' => 'The first answer\'s time is a whole number of hours, at most {var:1}.', 'vars' => WS_MAIL_FIRST_REPLY_MAX)), 'hours' => 0);
+    }
+
+    return array('ok' => true, 'error' => '', 'hours' => (int) $value);
+}
+
+/* ---------------------------------------------------------------------------
+   The resolve-by target
+   --------------------------------------------------------------------------- */
+
+/**
+ * The box's resolve-by target in hours, 0 for none: settings JSON key
+ * resolve_hours. Read as the first-answer target is: a plain box has none,
+ * its form still shows the one it keeps.
+ *
+ * @param array|null $box  ws_mail_boxes row
+ * @param bool       $kept the kept target, whether or not the box is a support box
+ * @return int
+ */
+function ws_mail_resolve_hours($box, $kept = false)
+{
+    $settings = is_array($box) ? json_decode((string) ($box['settings'] ?? ''), true) : null;
+    $hours = (is_array($settings) && ($kept || ws_mail_box_is_support($box))) ? (int) ($settings['resolve_hours'] ?? 0) : 0;
+
+    return max(0, min(WS_MAIL_RESOLVE_MAX, $hours));
+}
+
+/**
+ * When a conversation is due to be closed: its first mail plus the target,
+ * while it is not closed. Pure. The clock does not stop while the
+ * conversation waits for the customer, and a conversation opened again
+ * keeps its first mail's time, so it may come back already overdue.
+ *
+ * @param array $conversation ws_mail_conversations row
+ * @param int   $hours        the box's target, 0 for none
+ * @return int the moment, 0 when nothing is due
+ */
+function ws_mail_resolve_due($conversation, $hours)
+{
+    if (((int) $hours <= 0) || ((string) ($conversation['status'] ?? 'open') === 'closed')
+        || ((int) ($conversation['first_in_at'] ?? 0) <= 0)) {
+        return 0;
+    }
+
+    return (int) $conversation['first_in_at'] + (int) $hours * 3600;
+}
+
+/**
+ * Whether a conversation is past its resolve-by time. Pure.
+ *
+ * @param array $conversation
+ * @param int   $hours
+ * @param int   $now
+ * @return bool
+ */
+function ws_mail_resolve_overdue($conversation, $hours, $now)
+{
+    $due = ws_mail_resolve_due($conversation, $hours);
+
+    return ($due > 0) && ((int) $now > $due);
+}
+
+/**
+ * The Incoming e-mail screen's word on the resolve-by time: overdue, or
+ * resolve by when.
+ *
+ * @param array $conversation
+ * @param int   $hours
+ * @param int   $now
+ * @return string HTML, '' when nothing is due
+ */
+function ws_mail_resolve_html($conversation, $hours, $now)
+{
+    $due = ws_mail_resolve_due($conversation, $hours);
+
+    if ($due <= 0) {
+        return '';
+    }
+
+    if (ws_mail_resolve_overdue($conversation, $hours, $now)) {
+        return '<span class="badge theme-danger ms-1"><i class="bi bi-hourglass-bottom me-1" aria-hidden="true"></i>' . h(lang('Resolve overdue')) . '</span>';
+    }
+
+    return '<span class="ms-1"><i class="bi bi-hourglass-split me-1" aria-hidden="true"></i>'
+        . h(lang(array('string' => 'Resolve by {var:1}', 'vars' => ws_time_label($due)))) . '</span>';
+}
+
+/**
+ * The resolve-by target's field of a box's form, beside the first answer's.
+ *
+ * @param string     $prefix
+ * @param array|null $box
+ * @return string HTML
+ */
+function ws_mail_resolve_field($prefix, $box)
+{
+    $hours = ws_mail_resolve_hours($box, true);
+
+    return '
+                <div class="md:col-6">
+                    <label class="pg-field-label" for="' . $prefix . 'resolve_hours">' . h(lang('Resolve within (hours)')) . '</label>
+                    <input class="pg-input" type="number" name="resolve_hours" id="' . $prefix . 'resolve_hours" min="0" max="' . WS_MAIL_RESOLVE_MAX . '" value="' . (($hours > 0) ? $hours : '') . '" placeholder="' . h(lang('No target')) . '">
+                    <div class="pg-field-help">' . h(lang('Counted from the first e-mail, also while waiting for the customer; still open later, a conversation is marked overdue.')) . '</div>
+                </div>';
+}
+
+/**
+ * The resolve-by target as posted with a box form, checked. Pure.
+ *
+ * @param array $input resolve_hours
+ * @return array ok, error, hours (0 for none)
+ */
+function ws_mail_resolve_input($input)
+{
+    $value = is_scalar($input['resolve_hours'] ?? '') ? trim((string) ($input['resolve_hours'] ?? '')) : '';
+
+    if ($value === '') {
+        return array('ok' => true, 'error' => '', 'hours' => 0);
+    }
+
+    if (!ctype_digit($value) || ((int) $value > WS_MAIL_RESOLVE_MAX)) {
+        return array('ok' => false, 'error' => lang(array('string' => 'The resolve-by time is a whole number of hours, at most {var:1}.', 'vars' => WS_MAIL_RESOLVE_MAX)), 'hours' => 0);
     }
 
     return array('ok' => true, 'error' => '', 'hours' => (int) $value);
