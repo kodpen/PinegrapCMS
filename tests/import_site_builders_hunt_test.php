@@ -76,3 +76,16 @@ function test_import_site_builders_wix_surcharge_below_the_product_price()
 	pg_assert_same(0, pg_import_wix_money($product, array('price' => '', 'surcharge' => '-50'), true)['price'], 'never below zero');
 	pg_assert_contains('-x', pg_import_wix_money($product, array('price' => '', 'surcharge' => '-x'), true)['refused'], 'a word is still refused');
 }
+
+function test_import_site_builders_wix_inventory_figures()
+{
+	// The cell lost its dot and minus sign before it was read as a number.
+	pg_assert_same(2, pg_import_wix_stock('2.0'), 'a count a spreadsheet wrote with a decimal');
+	pg_assert_same(0, pg_import_wix_stock('-3'), 'below zero is none left');
+	pg_assert_same(1000, pg_import_wix_stock('1,000'), 'grouped thousands');
+	pg_assert_same(12, pg_import_wix_stock(' 12 '), 'a count');
+	pg_assert_same(0, pg_import_wix_stock('OUT_OF_STOCK'), 'out of stock');
+	pg_assert_same(0, pg_import_wix_stock('OutOfStock'), 'out of stock, previous layout');
+	pg_assert_same(null, pg_import_wix_stock('InStock'), 'in stock is not counted');
+	pg_assert_same(null, pg_import_wix_stock(''), 'empty');
+}

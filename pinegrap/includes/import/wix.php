@@ -499,10 +499,16 @@ function pg_import_wix_discounted($cents, $mode, $value)
  */
 function pg_import_wix_stock($cell)
 {
-    $cell = pg_import_wix_column($cell);
+    $cell = trim((string) $cell);
 
-    if ($cell === 'outofstock') {
+    if (pg_import_wix_column($cell) === 'outofstock') {
         return 0;
+    }
+
+    // The count as written: its decimal point and minus sign kept, a comma
+    // grouping thousands dropped.
+    if (preg_match('/^\d{1,3}(,\d{3})+$/', $cell)) {
+        $cell = str_replace(',', '', $cell);
     }
 
     return is_numeric($cell) ? max(0, (int) $cell) : null;
