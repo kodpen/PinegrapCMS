@@ -15,7 +15,8 @@ priority: 6
 - The open row: `#menu .list-group-item.list-group-item-action.active` in `backend.src.css`.
 
 ## What did the architect settle? (not the owner's words)
-- No table, no column. A step that finds it needs a stored value (Forms has no mark for a read submission) stops and asks the architect.
+- No table, no column. A step that finds it needs a stored value stops and asks the architect.
+- Forms (2026-11-28, MB3's question): the count is the person's unread "A custom form was submitted" bell rows they may see (`pg_notification_unread_rows()`, `pg_notification_visible()`). The bell's read state is the stored mark, a person each.
 - Orders counts what All Orders' quick filter "To ship" counts, with no period, through `pg_order_list_quick_sql()`: one rule, never a second copy of it.
 - Products counts products that track stock and stand at zero, variants as the Products list counts them.
 - A count is drawn only for a person who may open the list it leads to, is read once a page; no query that reads a whole large table (`visitors/`).
@@ -25,9 +26,10 @@ priority: 6
 - In words in `plans/main-menu-counts-active-screens.md`: the open row, the rail, a panel's current entry, the "Notifications" row, the quiet count.
 
 ## Which steps? (S under 400 product lines, M about 1,000; each waits for the one before it)
-- MB1 (S) The open row and a panel's current entry as described, both themes, the three wide states and the phone drawer; Design examples' "Menu row icon" shows the open state; `ui/main-menu-icons.md` and `main-menu-panels.md` corrected.
-- MB2 (S) The Workspace list's "Notifications" row (`workspace_side.js`, `ws_side_payload()`), its count painted with the row's badge (`paintRowBadge()`); `ui/notifications-one-inbox.md` and `workspace/workspace-menu-list.md` corrected.
-- MB3 (M) Red counts: Orders ("{var:1} order(s) to ship", the entry "To ship" opening `view_orders.php?quick=to_ship`) and Forms (unread submissions, the entry opening them). If Forms has no stored mark, the Forms half is left out and the architect asked.
+- MB1 (S) The open row and a panel's current entry: done #12251.
+- MB2 (S) The Workspace list's "Notifications" row: done #12274.
+- MB3 (M) Red count on Orders ("{var:1} order(s) to ship", the entry "To ship" opening `view_orders.php?quick=to_ship`).
+- MB3b (S) Red count on Forms ("{var:1} unread submission(s)"), the entry "Unread" opening Submitted Forms narrowed to them. Opening a submission in Edit Submitted Form marks its bell row read for the person (`pg_notification_mark_read()`), so the count falls where the work is done.
 - MB4 (S) The quiet count on Products ("{var:1} product(s) out of stock"), its dot, the entry "Out of stock" opening the Products list filtered.
 - MB5 (S) Close-out: the menu at 1440, 1024 and 390 px in both themes, `ui/main-menu-counts.md` naming every row's count in one place, `ui/main-menu-overview.md` pointing at it, this file deleted.
 
