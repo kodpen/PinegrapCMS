@@ -4544,6 +4544,14 @@ function ws_handle_action($action, $request)
 
             return $result['ok'] ? ws_action_ok(array('quiet_hours' => $result['value'])) : ws_action_error($result['error'], $result['field']);
 
+        // The person's own status (people.php): their own session only, never
+        // for another person; the API route answers their team devices
+        // session and their own connection (api_person_status.php).
+        case 'ws_person_status_save':
+            $result = ws_person_status_save($viewer, $request);
+
+            return $result['ok'] ? ws_action_ok(array('status' => $result['value'])) : ws_action_error($result['error'], $result['field']);
+
         // Whether Claude may be asked in a channel.
         case 'ws_channel_claude':
             $channel = ws_action_channel($viewer, $request, 'manage');
