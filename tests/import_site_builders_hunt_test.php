@@ -89,3 +89,15 @@ function test_import_site_builders_wix_inventory_figures()
 	pg_assert_same(null, pg_import_wix_stock('InStock'), 'in stock is not counted');
 	pg_assert_same(null, pg_import_wix_stock(''), 'empty');
 }
+
+function test_import_site_builders_webflow_redirect_headers_detected()
+{
+	// The reader takes these headers; the upload refused the file first.
+	foreach (array("old path,new path\n/a,/b\n", "from,to\n/a,/b\n", "Redirect From,Redirect To\n/a,/b\n", "source,target\n/a,/b\n", "\"Source\";\"Target\"\n/a;/b\n") as $file) {
+		$first = strtok($file, "\n");
+		pg_assert_same('webflow', pg_import_detect_kind($file), $first);
+		pg_assert_same('redirects', pg_import_webflow_file_kind(str_getcsv($first, (strpos($first, ';') !== false) ? ';' : ',', '"', '\\')), 'reader: ' . $first);
+	}
+
+	pg_assert_same('', pg_import_detect_kind("from,subject\na,b\n"), 'other two-cell files stay unknown');
+}
