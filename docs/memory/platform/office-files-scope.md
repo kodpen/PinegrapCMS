@@ -1,11 +1,11 @@
 ---
 name: office-files-scope
-description: How far the own Word and Excel code goes and why: what is edited, what is only shown, what is never built (charts, pivots, layout; formulas beyond the simple ones), the rules every edit keeps
+description: How far the own Word and Excel code goes: what is edited (simple formulas too), only shown, never built (charts, pivots, layout, other formulas), the rules every edit keeps
 ---
 
 ## How far does it go?
 - Owner (2026-11-19): full scope with the product's own code, PHPExcel removed and no library added; it replaced the "simple editing" scope of 2026-10-19 (`workflow/decisions-made-product-79.md`). The parts and their files: `office-overview.md`.
-- An .xlsx: cells (`office-cell-edits.md`), one row or column inserted or deleted (`office-sheet-rows-columns.md`), one sheet added, renamed, deleted or moved (`office-sheets.md`), the selected cells' format (`office-sheet-format.md`), each a save.
+- An .xlsx: cells (`office-cell-edits.md`) and simple formulas (`office-sheet-formulas.md`), one row or column inserted or deleted (`office-sheet-rows-columns.md`), one sheet added, renamed, deleted or moved (`office-sheets.md`), the selected cells' format (`office-sheet-format.md`), each a save.
 - A .docx: paragraph text (`office-paragraph-edits.md`), bold, italic and underline on selected text (`office-docx-format.md`), a paragraph's kind (`office-docx-paragraph-kind.md`), a paragraph added or deleted (`office-docx-add-delete.md`).
 - Both: "New spreadsheet" and "New document" (`office-new-files.md`), in the file window and a channel's preview with the same controls.
 
@@ -16,7 +16,7 @@ description: How far the own Word and Excel code goes and why: what is edited, w
 
 ## What is never built, and why?
 - Charts, pivot tables, tracked changes, comments, page layout.
-- A formula engine beyond simple formulas. Owner (2026-11-26, `workflow/decisions-made-product-115.md`): simple ones (one sheet's references, the four operations, SUM, AVERAGE, MIN, MAX, COUNT) are built by `plans/office-sheet-formulas.md`. Until it lands, and for every other formula after it, a formula is kept with its last stored result and loses it when a cell it may depend on changes.
+- A formula engine beyond simple formulas. Owner (2026-11-26, `workflow/decisions-made-product-115.md`): simple ones (one sheet's references, the four operations, SUM, AVERAGE, MIN, MAX, COUNT) are typed, saved and worked out again (`office-sheet-formulas.md`). Every other formula is locked, kept with its last stored result and loses it when its sheet is saved (`office-sheet-formula-save.md`).
 - An editor that keeps a document's whole layout: it needs a document server such as OnlyOffice, which shared hosting cannot run.
 
 ## Which rules does every edit keep?

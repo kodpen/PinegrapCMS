@@ -9,7 +9,7 @@ priority: 6
 
 ## When does it start?
 - Free since 2026-11-27, OP3 of the document page having landed (#11963; the page `platform/office-docx-page.md`, its Undo `platform/office-docx-undo.md`): every step draws on that page and joins its Undo.
-- Both editors live in `pg_office_view.js`: DA2, DA3, DA5 and DA7 are not given out while a step on that file (a sheet step of `plans/office-sheet-formulas.md` too) has an open PR.
+- Both editors live in `pg_office_view.js`: DA2, DA3, DA5 and DA7 are not given out while a step on that file has an open PR.
 
 ## Which steps? (M about 1,000 product lines, S under 400; each waits for the one before it)
 - DA1 (M, `includes/fn/office_docx_format.php`): the format entry also takes a text colour, a highlight (Word's own highlight names) and a font size (8 to 72 points) on selected text, split and joined as bold is; a paragraph entry takes its alignment (start, centre, end, justified). The reader gives them in the marks. Tests as for bold: read back, an untouched paragraph byte for byte.
