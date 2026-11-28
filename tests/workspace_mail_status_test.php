@@ -192,3 +192,43 @@ function test_workspace_mail_status_wiring()
 	pg_assert_same(array('channel', 5), ws_events_record_of('workspace.mail.received', array('channel_id' => 5)));
 	pg_assert_true(isset(ws_flow_event_outputs()['workspace.mail.received']));
 }
+
+// The resolve-by time runs from the first mail as the first answer's does,
+// and does not stop while the conversation waits for the customer.
+function test_workspace_mail_resolve_target()
+{
+	$conversation = array('status' => 'open', 'first_in_at' => 10000, 'first_reply_at' => 0);
+
+	pg_assert_same(10000 + 48 * 3600, ws_mail_resolve_due($conversation, 48));
+	pg_assert_same(0, ws_mail_resolve_due($conversation, 0), 'no target');
+	pg_assert_same(10000 + 3600, ws_mail_resolve_due(array_merge($conversation, array('first_reply_at' => 12000)), 1), 'an answer does not stop it');
+	pg_assert_same(10000 + 3600, ws_mail_resolve_due(array_merge($conversation, array('status' => 'waiting')), 1), 'waiting does not stop it');
+	pg_assert_same(0, ws_mail_resolve_due(array_merge($conversation, array('status' => 'closed')), 1), 'closed');
+	pg_assert_same(0, ws_mail_resolve_due(array('status' => 'open', 'first_in_at' => 0), 1), 'no first mail');
+	pg_assert_false(ws_mail_resolve_overdue($conversation, 1, 10000 + 3600), 'due right now is not late');
+	pg_assert_true(ws_mail_resolve_overdue(array_merge($conversation, array('status' => 'waiting')), 1, 10000 + 3601));
+
+	pg_assert_contains(h(lang('Resolve overdue')), ws_mail_resolve_html($conversation, 1, 20000));
+	pg_assert_contains('bi-hourglass-split', ws_mail_resolve_html($conversation, 10, 20000), 'due later');
+	pg_assert_true(strpos(ws_mail_resolve_html($conversation, 10, 20000), 'theme-danger') === false);
+	pg_assert_same('', ws_mail_resolve_html($conversation, 0, 20000));
+
+	pg_assert_same(72, ws_mail_resolve_hours(array('settings' => '{"resolve_hours":72}')));
+	pg_assert_same(WS_MAIL_RESOLVE_MAX, ws_mail_resolve_hours(array('settings' => '{"resolve_hours":999999}')), 'bounded');
+	pg_assert_same(0, ws_mail_resolve_hours(array('settings' => '{"support":false,"resolve_hours":72}')), 'a plain box has none');
+	pg_assert_same(72, ws_mail_resolve_hours(array('settings' => '{"support":false,"resolve_hours":72}'), true), 'but keeps it');
+	pg_assert_same(0, ws_mail_resolve_hours(null));
+
+	pg_assert_same(array('ok' => true, 'error' => '', 'hours' => 0), ws_mail_resolve_input(array()));
+	pg_assert_same(96, ws_mail_resolve_input(array('resolve_hours' => ' 96 '))['hours']);
+	pg_assert_false(ws_mail_resolve_input(array('resolve_hours' => '1.5'))['ok'], 'whole hours');
+	pg_assert_false(ws_mail_resolve_input(array('resolve_hours' => (string) (WS_MAIL_RESOLVE_MAX + 1)))['ok']);
+
+	// Only the screen passes the target: the card's call shows no resolve word.
+	pg_assert_same(false, strpos(ws_mail_status_html($conversation, '', 0, 20000), 'bi-hourglass'), 'the card leaves it out');
+	pg_assert_contains(h(lang('Resolve overdue')), ws_mail_status_html($conversation, '', 0, 20000, 1), 'the screen shows it');
+
+	$box = array('id' => 3, 'name' => 'Support', 'address' => 'support@example.com', 'channel_id' => 0, 'folder' => 'INBOX', 'after_fetch' => 'seen', 'enabled' => 1, 'reply_via' => 'box',
+		'settings' => '{"resolve_hours":48}', 'auto_reply' => 0, 'auto_reply_text' => '');
+	pg_assert_contains('name="resolve_hours" id="ws_mail_3_resolve_hours" min="0" max="' . WS_MAIL_RESOLVE_MAX . '" value="48"', ws_mail_box_form('workspace_settings.php', $box, array()));
+}

@@ -41,7 +41,7 @@ function test_workspace_mail_drawer_posted_names()
 	$names = workspace_mail_drawer_test_names($html);
 	$fields = array('name', 'address', 'kept_in', 'channel_id', 'auth_server', 'route_match][', 'route_channel][', 'provider', 'host', 'port', 'google_way', 'user', 'password',
 		'connection_id', 'folder', 'after_fetch', 'move_folder', 'reply_via', 'smtp_host', 'smtp_port', 'sent_copy', 'sent_folder', 'read_sent', 'signature', 'support',
-		'first_reply_hours', 'auto_reply', 'auto_reply_text', 'ai_triage', 'reads_bounces', 'enabled');
+		'first_reply_hours', 'resolve_hours', 'auto_reply', 'auto_reply_text', 'ai_triage', 'reads_bounces', 'enabled');
 
 	foreach ($fields as $field) {
 		pg_assert_true(in_array('ws_mail[3][' . $field . ']', $names, true), 'the drawer posts ws_mail[3][' . $field . ']');
@@ -91,7 +91,7 @@ function test_workspace_mail_drawer_tabs()
 	};
 	foreach (array('general' => array('name', 'address', 'kept_in', 'channel_id', 'enabled', 'support', 'signature'),
 		'reading' => array('provider', 'host', 'port', 'user', 'password', 'connection_id', 'folder', 'after_fetch', 'auth_server', 'reads_bounces'),
-		'answers' => array('reply_via', 'smtp_host', 'sent_copy', 'sent_folder', 'read_sent', 'first_reply_hours', 'auto_reply', 'auto_reply_text', 'ai_triage'),
+		'answers' => array('reply_via', 'smtp_host', 'sent_copy', 'sent_folder', 'read_sent', 'first_reply_hours', 'resolve_hours', 'auto_reply', 'auto_reply_text', 'ai_triage'),
 		'routing' => array('route_match][', 'route_channel][')) as $key => $names) {
 		foreach ($names as $name) {
 			pg_assert_contains('name="ws_mail[3][' . $name . ']"', $pane($key), $name . ' in ' . $key);

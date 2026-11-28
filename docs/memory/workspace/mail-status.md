@@ -10,7 +10,7 @@ description: State of a Workspace e-mail conversation (G5a, G5b, mail_status.php
 - Action `ws_mail_conversation` (`actions.php`) → `ws_mail_conversation_set()`: whoever may answer in the conversation's channel (`ws_mail_can_answer()`); `ws_mail_conversation_changes()` is the pure part (columns to write; `nothing` when nothing changes). The card is touched so every reader redraws it.
 
 ## What is the first-response target?
-- Per box, `settings.first_reply_hours` (0 none, at most `WS_MAIL_FIRST_REPLY_MAX` 720), box form field "First answer within (hours)", `ws_mail_first_reply_input()`; read by `ws_mail_first_reply_hours()`.
+- Per box, `settings.first_reply_hours` (0 none, at most `WS_MAIL_FIRST_REPLY_MAX` 720), box form field "First answer within (hours)", `ws_mail_first_reply_input()`; read by `ws_mail_first_reply_hours()`. The resolve-by time beside it: `mail-resolve-by.md`.
 - Due = `first_in_at` + target while `first_reply_at` = 0 and not closed (`ws_mail_first_reply_due()`); a "waiting" set by hand without an answer still counts; the automatic answer is no answer. The card shows "First answer by …" or a red "First answer overdue" (`ws_mail_first_reply_html()`); `ws_mail_items_map()` reads each box's target once per page.
 
 ## What does the card show?

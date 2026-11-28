@@ -377,7 +377,7 @@ function ws_mail_list_visible($viewer)
  * @param int   $now
  * @param int   $page    rows on a page, WS_MAIL_LIST_PAGE on the screen
  * @return array rows (conversation rows with box_name, channel_name,
- *               assignee_name, first_reply_hours, overdue, support, transport,
+ *               assignee_name, first_reply_hours, resolve_hours, overdue, support, transport,
  *               mails, snippet, unread, unsent), next (the next page's cursor, '' for none)
  */
 function ws_mail_list($viewer, $filters, $now, $page = WS_MAIL_LIST_PAGE)
@@ -400,7 +400,8 @@ function ws_mail_list($viewer, $filters, $now, $page = WS_MAIL_LIST_PAGE)
     $boxes = array();
 
     foreach ((array) db_items("SELECT id, name, settings, transport FROM ws_mail_boxes") as $box) {
-        $boxes[(int) $box['id']] = array('name' => (string) $box['name'], 'hours' => ws_mail_first_reply_hours($box), 'support' => ws_mail_box_is_support($box),
+        $boxes[(int) $box['id']] = array('name' => (string) $box['name'], 'hours' => ws_mail_first_reply_hours($box),
+            'resolve_hours' => ws_mail_resolve_hours($box), 'support' => ws_mail_box_is_support($box),
             'transport' => ws_mail_transport_kind($box['transport']));
     }
 
@@ -415,7 +416,7 @@ function ws_mail_list($viewer, $filters, $now, $page = WS_MAIL_LIST_PAGE)
         }
 
         $seen = $row;
-        $box = $boxes[(int) $row['box_id']] ?? array('name' => '', 'hours' => 0, 'support' => true, 'transport' => 'email');
+        $box = $boxes[(int) $row['box_id']] ?? array('name' => '', 'hours' => 0, 'resolve_hours' => 0, 'support' => true, 'transport' => 'email');
         $overdue = ws_mail_first_reply_overdue($row, $box['hours'], $now);
 
         if ($filters['overdue'] && !$overdue) {
@@ -430,6 +431,7 @@ function ws_mail_list($viewer, $filters, $now, $page = WS_MAIL_LIST_PAGE)
             'channel_name'      => ($channel && !ws_channel_is_mailbox($channel)) ? (string) $channel['name'] : '',
             'assignee_name'     => ((int) $row['assignee_id'] > 0) ? ws_person_name((int) $row['assignee_id']) : '',
             'first_reply_hours' => $box['hours'],
+            'resolve_hours'     => $box['resolve_hours'],
             'overdue'           => $overdue,
             'support'           => $box['support'],
             'transport'         => $box['transport'],
@@ -597,7 +599,7 @@ function ws_mail_list_rows_html($rows, $filters, $now, $open = 0)
             . ((!empty($row['no_answer']) && function_exists('ws_mail_no_answer_badge_html')) ? ws_mail_no_answer_badge_html() : '')
             . (((string) $row['box_name'] !== '') ? '<span>' . h((string) $row['box_name']) . '</span>' : '')
             . (((string) $row['channel_name'] !== '') ? '<span>' . h('#' . (string) $row['channel_name']) . '</span>' : '')
-            . (($row['support'] ?? true) ? '<span>' . ws_mail_status_html($row, (string) $row['assignee_name'], (int) $row['first_reply_hours'], $now) . '</span>' : '')
+            . (($row['support'] ?? true) ? '<span>' . ws_mail_status_html($row, (string) $row['assignee_name'], (int) $row['first_reply_hours'], $now, (int) ($row['resolve_hours'] ?? 0)) . '</span>' : '')
             . '</span></a>';
     }
 

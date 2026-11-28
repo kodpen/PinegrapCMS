@@ -998,10 +998,17 @@ function ws_mail_box_save_check($viewer, $box, $post)
         return $fail($first['error'], 'first_reply_hours');
     }
 
+    $resolve = $support ? ws_mail_resolve_input($post) : array('ok' => true, 'error' => '', 'hours' => ws_mail_resolve_hours($box, true));
+
+    if (!$resolve['ok']) {
+        return $fail($resolve['error'], 'resolve_hours');
+    }
+
     $settings = ws_mail_box_settings($box);
     $settings['routes'] = $routes['routes'];
     $settings['support'] = $support;
     $settings['first_reply_hours'] = $first['hours'];
+    $settings['resolve_hours'] = $resolve['hours'];
     $settings = ws_mail_triage_input($post, $settings, ws_mail_triage_ai_ready());
 
     // Where the mail is kept and who reads a box kept in no channel. A box
@@ -1338,6 +1345,7 @@ function ws_mail_box_form_parts($box, $channels, $ai_ready, $rooms_only, $prefix
                 <div class="md:col-12' . (ws_mail_box_is_support($box) ? '' : ' d-none') . '" data-ws-mail-when="support=1">
                     <div class="row g-5">
                     ' . ws_mail_first_reply_field($prefix, $box) . '
+                    ' . ws_mail_resolve_field($prefix, $box) . '
                     ' . ws_mail_auto_reply_fields($prefix, $box) . '
                     </div>
                 </div>

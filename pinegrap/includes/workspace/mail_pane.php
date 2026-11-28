@@ -126,8 +126,9 @@ function ws_mail_picture_hosts($html, $own)
  *
  * @param array $viewer
  * @param int   $conversation_id
- * @return array|null conversation, channel, box_name, can_post, items (each
- *                    with files and bounces), last_id
+ * @return array|null conversation, channel, box_name, resolve_hours (the
+ *                    box's resolve-by target, 0 for none), can_post, items
+ *                    (each with files and bounces), last_id
  */
 function ws_mail_pane($viewer, $conversation_id)
 {
@@ -199,10 +200,13 @@ function ws_mail_pane($viewer, $conversation_id)
         }
     }
 
+    $box = db_item("SELECT name, settings FROM ws_mail_boxes WHERE id = '" . (int) $conversation['box_id'] . "'");
+
     return array(
         'conversation' => $conversation,
         'channel'      => $channel,
-        'box_name'     => (string) db_value("SELECT name FROM ws_mail_boxes WHERE id = '" . (int) $conversation['box_id'] . "'"),
+        'box_name'     => $box ? (string) $box['name'] : '',
+        'resolve_hours' => $box ? ws_mail_resolve_hours($box) : 0,
         'can_post'     => ws_mail_can_answer($viewer, $channel),
         'items'        => $items,
         'last_id'      => $ids ? max($ids) : 0,
@@ -301,6 +305,7 @@ function ws_mail_pane_html($pane, $base, $tools = '', $channels = true)
         . '<div class="small fg-secondary text-break">' . h($customer)
         . (($pane['box_name'] !== '') ? ' · ' . h($pane['box_name']) : '') . '</div>'
         . ($room ? '' : '<div class="mt-1">' . ws_mail_pane_channel_pill((string) $pane['channel']['name'], $url) . '</div>')
+        . ws_mail_pane_resolve_html($pane)
         . ((!empty($pane['no_answer']) && function_exists('ws_mail_no_answer_badge_html')) ? '<div class="mt-1">' . ws_mail_no_answer_badge_html() . '</div>' : '')
         . '<div class="ws-mail-pane-tools">' . ($room ? '' : '<a class="pg-button pg-button-ghost pg-button-sm" href="' . h($url) . '"><i class="bi bi-hash" aria-hidden="true"></i>' . h(lang('Open in channel')) . '</a>') . $tools . '</div>'
         . '</header>';
@@ -316,6 +321,21 @@ function ws_mail_pane_html($pane, $base, $tools = '', $channels = true)
     }
 
     return $html;
+}
+
+/**
+ * The resolve-by time in the pane's head, under the muted line; nothing
+ * when the box sets none or the conversation is closed.
+ *
+ * @param array $pane ws_mail_pane()
+ * @return string HTML
+ */
+function ws_mail_pane_resolve_html($pane)
+{
+    $word = function_exists('ws_mail_resolve_html')
+        ? ws_mail_resolve_html($pane['conversation'], (int) ($pane['resolve_hours'] ?? 0), time()) : '';
+
+    return ($word !== '') ? '<div class="mt-1 small">' . $word . '</div>' : '';
 }
 
 /**
