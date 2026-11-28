@@ -232,3 +232,24 @@ function test_find_replace_opens_the_part()
 	pg_assert_true(strpos($part, "p.undoStack.push(") !== false, 'another page takes its undo step in its own history');
 	pg_assert_true(strpos($part, 'setValue(out.text, true)') !== false, 'a code file keeps the change in its undo history');
 }
+
+// A custom HTML's script and style are code, not words of the page: a
+// replace of "Contact" changes the paragraph, never the script's string or
+// the style's selector beside it.
+function test_find_replace_leaves_script_and_style_code()
+{
+	$res = find_replace_test_node(
+		'var html = "<p>Contact</p><script>if (x === \"Contact\") {}</script><STYLE media=\"all\">.Contact{}</STYLE><p>Contact</p>";'
+		. 'var T = n("r", "root", {}, [n("c", "custom_html", { html: html })]), re = F.pattern({ search: "Contact", caseSensitive: true }).re;'
+		. 'var c = F.treeCount(T, re), r = F.treeReplace(T, re, "Kontakt", false);'
+		. 'out = { c: c, r: r, html: T.children[0].props.html };'
+	);
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_same(2, $res['c'], 'only the two paragraphs are counted');
+	pg_assert_same(2, $res['r'], 'and replaced');
+	pg_assert_same('<p>Kontakt</p><script>if (x === "Contact") {}</script><STYLE media="all">.Contact{}</STYLE><p>Kontakt</p>', $res['html'], 'the script and the style stay byte for byte');
+}

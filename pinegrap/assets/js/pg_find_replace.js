@@ -171,9 +171,11 @@
     // inside a tag or an entity is none), and the markup with them replaced
     // when `replacement` is given: only the matched letters change, the
     // tags and the rest of the text stay byte for byte. A match never
-    // crosses a tag.
+    // crosses a tag. A script or style block is code, kept whole with its
+    // tags: a custom HTML's `"Contact"` string or `.Contact` selector is no
+    // word of the page.
     function markupEdit(html, re, replacement, regex) {
-        var parts = html.split(/(<!--[\s\S]*?-->|<\/?[A-Za-z][^>]*>)/);
+        var parts = html.split(/(<!--[\s\S]*?-->|<script\b[^>]*>[\s\S]*?<\/script\s*>|<style\b[^>]*>[\s\S]*?<\/style\s*>|<\/?[A-Za-z][^>]*>)/i);
         var n = 0, out = '';
         for (var p = 0; p < parts.length; p++) {
             var raw = parts[p];
