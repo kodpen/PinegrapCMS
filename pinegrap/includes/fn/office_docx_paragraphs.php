@@ -29,7 +29,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  * Why a paragraph cannot be deleted here, as it stands in the document.
  *
  * @param DOMElement $paragraph
- * @return string '' when it may; section, picture, locked, cell, last or bookmark
+ * @return string '' when it may; section, picture (one that is not a plain picture), locked, cell, last or bookmark
  */
 function pg_office_docx_delete_refusal($paragraph)
 {
@@ -41,15 +41,16 @@ function pg_office_docx_delete_refusal($paragraph)
         return 'section';
     }
 
-    foreach (array('drawing', 'pict', 'object') as $local) {
-        if ($paragraph->getElementsByTagNameNS('*', $local)->length > 0) {
-            return 'picture';
-        }
+    // Plain pictures go with their paragraph; a text box, chart, shape,
+    // legacy picture or embedded object keeps it
+    // (includes/fn/office_docx_picture.php).
+    $drawings = pg_office_docx_picture_drawings($paragraph);
+
+    if ($drawings === null) {
+        return 'picture';
     }
 
-    $edit = pg_office_docx_paragraph_edit($paragraph);
-
-    if ($edit['lock'] !== '') {
+    if (pg_office_docx_picture_lock($paragraph, $drawings) !== '') {
         return 'locked';
     }
 
@@ -206,19 +207,21 @@ function pg_office_docx_paragraph_fill($paragraph, $item, &$kinds, &$links)
 }
 
 /**
- * Adds the asked paragraphs and tables into a document being saved, each
- * paragraph with its text, format, kind and alignment as a changed
- * paragraph has them, each table with its cells
- * (includes/fn/office_docx_table.php).
+ * Adds the asked paragraphs, tables and pictures into a document being
+ * saved, each paragraph with its text, format, kind and alignment as a
+ * changed paragraph has them, each table with its cells
+ * (includes/fn/office_docx_table.php), each picture as a paragraph of its
+ * own (includes/fn/office_docx_picture.php).
  *
  * @param DOMElement[] $paragraphs the document's paragraphs before anything was added
- * @param array        $added      list of [after, text, format, kind, align], or of [after, table, style] for a table,
- *                                 in the order they read after the same paragraph
+ * @param array        $added      list of [after, text, format, kind, align], of [after, table, style] for a table,
+ *                                 or of [after, picture] for a picture, in the order they read after the same paragraph
  * @param array        $kinds      list of [paragraph, kind] the added ones' kinds are put on
- * @param array|null   $links      pg_office_docx_link_context(), for links in their formats
+ * @param array|null   $links      pg_office_docx_link_context(), for links in their formats and pictures' relationships
+ * @param array|null   $pictures   pg_office_docx_picture_context(), when a picture is asked
  * @return array ok, code, paragraph (counted from 1), added (the new paragraphs and tables)
  */
-function pg_office_docx_paragraphs_add($paragraphs, $added, &$kinds, &$links = null)
+function pg_office_docx_paragraphs_add($paragraphs, $added, &$kinds, &$links = null, &$pictures = null)
 {
     $tails = array();
     $made = array();
@@ -238,6 +241,18 @@ function pg_office_docx_paragraphs_add($paragraphs, $added, &$kinds, &$links = n
         }
 
         $after = isset($tails[$position]) ? $tails[$position] : $anchor;
+
+        if (isset($item['picture'])) {
+            $element = pg_office_docx_picture_add($anchor, $after, $item['picture'], $pictures, $links);
+
+            if (is_string($element)) {
+                return array('ok' => false, 'code' => $element, 'paragraph' => (string) ($position + 1), 'added' => $made);
+            }
+
+            $tails[$position] = $element;
+            $made[] = $element;
+            continue;
+        }
 
         if (isset($item['table'])) {
             $element = pg_office_docx_table_add($anchor, $after, $item['table'], $item['style'], $kinds, $links);

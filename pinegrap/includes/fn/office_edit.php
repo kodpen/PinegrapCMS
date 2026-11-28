@@ -3964,7 +3964,8 @@ function pg_office_docx_change_parts($change, $added)
  *                          (includes/fn/office_docx_paragraphs.php), several after the same one in the order listed, with an align too;
  *                          [after, table => [rows, columns, cells]] adds a table after it, and [cell => a paragraph's position,
  *                          table => an action, cells] puts a row or column in or deletes one, or the table, where that paragraph
- *                          is in a table (includes/fn/office_docx_table.php)
+ *                          is in a table (includes/fn/office_docx_table.php); [after, picture => [data => base64, name]]
+ *                          puts a picture in after it as a paragraph of its own (includes/fn/office_docx_picture.php)
  * @param string $version   what the person opened (pg_office_version())
  * @param string $directory where the new package is built; data/temp when ''
  * @return array ok, code, error, size, version, changed
@@ -3995,6 +3996,7 @@ function pg_office_docx_save($path, $changes, $version, $directory = '')
     $wanted = array();
     $added = array();
     $tables = array();
+    $picture_bytes = 0;
 
     foreach ($changes as $change) {
         // A row or column put in or deleted, or a table deleted, in the
@@ -4015,6 +4017,26 @@ function pg_office_docx_save($path, $changes, $version, $directory = '')
         if (is_array($change) && !isset($change['p']) && isset($change['after'])) {
             if (!is_scalar($change['after']) || !ctype_digit((string) $change['after'])) {
                 return $fail('none');
+            }
+
+            // A picture, as a paragraph of its own
+            // (includes/fn/office_docx_picture.php); a save's pictures
+            // together stay within what the preview shows.
+            if (isset($change['picture'])) {
+                $picture = pg_office_docx_picture_request($change['picture']);
+
+                if (is_string($picture)) {
+                    return $fail($picture);
+                }
+
+                $picture_bytes += strlen($picture['bytes']);
+
+                if ($picture_bytes > PG_OFFICE_MAX_IMAGES) {
+                    return $fail('picture_room');
+                }
+
+                $added[] = array('after' => (int) $change['after'], 'picture' => $picture);
+                continue;
             }
 
             if (isset($change['table'])) {
@@ -4086,8 +4108,8 @@ function pg_office_docx_save($path, $changes, $version, $directory = '')
  *                           align => an alignment or null, delete => true to delete it]
  * @param callable   $fail
  * @param callable   $spool  writes a part to a file (pg_office_save_package())
- * @param array      $added  paragraphs to add: list of [after => a position, text, format, kind, align], or of
- *                           [after, table => pg_office_docx_table_request()]
+ * @param array      $added  paragraphs to add: list of [after => a position, text, format, kind, align], of
+ *                           [after, table => pg_office_docx_table_request()], or of [after, picture => pg_office_docx_picture_request()]
  * @param array      $tables changes to tables: list of pg_office_docx_table_change_request()
  * @return array ok, parts (part name => file), changed; or a refusal
  */
@@ -4120,13 +4142,20 @@ function pg_office_docx_save_parts($zip, $wanted, $fail, $spool, $added = array(
     $paragraphs = pg_office_docx_paragraphs($document);
     $changed = array();
 
-    // A link leaving the document is a relationship of the main part: read
-    // when a format asks for a link (includes/fn/office_docx_link.php).
+    // A link leaving the document and a picture are relationships of the
+    // main part: read when a format asks for a link or a picture is put in
+    // (includes/fn/office_docx_link.php, office_docx_picture.php).
     $links = null;
     $items = array_values($wanted);
+    $pictures = null;
 
     // The paragraphs asked for in new cells hold formats too.
     foreach (array_merge($added, $tables) as $change) {
+        if (isset($change['picture'])) {
+            $pictures = ($pictures === null) ? pg_office_docx_picture_context($zip, $document) : $pictures;
+            continue;
+        }
+
         if (!isset($change['table']) && !isset($change['action'])) {
             $items[] = $change;
             continue;
@@ -4141,17 +4170,21 @@ function pg_office_docx_save_parts($zip, $wanted, $fail, $spool, $added = array(
         }
     }
 
+    $rels_wanted = ($pictures !== null);
+
     foreach ($items as $change) {
         foreach ((array) $change['format'] as $range) {
-            if (($links === null) && is_array($range[2]) && array_key_exists('link', $range[2])) {
-                $rels = pg_zip_entry_contents($zip, 'word/_rels/document.xml.rels', PG_OFFICE_EDIT_MAX_DOCUMENT, $unread_rels);
-                $links = (($rels === null) && ($unread_rels !== 'missing')) ? null
-                    : pg_office_docx_link_context($rels, $document->documentElement->namespaceURI === 'http://purl.oclc.org/ooxml/wordprocessingml/main');
+            $rels_wanted = $rels_wanted || (is_array($range[2]) && array_key_exists('link', $range[2]));
+        }
+    }
 
-                if ($links === null) {
-                    return $fail('unusual');
-                }
-            }
+    if ($rels_wanted) {
+        $rels = pg_zip_entry_contents($zip, 'word/_rels/document.xml.rels', PG_OFFICE_EDIT_MAX_DOCUMENT, $unread_rels);
+        $links = (($rels === null) && ($unread_rels !== 'missing')) ? null
+            : pg_office_docx_link_context($rels, $document->documentElement->namespaceURI === 'http://purl.oclc.org/ooxml/wordprocessingml/main');
+
+        if ($links === null) {
+            return $fail('unusual');
         }
     }
 
@@ -4241,7 +4274,7 @@ function pg_office_docx_save_parts($zip, $wanted, $fail, $spool, $added = array(
             }
         }
 
-        $result = pg_office_docx_paragraphs_add($paragraphs, $added, $kinds, $links);
+        $result = pg_office_docx_paragraphs_add($paragraphs, $added, $kinds, $links, $pictures);
 
         if (!$result['ok']) {
             return $fail($result['code'], $result['paragraph']);
@@ -4328,6 +4361,26 @@ function pg_office_docx_save_parts($zip, $wanted, $fail, $spool, $added = array(
         }
     }
 
+    // Each picture put in, and the content types when an extension had
+    // none (includes/fn/office_docx_picture.php).
+    if ($pictures !== null) {
+        $media = pg_office_docx_picture_parts($zip, $pictures);
+
+        if ($media === null) {
+            return $fail('unusual');
+        }
+
+        foreach ($media as $name => $bytes) {
+            $file = $spool($bytes);
+
+            if ($file === null) {
+                return $fail('save');
+            }
+
+            $parts[$name] = $file;
+        }
+    }
+
     $rels = pg_office_docx_link_rels_xml($links);
 
     if ($rels !== null) {
@@ -4391,7 +4444,7 @@ function pg_office_docx_edit_message($code, $paragraph = '')
         case 'format_range':
             return lang(array('string' => 'The text to format is not in paragraph {var:1} any more. Open the file again.', 'vars' => array($paragraph)));
         case 'delete_picture':
-            return lang(array('string' => 'Paragraph {var:1} holds a picture, so it is not deleted here.', 'vars' => array($paragraph)));
+            return lang(array('string' => 'Paragraph {var:1} holds a drawing, a text box or an embedded object, so it is not deleted here.', 'vars' => array($paragraph)));
         case 'delete_section':
             return lang(array('string' => 'Paragraph {var:1} ends a section of the document, which holds its page layout, so it is not deleted here.', 'vars' => array($paragraph)));
         case 'delete_cell':
@@ -4414,6 +4467,12 @@ function pg_office_docx_edit_message($code, $paragraph = '')
             return lang(array('string' => 'The table of paragraph {var:1} is in a content control or holds tracked changes, so it is not changed here.', 'vars' => array($paragraph)));
         case 'table_delete':
             return lang(array('string' => 'What would be deleted at paragraph {var:1} holds a picture, a field, a comment, a note, a content control or one end of a bookmark, so it is not deleted here.', 'vars' => array($paragraph)));
+        case 'picture_type':
+            return lang('A picture is put in here as a PNG, JPEG or GIF file.');
+        case 'picture_large':
+            return lang(array('string' => 'A picture put in here is at most {var:1} MB.', 'vars' => array(PG_OFFICE_MAX_IMAGE / 1048576)));
+        case 'picture_room':
+            return lang(array('string' => 'The pictures of this document would come to more than {var:1} MB together, more than can be shown here, so the picture is not put in.', 'vars' => array(PG_OFFICE_MAX_IMAGES / 1048576)));
         case 'unusual':
             return lang('This document cannot be changed here.');
     }
