@@ -29555,13 +29555,28 @@
         // Export all).
         var frame = el('div', 'ws-bar-frame');
         var bar = el('nav', 'pg-toolbar ws-bar');
-        var layout = el('div', 'row g-7 ws-nb');
-        var listCol = el('div', 'lg:col-5 xl:col-4 ws-nb-list-col');
-        var paneCol = el('div', 'lg:col-7 xl:col-8 ws-nb-pane-col');
+        // Two cards side by side (one at a time below 1024 px): the list,
+        // a card of its own with a head ("Notes", the count, New group, the
+        // order) over a body that scrolls by itself, and the note.
+        var layout = el('div', 'ws-nb');
+        var listCol = el('div', 'ws-nb-list-col');
+        var paneCol = el('div', 'ws-nb-pane-col');
+        var listCard = el('section', 'pg-card ws-nb-list-card');
+        var listHead = el('div', 'ws-nb-list-head');
+        var listCount = el('span', 'ws-nb-list-count');
+        var listTools = el('div', 'ws-nb-list-tools');
         var list = el('div', 'ws-nb-list');
         var pane = el('div', 'ws-nb-pane');
+        var listTitle = el('h2', 'ws-nb-list-title', t('notes_list_head'));
 
-        listCol.appendChild(list);
+        listTitle.id = 'ws-nb-list-title';
+        listCard.setAttribute('aria-labelledby', listTitle.id);
+        listHead.appendChild(listTitle);
+        listHead.appendChild(listCount);
+        listHead.appendChild(listTools);
+        listCard.appendChild(listHead);
+        listCard.appendChild(list);
+        listCol.appendChild(listCard);
         paneCol.appendChild(pane);
         layout.appendChild(listCol);
         layout.appendChild(paneCol);
@@ -30080,37 +30095,84 @@
             }
         }
 
+        // The order button of the list's head: the same order items as the
+        // bar's "⋯" (workspace_note_list.js).
+        var orderButton = menuButton(button('pg-icon-button pg-icon-button-sm ws-nb-list-order', '', 'bi-sort-down', t('notes_order')));
+
+        orderButton.addEventListener('click', function (event) {
+            var box = orderButton.getBoundingClientRect();
+
+            event.stopPropagation();
+            ctxMenu(Math.max(8, box.right - 220), box.bottom + 4, window.PGWsNoteList.menuItems(window.PGWsKit, drawList));
+        });
+
+        // The list card's head: the count of the notes listed, New group
+        // where groups are installed, then the order.
+        function drawListHead(groups) {
+            listCount.textContent = String(lists.mine.length + lists.shared.length);
+            clear(listTools);
+
+            if (groups) {
+                listTools.appendChild(window.PGWsNoteGroups.addButton(groups));
+            }
+
+            listTools.appendChild(orderButton);
+        }
+
+        // The list card scrolls by itself: a redraw keeps its place, and a
+        // note opened from elsewhere (a link, a tab, a new note) is brought
+        // into view in it.
+        var listShownId = 0;
+
+        function keepListPlace(top) {
+            var row = list.querySelector('.ws-nb-item.is-chosen');
+            var openId = current ? Number(current.id || 0) : 0;
+
+            list.scrollTop = top;
+
+            if (!row || (openId === listShownId) || (list.scrollHeight <= list.clientHeight)) {
+                listShownId = openId;
+                return;
+            }
+
+            var box = list.getBoundingClientRect();
+            var at = row.getBoundingClientRect();
+
+            if (at.top < box.top) {
+                list.scrollTop += at.top - box.top;
+            } else if (at.bottom > box.bottom) {
+                list.scrollTop += at.bottom - box.bottom;
+            }
+
+            listShownId = openId;
+        }
+
         function drawList() {
+            var groups = groupsCtx();
+            var listTop = list.scrollTop;
+
             clear(list);
             drawTabs();
+            drawListHead(groups);
 
             var none = !lists.mine.length && !lists.shared.length;
 
             // A search that finds nothing says so and offers Clear in place
-            // of the lists.
+            // of the lists, inside the list card.
             if (none && search) {
-                var found = el('div', 'pg-card');
-
-                found.appendChild(barEmptyFound(t('notes_empty_search'), function () {
+                list.appendChild(barEmptyFound(t('notes_empty_search'), function () {
                     searchInput.value = '';
                     search = '';
                     loadList();
                     searchInput.focus();
                 }));
-                list.appendChild(found);
                 return;
             }
 
-            // Before the first note: the empty screen over the lists, which
-            // keep New group.
+            // Before the first note: the empty screen over the lists.
             if (none) {
-                var empty = el('div', 'pg-card');
-
-                empty.appendChild(emptyScreen({ tone: 'amber', icon: 'bi-journal-text', menuIcon: 'notes', title: t('notes_none_title'), text: t('notes_intro'), action: { label: t('notes_new'), icon: 'bi-plus-lg', onClick: function () { startNew(); } } }));
-                list.appendChild(empty);
+                list.appendChild(emptyScreen({ tone: 'amber', icon: 'bi-journal-text', menuIcon: 'notes', title: t('notes_none_title'), text: t('notes_intro'), action: { label: t('notes_new'), icon: 'bi-plus-lg', onClick: function () { startNew(); } } }));
             }
-
-            var groups = groupsCtx();
 
             list.appendChild(groups ? window.PGWsNoteGroups.mine(groups) : drawSection('mine', t('notes_mine'), lists.mine, search ? t('notes_empty_search') : t('notes_empty')));
             if (groups && window.PGWsNoteGroupShares) {
@@ -30120,6 +30182,8 @@
             } else {
                 list.appendChild(drawSection('shared', t('notes_shared'), groups ? window.PGWsNoteGroups.sharedLoose(groups, lists.shared) : lists.shared, search ? t('notes_empty_search') : t('notes_empty_shared')));
             }
+
+            keepListPlace(listTop);
         }
 
         function loadList() {
@@ -32653,7 +32717,7 @@
             // The note as a page: the row of tools across the card, the
             // title and the text in one column under it (.ws-nb-page, whose
             // rules draw only this pane).
-            var card = el('div', 'card ws-nb-card ws-nb-page');
+            var card = el('div', 'card pg-card ws-nb-card ws-nb-page');
             headNode = el('div', 'card-header ws-nb-head');
             infoNode = el('div', 'ws-nb-info d-none');
             sheetNode = el('div', 'ws-nb-sheet');

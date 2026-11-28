@@ -26482,24 +26482,94 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
 .ws-table-edit .ws-cell-error::after {
   color: var(--pg-danger);
 }
-/* Workspace notes: the lists, the note, its writing box */
+/* Workspace notes: the lists, the note, its writing box.
+   My Notes is two cards (startNotes() in workspace.js): the list card,
+   372 px from 1200 px up and 300 px below, then the note card, 20 px away
+   (16 px below 1200 px). Below 1024 px one card at a time. */
+.ws-nb {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+}
+@media (min-width: 1024px) {
+    .ws-nb {
+        grid-template-columns: 300px minmax(0, 1fr);
+        align-items: start;
+    }
+    /* The list stays while the note scrolls: sticky under the panel's
+       header, its body scrolling inside the card. */
+    .ws-nb-list-card {
+        position: sticky;
+        top: calc(var(--pg-navbar-h) + 16px);
+        display: flex;
+        flex-direction: column;
+        max-height: calc(100vh - var(--pg-navbar-h) - 32px);
+    }
+    .ws-nb-list-card > .ws-nb-list {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+}
+@media (min-width: 1200px) {
+    .ws-nb {
+        grid-template-columns: 372px minmax(0, 1fr);
+        gap: 20px;
+    }
+}
+.ws-nb-list-card {
+    overflow: hidden;
+}
+/* The list card's head: "Notes", the count, New group and the order; as
+   tall as the note card's head, so their lines meet. */
+.ws-nb-list-head {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 8px;
+    min-height: 46px;
+    padding-inline: 16px 10px;
+    border-bottom: 1px solid var(--pg-border-color-translucent);
+}
+.ws-nb-list-title {
+    margin: 0;
+    font-size: var(--pg-text-base);
+    font-weight: var(--pg-weight-strong);
+    line-height: var(--pg-leading);
+}
+.ws-nb-list-count {
+    font-size: var(--pg-text-2);
+    color: var(--pg-fg-3);
+}
+.ws-nb-list-tools {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-inline-start: auto;
+}
 .ws-nb-list {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    /* The card's own border closes the last row: its hairline is clipped. */
+    margin-bottom: -1px;
 }
 .ws-nb-section {
     display: flex;
     flex-direction: column;
-    gap: .2rem;
 }
-/* A section's head: its group label (.pg-group-label with its count, a
-   button that folds the section; workspace_note_list.js), then the
-   section's own buttons. A folder's head in a section folds the same way. */
+/* A section's head is a band across the card: its group label
+   (.pg-group-label with its count, a button that folds the section;
+   workspace_note_list.js). A folder's head is a band too, its label set in
+   under the section's. */
 .ws-nb-section-head {
     display: flex;
     align-items: center;
     gap: 6px;
+    min-height: 34px;
+    padding: 0 8px;
+    border-bottom: 1px solid var(--pg-border-color-translucent);
+    background: var(--pg-surface-1);
 }
 .ws-nb-section-title {
     flex: 1 1 auto;
@@ -26510,7 +26580,6 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
 .ws-nb-section-body {
     display: flex;
     flex-direction: column;
-    gap: 2px;
 }
 .ws-nb-section-body[hidden] {
     display: none;
@@ -26555,14 +26624,19 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
     }
 }
 .ws-nb-section-empty {
-    padding: .25rem .35rem;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--pg-border-color-translucent);
     font-size: .8125rem;
     color: var(--pg-fg-2);
 }
-/* A note's row is a .pg-list-row (workspace.js, drawItem()): the open note
-   is the chosen row, a faint accent tint with an accent edge at its start;
-   its ⋯ stays shown. */
+/* A note's row is a .pg-list-row (workspace.js, drawItem()) with a hairline
+   under it, square in the card: the open note is the chosen row, a faint
+   accent tint with a 3 px accent edge at its start; its ⋯ stays shown. */
 .ws-nb-item {
+    padding: 12px;
+    padding-inline-start: 16px;
+    border-bottom: 1px solid var(--pg-border-color-translucent);
+    border-radius: 0;
     cursor: pointer;
 }
 .ws-nb-item:focus-visible {
@@ -26571,10 +26645,10 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
 }
 .ws-nb-list .ws-nb-item.is-chosen {
     background: color-mix(in srgb, var(--pg-accent) var(--pg-tint-select), transparent);
-    box-shadow: inset 2px 0 0 var(--pg-accent);
+    box-shadow: inset 3px 0 0 var(--pg-accent);
 }
 [dir="rtl"] .ws-nb-list .ws-nb-item.is-chosen {
-    box-shadow: inset -2px 0 0 var(--pg-accent);
+    box-shadow: inset -3px 0 0 var(--pg-accent);
 }
 /* A note dragged beside the chosen row: the drop line takes the edge's
    place. */
@@ -26599,13 +26673,12 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
 .ws-nb-item-head > .ws-nb-item-pin {
     color: var(--pg-primary-ink);
 }
-/* Changed by somebody else, or answered by Claude, since it was last open. */
+/* Changed by somebody else, or answered by Claude, since it was last open:
+   the dot after the title and a heavier title, never a tint (the tint means
+   open). */
 .ws-nb-item-unread .ws-nb-item-name {
     color: var(--pg-fg-emphasis);
-}
-.ws-nb-item-unread .ws-nb-item-time {
-    color: var(--ws-accent);
-    font-weight: var(--pg-weight-strong);
+    font-weight: var(--pg-weight-title);
 }
 .ws-nb-item-claude {
     flex: none;
@@ -26629,12 +26702,15 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
     opacity: 1;
 }
 /* Note groups as folders in My notes (workspace_note_groups.js): the
-   folder's head is its group label (.ws-nb-fold) and its ⋯. */
+   folder's head is a band holding its group label (.ws-nb-fold) and its ⋯,
+   set in under the section's band; its notes are set in by 14 px. */
 .ws-nb-group-head {
     display: flex;
     align-items: center;
     gap: 2px;
-    border-radius: 8px;
+    min-height: 34px;
+    padding-inline: 22px 8px;
+    border-bottom: 1px solid var(--pg-border-color-translucent);
 }
 .ws-nb-group-head:hover {
     background: var(--pg-hover);
@@ -26687,10 +26763,14 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
 .ws-nb-group-body {
     display: none;
     flex-direction: column;
-    gap: .2rem;
-    margin-inline-start: .9rem;
-    padding-inline-start: .35rem;
-    border-inline-start: 1px solid var(--pg-border-color);
+}
+.ws-nb-group-body > .ws-nb-item,
+.ws-nb-group-body > .ws-nb-section-empty {
+    padding-inline-start: 30px;
+}
+.ws-nb-group-body > .ws-nb-lock-list {
+    margin-block: 8px;
+    margin-inline: 30px 16px;
 }
 .ws-nb-group.open .ws-nb-group-body {
     display: flex;
@@ -27029,6 +27109,11 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
    field's frame or focus box; the caret marks the focus. Every rule starts
    at .ws-nb-page, so a channel's note, the highlights and lock panes, the
    task description and the other writing boxes keep the rules above. */
+/* As tall as the list card's head, so their lines meet. */
+.ws-nb-page > .ws-nb-head {
+    min-height: 46px;
+    padding-block: 4px;
+}
 .ws-nb-page .ws-nb-meta {
     flex: 1 1 0;
     min-width: 5rem;
