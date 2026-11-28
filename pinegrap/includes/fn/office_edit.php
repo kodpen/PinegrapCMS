@@ -4315,6 +4315,7 @@ function pg_office_docx_save_parts($zip, $wanted, $fail, $spool, $added = array(
     // Kinds, in the order the paragraphs now read, so a list the one
     // before was just made into is the one a paragraph joins.
     $parts = array();
+    $types = null;
 
     if (!empty($kinds)) {
         $order = new SplObjectStorage();
@@ -4344,11 +4345,14 @@ function pg_office_docx_save_parts($zip, $wanted, $fail, $spool, $added = array(
             }
         }
 
-        $texts = pg_office_docx_kind_parts($zip, $context);
+        $texts = pg_office_docx_kind_parts($zip, $context, $links);
 
         if ($texts === null) {
             return $fail('kind_unusual');
         }
+
+        // A picture's content type goes into these, not the package's.
+        $types = isset($texts['[Content_Types].xml']) ? $texts['[Content_Types].xml'] : null;
 
         foreach ($texts as $name => $text) {
             $file = $spool($text);
@@ -4364,7 +4368,7 @@ function pg_office_docx_save_parts($zip, $wanted, $fail, $spool, $added = array(
     // Each picture put in, and the content types when an extension had
     // none (includes/fn/office_docx_picture.php).
     if ($pictures !== null) {
-        $media = pg_office_docx_picture_parts($zip, $pictures);
+        $media = pg_office_docx_picture_parts($zip, $pictures, $types);
 
         if ($media === null) {
             return $fail('unusual');

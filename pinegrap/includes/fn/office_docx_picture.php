@@ -248,24 +248,9 @@ function pg_office_docx_picture_rel(&$context, &$links, $picture)
     $context['names'][$part] = true;
     $context['parts'][$part] = $picture['bytes'];
 
-    $number = count($links['ids']) + 1;
-
-    while (isset($links['ids']['rId' . $number])) {
-        $number++;
-    }
-
-    $id = 'rId' . $number;
-    $root = $links['dom']->documentElement;
-    $relationship = $links['dom']->createElementNS((string) $root->namespaceURI, 'Relationship');
-    $relationship->setAttribute('Id', $id);
-    $relationship->setAttribute('Type', pg_office_docx_picture_namespaces($context['strict'])['type']);
-    $relationship->setAttribute('Target', substr($part, strlen('word/')));
-    $root->appendChild($relationship);
-
-    // Listed with the links' so the relationships part is written; a
+    // Listed with the links' so the relationships part is written once; a
     // link's address always has a scheme, so no link takes this one.
-    $links['ids'][$id] = true;
-    $links['added'][$id] = substr($part, strlen('word/'));
+    $id = pg_office_docx_rel_add($links, pg_office_docx_picture_namespaces($context['strict'])['type'], substr($part, strlen('word/')));
     $context['shared'][$digest] = $id;
 
     return $id;
@@ -376,17 +361,18 @@ function pg_office_docx_picture_add($anchor, $after, $picture, &$context, &$link
  * relationships: each picture, and the content types when an extension
  * had none. Null when the content types cannot be read.
  *
- * @param ZipArchive $zip
- * @param array      $context pg_office_docx_picture_context()
+ * @param ZipArchive  $zip
+ * @param array       $context pg_office_docx_picture_context()
+ * @param string|null $types   the content types as the save already changed them (a part a paragraph's kind added); null to read the package's
  * @return array|null part name => its bytes
  */
-function pg_office_docx_picture_parts($zip, $context)
+function pg_office_docx_picture_parts($zip, $context, $types = null)
 {
     if (empty($context['parts'])) {
         return array();
     }
 
-    $xml = pg_zip_entry_contents($zip, '[Content_Types].xml', PG_OFFICE_EDIT_MAX_DOCUMENT, $unread);
+    $xml = ($types !== null) ? $types : pg_zip_entry_contents($zip, '[Content_Types].xml', PG_OFFICE_EDIT_MAX_DOCUMENT, $unread);
 
     if (($xml === null) || (stripos($xml, '<!DOCTYPE') !== false)) {
         return null;

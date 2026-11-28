@@ -228,8 +228,11 @@ function pg_office_docx_kind_context($zip, $document)
         return 'kind_unusual';
     }
 
-    // The relationship types the document already writes, transitional or
-    // strict, are the ones an added part is named with.
+    // The standard relationship types the document already writes,
+    // transitional or strict, are the ones an added part is named with.
+    // Word lists its own extension parts (stylesWithEffects, people,
+    // commentsExtended) under Microsoft's address among them; a numbering
+    // named under that address is not found by Word.
     $base = '';
     $targets = array();
 
@@ -237,10 +240,12 @@ function pg_office_docx_kind_context($zip, $document)
         $targets[$relationship['type']] = $relationship['external'] ? '' : pg_office_part_name('word/', $relationship['target']);
     }
 
-    if (preg_match('/\sType\s*=\s*"([^"]*\/)[^"\/]*"/', $rels, $type)) {
+    if (preg_match('~\sType\s*=\s*"(http://schemas\.openxmlformats\.org/officeDocument/2006/relationships/|http://purl\.oclc\.org/ooxml/officeDocument/relationships/)[^"/]*"~', $rels, $type)) {
         $base = $type[1];
     } elseif ($namespace === 'http://schemas.openxmlformats.org/wordprocessingml/2006/main') {
         $base = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/';
+    } elseif ($namespace === 'http://purl.oclc.org/ooxml/wordprocessingml/main') {
+        $base = 'http://purl.oclc.org/ooxml/officeDocument/relationships/';
     }
 
     $context = array(
@@ -641,13 +646,16 @@ function pg_office_docx_paragraph_kind(&$context, $paragraph, $kind)
 /**
  * The parts a save that set kinds adds to or changes beside the main part:
  * the styles and the numbering with what was added, and when one of them
- * was not in the package, its content type and relationship.
+ * was not in the package, its content type and relationship. When the
+ * save writes the relationships for links or pictures too, the new one is
+ * added to theirs, so neither writing undoes the other.
  *
  * @param ZipArchive $zip
  * @param array      $context
+ * @param array|null $links   pg_office_docx_link_context() of the save, when it has one
  * @return array|null part name => text; null when they cannot be written
  */
-function pg_office_docx_kind_parts($zip, $context)
+function pg_office_docx_kind_parts($zip, $context, &$links = null)
 {
     $texts = array();
     $rels = $context['rels'];
@@ -696,9 +704,13 @@ function pg_office_docx_kind_parts($zip, $context)
         $texts['word/' . $kind . '.xml'] = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' . "\n"
             . '<w:' . $kind . ' xmlns:w="' . $attr($context['namespace']) . '">' . $pieces . $part['added'] . '</w:' . $kind . '>';
 
-        preg_match_all('/\sId\s*=\s*"rId(\d+)"/', $rels, $ids);
-        $id = 'rId' . (empty($ids[1]) ? 1 : max(array_map('intval', $ids[1])) + 1);
-        $rels = pg_office_sheets_append($rels, 'Relationships', '<Relationship Id="' . $id . '" Type="' . $attr($context['base'] . $kind) . '" Target="' . $kind . '.xml"/>');
+        if (is_array($links)) {
+            pg_office_docx_rel_add($links, $context['base'] . $kind, $kind . '.xml');
+        } else {
+            preg_match_all('/\sId\s*=\s*"rId(\d+)"/', $rels, $ids);
+            $id = 'rId' . (empty($ids[1]) ? 1 : max(array_map('intval', $ids[1])) + 1);
+            $rels = pg_office_sheets_append($rels, 'Relationships', '<Relationship Id="' . $id . '" Type="' . $attr($context['base'] . $kind) . '" Target="' . $kind . '.xml"/>');
+        }
 
         if (($rels === null) || ($types === null)) {
             return null;

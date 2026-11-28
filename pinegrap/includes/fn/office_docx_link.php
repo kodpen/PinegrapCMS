@@ -177,6 +177,23 @@ function pg_office_docx_link_rel(&$context, $target)
         return (string) $found;
     }
 
+    return pg_office_docx_rel_add($context, pg_office_docx_link_type($context['strict']), $target, true);
+}
+
+/**
+ * Adds a relationship to the main part's, under an id none has, and lists
+ * it among the added ones so the part is written. A link, a picture and a
+ * part a paragraph's kind adds (numbering, styles) all go through here, so
+ * one save never gives two of them one id or writes the part twice.
+ *
+ * @param array  $context  pg_office_docx_link_context()
+ * @param string $type     the relationship's type
+ * @param string $target
+ * @param bool   $external whether it leaves the package
+ * @return string the new relationship's id
+ */
+function pg_office_docx_rel_add(&$context, $type, $target, $external = false)
+{
     $number = count($context['ids']) + 1;
 
     while (isset($context['ids']['rId' . $number])) {
@@ -187,9 +204,13 @@ function pg_office_docx_link_rel(&$context, $target)
     $root = $context['dom']->documentElement;
     $relationship = $context['dom']->createElementNS((string) $root->namespaceURI, 'Relationship');
     $relationship->setAttribute('Id', $id);
-    $relationship->setAttribute('Type', pg_office_docx_link_type($context['strict']));
+    $relationship->setAttribute('Type', $type);
     $relationship->setAttribute('Target', $target);
-    $relationship->setAttribute('TargetMode', 'External');
+
+    if ($external) {
+        $relationship->setAttribute('TargetMode', 'External');
+    }
+
     $root->appendChild($relationship);
 
     $context['ids'][$id] = true;

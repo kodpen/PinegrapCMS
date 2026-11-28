@@ -148,8 +148,13 @@ function test_office_docx_look_align()
 	pg_assert_same('<w:p><w:pPr><w:jc w:val="both"/></w:pPr><w:r><w:t>İki yana</w:t></w:r></w:p>',
 		office_docx_look_test_align('<w:r><w:t>İki yana</w:t></w:r>', 'justify', '<w:pPr><w:jc w:val="center"/></w:pPr>'), 'justified replaces centred');
 
-	pg_assert_same('<w:p><w:r><w:t>Baş</w:t></w:r></w:p>',
-		office_docx_look_test_align('<w:r><w:t>Baş</w:t></w:r>', 'start', '<w:pPr><w:jc w:val="center"/></w:pPr>'), 'start where no style gives one: the alignment and empty properties go');
+	// A paragraph without a style takes the default paragraph style
+	// (Normal), which may centre or justify it: start is written.
+	pg_assert_same('<w:p><w:pPr><w:jc w:val="left"/></w:pPr><w:r><w:t>Baş</w:t></w:r></w:p>',
+		office_docx_look_test_align('<w:r><w:t>Baş</w:t></w:r>', 'start', '<w:pPr><w:jc w:val="center"/></w:pPr>'), 'start replaces centred, as the default style may align it otherwise');
+
+	pg_assert_same('<w:p><w:r><w:t>Düz</w:t></w:r></w:p>',
+		office_docx_look_test_align('<w:r><w:t>Düz</w:t></w:r>', 'start'), 'start on a paragraph with no alignment and no style writes nothing');
 
 	pg_assert_same('<w:p><w:pPr><w:pStyle w:val="Title"/><w:jc w:val="left"/></w:pPr><w:r><w:t>Başlık</w:t></w:r></w:p>',
 		office_docx_look_test_align('<w:r><w:t>Başlık</w:t></w:r>', 'start', '<w:pPr><w:pStyle w:val="Title"/></w:pPr>'), 'start in a styled paragraph is written, as the style may centre it');

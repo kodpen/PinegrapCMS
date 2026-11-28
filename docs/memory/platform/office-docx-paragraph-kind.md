@@ -19,7 +19,8 @@ module: office_docx_kind
 - Normal and headings take the numbering off; a heading, title, quote or list style gives way. A heading style that numbers itself keeps doing so, and reads back as a numbered list.
 
 ## How are the parts written?
-- `word/document.xml` as for text (DOM); pPr children put in CT_PPr order (`pg_office_docx_ppr_put()`). Styles and numbering are written only when something is added, as text inserted before the root's end (abstract numberings before the first `num`): the bytes before stay as they were. A part the document lacked (numbering.xml often) is written new and named in `word/_rels/document.xml.rels` and `[Content_Types].xml`, with the relationship type base the document already uses.
+- `word/document.xml` as for text (DOM); pPr children put in CT_PPr order (`pg_office_docx_ppr_put()`).
+- Styles and numbering are written only when something is added, as text inserted before the root's end (abstract numberings before the first `num`): the bytes before stay as they were. A part the document lacked (numbering.xml often) is written new and named in `word/_rels/document.xml.rels` and `[Content_Types].xml`, with the standard relationship type (never a Microsoft extension's), among the links' and pictures' (`pg_office_docx_rel_add()`).
 
 ## What is refused?
 - `kind_unusual` ("The styles or the list numbering of this document cannot be changed here..."): the styles or numbering part elsewhere than the relationships name, or present without a relationship, too large, not UTF-8, a DOCTYPE, a root without the main namespace's prefix, no relationship type to name an added part with. Only saves with a kind read these parts; a text or format save is not refused by them.

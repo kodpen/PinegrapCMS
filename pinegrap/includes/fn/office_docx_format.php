@@ -895,10 +895,11 @@ function pg_office_docx_paragraph_align($paragraph)
 }
 
 /**
- * Aligns a paragraph, every other property kept. Start is written only
- * where a paragraph style may align it otherwise; without one the
- * alignment, and properties left empty, go. Nothing is written when the
- * paragraph is aligned so already.
+ * Aligns a paragraph, every other property kept. Start is written as left,
+ * never by taking the alignment away: a paragraph without a style of its
+ * own takes the document's default paragraph style, which may centre or
+ * justify it. A paragraph with no alignment and no style is left as it
+ * is. Nothing is written when the paragraph is aligned so already.
  *
  * @param DOMElement $paragraph
  * @param string     $align pg_office_docx_align_request()
@@ -910,18 +911,8 @@ function pg_office_docx_paragraph_align_set($paragraph, $align)
     $jc = ($properties !== null) ? pg_office_docx_child($properties, 'jc') : null;
     $styled = ($properties !== null) && (pg_office_docx_child($properties, 'pStyle') !== null);
 
-    if (($align === 'start') && !$styled) {
-        if ($jc === null) {
-            return false;
-        }
-
-        $properties->removeChild($jc);
-
-        if (!$properties->hasChildNodes()) {
-            $paragraph->removeChild($properties);
-        }
-
-        return true;
+    if (($align === 'start') && !$styled && ($jc === null)) {
+        return false;
     }
 
     if (($jc !== null) && (pg_office_docx_paragraph_align($paragraph) === $align)) {
