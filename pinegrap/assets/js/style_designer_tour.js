@@ -531,6 +531,13 @@ StyleDesigner.definePart('tour', function (K) {
         var last = how ? t.at.i === t.list.length - 1 : !M.move(t.list, t.at.i, 1, has);
         var words = how ? [taskName(how) + '.', pointerText(t.at.id)] : sentence(t.at.id);
         var count = (how ? _sdT('How do I · {n} of {total}') : _sdT('Tour · {n} of {total}')).replace('{n}', String(place + 1)).replace('{total}', String(total));
+        // A redraw takes the focused button away with the old markup: the
+        // focus comes back to the same button (Next and Done are one: the
+        // last stop's Next is Done), else to Next or Done.
+        var MAIN = '[data-sd-tour="next"], [data-sd-tour="done"]';
+        var had = t.bubble.contains(document.activeElement) && document.activeElement.getAttribute
+            ? document.activeElement.getAttribute('data-sd-tour') || 'next' : '';
+        if (had === 'done') had = 'next';
         var dots = '';
         for (var d = 0; d < total; d++) dots += '<i' + (d === place ? ' class="is-on"' : '') + '></i>';
         t.bubble.innerHTML =
@@ -547,6 +554,12 @@ StyleDesigner.definePart('tour', function (K) {
             '</div>' +
             '<span class="sd-tour-said" aria-live="polite"></span>';
         t.key = '';
+        if (had && !moved) {
+            var again = (had !== 'next' && t.bubble.querySelector('[data-sd-tour="' + had + '"]')) || t.bubble.querySelector(MAIN);
+            if (again) {
+                try { again.focus({ preventScroll: true }); } catch (e) { again.focus(); }
+            }
+        }
         if (moved) {
             // Read out whole: "Tour, 3 of 5. See it. Look at the page…"
             t.spoken = (how ? _sdT('How do I, {n} of {total}.') : _sdT('Tour, {n} of {total}.')).replace('{n}', String(place + 1)).replace('{total}', String(total)) + ' ' + words[0] + ' ' + words[1];

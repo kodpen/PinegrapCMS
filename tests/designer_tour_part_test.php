@@ -151,8 +151,10 @@ var window = {
 var getComputedStyle = window.getComputedStyle;
 function requestAnimationFrame(f) { return setTimeout(f, 16); }
 function key(name) {
-    var e = { key: name, target: document.activeElement || document.body, defaultPrevented: false, preventDefault: function () { this.defaultPrevented = true; } };
+    var e = { key: name, target: document.activeElement || document.body, defaultPrevented: false, stopped: false,
+        preventDefault: function () { this.defaultPrevented = true; }, stopPropagation: function () { this.stopped = true; } };
     fire(document, 'keydown', e);
+    return e;
 }
 function press(sel) {
     var e = { target: controls[sel], type: 'click' };
@@ -379,3 +381,32 @@ JS
 	pg_assert_true(strpos($res['said'], 'How do I, 1 of 3.') === 0, 'the pointer is read out once the window has gone');
 	pg_assert_same('opener', $res['focused'], 'the end gives the focus back to where the window gave it');
 }
+
+// A stop of another control that goes away while the focus is on the
+// bubble's Next redraws the count: the focus stays on the bubble's Next
+// instead of falling to the page with the old button.
+function test_designer_tour_part_redraw_keeps_the_focus()
+{
+	$res = designer_tour_part_node(<<<'JS'
+part.start();
+tick(10);
+next();
+var b = bubbleEl();
+var before = document.activeElement === b.querySelector('[data-sd-tour="next"], [data-sd-tour="done"]');
+// The window made narrow: the "find" stop's button goes away.
+ctl('#sd-status-shortcuts', null);
+tick(500);
+var main = b.querySelector('[data-sd-tour="next"], [data-sd-tour="done"]');
+out = { before: before, redrawn: bubble().indexOf('Tour · 2 of 4') !== -1, kept: document.activeElement === main };
+JS
+	);
+
+	if ($res === null) {
+		return;
+	}
+
+	pg_assert_true($res['before'], 'Next has the focus at the second stop');
+	pg_assert_true($res['redrawn'], 'the count is drawn again for four stops');
+	pg_assert_true($res['kept'], 'the focus stays on the bubble after the redraw');
+}
+
