@@ -1351,6 +1351,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/form-feed-detail-access.md: A form list's ?rss=true item whose detail page is not public is a teaser (title, link, guid, pubDate, category; no description, no media), whoever asks; both feeds (#11462, bug #11440)
 - designer/form-list-filters-fail-closed.md: A form list filter on a missing field or unknown operator shows no record (page, feeds, sitemap, index); address filters unchanged; editor warning; unanswered lists use comments less than 1
 - designer/form-list-result-count.md: form_list_view ^^__result_count^^ (records matched, capped at max_results, grouped digits), the flags has_records / no_records, the count strip (empty loop area), canvas and installer preview
+- designer/help-centre-collections.md: Knowledge base (help centre): articles stay a collection; the ready "Help centre" set (Help Categories, Help Articles) with tab keys, field keys, pages and widgets for templates
 - designer/image-focus-overview.md: A picture's focus point ("Focus" in the options, "Set focus" on the canvas): why, what binds it, which file holds what
 - designer/layout-convert-widget-gap.md: What the layout converter does with a piece a page type's layout has and its widget lacks (LE10b to LE10d): a state, a carried setting, a page link, a second form or list; the guest button
 - designer/layout-form-converter.md: W22 classic custom form layout -> custom_form widget tree (pg_layout_form_convert): what each PHP piece becomes, choice fieldsets, CAPTCHA, ids, what is dropped or reported missing
@@ -1866,6 +1867,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/quiet-hours.md: A person's quiet hours (#9844, #9862): set in a channel's Notifications or from a team devices session, ws_profiles.quiet_hours, the rule pg_quiet_hours_left() reads, the person's own only
 - workspace/share-links-screens.md: Screens of Share by link: the mark on a shared item, Share by link… and its dialog, the head's Sharing mark and menu, Channel info's Sharing, the system line, the sandbox check
 - workspace/share-links.md: Share by link of an agent channel's item (SL1-SL6): a file, note, table or checklist by an unguessable address with an end; who makes one, when it closes, the address
+- workspace/support-requests.md: Support requests (help centre) as a whole: a support-box mail conversation, its doors, what the customer sees, privacy, what was left out, which file holds each part
 - workspace/task-app-mark.md: Task application mark (ws_tasks.app_id, #9994): routes that write it, "Made by <application>", the "Made by agents" filter on My Tasks, created_by_app and made_by in the API
 - workspace/workflow-table-channel.md: A workflow table of a channel (ws_wtables.channel_id, 11.0.191): rights from the channel, made in or moved to a channel, lists, bin, screen card, API, webhooks
 - workspace/workflow-table-key-column.md: The key column of a workflow table (wtable_keys.php, PR #8509): text or number, filled in and unique, refusals, the lock, by: key, the API ?key=, the import matching by key

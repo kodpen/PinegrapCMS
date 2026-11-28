@@ -721,6 +721,7 @@
 - frontend-conventions-layers.md: Palette component vs system widget layers and where each is documented, legacy pages as production and yardstick, no dead code in the widget layer, the invariant principles for system widget work. [decision: decisions-made-product.md]
 - google-reviews-widget.md: Google Reviews widget (kind google_reviews): Place Details with a Places API key, the settings card, the sealed state and short cache, tokens, attribution, nothing drawn when not set up [decision: decisions-made-product-5.md]
 - header-menu-stacking.md: The account menu (login region) and language list of a template's account bar come down over a sticky header: pg_sw_lift_header_menus(), the 1025 level, the covered first rows it fixed
+- help-centre-collections.md: Knowledge base (help centre): articles stay a collection; the ready "Help centre" set (Help Categories, Help Articles) with tab keys, field keys, pages and widgets for templates [decision: here]
 - html-import-and-paste.md: Designer HTML import: three entry points, one converter, inline SVG and Bootstrap icons, framework files, repeated blocks made shared, and why a canvas paste is not an import.
 - image-editor-tool.md: The visual designer's "Edit image" on an image field: the field contract, replace versus copy, why the picture saves apart from the design
 - image-focus-control.md: The Focus control (IF2): where it shows in an Image's and a background picture's options, what it draws and writes per screen, the part 'focus' and its host, what is not built yet
@@ -732,7 +733,7 @@
 - import-lazy-images.md: Designer import/paste of lazy-loaded images: which source an image node keeps (data-src, srcset, picture, noscript) instead of the placeholder GIF in src.
 - import-zip-url-resolution.md: How the Import ZIP File screen resolves relative references (url_to_absolute.php), the PCRE2 failure that left imported pages with broken images/CSS/JS, and the resolver's rules
 - inline-drop-links-buttons.md: Designer drops: links and buttons go back into headings and paragraphs, never into a link or button; a label holds one control; a palette block is judged by what it holds.
-- kb-votes-helpful.md: "Was this helpful?" on a collection record's page (help centre HC8): the kb_votes table, the Yes and No button actions, kb_vote.php, the cookie, the two counts on the record list
+- kb-votes-helpful.md: "Was this helpful?" on a collection record's page (help centre HC8): the kb_votes table, the Yes and No button actions, kb_vote.php, the cookie, the two counts on the record list [decision: decisions-made-schema-54.md]
 - language-switcher-component.md: The Language Switcher Button component (COMPONENTS.language_switcher, 2026.4.7): a placeholder in the saved body, drawn per request after the language pass; the pattern for request-bound output.
 - layout-code-tab.md: A classic page's custom layout (data/layouts/<id>.php) as a code tab of the visual designer: who may edit it, the layout_code endpoint, regenerate, unmodified on save, Ctrl+G, hosted sites
 - layout-convert-widget-gap.md: What the layout converter does with a piece a page type's layout has and its widget lacks (LE10b to LE10d): a state, a carried setting, a page link, a second form or list; the guest button [decision: here]
