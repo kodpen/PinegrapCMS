@@ -1,6 +1,6 @@
 ---
 name: license-check
-description: The panel's licence check (license_check(), includes/fn/output.php): when it asks, the Kodpen API branch (PR #4381, PG_VENDOR_API_V1 on), the card, the key field
+description: The panel's licence check (license_check(), includes/fn/output.php): when it asks, the Kodpen API call (PR #4381, the only one since P9), the card, the key field
 ---
 
 ## Where is the licence checked?
@@ -19,7 +19,7 @@ description: The panel's licence check (license_check(), includes/fn/output.php)
 - Drawn for every error state, only for Manager or above (`role <= 2`, who may force a check): `pg_license_check_again_url($_GET)`, the same screen with its query kept (#996, PR #1129).
 
 ## How does it ask the Kodpen API?
-- `PG_VENDOR_API_V1` is on (`vendor-api-client.md`; off is only the way back to api2): a state without `source` 'v1' (left by api2) is asked again at once.
+- Only the Kodpen API since P9 (#12212, `vendor-api-client.md`): a session state without `source` 'v1' (left by the old api2 server) is asked again at once.
 - The key is normalised (`pg_license_key_normalize()`: dashes and blanks out, upper case); outside 16 of 0-9 A-Z without I, L, O, U (`pg_license_key_valid()`) nothing is sent and the state is `error`/`no_match`. Else `POST /licenses/verify` with `pg_license_v1_options()` (bearer key, body `version` when a release number and `channel`, `site_required`).
 - `pg_license_map_v1()` follows `tests/fixtures/vendor_api/licence_mapping.json`: schema-valid 200 active/expired `success` + `P_end_d`, suspended `error`/`suspended`; 401 `invalid_license` `no_match`; 403 `seats_full`/`access_blocked` that code; all else status '' (15-minute retry). Type and site rights only from a 200.
 - Ten `invalid_license` answers an hour close the licence check for the whole address, valid keys too.

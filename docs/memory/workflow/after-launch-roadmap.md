@@ -14,5 +14,4 @@ description: Roadmap: the work the owner put after the launch (aimed at 1 Januar
 
 ## What is held for another reason?
 - `plans/agent-memory-search.md` (MS1 to MS4): held until the owner opens it; not tied to the launch.
-- P9 of `plans/kodpen-vendor-api-client-steps.md`: the removal of the unreached api2 client, in the version after 2026.11.0.
 - Design template plans: paused (`coordinator-no-plans.md`).
